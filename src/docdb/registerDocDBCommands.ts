@@ -43,7 +43,7 @@ export function registerDocDBCommands(): void {
 
     // #region Account command
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createDocDBDatabase);
 
     // #endregion
 

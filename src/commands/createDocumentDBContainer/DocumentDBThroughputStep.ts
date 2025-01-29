@@ -10,7 +10,7 @@ const minThroughput: number = 400;
 const maxThroughput: number = 100000;
 const throughputStepSize = 100;
 
-export class PromptThroughputStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+export class DocumentDBThroughputStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {

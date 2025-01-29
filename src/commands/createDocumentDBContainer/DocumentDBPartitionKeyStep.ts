@@ -12,7 +12,7 @@ export enum HierarchyStep {
     Third = 3,
 }
 
-export class PromptPartitionKeyStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+export class DocumentDBPartitionKeyStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
     public hideStepCount: boolean = false;
 
     constructor(public readonly hierarchyStep: HierarchyStep) {

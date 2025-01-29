@@ -4,12 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AccountInfo } from '../../tree/docdb/AccountInfo';
 
-export interface AddWorkspaceConnectionContext extends IActionContext {
-    /** These values will be populated by the wizard. */
-    connectionString?: string;
-    username?: string;
-    password?: string;
+export interface CreateDatabaseWizardContext extends IActionContext {
+    accountInfo: AccountInfo;
+    nodeId: string;
 
-    aborted?: boolean;
+    databaseName?: string;
 }

@@ -67,7 +67,6 @@ export async function deleteAzureDatabaseAccount(
     if (!node) {
         node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
-            expectedChildContextValue: ['treeItem.account', 'treeItem.mongoCluster'],
         });
     }
 

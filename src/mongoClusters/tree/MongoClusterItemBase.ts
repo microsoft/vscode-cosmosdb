@@ -104,7 +104,7 @@ export abstract class MongoClusterItemBase
                         id: `${this.id}/no-databases`,
                         label: 'Create database...',
                         iconPath: new vscode.ThemeIcon('plus'),
-                        commandId: 'command.mongoClusters.createDatabase',
+                        commandId: 'cosmosDB.createDatabase',
                         commandArgs: [this],
                     }) as CosmosDBTreeElement,
                 ];

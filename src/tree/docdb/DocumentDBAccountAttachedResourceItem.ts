@@ -4,19 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
-import { localize } from '../../utils/localize';
 import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { type AccountInfo } from './AccountInfo';
+import { type AccountInfo, getAccountInfo } from './AccountInfo';
 
 export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: CosmosDBAttachedAccountModel;
@@ -29,7 +26,7 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const accountInfo = await this.getAccountInfo(this.account);
+        const accountInfo = await getAccountInfo(this.account);
         const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
         const databases = await this.getDatabases(accountInfo, cosmosClient);
 
@@ -42,25 +39,6 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
 
     public getConnectionString(): Promise<string> {
         return Promise.resolve(this.account.connectionString);
-    }
-
-    protected async getAccountInfo(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {
-        const id = account.id;
-        const name = account.name;
-        const isEmulator = account.isEmulator;
-        const parsedCS = parseDocDBConnectionString(account.connectionString);
-        const documentEndpoint = parsedCS.documentEndpoint;
-        const credentials = await this.getCredentials(account);
-        const isServerless = false;
-
-        return {
-            credentials,
-            endpoint: documentEndpoint,
-            id,
-            isEmulator,
-            isServerless,
-            name,
-        };
     }
 
     protected async getDatabases(
@@ -84,70 +62,6 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
             }
             throw e; // rethrowing tells the resources extension to show the exception message in the tree
         }
-    }
-
-    protected async getCredentials(account: CosmosDBAttachedAccountModel): Promise<CosmosDBCredential[]> {
-        const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-
-            const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
-            context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
-
-            let keyCred: CosmosDBKeyCredential | undefined = undefined;
-            // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-            if (!forceOAuth) {
-                let localAuthDisabled = false;
-
-                const parsedCS = parseDocDBConnectionString(account.connectionString);
-                if (parsedCS.masterKey) {
-                    context.telemetry.properties.receivedKeyCreds = 'true';
-
-                    keyCred = {
-                        type: 'key',
-                        key: parsedCS.masterKey,
-                    };
-
-                    try {
-                        // Since here we don't have subscription,
-                        // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
-                        // Will try to connect to the account and if it fails, we will assume local auth is disabled
-                        const cosmosClient = getCosmosClient(parsedCS.documentEndpoint, [keyCred], account.isEmulator);
-                        await cosmosClient.getDatabaseAccount();
-                    } catch {
-                        context.telemetry.properties.receivedKeyCreds = 'false';
-                        localAuthDisabled = true;
-                    }
-                }
-
-                context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-                if (localAuthDisabled) {
-                    // Clean up keyCred if local auth is disabled
-                    keyCred = undefined;
-
-                    const message = localize(
-                        'keyPermissionErrorMsg',
-                        'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
-                        account.name,
-                    );
-                    const openSettingsItem = localize('openSettings', 'Open Settings');
-                    void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                        if (item === openSettingsItem) {
-                            void vscode.commands.executeCommand(
-                                'workbench.action.openSettings',
-                                'azureDatabases.useCosmosOAuth',
-                            );
-                        }
-                    });
-                }
-            }
-
-            // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-            const authCred = { type: 'auth' };
-            return [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
-        });
-
-        return result ?? [];
     }
 
     protected abstract getChildrenImpl(

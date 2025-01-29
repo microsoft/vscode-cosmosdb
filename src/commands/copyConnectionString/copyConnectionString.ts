@@ -65,7 +65,6 @@ export async function copyAzureConnectionString(
     if (!node) {
         node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterItemBase>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
-            expectedChildContextValue: ['treeItem.account', 'treeItem.mongoCluster'],
         });
     }
 

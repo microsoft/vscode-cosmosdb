@@ -6,25 +6,25 @@
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
-import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
+import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
 
-export class PromptContainerNameStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+export class DocumentDBDatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizardContext> {
     public hideStepCount: boolean = false;
 
-    public async prompt(context: CreateContainerWizardContext): Promise<void> {
-        context.containerName = (
+    public async prompt(context: CreateDatabaseWizardContext): Promise<void> {
+        context.databaseName = (
             await context.ui.showInputBox({
-                prompt: `Enter an container id for ${context.databaseId}`,
+                prompt: `Enter an database name`,
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
         ).trim();
 
-        context.valuesToMask.push(context.containerName);
+        context.valuesToMask.push(context.databaseName);
     }
 
-    public shouldPrompt(context: CreateContainerWizardContext): boolean {
-        return !context.containerName;
+    public shouldPrompt(context: CreateDatabaseWizardContext): boolean {
+        return !context.databaseName;
     }
 
     public validateInput(name: string | undefined): string | undefined {
@@ -35,36 +35,36 @@ export class PromptContainerNameStep extends AzureWizardPromptStep<CreateContain
             return undefined;
         }
 
-        if (/[/\\?#]/.test(name)) {
-            return `Container name cannot contain the characters '\\', '/', '#', '?'`;
+        if (/[/\\?#=]/.test(name)) {
+            return `Database name cannot contain the characters '\\', '/', '#', '?', '='`;
         }
 
         if (name.length > 255) {
-            return 'Container name cannot be longer than 255 characters';
+            return 'Database name cannot be longer than 255 characters';
         }
 
         return undefined;
     }
 
     private async validateNameAvailable(
-        context: CreateContainerWizardContext,
+        context: CreateDatabaseWizardContext,
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {
-            return 'Container name is required.';
+            return 'Database name is required.';
         }
 
         try {
             const { endpoint, credentials, isEmulator } = context.accountInfo;
             const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-            const result = await cosmosClient.database(context.databaseId).containers.readAll().fetchAll();
+            const result = await cosmosClient.databases.readAll().fetchAll();
 
             if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
-                return `The collection "${name}" already exists in the database "${context.databaseId}".`;
+                return `The database "${name}" already exists in the account.`;
             }
         } catch (error) {
-            ext.outputChannel.appendLine(`Failed to validate container name: ${parseError(error).message}`);
+            ext.outputChannel.appendLine(`Failed to validate database name: ${parseError(error).message}`);
             return undefined; // we don't want to block the user from continuing if we can't validate the name
         }
 

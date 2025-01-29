@@ -19,9 +19,7 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
-import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
 import { createCollection } from './commands/createCollection';
-import { createDatabase } from './commands/createDatabase';
 import { createDocument } from './commands/createDocument';
 import { dropCollection } from './commands/dropCollection';
 import { dropDatabase } from './commands/dropDatabase';
@@ -102,7 +100,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createDocument);
 
@@ -126,8 +123,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                     'command.mongoClusters.exportDocuments',
                     mongoClustersExportEntireCollection,
                 );
-
-                registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
 
                 ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);
             },

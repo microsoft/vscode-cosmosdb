@@ -45,7 +45,7 @@ export function registerCommandsCompatibility(): void {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
-    registerCommandWithTreeNodeUnwrapping('azureDatabases.detachDatabaseAccount', detachDatabaseAccountV1);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.detachDatabaseAccount', detachDatabaseAccountV1);
     registerCommandWithTreeNodeUnwrapping(
         'cosmosDB.importDocument',
         async (

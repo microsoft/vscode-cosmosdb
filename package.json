@@ -302,7 +302,7 @@
             {
                 "//": "Moved",
                 "category": "Cosmos DB",
-                "command": "azureDatabases.detachDatabaseAccount",
+                "command": "cosmosDB.detachDatabaseAccount",
                 "title": "Detach Database Account..."
             },
             {
@@ -322,6 +322,12 @@
                 "category": "Cosmos DB",
                 "command": "cosmosDB.deleteAccount",
                 "title": "Delete Account..."
+            },
+            {
+                "//": "Moved",
+                "category": "Cosmos DB",
+                "command": "cosmosDB.createDatabase",
+                "title": "Create Database..."
             },
             {
                 "category": "Graph (Gremlin)",
@@ -352,11 +358,6 @@
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBContainer",
                 "title": "Create Container..."
-            },
-            {
-                "category": "NoSQL",
-                "command": "cosmosDB.createDocDBDatabase",
-                "title": "Create Database..."
             },
             {
                 "category": "NoSQL",
@@ -477,6 +478,7 @@
                 "title": "Copy Connection String"
             },
             {
+                "//": "Moved",
                 "category": "PostgreSQL",
                 "command": "postgreSQL.createDatabase",
                 "title": "Create Database..."
@@ -589,11 +591,6 @@
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.createCollection",
                 "title": "Create Collection..."
-            },
-            {
-                "category": "MongoDB Clusters",
-                "command": "command.mongoClusters.createDatabase",
-                "title": "Create Database..."
             },
             {
                 "category": "MongoDB Clusters",
@@ -821,15 +818,9 @@
 
 
                 {
-                    "//": "[Account] Create Cosmos DB database",
-                    "command": "cosmosDB.createDocDBDatabase",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
-                    "group": "1@1"
-                },
-                {
-                    "//": "[Account] Create Mongo DB|Cluster database",
-                    "command": "command.mongoClusters.createDatabase",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
+                    "//": "[Account] Create account database",
+                    "command": "cosmosDB.createDatabase",
+                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "1@1"
                 },
                 {
@@ -840,7 +831,7 @@
                 },
                 {
                     "//": "[Account] Detach account (workspace only)",
-                    "command": "azureDatabases.detachDatabaseAccount",
+                    "command": "cosmosDB.detachDatabaseAccount",
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "1@2"
                 },

@@ -76,7 +76,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
             await shell.executeScript('');
 
             // Configure the batch size
-            await shell.executeScript(`DBQuery.shellBatchSize = ${getBatchSizeSetting()}`);
+            await shell.executeScript(`config.set("displayBatchSize", ${getBatchSizeSetting()})`);
 
             return shell;
         } catch (error) {
@@ -124,7 +124,20 @@ export class MongoShellScriptRunner extends vscode.Disposable {
     }
 
     public async executeScript(script: string): Promise<string> {
+        // 1. Convert to single line (existing logic)
         script = convertToSingleLine(script);
+
+        // 2. If the user typed something, wrap it in EJSON.stringify(...)
+        //    This assumes the user has typed exactly one expression that
+        //    returns something (e.g. db.hostInfo(), db.myCollection.find(), etc.)
+        if (script.trim().length > 0 && !script.startsWith('print(EJSON.stringify(')) {
+            // Remove trailing semicolons plus any trailing space
+            //    e.g. "db.hostInfo();  " => "db.hostInfo()"
+            script = script.replace(/;+\s*$/, '');
+
+            // Wrap in EJSON.stringify(...)
+            script = `print(EJSON.stringify(${script}, null, 4))`;
+        }
 
         let stdOut = '';
         const sentinel = createSentinel();
@@ -141,7 +154,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                         this._process.onStdOut((text) => {
                             stdOut += text;
                             // eslint-disable-next-line prefer-const
-                            let { text: stdOutNoSentinel, removed } = removeSentinel(stdOut, sentinel);
+                            let { text: stdOutNoSentinel, removed } = removeSentinelandPrompt(stdOut, sentinel);
                             if (removed) {
                                 // The sentinel was found, which means we are done.
 
@@ -350,13 +363,33 @@ function convertToSingleLine(script: string): string {
         .join('');
 }
 
-function removeSentinel(text: string, sentinel: string): { text: string; removed: boolean } {
-    const index = text.indexOf(sentinel);
-    if (index >= 0) {
-        return { text: text.slice(0, index), removed: true };
-    } else {
+function removeSentinelandPrompt(text: string, sentinel: string): { text: string; removed: boolean } {
+    const sentinelIndex = text.indexOf(sentinel);
+    if (sentinelIndex < 0) {
         return { text, removed: false };
     }
+
+    // Everything before the sentinel
+    let newText = text.slice(0, sentinelIndex);
+
+    // Find the last newline before the sentinel
+    const lastNewlineIndex = text.lastIndexOf('\n', sentinelIndex);
+
+    if (lastNewlineIndex >= 0) {
+        // Get the substring between the newline and the sentinel
+        const candidate = text.slice(lastNewlineIndex + 1, sentinelIndex).trim();
+
+        // Example prompt pattern: "[mongos] secondDb>", "[mongo] test>", etc.
+        const promptRegex = /^\[mongo.*?\].*?>$/;
+
+        if (promptRegex.test(candidate)) {
+            // If the substring looks like a shell prompt, remove that line entirely
+            // (i.e. everything from 'lastNewlineIndex' to 'sentinelIndex')
+            newText = text.slice(0, lastNewlineIndex);
+        }
+    }
+
+    return { text: newText, removed: true };
 }
 
 async function delay(milliseconds: number): Promise<void> {

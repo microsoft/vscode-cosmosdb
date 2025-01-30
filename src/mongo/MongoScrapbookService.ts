@@ -107,7 +107,7 @@ export class MongoScrapbookServiceImpl {
             const label = 'Scrapbook-run-all-results';
             const fullId = `${this.getDisplayName()}/${label}`;
 
-            const readOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.txt', {
+            const readOnlyContent = await openReadOnlyContent({ label, fullId }, '', '.json', {
                 viewColumn: vscode.ViewColumn.Beside,
                 preserveFocus: true,
             });

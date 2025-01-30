@@ -381,9 +381,11 @@ function removePromptLeadingAndTrailing(text: string): string {
     // Trim trailing spaces/newlines, but keep internal newlines.
     text = text.replace(/\s+$/, '');
 
-    // Regex to detect a typical Mongo shell prompt on a single line:
-    // e.g. "[mongos] secondDb>", "[mongo] test>", etc.
-    const promptRegex = /^\[mongo.*?\].*?>$/;
+    // Regex to detect standard MongoDB shell prompts:
+    // 1) [mongos] secondDb>
+    // 2) [mongo] test>
+    // 3) globaldb [primary] SampleDB>
+    const promptRegex = /^(\[mongo.*?\].*?>|.*?\[.*?\]\s+\S+>)$/;
 
     // Check if the *first line* contains a prompt
     const firstNewlineIndex = text.indexOf('\n');

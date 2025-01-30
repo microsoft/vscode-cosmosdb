@@ -154,7 +154,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                         this._process.onStdOut((text) => {
                             stdOut += text;
                             // eslint-disable-next-line prefer-const
-                            let { text: stdOutNoSentinel, removed } = removeSentinelandPrompt(stdOut, sentinel);
+                            let { text: stdOutNoSentinel, removed } = removeSentinel(stdOut, sentinel);
                             if (removed) {
                                 // The sentinel was found, which means we are done.
 
@@ -167,7 +167,9 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                                     extensionMoreMessage,
                                 );
 
-                                resolve(stdOutNoSentinel);
+                                const responseText = removePromptLeadingAndTrailing(stdOutNoSentinel);
+
+                                resolve(responseText);
                             }
                         }),
                     );
@@ -363,33 +365,52 @@ function convertToSingleLine(script: string): string {
         .join('');
 }
 
-function removeSentinelandPrompt(text: string, sentinel: string): { text: string; removed: boolean } {
-    const sentinelIndex = text.indexOf(sentinel);
-    if (sentinelIndex < 0) {
+function removeSentinel(text: string, sentinel: string): { text: string; removed: boolean } {
+    const index = text.indexOf(sentinel);
+    if (index >= 0) {
+        return { text: text.slice(0, index), removed: true };
+    } else {
         return { text, removed: false };
     }
+}
 
-    // Everything before the sentinel
-    let newText = text.slice(0, sentinelIndex);
+/**
+ * Removes a Mongo shell prompt line if it exists at the very start or the very end of `text`.
+ */
+function removePromptLeadingAndTrailing(text: string): string {
+    // Trim trailing spaces/newlines, but keep internal newlines.
+    text = text.replace(/\s+$/, '');
 
-    // Find the last newline before the sentinel
-    const lastNewlineIndex = text.lastIndexOf('\n', sentinelIndex);
+    // Regex to detect a typical Mongo shell prompt on a single line:
+    // e.g. "[mongos] secondDb>", "[mongo] test>", etc.
+    const promptRegex = /^\[mongo.*?\].*?>$/;
 
-    if (lastNewlineIndex >= 0) {
-        // Get the substring between the newline and the sentinel
-        const candidate = text.slice(lastNewlineIndex + 1, sentinelIndex).trim();
-
-        // Example prompt pattern: "[mongos] secondDb>", "[mongo] test>", etc.
-        const promptRegex = /^\[mongo.*?\].*?>$/;
-
-        if (promptRegex.test(candidate)) {
-            // If the substring looks like a shell prompt, remove that line entirely
-            // (i.e. everything from 'lastNewlineIndex' to 'sentinelIndex')
-            newText = text.slice(0, lastNewlineIndex);
-        }
+    // Check if the *first line* contains a prompt
+    const firstNewlineIndex = text.indexOf('\n');
+    if (firstNewlineIndex === -1) {
+        return text.replace(promptRegex, '').trim();
     }
 
-    return { text: newText, removed: true };
+    // Extract the first line
+    const firstLine = text.substring(0, firstNewlineIndex).trim();
+    if (promptRegex.test(firstLine)) {
+        // Remove the prompt from the first line
+        text = text.replace(firstLine, firstLine.replace(promptRegex, '').trim());
+    }
+
+    // Check if the *last line* contains a prompt
+    const lastNewlineIndex = text.lastIndexOf('\n');
+    if (lastNewlineIndex === -1) {
+        return text.replace(promptRegex, '').trim();
+    }
+
+    const lastLine = text.substring(lastNewlineIndex + 1).trim();
+    if (promptRegex.test(lastLine)) {
+        // Remove the prompt from the last line
+        text = text.replace(lastLine, lastLine.replace(promptRegex, '').trim());
+    }
+
+    return text;
 }
 
 async function delay(milliseconds: number): Promise<void> {

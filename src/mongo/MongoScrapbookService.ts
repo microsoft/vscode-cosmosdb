@@ -6,6 +6,7 @@
 import { openReadOnlyContent, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
+import { ext } from '../extensionVariables';
 import { CredentialCache } from '../mongoClusters/CredentialCache';
 import { type DatabaseItemModel } from '../mongoClusters/MongoClustersClient';
 import { type MongoClusterModel } from '../mongoClusters/tree/MongoClusterModel';
@@ -34,19 +35,28 @@ export class MongoScrapbookServiceImpl {
     /**
      * Sets the current cluster and database, updating the CodeLens provider.
      */
-    public setConnectedCluster(cluster: MongoClusterModel | MongoAccountModel, database: DatabaseItemModel): void {
+    public async setConnectedCluster(cluster: MongoClusterModel | MongoAccountModel, database: DatabaseItemModel) {
+        // Update information
         this._cluster = cluster;
         this._database = database;
         this._mongoCodeLensProvider.updateCodeLens();
+
+        // Update the Language Client/Server
+        // The language server needs credentials to connect to the cluster..
+        await ext.mongoLanguageClient.connect(
+            CredentialCache.getConnectionStringWithPassword(this._cluster.id),
+            this._database.name,
+        );
     }
 
     /**
      * Clears the current connection.
      */
-    public clearConnection(): void {
+    public async clearConnection() {
         this._cluster = undefined;
         this._database = undefined;
         this._mongoCodeLensProvider.updateCodeLens();
+        await ext.mongoLanguageClient.disconnect();
     }
 
     /**

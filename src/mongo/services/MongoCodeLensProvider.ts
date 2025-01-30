@@ -24,9 +24,6 @@ import { MongoScrapbookService } from '../MongoScrapbookService';
  * 3. **Execute Single Command Lens**:
  *    - Appears for each individual MongoDB command found in the scrapbook.
  *    - Invokes execution of the command located at the specified range in the document.
- *
- * By leveraging these lenses, the user can initialize or change the database connection, as well
- * as selectively run or run all commands without manually invoking relevant commands.
  */
 export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();

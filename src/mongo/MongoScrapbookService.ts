@@ -86,6 +86,10 @@ export class MongoScrapbookServiceImpl {
 
     /**
      * Executes all Mongo commands in the given document.
+     *
+     * Note: This method will call use(<database>) before executing the commands to
+     * ensure that the commands are run in the correct database. It's done for backwards
+     * compatibility with the previous behavior.
      */
     public async executeAllCommands(context: IActionContext, document: vscode.TextDocument): Promise<void> {
         if (!this.isConnected()) {
@@ -114,6 +118,10 @@ export class MongoScrapbookServiceImpl {
             });
 
             try {
+                // preselect the database for the user
+                // this is done for backwards compatibility with the previous behavior
+                await shellRunner.executeScript(`use(\`${MongoScrapbookService.getDatabaseName()}\`)`);
+
                 for (const cmd of commands) {
                     await this.executeSingleCommand(context, cmd, readOnlyContent, shellRunner);
                 }
@@ -127,6 +135,10 @@ export class MongoScrapbookServiceImpl {
 
     /**
      * Executes a single Mongo command defined at the specified position in the document.
+     *
+     * Note: This method will call use(<database>) before executing the command to
+     * ensure that the command are is in the correct database. It's done for backwards
+     * compatibility with the previous behavior.
      */
     public async executeCommandAtPosition(
         context: IActionContext,
@@ -147,7 +159,7 @@ export class MongoScrapbookServiceImpl {
             preserveFocus: true,
         });
 
-        await this.executeSingleCommand(context, command, readOnlyContent);
+        await this.executeSingleCommand(context, command, readOnlyContent, undefined, this.getDatabaseName());
     }
 
     /**
@@ -195,6 +207,7 @@ export class MongoScrapbookServiceImpl {
         command: MongoCommand,
         readOnlyContent?: { append(value: string): Promise<void> },
         shellRunner?: MongoShellScriptRunner,
+        preselectedDatabase?: string, // this will run the 'use <database>' command before the actual command.
     ): Promise<void> {
         if (!this.isConnected()) {
             throw new Error('Not connected to any MongoDB database.');
@@ -217,6 +230,10 @@ export class MongoScrapbookServiceImpl {
                     isEmulator: false,
                 });
                 ephemeralShell = true;
+            }
+
+            if (preselectedDatabase) {
+                await shellRunner.executeScript(`use(\`${preselectedDatabase}\`)`);
             }
 
             const result = await shellRunner.executeScript(command.text);

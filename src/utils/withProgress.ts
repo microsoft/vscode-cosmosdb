@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 export function withProgress<T>(
     promise: Thenable<T>,
     title: string,
-    location: vscode.ProgressLocation = vscode.ProgressLocation.Window,
+    location: vscode.ProgressLocation = vscode.ProgressLocation.Notification,
 ): Thenable<T> {
     return vscode.window.withProgress<T>(
         {

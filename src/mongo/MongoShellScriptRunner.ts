@@ -71,9 +71,48 @@ export class MongoShellScriptRunner extends vscode.Disposable {
             });
             const shell: MongoShellScriptRunner = new MongoShellScriptRunner(process, timeoutSeconds);
 
+            /**
+             * The 'unwrapIfCursor' helper is used to safely handle MongoDB queries in the shell,
+             * especially for commands like db.movies.find() that return a cursor.
+             *
+             * When a user runs a command returning a cursor, it points to a query's result set
+             * and exposes methods such as hasNext and next. Attempting to stringify
+             * the raw cursor directly with EJSON.stringify can fail due to circular references
+             * and other internal structures.
+             *
+             * To avoid this issue, 'unwrapIfCursor' checks if the returned object is indeed a
+             * cursor. If it is, we manually iterate up to a fixed limit of documents, and
+             * return those as a plain array. This prevents the shell from crashing or throwing
+             * errors about circular structures, while still returning actual document data in
+             * JSON format.
+             *
+             * For non-cursor commands (like db.hostInfo() or db.movies.findOne()), we
+             * simply return the object unchanged.
+             */
+            const unwrapIfCursorFunction =
+                'function unwrapIfCursor(value) {\n' +
+                "    if (value && typeof value.hasNext === 'function' && typeof value.next === 'function') {\n" +
+                '        const docs = [];\n' +
+                '        const MAX_DOCS = 50;\n' +
+                '        let count = 0;\n' +
+                '        while (value.hasNext() && count < MAX_DOCS) {\n' +
+                '            docs.push(value.next());\n' +
+                '            count++;\n' +
+                '        }\n' +
+                '        if (value.hasNext()) {\n' +
+                '            docs.push({ cursor: "omitted", note: "Additional results are not displayed." });\n' +
+                '        }\n' +
+                '        return docs;\n' +
+                '    }\n' +
+                '    return value;\n' +
+                '}';
+            process.writeLine(`${convertToSingleLine(unwrapIfCursorFunction)}`);
+
             // Try writing an empty script to verify the process is running correctly and allow us
             // to catch any errors related to the start-up of the process before trying to write to it.
             await shell.executeScript('');
+
+            ext.outputChannel.appendLine('Mongo Shell connected.');
 
             // Configure the batch size
             await shell.executeScript(`config.set("displayBatchSize", ${getBatchSizeSetting()})`);
@@ -135,8 +174,8 @@ export class MongoShellScriptRunner extends vscode.Disposable {
             //    e.g. "db.hostInfo();  " => "db.hostInfo()"
             script = script.replace(/;+\s*$/, '');
 
-            // Wrap in EJSON.stringify(...)
-            script = `print(EJSON.stringify(${script}, null, 4))`;
+            // Wrap in EJSON.stringify() and unwrapIfCursor
+            script = `print(EJSON.stringify(unwrapIfCursor(${script}), null, 4))`;
         }
 
         let stdOut = '';
@@ -192,6 +231,9 @@ export class MongoShellScriptRunner extends vscode.Disposable {
 
                             // If there are any lines left after filtering, assume they are real errors
                             if (unknownErrorLines.length > 0) {
+                                for (const line of unknownErrorLines) {
+                                    ext.outputChannel.appendLine('Mongo Shell Error: ' + line);
+                                }
                                 // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                                 reject(wrapCheckOutputWindow(unknownErrorLines.join('\n')));
                             } else {

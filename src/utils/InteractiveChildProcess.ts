@@ -12,8 +12,6 @@ import { EventEmitter, type Event } from 'vscode';
 import { improveError } from './improveError';
 
 // We add these when we display to the output window
-const stdInPrefix = '> ';
-const stdErrPrefix = 'ERR> ';
 const errorPrefix = 'Error running process: ';
 
 const processStartupTimeout = 60;
@@ -94,7 +92,6 @@ export class InteractiveChildProcess {
         this._childProc.stderr?.on('data', (data: string | Buffer) => {
             const text = data.toString();
             this._onStdErrEmitter.fire(text);
-            this.writeLineToOutputChannel(text, stdErrPrefix);
         });
 
         this._childProc.on('error', (error: unknown) => {
@@ -134,6 +131,8 @@ export class InteractiveChildProcess {
                 }
             }
         });
+
+        this.writeLineToOutputChannel(`Started executable: "${this._options.command}". Connecting to host...`);
     }
 
     private writeLineToOutputChannel(text: string, displayPrefix?: string): void {

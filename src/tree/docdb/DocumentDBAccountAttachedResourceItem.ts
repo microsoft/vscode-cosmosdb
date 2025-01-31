@@ -10,6 +10,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
+import { rejectOnTimeout } from '../../utils/timeout';
 import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -52,7 +53,15 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
 
         try {
             // Await is required here to ensure that the error is caught in the catch block
-            return await getResources();
+            if (this.account.isEmulator) {
+                return await rejectOnTimeout(
+                    2000,
+                    () => getResources(),
+                    "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
+                );
+            } else {
+                return await getResources();
+            }
         } catch (e) {
             if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                 this.hasShownRbacNotification = true;

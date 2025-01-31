@@ -402,7 +402,6 @@
                 "title": "View Container Offer"
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBDatabaseOffer",
                 "title": "View Database Offer"

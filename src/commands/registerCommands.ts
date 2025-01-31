@@ -23,6 +23,7 @@ import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDataba
 import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
+import { viewDocumentDBDatabaseOffer } from './ViewDatabaseOffer/viewDatabaseOffer';
 
 /**
  * DISCLAIMER:
@@ -85,5 +86,5 @@ export function registerDatabaseCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDatabase', deleteAzureDatabase);
-    /*[ ]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', createAzureDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocumentDBDatabaseOffer);
 }

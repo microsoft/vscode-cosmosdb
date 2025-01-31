@@ -6,12 +6,12 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
+import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
+import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
+import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
+import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
+import { MongoClusterWorkspaceItem } from '../../mongoClusters/tree/workspace/MongoClusterWorkspaceItem';
 import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
-import { MongoClustersClient } from '../MongoClustersClient';
-import { type CollectionItem } from '../tree/CollectionItem';
-import { type DatabaseItem } from '../tree/DatabaseItem';
-import { MongoClusterResourceItem } from '../tree/MongoClusterResourceItem';
-import { MongoClusterWorkspaceItem } from '../tree/workspace/MongoClusterWorkspaceItem';
 
 import { ConnectionString } from 'mongodb-connection-string-url';
 
@@ -28,31 +28,23 @@ export async function launchShell(
         throw new Error('No database or collection selected.');
     }
 
+    context.telemetry.properties.experience = node.experience.api;
+
     let rawConnectionString: string | undefined;
 
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
-    if (node instanceof MongoClusterResourceItem || node instanceof MongoAccountResourceItem) {
+
+    if (
+        node instanceof MongoClusterResourceItem ||
+        node instanceof MongoAccountResourceItem ||
+        node instanceof MongoClusterWorkspaceItem
+    ) {
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, 'Working...', async () => {
-            if (node instanceof MongoAccountResourceItem) {
-                context.telemetry.properties.experience = node.experience?.api;
-                return node.getConnectionString();
-            }
-
-            if (node instanceof MongoClusterResourceItem) {
-                context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
-                return node.getConnectionString();
-            }
-
-            return undefined;
+            // WorkspaceItems are fast as there is no connection string discovery happening
+            return node.getConnectionString();
         });
-        // WorkspaceItems are fast as there is no connnestion string discovery happening
-    } else if (node instanceof MongoClusterWorkspaceItem) {
-        context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
-        rawConnectionString = await node.getConnectionString();
-        // TODO: add an entry work mongodb workspaceitem once ready
-    } // everything else has the connection string available in memory as we're connected to the server
-    else {
-        context.telemetry.properties.experience = node.experience?.api;
+    } else {
+        // everything else has the connection string available in memory as we're connected to the server
         const client: MongoClustersClient = await MongoClustersClient.getClient(node.mongoCluster.id);
         rawConnectionString = client.getConnectionStringWithPassword();
     }

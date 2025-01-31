@@ -35,7 +35,7 @@ interface ResourceModelInUse extends Resource {
     resourceGroup?: string;
 
     // adding support for MongoRU and vCore
-    dbExperience?: Experience;
+    dbExperience: Experience;
 
     isServerless?: boolean;
 }

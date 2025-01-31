@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../utils/localize';
-import { MongoClustersClient } from '../../MongoClustersClient';
-import { type CreateCollectionWizardContext } from './createWizardContexts';
+import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
+import { localize } from '../../utils/localize';
+import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 
 export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWizardContext> {
     public hideStepCount: boolean = true;
@@ -16,7 +16,7 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
         context.newCollectionName = (
             await context.ui.showInputBox({
                 prompt,
-                validateInput: CollectionNameStep.validateInput,
+                validateInput: (name?: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
         ).trim();
@@ -28,7 +28,7 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
         return !context.newCollectionName;
     }
 
-    public static validateInput(this: void, collectionName: string | undefined): string | undefined {
+    public validateInput(collectionName: string | undefined): string | undefined {
         // https://www.mongodb.com/docs/manual/reference/limits/#mongodb-limit-Restriction-on-Collection-Names
 
         collectionName = collectionName ? collectionName.trim() : '';
@@ -80,14 +80,14 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
 
         try {
             const client = await MongoClustersClient.getClient(context.credentialsId);
-            const collections = await client.listCollections(context.databaseItem.databaseInfo.name);
+            const collections = await client.listCollections(context.databaseId);
 
             if (collections.filter((c) => c.name === name).length > 0) {
                 return localize(
                     'mongoClusters.collectionExists',
                     'The collection "{0}" already exists in the database "{1}".',
                     name,
-                    context.databaseItem.databaseInfo.name,
+                    context.databaseId,
                 );
             }
         } catch (_error) {

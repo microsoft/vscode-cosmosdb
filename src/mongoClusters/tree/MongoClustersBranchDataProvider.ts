@@ -88,8 +88,10 @@ export class MongoClustersBranchDataProvider
                 }
 
                 // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
-                let clusterInfo: MongoClusterModel = element as MongoClusterModel;
-                clusterInfo.dbExperience = MongoClustersExperience;
+                let clusterInfo: MongoClusterModel = {
+                    ...element,
+                    dbExperience: MongoClustersExperience,
+                } as MongoClusterModel;
 
                 // 2. lookup the details in the cache, on subsequent refreshes, the details will be available in the cache
                 if (this.detailsCache.has(clusterInfo.id)) {

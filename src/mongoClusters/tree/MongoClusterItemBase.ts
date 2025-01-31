@@ -3,16 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
-import { API, type Experience } from '../../AzureDBExperiences';
+import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
-import { localize } from '../../utils/localize';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
@@ -24,7 +23,7 @@ export abstract class MongoClusterItemBase
     implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly experience?: Experience;
+    public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.mongoCluster';
 
     private readonly experienceContextValue: string = '';
@@ -32,7 +31,7 @@ export abstract class MongoClusterItemBase
     protected constructor(public mongoCluster: MongoClusterModel) {
         this.id = mongoCluster.id ?? '';
         this.experience = mongoCluster.dbExperience;
-        this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
+        this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
@@ -113,33 +112,6 @@ export abstract class MongoClusterItemBase
             // Map the databases to DatabaseItem elements
             return databases.map((database) => new DatabaseItem(this.mongoCluster, database));
         });
-    }
-
-    /**
-     * Creates a new database in the cluster.
-     * @param _context The action context.
-     * @param databaseName The name of the database to create.
-     * @returns A boolean indicating success.
-     */
-    async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        return ext.state.showCreatingChild<boolean>(
-            this.id,
-            localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
-            async (): Promise<boolean> => {
-                // Adding a delay to ensure the "creating child" animation is visible.
-                // The `showCreatingChild` function refreshes the parent to show the
-                // "creating child" animation and label. Refreshing the parent triggers its
-                // `getChildren` method. If the database creation completes too quickly,
-                // the dummy node with the animation might be shown alongside the actual
-                // database entry, as it will already be available in the database.
-                // Note to future maintainers: Do not remove this delay.
-                await new Promise((resolve) => setTimeout(resolve, 250));
-
-                return client.createDatabase(databaseName);
-            },
-        );
     }
 
     /**

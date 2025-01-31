@@ -267,64 +267,55 @@
                 "icon": "$(add)"
             },
             {
-                "//": "Moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.loadMore",
                 "title": "Load More"
             },
             {
-                "//": "Moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.refresh",
                 "title": "Refresh",
                 "icon": "$(refresh)"
             },
             {
-                "//": "Moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.reportIssue",
                 "title": "Report Issue..."
             },
             {
-                "//": "Scrapbook",
+                "//": "Databases FileSystem",
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
                 "icon": "$(cloud-upload)"
             },
             {
-                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.attachDatabaseAccount",
                 "title": "Attach Database Account...",
                 "icon": "$(plug)"
             },
             {
-                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.detachDatabaseAccount",
                 "title": "Detach Database Account..."
             },
             {
-                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.attachEmulator",
                 "title": "Attach Emulator..."
             },
             {
-                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.copyConnectionString",
                 "title": "Copy Connection String"
             },
             {
-                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.deleteAccount",
                 "title": "Delete Account..."
             },
             {
-                "//": "Moved",
                 "category": "Cosmos DB",
                 "command": "cosmosDB.createDatabase",
                 "title": "Create Database..."
@@ -335,21 +326,13 @@
                 "title": "Create Graph..."
             },
             {
-                "category": "Graph (Gremlin)",
-                "command": "cosmosDB.createGraphDatabase",
-                "title": "Create Database..."
-            },
-            {
+                "//": "Not moved",
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.deleteGraph",
                 "title": "Delete Graph..."
             },
             {
-                "category": "Graph (Gremlin)",
-                "command": "cosmosDB.deleteGraphDatabase",
-                "title": "Delete Database..."
-            },
-            {
+                "//": "Not moved",
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.openGraphExplorer",
                 "title": "Open Graph Explorer"
@@ -360,104 +343,123 @@
                 "title": "Create Container..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDocument",
                 "title": "Create Document..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBStoredProcedure",
                 "title": "Create Stored Procedure..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBTrigger",
                 "title": "Create Trigger..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBCollection",
                 "title": "Delete Container..."
             },
             {
                 "category": "NoSQL",
-                "command": "cosmosDB.deleteDocDBDatabase",
+                "command": "cosmosDB.deleteDatabase",
                 "title": "Delete Database..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDocument",
                 "title": "Delete Document..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
                 "title": "Delete Trigger..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.executeDocDBStoredProcedure",
                 "title": "Execute Stored Procedure..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBCollectionOffer",
                 "title": "View Container Offer"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBDatabaseOffer",
                 "title": "View Database Offer"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Open Query Scrapbook"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.connectNoSqlContainer",
                 "title": "Connect to NoSQL container",
                 "when": "false"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.executeNoSqlQuery",
                 "title": "Execute NoSQL Query",
                 "when": "false"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.getNoSqlQueryPlan",
                 "title": "Get NoSQL Query Plan",
                 "when": "false"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openNoSqlQueryEditor",
                 "title": "Open Query Editor (preview)"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.importDocument",
                 "title": "Import Document into a Container..."
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openDocument",
                 "title": "Open Document"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
             },
             {
+                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openTrigger",
                 "title": "Open Trigger"
@@ -478,7 +480,6 @@
                 "title": "Copy Connection String"
             },
             {
-                "//": "Moved",
                 "category": "PostgreSQL",
                 "command": "postgreSQL.createDatabase",
                 "title": "Create Database..."
@@ -504,13 +505,11 @@
                 "title": "Delete Function..."
             },
             {
-                "//": "Moved",
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteServer",
                 "title": "Delete Server..."
             },
             {
-                "//": "Moved",
                 "category": "PostgreSQL",
                 "command": "postgreSQL.detachServer",
                 "title": "Detach Server..."
@@ -552,26 +551,31 @@
                 "icon": "$(warning)"
             },
             {
+                "//": "Scrapbook",
                 "category": "MongoDB",
                 "command": "cosmosDB.connectMongoDB",
                 "title": "Connect to Database..."
             },
             {
+                "//": "Scrapbook",
                 "category": "MongoDB",
                 "command": "cosmosDB.executeAllMongoCommands",
                 "title": "Execute All MongoDB Commands"
             },
             {
+                "//": "Scrapbook",
                 "category": "MongoDB",
                 "command": "cosmosDB.executeMongoCommand",
                 "title": "Execute MongoDB Command"
             },
             {
+                "//": "Scrapbook",
                 "category": "MongoDB",
                 "command": "cosmosDB.launchMongoShell",
                 "title": "Launch Shell"
             },
             {
+                "//": "Scrapbook",
                 "category": "MongoDB",
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
@@ -580,12 +584,12 @@
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.dropCollection",
-                "title": "Drop Collection..."
+                "title": "Delete Collection..."
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.dropDatabase",
-                "title": "Drop Database..."
+                "title": "Delete Database..."
             },
             {
                 "category": "MongoDB Clusters",
@@ -704,7 +708,6 @@
                     "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb|PostgreSqlServers(Standard|Flexible))/i && viewItem =~ /azureResourceTypeGroup/i",
                     "group": "1@1"
                 },
-
                 {
                     "//": "[Account] (Postgres) Create Database",
                     "command": "postgreSQL.createDatabase",
@@ -729,8 +732,6 @@
                     "when": "view =~ /azureWorkspace/ && viewItem == postgresServerAttached",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Database] (Postgres) Connect to Database",
                     "command": "postgreSQL.connectDatabase",
@@ -761,8 +762,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
                     "group": "3@1"
                 },
-
-
                 {
                     "//": "[Table] (Postgres) Refresh (?)",
                     "command": "azureDatabases.refresh",
@@ -775,8 +774,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresTable",
                     "group": "1@2"
                 },
-
-
                 {
                     "//": "[Functions] (Postgres) Create Function",
                     "command": "postgreSQL.createFunctionQuery",
@@ -795,8 +792,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunctions",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Stored Procedure] (Postgres) Create Stored Procedure",
                     "command": "postgreSQL.createStoredProcedureQuery",
@@ -815,8 +810,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Account] Create account database",
                     "command": "cosmosDB.createDatabase",
@@ -853,8 +846,6 @@
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "3@1"
                 },
-
-
                 {
                     "//": "[Database] Create Graph container",
                     "command": "cosmosDB.createGraph",
@@ -874,15 +865,9 @@
                     "group": "1@1"
                 },
                 {
-                    "//": "[Database] Delete Graph database",
-                    "command": "cosmosDB.deleteGraphDatabase",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](graph)/i",
-                    "group": "1@2"
-                },
-                {
-                    "//": "[Database] Delete NoSql database",
-                    "command": "cosmosDB.deleteDocDBDatabase",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
+                    "//": "[Database] Delete database",
+                    "command": "cosmosDB.deleteDatabase",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core|graph)/i",
                     "group": "1@2"
                 },
                 {
@@ -898,15 +883,9 @@
                     "group": "1@3"
                 },
                 {
-                    "//": "[Database] Connect to Mongo DB",
-                    "command": "cosmosDB.connectMongoDB",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongodb)/i",
-                    "group": "2@1"
-                },
-                {
                     "//": "[Database] Mongo Cluster Launch Shell",
                     "command": "command.mongoClusters.launchShell",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster)/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "2@1"
                 },
                 {
@@ -915,8 +894,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i",
                     "group": "3@1"
                 },
-
-
                 {
                     "//": "[Container] Open NoSql query editor",
                     "command": "cosmosDB.openNoSqlQueryEditor",
@@ -959,8 +936,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Collection] Open Mongo DB|Cluster collection",
                     "command": "command.mongoClusters.containerView.open",
@@ -1000,11 +975,9 @@
                 {
                     "//": "[Collection] Refresh",
                     "command": "azureDatabases.refresh",
-                    "when" : "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i",
                     "group": "5@1"
                 },
-
-
                 {
                     "//": "[Stored Procedures] Create Stored Procedure",
                     "command": "cosmosDB.createDocDBStoredProcedure",
@@ -1017,8 +990,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Stored Procedure] Execute",
                     "command": "cosmosDB.executeDocDBStoredProcedure",
@@ -1031,8 +1002,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "1@2"
                 },
-
-
                 {
                     "//": "[Triggers] Create Trigger",
                     "command": "cosmosDB.createDocDBTrigger",
@@ -1045,16 +1014,12 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Trigger] Delete",
                     "command": "cosmosDB.deleteDocDBTrigger",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]trigger(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "1@1"
                 },
-
-
                 {
                     "//": "[Documents] Open NoSql query editor",
                     "command": "cosmosDB.openNoSqlQueryEditor",
@@ -1073,8 +1038,6 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Document] Delete",
                     "command": "cosmosDB.deleteDocDBDocument",
@@ -1087,18 +1050,16 @@
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
                     "group": "2@1"
                 },
-
-
                 {
                     "//": "[Indexes] Refresh",
                     "command": "azureDatabases.refresh",
-                    "when" : "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]indexes(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]indexes(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
                     "//": "[Index] Refresh",
                     "command": "azureDatabases.refresh",
-                    "when" : "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]index(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]index(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 }
             ],

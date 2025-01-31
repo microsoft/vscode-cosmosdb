@@ -17,6 +17,7 @@ import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResou
 export interface PickAppResourceOptions {
     type?: AzExtResourceType | AzExtResourceType[];
     expectedChildContextValue?: string | RegExp | (string | RegExp)[];
+    unexpectedContextValue?: string | RegExp | (string | RegExp)[];
 }
 
 export interface PickWorkspaceResourceOptions {
@@ -28,11 +29,21 @@ export async function pickAppResource<T extends CosmosDBTreeElement>(
     context: ITreeItemPickerContext,
     options?: PickAppResourceOptions,
 ): Promise<T> {
+    let filter: ContextValueFilter | undefined = undefined;
+    if (options?.expectedChildContextValue) {
+        filter ??= { include: options.expectedChildContextValue };
+
+        // Only if expectedChildContextValue is set, we will exclude unexpectedContextValue
+        if (options?.unexpectedContextValue) {
+            filter.exclude = options.unexpectedContextValue;
+        }
+    }
+
     return await azureResourceExperience<T>(
         context,
         ext.rgApiV2.resources.azureResourceTreeDataProvider,
         options?.type ? (Array.isArray(options.type) ? options.type : [options.type]) : undefined,
-        options?.expectedChildContextValue ? { include: options.expectedChildContextValue } : undefined,
+        filter,
     );
 }
 

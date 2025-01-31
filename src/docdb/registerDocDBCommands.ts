@@ -5,7 +5,7 @@
 
 import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { languages } from 'vscode';
-import { createDocumentDBContainer } from '../commands/createDocumentDBContainer/createDocumentDBContainer';
+import { createDocumentDBContainer } from '../commands/createContainer/createContainer';
 import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';

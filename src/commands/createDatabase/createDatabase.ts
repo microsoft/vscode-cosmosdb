@@ -5,7 +5,7 @@
 
 import { AzureWizard, type IActionContext, nonNullValue } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { createDatabase as createMongoDatabase } from '../../mongoClusters/commands/createDatabase';
+import { CredentialCache } from '../../mongoClusters/CredentialCache';
 import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { type CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
@@ -14,10 +14,14 @@ import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/Document
 import { DocumentDBAccountResourceItem } from '../../tree/docdb/DocumentDBAccountResourceItem';
 import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
+import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
+import { type CreateMongoDatabaseWizardContext } from './CreateMongoDatabaseWizardContext';
 import { DocumentDBDatabaseNameStep } from './DocumentDBDatabaseNameStep';
 import { DocumentDBExecuteStep } from './DocumentDBExecuteStep';
+import { MongoDatabaseNameStep } from './MongoDatabaseNameStep';
+import { MongoExecuteStep } from './MongoExecuteStep';
 
 export async function createAzureDatabase(
     context: IActionContext,
@@ -72,5 +76,49 @@ async function createDocDBDatabase(
     await wizard.execute();
 
     const newDatabaseName = nonNullValue(wizardContext.databaseName);
-    showConfirmationAsInSettings(`The "${newDatabaseName}" database has been created.`);
+    showConfirmationAsInSettings(
+        localize('showConfirmation.createdDatabase', 'The "{0}" database has been created.', newDatabaseName),
+    );
+}
+
+async function createMongoDatabase(
+    context: IActionContext,
+    node: MongoAccountResourceItem | MongoClusterItemBase,
+): Promise<void> {
+    context.telemetry.properties.experience = node.experience.api;
+
+    const credentialsId = node instanceof MongoAccountResourceItem ? node.id : node.mongoCluster.id;
+    const clusterName = node instanceof MongoAccountResourceItem ? node.account.name : node.mongoCluster.name;
+
+    if (!CredentialCache.hasCredentials(credentialsId)) {
+        throw new Error(
+            localize(
+                'mongoClusters.notSignedIn',
+                'You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node "{0}") and try again.',
+                clusterName,
+            ),
+        );
+    }
+
+    const wizardContext: CreateMongoDatabaseWizardContext = {
+        ...context,
+        credentialsId,
+        clusterName,
+        nodeId: node.id,
+    };
+
+    const wizard = new AzureWizard(wizardContext, {
+        title: localize('mongoClusters.createDatabase.title', 'Create database'),
+        promptSteps: [new MongoDatabaseNameStep()],
+        executeSteps: [new MongoExecuteStep()],
+        showLoadingPrompt: true,
+    });
+
+    await wizard.prompt();
+    await wizard.execute();
+
+    const newDatabaseName = nonNullValue(wizardContext.databaseName);
+    showConfirmationAsInSettings(
+        localize('showConfirmation.createdDatabase', 'The "{0}" database has been created.', newDatabaseName),
+    );
 }

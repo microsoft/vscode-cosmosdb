@@ -6,7 +6,7 @@
 import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type Document } from 'bson';
 import { ThemeIcon, type TreeItem, TreeItemCollapsibleState } from 'vscode';
-import { API, type Experience } from '../../AzureDBExperiences';
+import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
@@ -22,7 +22,7 @@ import { type MongoClusterModel } from './MongoClusterModel';
 
 export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
-    public readonly experience?: Experience;
+    public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.collection';
 
     private readonly experienceContextValue: string = '';
@@ -34,7 +34,7 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}`;
         this.experience = mongoCluster.dbExperience;
-        this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
+        this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 

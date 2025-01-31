@@ -14,8 +14,8 @@ import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 import { MongoDBAttachAccountResourceItem } from './MongoDBAttachAccountResourceItem';
 
 export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeElementWithExperience {
-    id: string;
-    experience?: Experience;
+    public readonly id: string;
+    public readonly experience: Experience;
 
     constructor() {
         this.id = `vscode.cosmosdb.workspace.mongoclusters.accounts`;

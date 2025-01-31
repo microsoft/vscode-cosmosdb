@@ -4,31 +4,31 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../utils/localize';
-import { MongoClustersClient } from '../../MongoClustersClient';
-import { type CreateDatabaseWizardContext } from './createWizardContexts';
+import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
+import { localize } from '../../utils/localize';
+import { type CreateMongoDatabaseWizardContext } from './CreateMongoDatabaseWizardContext';
 
-export class DatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizardContext> {
+export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoDatabaseWizardContext> {
     public hideStepCount: boolean = true;
 
-    public async prompt(context: CreateDatabaseWizardContext): Promise<void> {
+    public async prompt(context: CreateMongoDatabaseWizardContext): Promise<void> {
         const prompt: string = localize('mongoClusters.databaseNamePrompt', 'Enter a database name.');
-        context.newDatabaseName = (
+        context.databaseName = (
             await context.ui.showInputBox({
                 prompt,
-                validateInput: DatabaseNameStep.validateInput,
+                validateInput: (name?: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
         ).trim();
 
-        context.valuesToMask.push(context.newDatabaseName);
+        context.valuesToMask.push(context.databaseName);
     }
 
-    public shouldPrompt(context: CreateDatabaseWizardContext): boolean {
-        return !context.newDatabaseName;
+    public shouldPrompt(context: CreateMongoDatabaseWizardContext): boolean {
+        return !context.databaseName;
     }
 
-    public static validateInput(this: void, databaseName: string | undefined): string | undefined {
+    public validateInput(databaseName: string | undefined): string | undefined {
         // https://www.mongodb.com/docs/manual/reference/limits/#naming-restrictions
 
         databaseName = databaseName ? databaseName.trim() : '';
@@ -62,7 +62,7 @@ export class DatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizard
     }
 
     private async validateNameAvailable(
-        context: CreateDatabaseWizardContext,
+        context: CreateMongoDatabaseWizardContext,
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {

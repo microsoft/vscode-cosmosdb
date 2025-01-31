@@ -14,6 +14,7 @@ import { EJSON } from 'bson';
 import {
     MongoClient,
     ObjectId,
+    type Collection,
     type DeleteResult,
     type Document,
     type Filter,
@@ -346,30 +347,15 @@ export class MongoClustersClient {
         return this._mongoClient.db(databaseName).dropDatabase();
     }
 
-    async createCollection(databaseName: string, collectionName: string): Promise<boolean> {
-        let newCollection;
-        try {
-            newCollection = await this._mongoClient.db(databaseName).createCollection(collectionName);
-        } catch (_e) {
-            console.error(_e); //todo: add to telemetry
-            return false;
-        }
-
-        return newCollection !== undefined;
+    async createCollection(databaseName: string, collectionName: string): Promise<Collection<Document>> {
+        return this._mongoClient.db(databaseName).createCollection(collectionName);
     }
 
-    async createDatabase(databaseName: string): Promise<boolean> {
-        try {
-            const newCollection = await this._mongoClient
-                .db(databaseName)
-                .createCollection('_dummy_collection_creation_forces_db_creation');
-            await newCollection.drop({ writeConcern: { w: 'majority', wtimeout: 5000 } });
-        } catch (_e) {
-            console.error(_e); //todo: add to telemetry
-            return false;
-        }
-
-        return true;
+    async createDatabase(databaseName: string): Promise<void> {
+        const newCollection = await this._mongoClient
+            .db(databaseName)
+            .createCollection('_dummy_collection_creation_forces_db_creation');
+        await newCollection.drop({ writeConcern: { w: 'majority', wtimeoutMS: 5000 } });
     }
 
     async insertDocuments(

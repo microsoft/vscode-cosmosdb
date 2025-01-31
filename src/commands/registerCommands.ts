@@ -3,17 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
+import {
+    type AzExtTreeItem,
+    type IActionContext,
+    registerCommandWithTreeNodeUnwrapping,
+} from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
-import { createPostgresDatabase } from '../postgres/commands/createPostgresDatabase';
+import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { attachAccount } from './attachAccount/attachAccount';
 import { attachEmulator } from './attachEmulator/attachEmulator';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
+import { createDocumentDBContainer, createGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
 import { createServer } from './createServer/createServer';
-import { deleteAzureDatabaseAccount, deletePostgresServer } from './deleteDatabaseAccount/deleteDatabaseAccount';
+import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
+import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
@@ -28,13 +34,16 @@ import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
  */
 
 export function registerCommands(): void {
-    registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
+    /*[ ]*/ registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
 
     registerAccountCommands();
+    registerDatabaseCommands();
 
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
+    registerPostgresCommands();
 
-    registerCommandWithTreeNodeUnwrapping(
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
+
+    /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
         'cosmosDB.importDocument',
         async (
             actionContext: IActionContext,
@@ -49,21 +58,32 @@ export function registerCommands(): void {
         },
     );
 
-    registerCommandWithTreeNodeUnwrapping(
+    /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
         async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+    );
+    // For Postgres
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.loadMore',
+        async (actionContext: IActionContext, node: AzExtTreeItem) =>
+            await ext.rgApi.appResourceTree.loadMore(node, actionContext),
     );
 }
 
 export function registerAccountCommands() {
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('postgreSQL.createDatabase', createPostgresDatabase);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteServer', deletePostgresServer);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('postgreSQL.detachServer', detachDatabaseAccountV1);
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.detachServer', detachDatabaseAccountV1);
 
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createAzureDatabase);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', attachAccount);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.detachDatabaseAccount', detachAzureDatabaseAccount);
-    /*[x]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createAzureDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', attachAccount);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.detachDatabaseAccount', detachAzureDatabaseAccount);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);
+}
+
+export function registerDatabaseCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDatabase', deleteAzureDatabase);
+    /*[ ]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', createAzureDatabase);
 }

@@ -352,6 +352,7 @@ export class MongoClustersClient {
     }
 
     async createDatabase(databaseName: string): Promise<void> {
+        // TODO: add logging of failures to the telemetry somewhere in the call chain
         const newCollection = await this._mongoClient
             .db(databaseName)
             .createCollection('_dummy_collection_creation_forces_db_creation');

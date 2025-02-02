@@ -15,7 +15,6 @@ import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeI
 import { DocDBDocumentTreeItem } from '../docdb/tree/DocDBDocumentTreeItem';
 import { ext } from '../extensionVariables';
 import { registerGraphCommands } from '../graph/registerGraphCommands';
-import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { MongoDocumentTreeItem } from '../mongo/tree/MongoDocumentTreeItem';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { attachEmulator } from './attachEmulator/attachEmulator';
@@ -30,7 +29,6 @@ export function registerCommandsCompatibility(): void {
     registerDocDBCommands();
     registerGraphCommands();
     registerPostgresCommands();
-    registerMongoCommands();
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.selectSubscriptions', () =>
         vscode.commands.executeCommand('azure-account.selectSubscriptions'),

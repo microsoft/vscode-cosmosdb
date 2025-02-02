@@ -30,6 +30,7 @@ import { registerCommands } from './commands/registerCommands';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
+import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
@@ -99,6 +100,10 @@ export async function activateInternal(
         registerCommands();
         // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
         // registerCommandsCompatibility();
+
+        // this is the tree-independed mongo-scrapbook command set
+        // TODO: refactor to keep it dedicated to the scrapbook.
+        registerMongoCommands();
 
         // init and activate mongoClusters-support (branch data provider, commands, ...)
         const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();

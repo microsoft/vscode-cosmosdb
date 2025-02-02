@@ -16,6 +16,10 @@ interface ResourceModelInUse extends Resource {
     name: string;
 
     administratorLoginPassword?: string;
+
+    /**
+     * This connection string does not contain user credentials.
+     */
     connectionString?: string;
 
     location?: string;

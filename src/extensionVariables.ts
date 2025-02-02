@@ -10,7 +10,6 @@ import { type ExtensionContext, type SecretStorage } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
-import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
 import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
@@ -26,20 +25,25 @@ import { type CosmosDBAttachedAccountsResourceItem } from './tree/attached/Cosmo
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
  */
 export namespace ext {
+    /**
+     * These are used to support MongoDB scrapbook feature
+     * */
     export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
+
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
+    export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
+
     export let context: ExtensionContext;
     export let outputChannel: IAzExtLogOutputChannel;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let isBundle: boolean | undefined;
     export let secretStorage: SecretStorage;
-    export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;
-    export let mongoCodeLensProvider: MongoCodeLensProvider;
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
+
     // Since the Azure Resources extension did not update API interface, but added a new interface with activity
     // we have to use the new interface AzureResourcesExtensionApiWithActivity instead of AzureResourcesExtensionApi
     export let rgApiV2: AzureResourcesExtensionApiWithActivity;

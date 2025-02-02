@@ -5,8 +5,18 @@
 
 import * as vscode from 'vscode';
 
-export function launchMongoShell(): void {
-    const terminal: vscode.Terminal = vscode.window.createTerminal('Mongo Shell');
-    terminal.sendText(`mongo`);
-    terminal.show();
+export function withProgress<T>(
+    promise: Thenable<T>,
+    title: string,
+    location: vscode.ProgressLocation = vscode.ProgressLocation.Notification,
+): Thenable<T> {
+    return vscode.window.withProgress<T>(
+        {
+            location: location,
+            title: title,
+        },
+        (_progress) => {
+            return promise;
+        },
+    );
 }

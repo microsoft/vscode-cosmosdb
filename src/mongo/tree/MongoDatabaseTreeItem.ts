@@ -23,7 +23,7 @@ import { nonNullProp, nonNullValue } from '../../utils/nonNull';
 import { connectToMongoClient } from '../connectToMongoClient';
 import { type MongoCommand } from '../MongoCommand';
 import { addDatabaseToAccountConnectionString } from '../mongoConnectionStrings';
-import { MongoShell } from '../MongoShell';
+import { MongoShellScriptRunner } from '../MongoShellScriptRunner';
 import { type IMongoTreeRoot } from './IMongoTreeRoot';
 import { type MongoAccountTreeItem } from './MongoAccountTreeItem';
 import { MongoCollectionTreeItem } from './MongoCollectionTreeItem';
@@ -168,7 +168,7 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
         }
     }
 
-    private async createShell(context: IActionContext): Promise<MongoShell> {
+    private async createShell(context: IActionContext): Promise<MongoShellScriptRunner> {
         const config = vscode.workspace.getConfiguration();
         let shellPath: string | undefined = config.get(ext.settingsKeys.mongoShellPath);
         const shellArgs: string[] = config.get(ext.settingsKeys.mongoShellArgs, []);
@@ -182,7 +182,7 @@ export class MongoDatabaseTreeItem extends AzExtParentTreeItem {
 
         const timeout =
             1000 * nonNullValue(config.get<number>(ext.settingsKeys.mongoShellTimeout), 'mongoShellTimeout');
-        return MongoShell.create(
+        return MongoShellScriptRunner.createShellProcessHelper(
             shellPath,
             shellArgs,
             this.connectionString,

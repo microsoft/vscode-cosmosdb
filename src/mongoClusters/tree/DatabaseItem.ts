@@ -3,27 +3,20 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    createContextValue,
-    createGenericElement,
-    type IActionContext,
-    type TreeElementBase,
-    type TreeElementWithId,
-} from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
-import { ext } from '../../extensionVariables';
+import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
-import { localize } from '../../utils/localize';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
 import { CollectionItem } from './CollectionItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class DatabaseItem implements TreeElementWithId, TreeElementWithExperience, TreeElementWithContextValue {
+export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
-    public readonly experience?: Experience;
+    public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.database';
 
     private readonly experienceContextValue: string = '';
@@ -38,7 +31,7 @@ export class DatabaseItem implements TreeElementWithId, TreeElementWithExperienc
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);
         const collections = await client.listCollections(this.databaseInfo.name);
 
@@ -52,46 +45,13 @@ export class DatabaseItem implements TreeElementWithId, TreeElementWithExperienc
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'command.mongoClusters.createCollection',
                     commandArgs: [this],
-                }),
+                }) as CosmosDBTreeElement,
             ];
         }
 
         return collections.map((collection) => {
             return new CollectionItem(this.mongoCluster, this.databaseInfo, collection);
         });
-    }
-
-    async delete(_context: IActionContext): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        let success = false;
-        await ext.state.showDeleting(this.id, async () => {
-            success = await client.dropDatabase(this.databaseInfo.name);
-        });
-
-        ext.state.notifyChildrenChanged(this.mongoCluster.id);
-
-        return success;
-    }
-
-    async createCollection(_context: IActionContext, collectionName: string): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        return ext.state.showCreatingChild(
-            this.id,
-            localize('mongoClusters.tree.creating', 'Creating "{0}"...', collectionName),
-            async () => {
-                // Adding a delay to ensure the "creating child" animation is visible.
-                // The `showCreatingChild` function refreshes the parent to show the
-                // "creating child" animation and label. Refreshing the parent triggers its
-                // `getChildren` method. If the database creation completes too quickly,
-                // the dummy node with the animation might be shown alongside the actual
-                // database entry, as it will already be available in the database.
-                // Note to future maintainers: Do not remove this delay.
-                await new Promise((resolve) => setTimeout(resolve, 250));
-                return client.createCollection(this.databaseInfo.name, collectionName);
-            },
-        );
     }
 
     getTreeItem(): TreeItem {

@@ -5,10 +5,10 @@
 
 import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { languages } from 'vscode';
+import { createDocumentDBContainer } from '../commands/createContainer/createContainer';
 import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
-import { createDocDBCollection } from './commands/createDocDBCollection';
 import { createDocDBDatabase } from './commands/createDocDBDatabase';
 import { createDocDBDocument } from './commands/createDocDBDocument';
 import { createDocDBStoredProcedure } from './commands/createDocDBStoredProcedure';
@@ -43,13 +43,13 @@ export function registerDocDBCommands(): void {
 
     // #region Account command
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDatabase', createDocDBDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createDocDBDatabase);
 
     // #endregion
 
     // #region Database command
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBCollection', createDocDBCollection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDatabase', deleteDocDBDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocDBDatabaseOffer);
 

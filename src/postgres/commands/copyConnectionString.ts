@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { localize } from '../../utils/localize';
-import { addDatabaseToConnectionString, copyPostgresConnectionString } from '../postgresConnectionStrings';
+import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
 
@@ -25,7 +25,7 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     let connectionString: string;
     if (node.parent.azureName) {
         const parsedCS = await node.parent.getFullConnectionString();
-        connectionString = copyPostgresConnectionString(
+        connectionString = buildPostgresConnectionString(
             parsedCS.hostName,
             parsedCS.port,
             parsedCS.username,

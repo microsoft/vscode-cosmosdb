@@ -5,7 +5,6 @@
 
 import path from 'path';
 import { ConfigurationTarget, Uri, workspace, type WorkspaceConfiguration, type WorkspaceFolder } from 'vscode';
-import { ext } from '../extensionVariables';
 
 export const vscodeFolder: string = '.vscode';
 export const settingsFile: string = 'settings.json';
@@ -15,11 +14,22 @@ export class SettingUtils {
      * Directly updates one of the user's `Global` configuration settings.
      * @param key The key of the setting to update
      * @param value The value of the setting to update
-     * @param prefix The optional extension prefix. Uses ext.prefix unless otherwise specified
+     * @param prefix The optional extension prefix.
      */
-    async updateGlobalSetting<T = string>(key: string, value: T, prefix: string = ext.prefix): Promise<void> {
+    async updateGlobalSetting<T = string>(key: string, value: T, prefix?: string): Promise<void> {
         const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix);
         await projectConfiguration.update(key, value, ConfigurationTarget.Global);
+    }
+
+    /**
+     * Directly retrieves one of the user's `Global` or `Default` configuration settings.
+     * @param key The key of the setting to retrieve
+     * @param prefix The optional extension prefix.
+     */
+    getGlobalSetting<T>(key: string, prefix?: string): T | undefined {
+        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix);
+        const result: { globalValue?: T; defaultValue?: T } | undefined = projectConfiguration.inspect<T>(key);
+        return result?.globalValue === undefined ? result?.defaultValue : result?.globalValue;
     }
 
     /**
@@ -28,30 +38,22 @@ export class SettingUtils {
      * @param value The value of the setting to update
      * @param fsPath The path of the workspace configuration settings
      * @param targetSetting The optional workspace setting to target. Uses the `Workspace` configuration target unless otherwise specified
-     * @param prefix The optional extension prefix. Uses ext.prefix unless otherwise specified
+     * @param prefix The optional extension prefix.
      */
     async updateWorkspaceSetting<T = string>(
         key: string,
         value: T,
-        fsPath: string,
+        prefix?: string,
+        fsPath?: string,
         targetSetting:
             | ConfigurationTarget.Workspace
             | ConfigurationTarget.WorkspaceFolder = ConfigurationTarget.Workspace,
-        prefix: string = ext.prefix,
     ): Promise<void> {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix, Uri.file(fsPath));
+        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(
+            prefix,
+            fsPath ? Uri.file(fsPath) : undefined,
+        );
         await projectConfiguration.update(key, value, targetSetting);
-    }
-
-    /**
-     * Directly retrieves one of the user's `Global` configuration settings.
-     * @param key The key of the setting to retrieve
-     * @param prefix The optional extension prefix. Uses ext.prefix unless otherwise specified
-     */
-    getGlobalSetting<T>(key: string, prefix: string = ext.prefix): T | undefined {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix);
-        const result: { globalValue?: T; defaultValue?: T } | undefined = projectConfiguration.inspect<T>(key);
-        return result?.globalValue === undefined ? result?.defaultValue : result?.globalValue;
     }
 
     /**
@@ -59,26 +61,23 @@ export class SettingUtils {
      * @param key The key of the setting to retrieve
      * @param fsPath The optional path of the workspace configuration settings
      * @param targetLimit The optional target configuration limit (inclusive). Uses the `Workspace` configuration target unless otherwise specified
-     * @param prefix The optional extension prefix. Uses ext.prefix unless otherwise specified
+     * @param prefix The optional extension prefix
      */
     getWorkspaceSetting<T>(
         key: string,
+        prefix?: string,
         fsPath?: string,
         targetLimit:
             | ConfigurationTarget.Workspace
             | ConfigurationTarget.WorkspaceFolder = ConfigurationTarget.Workspace,
-        prefix: string = ext.prefix,
     ): T | undefined {
         const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(
             prefix,
             fsPath ? Uri.file(fsPath) : undefined,
         );
 
-        const configurationLevel: ConfigurationTarget | undefined = this.getLowestConfigurationLevel(
-            projectConfiguration,
-            key,
-        );
-        if (!configurationLevel || (configurationLevel && configurationLevel < targetLimit)) {
+        const configurationLevel = this.getLowestConfigurationLevel(projectConfiguration, key);
+        if (!configurationLevel || configurationLevel < targetLimit) {
             return undefined;
         }
 
@@ -89,9 +88,9 @@ export class SettingUtils {
      * Iteratively retrieves one of the user's settings - sequentially checking for a defined value starting from the `WorkspaceFolder` up to the `Global` configuration target.
      * @param key The key of the setting to retrieve
      * @param fsPath The optional path of the workspace configuration settings
-     * @param prefix The optional extension prefix. Uses ext.prefix unless otherwise specified
+     * @param prefix The optional extension prefix.
      */
-    getSetting<T>(key: string, fsPath?: string, prefix: string = ext.prefix): T | undefined {
+    getSetting<T>(key: string, prefix?: string, fsPath?: string): T | undefined {
         const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(
             prefix,
             fsPath ? Uri.file(fsPath) : undefined,
@@ -101,9 +100,8 @@ export class SettingUtils {
 
     /**
      * Searches through all open folders and gets the current workspace setting (as long as there are no conflicts)
-     * Uses ext.prefix unless otherwise specified
      */
-    getWorkspaceSettingFromAnyFolder(key: string, prefix: string = ext.prefix): string | undefined {
+    getWorkspaceSettingFromAnyFolder(key: string, prefix?: string): string | undefined {
         if (workspace.workspaceFolders && workspace.workspaceFolders.length > 0) {
             let result: string | undefined;
             for (const folder of workspace.workspaceFolders) {

@@ -89,6 +89,9 @@ export class CosmosDBWorkspaceBranchDataProvider
         );
 
         if (resourceItem) {
+            // Workspace picker relies on this value
+            ext.cosmosDBWorkspaceBranchDataResource = resourceItem;
+
             return ext.state.wrapItemInStateHandling(resourceItem, (item: CosmosDBTreeElement) =>
                 this.refresh(item),
             ) as CosmosDBTreeElement;

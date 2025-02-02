@@ -3,25 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
 import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
-import { createCosmosDBManagementClient } from '../../utils/azureClients';
-import { localize } from '../../utils/localize';
-import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
-import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { type AccountInfo } from './AccountInfo';
+import { getAccountInfo, type AccountInfo } from './AccountInfo';
 
-export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourceItemBase {
+export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: CosmosAccountModel;
 
     // To prevent the RBAC notification from showing up multiple times
@@ -32,7 +26,7 @@ export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourc
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const accountInfo = await this.getAccountInfo(this.account);
+        const accountInfo = await getAccountInfo(this.account);
         const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
         const databases = await this.getDatabases(accountInfo, cosmosClient);
 
@@ -44,44 +38,15 @@ export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourc
     }
 
     public async getConnectionString(): Promise<string | undefined> {
-        const accountInfo = await this.getAccountInfo(this.account);
+        const accountInfo = await getAccountInfo(this.account);
+        const keyCred = accountInfo.credentials.find((cred) => cred.type === 'key');
 
         // supporting only one known success path
-        if (
-            accountInfo.credentials.length === 2 &&
-            accountInfo.credentials[0].type === 'key' &&
-            accountInfo.credentials[1].type === 'auth'
-        ) {
-            return `AccountEndpoint=${accountInfo.endpoint};AccountKey=${accountInfo.credentials[0].key}`;
+        if (keyCred) {
+            return `AccountEndpoint=${accountInfo.endpoint};AccountKey=${keyCred.key}`;
         } else {
-            return undefined;
+            return `AccountEndpoint=${accountInfo.endpoint}`;
         }
-    }
-
-    protected async getAccountInfo(account: CosmosAccountModel): Promise<AccountInfo> | never {
-        const id = nonNullProp(account, 'id');
-        const name = nonNullProp(account, 'name');
-        const resourceGroup = nonNullProp(account, 'resourceGroup');
-
-        const client = await callWithTelemetryAndErrorHandling('getAccountInfo', async (context: IActionContext) => {
-            return createCosmosDBManagementClient(context, account.subscription);
-        });
-
-        if (!client) {
-            throw new Error('Failed to connect to Cosmos DB account');
-        }
-
-        const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
-        const credentials = await this.getCredentials(name, resourceGroup, client, databaseAccount);
-        const documentEndpoint = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`);
-
-        return {
-            credentials,
-            endpoint: documentEndpoint,
-            id,
-            isEmulator: false,
-            name,
-        };
     }
 
     protected async getDatabases(
@@ -114,68 +79,6 @@ export abstract class DocumentDBAccountResourceItem extends CosmosAccountResourc
             }
             throw e; // rethrowing tells the resources extension to show the exception message in the tree
         }
-    }
-
-    protected async getCredentials(
-        name: string,
-        resourceGroup: string,
-        client: CosmosDBManagementClient,
-        databaseAccount: DatabaseAccountGetResults,
-    ): Promise<CosmosDBCredential[]> {
-        const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-            context.telemetry.properties.experience = this.experience.api;
-            context.telemetry.properties.parentContext = this.contextValue;
-
-            const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
-            context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
-
-            let keyCred: CosmosDBKeyCredential | undefined = undefined;
-            // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-            if (!forceOAuth) {
-                try {
-                    const localAuthDisabled = databaseAccount.disableLocalAuth === true;
-                    context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-
-                    let keyResult: DatabaseAccountListKeysResult | undefined;
-                    // If the account has local auth disabled, don't even try to use key auth
-                    if (!localAuthDisabled) {
-                        keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-                        keyCred = keyResult?.primaryMasterKey
-                            ? {
-                                  type: 'key',
-                                  key: keyResult.primaryMasterKey,
-                              }
-                            : undefined;
-                        context.telemetry.properties.receivedKeyCreds = 'true';
-                    } else {
-                        throw new Error('Local auth is disabled');
-                    }
-                } catch {
-                    context.telemetry.properties.receivedKeyCreds = 'false';
-
-                    const message = localize(
-                        'keyPermissionErrorMsg',
-                        'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
-                        name,
-                    );
-                    const openSettingsItem = localize('openSettings', 'Open Settings');
-                    void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                        if (item === openSettingsItem) {
-                            void vscode.commands.executeCommand(
-                                'workbench.action.openSettings',
-                                'azureDatabases.useCosmosOAuth',
-                            );
-                        }
-                    });
-                }
-            }
-
-            // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-            const authCred = { type: 'auth' };
-            return [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
-        });
-
-        return result ?? [];
     }
 
     protected abstract getChildrenImpl(

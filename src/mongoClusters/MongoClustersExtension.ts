@@ -17,20 +17,17 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
+import { createMongoCollection } from '../commands/createContainer/createContainer';
+import { deleteAzureDatabase } from '../commands/deleteDatabase/deleteDatabase';
+import { launchShell } from '../commands/launchShell/launchShell';
 import { ext } from '../extensionVariables';
 import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
-import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
-import { createCollection } from './commands/createCollection';
-import { createDatabase } from './commands/createDatabase';
 import { createDocument } from './commands/createDocument';
 import { dropCollection } from './commands/dropCollection';
-import { dropDatabase } from './commands/dropDatabase';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
 import { mongoClustersImportDocuments } from './commands/importDocuments';
-import { launchShell } from './commands/launchShell';
 import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
 import { openDocumentView } from './commands/openDocumentView';
-import { removeWorkspaceConnection } from './commands/removeWorkspaceConnection';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
@@ -100,10 +97,9 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', deleteAzureDatabase);
 
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createMongoCollection);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createDocument);
 
@@ -126,12 +122,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommandWithTreeNodeUnwrapping(
                     'command.mongoClusters.exportDocuments',
                     mongoClustersExportEntireCollection,
-                );
-
-                registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
-                registerCommandWithTreeNodeUnwrapping(
-                    'command.mongoClusters.removeWorkspaceConnection',
-                    removeWorkspaceConnection,
                 );
 
                 ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);

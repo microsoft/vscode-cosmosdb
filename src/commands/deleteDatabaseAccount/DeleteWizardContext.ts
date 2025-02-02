@@ -10,10 +10,10 @@ import {
     type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { type CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
+import { type CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 
 export interface DeleteWizardContext extends IActionContext, ExecuteActivityContext {
-    node: AzExtTreeItem | CosmosAccountResourceItemBase | MongoClusterResourceItem;
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterResourceItem;
     deletePostgres: boolean;
     resourceGroupToDelete?: string;
     subscription: ISubscriptionContext;

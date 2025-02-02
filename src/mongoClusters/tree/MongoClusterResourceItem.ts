@@ -35,9 +35,9 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
         super(mongoCluster);
     }
 
-    public async discoverConnectionString(): Promise<string | undefined> {
+    public async getConnectionString(): Promise<string | undefined> {
         return callWithTelemetryAndErrorHandling(
-            'cosmosDB.mongoClusters.discoverConnectionString',
+            'cosmosDB.mongoClusters.getConnectionString',
             async (context: IActionContext) => {
                 // Create a client to interact with the MongoDB vCore management API and read the cluster details
                 const managementClient = await createMongoClustersManagementClient(context, this.subscription);

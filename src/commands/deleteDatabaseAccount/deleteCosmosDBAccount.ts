@@ -9,7 +9,7 @@ import { AzExtTreeItem, createSubscriptionContext } from '@microsoft/vscode-azex
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
@@ -17,7 +17,7 @@ import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteCosmosDBAccount(
     context: DeleteWizardContext,
-    node: AzExtTreeItem | CosmosAccountResourceItemBase,
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase,
 ): Promise<void> {
     let client: CosmosDBManagementClient;
     let resourceGroup: string;
@@ -27,7 +27,7 @@ export async function deleteCosmosDBAccount(
         client = await createCosmosDBClient([context, node.subscription]);
         resourceGroup = getResourceGroupFromId(node.fullId);
         accountName = getDatabaseAccountNameFromId(node.fullId);
-    } else if (node instanceof CosmosAccountResourceItemBase) {
+    } else if (node instanceof CosmosDBAccountResourceItemBase) {
         // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
         // so we need to create a subscription context
         if (!('subscription' in node.account)) {

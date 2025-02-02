@@ -4,19 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext, nonNullProp } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { CredentialCache } from '../../mongoClusters/CredentialCache';
-import { MongoClustersClient, type DatabaseItemModel } from '../../mongoClusters/MongoClustersClient';
+import { type DatabaseItemModel, MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
 import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
-import { localize } from '../../utils/localize';
-import { CosmosAccountResourceItemBase } from '../CosmosAccountResourceItemBase';
-import { type CosmosDBTreeElement, type ExtTreeElementBase } from '../CosmosDBTreeElement';
+import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
+import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
 
 /**
@@ -26,7 +25,7 @@ import { type MongoAccountModel } from './MongoAccountModel';
 
 // TODO: currently MongoAccountResourceItem does not reuse MongoClusterItemBase, this will be refactored after the v1 to v2 tree migration
 
-export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
+export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: MongoAccountModel;
     public readonly contextValue: string = 'treeItem.mongoCluster'; // TODO: this is a bug and overwrites the contextValue from the base class, fix this.
 
@@ -39,9 +38,9 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         super(account, experience);
     }
 
-    async discoverConnectionString(): Promise<string | undefined> {
-        const result = await callWithTelemetryAndErrorHandling(
-            'cosmosDB.mongo.discoverConnectionString',
+    async getConnectionString(): Promise<string | undefined> {
+        return callWithTelemetryAndErrorHandling(
+            'cosmosDB.mongo.getConnectionString',
             async (context: IActionContext) => {
                 // Create a client to interact with the MongoDB vCore management API and read the cluster details
                 const managementClient = await createCosmosDBManagementClient(
@@ -70,8 +69,6 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
                 return cString;
             },
         );
-
-        return result ?? undefined;
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
@@ -91,8 +88,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
             );
 
             if (this.account.subscription) {
-                const cString = await this.discoverConnectionString();
-                this.account.connectionString = cString;
+                this.account.connectionString = await this.getConnectionString();
             }
 
             if (!this.account.connectionString) {
@@ -142,8 +138,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         const databases = await mongoClient.listDatabases();
 
         return databases.map((database) => {
-            const clusterInfo = this.account as MongoClusterModel;
-            clusterInfo.dbExperience = this.experience;
+            const clusterInfo = { ...this.account, dbExperience: this.experience } as MongoClusterModel;
 
             // eslint-disable-next-line no-unused-vars
             const databaseInfo: DatabaseItemModel = {
@@ -151,7 +146,7 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
                 empty: database.empty,
             };
 
-            return new DatabaseItem(clusterInfo, databaseInfo) as ExtTreeElementBase;
+            return new DatabaseItem(clusterInfo, databaseInfo);
         });
 
         // } catch (error) {
@@ -166,41 +161,5 @@ export class MongoAccountResourceItem extends CosmosAccountResourceItemBase {
         //         void mongoClient.close();
         //     }
         // }
-    }
-
-    /**
-     * Creates a new database in the cluster.
-     *
-     * TODO: this is a plain copy&paste from mongoclusters. It will be cleaned up in one shared base class after v1 to v2 tree migration
-     *
-     * @param _context The action context.
-     * @param databaseName The name of the database to create.
-     * @returns A boolean indicating success.
-     */
-    /**
-     * Creates a new MongoDB database with the specified name.
-     *
-     * @param _context - The action context.
-     * @param databaseName - The name of the database to create.
-     * @returns A promise that resolves to a boolean indicating the success of the operation.
-     */
-    async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.id);
-
-        return ext.state.showCreatingChild<boolean>(
-            this.id,
-            localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
-            async (): Promise<boolean> => {
-                // Adding a delay to ensure the "creating child" animation is visible.
-                // The `showCreatingChild` function refreshes the parent to show the
-                // "creating child" animation and label. Refreshing the parent triggers its
-                // `getChildren` method. If the database creation completes too quickly,
-                // the dummy node with the animation might be shown alongside the actual
-                // database entry, as it will already be available in the database.
-                // Note to future maintainers: Do not remove this delay.
-                await new Promise((resolve) => setTimeout(resolve, 250));
-                return client.createDatabase(databaseName);
-            },
-        );
     }
 }

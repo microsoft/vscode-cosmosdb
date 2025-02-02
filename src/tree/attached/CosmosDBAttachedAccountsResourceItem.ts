@@ -3,17 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    callWithTelemetryAndErrorHandling,
-    createContextValue,
-    createGenericElement,
-    nonNullValue,
-} from '@microsoft/vscode-azext-utils';
-import vscode, { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
+import { callWithTelemetryAndErrorHandling, createContextValue, nonNullValue } from '@microsoft/vscode-azext-utils';
+import { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { isWindows } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { type IPersistedAccount } from '../AttachedAccountsTreeItem';
+import { type PersistedAccount } from '../AttachedAccountsTreeItem';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { GraphAccountAttachedResourceItem } from '../graph/GraphAccountAttachedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../nosql/NoSqlAccountAttachedResourceItem';
@@ -21,45 +16,28 @@ import { TableAccountAttachedResourceItem } from '../table/TableAccountAttachedR
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../workspace/SharedWorkspaceStorage';
+import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
+import { CosmosDBAttachEmulatorResourceItem } from './CosmosDBAttachEmulatorResourceItem';
 
 export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string = WorkspaceResourceType.AttachedAccounts;
     public readonly contextValue: string = 'treeItem.accounts';
 
-    private readonly attachDatabaseAccount: CosmosDBTreeElement;
-    private readonly attachEmulator: CosmosDBTreeElement;
-
     constructor() {
-        this.id = WorkspaceResourceType.AttachedAccounts;
         this.contextValue = createContextValue([this.contextValue, `attachedAccounts`]);
-
-        this.attachDatabaseAccount = createGenericElement({
-            id: `${this.id}/attachAccount`,
-            contextValue: `${this.contextValue}/attachAccount`,
-            label: 'Attach Database Account\u2026',
-            iconPath: new vscode.ThemeIcon('plus'),
-            commandId: 'cosmosDB.attachDatabaseAccount',
-            includeInTreeItemPicker: true,
-        }) as CosmosDBTreeElement;
-
-        this.attachEmulator = createGenericElement({
-            id: `${this.id}/attachEmulator`,
-            contextValue: `${this.contextValue}/attachEmulator`,
-            label: 'Attach Emulator\u2026',
-            iconPath: new vscode.ThemeIcon('plus'),
-            commandId: 'cosmosDB.attachEmulator',
-            includeInTreeItemPicker: true,
-        }) as CosmosDBTreeElement;
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
+        const attachDatabaseAccount = new CosmosDBAttachAccountResourceItem(this.id);
+        const attachEmulator = new CosmosDBAttachEmulatorResourceItem(this.id);
+
         const items = await SharedWorkspaceStorage.getItems(this.id);
         const children = await this.getChildrenImpl(items);
-        const auxItems = isWindows ? [this.attachDatabaseAccount, this.attachEmulator] : [this.attachDatabaseAccount];
+        const auxItems = isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
 
         return [...children, ...auxItems];
     }
@@ -125,7 +103,7 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                 }
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
+                const accounts: (string | PersistedAccount)[] = JSON.parse(value);
                 for (const account of accounts) {
                     let id: string;
                     let name: string;
@@ -140,10 +118,10 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                         api = API.MongoDB;
                         isEmulator = false;
                     } else {
-                        id = (<IPersistedAccount>account).id;
-                        name = (<IPersistedAccount>account).id;
-                        api = (<IPersistedAccount>account).defaultExperience;
-                        isEmulator = (<IPersistedAccount>account).isEmulator ?? false;
+                        id = (<PersistedAccount>account).id;
+                        name = (<PersistedAccount>account).id;
+                        api = (<PersistedAccount>account).defaultExperience;
+                        isEmulator = (<PersistedAccount>account).isEmulator ?? false;
                     }
 
                     // TODO: Ignore Postgres accounts until we have a way to handle them
@@ -178,7 +156,7 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
         }
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const accounts: (string | IPersistedAccount)[] = JSON.parse(value);
+        const accounts: (string | PersistedAccount)[] = JSON.parse(value);
         const result = await Promise.allSettled(
             accounts.map(async (account) => {
                 return callWithTelemetryAndErrorHandling(
@@ -200,10 +178,10 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
                             api = API.MongoDB;
                             isEmulator = false;
                         } else {
-                            id = (<IPersistedAccount>account).id;
-                            name = (<IPersistedAccount>account).id;
-                            api = (<IPersistedAccount>account).defaultExperience;
-                            isEmulator = (<IPersistedAccount>account).isEmulator ?? false;
+                            id = (<PersistedAccount>account).id;
+                            name = (<PersistedAccount>account).id;
+                            api = (<PersistedAccount>account).defaultExperience;
+                            isEmulator = (<PersistedAccount>account).isEmulator ?? false;
                         }
 
                         const connectionString: string = nonNullValue(

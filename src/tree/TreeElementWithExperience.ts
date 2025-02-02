@@ -11,7 +11,7 @@ import { type Experience } from '../AzureDBExperiences';
  * interface simplifies parallel development and can still be easily merged once ready for it.
  */
 export type TreeElementWithExperience = {
-    experience?: Experience; // optional during the migration phase
+    experience: Experience;
 };
 
 /**

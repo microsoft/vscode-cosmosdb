@@ -10,26 +10,86 @@ import {
     DeleteConfirmationStep,
     type IActionContext,
     type ISubscriptionContext,
+    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import {
+    cosmosGremlinFilter,
+    cosmosMongoFilter,
+    cosmosTableFilter,
+    postgresFlexibleFilter,
+    postgresSingleFilter,
+    sqlFilter,
+} from '../../constants';
+import { ext } from '../../extensionVariables';
+import { type MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
+import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { localize } from '../../utils/localize';
+import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
+export async function deletePostgresServer(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
+            filter: [postgresSingleFilter, postgresFlexibleFilter],
+        });
+    }
+
+    if (!node) {
+        return undefined;
+    }
+
+    await deleteDatabaseAccount(context, node);
+}
+
+export async function deleteAccount(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
+    const suppressCreateContext: ITreeItemPickerContext = context;
+    suppressCreateContext.suppressCreatePick = true;
+    if (!node) {
+        node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
+            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
+        });
+    }
+
+    await deleteDatabaseAccount(context, node);
+}
+
+export async function deleteAzureDatabaseAccount(
+    context: IActionContext,
+    node?: CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+) {
+    if (!node) {
+        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterResourceItem>(context, {
+            type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
+        });
+    }
+
+    if (!node) {
+        return undefined;
+    }
+
+    await deleteDatabaseAccount(context, node);
+}
+
 export async function deleteDatabaseAccount(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosAccountResourceItemBase | MongoClusterResourceItem,
-    isPostgres: boolean = false,
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterItemBase,
 ): Promise<void> {
     let subscription: ISubscriptionContext;
     let accountName: string;
+    let isPostgres = false;
+
     if (node instanceof AzExtTreeItem) {
         subscription = node.subscription;
         accountName = node.label;
-    } else if (node instanceof CosmosAccountResourceItemBase && 'subscription' in node.account) {
+        isPostgres = node instanceof PostgresServerTreeItem;
+    } else if (node instanceof CosmosDBAccountResourceItemBase && 'subscription' in node.account) {
         subscription = createSubscriptionContext(node.account.subscription as AzureSubscription);
         accountName = node.account.name;
     } else if (node instanceof MongoClusterResourceItem) {

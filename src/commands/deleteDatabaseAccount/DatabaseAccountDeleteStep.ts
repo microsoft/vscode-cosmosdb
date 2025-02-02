@@ -6,7 +6,7 @@
 import { AzExtTreeItem, AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
 import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { CosmosAccountResourceItemBase } from '../../tree/CosmosAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 import { deleteCosmosDBAccount } from './deleteCosmosDBAccount';
 import { deleteMongoClustersAccount } from './deleteMongoClustersAccount';
@@ -17,9 +17,9 @@ export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWiza
     public async execute(context: DeleteWizardContext): Promise<void> {
         if (context.node instanceof AzExtTreeItem) {
             await context.node.deleteTreeItem(context);
-        } else if (context.node instanceof CosmosAccountResourceItemBase) {
+        } else if (context.node instanceof CosmosDBAccountResourceItemBase) {
             await ext.state.showDeleting(context.node.id, () =>
-                deleteCosmosDBAccount(context, context.node as CosmosAccountResourceItemBase),
+                deleteCosmosDBAccount(context, context.node as CosmosDBAccountResourceItemBase),
             );
             ext.cosmosDBBranchDataProvider.refresh();
         } else if (context.node instanceof MongoClusterResourceItem) {

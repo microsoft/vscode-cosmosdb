@@ -311,11 +311,6 @@
                 "title": "Copy Connection String"
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.connectMongoDB",
-                "title": "Connect to this database"
-            },
-            {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.deleteAccount",
                 "title": "Delete Account..."
@@ -456,12 +451,6 @@
                 "title": "Import Document into a Container..."
             },
             {
-                "category": "MongoDB",
-                "command": "cosmosDB.newMongoScrapbook",
-                "title": "New Mongo Scrapbook",
-                "icon": "$(new-file)"
-            },
-            {
                 "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openDocument",
@@ -566,31 +555,31 @@
                 "icon": "$(warning)"
             },
             {
-                "//": "Scrapbook",
+                "//": "Mongo DB|Cluster Scrapbook Connect Database",
                 "category": "MongoDB",
                 "command": "cosmosDB.connectMongoDB",
-                "title": "Connect to Database..."
+                "title": "Connect to this database"
             },
             {
-                "//": "Scrapbook",
+                "//": "Mongo DB|Cluster Scrapbook Execute All Commands",
                 "category": "MongoDB",
                 "command": "cosmosDB.executeAllMongoCommands",
                 "title": "Execute All MongoDB Commands"
             },
             {
-                "//": "Scrapbook",
+                "//": "Mongo DB|Cluster Scrapbook Execute Command",
                 "category": "MongoDB",
                 "command": "cosmosDB.executeMongoCommand",
                 "title": "Execute MongoDB Command"
             },
             {
-                "//": "Scrapbook",
+                "//": "Mongo DB|Cluster Launch Shell",
                 "category": "MongoDB",
                 "command": "cosmosDB.launchMongoShell",
                 "title": "Launch Shell"
             },
             {
-                "//": "Scrapbook",
+                "//": "Mongo DB|Cluster Scrapbook New Scrapbook",
                 "category": "MongoDB",
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
@@ -664,13 +653,13 @@
             ],
             "azureDatabases.submenus.mongo.database.scrapbook": [
                 {
-                    "//": "[Database] Mongo DB|Cluster Create Scrapbook",
+                    "//": "[Database] Mongo DB|Cluster Scrapbook New",
                     "command": "cosmosDB.newMongoScrapbook",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
-                    "//": "[Database] Connect to Mongo DB (to be removed?)",
+                    "//": "[Database] Mongo DB|Cluster Scrapbook Connect",
                     "command": "cosmosDB.connectMongoDB",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@2"
@@ -678,13 +667,13 @@
             ],
             "azureDatabases.submenus.mongo.collection.scrapbook": [
                 {
-                    "//": "[Database] Mongo DB|Cluster Create Scrapbook",
+                    "//": "[Collection] Mongo DB|Cluster Scrapbook New",
                     "command": "cosmosDB.newMongoScrapbook",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@1"
                 },
                 {
-                    "//": "[Database] Connect to Mongo DB (to be removed?)",
+                    "//": "[Collection] Mongo DB|Cluster Scrapbook Connect",
                     "command": "cosmosDB.connectMongoDB",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "1@2"
@@ -758,11 +747,6 @@
                     "command": "azureDatabases.createServer",
                     "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb|PostgreSqlServers(Standard|Flexible))/i && viewItem =~ /azureResourceTypeGroup/i",
                     "group": "1@1"
-                },
-                {
-                    "command": "azureDatabases.detachDatabaseAccount",
-                    "when": "view == azureWorkspace && viewItem == postgresServerAttached",
-                    "group": "1@2"
                 },
                 {
                     "command": "postgreSQL.deleteServer",
@@ -861,19 +845,7 @@
                 {
                     "//": "[Stored Procedure] (Postgres) Create Stored Procedure",
                     "command": "postgreSQL.createStoredProcedureQuery",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
-            },
-            {
-                    "//": "[Account] Create Cosmos DB database",
-                    "command": "cosmosDB.createDocDBDatabase",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
-                    "group": "1@1"
-                },
-                {
-                    "//": "[Account] Mongo DB|Cluster Create database",
-                    "command": "command.mongoClusters.createDatabase",
-                    "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
-                    "group": "1@1"
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures"
                 },
                 {
                     "//": "[Stored Procedure] (Postgres) Delete Stored Procedure",
@@ -1056,7 +1028,7 @@
                     "group": "4@1"
                 },
                 {
-                    "//": "[Collection] Mongo DB|Cluster Create Scrapbook",
+                    "//": "[Collection] Mongo DB|Cluster Scrapbook Submenu",
                     "submenu": "azureDatabases.submenus.mongo.collection.scrapbook",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
                     "group": "4@2"

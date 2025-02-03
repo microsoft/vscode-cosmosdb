@@ -11,7 +11,6 @@ import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemB
 import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
 import { type MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
@@ -31,17 +30,11 @@ import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
  * TODO: This needs a rewrite to match v2
  */
 
-const databaseContextValues = [
-    DocDBDatabaseTreeItem.contextValue,
-    GraphDatabaseTreeItem.contextValue,
-    PostgresDatabaseTreeItem.contextValue,
-];
+const databaseContextValues = [DocDBDatabaseTreeItem.contextValue, PostgresDatabaseTreeItem.contextValue];
 function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
         case 'SQL':
             return DocDBDatabaseTreeItem.contextValue;
-        case 'Graph':
-            return GraphDatabaseTreeItem.contextValue;
         case 'Postgres':
             return PostgresDatabaseTreeItem.contextValue;
         default:

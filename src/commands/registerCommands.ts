@@ -11,6 +11,7 @@ import {
 import vscode from 'vscode';
 import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
+import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { attachAccount } from './attachAccount/attachAccount';
 import { attachEmulator } from './attachEmulator/attachEmulator';
@@ -18,12 +19,15 @@ import { copyAzureConnectionString } from './copyConnectionString/copyConnection
 import { createDocumentDBContainer, createGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
 import { createServer } from './createServer/createServer';
+import { deleteGraph } from './deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
 import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
+import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
+import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
-import { viewDocumentDBDatabaseOffer } from './ViewDatabaseOffer/viewDatabaseOffer';
+import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './viewOffer/viewOffer';
 
 /**
  * DISCLAIMER:
@@ -39,7 +43,10 @@ export function registerCommands(): void {
 
     registerAccountCommands();
     registerDatabaseCommands();
+    registerContainerCommands();
+    registerDocumentCommands();
 
+    registerMongoCommands();
     registerPostgresCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
@@ -84,7 +91,19 @@ export function registerAccountCommands() {
 
 export function registerDatabaseCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createContainer', createDocumentDBContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDatabase', deleteAzureDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocumentDBDatabaseOffer);
+}
+
+export function registerContainerCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
+    /*[ ]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', () => {});
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', deleteGraph);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBContainer', deleteAzureDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBContainerOffer', viewDocumentDBContainerOffer);
+}
+
+export function registerDocumentCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
 }

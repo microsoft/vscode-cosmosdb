@@ -5,16 +5,12 @@
 
 import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { languages } from 'vscode';
-import { createDocumentDBContainer } from '../commands/createContainer/createContainer';
 import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
-import { createDocDBDatabase } from './commands/createDocDBDatabase';
 import { createDocDBDocument } from './commands/createDocDBDocument';
 import { createDocDBStoredProcedure } from './commands/createDocDBStoredProcedure';
 import { createDocDBTrigger } from './commands/createDocDBTrigger';
-import { deleteDocDBCollection } from './commands/deleteDocDBCollection';
-import { deleteDocDBDatabase } from './commands/deleteDocDBDatabase';
 import { deleteDocDBDocument } from './commands/deleteDocDBDocument';
 import { deleteDocDBStoredProcedure } from './commands/deleteDocDBStoredProcedure';
 import { deleteDocDBTrigger } from './commands/deleteDocDBTrigger';
@@ -22,12 +18,8 @@ import { executeDocDBStoredProcedure } from './commands/executeDocDBStoredProced
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
 import { loadMore } from './commands/loadMore';
-import { openNoSqlQueryEditor } from './commands/openNoSqlQueryEditor';
 import { openStoredProcedure } from './commands/openStoredProcedure';
 import { openTrigger } from './commands/openTrigger';
-import { viewDocDBCollectionOffer } from './commands/viewDocDBCollectionOffer';
-import { viewDocDBDatabaseOffer } from './commands/viewDocDBDatabaseOffer';
-import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
 import { NoSqlCodeLensProvider } from './NoSqlCodeLensProvider';
 
 const nosqlLanguageId = 'nosql';
@@ -40,29 +32,6 @@ export function registerDocDBCommands(): void {
     registerCommand('cosmosDB.connectNoSqlContainer', connectNoSqlContainer);
     registerCommand('cosmosDB.executeNoSqlQuery', executeNoSqlQuery);
     registerCommand('cosmosDB.getNoSqlQueryPlan', getNoSqlQueryPlan);
-
-    // #region Account command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createDocDBDatabase);
-
-    // #endregion
-
-    // #region Database command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDatabase', deleteDocDBDatabase);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocDBDatabaseOffer);
-
-    // #endregion
-
-    // #region Collection command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBCollection', deleteDocDBCollection);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBCollectionOffer', viewDocDBCollectionOffer);
-
-    // #endregion
 
     // #region DocumentGroup command
 

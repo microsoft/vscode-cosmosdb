@@ -26,8 +26,6 @@ import { API, getExperienceLabel, tryGetExperience, type Experience } from '../A
 import { type CosmosDBCredential, type CosmosDBKeyCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { ext } from '../extensionVariables';
-import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
-import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { PostgresServerType, type PostgresAbstractServer } from '../postgres/abstract/models';
 import { type IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
@@ -37,7 +35,6 @@ import {
     type ParsedPostgresConnectionString,
 } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
-import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { createActivityContext } from '../utils/activityUtils';
 import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
 import { localize } from '../utils/localize';
@@ -258,29 +255,6 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
                         (cred): cred is CosmosDBCredential => cred !== undefined,
                     );
                     switch (experience && experience.api) {
-                        case API.Table:
-                            return new TableAccountTreeItem(
-                                parent,
-                                id,
-                                label,
-                                documentEndpoint,
-                                credentials,
-                                isEmulator,
-                                databaseAccount,
-                            );
-                        case API.Graph: {
-                            const gremlinEndpoint = await tryGetGremlinEndpointFromAzure(client, resourceGroup, name);
-                            return new GraphAccountTreeItem(
-                                parent,
-                                id,
-                                label,
-                                documentEndpoint,
-                                gremlinEndpoint,
-                                credentials,
-                                isEmulator,
-                                databaseAccount,
-                            );
-                        }
                         case API.Core:
                         default:
                             // Default to DocumentDB, the base type for all Cosmos DB Accounts

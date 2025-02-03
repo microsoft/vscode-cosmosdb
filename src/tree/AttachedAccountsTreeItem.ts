@@ -22,13 +22,11 @@ import { type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
-import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
 import { connectToMongoClient } from '../mongo/connectToMongoClient';
 import { parseMongoConnectionString } from '../mongo/mongoConnectionStrings';
 import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
-import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { getSecretStorageKey } from '../utils/getSecretStorageKey';
 import { localize } from '../utils/localize';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
@@ -191,24 +189,15 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             commandId: 'cosmosDB.attachDatabaseAccount',
             includeInTreeItemPicker: true,
         });
-        const attachEmulator = new GenericTreeItem(this, {
-            contextValue: 'cosmosDBAttachEmulator',
-            label: 'Attach Emulator...',
-            iconPath: new vscode.ThemeIcon('plus'),
-            commandId: 'cosmosDB.attachEmulator',
-            includeInTreeItemPicker: true,
-        });
-        return isWindows ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        return [attachDatabaseAccount];
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {
         switch (contextValue) {
             // We have to make sure the Attached Accounts node is not shown for commands like
             // 'Open in Portal', which only work for the non-attached version
-            case GraphAccountTreeItem.contextValue:
             case MongoAccountTreeItem.contextValue:
             case DocDBAccountTreeItem.contextValue:
-            case TableAccountTreeItem.contextValue:
             case PostgresServerTreeItem.contextValue:
             case SubscriptionTreeItem.contextValue:
                 return false;
@@ -295,12 +284,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             }
             const label = `${defaultExperience.shortName} Emulator`;
             const treeItem: AzExtTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);
-            if (
-                treeItem instanceof DocDBAccountTreeItem ||
-                treeItem instanceof GraphAccountTreeItem ||
-                treeItem instanceof TableAccountTreeItem ||
-                treeItem instanceof MongoAccountTreeItem
-            ) {
+            if (treeItem instanceof DocDBAccountTreeItem || treeItem instanceof MongoAccountTreeItem) {
                 // CONSIDER: Why isn't this passed in to createTreeItem above?
                 treeItem.root.isEmulator = true;
             }
@@ -423,27 +407,6 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
 
             const credentials: CosmosDBCredential[] = [{ type: 'key', key: parsedCS.masterKey }];
             switch (api) {
-                case API.Table:
-                    treeItem = new TableAccountTreeItem(
-                        this,
-                        parsedCS.accountId,
-                        label,
-                        parsedCS.documentEndpoint,
-                        credentials,
-                        isEmulator,
-                    );
-                    break;
-                case API.Graph:
-                    treeItem = new GraphAccountTreeItem(
-                        this,
-                        parsedCS.accountId,
-                        label,
-                        parsedCS.documentEndpoint,
-                        undefined,
-                        credentials,
-                        isEmulator,
-                    );
-                    break;
                 case API.Core:
                     treeItem = new DocDBAccountTreeItem(
                         this,
@@ -467,20 +430,11 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         const value: PersistedAccount[] = attachedAccounts.map((node: AzExtTreeItem) => {
             let api: API;
             let isEmulator: boolean | undefined;
-            if (
-                node instanceof MongoAccountTreeItem ||
-                node instanceof DocDBAccountTreeItem ||
-                node instanceof GraphAccountTreeItem ||
-                node instanceof TableAccountTreeItem
-            ) {
+            if (node instanceof MongoAccountTreeItem || node instanceof DocDBAccountTreeItem) {
                 isEmulator = node.root.isEmulator;
             }
             if (node instanceof MongoAccountTreeItem) {
                 api = API.MongoDB;
-            } else if (node instanceof GraphAccountTreeItem) {
-                api = API.Graph;
-            } else if (node instanceof TableAccountTreeItem) {
-                api = API.Table;
             } else if (node instanceof DocDBAccountTreeItem) {
                 api = API.Core;
             } else if (node instanceof PostgresServerTreeItem) {

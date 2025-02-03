@@ -216,7 +216,7 @@ async function insertDocumentsIntoMongoCluster(
     documents: unknown[],
 ): Promise<string> {
     const result = await callWithTelemetryAndErrorHandling(
-        'cosmosDB.mongoClusters.importDocumets',
+        'cosmosDB.mongoClusters.importDocuments',
         async (actionContext) => {
             const result = await node.insertDocuments(context, documents as Document[]);
 

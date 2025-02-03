@@ -3,15 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
-import { DocDBAccountTreeItem } from '../../docdb/tree/DocDBAccountTreeItem';
 import { ext } from '../../extensionVariables';
-import { GraphAccountTreeItem } from '../../graph/tree/GraphAccountTreeItem';
 import { setConnectedNode } from '../../mongo/setConnectedNode';
 import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
-import { TableAccountTreeItem } from '../../table/tree/TableAccountTreeItem';
+import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
@@ -21,12 +19,7 @@ import { localize } from '../../utils/localize';
 import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';
 
 export async function detachDatabaseAccountV1(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
-    const cosmosDBTopLevelContextValues: string[] = [
-        GraphAccountTreeItem.contextValue,
-        DocDBAccountTreeItem.contextValue,
-        TableAccountTreeItem.contextValue,
-        MongoAccountTreeItem.contextValue,
-    ];
+    const cosmosDBTopLevelContextValues: string[] = [PostgresServerTreeItem.contextValue];
 
     const children = await ext.attachedAccountsNode.loadAllChildren(context);
     if (children.length < 2) {
@@ -44,7 +37,14 @@ export async function detachDatabaseAccountV1(context: IActionContext, node?: Az
             return undefined;
         }
 
-        await detachDatabaseAccount(context, node);
+        if (node instanceof MongoAccountTreeItem) {
+            if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
+                setConnectedNode(undefined);
+                await node.refresh(context);
+            }
+        }
+        await ext.attachedAccountsNode.detach(node);
+        await ext.rgApi.workspaceResourceTree.refresh(context, ext.attachedAccountsNode);
     }
 }
 
@@ -68,18 +68,9 @@ export async function detachAzureDatabaseAccount(
 
 export async function detachDatabaseAccount(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+    node: CosmosDBAccountResourceItemBase | MongoClusterItemBase,
 ): Promise<void> {
-    if (node instanceof AzExtTreeItem) {
-        if (node instanceof MongoAccountTreeItem) {
-            if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
-                setConnectedNode(undefined);
-                await node.refresh(context);
-            }
-        }
-        await ext.attachedAccountsNode.detach(node);
-        await ext.rgApi.workspaceResourceTree.refresh(context, ext.attachedAccountsNode);
-    }
+    context.telemetry.properties.experience = node.experience.api;
 
     if (node instanceof MongoClusterItemBase) {
         await ext.state.showDeleting(node.id, async () => {
@@ -99,7 +90,7 @@ export async function detachDatabaseAccount(
 
     showConfirmationAsInSettings(
         localize(
-            'showConfirmation.removedWorkspaceConnecdtion',
+            'showConfirmation.removedWorkspaceConnection',
             'The selected connection has been removed from your workspace.',
         ),
     );

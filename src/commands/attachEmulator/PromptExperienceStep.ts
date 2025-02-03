@@ -15,7 +15,7 @@ export class PromptExperienceStep extends AzureWizardPromptStep<AttachEmulatorWi
         const defaultExperiencePick = await context.ui.showQuickPick(
             [getExperienceQuickPick(API.MongoDB), getExperienceQuickPick(API.Core)],
             {
-                placeHolder: 'Select a Database Account API',
+                placeHolder: 'Select a Database Account API...',
                 stepName: 'attachEmulator',
             },
         );

@@ -5,7 +5,6 @@
 
 import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { languages } from 'vscode';
-import { doubleClickDebounceDelay } from '../constants';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
 import { createDocDBDocument } from './commands/createDocDBDocument';
@@ -14,8 +13,6 @@ import { createDocDBTrigger } from './commands/createDocDBTrigger';
 import { executeDocDBStoredProcedure } from './commands/executeDocDBStoredProcedure';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
-import { openStoredProcedure } from './commands/openStoredProcedure';
-import { openTrigger } from './commands/openTrigger';
 import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
 import { NoSqlCodeLensProvider } from './NoSqlCodeLensProvider';
 
@@ -46,11 +43,6 @@ export function registerDocDBCommands(): void {
 
     // #region StoredProcedure command
 
-    registerCommandWithTreeNodeUnwrapping(
-        'cosmosDB.openStoredProcedure',
-        openStoredProcedure,
-        doubleClickDebounceDelay,
-    );
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', executeDocDBStoredProcedure);
 
     // #endregion
@@ -58,12 +50,6 @@ export function registerDocDBCommands(): void {
     // #region TriggerGroup command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBTrigger', createDocDBTrigger);
-
-    // #endregion
-
-    // #region Trigger command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', openTrigger, doubleClickDebounceDelay);
 
     // #endregion
 }

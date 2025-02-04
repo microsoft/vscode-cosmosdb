@@ -9,6 +9,8 @@ import {
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
+import { doubleClickDebounceDelay } from '../constants';
+import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
 import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { registerMongoCommands } from '../mongo/registerMongoCommands';
@@ -29,6 +31,8 @@ import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDataba
 import { importDocuments } from './importDocuments';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
+import { openDocumentDBStoredProcedure } from './openStoredProcedure/openStoredProcedure';
+import { openDocumentDBTrigger } from './openTrigger/openTrigger';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './viewOffer/viewOffer';
 
@@ -51,6 +55,7 @@ export function registerCommands(): void {
     registerStoredProcedureCommands();
     registerTriggerCommands();
 
+    registerDocDBCommands();
     registerMongoCommands();
     registerPostgresCommands();
 
@@ -110,14 +115,18 @@ export function registerContainerCommands() {
 export function registerDocumentCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocumentDBItem);
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
 }
 
 export function registerStoredProcedureCommands() {
+    registerCommandWithTreeNodeUnwrapping(
+        'cosmosDB.openStoredProcedure',
+        openDocumentDBStoredProcedure,
+        doubleClickDebounceDelay,
+    );
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
 }
 
 export function registerTriggerCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', openDocumentDBTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBTrigger', deleteDocumentDBTrigger);
 }

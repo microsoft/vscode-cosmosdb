@@ -375,7 +375,6 @@
                 "title": "Create Stored Procedure..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openStoredProcedure",
                 "title": "Open Stored Procedure"
@@ -392,7 +391,6 @@
                 "title": "Create Trigger..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openTrigger",
                 "title": "Open Trigger"
@@ -419,27 +417,27 @@
                 "title": "View Database Offer"
             },
             {
-                "//": "Not moved Scrapbook",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Open Query Scrapbook"
             },
             {
-                "//": "Not moved Scrapbook",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.connectNoSqlContainer",
                 "title": "Connect to NoSQL container",
                 "when": "false"
             },
             {
-                "//": "Not moved Scrapbook",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.executeNoSqlQuery",
                 "title": "Execute NoSQL Query",
                 "when": "false"
             },
             {
-                "//": "Not moved Scrapbook",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.getNoSqlQueryPlan",
                 "title": "Get NoSQL Query Plan",

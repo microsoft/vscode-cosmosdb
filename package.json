@@ -261,6 +261,7 @@
         ],
         "commands": [
             {
+                "//": "Not moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",
@@ -363,7 +364,6 @@
                 "title": "Open Document"
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDocument",
                 "title": "Delete Document..."
@@ -381,7 +381,6 @@
                 "title": "Open Stored Procedure"
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
@@ -434,14 +433,14 @@
                 "when": "false"
             },
             {
-                "//": "Not moved  Scrapbook",
+                "//": "Not moved Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.executeNoSqlQuery",
                 "title": "Execute NoSQL Query",
                 "when": "false"
             },
             {
-                "//": "Not moved  Scrapbook",
+                "//": "Not moved Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.getNoSqlQueryPlan",
                 "title": "Get NoSQL Query Plan",

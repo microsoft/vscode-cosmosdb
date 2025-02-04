@@ -11,8 +11,6 @@ import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
 import { createDocDBDocument } from './commands/createDocDBDocument';
 import { createDocDBStoredProcedure } from './commands/createDocDBStoredProcedure';
 import { createDocDBTrigger } from './commands/createDocDBTrigger';
-import { deleteDocDBDocument } from './commands/deleteDocDBDocument';
-import { deleteDocDBStoredProcedure } from './commands/deleteDocDBStoredProcedure';
 import { deleteDocDBTrigger } from './commands/deleteDocDBTrigger';
 import { executeDocDBStoredProcedure } from './commands/executeDocDBStoredProcedure';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
@@ -39,12 +37,6 @@ export function registerDocDBCommands(): void {
 
     // #endregion
 
-    // #region Document command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocDBDocument);
-
-    // #endregion
-
     // #region StoredProcedureGroup command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBStoredProcedure', createDocDBStoredProcedure);
@@ -58,7 +50,6 @@ export function registerDocDBCommands(): void {
         openStoredProcedure,
         doubleClickDebounceDelay,
     );
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocDBStoredProcedure);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', executeDocDBStoredProcedure);
 
     // #endregion

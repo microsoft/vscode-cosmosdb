@@ -22,7 +22,9 @@ import { createServer } from './createServer/createServer';
 import { deleteGraph } from './deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
 import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
-import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
+import { deleteDocumentDBItem } from './deleteItems/deleteItems';
+import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
+import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
@@ -45,6 +47,7 @@ export function registerCommands(): void {
     registerDatabaseCommands();
     registerContainerCommands();
     registerDocumentCommands();
+    registerStoredProcedureCommands();
 
     registerMongoCommands();
     registerPostgresCommands();
@@ -79,8 +82,6 @@ export function registerCommands(): void {
 }
 
 export function registerAccountCommands() {
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.detachServer', detachDatabaseAccountV1);
-
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createAzureDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', attachAccount);
@@ -106,4 +107,11 @@ export function registerContainerCommands() {
 
 export function registerDocumentCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocumentDBItem);
+
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
+}
+
+export function registerStoredProcedureCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
 }

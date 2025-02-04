@@ -16,7 +16,7 @@ import { type MongoClient } from 'mongodb';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi, getExperienceQuickPick, getExperienceQuickPicks } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { emulatorPassword, isWindows } from '../constants';
+import { isWindows, wellKnownEmulatorPassword } from '../constants';
 import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
 import { type CosmosDBCredential } from '../docdb/getCosmosClient';
 import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
@@ -289,9 +289,9 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         if (port) {
             if (defaultExperience.api === API.MongoDB) {
                 // Mongo shell doesn't parse passwords with slashes, so we need to URI encode it. The '/' before the options is required by mongo conventions
-                connectionString = `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`;
+                connectionString = `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:${port}/?ssl=true`;
             } else {
-                connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
+                connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${wellKnownEmulatorPassword};`;
             }
             const label = `${defaultExperience.shortName} Emulator`;
             const treeItem: AzExtTreeItem = await this.createTreeItem(connectionString, defaultExperience.api, label);

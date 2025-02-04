@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
-import { emulatorPassword } from '../../constants';
+import { wellKnownEmulatorPassword } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace/SharedWorkspaceStorage';
@@ -89,7 +89,7 @@ export class PromptPortStep extends AzureWizardPromptStep<AttachEmulatorWizardCo
 
     private buildConnectionString(port: string | number, experience: API): string {
         return experience === API.MongoDB
-            ? `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`
-            : `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
+            ? `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:${port}/?ssl=true`
+            : `AccountEndpoint=https://localhost:${port}/;AccountKey=${wellKnownEmulatorPassword};`;
     }
 }

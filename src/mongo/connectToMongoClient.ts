@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { MongoClient, type MongoClientOptions } from 'mongodb';
-import { emulatorPassword, Links } from '../constants';
+import { Links, wellKnownEmulatorPassword } from '../constants';
 
 export async function connectToMongoClient(connectionString: string, appName: string): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
@@ -48,5 +48,5 @@ export class MongoConnectError extends Error {
 }
 
 export function isCosmosEmulatorConnectionString(connectionString: string): boolean {
-    return connectionString.includes(encodeURIComponent(emulatorPassword));
+    return connectionString.includes(encodeURIComponent(wellKnownEmulatorPassword));
 }

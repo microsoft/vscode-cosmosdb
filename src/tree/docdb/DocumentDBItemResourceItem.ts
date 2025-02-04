@@ -7,6 +7,7 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
+import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -28,12 +29,11 @@ export abstract class DocumentDBItemResourceItem
     }
 
     getTreeItem(): TreeItem {
-        const documentId = getDocumentId(this.model.item, this.model.container.partitionKey);
         return {
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('file'),
-            label: documentId?.id ?? documentId?._rid ?? '<empty id>',
+            label: getDocumentTreeItemLabel(this.model.item),
             tooltip: new vscode.MarkdownString(
                 `${this.generateDocumentTooltip()}\n${this.generatePartitionKeyTooltip()}`,
             ),

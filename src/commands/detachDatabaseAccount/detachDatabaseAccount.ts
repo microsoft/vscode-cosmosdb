@@ -6,8 +6,6 @@
 import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { setConnectedNode } from '../../mongo/setConnectedNode';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
@@ -37,12 +35,6 @@ export async function detachDatabaseAccountV1(context: IActionContext, node?: Az
             return undefined;
         }
 
-        if (node instanceof MongoAccountTreeItem) {
-            if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
-                setConnectedNode(undefined);
-                await node.refresh(context);
-            }
-        }
         await ext.attachedAccountsNode.detach(node);
         await ext.rgApi.workspaceResourceTree.refresh(context, ext.attachedAccountsNode);
     }

@@ -10,7 +10,6 @@ import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
 import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { DocDBDocumentTreeItem } from '../docdb/tree/DocDBDocumentTreeItem';
 import { ext } from '../extensionVariables';
-import { MongoDocumentTreeItem } from '../mongo/tree/MongoDocumentTreeItem';
 import { importDocuments } from './importDocuments';
 
 export function registerCommandsCompatibility(): void {
@@ -32,11 +31,11 @@ export function registerCommandsCompatibility(): void {
     );
     registerCommandWithTreeNodeUnwrapping(
         'cosmosDB.openDocument',
-        async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
+        async (actionContext: IActionContext, node?: DocDBDocumentTreeItem) => {
             if (!node) {
-                node = await ext.rgApi.pickAppResource<MongoDocumentTreeItem | DocDBDocumentTreeItem>(actionContext, {
+                node = await ext.rgApi.pickAppResource<DocDBDocumentTreeItem>(actionContext, {
                     filter: [cosmosMongoFilter, sqlFilter],
-                    expectedChildContextValue: [MongoDocumentTreeItem.contextValue, DocDBDocumentTreeItem.contextValue],
+                    expectedChildContextValue: [DocDBDocumentTreeItem.contextValue],
                 });
             }
 

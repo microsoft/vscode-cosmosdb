@@ -10,9 +10,7 @@ import {
     type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
-import { type DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
-import { type MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
+import { type PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 
 export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {
     public id: string;
@@ -39,15 +37,12 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     isAncestorOfImpl?(contextValue: string): boolean;
 
     connectionString: string;
-    maskedValuestoAdd: string[] = [];
+    maskedValuesToAdd: string[] = [];
 
-    public constructor(
-        ti: DocDBAccountTreeItemBase | MongoAccountTreeItem | PostgresServerTreeItem,
-        resource: AppResource,
-    ) {
+    public constructor(ti: PostgresServerTreeItem, resource: AppResource) {
         this.id = ti.id ?? resource.id;
         // PostgresServerTreeItem require on a property on the server so wait to do this
-        this.description = ti instanceof PostgresServerTreeItem ? undefined : ti.description;
+        this.description = undefined;
         this.iconPath = ti.iconPath;
         this.label = ti.label;
         this.childTypeLabel = ti.childTypeLabel;
@@ -63,6 +58,6 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
         this.isAncestorOfImpl = ti.isAncestorOfImpl;
 
         this.contextValuesToAdd.push(ti.contextValue);
-        this.maskedValuestoAdd.push(...ti.valuesToMask);
+        this.maskedValuesToAdd.push(...ti.valuesToMask);
     }
 }

@@ -8,10 +8,7 @@ import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../extensionVariables';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { type IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
 import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {
@@ -87,18 +84,11 @@ export function getNodeEditorLabel(node: AzExtTreeItem): string {
     while (node.parent) {
         node = node.parent;
         labels.unshift(node.label);
-        if (isAccountTreeItem(node)) {
-            break;
-        }
     }
     return labels.join('/');
 }
 
-function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
-    return treeItem instanceof MongoAccountTreeItem || treeItem instanceof DocDBAccountTreeItemBase;
-}
-
-export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefinition): string {
+export function getDocumentTreeItemLabel(document: ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
         // eslint-disable-next-line no-prototype-builtins
         if (document.hasOwnProperty(field)) {

@@ -11,7 +11,6 @@ import * as vscode from 'vscode';
 import { cosmosMongoFilter, sqlFilter } from '../constants';
 import { DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
-import { MongoCollectionTreeItem } from '../mongo/tree/MongoCollectionTreeItem';
 import { CollectionItem } from '../mongoClusters/tree/CollectionItem';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
 import { getRootPath } from '../utils/workspacUtils';
@@ -66,9 +65,7 @@ export async function importDocuments(
             const documents: unknown[] = await parseDocuments(uris, supportEJSON);
 
             progress.report({ increment: 30, message: `Loaded ${documents.length} document(s). Importing...` });
-            if (collectionNode instanceof MongoCollectionTreeItem) {
-                result = await insertDocumentsIntoMongo(collectionNode, documents);
-            } else if (collectionNode instanceof CollectionItem) {
+            if (collectionNode instanceof CollectionItem) {
                 result = await insertDocumentsIntoMongoCluster(context, collectionNode, documents);
             } else {
                 result = await insertDocumentsIntoDocdb(collectionNode, documents, uris);
@@ -186,28 +183,6 @@ async function insertDocumentsIntoDocdb(
         ext.outputChannel.appendLog(`Inserted document: ${id}`);
     }
     return result;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function insertDocumentsIntoMongo(node: MongoCollectionTreeItem, documents: any[]): Promise<string> {
-    let output = '';
-
-    const parsed = await callWithTelemetryAndErrorHandling('cosmosDB.mongo.importDocumets', async (actionContext) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        const parsed = await node.collection.insertMany(documents);
-
-        actionContext.telemetry.measurements.documentCount = parsed?.insertedCount;
-
-        return parsed;
-    });
-
-    if (parsed?.acknowledged) {
-        output = `Import into mongo successful. Inserted ${parsed.insertedCount} document(s). See output for more details.`;
-        for (const inserted of Object.values(parsed.insertedIds)) {
-            ext.outputChannel.appendLog(`Inserted document: ${inserted}`);
-        }
-    }
-    return output;
 }
 
 async function insertDocumentsIntoMongoCluster(

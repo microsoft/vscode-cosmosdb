@@ -5,25 +5,17 @@
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
-import { getCosmosKeyCredential } from '../../docdb/getCosmosClient';
-import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { ParsedPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { nonNullProp } from '../../utils/nonNull';
 import { type DatabaseAccountTreeItem } from '../../vscode-cosmosdb.api';
 
 export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem {
     protected _parsedCS: ParsedConnectionString;
-    private _accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem | undefined;
+    private _accountNode: PostgresServerTreeItem | undefined;
 
-    constructor(
-        parsedCS: ParsedConnectionString,
-        accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem,
-    ) {
+    constructor(parsedCS: ParsedConnectionString, accountNode?: PostgresServerTreeItem) {
         this._parsedCS = parsedCS;
         this._accountNode = accountNode;
     }
@@ -41,17 +33,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public get azureData(): { accountName: string; accountId: string } | undefined {
-        if (
-            this._accountNode instanceof MongoAccountTreeItem ||
-            this._accountNode instanceof DocDBAccountTreeItemBase
-        ) {
-            if (this._accountNode?.databaseAccount) {
-                return {
-                    accountName: nonNullProp(this._accountNode.databaseAccount, 'name'),
-                    accountId: this._accountNode.fullId,
-                };
-            }
-        } else if (this._accountNode instanceof PostgresServerTreeItem) {
+        if (this._accountNode instanceof PostgresServerTreeItem) {
             if (this._accountNode.azureName) {
                 return {
                     accountName: this._accountNode.azureName,
@@ -63,19 +45,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
     }
 
     public get docDBData(): { masterKey: string; documentEndpoint: string } | undefined {
-        if (this._accountNode instanceof DocDBAccountTreeItemBase) {
-            const keyCred = getCosmosKeyCredential(this._accountNode.root.credentials);
-            if (keyCred) {
-                return {
-                    documentEndpoint: this._accountNode.root.endpoint,
-                    masterKey: keyCred.key,
-                };
-            } else {
-                return undefined;
-            }
-        } else {
-            return undefined;
-        }
+        return undefined;
     }
 
     public get postgresData(): { username: string | undefined; password: string | undefined } | undefined {
@@ -98,24 +68,20 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
         });
     }
 
-    protected async getAccountNode(
-        context: IActionContext,
-    ): Promise<MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem> {
+    protected async getAccountNode(context: IActionContext): Promise<PostgresServerTreeItem> {
         // If this._accountNode is undefined, attach a new node based on connection string
         if (!this._accountNode) {
             let apiType: API;
-            if (this._parsedCS instanceof ParsedMongoConnectionString) {
-                apiType = API.MongoDB;
-            } else if (this._parsedCS instanceof ParsedPostgresConnectionString) {
+            if (this._parsedCS instanceof ParsedPostgresConnectionString) {
                 apiType = API.PostgresSingle;
+                this._accountNode = await ext.attachedAccountsNode.attachConnectionString(
+                    context,
+                    this.connectionString,
+                    apiType,
+                );
             } else {
-                apiType = API.Core;
+                throw new Error('Unsupported connection string.');
             }
-            this._accountNode = await ext.attachedAccountsNode.attachConnectionString(
-                context,
-                this.connectionString,
-                apiType,
-            );
         }
 
         return this._accountNode;

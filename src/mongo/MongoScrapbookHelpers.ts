@@ -18,7 +18,13 @@ import { mongoLexer } from './grammar/mongoLexer';
 import * as mongoParser from './grammar/mongoParser';
 import { MongoVisitor } from './grammar/visitors';
 import { type ErrorDescription, type MongoCommand } from './MongoCommand';
-import { stripQuotes } from './tree/MongoDatabaseTreeItem';
+
+export function stripQuotes(term: string): string {
+    if ((term.startsWith("'") && term.endsWith("'")) || (term.startsWith('"') && term.endsWith('"'))) {
+        return term.substring(1, term.length - 1);
+    }
+    return term;
+}
 
 export function getAllErrorsFromTextDocument(document: vscode.TextDocument): vscode.Diagnostic[] {
     const commands = getAllCommandsFromText(document.getText());

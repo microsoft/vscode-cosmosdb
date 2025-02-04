@@ -36,10 +36,9 @@ export {
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbookHelpers';
 export { MongoShellScriptRunner as MongoShell } from './src/mongo/MongoShellScriptRunner';
 export * from './src/mongo/registerMongoCommands';
-export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';
 export { SettingUtils } from './src/services/SettingsService';
-export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
+export { AttachedAccountsTreeItem } from './src/tree/AttachedAccountsTreeItem';
 export * from './src/utils/azureClients';
 export { getPublicIpv4, isIpInRanges } from './src/utils/getIp';
 export { improveError } from './src/utils/improveError';

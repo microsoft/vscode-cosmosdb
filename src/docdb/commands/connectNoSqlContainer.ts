@@ -8,11 +8,14 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { KeyValueStore } from '../../KeyValueStore';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type NoSqlQueryConnection, noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
 import { getCosmosKeyCredential } from '../getCosmosClient';
 
-export function createNoSqlQueryConnection(node: DocumentDBContainerResourceItem): NoSqlQueryConnection {
+export function createNoSqlQueryConnection(
+    node: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
+): NoSqlQueryConnection {
     const accountInfo = node.model.accountInfo;
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;

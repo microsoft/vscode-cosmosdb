@@ -6,6 +6,7 @@
     "displayName": "Azure Databases",
     "description": "Connect to MongoDB, Mongo Clusters, CosmosDB and other databases in and outside of Azure, inspect and edit your data and run powerful queries with the visual query editor.",
     "enableMongoClusters": true,
+    "enableMongoMigration": true,
     "engines": {
         "vscode": "^1.82.0"
     },
@@ -591,6 +592,11 @@
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.containerView.open",
                 "title": "Open Collection"
+            },
+            {
+                "category": "Mongo Migration",
+                "command": "command.migration.startView",
+                "title": "Open Migration Preview"
             }
         ],
         "submenus": [

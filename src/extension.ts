@@ -32,6 +32,7 @@ import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
 import { registerMongoCommands } from './mongo/registerMongoCommands';
 import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
+import { MongoMigrationExtension } from './mongoMigration/MongoMigrationExtension';
 import { DatabaseResolver } from './resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
 import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
@@ -109,6 +110,10 @@ export async function activateInternal(
         const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
         context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
         await mongoClustersSupport.activate();
+
+        const mongoMigrationSupport: MongoMigrationExtension = new MongoMigrationExtension();
+        context.subscriptions.push(mongoMigrationSupport);
+        await mongoMigrationSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

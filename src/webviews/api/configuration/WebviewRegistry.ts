@@ -6,6 +6,7 @@
 import { Document } from '../../Document/Document';
 import { CollectionView } from '../../mongoClusters/collectionView/CollectionView';
 import { DocumentView } from '../../mongoClusters/documentView/documentView';
+import { DemoView } from '../../mongoMigration/demoView/demoView';
 import { QueryEditor } from '../../QueryEditor/QueryEditor';
 
 export const WebviewRegistry = {
@@ -13,4 +14,5 @@ export const WebviewRegistry = {
     cosmosDbQuery: QueryEditor,
     mongoClustersCollectionView: CollectionView,
     mongoClustersDocumentView: DocumentView,
+    mongoMigrationDemoView: DemoView,
 } as const;

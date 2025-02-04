@@ -24,6 +24,7 @@ import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
 import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { deleteDocumentDBItem } from './deleteItems/deleteItems';
 import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
+import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
 import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
 import { importDocuments } from './importDocuments';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
@@ -48,6 +49,7 @@ export function registerCommands(): void {
     registerContainerCommands();
     registerDocumentCommands();
     registerStoredProcedureCommands();
+    registerTriggerCommands();
 
     registerMongoCommands();
     registerPostgresCommands();
@@ -114,4 +116,8 @@ export function registerDocumentCommands() {
 
 export function registerStoredProcedureCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
+}
+
+export function registerTriggerCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBTrigger', deleteDocumentDBTrigger);
 }

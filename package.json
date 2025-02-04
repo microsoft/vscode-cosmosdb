@@ -398,7 +398,6 @@
                 "title": "Open Trigger"
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
                 "title": "Delete Trigger..."
@@ -420,7 +419,7 @@
                 "title": "View Database Offer"
             },
             {
-                "//": "Not moved Screapbook",
+                "//": "Not moved Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Open Query Scrapbook"

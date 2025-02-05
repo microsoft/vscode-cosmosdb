@@ -10,7 +10,6 @@ import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
 import { createDocDBDocument } from './commands/createDocDBDocument';
 import { createDocDBStoredProcedure } from './commands/createDocDBStoredProcedure';
 import { createDocDBTrigger } from './commands/createDocDBTrigger';
-import { executeDocDBStoredProcedure } from './commands/executeDocDBStoredProcedure';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
 import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
@@ -38,12 +37,6 @@ export function registerDocDBCommands(): void {
     // #region StoredProcedureGroup command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBStoredProcedure', createDocDBStoredProcedure);
-
-    // #endregion
-
-    // #region StoredProcedure command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', executeDocDBStoredProcedure);
 
     // #endregion
 

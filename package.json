@@ -284,7 +284,6 @@
                 "title": "Report Issue..."
             },
             {
-                "//": "Databases FileSystem",
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
@@ -358,7 +357,6 @@
                 "title": "Create Document..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openDocument",
                 "title": "Open Document"
@@ -381,6 +379,11 @@
             },
             {
                 "category": "NoSQL",
+                "command": "cosmosDB.executeDocDBStoredProcedure",
+                "title": "Execute Stored Procedure..."
+            },
+            {
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
             },
@@ -399,12 +402,6 @@
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
                 "title": "Delete Trigger..."
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.executeDocDBStoredProcedure",
-                "title": "Execute Stored Procedure..."
             },
             {
                 "category": "NoSQL",

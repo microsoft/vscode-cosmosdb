@@ -28,7 +28,9 @@ import { deleteDocumentDBItem } from './deleteItems/deleteItems';
 import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
 import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
 import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
+import { executeDocumentDBStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
 import { importDocuments } from './importDocuments';
+import { openDocumentDBItem } from './openDocument/openDocument';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { openDocumentDBStoredProcedure } from './openStoredProcedure/openStoredProcedure';
@@ -76,7 +78,8 @@ export function registerCommands(): void {
         },
     );
 
-    /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
+    // For DocumentDB FileSystem (Scrapbook)
+    registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
         async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
     );
@@ -114,6 +117,7 @@ export function registerContainerCommands() {
 
 export function registerDocumentCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', openDocumentDBItem, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocumentDBItem);
 }
 
@@ -123,6 +127,7 @@ export function registerStoredProcedureCommands() {
         openDocumentDBStoredProcedure,
         doubleClickDebounceDelay,
     );
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', executeDocumentDBStoredProcedure);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
 }
 

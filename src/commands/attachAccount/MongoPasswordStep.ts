@@ -29,8 +29,9 @@ export class MongoPasswordStep extends AzureWizardPromptStep<AttachAccountWizard
         context.valuesToMask.push(password);
     }
 
-    public shouldPrompt(): boolean {
-        return true;
+    public shouldPrompt(context: AttachAccountWizardContext): boolean {
+        // prompt for password when not connecting to an emulator
+        return (!context?.mongodbapiIsEmulator);
     }
 
     public validateInput(context: AttachAccountWizardContext, password: string | undefined): string | undefined {

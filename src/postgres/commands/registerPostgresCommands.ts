@@ -6,6 +6,7 @@
 import { registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { defaults } from 'pg';
 import { languages } from 'vscode';
+import { detachDatabaseAccountV1 } from '../../commands/detachDatabaseAccount/detachDatabaseAccount';
 import { doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { PostgresCodeLensProvider } from '../services/PostgresCodeLensProvider';
@@ -42,6 +43,7 @@ export function registerPostgresCommands(): void {
 
     // #region Server command
 
+    registerCommandWithTreeNodeUnwrapping('postgreSQL.detachServer', detachDatabaseAccountV1);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.deleteServer', deletePostgresServer);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.enterCredentials', enterPostgresCredentials);
     registerCommandWithTreeNodeUnwrapping('postgreSQL.configureFirewall', configurePostgresFirewall);

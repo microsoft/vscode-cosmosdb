@@ -14,7 +14,7 @@ import {
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { connectMongoDatabase } from './commands/connectMongoDatabase';
-import { createMongoSrapbook } from './commands/createMongoScrapbook';
+import { createMongoScrapbook } from './commands/createMongoScrapbook';
 import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
 import { executeMongoCommand } from './commands/executeMongoCommand';
 import { MongoConnectError } from './connectToMongoClient';
@@ -37,7 +37,7 @@ export function registerMongoCommands(): void {
 
     setUpErrorReporting();
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoSrapbook);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoScrapbook);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', executeAllMongoCommand);
 

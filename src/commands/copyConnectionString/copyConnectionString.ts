@@ -6,17 +6,8 @@
 import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import {
-    cosmosGremlinFilter,
-    cosmosMongoFilter,
-    cosmosTableFilter,
-    postgresFlexibleFilter,
-    postgresSingleFilter,
-    sqlFilter,
-} from '../../constants';
-import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
+import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { checkAuthentication } from '../../postgres/commands/checkAuthentication';
 import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
@@ -41,21 +32,6 @@ export async function copyPostgresConnectionString(
     }
 
     await copyConnectionString(context, node);
-}
-
-export async function cosmosDBCopyConnectionString(
-    context: IActionContext,
-    node?: MongoAccountTreeItem | DocDBAccountTreeItemBase,
-): Promise<void> {
-    const message = 'The connection string has been copied to the clipboard';
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<MongoAccountTreeItem | DocDBAccountTreeItemBase>(context, {
-            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
-        });
-    }
-
-    await vscode.env.clipboard.writeText(node.connectionString);
-    void vscode.window.showInformationMessage(message);
 }
 
 export async function copyAzureConnectionString(
@@ -99,8 +75,6 @@ export async function copyConnectionString(
                 node.databaseName,
             );
         }
-    } else if (node instanceof DocDBAccountTreeItemBase || node instanceof MongoAccountTreeItem) {
-        connectionString = node.connectionString;
     } else if (node instanceof CosmosDBAccountResourceItemBase || node instanceof MongoClusterItemBase) {
         connectionString = await ext.state.runWithTemporaryDescription(
             node.id,

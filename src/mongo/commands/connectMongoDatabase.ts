@@ -10,8 +10,6 @@ import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { localize } from '../../utils/localize';
 import { MongoScrapbookService } from '../MongoScrapbookService';
 
-export const connectedMongoKey: string = 'ms-azuretools.vscode-cosmosdb.connectedDB';
-
 export async function connectMongoDatabase(
     _context: IActionContext,
     node?: DatabaseItem | CollectionItem,
@@ -31,5 +29,5 @@ export async function connectMongoDatabase(
         return;
     }
 
-    MongoScrapbookService.setConnectedCluster(node.mongoCluster, node.databaseInfo);
+    await MongoScrapbookService.setConnectedCluster(node.mongoCluster, node.databaseInfo);
 }

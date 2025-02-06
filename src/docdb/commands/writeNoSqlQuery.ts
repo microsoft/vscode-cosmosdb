@@ -4,16 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import * as vscodeUtil from '../../utils/vscodeUtils';
-import { DocDBCollectionTreeItem } from '../tree/DocDBCollectionTreeItem';
 import { setConnectedNoSqlContainer } from './connectNoSqlContainer';
-import { pickDocDBAccount } from './pickDocDBAccount';
 
-export async function writeNoSqlQuery(context: IActionContext, node?: DocDBCollectionTreeItem): Promise<void> {
+export async function writeNoSqlQuery(context: IActionContext, node?: DocumentDBContainerResourceItem): Promise<void> {
     if (!node) {
-        node = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
+        node = await pickAppResource<DocumentDBContainerResourceItem>(context, {
+            type: [AzExtResourceType.AzureCosmosDb],
+            expectedChildContextValue: ['treeItem.container'],
+        });
     }
     setConnectedNoSqlContainer(node);
     const sampleQuery = `SELECT * FROM ${node.id}`;
-    await vscodeUtil.showNewFile(sampleQuery, `query for ${node.label}`, '.nosql');
+    await vscodeUtil.showNewFile(sampleQuery, `query for ${node.model.container.id}`, '.nosql');
 }

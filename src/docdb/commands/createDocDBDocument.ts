@@ -4,23 +4,26 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { ViewColumn } from 'vscode';
 import { DocumentTab } from '../../panels/DocumentTab';
-import { DocDBCollectionTreeItem } from '../tree/DocDBCollectionTreeItem';
-import { type DocDBDocumentsTreeItem } from '../tree/DocDBDocumentsTreeItem';
+import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
+import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { createNoSqlQueryConnection } from './connectNoSqlContainer';
-import { pickDocDBAccount } from './pickDocDBAccount';
 
-export async function createDocDBDocument(context: IActionContext, node?: DocDBDocumentsTreeItem): Promise<void> {
-    let collectionNode: DocDBCollectionTreeItem | undefined;
-
+export async function createDocDBDocument(
+    context: IActionContext,
+    node?: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
+): Promise<void> {
     if (!node) {
-        collectionNode = await pickDocDBAccount<DocDBCollectionTreeItem>(context, DocDBCollectionTreeItem.contextValue);
-    } else {
-        collectionNode = node.parent;
+        node = await pickAppResource<DocumentDBContainerResourceItem>(context, {
+            type: [AzExtResourceType.AzureCosmosDb],
+            expectedChildContextValue: ['treeItem.container'],
+        });
     }
 
-    const connection = collectionNode ? createNoSqlQueryConnection(collectionNode) : undefined;
+    const connection = node ? createNoSqlQueryConnection(node) : undefined;
 
     if (!connection) {
         return;

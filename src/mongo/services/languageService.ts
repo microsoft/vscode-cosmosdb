@@ -55,14 +55,16 @@ export class LanguageService {
         });
 
         connection.onRequest('connect', (connectionParams: IConnectionParams) => {
-            void connectToMongoClient(connectionParams.connectionString, connectionParams.extensionUserAgent).then(
-                (account) => {
-                    this.db = account.db(connectionParams.databaseName);
-                    void this.schemaService.registerSchemas(this.db).then((schemas) => {
-                        this.configureSchemas(schemas);
-                    });
-                },
-            );
+            void connectToMongoClient(
+                connectionParams.connectionString,
+                connectionParams.extensionUserAgent,
+                connectionParams.isEmulator,
+            ).then((account) => {
+                this.db = account.db(connectionParams.databaseName);
+                void this.schemaService.registerSchemas(this.db).then((schemas) => {
+                    this.configureSchemas(schemas);
+                });
+            });
         });
 
         connection.onRequest('disconnect', () => {

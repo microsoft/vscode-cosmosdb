@@ -46,6 +46,7 @@ export class MongoScrapbookServiceImpl {
         await ext.mongoLanguageClient.connect(
             CredentialCache.getConnectionStringWithPassword(this._cluster.id),
             this._database.name,
+            cluster.isEmulator ?? false,
         );
     }
 
@@ -124,7 +125,7 @@ export class MongoScrapbookServiceImpl {
 
             const shellRunner = await MongoShellScriptRunner.createShell(context, {
                 connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                isEmulator: false,
+                isEmulator: CredentialCache.isEmulator(this.getClusterId()!),
             });
 
             try {
@@ -237,7 +238,7 @@ export class MongoScrapbookServiceImpl {
             if (!shellRunner) {
                 shellRunner = await MongoShellScriptRunner.createShell(context, {
                     connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                    isEmulator: false,
+                    isEmulator: CredentialCache.isEmulator(this.getClusterId()!),
                 });
                 ephemeralShell = true;
             }

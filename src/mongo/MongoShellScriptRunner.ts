@@ -54,11 +54,8 @@ export class MongoShellScriptRunner extends vscode.Disposable {
 
             if (isEmulator) {
                 // Without these the connection will fail due to the self-signed DocDB certificate
-                if (args.indexOf('--ssl') < 0) {
-                    args.push('--ssl');
-                }
-                if (args.indexOf('--sslAllowInvalidCertificates') < 0) {
-                    args.push('--sslAllowInvalidCertificates');
+                if (args.indexOf('--tlsAllowInvalidCertificates') < 0) {
+                    args.push('--tlsAllowInvalidCertificates');
                 }
             }
 

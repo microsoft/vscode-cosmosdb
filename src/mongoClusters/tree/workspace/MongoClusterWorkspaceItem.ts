@@ -160,7 +160,9 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
             contextValue: this.contextValue,
             label: this.mongoCluster.name,
             description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
-            iconPath: new vscode.ThemeIcon('server-environment'), // Uncomment if icon is available
+            iconPath: this.mongoCluster.isEmulator
+                ? new vscode.ThemeIcon('plug')
+                : new vscode.ThemeIcon('server-environment'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

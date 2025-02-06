@@ -33,6 +33,11 @@ export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeEl
                     dbExperience: MongoClustersExperience,
                     connectionString: item?.secrets?.[0] ?? undefined,
                 };
+
+                if (item.properties?.isEmulator) {
+                    model.isEmulator = item.properties.isEmulator as boolean;
+                }
+
                 return new MongoClusterWorkspaceItem(model);
             }),
             new MongoDBAttachAccountResourceItem(this.id),

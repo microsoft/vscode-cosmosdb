@@ -42,4 +42,13 @@ interface ResourceModelInUse extends Resource {
     dbExperience: Experience;
 
     isServerless?: boolean;
+
+    /**
+     * Indicates whether the account is an emulator.
+     *
+     * This property is set when an account is being added to the workspace.
+     * It is important to know if we are working with an emulator because
+     * special connection settings have to be used, such as disabling TLS/SSL.
+     */
+    isEmulator?: boolean;
 }

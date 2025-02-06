@@ -21,7 +21,11 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<AttachAccountWizard
 
         if (api === API.MongoDB || api === API.MongoClusters) {
             const parsedCS = new ConnectionString(connectionString);
-            const label = parsedCS.username + '@' + parsedCS.hosts.join(',');
+
+            let label = parsedCS.username + '@' + parsedCS.hosts.join(',');
+            if (context.mongodbapiIsEmulator) {
+                label = `Emulator (${parsedCS.hosts.join(',')})`;
+            }
 
             return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
@@ -29,7 +33,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<AttachAccountWizard
                 const storageItem: SharedWorkspaceStorageItem = {
                     id: parsedCS.username + '@' + parsedCS.redact().toString(),
                     name: label,
-                    properties: { isEmulator: false, api },
+                    properties: { isEmulator: context.mongodbapiIsEmulator ?? false, api },
                     secrets: [connectionString],
                 };
 

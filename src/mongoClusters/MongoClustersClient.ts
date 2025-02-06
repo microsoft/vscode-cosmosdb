@@ -125,9 +125,6 @@ export class MongoClustersClient {
      *
      * @param credentialId - A required string used to find the cached connection string to connect.
      * It is also used as a key to reuse existing clients.
-     * @param isEmulator - An optional boolean that indicates whether the server behind the credentials
-     * is an emulator. Setting this to `true` will disable security features like TLS/SSL, which is
-     * required to connect to the Azure Cosmos DB for MongoDB API emulator.
      * @returns A promise that resolves to an instance of `MongoClustersClient`.
      */
     public static async getClient(credentialId: string): Promise<MongoClustersClient> {

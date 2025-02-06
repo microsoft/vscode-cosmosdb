@@ -31,7 +31,6 @@ export async function launchShell(
     context.telemetry.properties.experience = node.experience.api;
 
     let rawConnectionString: string | undefined;
-
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
 
     if (
@@ -40,7 +39,6 @@ export async function launchShell(
         node instanceof MongoClusterWorkspaceItem
     ) {
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, 'Working...', async () => {
-            // WorkspaceItems are fast as there is no connection string discovery happening
             return node.getConnectionString();
         });
     } else {
@@ -81,6 +79,10 @@ export async function launchShell(
         },
     });
 
-    terminal.sendText(`mongosh "${connectionString.toString()}"`);
+    // If the cluster is an emulator, we need to allow invalid certificates
+    const tlsConfiguration =
+        'mongoCluster' in node && node?.mongoCluster?.isEmulator ? '--tlsAllowInvalidCertificates' : '';
+
+    terminal.sendText(`mongosh "${connectionString.toString()}" ${tlsConfiguration}`);
     terminal.show();
 }

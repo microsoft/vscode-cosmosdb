@@ -84,7 +84,13 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 ext.outputChannel.append(`MongoDB Clusters: Connecting to the cluster as "${username}"... `);
 
                 // Cache the credentials
-                CredentialCache.setCredentials(this.id, connectionString.toString(), username, password);
+                CredentialCache.setCredentials(
+                    this.id,
+                    connectionString.toString(),
+                    username,
+                    password,
+                    this.mongoCluster.isEmulator, // only workspace items can potentially be connecting to an emulator
+                );
 
                 // Attempt to create the client with the provided credentials
                 try {

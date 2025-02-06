@@ -24,7 +24,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<AttachAccountWizard
 
             let label = parsedCS.username + '@' + parsedCS.hosts.join(',');
             if (context.mongodbapiIsEmulator) {
-                label = `Emulator (${parsedCS.hosts.join(',')})`;
+                label = `MongoDB Emulator (${parsedCS.hosts.join(',')})`;
             }
 
             return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {

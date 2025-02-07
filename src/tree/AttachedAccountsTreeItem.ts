@@ -14,11 +14,7 @@ import {
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { isWindows, wellKnownEmulatorPassword } from '../constants';
-import { parseDocDBConnectionString } from '../docdb/docDBConnectionStrings';
-import { type CosmosDBCredential } from '../docdb/getCosmosClient';
-import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
-import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { isWindows } from '../constants';
 import { ext } from '../extensionVariables';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';

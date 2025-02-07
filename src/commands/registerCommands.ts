@@ -8,10 +8,9 @@ import {
     type IActionContext,
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
 import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
-import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
 import { ext } from '../extensionVariables';
 import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
@@ -29,7 +28,6 @@ import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteS
 import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
 import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
 import { executeDocumentDBStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
-import { importDocuments } from './importDocuments';
 import { openDocumentDBItem } from './openDocument/openDocument';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
@@ -58,25 +56,29 @@ export function registerCommands(): void {
     registerTriggerCommands();
 
     registerDocDBCommands();
-    registerMongoCommands();
     registerPostgresCommands();
+
+    // this is the tree-independed mongo-scrapbook command set
+    // TODO: refactor to keep it dedicated to the scrapbook.
+    registerMongoCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
-    /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
-        'cosmosDB.importDocument',
-        async (
-            actionContext: IActionContext,
-            selectedNode: vscode.Uri | DocDBCollectionTreeItem,
-            uris: vscode.Uri[],
-        ) => {
-            if (selectedNode instanceof vscode.Uri) {
-                await importDocuments(actionContext, uris || [selectedNode], undefined);
-            } else {
-                await importDocuments(actionContext, undefined, selectedNode);
-            }
-        },
-    );
+    // TODO: Dmitrii, there is a duplicate of it below, can you resolve and keep the correct one?
+    // /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
+    //     'cosmosDB.importDocument',
+    //     async (
+    //         actionContext: IActionContext,
+    //         selectedNode: vscode.Uri | DocDBCollectionTreeItem,
+    //         uris: vscode.Uri[],
+    //     ) => {
+    //         if (selectedNode instanceof vscode.Uri) {
+    //             await importDocuments(actionContext, uris || [selectedNode], undefined);
+    //         } else {
+    //             await importDocuments(actionContext, undefined, selectedNode);
+    //         }
+    //     },
+    // );
 
     // For DocumentDB FileSystem (Scrapbook)
     registerCommandWithTreeNodeUnwrapping(

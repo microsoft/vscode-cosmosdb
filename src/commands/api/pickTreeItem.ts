@@ -6,13 +6,8 @@
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
 import { databaseAccountType } from '../../constants';
-import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
-import { DocDBDatabaseTreeItem } from '../../docdb/tree/DocDBDatabaseTreeItem';
-import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
+import { type DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { GraphDatabaseTreeItem } from '../../graph/tree/GraphDatabaseTreeItem';
-import { type MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
@@ -31,17 +26,9 @@ import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
  * TODO: This needs a rewrite to match v2
  */
 
-const databaseContextValues = [
-    DocDBDatabaseTreeItem.contextValue,
-    GraphDatabaseTreeItem.contextValue,
-    PostgresDatabaseTreeItem.contextValue,
-];
+const databaseContextValues = [PostgresDatabaseTreeItem.contextValue];
 function getDatabaseContextValue(apiType: AzureDatabasesApiType): string {
     switch (apiType) {
-        case 'SQL':
-            return DocDBDatabaseTreeItem.contextValue;
-        case 'Graph':
-            return GraphDatabaseTreeItem.contextValue;
         case 'Postgres':
             return PostgresDatabaseTreeItem.contextValue;
         default:
@@ -74,22 +61,11 @@ export async function pickTreeItem(
         const pickedItem = await ext.rgApi.pickAppResource(context, options);
 
         let parsedCS: ParsedConnectionString;
-        let accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem;
+        let accountNode: PostgresServerTreeItem;
         let databaseNode: DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem | undefined;
-        // if (pickedItem instanceof MongoAccountTreeItem) {
-        //     parsedCS = await parseMongoConnectionString(pickedItem.connectionString);
-        //     accountNode = pickedItem;
-        // } else
-        if (pickedItem instanceof DocDBAccountTreeItemBase) {
-            parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem;
-        } else if (pickedItem instanceof PostgresServerTreeItem) {
+        if (pickedItem instanceof PostgresServerTreeItem) {
             parsedCS = await pickedItem.getFullConnectionString();
             accountNode = pickedItem;
-        } else if (pickedItem instanceof DocDBDatabaseTreeItemBase) {
-            parsedCS = parseDocDBConnectionString(pickedItem.connectionString);
-            accountNode = pickedItem.parent;
-            databaseNode = pickedItem;
         } else if (pickedItem instanceof PostgresDatabaseTreeItem) {
             parsedCS = await pickedItem.parent.getFullConnectionString();
             accountNode = pickedItem.parent;

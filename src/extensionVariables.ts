@@ -10,7 +10,6 @@ import { type ExtensionContext, type SecretStorage } from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
-import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
 import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
 import { type MongoDBAccountsWorkspaceItem } from './mongoClusters/tree/workspace/MongoDBAccountsWorkspaceItem';
@@ -25,11 +24,6 @@ import { type CosmosDBAttachedAccountsResourceItem } from './tree/attached/Cosmo
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
  */
 export namespace ext {
-    /**
-     * These are used to support MongoDB scrapbook feature
-     * */
-    export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
-
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
 

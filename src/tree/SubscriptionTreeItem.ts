@@ -3,32 +3,23 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { type DatabaseAccountGetResults, type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
 import {
     LocationListStep,
     ResourceGroupListStep,
     SubscriptionTreeItemBase,
-    getResourceGroupFromId,
     uiUtils,
     type ILocationWizardContext,
 } from '@microsoft/vscode-azext-azureutils';
 import {
-    AzExtTreeItem,
     AzureWizard,
-    callWithTelemetryAndErrorHandling,
     type AzExtParentTreeItem,
+    type AzExtTreeItem,
     type AzureWizardPromptStep,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { API, getExperienceLabel, tryGetExperience, type Experience } from '../AzureDBExperiences';
-import { type CosmosDBCredential, type CosmosDBKeyCredential } from '../docdb/getCosmosClient';
-import { DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
+import { API, type Experience } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
-import { tryGetGremlinEndpointFromAzure } from '../graph/gremlinEndpoints';
-import { GraphAccountTreeItem } from '../graph/tree/GraphAccountTreeItem';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
 import { PostgresServerType, type PostgresAbstractServer } from '../postgres/abstract/models';
 import { type IPostgresServerWizardContext } from '../postgres/commands/createPostgresServer/IPostgresServerWizardContext';
 import {
@@ -37,9 +28,8 @@ import {
     type ParsedPostgresConnectionString,
 } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
-import { TableAccountTreeItem } from '../table/tree/TableAccountTreeItem';
 import { createActivityContext } from '../utils/activityUtils';
-import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
+import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
 import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
 import { AzureDBAPIStep } from './AzureDBAPIStep';
@@ -65,6 +55,7 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             ),
         ];
 
+        const treeItem: AzExtTreeItem[] = [];
         const treeItemPostgres: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
             postgresServers,
             'invalidPostgreSQLAccount',
@@ -73,14 +64,14 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         );
 
         //CosmosDB
-        const client = await createCosmosDBClient([context, this]);
-        const accounts = await uiUtils.listAllIterator(client.databaseAccounts.list());
-        const treeItem: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
-            accounts,
-            'invalidCosmosDBAccount',
-            async (db: DatabaseAccountGetResults) => await SubscriptionTreeItem.initCosmosDBChild(client, db, this),
-            (db: DatabaseAccountGetResults) => db.name,
-        );
+        // const client = await createCosmosDBClient([context, this]);
+        // const accounts = await uiUtils.listAllIterator(client.databaseAccounts.list());
+        // const treeItem: AzExtTreeItem[] = await this.createTreeItemsWithErrorHandling(
+        //     accounts,
+        //     'invalidCosmosDBAccount',
+        //     async (db: DatabaseAccountGetResults) => await SubscriptionTreeItem.initCosmosDBChild(client, db, this),
+        //     (db: DatabaseAccountGetResults) => db.name,
+        // );
 
         treeItem.push(...treeItemPostgres);
         return treeItem;
@@ -90,7 +81,6 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         context: IActionContext & { defaultExperience?: Experience },
         node: SubscriptionTreeItem,
     ): Promise<AzExtTreeItem> {
-        const client = await createCosmosDBClient([context, node.subscription]);
         const wizardContext: IPostgresServerWizardContext & ICosmosDBWizardContext = Object.assign(
             context,
             node.subscription,
@@ -144,11 +134,13 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
             const parsedCS: ParsedPostgresConnectionString = parsePostgresConnectionString(connectionString);
             return new PostgresServerTreeItem(node, parsedCS, server);
         } else {
-            return await SubscriptionTreeItem.initCosmosDBChild(
-                client,
-                nonNullProp(wizardContext, 'databaseAccount'),
-                node,
-            );
+            throw new Error('Invalid default experience');
+            // const client = await createCosmosDBClient([context, node.subscription]);
+            // return await SubscriptionTreeItem.initCosmosDBChild(
+            //     client,
+            //     nonNullProp(wizardContext, 'databaseAccount'),
+            //     node,
+            // );
         }
     }
 
@@ -156,153 +148,130 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
         return typeof contextValue !== 'string' || !/attached/i.test(contextValue);
     }
 
-    public static async initCosmosDBChild(
-        client: CosmosDBManagementClient,
-        databaseAccount: DatabaseAccountGetResults,
-        parent: AzExtParentTreeItem,
-    ): Promise<AzExtTreeItem> {
-        const experience = tryGetExperience(databaseAccount);
-        const id: string = nonNullProp(databaseAccount, 'id');
-        const name: string = nonNullProp(databaseAccount, 'name', `of the database account ${databaseAccount.id}`);
-        const documentEndpoint: string = nonNullProp(
-            databaseAccount,
-            'documentEndpoint',
-            `of the database account ${databaseAccount.id}`,
-        );
-
-        const resourceGroup: string = getResourceGroupFromId(id);
-        const accountKindLabel = getExperienceLabel(databaseAccount);
-        const label: string = name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
-        const isEmulator: boolean = false;
-
-        const newNode = await callWithTelemetryAndErrorHandling(
-            'cosmosDB.initCosmosDBChild',
-            async (context: IActionContext) => {
-                // leave error handling to the caller (command or tree node)
-                context.errorHandling.suppressDisplay = true;
-                // rethrow all errors to satisfy initCosmosDBChild contract
-                context.errorHandling.rethrow = true;
-                context.telemetry.properties.experience = experience?.api;
-
-                if (experience && experience.api === API.MongoDB) {
-                    const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, name);
-                    const connectionString: URL = new URL(
-                        nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString'),
-                    );
-                    // for any Mongo connectionString, append this query param because the Cosmos Mongo API v3.6 doesn't support retrywrites
-                    // but the newer node.js drivers started breaking this
-                    const searchParam: string = 'retrywrites';
-                    if (!connectionString.searchParams.has(searchParam)) {
-                        connectionString.searchParams.set(searchParam, 'false');
-                    }
-
-                    // Use the default connection string
-                    return new MongoAccountTreeItem(
-                        parent,
-                        id,
-                        label,
-                        connectionString.toString(),
-                        isEmulator,
-                        databaseAccount,
-                    );
-                } else {
-                    let keyCred: CosmosDBKeyCredential | undefined = undefined;
-
-                    const forceOAuth = vscode.workspace
-                        .getConfiguration()
-                        .get<boolean>('azureDatabases.useCosmosOAuth');
-                    context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
-
-                    // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-                    if (!forceOAuth) {
-                        try {
-                            const acc = await client.databaseAccounts.get(resourceGroup, name);
-                            const localAuthDisabled = acc.disableLocalAuth === true;
-                            context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-                            let keyResult: DatabaseAccountListKeysResult | undefined;
-                            // If the account has local auth disabled, don't even try to use key auth
-                            if (!localAuthDisabled) {
-                                keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-                                keyCred = keyResult?.primaryMasterKey
-                                    ? {
-                                          type: 'key',
-                                          key: keyResult.primaryMasterKey,
-                                      }
-                                    : undefined;
-                                context.telemetry.properties.receivedKeyCreds = 'true';
-                            } else {
-                                throw new Error('Local auth is disabled');
-                            }
-                        } catch {
-                            context.telemetry.properties.receivedKeyCreds = 'false';
-                            const message = localize(
-                                'keyPermissionErrorMsg',
-                                'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
-                                name,
-                            );
-                            const openSettingsItem = localize('openSettings', 'Open Settings');
-                            void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                                if (item === openSettingsItem) {
-                                    void vscode.commands.executeCommand(
-                                        'workbench.action.openSettings',
-                                        'azureDatabases.useCosmosOAuth',
-                                    );
-                                }
-                            });
-                        }
-                    }
-
-                    // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
-                    const authCred = { type: 'auth' };
-                    const credentials = [keyCred, authCred].filter(
-                        (cred): cred is CosmosDBCredential => cred !== undefined,
-                    );
-                    switch (experience && experience.api) {
-                        case API.Table:
-                            return new TableAccountTreeItem(
-                                parent,
-                                id,
-                                label,
-                                documentEndpoint,
-                                credentials,
-                                isEmulator,
-                                databaseAccount,
-                            );
-                        case API.Graph: {
-                            const gremlinEndpoint = await tryGetGremlinEndpointFromAzure(client, resourceGroup, name);
-                            return new GraphAccountTreeItem(
-                                parent,
-                                id,
-                                label,
-                                documentEndpoint,
-                                gremlinEndpoint,
-                                credentials,
-                                isEmulator,
-                                databaseAccount,
-                            );
-                        }
-                        case API.Core:
-                        default:
-                            // Default to DocumentDB, the base type for all Cosmos DB Accounts
-                            return new DocDBAccountTreeItem(
-                                parent,
-                                id,
-                                label,
-                                documentEndpoint,
-                                credentials,
-                                isEmulator,
-                                databaseAccount,
-                            );
-                    }
-                }
-            },
-        );
-        if (!(newNode instanceof AzExtTreeItem)) {
-            // note: this should never happen, callWithTelemetryAndErrorHandling will rethrow all errors
-            throw new Error(localize('invalidCosmosDBAccount', 'Invalid Cosmos DB account.'));
-        }
-        return newNode;
-    }
+    // public static async initCosmosDBChild(
+    //     client: CosmosDBManagementClient,
+    //     databaseAccount: DatabaseAccountGetResults,
+    //     parent: AzExtParentTreeItem,
+    // ): Promise<AzExtTreeItem> {
+    //     const experience = tryGetExperience(databaseAccount);
+    //     const id: string = nonNullProp(databaseAccount, 'id');
+    //     const name: string = nonNullProp(databaseAccount, 'name', `of the database account ${databaseAccount.id}`);
+    //     const documentEndpoint: string = nonNullProp(
+    //         databaseAccount,
+    //         'documentEndpoint',
+    //         `of the database account ${databaseAccount.id}`,
+    //     );
+    //
+    //     const resourceGroup: string = getResourceGroupFromId(id);
+    //     const accountKindLabel = getExperienceLabel(databaseAccount);
+    //     const label: string = name + (accountKindLabel ? ` (${accountKindLabel})` : ``);
+    //     const isEmulator: boolean = false;
+    //
+    //     const newNode = await callWithTelemetryAndErrorHandling(
+    //         'cosmosDB.initCosmosDBChild',
+    //         async (context: IActionContext) => {
+    //             // leave error handling to the caller (command or tree node)
+    //             context.errorHandling.suppressDisplay = true;
+    //             // rethrow all errors to satisfy initCosmosDBChild contract
+    //             context.errorHandling.rethrow = true;
+    //             context.telemetry.properties.experience = experience?.api;
+    //
+    //             if (experience && experience.api === API.MongoDB) {
+    //                 const result = await client.databaseAccounts.listConnectionStrings(resourceGroup, name);
+    //                 const connectionString: URL = new URL(
+    //                     nonNullProp(nonNullProp(result, 'connectionStrings')[0], 'connectionString'),
+    //                 );
+    //                 // for any Mongo connectionString, append this query param because the Cosmos Mongo API v3.6 doesn't support retrywrites
+    //                 // but the newer node.js drivers started breaking this
+    //                 const searchParam: string = 'retrywrites';
+    //                 if (!connectionString.searchParams.has(searchParam)) {
+    //                     connectionString.searchParams.set(searchParam, 'false');
+    //                 }
+    //
+    //                 // Use the default connection string
+    //                 return new MongoAccountTreeItem(
+    //                     parent,
+    //                     id,
+    //                     label,
+    //                     connectionString.toString(),
+    //                     isEmulator,
+    //                     databaseAccount,
+    //                 );
+    //             } else {
+    //                 let keyCred: CosmosDBKeyCredential | undefined = undefined;
+    //
+    //                 const forceOAuth = vscode.workspace
+    //                     .getConfiguration()
+    //                     .get<boolean>('azureDatabases.useCosmosOAuth');
+    //                 context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
+    //
+    //                 // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
+    //                 if (!forceOAuth) {
+    //                     try {
+    //                         const acc = await client.databaseAccounts.get(resourceGroup, name);
+    //                         const localAuthDisabled = acc.disableLocalAuth === true;
+    //                         context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+    //                         let keyResult: DatabaseAccountListKeysResult | undefined;
+    //                         // If the account has local auth disabled, don't even try to use key auth
+    //                         if (!localAuthDisabled) {
+    //                             keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
+    //                             keyCred = keyResult?.primaryMasterKey
+    //                                 ? {
+    //                                       type: 'key',
+    //                                       key: keyResult.primaryMasterKey,
+    //                                   }
+    //                                 : undefined;
+    //                             context.telemetry.properties.receivedKeyCreds = 'true';
+    //                         } else {
+    //                             throw new Error('Local auth is disabled');
+    //                         }
+    //                     } catch {
+    //                         context.telemetry.properties.receivedKeyCreds = 'false';
+    //                         const message = localize(
+    //                             'keyPermissionErrorMsg',
+    //                             'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
+    //                             name,
+    //                         );
+    //                         const openSettingsItem = localize('openSettings', 'Open Settings');
+    //                         void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
+    //                             if (item === openSettingsItem) {
+    //                                 void vscode.commands.executeCommand(
+    //                                     'workbench.action.openSettings',
+    //                                     'azureDatabases.useCosmosOAuth',
+    //                                 );
+    //                             }
+    //                         });
+    //                     }
+    //                 }
+    //
+    //                 // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
+    //                 const authCred = { type: 'auth' };
+    //                 const credentials = [keyCred, authCred].filter(
+    //                     (cred): cred is CosmosDBCredential => cred !== undefined,
+    //                 );
+    //                 switch (experience && experience.api) {
+    //                     case API.Core:
+    //                     default:
+    //                         // Default to DocumentDB, the base type for all Cosmos DB Accounts
+    //                         return new DocDBAccountTreeItem(
+    //                             parent,
+    //                             id,
+    //                             label,
+    //                             documentEndpoint,
+    //                             credentials,
+    //                             isEmulator,
+    //                             databaseAccount,
+    //                         );
+    //                 }
+    //             }
+    //         },
+    //     );
+    //     if (!(newNode instanceof AzExtTreeItem)) {
+    //         // note: this should never happen, callWithTelemetryAndErrorHandling will rethrow all errors
+    //         throw new Error(localize('invalidCosmosDBAccount', 'Invalid Cosmos DB account.'));
+    //     }
+    //     return newNode;
+    // }
 
     public static async initPostgresChild(
         server: PostgresAbstractServer,

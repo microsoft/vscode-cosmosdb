@@ -26,21 +26,19 @@ export { getCosmosClient } from './src/docdb/getCosmosClient';
 export * from './src/docdb/registerDocDBCommands';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
-export * from './src/graph/registerGraphCommands';
 export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
 export { MongoCommand } from './src/mongo/MongoCommand';
 export {
     addDatabaseToAccountConnectionString,
     encodeMongoConnectionString,
-    getDatabaseNameFromConnectionString
+    getDatabaseNameFromConnectionString,
 } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbookHelpers';
 export { MongoShellScriptRunner as MongoShell } from './src/mongo/MongoShellScriptRunner';
 export * from './src/mongo/registerMongoCommands';
-export { IDatabaseInfo } from './src/mongo/tree/MongoAccountTreeItem';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';
 export { SettingUtils } from './src/services/SettingsService';
-export { AttachedAccountsTreeItem, MONGO_CONNECTION_EXPECTED } from './src/tree/AttachedAccountsTreeItem';
+export { AttachedAccountsTreeItem } from './src/tree/AttachedAccountsTreeItem';
 export * from './src/utils/azureClients';
 export { getPublicIpv4, isIpInRanges } from './src/utils/getIp';
 export { improveError } from './src/utils/improveError';

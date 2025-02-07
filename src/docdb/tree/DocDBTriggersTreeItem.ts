@@ -21,7 +21,6 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { defaultTrigger } from '../../constants';
-import { type GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
@@ -35,10 +34,10 @@ export class DocDBTriggersTreeItem extends DocDBTreeItemBase<TriggerDefinition> 
     public static contextValue: string = 'cosmosDBTriggersGroup';
     public readonly contextValue: string = DocDBTriggersTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Trigger';
-    public declare readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
+    public declare readonly parent: DocDBCollectionTreeItem;
     public suppressMaskLabel = true;
 
-    constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
+    constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
         this.root = this.parent.root;
     }

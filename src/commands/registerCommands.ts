@@ -8,9 +8,11 @@ import {
     type IActionContext,
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
-import { type DocDBCollectionTreeItem } from '../docdb/tree/DocDBCollectionTreeItem';
+import type vscode from 'vscode';
+import { doubleClickDebounceDelay } from '../constants';
+import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
 import { ext } from '../extensionVariables';
+import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { attachAccount } from './attachAccount/attachAccount';
 import { attachEmulator } from './attachEmulator/attachEmulator';
@@ -18,12 +20,21 @@ import { copyAzureConnectionString } from './copyConnectionString/copyConnection
 import { createDocumentDBContainer, createGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
 import { createServer } from './createServer/createServer';
+import { deleteGraph } from './deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
 import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
-import { detachAzureDatabaseAccount, detachDatabaseAccountV1 } from './detachDatabaseAccount/detachDatabaseAccount';
-import { importDocuments } from './importDocuments';
+import { deleteDocumentDBItem } from './deleteItems/deleteItems';
+import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
+import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
+import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
+import { executeDocumentDBStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
+import { openDocumentDBItem } from './openDocument/openDocument';
+import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
+import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
+import { openDocumentDBStoredProcedure } from './openStoredProcedure/openStoredProcedure';
+import { openDocumentDBTrigger } from './openTrigger/openTrigger';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
-import { viewDocumentDBDatabaseOffer } from './ViewDatabaseOffer/viewDatabaseOffer';
+import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './viewOffer/viewOffer';
 
 /**
  * DISCLAIMER:
@@ -39,27 +50,38 @@ export function registerCommands(): void {
 
     registerAccountCommands();
     registerDatabaseCommands();
+    registerContainerCommands();
+    registerDocumentCommands();
+    registerStoredProcedureCommands();
+    registerTriggerCommands();
 
+    registerDocDBCommands();
     registerPostgresCommands();
+
+    // this is the tree-independed mongo-scrapbook command set
+    // TODO: refactor to keep it dedicated to the scrapbook.
+    registerMongoCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
-    /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
-        'cosmosDB.importDocument',
-        async (
-            actionContext: IActionContext,
-            selectedNode: vscode.Uri | DocDBCollectionTreeItem,
-            uris: vscode.Uri[],
-        ) => {
-            if (selectedNode instanceof vscode.Uri) {
-                await importDocuments(actionContext, uris || [selectedNode], undefined);
-            } else {
-                await importDocuments(actionContext, undefined, selectedNode);
-            }
-        },
-    );
+    // TODO: Dmitrii, there is a duplicate of it below, can you resolve and keep the correct one?
+    // /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
+    //     'cosmosDB.importDocument',
+    //     async (
+    //         actionContext: IActionContext,
+    //         selectedNode: vscode.Uri | DocDBCollectionTreeItem,
+    //         uris: vscode.Uri[],
+    //     ) => {
+    //         if (selectedNode instanceof vscode.Uri) {
+    //             await importDocuments(actionContext, uris || [selectedNode], undefined);
+    //         } else {
+    //             await importDocuments(actionContext, undefined, selectedNode);
+    //         }
+    //     },
+    // );
 
-    /*[ ]*/ registerCommandWithTreeNodeUnwrapping(
+    // For DocumentDB FileSystem (Scrapbook)
+    registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
         async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
     );
@@ -72,8 +94,6 @@ export function registerCommands(): void {
 }
 
 export function registerAccountCommands() {
-    registerCommandWithTreeNodeUnwrapping('postgreSQL.detachServer', detachDatabaseAccountV1);
-
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createAzureDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', attachAccount);
@@ -84,7 +104,36 @@ export function registerAccountCommands() {
 
 export function registerDatabaseCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createContainer', createDocumentDBContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDatabase', deleteAzureDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocumentDBDatabaseOffer);
+}
+
+export function registerContainerCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
+    /*[ ]*/ registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', () => {});
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', deleteGraph);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBContainer', deleteAzureDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBContainerOffer', viewDocumentDBContainerOffer);
+}
+
+export function registerDocumentCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', openDocumentDBItem, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocumentDBItem);
+}
+
+export function registerStoredProcedureCommands() {
+    registerCommandWithTreeNodeUnwrapping(
+        'cosmosDB.openStoredProcedure',
+        openDocumentDBStoredProcedure,
+        doubleClickDebounceDelay,
+    );
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', executeDocumentDBStoredProcedure);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
+}
+
+export function registerTriggerCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', openDocumentDBTrigger, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBTrigger', deleteDocumentDBTrigger);
 }

@@ -41,8 +41,8 @@ export async function deleteDatabase(
 
     const databaseId = node instanceof DatabaseItem ? node.databaseInfo.name : node.model.database.id;
     const confirmed = await getConfirmationAsInSettings(
-        `Drop "${databaseId}"?`,
-        `Drop database "${databaseId}" and its contents?\nThis can't be undone.`,
+        `Delete "${databaseId}"?`,
+        `Delete database "${databaseId}" and its contents?\nThis can't be undone.`,
         databaseId,
     );
 

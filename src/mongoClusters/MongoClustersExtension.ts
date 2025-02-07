@@ -18,12 +18,12 @@ import {
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { createMongoCollection } from '../commands/createContainer/createContainer';
+import { deleteAzureContainer } from '../commands/deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from '../commands/deleteDatabase/deleteDatabase';
 import { launchShell } from '../commands/launchShell/launchShell';
 import { ext } from '../extensionVariables';
 import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
 import { createDocument } from './commands/createDocument';
-import { dropCollection } from './commands/dropCollection';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
 import { mongoClustersImportDocuments } from './commands/importDocuments';
 import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
@@ -96,7 +96,7 @@ export class MongoClustersExtension implements vscode.Disposable {
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', deleteAzureContainer);
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', deleteAzureDatabase);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createMongoCollection);

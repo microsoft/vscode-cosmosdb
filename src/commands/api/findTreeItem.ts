@@ -9,7 +9,6 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
 import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
@@ -117,12 +116,7 @@ async function searchDbAccounts(
             }
 
             let actual: ParsedConnectionString;
-            // if (dbAccount instanceof MongoAccountTreeItem) {
-            //     actual = await parseMongoConnectionString(dbAccount.connectionString);
-            // } else
-            if (dbAccount instanceof DocDBAccountTreeItemBase) {
-                actual = parseDocDBConnectionString(dbAccount.connectionString);
-            } else if (dbAccount instanceof PostgresServerTreeItem) {
+            if (dbAccount instanceof PostgresServerTreeItem) {
                 actual = dbAccount.partialConnectionString;
             } else {
                 return undefined;

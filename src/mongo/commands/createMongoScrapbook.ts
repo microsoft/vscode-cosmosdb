@@ -9,7 +9,7 @@ import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { MongoScrapbookService } from '../MongoScrapbookService';
 
-export async function createMongoSrapbook(
+export async function createMongoScrapbook(
     _context: IActionContext,
     node: DatabaseItem | CollectionItem,
 ): Promise<void> {

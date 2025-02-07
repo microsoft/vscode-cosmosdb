@@ -14,7 +14,6 @@ import {
 import { type AzExtTreeItem, type ICreateChildImplContext, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { defaultStoredProcedure } from '../../constants';
-import { type GraphCollectionTreeItem } from '../../graph/tree/GraphCollectionTreeItem';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { type DocDBCollectionTreeItem } from './DocDBCollectionTreeItem';
@@ -28,10 +27,10 @@ export class DocDBStoredProceduresTreeItem extends DocDBTreeItemBase<StoredProce
     public static contextValue: string = 'cosmosDBStoredProceduresGroup';
     public readonly contextValue: string = DocDBStoredProceduresTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Stored Procedure';
-    public declare readonly parent: DocDBCollectionTreeItem | GraphCollectionTreeItem;
+    public declare readonly parent: DocDBCollectionTreeItem;
     public suppressMaskLabel = true;
 
-    constructor(parent: DocDBCollectionTreeItem | GraphCollectionTreeItem) {
+    constructor(parent: DocDBCollectionTreeItem) {
         super(parent);
         this.root = this.parent.root;
     }

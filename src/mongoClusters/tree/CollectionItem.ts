@@ -63,19 +63,6 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
         ];
     }
 
-    async delete(_context: IActionContext): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        let success = false;
-        await ext.state.showDeleting(this.id, async () => {
-            success = await client.dropCollection(this.databaseInfo.name, this.collectionInfo.name);
-        });
-
-        ext.state.notifyChildrenChanged(`${this.mongoCluster.id}/${this.databaseInfo.name}`);
-
-        return success;
-    }
-
     async insertDocuments(_context: IActionContext, documents: Document[]): Promise<InsertDocumentsResult> {
         const client = await MongoClustersClient.getClient(this.mongoCluster.id);
 

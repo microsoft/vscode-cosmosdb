@@ -261,6 +261,7 @@
         ],
         "commands": [
             {
+                "//": "Not moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",
@@ -283,7 +284,6 @@
                 "title": "Report Issue..."
             },
             {
-                "//": "Databases FileSystem",
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
                 "title": "Update to Cloud",
@@ -326,13 +326,11 @@
                 "title": "Create Graph..."
             },
             {
-                "//": "Not moved",
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.deleteGraph",
                 "title": "Delete Graph..."
             },
             {
-                "//": "Not moved",
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.openGraphExplorer",
                 "title": "Open Graph Explorer"
@@ -343,27 +341,8 @@
                 "title": "Create Container..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
-                "command": "cosmosDB.createDocDBDocument",
-                "title": "Create Document..."
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.createDocDBStoredProcedure",
-                "title": "Create Stored Procedure..."
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.createDocDBTrigger",
-                "title": "Create Trigger..."
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.deleteDocDBCollection",
+                "command": "cosmosDB.deleteDocDBContainer",
                 "title": "Delete Container..."
             },
             {
@@ -374,11 +353,36 @@
             {
                 "//": "Not moved",
                 "category": "NoSQL",
+                "command": "cosmosDB.createDocDBDocument",
+                "title": "Create Document..."
+            },
+            {
+                "category": "NoSQL",
+                "command": "cosmosDB.openDocument",
+                "title": "Open Document"
+            },
+            {
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDocument",
                 "title": "Delete Document..."
             },
             {
                 "//": "Not moved",
+                "category": "NoSQL",
+                "command": "cosmosDB.createDocDBStoredProcedure",
+                "title": "Create Stored Procedure..."
+            },
+            {
+                "category": "NoSQL",
+                "command": "cosmosDB.openStoredProcedure",
+                "title": "Open Stored Procedure"
+            },
+            {
+                "category": "NoSQL",
+                "command": "cosmosDB.executeDocDBStoredProcedure",
+                "title": "Execute Stored Procedure..."
+            },
+            {
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
                 "title": "Delete Stored Procedure..."
@@ -386,19 +390,22 @@
             {
                 "//": "Not moved",
                 "category": "NoSQL",
+                "command": "cosmosDB.createDocDBTrigger",
+                "title": "Create Trigger..."
+            },
+            {
+                "category": "NoSQL",
+                "command": "cosmosDB.openTrigger",
+                "title": "Open Trigger"
+            },
+            {
+                "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
                 "title": "Delete Trigger..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
-                "command": "cosmosDB.executeDocDBStoredProcedure",
-                "title": "Execute Stored Procedure..."
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.viewDocDBCollectionOffer",
+                "command": "cosmosDB.viewDocDBContainerOffer",
                 "title": "View Container Offer"
             },
             {
@@ -407,66 +414,42 @@
                 "title": "View Database Offer"
             },
             {
-                "//": "Not moved",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
                 "title": "Open Query Scrapbook"
             },
             {
-                "//": "Not moved",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.connectNoSqlContainer",
                 "title": "Connect to NoSQL container",
                 "when": "false"
             },
             {
-                "//": "Not moved",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.executeNoSqlQuery",
                 "title": "Execute NoSQL Query",
                 "when": "false"
             },
             {
-                "//": "Not moved",
+                "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.getNoSqlQueryPlan",
                 "title": "Get NoSQL Query Plan",
                 "when": "false"
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.openNoSqlQueryEditor",
-                "title": "Open Query Editor (preview)"
+                "title": "Open Query Editor"
             },
             {
                 "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.importDocument",
                 "title": "Import Document into a Container..."
-            },
-            {
-                "category": "Cosmos DB",
-                "command": "cosmosDB.importDocument",
-                "title": "Import Document into a Container..."
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.openDocument",
-                "title": "Open Document"
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.openStoredProcedure",
-                "title": "Open Stored Procedure"
-            },
-            {
-                "//": "Not moved",
-                "category": "NoSQL",
-                "command": "cosmosDB.openTrigger",
-                "title": "Open Trigger"
             },
             {
                 "category": "PostgreSQL",
@@ -749,16 +732,6 @@
                     "group": "1@1"
                 },
                 {
-                    "command": "postgreSQL.deleteServer",
-                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /postgresServer(?![a-z])/i",
-                    "group": "1@2"
-                },
-                {
-                    "command": "postgreSQL.showPasswordlessWiki",
-                    "when": "view =~ /azure(ResourceGroups|azureFocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i && viewItem =~ /usesPassword/i",
-                    "group": "inline"
-                },
-                {
                     "//": "[Account] (Postgres) Create Database",
                     "command": "postgreSQL.createDatabase",
                     "when": "view =~ /(azureResourceGroups|Workspace|azureFocusView)/ && viewItem =~ /postgresServer(?=[a-z])/i",
@@ -845,7 +818,8 @@
                 {
                     "//": "[Stored Procedure] (Postgres) Create Stored Procedure",
                     "command": "postgreSQL.createStoredProcedureQuery",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures"
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
+                    "group": "1@1"
                 },
                 {
                     "//": "[Stored Procedure] (Postgres) Delete Stored Procedure",
@@ -956,22 +930,10 @@
                     "group": "1@1"
                 },
                 {
-                    "//": "[Container] Open NoSql query editor (scrapbook)",
-                    "command": "cosmosDB.writeNoSqlQuery",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
-                    "group": "1@2"
-                },
-                {
                     "//": "[Container] Import NoSql documents",
                     "command": "cosmosDB.importDocument",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
-                    "group": "1@3"
-                },
-                {
-                    "//": "[Container] Delete NoSql container",
-                    "command": "cosmosDB.deleteDocDBCollection",
-                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
-                    "group": "1@4"
+                    "group": "1@2"
                 },
                 {
                     "//": "[Container] Delete Graph container",
@@ -980,10 +942,16 @@
                     "group": "1@2"
                 },
                 {
-                    "//": "[Container] View NoSql container offer",
-                    "command": "cosmosDB.viewDocDBCollectionOffer",
+                    "//": "[Container] Delete NoSql container",
+                    "command": "cosmosDB.deleteDocDBContainer",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
-                    "group": "1@5"
+                    "group": "1@3"
+                },
+                {
+                    "//": "[Container] View NoSql container offer",
+                    "command": "cosmosDB.viewDocDBContainerOffer",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
+                    "group": "1@4"
                 },
                 {
                     "//": "[Container] Refresh",

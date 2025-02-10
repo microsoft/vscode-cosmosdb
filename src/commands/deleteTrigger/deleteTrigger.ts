@@ -53,7 +53,7 @@ export async function deleteDocumentDBTrigger(
         success = response.statusCode === 204;
     });
 
-    // ext.state.notifyChildrenChanged(accountInfo.id);
+    // ext.state.notifyChildrenChanged(node.id.replace(`/triggers/${triggerId}`, ''));
 
     if (success) {
         showConfirmationAsInSettings(

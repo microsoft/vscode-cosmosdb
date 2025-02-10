@@ -9,7 +9,6 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
@@ -126,9 +125,6 @@ async function searchDbAccounts(
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if (db instanceof DocDBDatabaseTreeItemBase && expected.databaseName === db.databaseName) {
-                            return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
-                        }
                         if (
                             db instanceof PostgresDatabaseTreeItem &&
                             dbAccount instanceof PostgresServerTreeItem &&

@@ -18,16 +18,16 @@ import {
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { createMongoCollection } from '../commands/createContainer/createContainer';
+import { createMongoDocument } from '../commands/createDocument/createDocument';
 import { deleteAzureContainer } from '../commands/deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from '../commands/deleteDatabase/deleteDatabase';
+import { importDocuments } from '../commands/importDocuments/importDocuments';
 import { launchShell } from '../commands/launchShell/launchShell';
+import { openMongoDocumentView } from '../commands/openDocument/openDocument';
 import { ext } from '../extensionVariables';
 import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
-import { createDocument } from './commands/createDocument';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
-import { mongoClustersImportDocuments } from './commands/importDocuments';
 import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
-import { openDocumentView } from './commands/openDocumentView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
@@ -92,7 +92,7 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommand('command.internal.mongoClusters.containerView.open', openCollectionViewInternal);
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.containerView.open', openCollectionView);
 
-                registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
+                registerCommand('command.internal.mongoClusters.documentView.open', openMongoDocumentView);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
@@ -101,12 +101,9 @@ export class MongoClustersExtension implements vscode.Disposable {
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createMongoCollection);
 
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createDocument);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createMongoDocument);
 
-                registerCommandWithTreeNodeUnwrapping(
-                    'command.mongoClusters.importDocuments',
-                    mongoClustersImportDocuments,
-                );
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.importDocuments', importDocuments);
 
                 /**
                  * Here, exporting documents is done in two ways: one is accessible from the tree view

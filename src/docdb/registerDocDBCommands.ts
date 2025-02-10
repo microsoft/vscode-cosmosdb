@@ -7,9 +7,6 @@ import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microso
 import { languages } from 'vscode';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
-import { createDocDBDocument } from './commands/createDocDBDocument';
-import { createDocDBStoredProcedure } from './commands/createDocDBStoredProcedure';
-import { createDocDBTrigger } from './commands/createDocDBTrigger';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
 import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
@@ -26,23 +23,5 @@ export function registerDocDBCommands(): void {
     registerCommand('cosmosDB.connectNoSqlContainer', connectNoSqlContainer);
     registerCommand('cosmosDB.executeNoSqlQuery', executeNoSqlQuery);
     registerCommand('cosmosDB.getNoSqlQueryPlan', getNoSqlQueryPlan);
-    // #endregion
-
-    // #region DocumentGroup command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDocument', createDocDBDocument);
-
-    // #endregion
-
-    // #region StoredProcedureGroup command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBStoredProcedure', createDocDBStoredProcedure);
-
-    // #endregion
-
-    // #region TriggerGroup command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBTrigger', createDocDBTrigger);
-
     // #endregion
 }

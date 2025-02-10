@@ -27,7 +27,7 @@ export async function openNoSqlQueryEditor(
         return undefined;
     }
 
-    context.telemetry.properties.experience = node?.experience.api;
+    context.telemetry.properties.experience = node.experience.api;
 
     const accountInfo = node.model.accountInfo;
     const keyCred = getCosmosKeyCredential(accountInfo.credentials);

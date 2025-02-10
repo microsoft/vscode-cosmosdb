@@ -6,25 +6,25 @@
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
-import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
+import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
 
-export class DocumentDBContainerNameStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+export class DocumentDBStoredProcedureNameStep extends AzureWizardPromptStep<CreateStoredProcedureWizardContext> {
     public hideStepCount: boolean = false;
 
-    public async prompt(context: CreateContainerWizardContext): Promise<void> {
-        context.containerName = (
+    public async prompt(context: CreateStoredProcedureWizardContext): Promise<void> {
+        context.storedProcedureName = (
             await context.ui.showInputBox({
-                prompt: `Enter a ${context.containerTypeName} name for ${context.databaseId}`,
+                prompt: `Enter a stored procedure name for ${context.containerId}`,
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
         ).trim();
 
-        context.valuesToMask.push(context.containerName);
+        context.valuesToMask.push(context.storedProcedureName);
     }
 
-    public shouldPrompt(context: CreateContainerWizardContext): boolean {
-        return !context.containerName;
+    public shouldPrompt(context: CreateStoredProcedureWizardContext): boolean {
+        return !context.storedProcedureName;
     }
 
     public validateInput(name: string | undefined): string | undefined {
@@ -35,36 +35,40 @@ export class DocumentDBContainerNameStep extends AzureWizardPromptStep<CreateCon
             return undefined;
         }
 
-        if (/[/\\?#]/.test(name)) {
-            return `Container name cannot contain the characters '\\', '/', '#', '?'`;
+        if (/[/\\?#&]/.test(name)) {
+            return `Container name cannot contain the characters '\\', '/', '#', '?', '&'`;
         }
 
         if (name.length > 255) {
-            return 'Container name cannot be longer than 255 characters';
+            return 'Trigger name cannot be longer than 255 characters';
         }
 
         return undefined;
     }
 
     private async validateNameAvailable(
-        context: CreateContainerWizardContext,
+        context: CreateStoredProcedureWizardContext,
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {
-            return 'Container name is required.';
+            return 'Stored procedure name is required.';
         }
 
         try {
             const { endpoint, credentials, isEmulator } = context.accountInfo;
             const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-            const result = await cosmosClient.database(context.databaseId).containers.readAll().fetchAll();
+            const result = await cosmosClient
+                .database(context.databaseId)
+                .container(context.containerId)
+                .scripts.storedProcedures.readAll()
+                .fetchAll();
 
-            if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
-                return `The collection "${name}" already exists in the database "${context.databaseId}".`;
+            if (result.resources && result.resources.filter((t) => t.id === name).length > 0) {
+                return `The stored procedure "${name}" already exists in the container "${context.databaseId}".`;
             }
         } catch (error) {
-            ext.outputChannel.appendLine(`Failed to validate container name: ${parseError(error).message}`);
+            ext.outputChannel.appendLine(`Failed to validate stored procedure name: ${parseError(error).message}`);
             return undefined; // we don't want to block the user from continuing if we can't validate the name
         }
 

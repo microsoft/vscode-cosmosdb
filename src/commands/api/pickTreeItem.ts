@@ -6,7 +6,6 @@
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
 import { databaseAccountType } from '../../constants';
-import { type DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
@@ -62,7 +61,7 @@ export async function pickTreeItem(
 
         let parsedCS: ParsedConnectionString;
         let accountNode: PostgresServerTreeItem;
-        let databaseNode: DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem | undefined;
+        let databaseNode: PostgresDatabaseTreeItem | undefined;
         if (pickedItem instanceof PostgresServerTreeItem) {
             parsedCS = await pickedItem.getFullConnectionString();
             accountNode = pickedItem;

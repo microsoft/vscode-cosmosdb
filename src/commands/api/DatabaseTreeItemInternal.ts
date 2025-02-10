@@ -8,7 +8,6 @@ import {
     type AzExtTreeItem,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-import { type DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { type PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
@@ -24,7 +23,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
         parsedCS: ParsedConnectionString,
         databaseName: string,
         accountNode?: PostgresServerTreeItem,
-        dbNode?: DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem,
+        dbNode?: PostgresDatabaseTreeItem,
     ) {
         super(parsedCS, accountNode);
         this.databaseName = databaseName;

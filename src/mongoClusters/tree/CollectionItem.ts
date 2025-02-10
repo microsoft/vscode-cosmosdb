@@ -3,20 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type Document } from 'bson';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, type TreeItem, TreeItemCollapsibleState } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { ext } from '../../extensionVariables';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
-import {
-    type CollectionItemModel,
-    type DatabaseItemModel,
-    type InsertDocumentsResult,
-    MongoClustersClient,
-} from '../MongoClustersClient';
+import { type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
@@ -61,18 +54,6 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
             }) as CosmosDBTreeElement,
             new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
-    }
-
-    async insertDocuments(_context: IActionContext, documents: Document[]): Promise<InsertDocumentsResult> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        let result: InsertDocumentsResult = { acknowledged: false, insertedCount: 0 };
-
-        await ext.state.runWithTemporaryDescription(this.id, 'Importing...', async () => {
-            result = await client.insertDocuments(this.databaseInfo.name, this.collectionInfo.name, documents);
-        });
-
-        return result;
     }
 
     getTreeItem(): TreeItem {

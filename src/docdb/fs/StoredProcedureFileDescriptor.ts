@@ -34,8 +34,8 @@ export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
         const replace = await cosmosClient
             .database(this.model.database.id)
             .container(this.model.container.id)
-            .scripts.storedProcedure(this.id)
-            .replace({ id: this.id, body: content });
+            .scripts.storedProcedure(this.model.procedure.id)
+            .replace({ id: this.model.procedure.id, body: content });
         this.model.procedure = nonNullProp(replace, 'resource');
     }
 }

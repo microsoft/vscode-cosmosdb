@@ -71,7 +71,7 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
             .container(this.model.container.id)
             .scripts.trigger(this.model.trigger.id)
             .replace({
-                id: this.id,
+                id: this.model.trigger.id,
                 triggerType: triggerType,
                 triggerOperation: triggerOperation,
                 body: content,

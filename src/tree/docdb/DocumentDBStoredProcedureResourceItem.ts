@@ -35,6 +35,7 @@ export abstract class DocumentDBStoredProcedureResourceItem
             command: {
                 title: 'Open Stored Procedure',
                 command: 'cosmosDB.openStoredProcedure',
+                arguments: [this],
             },
         };
     }

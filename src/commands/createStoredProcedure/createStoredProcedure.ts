@@ -35,7 +35,7 @@ export async function createDocumentDBStoredProcedure(
 
     context.telemetry.properties.experience = node.experience.api;
 
-    const nodeId = node instanceof DocumentDBStoredProceduresResourceItem ? node.id : `${node.id}/triggers`;
+    const nodeId = node instanceof DocumentDBStoredProceduresResourceItem ? node.id : `${node.id}/storedProcedures`;
     const wizardContext: CreateStoredProcedureWizardContext = {
         ...context,
         accountInfo: node.model.accountInfo,
@@ -59,7 +59,8 @@ export async function createDocumentDBStoredProcedure(
         ext.state.notifyChildrenChanged(nodeId);
 
         const model: DocumentDBStoredProcedureModel = { ...node.model, procedure: wizardContext.response };
-        const fsNode = new StoredProcedureFileDescriptor(node.id, model, node.experience);
+        const procedureId = model.procedure.id;
+        const fsNode = new StoredProcedureFileDescriptor(`${nodeId}/${procedureId}`, model, node.experience);
         await ext.fileSystem.showTextDocument(fsNode);
     }
 }

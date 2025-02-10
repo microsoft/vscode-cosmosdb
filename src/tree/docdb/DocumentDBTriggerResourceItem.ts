@@ -35,6 +35,7 @@ export abstract class DocumentDBTriggerResourceItem
             command: {
                 title: 'Open Trigger',
                 command: 'cosmosDB.openTrigger',
+                arguments: [this],
             },
         };
     }

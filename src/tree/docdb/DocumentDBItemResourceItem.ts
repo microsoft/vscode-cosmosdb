@@ -51,6 +51,7 @@ export abstract class DocumentDBItemResourceItem
             command: {
                 title: 'Open Document',
                 command: 'cosmosDB.openDocument',
+                arguments: [this],
             },
         };
     }

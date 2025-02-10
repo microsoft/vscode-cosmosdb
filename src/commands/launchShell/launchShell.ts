@@ -14,6 +14,7 @@ import { MongoClusterWorkspaceItem } from '../../mongoClusters/tree/workspace/Mo
 import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
 
 import { ConnectionString } from 'mongodb-connection-string-url';
+import { isWindows } from '../../constants';
 
 export async function launchShell(
     context: IActionContext,
@@ -57,7 +58,6 @@ export async function launchShell(
     const username = connectionString.username;
     const password = connectionString.password;
 
-    const isWindows = process.platform === 'win32';
     connectionString.username = isWindows ? '%USERNAME%' : '$USERNAME';
     connectionString.password = isWindows ? '%PASSWORD%' : '$PASSWORD';
 

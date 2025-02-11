@@ -67,6 +67,8 @@ export async function importDocuments(
     await ext.state.runWithTemporaryDescription(selectedItem.id, 'Importing...', async () => {
         await importDocumentsWithProgress(selectedItem, uris);
     });
+
+    ext.state.notifyChildrenChanged(selectedItem.id);
 }
 
 export async function importDocumentsWithProgress(
@@ -135,7 +137,8 @@ export async function importDocumentsWithProgress(
         },
     );
 
-    await vscode.window.showInformationMessage(result);
+    // We should not use await here, otherwise the node status will not be updated until the message is closed
+    vscode.window.showInformationMessage(result);
 }
 
 async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
@@ -159,11 +162,13 @@ async function parseAndValidateFile(
 ): Promise<{ documents: unknown[]; errors: string[] }> {
     try {
         if (node instanceof CollectionItem) {
-            return parseAndValidateFileForMongo(uri);
+            // await needs to catch the error here, otherwise it will be thrown to the caller
+            return await parseAndValidateFileForMongo(uri);
         }
 
         if (node instanceof DocumentDBContainerResourceItem) {
-            return parseAndValidateFileForDocumentDB(uri, node.model.container.partitionKey);
+            // await needs to catch the error here, otherwise it will be thrown to the caller
+            return await parseAndValidateFileForDocumentDB(uri, node.model.container.partitionKey);
         }
     } catch (e) {
         return { documents: [], errors: [parseError(e).message] };
@@ -265,11 +270,13 @@ async function insertDocument(
 ): Promise<{ document: unknown; error: string }> {
     try {
         if (node instanceof CollectionItem) {
-            return insertDocumentIntoMongoCluster(node, document as Document);
+            // await needs to catch the error here, otherwise it will be thrown to the caller
+            return await insertDocumentIntoMongoCluster(node, document as Document);
         }
 
         if (node instanceof DocumentDBContainerResourceItem) {
-            return insertDocumentIntoDocumentDB(node, document as ItemDefinition);
+            // await needs to catch the error here, otherwise it will be thrown to the caller
+            return await insertDocumentIntoDocumentDB(node, document as ItemDefinition);
         }
     } catch (e) {
         return { document, error: parseError(e).message };

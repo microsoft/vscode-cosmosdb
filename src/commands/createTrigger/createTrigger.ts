@@ -62,8 +62,6 @@ export async function createDocumentDBTrigger(
     await wizard.execute();
 
     if (wizardContext.response) {
-        ext.state.notifyChildrenChanged(nodeId);
-
         const model: DocumentDBTriggerModel = { ...node.model, trigger: wizardContext.response };
         const triggerId = model.trigger.id;
         const fsNode = new TriggerFileDescriptor(`${nodeId}/${triggerId}`, model, node.experience);

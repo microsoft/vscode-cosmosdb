@@ -56,8 +56,6 @@ export async function createDocumentDBStoredProcedure(
     await wizard.execute();
 
     if (wizardContext.response) {
-        ext.state.notifyChildrenChanged(nodeId);
-
         const model: DocumentDBStoredProcedureModel = { ...node.model, procedure: wizardContext.response };
         const procedureId = model.procedure.id;
         const fsNode = new StoredProcedureFileDescriptor(`${nodeId}/${procedureId}`, model, node.experience);

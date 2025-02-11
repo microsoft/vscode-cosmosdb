@@ -47,25 +47,27 @@ export async function deleteDocumentDBStoredProcedure(
     const accountInfo = node.model.accountInfo;
     const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
 
-    let success = false;
-    await ext.state.showDeleting(node.id, async () => {
-        const response = await client
-            .database(databaseId)
-            .container(containerId)
-            .scripts.storedProcedure(procedureId)
-            .delete();
-        success = response.statusCode === 204;
-    });
+    try {
+        let success = false;
+        await ext.state.showDeleting(node.id, async () => {
+            const response = await client
+                .database(databaseId)
+                .container(containerId)
+                .scripts.storedProcedure(procedureId)
+                .delete();
+            success = response.statusCode === 204;
+        });
 
-    // ext.state.notifyChildrenChanged(accountInfo.id);
-
-    if (success) {
-        showConfirmationAsInSettings(
-            localize(
-                'showConfirmation.droppedStoredProcedure',
-                'The stored procedure {0} has been deleted.',
-                procedureId,
-            ),
-        );
+        if (success) {
+            showConfirmationAsInSettings(
+                localize(
+                    'showConfirmation.droppedStoredProcedure',
+                    'The stored procedure {0} has been deleted.',
+                    procedureId,
+                ),
+            );
+        }
+    } finally {
+        ext.state.notifyChildrenChanged(node.id.replace(`/${procedureId}`, ''));
     }
 }

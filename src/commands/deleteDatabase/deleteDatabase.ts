@@ -50,12 +50,18 @@ export async function deleteDatabase(
         return;
     }
 
-    const success = await (node instanceof DatabaseItem ? deleteMongoDatabase(node) : deleteDocumentDBDatabase(node));
+    try {
+        const success = await (node instanceof DatabaseItem
+            ? deleteMongoDatabase(node)
+            : deleteDocumentDBDatabase(node));
 
-    if (success) {
-        showConfirmationAsInSettings(
-            localize('showConfirmation.droppedDatabase', 'The "{0}" database has been deleted.', databaseId),
-        );
+        if (success) {
+            showConfirmationAsInSettings(
+                localize('showConfirmation.droppedDatabase', 'The "{0}" database has been deleted.', databaseId),
+            );
+        }
+    } finally {
+        ext.state.notifyChildrenChanged(node.id.replace(`/${databaseId}`, ''));
     }
 }
 
@@ -69,8 +75,6 @@ async function deleteDocumentDBDatabase(node: DocumentDBDatabaseResourceItem): P
         success = response.statusCode === 204;
     });
 
-    ext.state.notifyChildrenChanged(accountInfo.id);
-
     return success;
 }
 
@@ -81,8 +85,6 @@ async function deleteMongoDatabase(node: DatabaseItem): Promise<boolean> {
     await ext.state.showDeleting(node.id, async () => {
         success = await client.dropDatabase(node.databaseInfo.name);
     });
-
-    ext.state.notifyChildrenChanged(node.mongoCluster.id);
 
     return success;
 }

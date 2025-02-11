@@ -19,7 +19,7 @@ import { createDocumentDBDocument } from './createDocument/createDocument';
 import { createServer } from './createServer/createServer';
 import { createDocumentDBStoredProcedure } from './createStoredProcedure/createStoredProcedure';
 import { createDocumentDBTrigger } from './createTrigger/createTrigger';
-import { deleteGraph } from './deleteContainer/deleteContainer';
+import { deleteAzureContainer, deleteGraph } from './deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
 import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
 import { deleteDocumentDBItem } from './deleteItems/deleteItems';
@@ -89,7 +89,7 @@ export function registerContainerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', importDocuments);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', deleteGraph);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBContainer', deleteAzureDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBContainer', deleteAzureContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBContainerOffer', viewDocumentDBContainerOffer);
 }
 

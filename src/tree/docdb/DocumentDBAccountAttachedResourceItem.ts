@@ -7,7 +7,7 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { rejectOnTimeout } from '../../utils/timeout';
@@ -65,8 +65,9 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
         } catch (e) {
             if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                 this.hasShownRbacNotification = true;
-
-                const principalId = (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint)) ?? '';
+                const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
+                const principalId =
+                    (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId)) ?? '';
                 void showRbacPermissionError(this.id, principalId);
             }
             throw e; // rethrowing tells the resources extension to show the exception message in the tree

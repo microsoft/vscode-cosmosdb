@@ -32,13 +32,13 @@ export async function getNoSqlQueryPlan(
         throw new Error('Unable to get query plan due to missing node data. Please connect to a Cosmos DB collection.');
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } =
+        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } =
             connectedCollection as NoSqlQueryConnection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
             credentials.push({ type: 'key', key: masterKey });
         }
-        credentials.push({ type: 'auth' });
+        credentials.push({ type: 'auth', tenantId: tenantId });
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
         await vscodeUtil.showNewFile(

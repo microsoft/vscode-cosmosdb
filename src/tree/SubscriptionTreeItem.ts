@@ -244,8 +244,9 @@ export class SubscriptionTreeItem extends SubscriptionTreeItemBase {
     //                     }
     //                 }
     //
+    //                const tenantId = parent.subscription.tenantId;
     //                 // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
-    //                 const authCred = { type: 'auth' };
+    //                 const authCred = { type: 'auth', tenantId: tenantId };
     //                 const credentials = [keyCred, authCred].filter(
     //                     (cred): cred is CosmosDBCredential => cred !== undefined,
     //                 );

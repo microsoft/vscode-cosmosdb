@@ -3,7 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
+import {
+    type IActionContext,
+    registerCommand,
+    registerCommandWithTreeNodeUnwrapping,
+} from '@microsoft/vscode-azext-utils';
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
 import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
@@ -28,6 +32,7 @@ import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
 import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
 import { executeDocumentDBStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
 import { importDocuments } from './importDocuments/importDocuments';
+import { documentDBLoadMore } from './loadMore/loadMore';
 import { openDocumentDBItem } from './openDocument/openDocument';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
@@ -98,6 +103,7 @@ export function registerDocumentCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', openDocumentDBItem, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocumentDBItem);
+    registerCommand('cosmosDB.loadMore', documentDBLoadMore);
 }
 
 export function registerStoredProcedureCommands() {

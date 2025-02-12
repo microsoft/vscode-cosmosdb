@@ -20,7 +20,6 @@ import { parsePostgresConnectionString } from '../postgres/postgresConnectionStr
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { getSecretStorageKey } from '../utils/getSecretStorageKey';
 import { nonNullProp, nonNullValue } from '../utils/nonNull';
-import { SubscriptionTreeItem } from './SubscriptionTreeItem';
 
 export interface PersistedAccount {
     id: string;
@@ -153,7 +152,6 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             // We have to make sure the Attached Accounts node is not shown for commands like
             // 'Open in Portal', which only work for the non-attached version
             case PostgresServerTreeItem.contextValue:
-            case SubscriptionTreeItem.contextValue:
                 return false;
             default:
                 return true;

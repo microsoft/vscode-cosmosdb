@@ -4,19 +4,29 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { ext } from '../../extensionVariables';
-import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
+import { API } from '../../AzureDBExperiences';
+import { openUrl } from '../../utils/openUrl';
+import { pickExperience, QuickPickType } from '../../utils/pickItem/pickExperience';
 
-/**
- * At this moment this function is relying on old V1 implementation of the API.
- */
-export async function createServer(context: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
-    if (!node) {
-        node = await ext.rgApi.appResourceTree.showTreeItemPicker<SubscriptionTreeItem>(
-            SubscriptionTreeItem.contextValue,
-            context,
-        );
+export async function createServer(context: IActionContext): Promise<void> {
+    const experience = await pickExperience(context, QuickPickType.ALL);
+    const api = experience.api;
+
+    context.telemetry.properties.experience = api;
+
+    if (api === API.PostgresSingle) {
+        await openUrl(`https://portal.azure.com/#create/Microsoft.PostgreSQLServerGroup`);
     }
 
-    await SubscriptionTreeItem.createChild(context, node);
+    if (api === API.PostgresFlexible) {
+        await openUrl(`https://portal.azure.com/#create/Microsoft.PostgreSQLFlexibleServer`);
+    }
+
+    if (experience.api === API.MongoClusters || experience.api === API.MongoDB) {
+        await openUrl(`https://portal.azure.com/#view/Microsoft_Azure_DocumentDB/MongoDB_Type_Selection.ReactView`);
+    }
+
+    if (api === API.Core || api === API.Table || api === API.Graph || api === API.Cassandra) {
+        await openUrl(`https://portal.azure.com/#create/Microsoft.DocumentDB`);
+    }
 }

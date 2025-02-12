@@ -261,7 +261,6 @@
         ],
         "commands": [
             {
-                "//": "Not moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",

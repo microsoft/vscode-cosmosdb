@@ -51,7 +51,7 @@ import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './vie
  */
 
 export function registerCommands(): void {
-    /*[ ]*/ registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
 
     registerAccountCommands();
     registerDatabaseCommands();

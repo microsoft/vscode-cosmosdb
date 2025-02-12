@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createTestActionContext } from '@microsoft/vscode-azext-dev';
+import { IActionContext } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import { isIPv4 } from 'net';
-import { getPublicIpv4, isIpInRanges, type IActionContext } from '../../extension.bundle';
+import { getPublicIpv4, isIpInRanges } from '../../extension.bundle';
 
 suite('getPublicIpv4', () => {
     test('get IP', async () => {

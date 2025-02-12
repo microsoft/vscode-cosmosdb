@@ -14,7 +14,5 @@ import { type CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccount
 
 export interface DeleteWizardContext extends IActionContext, ExecuteActivityContext {
     node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterResourceItem;
-    deletePostgres: boolean;
-    resourceGroupToDelete?: string;
     subscription: ISubscriptionContext;
 }

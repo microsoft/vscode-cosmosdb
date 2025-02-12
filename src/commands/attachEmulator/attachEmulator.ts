@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { isLinux, isWindows } from '../../constants';
+import { isEmulatorSupported } from '../../constants';
 import { type CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/CosmosDBAttachEmulatorResourceItem';
 import { localize } from '../../utils/localize';
 import { type AttachEmulatorWizardContext } from './AttachEmulatorWizardContext';
@@ -13,9 +13,14 @@ import { PromptExperienceStep } from './PromptExperienceStep';
 import { PromptPortStep } from './PromptPortStep';
 
 export async function attachEmulator(context: IActionContext, node: CosmosDBAttachEmulatorResourceItem) {
-    if (!isWindows && !isLinux) {
+    if (!isEmulatorSupported) {
         context.errorHandling.suppressReportIssue = true;
-        throw new Error(localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'));
+        throw new Error(
+            localize(
+                'emulatorNotSupported',
+                'The Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
+            ),
+        );
     }
 
     const wizardContext: AttachEmulatorWizardContext = { ...context, parentTreeElementId: node.parentId };

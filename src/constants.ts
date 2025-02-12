@@ -5,6 +5,7 @@
 
 export const isWindows: boolean = /^win/.test(process.platform);
 export const isLinux: boolean = /^linux/.test(process.platform);
+export const isMacOS: boolean = /^darwin/.test(process.platform);
 
 import * as fs from 'fs';
 import assert from 'node:assert';
@@ -93,6 +94,8 @@ export const defaultTrigger = `function trigger() {
 
 export const emulatorPassword =
     'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
+
+export const isEmulatorSupported = isWindows || isLinux || (isMacOS && process.arch === 'x64');
 
 // https://docs.mongodb.com/manual/mongo/#working-with-the-mongo-shell
 export const testDb: string = 'test';

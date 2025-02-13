@@ -46,6 +46,7 @@ export class MongoEmulatorStep extends AzureWizardPromptStep<AttachAccountWizard
                 title: 'Emulator Connection Confirmation',
                 placeHolder: localize('confirmUsingEmulator', 'Please confirm if you are connecting to an emulator'),
                 enableGrouping: true,
+                suppressPersistence: true, // the order of items will not be modified by past choices
             },
         );
 
@@ -56,7 +57,9 @@ export class MongoEmulatorStep extends AzureWizardPromptStep<AttachAccountWizard
         if (selecteditem.id === 'learnMore') {
             context.telemetry.properties.emulatorLearnMore = 'true';
 
-            await openUrl('https://learn.microsoft.com/azure/cosmos-db/mongodb/vcore/quickstart-portal');
+            await openUrl(
+                'https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?pivots=api-mongodb',
+            );
             throw new UserCancelledError();
         }
     }

@@ -3,32 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { KeyValueStore } from '../../KeyValueStore';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
-import { type NoSqlQueryConnection, noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
-import { getCosmosKeyCredential } from '../getCosmosClient';
-
-export function createNoSqlQueryConnection(
-    node: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
-): NoSqlQueryConnection {
-    const accountInfo = node.model.accountInfo;
-    const databaseId = node.model.database.id;
-    const containerId = node.model.container.id;
-    const keyCred = getCosmosKeyCredential(accountInfo.credentials);
-
-    return {
-        databaseId: databaseId,
-        containerId: containerId,
-        endpoint: accountInfo.endpoint,
-        masterKey: keyCred?.key,
-        isEmulator: accountInfo.isEmulator,
-    };
-}
+import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
+import { createNoSqlQueryConnection } from '../utils/NoSqlQueryConnection';
 
 export function setConnectedNoSqlContainer(node: DocumentDBContainerResourceItem): void {
     const noSqlQueryConnection = createNoSqlQueryConnection(node);
@@ -42,16 +24,6 @@ export async function connectNoSqlContainer(context: IActionContext): Promise<vo
         expectedChildContextValue: ['treeItem.container'],
     });
     setConnectedNoSqlContainer(node);
-}
-
-export async function getNoSqlQueryConnection(): Promise<NoSqlQueryConnection | undefined> {
-    return callWithTelemetryAndErrorHandling<NoSqlQueryConnection>('cosmosDB.connectToDatabase', async (context) => {
-        const node = await pickAppResource<DocumentDBContainerResourceItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.container'],
-        });
-        return createNoSqlQueryConnection(node);
-    });
 }
 
 export async function disconnectNoSqlContainer(): Promise<void> {

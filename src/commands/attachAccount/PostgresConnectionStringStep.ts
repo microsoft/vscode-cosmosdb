@@ -50,6 +50,10 @@ export class PostgresConnectionStringStep extends AzureWizardPromptStep<AttachAc
 
     //eslint-disable-next-line @typescript-eslint/require-await
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
+        if (connectionString.length === 0) {
+            return 'Connection string is required.';
+        }
+
         try {
             parsePostgresConnectionString(connectionString);
         } catch (error) {

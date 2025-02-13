@@ -6,7 +6,6 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import { type CosmosDBResource } from './tree/CosmosAccountModel';
-import { nonNullProp } from './utils/nonNull';
 
 export enum API {
     MongoDB = 'MongoDB',
@@ -47,23 +46,6 @@ export function getExperienceFromApi(api: API): Experience {
         info = { api: api, shortName: api, longName: api, kind: DBAccountKind.GlobalDocumentDB, tag: api };
     }
     return info;
-}
-
-export function getExperienceLabel(resource: CosmosDBResource | DatabaseAccountGetResults): string {
-    const experience: Experience | undefined = tryGetExperience(resource);
-    if (experience) {
-        return experience.shortName;
-    }
-    // Must be some new kind of resource that we aren't aware of.  Try to get a decent label
-    const defaultExperience: string = resource?.tags?.defaultExperience ?? '';
-
-    if ('capabilities' in resource) {
-        const firstCapability = resource?.capabilities?.[0] ?? {};
-        const firstCapabilityName = firstCapability?.name?.replace(/^Enable/, '');
-        return firstCapabilityName || nonNullProp(resource, 'kind');
-    }
-
-    return defaultExperience || nonNullProp(resource, 'kind');
 }
 
 export function tryGetExperience(resource: CosmosDBResource | DatabaseAccountGetResults): Experience | undefined {

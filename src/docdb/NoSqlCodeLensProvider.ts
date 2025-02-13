@@ -23,6 +23,7 @@ export type NoSqlQueryConnection = {
     endpoint: string;
     masterKey?: string;
     isEmulator: boolean;
+    tenantId: string | undefined;
 };
 
 export const noSqlQueryConnectionKey = 'NO_SQL_QUERY_CONNECTION_KEY.v1';

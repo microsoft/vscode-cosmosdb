@@ -8,6 +8,7 @@ import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { type EditableFileSystemItem } from '../DatabasesFileSystem';
 import { ext } from '../extensionVariables';
 import { type CosmosDBTreeElement } from '../tree/CosmosDBTreeElement';
 import { getRootPath } from './workspacUtils';
@@ -80,7 +81,7 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error('Could not find unique name for new file.');
 }
 
-export function getNodeEditorLabel(node: AzExtTreeItem | CosmosDBTreeElement): string {
+export function getNodeEditorLabel(node: AzExtTreeItem | CosmosDBTreeElement | EditableFileSystemItem): string {
     if (node instanceof AzExtTreeItem) {
         const labels = [node.label];
         const azExtNode = node as AzExtTreeItem;

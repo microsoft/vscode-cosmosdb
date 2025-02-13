@@ -14,7 +14,7 @@ export class DocumentDBContainerNameStep extends AzureWizardPromptStep<CreateCon
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
         context.containerName = (
             await context.ui.showInputBox({
-                prompt: `Enter an ${context.containerTypeName} name for ${context.databaseId}`,
+                prompt: `Enter a ${context.containerTypeName} name for ${context.databaseId}`,
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })

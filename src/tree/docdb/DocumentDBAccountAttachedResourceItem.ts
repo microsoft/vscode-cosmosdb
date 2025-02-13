@@ -3,18 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import { type TreeItem } from 'vscode';
+import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
+import { localize } from '../../utils/localize';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { type AccountInfo, getAccountInfo } from './AccountInfo';
+import { getAccountInfo, type AccountInfo } from './AccountInfo';
 
 export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAccountResourceItemBase {
     public declare readonly account: CosmosDBAttachedAccountModel;
@@ -63,11 +64,30 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
                 return await getResources();
             }
         } catch (e) {
-            if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
-                this.hasShownRbacNotification = true;
-
-                const principalId = (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint)) ?? '';
-                void showRbacPermissionError(this.id, principalId);
+            if (e instanceof Error) {
+                if (isRbacException(e) && !this.hasShownRbacNotification) {
+                    this.hasShownRbacNotification = true;
+                    const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
+                    const principalId =
+                        (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId)) ?? '';
+                    void showRbacPermissionError(this.id, principalId);
+                }
+                if (this.account.isEmulator && e instanceof RestError && e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+                    const message = localize(
+                        'keyPermissionErrorMsg',
+                        "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
+                    );
+                    const readMoreItem = localize('learnMore', 'Learn More');
+                    void vscode.window.showErrorMessage(message, ...[readMoreItem]).then((item) => {
+                        if (item === readMoreItem) {
+                            void vscode.env.openExternal(
+                                vscode.Uri.parse(
+                                    'https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?tabs=docker-linux%2Ccsharp&pivots=api-nosql#import-the-emulators-tlsssl-certificate',
+                                ),
+                            );
+                        }
+                    });
+                }
             }
             throw e; // rethrowing tells the resources extension to show the exception message in the tree
         }

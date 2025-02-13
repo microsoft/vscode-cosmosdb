@@ -18,6 +18,6 @@ export async function writeNoSqlQuery(context: IActionContext, node?: DocumentDB
         });
     }
     setConnectedNoSqlContainer(node);
-    const sampleQuery = `SELECT * FROM ${node.id}`;
+    const sampleQuery = `SELECT * FROM ${node.model.container.id}`;
     await vscodeUtil.showNewFile(sampleQuery, `query for ${node.model.container.id}`, '.nosql');
 }

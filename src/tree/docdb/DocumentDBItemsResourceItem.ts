@@ -20,9 +20,8 @@ export abstract class DocumentDBItemsResourceItem
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.documents';
 
-    protected iterator: QueryIterator<ItemDefinition> | undefined;
-    protected cachedItems: ItemDefinition[] = [];
     protected hasMoreChildren: boolean = true;
+    protected batchSize: number;
 
     protected constructor(
         public readonly model: DocumentDBItemsModel,
@@ -30,23 +29,16 @@ export abstract class DocumentDBItemsResourceItem
     ) {
         this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents`;
         this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+        this.batchSize = getBatchSizeSetting();
     }
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
-        if (this.iterator && this.cachedItems.length > 0) {
-            // ignore
-        } else {
-            // Fetch the first batch
-            const batchSize = getBatchSizeSetting();
-            const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-            const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
+        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
+        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
+        const iterator = this.getIterator(cosmosClient, { maxItemCount: this.batchSize });
+        const items = await this.getItems(iterator);
 
-            this.iterator = this.getIterator(cosmosClient, { maxItemCount: batchSize });
-
-            await this.getItems(this.iterator);
-        }
-
-        const result = await this.getChildrenImpl(this.cachedItems);
+        const result = await this.getChildrenImpl(items);
 
         if (this.hasMoreChildren) {
             result.push(
@@ -62,12 +54,7 @@ export abstract class DocumentDBItemsResourceItem
                             context.telemetry.properties.experience = this.experience.api;
                             context.telemetry.properties.parentContext = this.contextValue;
 
-                            if (this.iterator) {
-                                return this.getItems(this.iterator);
-                                // Then refresh the tree
-                            } else {
-                                return [];
-                            }
+                            this.batchSize *= 2;
                         },
                     ],
                 }) as CosmosDBTreeElement,
@@ -98,7 +85,6 @@ export abstract class DocumentDBItemsResourceItem
         const result = await iterator.fetchNext();
         const items = result.resources;
         this.hasMoreChildren = result.hasMoreResults;
-        this.cachedItems.push(...items);
 
         return items;
     }

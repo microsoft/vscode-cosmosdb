@@ -7,10 +7,13 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import type ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
 import { type ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
+import { type QuickPickType } from '../../utils/pickItem/pickExperience';
 
 export interface AttachAccountWizardContext extends IActionContext {
-    experience: Experience;
+    quickPickType: QuickPickType;
     parentId: string;
+
+    experience?: Experience;
     connectionString?: string;
     parsedConnectionString?: URL | ConnectionString | ParsedDocDBConnectionString;
 

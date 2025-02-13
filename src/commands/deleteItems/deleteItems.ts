@@ -33,7 +33,6 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
     const containerId = node.model.container.id;
     const partitionKeyDefinition = node.model.container.partitionKey;
     const item = node.model.item;
-    const itemId = item.id ? `"${item.id}"` : '';
 
     if (item.id === undefined) {
         vscode.window.showErrorMessage('Document id is required');
@@ -41,9 +40,9 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
     }
 
     const confirmed = await getConfirmationAsInSettings(
-        `Delete ${itemId || 'document'}?`,
-        `Delete document ${itemId} and its contents?\nThis can't be undone.`,
-        itemId,
+        `Delete ${item.id ? `"${item.id}"` : 'document'}?`,
+        `Delete document ${item.id ? `"${item.id}"` : ''} and its contents?\nThis can't be undone.`,
+        item.id,
     );
 
     if (!confirmed) {
@@ -53,21 +52,32 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
     const accountInfo = node.model.accountInfo;
     const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
 
-    let success = false;
-    await ext.state.showDeleting(node.id, async () => {
-        const response = await client
-            .database(databaseId)
-            .container(containerId)
-            .item(item.id!, partitionKeyDefinition ? extractPartitionKey(item, partitionKeyDefinition) : undefined)
-            .delete();
-        success = response.statusCode === 204;
-    });
+    try {
+        let success = false;
+        await ext.state.showDeleting(node.id, async () => {
+            const response = await client
+                .database(databaseId)
+                .container(containerId)
+                .item(item.id!, partitionKeyDefinition ? extractPartitionKey(item, partitionKeyDefinition) : undefined)
+                .delete();
+            success = response.statusCode === 204;
+        });
 
-    // ext.state.notifyChildrenChanged(accountInfo.id);
-
-    if (success) {
-        showConfirmationAsInSettings(
-            localize('showConfirmation.droppedItem', 'The document {0} has been deleted.', itemId),
-        );
+        if (success) {
+            showConfirmationAsInSettings(
+                localize(
+                    'showConfirmation.droppedItem',
+                    'The document {0} has been deleted.',
+                    item.id ? `"${item.id}"` : '',
+                ),
+            );
+        }
+    } finally {
+        const lastSlashIndex = node.id.lastIndexOf('/');
+        let parentId = node.id;
+        if (lastSlashIndex !== -1) {
+            parentId = parentId.substring(0, lastSlashIndex);
+        }
+        ext.state.notifyChildrenChanged(parentId);
     }
 }

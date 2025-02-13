@@ -47,17 +47,28 @@ export async function deleteDocumentDBTrigger(
     const accountInfo = node.model.accountInfo;
     const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
 
-    let success = false;
-    await ext.state.showDeleting(node.id, async () => {
-        const response = await client.database(databaseId).container(containerId).scripts.trigger(triggerId).delete();
-        success = response.statusCode === 204;
-    });
+    try {
+        let success = false;
+        await ext.state.showDeleting(node.id, async () => {
+            const response = await client
+                .database(databaseId)
+                .container(containerId)
+                .scripts.trigger(triggerId)
+                .delete();
+            success = response.statusCode === 204;
+        });
 
-    // ext.state.notifyChildrenChanged(accountInfo.id);
-
-    if (success) {
-        showConfirmationAsInSettings(
-            localize('showConfirmation.droppedTrigger', 'The trigger {0} has been deleted.', triggerId),
-        );
+        if (success) {
+            showConfirmationAsInSettings(
+                localize('showConfirmation.droppedTrigger', 'The trigger {0} has been deleted.', triggerId),
+            );
+        }
+    } finally {
+        const lastSlashIndex = node.id.lastIndexOf('/');
+        let parentId = node.id;
+        if (lastSlashIndex !== -1) {
+            parentId = parentId.substring(0, lastSlashIndex);
+        }
+        ext.state.notifyChildrenChanged(parentId);
     }
 }

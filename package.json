@@ -261,16 +261,10 @@
         ],
         "commands": [
             {
-                "//": "Not moved",
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
                 "title": "Create Server...",
                 "icon": "$(add)"
-            },
-            {
-                "category": "Azure Databases",
-                "command": "azureDatabases.loadMore",
-                "title": "Load More"
             },
             {
                 "category": "Azure Databases",
@@ -351,7 +345,6 @@
                 "title": "Delete Database..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDocument",
                 "title": "Create Document..."
@@ -367,7 +360,6 @@
                 "title": "Delete Document..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBStoredProcedure",
                 "title": "Create Stored Procedure..."
@@ -388,7 +380,6 @@
                 "title": "Delete Stored Procedure..."
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBTrigger",
                 "title": "Create Trigger..."
@@ -446,7 +437,6 @@
                 "title": "Open Query Editor"
             },
             {
-                "//": "Not moved",
                 "category": "NoSQL",
                 "command": "cosmosDB.importDocument",
                 "title": "Import Document into a Container..."
@@ -1103,10 +1093,6 @@
                 }
             ],
             "commandPalette": [
-                {
-                    "command": "azureDatabases.loadMore",
-                    "when": "never"
-                },
                 {
                     "command": "azureDatabases.refresh",
                     "when": "never"

@@ -20,6 +20,7 @@ export type CosmosDBKeyCredential = {
 
 export type CosmosDBAuthCredential = {
     type: 'auth';
+    tenantId: string | undefined;
 };
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
@@ -36,7 +37,7 @@ export function getCosmosClientByConnection(
     connection: NoSqlQueryConnection,
     options?: Partial<CosmosClientOptions>,
 ): CosmosClient {
-    const { endpoint, masterKey, isEmulator } = connection;
+    const { endpoint, masterKey, isEmulator, tenantId } = connection;
 
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
         .getConfiguration()
@@ -59,7 +60,7 @@ export function getCosmosClientByConnection(
     } else {
         commonProperties.aadCredentials = {
             getToken: async (scopes, _options) => {
-                const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
+                const session = await getSessionFromVSCode(scopes, tenantId, { createIfNone: true });
                 return {
                     token: session?.accessToken ?? '',
                     expiresOnTimestamp: 0,
@@ -106,7 +107,7 @@ export function getCosmosClient(
             ...commonProperties,
             aadCredentials: {
                 getToken: async (scopes, _options) => {
-                    const session = await getSessionFromVSCode(scopes, undefined, { createIfNone: true });
+                    const session = await getSessionFromVSCode(scopes, authCred.tenantId, { createIfNone: true });
                     return {
                         token: session?.accessToken ?? '',
                         expiresOnTimestamp: 0,

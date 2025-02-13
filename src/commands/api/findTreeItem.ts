@@ -9,7 +9,6 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
@@ -19,7 +18,6 @@ import {
 } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { nonNullProp } from '../../utils/nonNull';
 import { type DatabaseAccountTreeItem, type DatabaseTreeItem, type TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
@@ -71,22 +69,22 @@ export async function findTreeItem(
         }
 
         // 3. Search subscriptions
-        if (!result) {
-            const rootNodes = await ext.rgApi.appResourceTree.getChildren();
-            for (const rootNode of rootNodes) {
-                if (Date.now() > maxTime) {
-                    break;
-                }
-
-                if (rootNode instanceof SubscriptionTreeItem) {
-                    const dbAccounts = await rootNode.getCachedChildren(context);
-                    result = await searchDbAccounts(dbAccounts, parsedCS, context, maxTime);
-                    if (result) {
-                        break;
-                    }
-                }
-            }
-        }
+        // if (!result) {
+        //     const rootNodes = await ext.rgApi.appResourceTree.getChildren();
+        //     for (const rootNode of rootNodes) {
+        //         if (Date.now() > maxTime) {
+        //             break;
+        //         }
+        //
+        //         if (rootNode instanceof SubscriptionTreeItem) {
+        //             const dbAccounts = await rootNode.getCachedChildren(context);
+        //             result = await searchDbAccounts(dbAccounts, parsedCS, context, maxTime);
+        //             if (result) {
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
 
         // 4. If all else fails, just attach a new node
         if (!result) {
@@ -126,9 +124,6 @@ async function searchDbAccounts(
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if (db instanceof DocDBDatabaseTreeItemBase && expected.databaseName === db.databaseName) {
-                            return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
-                        }
                         if (
                             db instanceof PostgresDatabaseTreeItem &&
                             dbAccount instanceof PostgresServerTreeItem &&

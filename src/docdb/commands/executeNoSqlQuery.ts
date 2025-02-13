@@ -37,13 +37,13 @@ export async function executeNoSqlQuery(
         );
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } =
+        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } =
             connectedCollection as NoSqlQueryConnection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
             credentials.push({ type: 'key', key: masterKey });
         }
-        credentials.push({ type: 'auth' });
+        credentials.push({ type: 'auth', tenantId: tenantId });
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const options = { populateQueryMetrics };
         const response = await client

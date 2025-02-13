@@ -63,7 +63,8 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
     }
 
     const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
-    const credentials = await getCredentialsForGeneric(name, resourceGroup, client, databaseAccount);
+    const tenantId = account?.subscription?.tenantId;
+    const credentials = await getCredentialsForGeneric(name, resourceGroup, tenantId, client, databaseAccount);
     const documentEndpoint = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`);
     const isServerless = databaseAccount?.capabilities
         ? databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
@@ -82,6 +83,7 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
 async function getCredentialsForGeneric(
     name: string,
     resourceGroup: string,
+    tenantId: string,
     client: CosmosDBManagementClient,
     databaseAccount: DatabaseAccountGetResults,
 ): Promise<CosmosDBCredential[]> {
@@ -133,9 +135,9 @@ async function getCredentialsForGeneric(
             }
         }
 
-        // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-        const authCred = { type: 'auth' };
-        return [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
+        // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
+        const authCred = { type: 'auth', tenantId: tenantId };
+        return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
     });
 
     return result ?? [];
@@ -169,8 +171,8 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
         context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
 
         let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-        if (!forceOAuth) {
+        // disable key auth if the user has opted in to OAuth (AAD/Entra ID), or if the account is the emulator
+        if (!forceOAuth || account.isEmulator) {
             let localAuthDisabled = false;
 
             const parsedCS = parseDocDBConnectionString(account.connectionString);
@@ -217,8 +219,9 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
         }
 
         // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-        const authCred = { type: 'auth' };
-        return [keyCred, authCred].filter((cred): cred is CosmosDBCredential => cred !== undefined);
+        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use OAuth for foreign tenants
+        const authCred = { type: 'auth', tenantId: undefined };
+        return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
     });
 
     return result ?? [];

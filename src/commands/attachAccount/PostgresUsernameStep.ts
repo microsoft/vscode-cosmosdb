@@ -10,7 +10,7 @@ import { type AttachAccountWizardContext } from './AttachAccountWizardContext';
 
 export class PostgresUsernameStep extends AzureWizardPromptStep<AttachAccountWizardContext> {
     public async prompt(context: AttachAccountWizardContext): Promise<void> {
-        const prompt: string = `Enter the username for ${context.experience.shortName}`;
+        const prompt: string = `Enter the username for ${context.experience!.shortName}`;
 
         context.username = await context.ui.showInputBox({
             prompt: prompt,

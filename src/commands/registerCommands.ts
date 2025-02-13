@@ -85,7 +85,7 @@ export function registerAccountCommands() {
 
 export function registerDatabaseCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createContainer', createDocumentDBContainer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDatabase', deleteAzureDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocumentDBDatabaseOffer);
 }

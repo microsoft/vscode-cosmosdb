@@ -25,7 +25,6 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { Links } from '../constants';
-import { rejectOnTimeout } from '../utils/timeout';
 import { CredentialCache } from './CredentialCache';
 import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
 import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
@@ -98,23 +97,19 @@ export class MongoClustersClient {
         if (this.isEmulator) {
             // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
             mongoClientOptions.tlsAllowInvalidCertificates = true;
+            mongoClientOptions.serverSelectionTimeoutMS = 4000;
         }
 
         try {
-            if (this.isEmulator) {
-                this._mongoClient = await rejectOnTimeout(
-                    4000,
-                    () => MongoClient.connect(cStringPassword as string, mongoClientOptions),
-                    `Unable to reach emulator. Please ensure it is started, then try again.`,
-                );
-            } else {
-                this._mongoClient = await MongoClient.connect(cStringPassword as string, mongoClientOptions);
-            }
+            this._mongoClient = await MongoClient.connect(cStringPassword as string, mongoClientOptions);
         } catch (error) {
             const message = parseError(error).message;
             if (this.isEmulator && message.includes('ECONNREFUSED')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 error.message = `Unable to connect to local Mongo DB emulator. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`;
+            } else if (this.isEmulator && message.includes('self-signed certificate')) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                error.message = `The local Mongo DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate. See ${Links.LocalConnectionDebuggingTips} for tips.`;
             }
             throw error;
         }

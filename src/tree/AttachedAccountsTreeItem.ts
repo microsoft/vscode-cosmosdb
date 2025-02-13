@@ -14,7 +14,7 @@ import {
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
-import { isWindows } from '../constants';
+import { isEmulatorSupported } from '../constants';
 import { ext } from '../extensionVariables';
 import { parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
@@ -39,7 +39,8 @@ export interface PersistedAccountWithConnectionString {
 export const AttachedAccountSuffix: string = 'Attached';
 
 export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
-    public static contextValue: string = 'cosmosDBAttachedAccounts' + (isWindows ? 'WithEmulator' : 'WithoutEmulator');
+    public static contextValue: string =
+        'cosmosDBAttachedAccounts' + (isEmulatorSupported ? 'WithEmulator' : 'WithoutEmulator');
     public static readonly serviceName: string = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly label: string = 'Attached Database Accounts (Postgres)';

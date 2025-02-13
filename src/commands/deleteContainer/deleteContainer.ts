@@ -84,7 +84,12 @@ export async function deleteContainer(
             );
         }
     } finally {
-        ext.state.notifyChildrenChanged(node.id.replace(`/${containerId}`, ''));
+        const lastSlashIndex = node.id.lastIndexOf('/');
+        let parentId = node.id;
+        if (lastSlashIndex !== -1) {
+            parentId = parentId.substring(0, lastSlashIndex);
+        }
+        ext.state.notifyChildrenChanged(parentId);
     }
 }
 

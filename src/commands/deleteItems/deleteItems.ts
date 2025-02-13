@@ -73,6 +73,11 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
             );
         }
     } finally {
-        ext.state.notifyChildrenChanged(node.id.replace(`/${item.id}`, ''));
+        const lastSlashIndex = node.id.lastIndexOf('/');
+        let parentId = node.id;
+        if (lastSlashIndex !== -1) {
+            parentId = parentId.substring(0, lastSlashIndex);
+        }
+        ext.state.notifyChildrenChanged(parentId);
     }
 }

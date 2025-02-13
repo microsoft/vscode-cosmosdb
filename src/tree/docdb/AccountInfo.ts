@@ -171,8 +171,8 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
         context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
 
         let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-        if (!forceOAuth) {
+        // disable key auth if the user has opted in to OAuth (AAD/Entra ID), or if the account is the emulator
+        if (!forceOAuth || account.isEmulator) {
             let localAuthDisabled = false;
 
             const parsedCS = parseDocDBConnectionString(account.connectionString);

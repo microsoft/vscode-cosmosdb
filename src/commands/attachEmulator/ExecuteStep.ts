@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import ConnectionString from 'mongodb-connection-string-url';
+import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../tree/workspace/SharedWorkspaceStorage';
@@ -22,7 +24,12 @@ export class ExecuteStep extends AzureWizardExecuteStep<AttachEmulatorWizardCont
             throw new Error('Internal error: connectionString, port, and api must be defined.');
         }
 
-        const label = `${experience.shortName} Emulator (${port})`;
+        let label = `${experience.shortName} Emulator (${port})`;
+
+        if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
+            const parsedCS = new ConnectionString(connectionString);
+            label = `MongoDB Emulator (${parsedCS.hosts.join(',')})`;
+        }
 
         return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
@@ -34,7 +41,11 @@ export class ExecuteStep extends AzureWizardExecuteStep<AttachEmulatorWizardCont
                 secrets: [connectionString],
             };
 
-            await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+            if (experience.api === API.MongoDB) {
+                await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+            } else {
+                await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+            }
         });
     }
 

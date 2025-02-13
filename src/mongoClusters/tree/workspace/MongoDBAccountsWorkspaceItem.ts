@@ -10,6 +10,7 @@ import { type TreeElementWithExperience } from '../../../tree/TreeElementWithExp
 import { WorkspaceResourceType } from '../../../tree/workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../tree/workspace/SharedWorkspaceStorage';
 import { type MongoClusterModel } from '../MongoClusterModel';
+import { LocalMongoEmulatorsItem } from './LocalEmulators/LocalMongoEmulatorsItem';
 import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
 import { MongoDBAttachAccountResourceItem } from './MongoDBAttachAccountResourceItem';
 
@@ -23,23 +24,22 @@ export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeEl
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const items = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
+        const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
 
         return [
-            ...items.map((item) => {
-                const model: MongoClusterModel = {
-                    id: item.id,
-                    name: item.name,
-                    dbExperience: MongoClustersExperience,
-                    connectionString: item?.secrets?.[0] ?? undefined,
-                };
+            new LocalMongoEmulatorsItem(this.id),
+            ...allItems
+                .filter((item) => !item.properties?.isEmulator) // filter out emulators
+                .map((item) => {
+                    const model: MongoClusterModel = {
+                        id: item.id,
+                        name: item.name,
+                        dbExperience: MongoClustersExperience,
+                        connectionString: item?.secrets?.[0] ?? undefined,
+                    };
 
-                if (item.properties?.isEmulator) {
-                    model.isEmulator = item.properties.isEmulator as boolean;
-                }
-
-                return new MongoClusterWorkspaceItem(model);
-            }),
+                    return new MongoClusterWorkspaceItem(model);
+                }),
             new MongoDBAttachAccountResourceItem(this.id),
         ];
     }

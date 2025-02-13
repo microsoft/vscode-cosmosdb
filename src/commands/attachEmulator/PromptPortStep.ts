@@ -35,14 +35,17 @@ export class PromptPortStep extends AzureWizardPromptStep<AttachEmulatorWizardCo
     public validateInput(port: string | undefined): string | undefined {
         port = port ? port.trim() : '';
 
-        try {
-            const portNumber = parseInt(port, 10);
+        if (!port) {
+            return 'Port number is required';
+        }
 
-            if (portNumber <= 0 || portNumber > 65535) {
-                return 'Port number must be between 1 and 65535';
-            }
-        } catch {
-            return 'Input must be a number';
+        const portNumber = parseInt(port, 10);
+        if (isNaN(portNumber)) {
+            return 'Port number must be a number';
+        }
+
+        if (portNumber <= 0 || portNumber > 65535) {
+            return 'Port number must be between 1 and 65535';
         }
 
         return undefined;

@@ -25,6 +25,7 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { Links } from '../constants';
+import { rejectOnTimeout } from '../utils/timeout';
 import { CredentialCache } from './CredentialCache';
 import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
 import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
@@ -100,7 +101,15 @@ export class MongoClustersClient {
         }
 
         try {
-            this._mongoClient = await MongoClient.connect(cStringPassword as string, mongoClientOptions);
+            if (this.isEmulator) {
+                this._mongoClient = await rejectOnTimeout(
+                    4000,
+                    () => MongoClient.connect(cStringPassword as string, mongoClientOptions),
+                    `Unable to reach emulator. Please ensure it is started, then try again.`,
+                );
+            } else {
+                this._mongoClient = await MongoClient.connect(cStringPassword as string, mongoClientOptions);
+            }
         } catch (error) {
             const message = parseError(error).message;
             if (this.isEmulator && message.includes('ECONNREFUSED')) {

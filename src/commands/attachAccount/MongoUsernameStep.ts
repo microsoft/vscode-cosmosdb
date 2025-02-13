@@ -28,9 +28,8 @@ export class MongoUsernameStep extends AzureWizardPromptStep<AttachAccountWizard
         context.valuesToMask.push(username);
     }
 
-    public shouldPrompt(context: AttachAccountWizardContext): boolean {
-        // prompt for username when not connecting to an emulator
-        return !context?.mongodbapiIsEmulator;
+    public shouldPrompt(): boolean {
+        return true;
     }
 
     public validateInput(context: AttachAccountWizardContext, username: string | undefined): string | undefined {

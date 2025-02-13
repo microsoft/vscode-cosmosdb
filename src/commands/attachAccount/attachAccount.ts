@@ -28,7 +28,6 @@ import { type AttachAccountWizardContext } from './AttachAccountWizardContext';
 import { DocumentDBConnectionStringStep } from './DocumentDBConnectionStringStep';
 import { DocumentDBExecuteStep } from './DocumentDBExecuteStep';
 import { MongoConnectionStringStep } from './MongoConnectionStringStep';
-import { MongoEmulatorStep } from './MongoEmulatorStep';
 import { MongoExecuteStep } from './MongoExecuteStep';
 import { MongoPasswordStep } from './MongoPasswordStep';
 import { MongoUsernameStep } from './MongoUsernameStep';
@@ -109,12 +108,7 @@ export async function attachAccount(
     }
 
     if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
-        steps.push(
-            new MongoConnectionStringStep(),
-            new MongoEmulatorStep(),
-            new MongoUsernameStep(),
-            new MongoPasswordStep(),
-        );
+        steps.push(new MongoConnectionStringStep(), new MongoUsernameStep(), new MongoPasswordStep());
         executeSteps.push(new MongoExecuteStep());
     }
 

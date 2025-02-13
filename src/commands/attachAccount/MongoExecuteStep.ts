@@ -22,10 +22,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<AttachAccountWizard
         if (api === API.MongoDB || api === API.MongoClusters) {
             const parsedCS = new ConnectionString(connectionString);
 
-            let label = parsedCS.username + '@' + parsedCS.hosts.join(',');
-            if (context.mongodbapiIsEmulator) {
-                label = `MongoDB Emulator (${parsedCS.hosts.join(',')})`;
-            }
+            const label = parsedCS.username + '@' + parsedCS.hosts.join(',');
 
             return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));

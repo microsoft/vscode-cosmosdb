@@ -6,7 +6,7 @@
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import { API, MongoExperience } from '../../../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../../../constants';
-import { type AttachEmulatorWizardContext } from '../AttachEmulatorWizardContext';
+import { AttachEmulatorMode, type AttachEmulatorWizardContext } from '../AttachEmulatorWizardContext';
 
 // TODO: temporary in a separate class, will be merged with PromptPortStep once we agree on the final design
 export class PromptMongoPortStep extends AzureWizardPromptStep<AttachEmulatorWizardContext> {
@@ -28,7 +28,7 @@ export class PromptMongoPortStep extends AzureWizardPromptStep<AttachEmulatorWiz
 
     public shouldPrompt(context: AttachEmulatorWizardContext): boolean {
         // only prompt for the RU emulator
-        return context.experience === MongoExperience;
+        return context.mode === AttachEmulatorMode.Preconfigured && context.experience === MongoExperience;
     }
 
     private validateInput(port: string | undefined): string | undefined {

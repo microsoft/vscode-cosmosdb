@@ -7,7 +7,7 @@ import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/v
 import { QuickPickItemKind } from 'vscode';
 import { API, MongoExperience } from '../../../AzureDBExperiences';
 import { SettingsService } from '../../../services/SettingsService';
-import { type AttachEmulatorWizardContext } from '../AttachEmulatorWizardContext';
+import { AttachEmulatorMode, type AttachEmulatorWizardContext } from '../AttachEmulatorWizardContext';
 
 export class PromptMongoEmulatorStep extends AzureWizardPromptStep<AttachEmulatorWizardContext> {
     public async prompt(context: AttachEmulatorWizardContext): Promise<void> {
@@ -15,10 +15,21 @@ export class PromptMongoEmulatorStep extends AzureWizardPromptStep<AttachEmulato
             [
                 {
                     id: API.MongoDB,
-                    label: '$(plug) Azure Cosmos DB for MongoDB (RU)',
-                    detail: 'I want to connect to the Azure Cosmos DB Emulator for MongoDB (RU). Use emulator settings for this connection.',
+                    label: 'Azure Cosmos DB for MongoDB (RU)',
+                    detail: 'I want to connect to the Azure Cosmos DB Emulator for MongoDB (RU).',
                     alwaysShow: true,
-                    group: 'Emulator Type',
+                    group: 'Preconfigured Emulators',
+                },
+                {
+                    label: '',
+                    kind: QuickPickItemKind.Separator,
+                },
+                {
+                    id: 'connectionString',
+                    label: 'Connection String',
+                    detail: 'I want to connect using a connection string.',
+                    alwaysShow: true,
+                    group: 'Custom Emulators',
                 },
                 {
                     label: '',
@@ -50,6 +61,8 @@ export class PromptMongoEmulatorStep extends AzureWizardPromptStep<AttachEmulato
         }
 
         if (selectedItem.id === API.MongoDB) {
+            context.mode = AttachEmulatorMode.Preconfigured;
+
             context.experience = MongoExperience;
 
             const settingName = 'cosmosDB.emulator.mongoPort';
@@ -58,6 +71,12 @@ export class PromptMongoEmulatorStep extends AzureWizardPromptStep<AttachEmulato
                 SettingsService.getGlobalSetting<number>(settingName);
 
             context.port = port;
+        }
+
+        if (selectedItem.id === 'connectionString') {
+            context.mode = AttachEmulatorMode.CustomConnectionString;
+            // it's a mongodb emulator
+            context.experience = MongoExperience;
         }
     }
 

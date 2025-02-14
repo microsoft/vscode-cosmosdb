@@ -79,9 +79,11 @@ export async function launchShell(
         },
     });
 
-    // If the cluster is an emulator, we need to allow invalid certificates
+    // If the cluster is an emulator, we need to allow invalid certificates, if the user has disabled security
     const tlsConfiguration =
-        'mongoCluster' in node && node?.mongoCluster?.isEmulator ? '--tlsAllowInvalidCertificates' : '';
+        'mongoCluster' in node && node?.mongoCluster?.isEmulator && node?.mongoCluster.disableEmulatorSecurity
+            ? '--tlsAllowInvalidCertificates'
+            : '';
 
     terminal.sendText(`mongosh "${connectionString.toString()}" ${tlsConfiguration}`);
     terminal.show();

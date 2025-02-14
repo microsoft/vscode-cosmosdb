@@ -10,6 +10,7 @@ export async function connectToMongoClient(
     connectionString: string,
     appName: string,
     isEmulator?: boolean,
+    disableEmulatorSecurity?: boolean,
 ): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
     const options: MongoClientOptions = <MongoClientOptions>{
@@ -20,7 +21,7 @@ export async function connectToMongoClient(
         useUnifiedTopology: true,
     };
 
-    if (isEmulator) {
+    if (isEmulator && disableEmulatorSecurity) {
         // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
         options.tlsAllowInvalidCertificates = true;
     }

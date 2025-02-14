@@ -8,4 +8,5 @@ export interface IConnectionParams {
     databaseName: string;
     extensionUserAgent: string;
     isEmulator: boolean;
+    disableEmulatorSecurity: boolean;
 }

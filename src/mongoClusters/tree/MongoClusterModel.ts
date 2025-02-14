@@ -47,8 +47,18 @@ interface ResourceModelInUse extends Resource {
      * Indicates whether the account is an emulator.
      *
      * This property is set when an account is being added to the workspace.
-     * It is important to know if we are working with an emulator because
-     * special connection settings have to be used, such as disabling TLS/SSL.
+     * We use it to filter the list of accounts when displaying them.
+     * Also, sometimes we need to know if the account is an emulator to show/hide some UI elements.
      */
     isEmulator?: boolean;
+
+    /**
+     * Indicates whether the emulator security should be disabled.
+     *
+     * This property is set when an account is being added to the workspace.
+     *
+     * We use it to disable the tls/ssl when connecting to the emulator,
+     * as it can be complicated for some users to set up the emulator correctly.
+     */
+    disableEmulatorSecurity?: boolean;
 }

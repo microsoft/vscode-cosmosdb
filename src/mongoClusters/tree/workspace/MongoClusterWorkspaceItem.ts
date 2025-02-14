@@ -90,6 +90,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     username,
                     password,
                     this.mongoCluster.isEmulator, // only workspace items can potentially be connecting to an emulator
+                    this.mongoCluster.disableEmulatorSecurity, // only workspace items can potentially be connecting to an emulator
                 );
 
                 // Attempt to create the client with the provided credentials
@@ -161,11 +162,25 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      * @returns The TreeItem object.
      */
     getTreeItem(): vscode.TreeItem {
+        let description: string | undefined = undefined;
+
+        if (this.mongoCluster.isEmulator) {
+            // For emulator clusters, show TLS/SSL status if security is disabled
+            if (this.mongoCluster.disableEmulatorSecurity) {
+                description = '⚠ TLS/SSL Disabled';
+            }
+        } else {
+            // For non-emulator clusters, show SKU if defined
+            if (this.mongoCluster.sku !== undefined) {
+                description = `(${this.mongoCluster.sku})`;
+            }
+        }
+
         return {
             id: this.id,
             contextValue: this.contextValue,
             label: this.mongoCluster.name,
-            description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
+            description: description,
             iconPath: this.mongoCluster.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : new vscode.ThemeIcon('server-environment'),

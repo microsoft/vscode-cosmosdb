@@ -65,6 +65,7 @@ export class MongoClustersClient {
 
     private _mongoClient: MongoClient;
     private isEmulator: boolean;
+    private disableEmulatorSecurity: boolean;
 
     /**
      * Use getClient instead of a constructor. Connections/Client are being cached and reused.
@@ -86,6 +87,7 @@ export class MongoClustersClient {
 
         const cStringPassword = CredentialCache.getConnectionStringWithPassword(this.credentialId);
         this.isEmulator = CredentialCache.isEmulator(this.credentialId);
+        this.disableEmulatorSecurity = CredentialCache.disableEmulatorSecurity(this.credentialId);
 
         // Prepare the options object and prepare the appName
         // appname appears to be the correct equivalent to user-agent for mongo
@@ -95,9 +97,12 @@ export class MongoClustersClient {
         };
 
         if (this.isEmulator) {
-            // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
-            mongoClientOptions.tlsAllowInvalidCertificates = true;
             mongoClientOptions.serverSelectionTimeoutMS = 4000;
+
+            if (this.disableEmulatorSecurity) {
+                // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
+                mongoClientOptions.tlsAllowInvalidCertificates = true;
+            }
         }
 
         try {

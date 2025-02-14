@@ -33,12 +33,10 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
                         id: item.id,
                         name: item.name,
                         dbExperience: MongoClustersExperience,
-                        connectionString: item?.secrets?.[0] ?? undefined,
+                        connectionString: item?.secrets?.[0],
+                        isEmulator: true,
+                        disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,
                     };
-
-                    if (item.properties?.isEmulator) {
-                        model.isEmulator = item.properties.isEmulator as boolean;
-                    }
 
                     return new MongoClusterWorkspaceItem(model);
                 }),

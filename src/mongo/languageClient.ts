@@ -52,12 +52,18 @@ export class MongoDBLanguageClient {
         ext.context.subscriptions.push(disposable);
     }
 
-    public async connect(connectionString: string, databaseName: string, isEmulator?: boolean): Promise<void> {
+    public async connect(
+        connectionString: string,
+        databaseName: string,
+        isEmulator?: boolean,
+        disableEmulatorSecurity?: boolean,
+    ): Promise<void> {
         await this.client.sendRequest('connect', <IConnectionParams>{
             connectionString: connectionString,
             databaseName: databaseName,
             extensionUserAgent: appendExtensionUserAgent(),
             isEmulator: isEmulator,
+            disableEmulatorSecurity: disableEmulatorSecurity,
         });
     }
 

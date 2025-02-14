@@ -15,6 +15,8 @@ import { CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/CosmosDB
 import { localize } from '../../utils/localize';
 import { type AttachEmulatorWizardContext } from './AttachEmulatorWizardContext';
 import { ExecuteStep } from './ExecuteStep';
+import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
+import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
 import { PromptMongoEmulatorStep } from './mongo/PromptMongoEmulatorStep';
 import { PromptMongoPortStep } from './mongo/PromptMongoPortStep';
 import { PromptExperienceStep } from './PromptExperienceStep';
@@ -51,7 +53,12 @@ export async function attachEmulator(
 
     if (node instanceof NewEmulatorConnectionItem) {
         title = 'New Emulator Connection';
-        steps.push(new PromptMongoEmulatorStep(), new PromptMongoPortStep());
+        steps.push(
+            new PromptMongoEmulatorStep(),
+            new PromptMongoEmulatorConnectionStringStep(),
+            new PromptMongoPortStep(),
+            new PromptMongoEmulatorSecurityStep(),
+        );
         executeSteps.push(new ExecuteStep());
     }
 

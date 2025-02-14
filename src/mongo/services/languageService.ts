@@ -59,6 +59,7 @@ export class LanguageService {
                 connectionParams.connectionString,
                 connectionParams.extensionUserAgent,
                 connectionParams.isEmulator,
+                connectionParams.disableEmulatorSecurity,
             ).then((account) => {
                 this.db = account.db(connectionParams.databaseName);
                 void this.schemaService.registerSchemas(this.db).then((schemas) => {

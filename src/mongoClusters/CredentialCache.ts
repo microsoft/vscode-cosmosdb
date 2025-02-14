@@ -11,6 +11,7 @@ export interface MongoClustersCredentials {
     connectionString: string;
     connectionUser: string;
     isEmulator?: boolean;
+    disableEmulatorSecurity?: boolean;
 }
 
 export class CredentialCache {
@@ -27,6 +28,10 @@ export class CredentialCache {
 
     public static isEmulator(mongoClusterId: string): boolean {
         return CredentialCache._store.get(mongoClusterId)?.isEmulator as boolean;
+    }
+
+    public static disableEmulatorSecurity(mongoClusterId: string): boolean {
+        return CredentialCache._store.get(mongoClusterId)?.disableEmulatorSecurity as boolean;
     }
 
     public static getCredentials(mongoClusterId: string): MongoClustersCredentials | undefined {
@@ -49,6 +54,7 @@ export class CredentialCache {
      * @param username - The username to be used for authentication.
      * @param password - The password to be used for authentication.
      * @param isEmulator - Indicates whether the account is an emulator. It is optional as it's only relevant for workspace items
+     * @param disableEmulatorSecurity - Indicates whether the emulator security is disabled. It is optional as it's only relevant for workspace items
      */
     public static setCredentials(
         mongoClusterId: string,
@@ -56,6 +62,7 @@ export class CredentialCache {
         username: string,
         password: string,
         isEmulator?: boolean,
+        disableEmulatorSecurity?: boolean,
     ): void {
         const connectionStringWithPassword = addAuthenticationDataToConnectionString(
             connectionString,
@@ -69,6 +76,7 @@ export class CredentialCache {
             connectionString: connectionString,
             connectionUser: username,
             isEmulator: isEmulator,
+            disableEmulatorSecurity: disableEmulatorSecurity,
         };
 
         CredentialCache._store.set(mongoClusterId, credentials);

@@ -163,11 +163,15 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      */
     getTreeItem(): vscode.TreeItem {
         let description: string | undefined = undefined;
+        let tooltipMessage: string | undefined = undefined;
 
         if (this.mongoCluster.isEmulator) {
             // For emulator clusters, show TLS/SSL status if security is disabled
             if (this.mongoCluster.disableEmulatorSecurity) {
                 description = '⚠ TLS/SSL Disabled';
+                tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
+            } else {
+                tooltipMessage = '✅ **Security:** TLS/SSL Enabled';
             }
         } else {
             // For non-emulator clusters, show SKU if defined
@@ -185,6 +189,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 ? new vscode.ThemeIcon('plug')
                 : new vscode.ThemeIcon('server-environment'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
+            tooltip: new vscode.MarkdownString(tooltipMessage),
         };
     }
 }

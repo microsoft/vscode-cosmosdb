@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
-import ConnectionString from 'mongodb-connection-string-url';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
@@ -39,8 +38,7 @@ export class ExecuteStep extends AzureWizardExecuteStep<AttachEmulatorWizardCont
         let label = `MongoDB Emulator (${port})`;
 
         if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
-            const parsedCS = new ConnectionString(connectionString);
-            label = `MongoDB Emulator (${parsedCS.hosts.join(',')})`;
+            label = `MongoDB Emulator (${port})`;
         }
 
         return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {

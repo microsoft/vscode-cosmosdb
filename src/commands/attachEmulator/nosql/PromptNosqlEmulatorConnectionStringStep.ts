@@ -20,6 +20,8 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
             })
         ).trim();
 
+        context.port = extractPortFromConnectionString(context.connectionString);
+
         context.valuesToMask.push(context.connectionString);
     }
 
@@ -50,6 +52,24 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
             return undefined;
         }
 
+        return undefined;
+    }
+}
+
+function extractPortFromConnectionString(connectionString: string): number | undefined {
+    try {
+        const parsedConnectionString = parseDocDBConnectionString(connectionString);
+        if (!parsedConnectionString.port) {
+            return undefined;
+        }
+
+        const portNumber = Number(parsedConnectionString.port);
+        if (isNaN(portNumber)) {
+            return undefined;
+        }
+
+        return portNumber;
+    } catch {
         return undefined;
     }
 }

@@ -16,7 +16,7 @@ export class PromptNosqlEmulatorStep extends AzureWizardPromptStep<AttachEmulato
                 {
                     id: API.Core,
                     label: 'Azure Cosmos DB (NoSQL)',
-                    detail: 'I want to connect to the Azure Cosmos DB (NoSQL) Emulator',
+                    detail: 'I want to connect to the Azure Cosmos DB (NoSQL) Emulator.',
                     alwaysShow: true,
                     group: 'Preconfigured Emulators',
                 },
@@ -38,7 +38,7 @@ export class PromptNosqlEmulatorStep extends AzureWizardPromptStep<AttachEmulato
                 {
                     id: 'learnMore',
                     label: 'Learn more',
-                    detail: 'Learn more about the Azure Cosmos DB (NoSQL) Emulator',
+                    detail: 'Learn more about the Azure Cosmos DB (NoSQL) Emulator.',
                     alwaysShow: true,
                     group: 'Learn More',
                 },

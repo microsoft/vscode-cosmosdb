@@ -36,8 +36,23 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
     }
 
     public getTreeItem(): TreeItem {
+        let tooltipMessage: string | undefined = undefined;
+        if (this.account.isEmulator) {
+            tooltipMessage = '✅ **Security:** TLS/SSL Enabled';
+        }
+
+        const treeItem = super.getTreeItem();
+
+        if (tooltipMessage) {
+            if (treeItem.tooltip) {
+                treeItem.tooltip = `${String(treeItem.tooltip)}\n${tooltipMessage}`;
+            } else {
+                treeItem.tooltip = tooltipMessage;
+            }
+        }
+
         return {
-            ...super.getTreeItem(),
+            ...treeItem,
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : getThemeAgnosticIconPath('CosmosDBAccount.svg'),

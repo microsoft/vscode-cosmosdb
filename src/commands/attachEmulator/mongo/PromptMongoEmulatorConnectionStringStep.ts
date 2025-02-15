@@ -30,6 +30,8 @@ export class PromptMongoEmulatorConnectionStringStep extends AzureWizardPromptSt
             })
         ).trim();
 
+        context.port = extractPortFromConnectionString(context.connectionString);
+
         context.valuesToMask.push(context.connectionString);
     }
 
@@ -71,6 +73,23 @@ export class PromptMongoEmulatorConnectionStringStep extends AzureWizardPromptSt
             );
         }
 
+        return undefined;
+    }
+}
+function extractPortFromConnectionString(connectionString: string): number | undefined {
+    try {
+        const { hosts } = new ConnectionString(connectionString);
+
+        // Access the first host and split it by ':' to separate hostname and port, then extract the port part
+        const portStr = hosts?.[0]?.split(':')[1];
+
+        // Convert the port string to a number using base 10
+        const port = parseInt(portStr ?? '', 10);
+
+        // If the parsed port is not a number (NaN), return undefined; otherwise, return the port number
+        return isNaN(port) ? undefined : port;
+    } catch {
+        // If an error occurs during parsing, default to returning undefined
         return undefined;
     }
 }

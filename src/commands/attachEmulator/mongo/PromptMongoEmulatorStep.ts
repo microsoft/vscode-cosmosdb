@@ -38,7 +38,7 @@ export class PromptMongoEmulatorStep extends AzureWizardPromptStep<AttachEmulato
                 {
                     id: 'learnMore',
                     label: 'Learn more',
-                    detail: 'Learn more about the Azure Cosmos DB Emulator for MongoDB',
+                    detail: 'Learn more about the Azure Cosmos DB Emulator for MongoDB.',
                     alwaysShow: true,
                     group: 'Learn More',
                 },

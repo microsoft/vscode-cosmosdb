@@ -34,10 +34,11 @@ export class ExecuteStep extends AzureWizardExecuteStep<AttachEmulatorWizardCont
                 throw new Error('Internal error: mode must be defined.');
         }
 
-        let label = `${experience.shortName} Emulator (${port})`;
+        const portSuffix = typeof port !== 'undefined' ? ` : ${port}` : '';
+        let label = `${experience.shortName} Emulator${portSuffix}`;
 
         if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
-            label = `MongoDB Emulator (${port})`;
+            label = `MongoDB Emulator${portSuffix}`;
         }
 
         return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {

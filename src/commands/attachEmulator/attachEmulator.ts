@@ -11,7 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { isEmulatorSupported, isLinux, isWindows } from '../../constants';
 import { NewEmulatorConnectionItem } from '../../mongoClusters/tree/workspace/LocalEmulators/NewEmulatorConnectionItem';
-import { CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/CosmosDBAttachEmulatorResourceItem';
+import { CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/LocalEmulators/CosmosDBAttachEmulatorResourceItem';
 import { localize } from '../../utils/localize';
 import { type AttachEmulatorWizardContext } from './AttachEmulatorWizardContext';
 import { ExecuteStep } from './ExecuteStep';
@@ -19,8 +19,9 @@ import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmul
 import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
 import { PromptMongoEmulatorStep } from './mongo/PromptMongoEmulatorStep';
 import { PromptMongoPortStep } from './mongo/PromptMongoPortStep';
-import { PromptExperienceStep } from './PromptExperienceStep';
-import { PromptPortStep } from './PromptPortStep';
+import { PromptNosqlEmulatorConnectionStringStep } from './nosql/PromptNosqlEmulatorConnectionStringStep';
+import { PromptNosqlEmulatorStep } from './nosql/PromptNosqlEmulatorStep';
+import { PromptNosqlPortStep } from './nosql/PromptNosqlPortStep';
 
 export async function attachEmulator(
     context: IActionContext,
@@ -63,9 +64,21 @@ export async function attachEmulator(
         executeSteps.push(new ExecuteStep());
     }
 
+    /**
+     * Note to code maintainers:
+     *
+     * We're not adding the *EmulatorSecurityStep* here becasue we can't disable TLS/SSL
+     * for an individual instance of CosmosClient with these features disabled.
+     * https://github.com/Azure/azure-sdk-for-js/issues/12687
+     */
+
     if (node instanceof CosmosDBAttachEmulatorResourceItem) {
         title = 'Attach Emulator';
-        steps.push(new PromptExperienceStep(), new PromptPortStep());
+        steps.push(
+            new PromptNosqlEmulatorStep(),
+            new PromptNosqlEmulatorConnectionStringStep(),
+            new PromptNosqlPortStep(),
+        );
         executeSteps.push(new ExecuteStep());
     }
 

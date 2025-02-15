@@ -34,8 +34,7 @@ export class ExecuteStep extends AzureWizardExecuteStep<AttachEmulatorWizardCont
                 throw new Error('Internal error: mode must be defined.');
         }
 
-        // covers the case where the user works with a custom connection string
-        let label = `MongoDB Emulator (${port})`;
+        let label = `${experience.shortName} Emulator (${port})`;
 
         if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
             label = `MongoDB Emulator (${port})`;
@@ -50,7 +49,8 @@ export class ExecuteStep extends AzureWizardExecuteStep<AttachEmulatorWizardCont
                 properties: {
                     api: experience.api,
                     isEmulator: true,
-                    disableEmulatorSecurity: context.disableMongoEmulatorSecurity || false,
+                    // only adds 'disableEmulatorSecurity' when it's set (for Mongo)
+                    ...(context.disableMongoEmulatorSecurity && { disableEmulatorSecurity: true }),
                 },
                 secrets: [connectionString],
             };

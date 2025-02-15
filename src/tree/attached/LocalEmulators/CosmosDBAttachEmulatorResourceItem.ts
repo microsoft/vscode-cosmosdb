@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import vscode from 'vscode';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 
 export class CosmosDBAttachEmulatorResourceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string;

@@ -18,7 +18,7 @@ import { WorkspaceResourceType } from '../workspace/SharedWorkspaceResourceProvi
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../workspace/SharedWorkspaceStorage';
 import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
-import { CosmosDBAttachEmulatorResourceItem } from './CosmosDBAttachEmulatorResourceItem';
+import { LocalEmulatorsItem } from './LocalEmulators/LocalEmulatorsItem';
 
 export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string = WorkspaceResourceType.AttachedAccounts;
@@ -32,14 +32,14 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
-        const attachDatabaseAccount = new CosmosDBAttachAccountResourceItem(this.id);
-        const attachEmulator = new CosmosDBAttachEmulatorResourceItem(this.id);
-
         const items = await SharedWorkspaceStorage.getItems(this.id);
-        const children = await this.getChildrenImpl(items);
-        const auxItems = isEmulatorSupported ? [attachDatabaseAccount, attachEmulator] : [attachDatabaseAccount];
+        const children = await this.getChildrenNoEmulatorsImpl(items);
 
-        return [...children, ...auxItems];
+        if (isEmulatorSupported) {
+            return [new LocalEmulatorsItem(this.id), ...children, new CosmosDBAttachAccountResourceItem(this.id)];
+        } else {
+            return [...children, new CosmosDBAttachAccountResourceItem(this.id)];
+        }
     }
 
     public getTreeItem() {
@@ -52,9 +52,10 @@ export class CosmosDBAttachedAccountsResourceItem implements CosmosDBTreeElement
         };
     }
 
-    protected async getChildrenImpl(items: SharedWorkspaceStorageItem[]): Promise<CosmosDBTreeElement[]> {
+    protected async getChildrenNoEmulatorsImpl(items: SharedWorkspaceStorageItem[]): Promise<CosmosDBTreeElement[]> {
         return Promise.resolve(
             items
+                .filter((item) => item.properties?.isEmulator !== true)
                 .map((item) => {
                     const { id, name, properties, secrets } = item;
                     const api: API = nonNullValue(properties?.api, 'api') as API;

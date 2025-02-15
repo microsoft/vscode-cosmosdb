@@ -36,7 +36,12 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
     }
 
     public getTreeItem(): TreeItem {
-        return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
+        return {
+            ...super.getTreeItem(),
+            iconPath: this.account.isEmulator
+                ? new vscode.ThemeIcon('plug')
+                : getThemeAgnosticIconPath('CosmosDBAccount.svg'),
+        };
     }
 
     public getConnectionString(): Promise<string> {

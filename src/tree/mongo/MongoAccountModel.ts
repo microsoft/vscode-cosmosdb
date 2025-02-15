@@ -7,4 +7,6 @@ import { type CosmosAccountModel } from '../CosmosAccountModel';
 
 export type MongoAccountModel = CosmosAccountModel & {
     connectionString?: string;
+    isEmulator?: boolean;
+    disableEmulatorSecurity?: boolean;
 };

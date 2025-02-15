@@ -9,7 +9,7 @@
  * singletone on a client with a getter from a connection pool..
  */
 
-import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import { EJSON } from 'bson';
 import {
     MongoClient,
@@ -20,9 +20,11 @@ import {
     type Filter,
     type FindOptions,
     type ListDatabasesResult,
+    type MongoClientOptions,
     type WithId,
     type WithoutId,
 } from 'mongodb';
+import { Links } from '../constants';
 import { CredentialCache } from './CredentialCache';
 import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
 import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
@@ -62,32 +64,60 @@ export class MongoClustersClient {
     static _clients: Map<string, MongoClustersClient> = new Map();
 
     private _mongoClient: MongoClient;
-    private _credentialId: string;
+    private isEmulator: boolean;
+    private disableEmulatorSecurity: boolean;
 
     /**
      * Use getClient instead of a constructor. Connections/Client are being cached and reused.
      */
-    private constructor() {
+    private constructor(private readonly credentialId: string) {
         return;
     }
 
-    private async initClient(credentialId: string): Promise<void> {
-        if (!CredentialCache.hasCredentials(credentialId)) {
-            throw new Error(`No credentials found for id ${credentialId}`);
+    private async initClient(): Promise<void> {
+        // TODO: why is this a separate function? move its contents to the constructor.
+
+        if (!CredentialCache.hasCredentials(this.credentialId)) {
+            throw new Error(`No credentials found for id ${this.credentialId}`);
         }
 
-        this._credentialId = credentialId;
-
-        // check if it's an azure connection, and do some special handling
-        const cString = CredentialCache.getCredentials(credentialId)?.connectionString as string;
+        const cString = CredentialCache.getCredentials(this.credentialId)?.connectionString as string;
         const hosts = getHostsFromConnectionString(cString);
         const userAgentString = areMongoDBAzure(hosts) ? appendExtensionUserAgent() : undefined;
 
-        const cStringPassword = CredentialCache.getConnectionStringWithPassword(credentialId);
+        const cStringPassword = CredentialCache.getConnectionStringWithPassword(this.credentialId);
+        this.isEmulator = CredentialCache.isEmulator(this.credentialId);
+        this.disableEmulatorSecurity = CredentialCache.disableEmulatorSecurity(this.credentialId);
 
-        this._mongoClient = await MongoClient.connect(cStringPassword as string, {
+        // Prepare the options object and prepare the appName
+        // appname appears to be the correct equivalent to user-agent for mongo
+        const mongoClientOptions = <MongoClientOptions>{
+            // appName should be wrapped in '@'s when trying to connect to a Mongo account, this doesn't effect the appendUserAgent string
             appName: userAgentString,
-        });
+        };
+
+        if (this.isEmulator) {
+            mongoClientOptions.serverSelectionTimeoutMS = 4000;
+
+            if (this.disableEmulatorSecurity) {
+                // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
+                mongoClientOptions.tlsAllowInvalidCertificates = true;
+            }
+        }
+
+        try {
+            this._mongoClient = await MongoClient.connect(cStringPassword as string, mongoClientOptions);
+        } catch (error) {
+            const message = parseError(error).message;
+            if (this.isEmulator && message.includes('ECONNREFUSED')) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                error.message = `Unable to connect to local Mongo DB emulator. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`;
+            } else if (this.isEmulator && message.includes('self-signed certificate')) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                error.message = `The local Mongo DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate. See ${Links.LocalConnectionDebuggingTips} for tips.`;
+            }
+            throw error;
+        }
 
         void callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.connect.getmetadata', async (context) => {
             const metadata: MongoClusterMetadata = await getMongoClusterMetadata(this._mongoClient);
@@ -99,6 +129,13 @@ export class MongoClustersClient {
         });
     }
 
+    /**
+     * Retrieves an instance of `MongoClustersClient` based on the provided `credentialId`.
+     *
+     * @param credentialId - A required string used to find the cached connection string to connect.
+     * It is also used as a key to reuse existing clients.
+     * @returns A promise that resolves to an instance of `MongoClustersClient`.
+     */
     public static async getClient(credentialId: string): Promise<MongoClustersClient> {
         let client: MongoClustersClient;
 
@@ -108,8 +145,8 @@ export class MongoClustersClient {
             // if the client is already connected, it's a NOOP.
             await client._mongoClient.connect();
         } else {
-            client = new MongoClustersClient();
-            await client.initClient(credentialId);
+            client = new MongoClustersClient(credentialId);
+            await client.initClient();
             MongoClustersClient._clients.set(credentialId, client);
         }
 
@@ -125,14 +162,14 @@ export class MongoClustersClient {
     }
 
     getUserName() {
-        return CredentialCache.getCredentials(this._credentialId)?.connectionUser;
+        return CredentialCache.getCredentials(this.credentialId)?.connectionUser;
     }
     getConnectionString() {
-        return CredentialCache.getCredentials(this._credentialId)?.connectionString;
+        return CredentialCache.getCredentials(this.credentialId)?.connectionString;
     }
 
     getConnectionStringWithPassword() {
-        return CredentialCache.getConnectionStringWithPassword(this._credentialId);
+        return CredentialCache.getConnectionStringWithPassword(this.credentialId);
     }
 
     async listDatabases(): Promise<DatabaseItemModel[]> {
@@ -141,6 +178,29 @@ export class MongoClustersClient {
             // Filter out the 'admin' database if it's empty
             (databaseInfo) => !(databaseInfo.name && databaseInfo.name.toLowerCase() === 'admin' && databaseInfo.empty),
         );
+
+        /**
+         * this code in the comment is from older mongo implementation in the extension, review and test whether it's still relevant for us:
+         * const databaseInConnectionString = getDatabaseNameFromConnectionString(this.connectionString);
+                             if (databaseInConnectionString && !this.root.isEmulator) {
+                                 // emulator violates the connection string format
+                                 // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
+                                 databases = [
+                                     {
+                                         name: databaseInConnectionString,
+                                         empty: false,
+                                     },
+                                 ];
+                             } else {
+                                 // https://mongodb.github.io/node-mongodb-native/3.1/api/index.html
+                                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                                 const result: { databases: IDatabaseInfo[] } = await mongoClient
+                                     .db(testDb)
+                                     .admin()
+                                     .listDatabases();
+                                 databases = result.databases;
+                             }
+         */
 
         return databases;
     }

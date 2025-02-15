@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
-import { emulatorPassword } from '../../constants';
+import { wellKnownEmulatorPassword } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace/SharedWorkspaceStorage';
@@ -35,14 +35,17 @@ export class PromptPortStep extends AzureWizardPromptStep<AttachEmulatorWizardCo
     public validateInput(port: string | undefined): string | undefined {
         port = port ? port.trim() : '';
 
-        try {
-            const portNumber = parseInt(port, 10);
+        if (!port) {
+            return 'Port number is required';
+        }
 
-            if (portNumber <= 0 || portNumber > 65535) {
-                return 'Port number must be between 1 and 65535';
-            }
-        } catch {
-            return 'Input must be a number';
+        const portNumber = parseInt(port, 10);
+        if (isNaN(portNumber)) {
+            return 'Port number must be a number';
+        }
+
+        if (portNumber <= 0 || portNumber > 65535) {
+            return 'Port number must be between 1 and 65535';
         }
 
         return undefined;
@@ -89,7 +92,7 @@ export class PromptPortStep extends AzureWizardPromptStep<AttachEmulatorWizardCo
 
     private buildConnectionString(port: string | number, experience: API): string {
         return experience === API.MongoDB
-            ? `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:${port}/?ssl=true`
-            : `AccountEndpoint=https://localhost:${port}/;AccountKey=${emulatorPassword};`;
+            ? `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:${port}/?ssl=true`
+            : `AccountEndpoint=https://localhost:${port}/;AccountKey=${wellKnownEmulatorPassword};`;
     }
 }

@@ -19,4 +19,6 @@ export interface AttachAccountWizardContext extends IActionContext {
 
     username?: string;
     password?: string;
+
+    mongodbapiIsEmulator?: boolean;
 }

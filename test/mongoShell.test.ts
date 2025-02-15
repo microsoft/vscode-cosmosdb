@@ -179,6 +179,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
                     options.args || [],
                     '',
                     false,
+                    false,
                     outputChannel,
                     options.timeoutSeconds || 5,
                 );
@@ -297,6 +298,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             mongoPath,
             [],
             '',
+            false,
             false,
             new FakeOutputChannel(),
             5,

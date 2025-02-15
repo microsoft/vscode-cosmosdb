@@ -14,6 +14,7 @@ import { MongoClusterWorkspaceItem } from '../../mongoClusters/tree/workspace/Mo
 import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
 
 import { ConnectionString } from 'mongodb-connection-string-url';
+import { isWindows } from '../../constants';
 
 export async function launchShell(
     context: IActionContext,
@@ -31,7 +32,6 @@ export async function launchShell(
     context.telemetry.properties.experience = node.experience.api;
 
     let rawConnectionString: string | undefined;
-
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
 
     if (
@@ -40,7 +40,6 @@ export async function launchShell(
         node instanceof MongoClusterWorkspaceItem
     ) {
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, 'Working...', async () => {
-            // WorkspaceItems are fast as there is no connection string discovery happening
             return node.getConnectionString();
         });
     } else {
@@ -59,7 +58,6 @@ export async function launchShell(
     const username = connectionString.username;
     const password = connectionString.password;
 
-    const isWindows = process.platform === 'win32';
     connectionString.username = isWindows ? '%USERNAME%' : '$USERNAME';
     connectionString.password = isWindows ? '%PASSWORD%' : '$PASSWORD';
 
@@ -81,6 +79,12 @@ export async function launchShell(
         },
     });
 
-    terminal.sendText(`mongosh "${connectionString.toString()}"`);
+    // If the cluster is an emulator, we need to allow invalid certificates, if the user has disabled security
+    const tlsConfiguration =
+        'mongoCluster' in node && node?.mongoCluster?.isEmulator && node?.mongoCluster.disableEmulatorSecurity
+            ? '--tlsAllowInvalidCertificates'
+            : '';
+
+    terminal.sendText(`mongosh "${connectionString.toString()}" ${tlsConfiguration}`);
     terminal.show();
 }

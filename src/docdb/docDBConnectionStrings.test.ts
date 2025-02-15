@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { emulatorPassword } from '../constants';
+import { wellKnownEmulatorPassword } from '../constants';
 import { parseDocDBConnectionString } from './docDBConnectionStrings';
 
 describe(`docDBConnectionStrings`, () => {
@@ -92,10 +92,10 @@ describe(`docDBConnectionStrings`, () => {
 
         it('Connection string with emulator', () => {
             const parsedCS = parseDocDBConnectionString(
-                `AccountEndpoint=https://localhost:10255/;AccountKey=${emulatorPassword};`,
+                `AccountEndpoint=https://localhost:10255/;AccountKey=${wellKnownEmulatorPassword};`,
             );
             expect(parsedCS.documentEndpoint).toEqual('https://localhost:10255/');
-            expect(parsedCS.masterKey).toEqual(emulatorPassword);
+            expect(parsedCS.masterKey).toEqual(wellKnownEmulatorPassword);
             expect(parsedCS.databaseName).toEqual(undefined);
         });
 

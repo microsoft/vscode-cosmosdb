@@ -4,22 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
-import {
-    AzExtTreeItem,
-    AzureWizard,
-    type AzureWizardExecuteStep,
-    type AzureWizardPromptStep,
-    type IActionContext,
-    type IAzureQuickPickItem,
-} from '@microsoft/vscode-azext-utils';
-import {
-    API,
-    getCosmosExperienceQuickPicks,
-    getExperienceQuickPick,
-    getExperienceQuickPicks,
-    getPostgresExperienceQuickPicks,
-    type Experience,
-} from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { MongoDBAttachAccountResourceItem } from '../../mongoClusters/tree/workspace/MongoDBAttachAccountResourceItem';
 import { CosmosDBAttachAccountResourceItem } from '../../tree/attached/CosmosDBAttachAccountResourceItem';

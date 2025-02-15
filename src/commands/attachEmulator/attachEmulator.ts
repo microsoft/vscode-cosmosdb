@@ -3,16 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { isEmulatorSupported } from '../../constants';
-import { type CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/CosmosDBAttachEmulatorResourceItem';
 import {
     AzureWizard,
     type AzureWizardExecuteStep,
     type AzureWizardPromptStep,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-import { isLinux, isWindows } from '../../constants';
+import { isEmulatorSupported, isLinux, isWindows } from '../../constants';
 import { NewEmulatorConnectionItem } from '../../mongoClusters/tree/workspace/LocalEmulators/NewEmulatorConnectionItem';
 import { CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/CosmosDBAttachEmulatorResourceItem';
 import { localize } from '../../utils/localize';
@@ -39,8 +36,7 @@ export async function attachEmulator(
                 ),
             );
         }
-    } else {
-    if (!isEmulatorSupported) {
+    } else if (!isEmulatorSupported) {
         context.errorHandling.suppressReportIssue = true;
         throw new Error(
             localize(

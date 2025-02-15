@@ -7,12 +7,13 @@ import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
+
 import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
 import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
+import { getNoSqlQueryConnection } from '../docdb/utils/NoSqlQueryConnection';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';

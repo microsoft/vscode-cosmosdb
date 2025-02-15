@@ -10,7 +10,7 @@ import { type AttachAccountWizardContext } from './AttachAccountWizardContext';
 
 export class MongoPasswordStep extends AzureWizardPromptStep<AttachAccountWizardContext> {
     public async prompt(context: AttachAccountWizardContext): Promise<void> {
-        const prompt: string = `Enter the password for ${context.experience.shortName}`;
+        const prompt: string = `Enter the password for ${context.experience!.shortName}`;
 
         const password = await context.ui.showInputBox({
             prompt: prompt,

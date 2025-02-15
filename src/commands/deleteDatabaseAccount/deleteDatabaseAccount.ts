@@ -104,7 +104,6 @@ export async function deleteDatabaseAccount(
     const activityContext = await createActivityContextV2();
     const wizardContext: DeleteWizardContext = Object.assign(context, {
         node,
-        deletePostgres: isPostgres,
         subscription: subscription,
         ...activityContext,
     });

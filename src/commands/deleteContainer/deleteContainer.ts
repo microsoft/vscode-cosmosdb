@@ -70,17 +70,26 @@ export async function deleteContainer(
         return;
     }
 
-    const success =
-        node instanceof CollectionItem ? await deleteMongoCollection(node) : await deleteDocumentDBContainer(node);
+    try {
+        const success =
+            node instanceof CollectionItem ? await deleteMongoCollection(node) : await deleteDocumentDBContainer(node);
 
-    if (success) {
-        showConfirmationAsInSettings(
-            localize(
-                'showConfirmation.droppedDatabase',
-                `The "{0}" ${containerTypeName} has been deleted.`,
-                containerId,
-            ),
-        );
+        if (success) {
+            showConfirmationAsInSettings(
+                localize(
+                    'showConfirmation.droppedDatabase',
+                    `The "{0}" ${containerTypeName} has been deleted.`,
+                    containerId,
+                ),
+            );
+        }
+    } finally {
+        const lastSlashIndex = node.id.lastIndexOf('/');
+        let parentId = node.id;
+        if (lastSlashIndex !== -1) {
+            parentId = parentId.substring(0, lastSlashIndex);
+        }
+        ext.state.notifyChildrenChanged(parentId);
     }
 }
 
@@ -91,8 +100,6 @@ async function deleteMongoCollection(node: CollectionItem): Promise<boolean> {
     await ext.state.showDeleting(node.id, async () => {
         success = await client.dropCollection(node.databaseInfo.name, node.collectionInfo.name);
     });
-
-    ext.state.notifyChildrenChanged(`${node.mongoCluster.id}/${node.databaseInfo.name}`);
 
     return success;
 }
@@ -106,8 +113,6 @@ async function deleteDocumentDBContainer(node: DocumentDBContainerResourceItem):
         const response = await client.database(node.model.database.id).container(node.model.container.id).delete();
         success = response.statusCode === 204;
     });
-
-    ext.state.notifyChildrenChanged(`${accountInfo.id}/${node.model.database.id}`);
 
     return success;
 }

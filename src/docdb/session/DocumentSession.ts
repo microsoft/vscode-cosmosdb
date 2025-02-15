@@ -40,12 +40,12 @@ export class DocumentSession {
     private isDisposed = false;
 
     constructor(connection: NoSqlQueryConnection, channel: Channel) {
-        const { databaseId, containerId, endpoint, masterKey, isEmulator } = connection;
+        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } = connection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
             credentials.push({ type: 'key', key: masterKey });
         }
-        credentials.push({ type: 'auth' });
+        credentials.push({ type: 'auth', tenantId: tenantId });
 
         this.id = uuid();
         this.channel = channel;

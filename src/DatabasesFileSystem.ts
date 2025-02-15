@@ -15,7 +15,6 @@ import vscode, { FileType, workspace, type FileStat, type MessageItem, type Uri 
 import { FileChangeType } from 'vscode-languageclient';
 import { ext } from './extensionVariables';
 import { SettingsService } from './services/SettingsService';
-import { type CosmosDBTreeElement } from './tree/CosmosDBTreeElement';
 import { localize } from './utils/localize';
 import { getNodeEditorLabel } from './utils/vscodeUtils';
 
@@ -28,7 +27,7 @@ export interface IEditableTreeItem extends AzExtTreeItem {
     writeFileContent(context: IActionContext, data: string): Promise<void>;
 }
 
-export interface EditableTreeItem extends CosmosDBTreeElement, AzExtTreeFileSystemItem {
+export interface EditableFileSystemItem extends AzExtTreeFileSystemItem {
     id: string;
     filePath: string;
     cTime: number;
@@ -37,12 +36,15 @@ export interface EditableTreeItem extends CosmosDBTreeElement, AzExtTreeFileSyst
     writeFileContent(context: IActionContext, data: string): Promise<void>;
 }
 
-export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem | EditableTreeItem> {
+export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem | EditableFileSystemItem> {
     public static scheme: string = 'azureDatabases';
     public scheme: string = DatabasesFileSystem.scheme;
     private _showSaveConfirmation: boolean = true;
 
-    public async statImpl(context: IActionContext, node: IEditableTreeItem | EditableTreeItem): Promise<FileStat> {
+    public async statImpl(
+        context: IActionContext,
+        node: IEditableTreeItem | EditableFileSystemItem,
+    ): Promise<FileStat> {
         const size: number = Buffer.byteLength(await node.getFileContent(context));
         return { type: FileType.File, ctime: node.cTime, mtime: node.mTime, size };
     }
@@ -53,7 +55,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
 
     public async writeFileImpl(
         context: IActionContext,
-        node: IEditableTreeItem | EditableTreeItem,
+        node: IEditableTreeItem | EditableFileSystemItem,
         content: Uint8Array,
         _originalUri: Uri,
     ): Promise<void> {
@@ -94,7 +96,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
         ext.outputChannel.appendLog(updatedMessage);
     }
 
-    public getFilePath(node: IEditableTreeItem | EditableTreeItem): string {
+    public getFilePath(node: IEditableTreeItem | EditableFileSystemItem): string {
         return node.filePath;
     }
 
@@ -108,7 +110,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
         }
     }
 
-    public fireChangedEvent(node: IEditableTreeItem | EditableTreeItem): void {
+    public fireChangedEvent(node: IEditableTreeItem | EditableFileSystemItem): void {
         node.mTime = Date.now();
         this.fireSoon({ type: FileChangeType.Changed, item: node });
     }

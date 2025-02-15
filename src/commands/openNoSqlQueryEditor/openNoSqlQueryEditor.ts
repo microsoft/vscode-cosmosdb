@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { getCosmosKeyCredential } from '../../docdb/getCosmosClient';
+import { getCosmosAuthCredential, getCosmosKeyCredential } from '../../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../../docdb/NoSqlCodeLensProvider';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
@@ -27,16 +27,18 @@ export async function openNoSqlQueryEditor(
         return undefined;
     }
 
-    context.telemetry.properties.experience = node?.experience.api;
+    context.telemetry.properties.experience = node.experience.api;
 
     const accountInfo = node.model.accountInfo;
     const keyCred = getCosmosKeyCredential(accountInfo.credentials);
+    const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
     const connection: NoSqlQueryConnection = {
         databaseId: node.model.database.id,
         containerId: node.model.container.id,
         endpoint: accountInfo.endpoint,
         masterKey: keyCred?.key,
         isEmulator: accountInfo.isEmulator,
+        tenantId: tenantId,
     };
 
     QueryEditorTab.render(connection);

@@ -18,35 +18,6 @@ import * as vscode from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { localize } from '../../utils/localize';
-import { type DocDBAccountTreeItemBase } from '../tree/DocDBAccountTreeItemBase';
-
-export async function ensureRbacPermission(docDbItem: DocDBAccountTreeItemBase, principalId: string): Promise<boolean> {
-    return (
-        (await callWithTelemetryAndErrorHandling('cosmosDB.addMissingRbacRole', async (context: IActionContext) => {
-            context.errorHandling.suppressDisplay = false;
-            context.errorHandling.rethrow = false;
-
-            const accountName: string = getDatabaseAccountNameFromId(docDbItem.fullId);
-            if (await askForRbacPermissions(accountName, docDbItem.subscription.subscriptionDisplayName, context)) {
-                context.telemetry.properties.lastStep = 'addRbacContributorPermission';
-                const resourceGroup: string = getResourceGroupFromId(docDbItem.fullId);
-                const start: number = Date.now();
-                await addRbacContributorPermission(
-                    accountName,
-                    principalId,
-                    resourceGroup,
-                    context,
-                    docDbItem.subscription,
-                );
-                //send duration of the previous call (in seconds) in addition to the duration of the whole event including user prompt
-                context.telemetry.measurements['createRoleAssignment'] = (Date.now() - start) / 1000;
-
-                return true;
-            }
-            return false;
-        })) ?? false
-    );
-}
 
 export async function ensureRbacPermissionV2(
     fullId: string,

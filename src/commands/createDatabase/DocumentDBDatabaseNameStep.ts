@@ -14,7 +14,7 @@ export class DocumentDBDatabaseNameStep extends AzureWizardPromptStep<CreateData
     public async prompt(context: CreateDatabaseWizardContext): Promise<void> {
         context.databaseName = (
             await context.ui.showInputBox({
-                prompt: `Enter an database name`,
+                prompt: `Enter a database name`,
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })

@@ -3,6 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { isEmulatorSupported } from '../../constants';
+import { type CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/CosmosDBAttachEmulatorResourceItem';
 import {
     AzureWizard,
     type AzureWizardExecuteStep,
@@ -37,12 +40,14 @@ export async function attachEmulator(
             );
         }
     } else {
-        if (!isWindows) {
-            context.errorHandling.suppressReportIssue = true;
-            throw new Error(
-                localize('emulatorNotSupported', 'The Azure Cosmos DB emulator is only supported on Windows.'),
-            );
-        }
+    if (!isEmulatorSupported) {
+        context.errorHandling.suppressReportIssue = true;
+        throw new Error(
+            localize(
+                'emulatorNotSupported',
+                'The Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
+            ),
+        );
     }
 
     const wizardContext: AttachEmulatorWizardContext = { ...context, parentTreeElementId: node.parentId };

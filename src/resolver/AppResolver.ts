@@ -9,15 +9,13 @@ import {
     nonNullProp,
     nonNullValue,
     type AzExtParentTreeItem,
-    type AzExtTreeItem,
     type IActionContext,
     type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AppResource, type AppResourceResolver } from '@microsoft/vscode-azext-utils/hostapi';
 import { ext } from '../extensionVariables';
-import { type PostgresAbstractServer } from '../postgres/abstract/models';
-import { type PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
-import { SubscriptionTreeItem } from '../tree/SubscriptionTreeItem';
+import { createPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
+import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
 import { type ResolvedDatabaseAccountResource } from './ResolvedDatabaseAccountResource';
 import { ResolvedPostgresServerResource } from './ResolvedPostgresServerResource';
@@ -43,24 +41,8 @@ export class DatabaseResolver implements AppResourceResolver {
                 const name = nonNullProp(resource, 'name');
                 context.valuesToMask.push(resource.id);
                 context.valuesToMask.push(resource.name);
-                let postgresServer: PostgresAbstractServer;
-                let dbChild: AzExtTreeItem;
 
                 switch (resource.type.toLowerCase()) {
-                    // case resourceTypes[0]: {
-                    //     const client = await createCosmosDBClient({ ...context, ...subContext });
-                    //     const databaseAccount = await client.databaseAccounts.get(resourceGroupName, name);
-                    //     dbChild = await SubscriptionTreeItem.initCosmosDBChild(
-                    //         client,
-                    //         databaseAccount,
-                    //         nonNullValue(subNode),
-                    //     );
-                    //     const experience = tryGetExperience(databaseAccount);
-                    //
-                    //     return experience?.api === API.MongoDB
-                    //         ? new ResolvedMongoAccountResource(dbChild as MongoAccountTreeItem, resource)
-                    //         : new ResolvedDocDBAccountResource(dbChild as DocDBAccountTreeItem, resource);
-                    // }
                     case resourceTypes[1]:
                     case resourceTypes[2]: {
                         const postgresClient =
@@ -68,10 +50,16 @@ export class DatabaseResolver implements AppResourceResolver {
                                 ? await createPostgreSQLClient({ ...context, ...subContext })
                                 : await createPostgreSQLFlexibleClient({ ...context, ...subContext });
 
-                        postgresServer = await postgresClient.servers.get(resourceGroupName, name);
-                        dbChild = await SubscriptionTreeItem.initPostgresChild(postgresServer, nonNullValue(subNode));
+                        const postgresServer = await postgresClient.servers.get(resourceGroupName, name);
+                        const fullyQualifiedDomainName = nonNullProp(postgresServer, 'fullyQualifiedDomainName');
+                        const connectionString = createPostgresConnectionString(fullyQualifiedDomainName);
+                        const parsedCS = parsePostgresConnectionString(connectionString);
+                        const parent = nonNullValue(subNode);
 
-                        return new ResolvedPostgresServerResource(dbChild as PostgresServerTreeItem, resource);
+                        return new ResolvedPostgresServerResource(
+                            new PostgresServerTreeItem(parent, parsedCS, postgresServer),
+                            resource,
+                        );
                     }
                     default:
                         return null;

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // CONSIDER: Run in pipeline
+import { parseError } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import * as cp from 'child_process';
 import * as fse from 'fs-extra';
@@ -11,7 +12,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { isNumber } from 'util';
 import type * as vscode from 'vscode';
-import { ext, isWindows, parseError, type IDisposable } from '../extension.bundle';
+import { ext, isWindows, type IDisposable } from '../extension.bundle';
 import { MongoShellScriptRunner } from '../src/mongo/MongoShellScriptRunner';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';

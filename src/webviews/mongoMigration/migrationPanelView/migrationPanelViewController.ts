@@ -6,19 +6,19 @@
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { WebviewController } from '../../api/extension-server/WebviewController';
-import { type RouterContext } from './demoViewRouter';
+import { type RouterContext } from './migrationPanelViewRouter';
 
 export type DemoViewWebviewConfigurationType = {
     databaserName: string;
     moreSettings?: boolean;
 };
 
-export class DemoViewController extends WebviewController<DemoViewWebviewConfigurationType> {
+export class MigrationPanelViewController extends WebviewController<DemoViewWebviewConfigurationType> {
     constructor(initialData: DemoViewWebviewConfigurationType) {
         // ext.context here is the vscode.ExtensionContext required by the ReactWebviewPanelController's original implementation
         // we're not modifying it here in order to be ready for future updates of the webview API.
 
-        const title: string = `My demo view ${initialData.databaserName}`;
+        const title: string = `Azure Cosmos DB Migration for MongoDB`;
 
         /**
          * initialData is passed to the webview as a prop, and can be used to initialize the webview's state.
@@ -29,11 +29,11 @@ export class DemoViewController extends WebviewController<DemoViewWebviewConfigu
          * Note, the 'mongoMigrationDemoView' has to be defined here as well: WebviewRegistry in src/webviews/api/configuration/WebviewRegistry.ts
          * (we'll simplifiy this in the future)
          */
-        super(ext.context, API.Common, title, 'mongoMigrationDemoView', initialData);
+        super(ext.context, API.Common, title, 'mongoMigrationPanel', initialData);
 
         const trpcContext: RouterContext = {
             dbExperience: API.Common,
-            webviewName: 'demoView',
+            webviewName: 'migrationDashboardView',
             databaseName: initialData.databaserName,
         };
 

@@ -7,6 +7,7 @@ import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-se
 
 // eslint-disable-next-line import/no-internal-modules
 import { z } from 'zod';
+import { getThemeAgnosticIconPath } from '../../../constants';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
 /**
@@ -16,16 +17,14 @@ export type RouterContext = BaseRouterContext & {
     databaseName: string;
 };
 
-export const demoViewRouter = router({
+export const migrationPanelViewRouter = router({
     getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
         return 'Info from the webview: ' + JSON.stringify(myCtx);
     }),
-    getDatabaseName: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
-        const myCtx = ctx as RouterContext;
-
-        return myCtx.databaseName;
+    getWaterMarkIconPath: publicProcedure.use(trpcToTelemetry).query(() => {
+        return getThemeAgnosticIconPath('mongoMigrationWatermark.svg').light;
     }),
     hello: publicProcedure
         .use(trpcToTelemetry)

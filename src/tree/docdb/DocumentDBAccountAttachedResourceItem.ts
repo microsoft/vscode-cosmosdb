@@ -42,17 +42,13 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
         }
 
         const treeItem = super.getTreeItem();
-
-        if (tooltipMessage) {
-            if (treeItem.tooltip) {
-                treeItem.tooltip = `${String(treeItem.tooltip)}\n${tooltipMessage}`;
-            } else {
-                treeItem.tooltip = tooltipMessage;
-            }
+        if (treeItem.tooltip) {
+            tooltipMessage = `${String(treeItem.tooltip)}\n${tooltipMessage}`;
         }
 
         return {
             ...treeItem,
+            tooltip: new vscode.MarkdownString(tooltipMessage),
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : getThemeAgnosticIconPath('CosmosDBAccount.svg'),

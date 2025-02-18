@@ -529,31 +529,25 @@
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook Connect Database",
-                "category": "MongoDB",
+                "category": "MongoDB Clusters",
                 "command": "cosmosDB.connectMongoDB",
                 "title": "Connect to this database"
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook Execute All Commands",
-                "category": "MongoDB",
+                "category": "MongoDB Clusters",
                 "command": "cosmosDB.executeAllMongoCommands",
                 "title": "Execute All MongoDB Commands"
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook Execute Command",
-                "category": "MongoDB",
+                "category": "MongoDB Clusters",
                 "command": "cosmosDB.executeMongoCommand",
                 "title": "Execute MongoDB Command"
             },
             {
-                "//": "Mongo DB|Cluster Launch Shell",
-                "category": "MongoDB",
-                "command": "cosmosDB.launchMongoShell",
-                "title": "Launch Shell"
-            },
-            {
                 "//": "Mongo DB|Cluster Scrapbook New Scrapbook",
-                "category": "MongoDB",
+                "category": "MongoDB Clusters",
                 "command": "cosmosDB.newMongoScrapbook",
                 "title": "New Mongo Scrapbook",
                 "icon": "$(new-file)"

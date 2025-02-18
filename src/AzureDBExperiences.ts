@@ -183,7 +183,7 @@ export const PostgresFlexibleExperience: Experience = {
 
 const cosmosExperiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience];
 const postgresExperiencesArray: Experience[] = [PostgresSingleExperience, PostgresFlexibleExperience];
-const mongoCoreExperienceArray: Experience[] = [MongoExperience, MongoClustersExperience];
+const mongoCoreExperienceArray: Experience[] = [MongoClustersExperience];
 const experiencesArray: Experience[] = [
     ...cosmosExperiencesArray,
     ...postgresExperiencesArray,

@@ -35,7 +35,11 @@ export async function newConnection(
         parentId = node.parentId ?? ext.mongoClusterWorkspaceBranchDataResource.id;
     }
 
-    const wizardContext: NewConnectionWizardContext = { ...context, quickPickType: type, parentId };
+    const wizardContext: NewConnectionWizardContext = {
+        ...context,
+        quickPickType: type,
+        parentId,
+    };
 
     const wizard = new AzureWizard(wizardContext, {
         title: localize('attachAccountTitle', 'New Connection'),

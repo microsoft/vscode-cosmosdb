@@ -14,6 +14,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AppResource, type AppResourceResolver } from '@microsoft/vscode-azext-utils/hostapi';
 import { ext } from '../extensionVariables';
+import { PostgresServerType, type PostgresAbstractServer } from '../postgres/abstract/models';
 import { createPostgresConnectionString, parsePostgresConnectionString } from '../postgres/postgresConnectionStrings';
 import { PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
@@ -50,7 +51,10 @@ export class DatabaseResolver implements AppResourceResolver {
                                 ? await createPostgreSQLClient({ ...context, ...subContext })
                                 : await createPostgreSQLFlexibleClient({ ...context, ...subContext });
 
-                        const postgresServer = await postgresClient.servers.get(resourceGroupName, name);
+                        const postgresServer: PostgresAbstractServer = await postgresClient.servers.get(
+                            resourceGroupName,
+                            name,
+                        );
                         const fullyQualifiedDomainName = nonNullProp(postgresServer, 'fullyQualifiedDomainName');
                         const connectionString = createPostgresConnectionString(fullyQualifiedDomainName);
                         const parsedCS = parsePostgresConnectionString(connectionString);

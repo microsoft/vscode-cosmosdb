@@ -18,7 +18,7 @@ import { API, tryGetExperience } from '../AzureDBExperiences';
 import { type DocDBAccountTreeItem } from '../docdb/tree/DocDBAccountTreeItem';
 import { ext } from '../extensionVariables';
 import { type MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { type PostgresAbstractServer } from '../postgres/abstract/models';
+import { PostgresServerType, type PostgresAbstractServer } from '../postgres/abstract/models';
 import { type PostgresServerTreeItem } from '../postgres/tree/PostgresServerTreeItem';
 import { SubscriptionTreeItem } from '../tree/SubscriptionTreeItem';
 import { createCosmosDBClient, createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../utils/azureClients';
@@ -74,6 +74,10 @@ export class DatabaseResolver implements AppResourceResolver {
                                 : await createPostgreSQLFlexibleClient({ ...context, ...subContext });
 
                         postgresServer = await postgresClient.servers.get(resourceGroupName, name);
+                        postgresServer.serverType ??=
+                            resource.type.toLowerCase() === resourceTypes[1]
+                                ? PostgresServerType.Single
+                                : PostgresServerType.Flexible;
                         dbChild = await SubscriptionTreeItem.initPostgresChild(postgresServer, nonNullValue(subNode));
 
                         return new ResolvedPostgresServerResource(dbChild as PostgresServerTreeItem, resource);

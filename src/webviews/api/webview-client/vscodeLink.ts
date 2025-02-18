@@ -8,13 +8,18 @@ import { TRPCClientError, type Operation, type TRPCLink } from '@trpc/client';
 import { observable } from '@trpc/server/observable'; // Their example uses a reference from /server/ and so do we: https://trpc.io/docs/client/links#example
 import { type AppRouter } from '../configuration/appRouter';
 
+type StopOperation<TInput = unknown> = Omit<Operation<TInput>, 'type'> & {
+    type: 'subscription.stop';
+};
+
 /**
  * Messages sent from the webview/client to the extension/server.
  * @id - A unique identifier for the message/
  */
 export interface VsCodeLinkRequestMessage {
     id: string;
-    op: Operation<unknown>;
+    // TODO, when tRPC v12 is released, 'subscription.stop' should be supported natively, until then, we're adding it manually.
+    op: Operation<unknown> | StopOperation<unknown>;
 }
 
 /**
@@ -27,17 +32,15 @@ export interface VsCodeLinkResponseMessage {
     id: string;
     result?: unknown;
     error?: {
-        code?: number;
-        message: string;
-        data?: unknown;
         name: string;
+        message: string;
+
+        code?: number;
+        stack?: string;
+        cause?: unknown;
+        data?: unknown;
     };
     complete?: boolean;
-}
-
-export interface VsCodeLinkNotification {
-    notification: string;
-    parameters: unknown;
 }
 
 interface VSCodeLinkOptions {
@@ -60,7 +63,7 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
      * Notes to maintainers:
      *  - types of messages have been derived from node_modules/@trpc/client/src/links/types.ts
      *    It was not straightforward to import them directly due to the use of `@trpc/server/unstable-core-do-not-import`
-     *    Fell free to revisit once tRPC reaches version 11.0.0
+     *    TODO: Fell free to revisit once tRPC reaches version 11.0.0
      */
 
     // The link function required by tRPC client
@@ -96,7 +99,6 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                     // Ignore messages not related to this operation
                     if (message.id !== operationId) return;
 
-                    // Handle error messages --> this codepath hasn't been explored yet
                     if (message.error) {
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                         observer.error(TRPCClientError.from(message.error));
@@ -119,7 +121,7 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                         }
                     }
 
-                    // TODO: Handle completion signals for subscriptions
+                    // Handle completion signals for subscriptions
                     if (message.complete) {
                         observer.complete();
                     }
@@ -132,12 +134,11 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                 send({ id: operationId, op });
 
                 // Return a cleanup function that is called when the observable is unsubscribed
+                // This is relevant when working with subscriptions.
                 return () => {
                     // If it's a subscription, send a stop message to the server
                     if (op.type === 'subscription') {
-                        // TODO: subscriptions support
-                        //console.log('🤯🤯🤯 here stop the subscription: ' + op.path);
-                        //send({ id: operationId, op: { ...op, type: 'subscription.stop' } });
+                        send({ id: operationId, op: { ...op, type: 'subscription.stop' } });
                     }
                     // Cleanup the message handler
                     unsubscribe();

@@ -5,6 +5,7 @@
 
 import {
     Label,
+    Link,
     makeStyles,
     Table,
     TableBody,
@@ -17,6 +18,7 @@ import {
 } from '@fluentui/react-components';
 import { queryMetricsToTable } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
+import { IndexMetricsView } from './IndexMetricsView';
 
 const useStyles = makeStyles({
     topLabel: {
@@ -39,12 +41,12 @@ const useStyles = makeStyles({
     panel1: {
         flexGrow: '1',
         flexShrink: '1',
-        flexBasis: '70%',
+        flexBasis: '49%',
     },
     panel2: {
         flexGrow: '1',
         flexShrink: '1',
-        flexBasis: '28%',
+        flexBasis: '49%',
     },
 });
 
@@ -53,13 +55,15 @@ export const StatsTab = () => {
     const state = useQueryEditorState();
     const items = queryMetricsToTable(state.currentQueryResult);
     const indexMetrics = state.currentQueryResult?.indexMetrics?.trim();
+    const QUERY_METRICS_DOC_URL = 'https://learn.microsoft.com/azure/cosmos-db/nosql/query-metrics';
 
     return (
         <>
             <div className={styles.container}>
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
-                        <Label size={'large'}>Query metrics</Label>
+                        <Label size={'large'}>Query metrics</Label> (
+                        <Link href={QUERY_METRICS_DOC_URL}>Learn More…</Link>)
                     </div>
                     <Table arial-label="Stats table" style={{ minWidth: '510px' }}>
                         <TableHeader>
@@ -89,14 +93,11 @@ export const StatsTab = () => {
                         </TableBody>
                     </Table>
                 </div>
-                <div className={styles.panel2}>
-                    <div className={styles.bottomLabel}>
-                        <Label size={'large'}>Index metrics</Label>
+                {indexMetrics && (
+                    <div className={styles.panel2}>
+                        <IndexMetricsView indexMetricsStr={indexMetrics} topLabelStyle={styles.topLabel} />
                     </div>
-                    <div>
-                        <pre className={styles.pre}>{indexMetrics}</pre>
-                    </div>
-                </div>
+                )}
             </div>
         </>
     );

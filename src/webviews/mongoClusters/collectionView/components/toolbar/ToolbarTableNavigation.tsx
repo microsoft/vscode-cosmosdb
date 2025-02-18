@@ -21,10 +21,9 @@ import { CollectionViewContext, Views } from '../../collectionViewContext';
 
 export const ToolbarTableNavigation = (): JSX.Element => {
     /**
-     * Use the `useTrpcClient` hook to get the tRPC client and an event target
-     * for handling notifications from the extension.
+     * Use the `useTrpcClient` hook to get the tRPC client
      */
-    const { trpcClient /** , vscodeEventTarget */ } = useTrpcClient();
+    const { trpcClient } = useTrpcClient();
 
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
@@ -49,8 +48,8 @@ export const ToolbarTableNavigation = (): JSX.Element => {
                     depth: newPath.length ?? 0,
                 },
             })
-            .catch((_error) => {
-                console.debug(_error);
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
             });
     }
 
@@ -75,8 +74,8 @@ export const ToolbarTableNavigation = (): JSX.Element => {
                     depth: newPath.length ?? 0,
                 },
             })
-            .catch((_error) => {
-                console.debug(_error);
+            .catch((error) => {
+                console.debug('Failed to report an event:', error);
             });
     }
 

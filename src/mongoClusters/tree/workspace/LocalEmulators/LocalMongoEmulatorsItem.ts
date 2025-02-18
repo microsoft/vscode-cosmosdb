@@ -9,11 +9,11 @@ import { MongoClustersExperience } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
 import { type CosmosDBTreeElement } from '../../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../../../tree/TreeElementWithContextValue';
-import { WorkspaceResourceType } from '../../../../tree/workspace/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../../../tree/workspace/SharedWorkspaceStorage';
+import { WorkspaceResourceType } from '../../../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { SharedWorkspaceStorage } from '../../../../tree/workspace-api/SharedWorkspaceStorage';
 import { type MongoClusterModel } from '../../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from '../MongoClusterWorkspaceItem';
-import { NewEmulatorConnectionItem } from './NewEmulatorConnectionItem';
+import { NewMongoEmulatorConnectionItem } from './NewMongoEmulatorConnectionItem';
 
 export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string;
@@ -40,7 +40,7 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
 
                     return new MongoClusterWorkspaceItem(model);
                 }),
-            new NewEmulatorConnectionItem(this.id),
+            new NewMongoEmulatorConnectionItem(this.id),
         ];
     }
 

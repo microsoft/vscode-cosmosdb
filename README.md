@@ -62,7 +62,7 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 
 ### Run Mongo Commands with Rich Intellisense
 
-- View your MongoDB database account by clicking "Sign in to Azure..." in the Azure Resources explorer or using "Attach Database Account" to connect via a connection string
+- View your MongoDB database account by clicking "Sign in to Azure..." in the Azure Resources explorer or using "New Connection" to connect via a connection string
 - Optionally configure the settings `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
 - Click on "New Mongo Scrapbook" in the tree title bar
 - Click on "Connect to a database" to indicate which database to run the commands against
@@ -85,7 +85,7 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 2. Select the `+` button to open the "Create Resource" menu
 
    ![Create resource](resources/readme/createResource.png)
-   
+
 3. Choose "Create Database Server..."
 
    ![Create Database Server](resources/readme/createDatabaseServer.png)
@@ -93,9 +93,9 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 ## Attach to the Cosmos DB Emulator
 
 - Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine
-- Right click 'Attached Database Accounts' and select 'Attach Emulator'
+- Right click 'Attached Database Accounts' and select 'New Emulator Connection'
 
-![Attach Emulator](resources/readme/attachEmulator.png)
+![New Emulator Connection](resources/readme/attachEmulator.png)
 
 ## Known Issues
 

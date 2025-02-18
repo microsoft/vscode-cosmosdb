@@ -14,8 +14,6 @@ import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
 import { ext } from '../extensionVariables';
 import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
-import { attachAccount } from './attachAccount/attachAccount';
-import { attachEmulator } from './attachEmulator/attachEmulator';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { createDocumentDBContainer, createGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
@@ -29,16 +27,18 @@ import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDataba
 import { deleteDocumentDBItem } from './deleteItems/deleteItems';
 import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
 import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
-import { detachAzureDatabaseAccount } from './detachDatabaseAccount/detachDatabaseAccount';
 import { executeDocumentDBStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
 import { importDocuments } from './importDocuments/importDocuments';
 import { documentDBLoadMore } from './loadMore/loadMore';
+import { newConnection } from './newConnection/newConnection';
+import { newEmulatorConnection } from './newEmulatorConnection/newEmulatorConnection';
 import { openDocumentDBItem } from './openDocument/openDocument';
 import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { openDocumentDBStoredProcedure } from './openStoredProcedure/openStoredProcedure';
 import { openDocumentDBTrigger } from './openTrigger/openTrigger';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
+import { removeConnection } from './removeConnection/removeConnection';
 import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './viewOffer/viewOffer';
 
 /**
@@ -77,9 +77,9 @@ export function registerCommands(): void {
 export function registerAccountCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDatabase', createAzureDatabase);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAzureDatabaseAccount);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachDatabaseAccount', attachAccount);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', attachEmulator);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.detachDatabaseAccount', detachAzureDatabaseAccount);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.newConnection', newConnection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.newEmulatorConnection', newEmulatorConnection);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.removeConnection', removeConnection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);
 }
 

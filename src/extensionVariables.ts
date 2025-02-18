@@ -18,7 +18,7 @@ import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseT
 import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
 import { type CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
-import { type CosmosDBAttachedAccountsResourceItem } from './tree/attached/CosmosDBAttachedAccountsResourceItem';
+import { type CosmosDBWorkspaceItem } from './tree/workspace/CosmosDBWorkspaceItem';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -54,7 +54,7 @@ export namespace ext {
     export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
     // used for the workspace: these are the dedicated providers
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
-    export let cosmosDBWorkspaceBranchDataResource: CosmosDBAttachedAccountsResourceItem;
+    export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
 
     // used for the resources tree
     export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;

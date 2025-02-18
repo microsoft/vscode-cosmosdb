@@ -12,7 +12,7 @@ import { type AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { type TreeItem, type TreeItemLabel } from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
-import { WorkspaceResourceType } from '../../tree/workspace/SharedWorkspaceResourceProvider';
+import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 
 export interface PickAppResourceOptions {
     type?: AzExtResourceType | AzExtResourceType[];

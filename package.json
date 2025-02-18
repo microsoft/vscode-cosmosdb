@@ -285,19 +285,19 @@
             },
             {
                 "category": "Cosmos DB",
-                "command": "cosmosDB.attachDatabaseAccount",
-                "title": "Attach Database Account...",
+                "command": "cosmosDB.newConnection",
+                "title": "New Connection...",
                 "icon": "$(plug)"
             },
             {
                 "category": "Cosmos DB",
-                "command": "cosmosDB.detachDatabaseAccount",
-                "title": "Detach Database Account..."
+                "command": "cosmosDB.removeConnection",
+                "title": "Remove Connection..."
             },
             {
                 "category": "Cosmos DB",
-                "command": "cosmosDB.attachEmulator",
-                "title": "Attach Emulator..."
+                "command": "cosmosDB.newEmulatorConnection",
+                "title": "New Emulator Connection..."
             },
             {
                 "category": "Cosmos DB",
@@ -620,8 +620,8 @@
         "menus": {
             "azureDatabases.submenus.workspaceActions": [
                 {
-                    "command": "cosmosDB.attachDatabaseAccount",
-                    "group": "1_attach@1"
+                    "command": "cosmosDB.newConnection",
+                    "group": "1_newConnection@1"
                 }
             ],
             "azureDatabases.submenus.mongo.database.scrapbook": [
@@ -837,7 +837,7 @@
                 },
                 {
                     "//": "[Account] Detach account (workspace only)",
-                    "command": "cosmosDB.detachDatabaseAccount",
+                    "command": "cosmosDB.removeConnection",
                     "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
                     "group": "1@2"
                 },

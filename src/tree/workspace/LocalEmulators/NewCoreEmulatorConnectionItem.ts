@@ -4,25 +4,25 @@
  *--------------------------------------------------------------------------------------------*/
 
 import vscode from 'vscode';
-import { type CosmosDBTreeElement } from '../../../tree/CosmosDBTreeElement';
-import { type TreeElementWithContextValue } from '../../../tree/TreeElementWithContextValue';
+import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 
-export class MongoDBAttachAccountResourceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+export class NewCoreEmulatorConnectionItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.newConnection';
+    public readonly contextValue: string = 'treeItem.attachEmulator';
 
     constructor(public readonly parentId: string) {
-        this.id = `${parentId}/newConnection`;
+        this.id = `${parentId}/attachEmulator`;
     }
 
     public getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: 'New Connection\u2026',
+            label: 'New Emulator Connection\u2026',
             iconPath: new vscode.ThemeIcon('plus'),
             command: {
-                command: 'cosmosDB.newConnection',
+                command: 'cosmosDB.newEmulatorConnection',
                 title: '',
                 arguments: [this],
             },

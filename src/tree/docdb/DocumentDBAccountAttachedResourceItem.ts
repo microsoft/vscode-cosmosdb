@@ -12,9 +12,9 @@ import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azur
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { localize } from '../../utils/localize';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 
 export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAccountResourceItemBase {

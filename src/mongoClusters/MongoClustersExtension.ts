@@ -25,7 +25,7 @@ import { importDocuments } from '../commands/importDocuments/importDocuments';
 import { launchShell } from '../commands/launchShell/launchShell';
 import { openMongoDocumentView } from '../commands/openDocument/openDocument';
 import { ext } from '../extensionVariables';
-import { WorkspaceResourceType } from '../tree/workspace/SharedWorkspaceResourceProvider';
+import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
 import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';

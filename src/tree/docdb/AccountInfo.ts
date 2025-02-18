@@ -13,8 +13,8 @@ import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } 
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
-import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
+import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
 
 export interface AccountInfo {
     credentials: CosmosDBCredential[];

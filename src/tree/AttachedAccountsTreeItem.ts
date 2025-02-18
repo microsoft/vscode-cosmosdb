@@ -138,14 +138,14 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     }
 
     private getAttachAccountActionItems(): AzExtTreeItem[] {
-        const attachDatabaseAccount = new GenericTreeItem(this, {
+        const newConnection = new GenericTreeItem(this, {
             contextValue: 'cosmosDBAttachDatabaseAccount',
-            label: 'Attach Database Account...',
+            label: 'New Connection...',
             iconPath: new vscode.ThemeIcon('plus'),
-            commandId: 'cosmosDB.attachDatabaseAccount',
+            commandId: 'cosmosDB.newConnection',
             includeInTreeItemPicker: true,
         });
-        return [attachDatabaseAccount];
+        return [newConnection];
     }
 
     public isAncestorOfImpl(contextValue: string): boolean {

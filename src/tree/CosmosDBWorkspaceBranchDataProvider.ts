@@ -14,11 +14,11 @@ import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
 import { localize } from '../utils/localize';
-import { CosmosDBAttachedAccountsResourceItem } from './attached/CosmosDBAttachedAccountsResourceItem';
 import { type CosmosDBResource } from './CosmosAccountModel';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
 import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
+import { CosmosDBWorkspaceItem } from './workspace/CosmosDBWorkspaceItem';
 
 export class CosmosDBWorkspaceBranchDataProvider
     extends vscode.Disposable
@@ -85,7 +85,7 @@ export class CosmosDBWorkspaceBranchDataProvider
     async getResourceItem(): Promise<CosmosDBTreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'CosmosDBWorkspaceBranchDataProvider.getResourceItem',
-            () => new CosmosDBAttachedAccountsResourceItem(),
+            () => new CosmosDBWorkspaceItem(),
         );
 
         if (resourceItem) {

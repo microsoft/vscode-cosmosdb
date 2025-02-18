@@ -38,7 +38,7 @@ import { CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBra
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
-} from './tree/workspace/SharedWorkspaceResourceProvider';
+} from './tree/workspace-api/SharedWorkspaceResourceProvider';
 
 export async function activateInternal(
     context: vscode.ExtensionContext,

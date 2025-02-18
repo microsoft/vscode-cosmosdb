@@ -9,9 +9,9 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBAttachedAccountModel } from '../attached/CosmosDBAttachedAccountModel';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
+import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
 
 export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
     constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {

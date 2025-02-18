@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.24.2
+
+### Changed
+
+- Enhanced error handling.
+- Improved index metrics display.
+- Made minor adjustments.
+
 ## 0.24.1
 
 ### Changed

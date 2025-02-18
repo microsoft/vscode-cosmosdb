@@ -56,6 +56,11 @@ export class DatabaseResolver implements AppResourceResolver {
                         const parsedCS = parsePostgresConnectionString(connectionString);
                         const parent = nonNullValue(subNode);
 
+                        postgresServer.serverType ??=
+                            resource.type.toLowerCase() === resourceTypes[1]
+                                ? PostgresServerType.Single
+                                : PostgresServerType.Flexible;
+
                         return new ResolvedPostgresServerResource(
                             new PostgresServerTreeItem(parent, parsedCS, postgresServer),
                             resource,

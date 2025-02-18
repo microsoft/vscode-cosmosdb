@@ -9,7 +9,8 @@ import {
     type AzureWizardPromptStep,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-import { isEmulatorSupported, isLinux, isWindows } from '../../constants';
+import { API } from '../../AzureDBExperiences';
+import { isEmulatorSupported } from '../../constants';
 import { NewEmulatorConnectionItem } from '../../mongoClusters/tree/workspace/LocalEmulators/NewEmulatorConnectionItem';
 import { CosmosDBAttachEmulatorResourceItem } from '../../tree/attached/LocalEmulators/CosmosDBAttachEmulatorResourceItem';
 import { localize } from '../../utils/localize';
@@ -17,33 +18,26 @@ import { type AttachEmulatorWizardContext } from './AttachEmulatorWizardContext'
 import { ExecuteStep } from './ExecuteStep';
 import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
 import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
-import { PromptMongoEmulatorStep } from './mongo/PromptMongoEmulatorStep';
-import { PromptMongoPortStep } from './mongo/PromptMongoPortStep';
 import { PromptNosqlEmulatorConnectionStringStep } from './nosql/PromptNosqlEmulatorConnectionStringStep';
-import { PromptNosqlEmulatorStep } from './nosql/PromptNosqlEmulatorStep';
-import { PromptNosqlPortStep } from './nosql/PromptNosqlPortStep';
+import { PromptEmulatorPortStep } from './PromptEmulatorPortStep';
+import { PromptEmulatorTypeStep } from './PromptEmulatorTypeStep';
 
 export async function attachEmulator(
     context: IActionContext,
     node: CosmosDBAttachEmulatorResourceItem | NewEmulatorConnectionItem,
 ) {
-    if (node instanceof NewEmulatorConnectionItem) {
-        if (!isWindows && !isLinux) {
-            context.errorHandling.suppressReportIssue = true;
-            throw new Error(
-                localize(
-                    'mongoEmulatorNotSupported',
-                    'The Azure Cosmos DB emulator for MongoDB is only supported on Windows and Linux.',
-                ),
-            );
-        }
-    } else if (!isEmulatorSupported) {
+    if (!isEmulatorSupported) {
         context.errorHandling.suppressReportIssue = true;
         throw new Error(
-            localize(
-                'emulatorNotSupported',
-                'The Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
-            ),
+            node instanceof NewEmulatorConnectionItem
+                ? localize(
+                      'mongoEmulatorNotSupported',
+                      'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
+                  )
+                : localize(
+                      'emulatorNotSupported',
+                      'The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
+                  ),
         );
     }
 
@@ -56,9 +50,9 @@ export async function attachEmulator(
     if (node instanceof NewEmulatorConnectionItem) {
         title = 'New Emulator Connection';
         steps.push(
-            new PromptMongoEmulatorStep(),
+            new PromptEmulatorTypeStep(API.MongoDB),
             new PromptMongoEmulatorConnectionStringStep(),
-            new PromptMongoPortStep(),
+            new PromptEmulatorPortStep(),
             new PromptMongoEmulatorSecurityStep(),
         );
         executeSteps.push(new ExecuteStep());
@@ -67,7 +61,7 @@ export async function attachEmulator(
     /**
      * Note to code maintainers:
      *
-     * We're not adding the *EmulatorSecurityStep* here becasue we can't disable TLS/SSL
+     * We're not adding the *EmulatorSecurityStep* to CoreExperience becasue we can't disable TLS/SSL
      * for an individual instance of CosmosClient with these features disabled.
      * https://github.com/Azure/azure-sdk-for-js/issues/12687
      */
@@ -75,9 +69,9 @@ export async function attachEmulator(
     if (node instanceof CosmosDBAttachEmulatorResourceItem) {
         title = 'Attach Emulator';
         steps.push(
-            new PromptNosqlEmulatorStep(),
+            new PromptEmulatorTypeStep(API.Core),
             new PromptNosqlEmulatorConnectionStringStep(),
-            new PromptNosqlPortStep(),
+            new PromptEmulatorPortStep(),
         );
         executeSteps.push(new ExecuteStep());
     }

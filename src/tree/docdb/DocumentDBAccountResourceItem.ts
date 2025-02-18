@@ -16,7 +16,7 @@ import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 
 export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResourceItemBase {
-    public declare readonly account: CosmosAccountModel;
+    declare public readonly account: CosmosAccountModel;
 
     // To prevent the RBAC notification from showing up multiple times
     protected hasShownRbacNotification: boolean = false;

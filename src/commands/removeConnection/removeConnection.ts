@@ -12,6 +12,7 @@ import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace-api/SharedWorkspaceStorage';
+import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { localize } from '../../utils/localize';
 import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';
@@ -63,6 +64,34 @@ export async function removeConnection(
     node: CosmosDBAccountResourceItemBase | MongoClusterItemBase,
 ): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
+
+    // ask for confirmation
+
+    /**
+     * Initial attempt with node.getTreeItem() and then accessing the label has failed, fell free to fix.
+     * This solution below was quicker to implement and works just as well.
+     */
+
+    let connectionName: string;
+    if (node instanceof MongoClusterItemBase) {
+        connectionName = node.mongoCluster.name;
+    } else if (node instanceof CosmosDBAccountResourceItemBase) {
+        connectionName = node.account.name;
+    } else {
+        connectionName = 'unknown';
+    }
+
+    const confirmed = await getConfirmationAsInSettings(
+        'Are you sure?',
+        `Delete "${connectionName}"?\n\nThis can't be undone.`,
+        'delete',
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    // continue with deletion
 
     if (node instanceof MongoClusterItemBase) {
         await ext.state.showDeleting(node.id, async () => {

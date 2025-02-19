@@ -498,6 +498,12 @@
                 "title": "Open Trigger"
             },
             {
+                "category": "Cosmos DB",
+                "command": "cosmosDB.launchCosmosShell",
+                "title": "Launch Cosmos Shell",
+                "when": "vscodeDatabases.cosmosShellSupportEnabled"
+            },
+            {
                 "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBCollectionOffer",
                 "title": "View Container Offer"
@@ -1021,6 +1027,26 @@
                     "group": "2@1"
                 },
                 {
+                    "command": "cosmosDB.launchCosmosShell",
+                    "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
+                    "group": "2@1"
+                },
+                {
+                    "command": "cosmosDB.launchCosmosShell",
+                    "when": "view == azureWorkspace && viewItem == cosmosDBDocumentServerAttached",
+                    "group": "2@1"
+                },
+                {
+                    "command": "cosmosDB.launchCosmosShell",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentDatabase",
+                    "group": "2@1"
+                },
+                {
+                    "command": "cosmosDB.launchCosmosShell",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+                    "group": "2@1"
+                },
+                {
                     "command": "azureDatabases.refresh",
                     "when": "view == azureWorkspace && viewItem == cosmosDBMongoServerAttached",
                     "group": "3@2"
@@ -1028,7 +1054,7 @@
                 {
                     "command": "azureDatabases.refresh",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-                    "group": "2@1"
+                    "group": "3@1"
                 },
                 {
                     "command": "azureDatabases.refresh",

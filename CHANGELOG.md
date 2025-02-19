@@ -9,12 +9,14 @@
   - MongoDB Scrapbook support added for all MongoDB API-supported databases.
 - Improved support for local emulators.
 - Unified context menus across all experiences.
+- Supporting TenantId for CosmosDB authentication
 
 ### Changed
 
 - Optimized resource tree exploration.
     - Time-consuming queries are now executed only when interacting with a selected cluster.
 - Migrated Tree View API from V1 to V2.
+- Create server/account command opens Azure Portal with corresponding blade instead of going through command palette wizard.
 
 ## 0.24.2
 

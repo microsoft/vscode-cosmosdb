@@ -16,7 +16,7 @@ loader.config({ monaco: monacoEditor });
 export const MonacoEditor = (props: EditorProps) => {
     const monaco = useMonaco();
     const themeState = useThemeState();
-    const attr = useUncontrolledFocus();
+    const uncontrolledFocus = useUncontrolledFocus();
 
     useEffect(() => {
         if (monaco) {
@@ -28,13 +28,23 @@ export const MonacoEditor = (props: EditorProps) => {
     }, [monaco, themeState]);
 
     return (
-        <section {...attr} style={{ width: '100%', height: '100%' }}>
-            <Editor {...props} theme={themeState.monaco.themeName} />
-            <input
-                style={{ position: 'absolute', width: '1px', height: '1px', top: '0px', zIndex: -999 }}
-                id="monaco-editor-aria-container"
-                aria-label="Element to prevent loosing focus from editor"
-            />
+        <section {...uncontrolledFocus} style={{ width: '100%', height: '100%' }}>
+            <i
+                // The hack to make the focus trap work
+                // https://github.com/microsoft/fluentui/blob/0f490a4fea60df6b2ad0f5a6e088017df7ce1d54/packages/react-components/react-tabster/src/hooks/useTabster.ts#L34
+                data-is-focus-trap-zone-bumper={true}
+                style={{
+                    position: 'fixed',
+                    height: '1px',
+                    width: '1px',
+                    opacity: '0.001',
+                    zIndex: '-1',
+                    contentVisibility: 'hidden',
+                    top: '0px',
+                    left: '0px',
+                }}
+            ></i>
+            <Editor {...props} data-is-focus-trap-zone-bumper={'true'} theme={themeState.monaco.themeName} />
         </section>
     );
 };

@@ -184,6 +184,11 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
                     key: parsedCS.masterKey,
                 };
 
+                // If the account is the emulator, we just return the only supported key credential
+                if (account.isEmulator) {
+                    return [keyCred];
+                }
+
                 try {
                     // Since here we don't have subscription,
                     // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
@@ -197,7 +202,7 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
             }
 
             context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-            if (localAuthDisabled) {
+            if (localAuthDisabled && !account.isEmulator) {
                 // Clean up keyCred if local auth is disabled
                 keyCred = undefined;
 

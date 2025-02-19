@@ -4,11 +4,17 @@
 
 ### Added
 
--
+- Feature parity across all MongoDB API platforms.
+  - Improved Azure Cosmos DB for MongoDB (RU) interface.
+  - MongoDB Scrapbook support added for all MongoDB API-supported databases.
+- Improved support for local emulators.
+- Unified context menus across all experiences.
 
 ### Changed
 
--
+- Optimized resource tree exploration.
+    - Time-consuming queries are now executed only when interacting with a selected cluster.
+- Migrated Tree View API from V1 to V2.
 
 ## 0.24.2
 

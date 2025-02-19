@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TestOutputChannel, TestUserInput } from '@microsoft/vscode-azext-dev';
-import { type IAzureUserInput } from '@microsoft/vscode-azext-utils';
+import { type IAzureUserInput, registerOnActionStartHandler } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { ext, registerOnActionStartHandler } from '../extension.bundle';
+import { ext } from '../extension.bundle';
 
 const longRunningLocalTestsEnabled: boolean = !/^(false|0)?$/i.test(
     process.env.AzCode_EnableLongRunningTestsLocal || '',

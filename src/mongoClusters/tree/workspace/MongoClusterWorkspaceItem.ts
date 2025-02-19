@@ -30,6 +30,10 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         super(mongoCluster);
     }
 
+    public getConnectionString(): Promise<string | undefined> {
+        return Promise.resolve(this.mongoCluster.connectionString);
+    }
+
     /**
      * Authenticates and connects to the MongoDB cluster.
      * @param context The action context.
@@ -80,7 +84,14 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 ext.outputChannel.append(`MongoDB Clusters: Connecting to the cluster as "${username}"... `);
 
                 // Cache the credentials
-                CredentialCache.setCredentials(this.id, connectionString.toString(), username, password);
+                CredentialCache.setCredentials(
+                    this.id,
+                    connectionString.toString(),
+                    username,
+                    password,
+                    this.mongoCluster.isEmulator, // only workspace items can potentially be connecting to an emulator
+                    this.mongoCluster.disableEmulatorSecurity, // only workspace items can potentially be connecting to an emulator
+                );
 
                 // Attempt to create the client with the provided credentials
                 try {
@@ -151,13 +162,34 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      * @returns The TreeItem object.
      */
     getTreeItem(): vscode.TreeItem {
+        let description: string | undefined = undefined;
+        let tooltipMessage: string | undefined = undefined;
+
+        if (this.mongoCluster.isEmulator) {
+            // For emulator clusters, show TLS/SSL status if security is disabled
+            if (this.mongoCluster.disableEmulatorSecurity) {
+                description = '⚠ TLS/SSL Disabled';
+                tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
+            } else {
+                tooltipMessage = '✅ **Security:** TLS/SSL Enabled';
+            }
+        } else {
+            // For non-emulator clusters, show SKU if defined
+            if (this.mongoCluster.sku !== undefined) {
+                description = `(${this.mongoCluster.sku})`;
+            }
+        }
+
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.mongoCluster',
+            contextValue: this.contextValue,
             label: this.mongoCluster.name,
-            description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
-            iconPath: new vscode.ThemeIcon('server-environment'), // Uncomment if icon is available
+            description: description,
+            iconPath: this.mongoCluster.isEmulator
+                ? new vscode.ThemeIcon('plug')
+                : new vscode.ThemeIcon('server-environment'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
+            tooltip: new vscode.MarkdownString(tooltipMessage),
         };
     }
 }

@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { type EditableFileSystemItem } from '../DatabasesFileSystem';
 import { ext } from '../extensionVariables';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { type IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
+import { type CosmosDBTreeElement } from '../tree/CosmosDBTreeElement';
 import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {
@@ -82,23 +81,21 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error('Could not find unique name for new file.');
 }
 
-export function getNodeEditorLabel(node: AzExtTreeItem): string {
-    const labels = [node.label];
-    while (node.parent) {
-        node = node.parent;
-        labels.unshift(node.label);
-        if (isAccountTreeItem(node)) {
-            break;
+export function getNodeEditorLabel(node: AzExtTreeItem | CosmosDBTreeElement | EditableFileSystemItem): string {
+    if (node instanceof AzExtTreeItem) {
+        const labels = [node.label];
+        const azExtNode = node as AzExtTreeItem;
+        while (azExtNode.parent) {
+            node = azExtNode.parent;
+            labels.unshift(azExtNode.label);
         }
+        return labels.join('/');
     }
-    return labels.join('/');
+
+    return node.id;
 }
 
-function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
-    return treeItem instanceof MongoAccountTreeItem || treeItem instanceof DocDBAccountTreeItemBase;
-}
-
-export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefinition): string {
+export function getDocumentTreeItemLabel(document: ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
         // eslint-disable-next-line no-prototype-builtins
         if (document.hasOwnProperty(field)) {

@@ -17,22 +17,17 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
+import { createMongoCollection } from '../commands/createContainer/createContainer';
+import { createMongoDocument } from '../commands/createDocument/createDocument';
+import { deleteAzureContainer } from '../commands/deleteContainer/deleteContainer';
+import { deleteAzureDatabase } from '../commands/deleteDatabase/deleteDatabase';
+import { importDocuments } from '../commands/importDocuments/importDocuments';
+import { launchShell } from '../commands/launchShell/launchShell';
+import { openMongoDocumentView } from '../commands/openDocument/openDocument';
 import { ext } from '../extensionVariables';
-import {
-    SharedWorkspaceResourceProvider,
-    WorkspaceResourceType,
-} from '../tree/workspace/sharedWorkspaceResourceProvider';
-import { addWorkspaceConnection } from './commands/addWorkspaceConnection';
-import { createCollection } from './commands/createCollection';
-import { createDatabase } from './commands/createDatabase';
-import { dropCollection } from './commands/dropCollection';
-import { dropDatabase } from './commands/dropDatabase';
+import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { mongoClustersExportEntireCollection, mongoClustersExportQueryResults } from './commands/exportDocuments';
-import { mongoClustersImportDocuments } from './commands/importDocuments';
-import { launchShell } from './commands/launchShell';
-import { openCollectionView } from './commands/openCollectionView';
-import { openDocumentView } from './commands/openDocumentView';
-import { removeWorkspaceConnection } from './commands/removeWorkspaceConnection';
+import { openCollectionView, openCollectionViewInternal } from './commands/openCollectionView';
 import { MongoClustersBranchDataProvider } from './tree/MongoClustersBranchDataProvider';
 import { MongoClustersWorkspaceBranchDataProvider } from './tree/workspace/MongoClustersWorkbenchBranchDataProvider';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
@@ -71,8 +66,9 @@ export class MongoClustersExtension implements vscode.Disposable {
                     ext.mongoClustersBranchDataProvider,
                 );
 
-                ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
-                ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
+                // Moved to extension.ts
+                // ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
+                // ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
 
                 ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
                 ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
@@ -83,21 +79,31 @@ export class MongoClustersExtension implements vscode.Disposable {
                 // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
                 // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
 
-                registerCommand('command.internal.mongoClusters.containerView.open', openCollectionView);
-                registerCommand('command.internal.mongoClusters.documentView.open', openDocumentView);
+                /**
+                 * Here, opening the collection view is done in two ways: one is accessible from the tree view
+                 * via a context menu, and the other is accessible programmatically. Both of them
+                 * use the same underlying function to open the collection view.
+                 *
+                 * openCollectionView calls openCollectionViewInternal with no additional parameters.
+                 *
+                 * It was possible to merge the two commands into one, but it would result in code that is
+                 * harder to understand and maintain.
+                 */
+                registerCommand('command.internal.mongoClusters.containerView.open', openCollectionViewInternal);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.containerView.open', openCollectionView);
+
+                registerCommand('command.internal.mongoClusters.documentView.open', openMongoDocumentView);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.launchShell', launchShell);
 
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', dropCollection);
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', dropDatabase);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropCollection', deleteAzureContainer);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.dropDatabase', deleteAzureDatabase);
 
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createCollection);
-                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDatabase', createDatabase);
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createCollection', createMongoCollection);
 
-                registerCommandWithTreeNodeUnwrapping(
-                    'command.mongoClusters.importDocuments',
-                    mongoClustersImportDocuments,
-                );
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createMongoDocument);
+
+                registerCommandWithTreeNodeUnwrapping('command.mongoClusters.importDocuments', importDocuments);
 
                 /**
                  * Here, exporting documents is done in two ways: one is accessible from the tree view
@@ -113,12 +119,6 @@ export class MongoClustersExtension implements vscode.Disposable {
                 registerCommandWithTreeNodeUnwrapping(
                     'command.mongoClusters.exportDocuments',
                     mongoClustersExportEntireCollection,
-                );
-
-                registerCommand('command.mongoClusters.addWorkspaceConnection', addWorkspaceConnection);
-                registerCommandWithTreeNodeUnwrapping(
-                    'command.mongoClusters.removeWorkspaceConnection',
-                    removeWorkspaceConnection,
                 );
 
                 ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);

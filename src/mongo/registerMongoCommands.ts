@@ -13,22 +13,14 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { connectMongoDatabase, loadPersistedMongoDB } from './commands/connectMongoDatabase';
-import { createMongoCollection } from './commands/createMongoCollection';
-import { createMongoDatabase } from './commands/createMongoDatabase';
-import { createMongoDocument } from './commands/createMongoDocument';
-import { createMongoSrapbook } from './commands/createMongoScrapbook';
-import { deleteMongoCollection } from './commands/deleteMongoCollection';
-import { deleteMongoDB } from './commands/deleteMongoDatabase';
-import { deleteMongoDocument } from './commands/deleteMongoDocument';
+import { connectMongoDatabase } from './commands/connectMongoDatabase';
+import { createMongoScrapbook } from './commands/createMongoScrapbook';
 import { executeAllMongoCommand } from './commands/executeAllMongoCommand';
 import { executeMongoCommand } from './commands/executeMongoCommand';
-import { launchMongoShell } from './commands/launchMongoShell';
-import { openMongoCollection } from './commands/openMongoCollection';
 import { MongoConnectError } from './connectToMongoClient';
 import { MongoDBLanguageClient } from './languageClient';
-import { getAllErrorsFromTextDocument } from './MongoScrapbook';
-import { MongoCodeLensProvider } from './services/MongoCodeLensProvider';
+import { getAllErrorsFromTextDocument } from './MongoScrapbookHelpers';
+import { MongoScrapbookService } from './MongoScrapbookService';
 
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
@@ -36,47 +28,22 @@ const mongoLanguageId: string = 'mongo';
 export function registerMongoCommands(): void {
     ext.mongoLanguageClient = new MongoDBLanguageClient();
 
-    ext.mongoCodeLensProvider = new MongoCodeLensProvider();
     ext.context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider(mongoLanguageId, ext.mongoCodeLensProvider),
+        vscode.languages.registerCodeLensProvider(mongoLanguageId, MongoScrapbookService.getCodeLensProvider()),
     );
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');
     ext.context.subscriptions.push(diagnosticsCollection);
 
     setUpErrorReporting();
-    void loadPersistedMongoDB();
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.launchMongoShell', launchMongoShell);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoSrapbook);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoScrapbook);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', executeAllMongoCommand);
-
-    // #region Account command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoDatabase', createMongoDatabase);
-
-    // #endregion
 
     // #region Database command
 
     registerCommandWithTreeNodeUnwrapping('cosmosDB.connectMongoDB', connectMongoDatabase);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoCollection', createMongoCollection);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDB', deleteMongoDB);
-
-    // #endregion
-
-    // #region Collection command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openCollection', openMongoCollection);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createMongoDocument', createMongoDocument);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoCollection', deleteMongoCollection);
-
-    // #endregion
-
-    // #region Document command
-
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteMongoDocument', deleteMongoDocument);
 
     // #endregion
 }

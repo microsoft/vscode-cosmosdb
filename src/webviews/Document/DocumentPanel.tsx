@@ -3,12 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import { makeStyles, MessageBar, ProgressBar } from '@fluentui/react-components';
-import { parse as parseJson } from '@prantlf/jsonlint';
 import { useEffect, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { extractPartitionKey } from '../../utils/document';
+import { validateDocument } from '../../docdb/utils/validateDocument';
 import { MonacoEditor } from '../MonacoEditor';
 import { DocumentToolbar } from './DocumentToolbar';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
@@ -30,65 +28,6 @@ const useClasses = makeStyles({
         gap: '5px',
     },
 });
-
-const validateDocument = (content: string, partitionKey?: PartitionKeyDefinition) => {
-    const errors: string[] = [];
-
-    try {
-        // Check JSON schema
-        const resource = parseJson(content) as JSONObject;
-
-        // Check partition key
-        if (partitionKey) {
-            const partitionKeyPaths = partitionKey.paths.map((path) => (path.startsWith('/') ? path.slice(1) : path));
-            const partitionKeyValues = extractPartitionKey(resource, partitionKey);
-            if (!partitionKeyValues) {
-                errors.push('Partition key is incomplete.');
-            }
-
-            if (Array.isArray(partitionKeyValues)) {
-                partitionKeyValues
-                    .map((value, index) => {
-                        if (!value) {
-                            return `Partition key ${partitionKeyPaths[index]} is invalid.`;
-                        }
-                        return null;
-                    })
-                    .filter((value) => value !== null)
-                    .forEach((value) => errors.push(value));
-            }
-        }
-
-        // Check document id
-        if (resource.id) {
-            if (typeof resource.id !== 'string') {
-                errors.push('Id must be a string.');
-            } else {
-                if (
-                    resource.id.indexOf('/') !== -1 ||
-                    resource.id.indexOf('\\') !== -1 ||
-                    resource.id.indexOf('?') !== -1 ||
-                    resource.id.indexOf('#') !== -1
-                ) {
-                    errors.push('Id contains illegal chars (/, \\, ?, #).');
-                }
-                if (resource.id[resource.id.length - 1] === ' ') {
-                    errors.push('Id ends with a space.');
-                }
-            }
-        }
-    } catch (err) {
-        if (err instanceof SyntaxError) {
-            errors.push(err.message);
-        } else if (err instanceof Error) {
-            errors.push(err.message);
-        } else {
-            errors.push('Unknown error');
-        }
-    }
-
-    return errors;
-};
 
 export const DocumentPanel = () => {
     const classes = useClasses();

@@ -9,12 +9,8 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
-import { DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
 import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
-import { MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import {
     createPostgresConnectionString,
@@ -22,12 +18,15 @@ import {
 } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { SubscriptionTreeItem } from '../../tree/SubscriptionTreeItem';
 import { nonNullProp } from '../../utils/nonNull';
 import { type DatabaseAccountTreeItem, type DatabaseTreeItem, type TreeItemQuery } from '../../vscode-cosmosdb.api';
 import { cacheTreeItem, tryGetTreeItemFromCache } from './apiCache';
 import { DatabaseAccountTreeItemInternal } from './DatabaseAccountTreeItemInternal';
 import { DatabaseTreeItemInternal } from './DatabaseTreeItemInternal';
+
+/**
+ * TODO: This needs a rewrite to match v2
+ */
 
 export async function findTreeItem(
     query: TreeItemQuery,
@@ -70,22 +69,22 @@ export async function findTreeItem(
         }
 
         // 3. Search subscriptions
-        if (!result) {
-            const rootNodes = await ext.rgApi.appResourceTree.getChildren();
-            for (const rootNode of rootNodes) {
-                if (Date.now() > maxTime) {
-                    break;
-                }
-
-                if (rootNode instanceof SubscriptionTreeItem) {
-                    const dbAccounts = await rootNode.getCachedChildren(context);
-                    result = await searchDbAccounts(dbAccounts, parsedCS, context, maxTime);
-                    if (result) {
-                        break;
-                    }
-                }
-            }
-        }
+        // if (!result) {
+        //     const rootNodes = await ext.rgApi.appResourceTree.getChildren();
+        //     for (const rootNode of rootNodes) {
+        //         if (Date.now() > maxTime) {
+        //             break;
+        //         }
+        //
+        //         if (rootNode instanceof SubscriptionTreeItem) {
+        //             const dbAccounts = await rootNode.getCachedChildren(context);
+        //             result = await searchDbAccounts(dbAccounts, parsedCS, context, maxTime);
+        //             if (result) {
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
 
         // 4. If all else fails, just attach a new node
         if (!result) {
@@ -115,11 +114,7 @@ async function searchDbAccounts(
             }
 
             let actual: ParsedConnectionString;
-            if (dbAccount instanceof MongoAccountTreeItem) {
-                actual = await parseMongoConnectionString(dbAccount.connectionString);
-            } else if (dbAccount instanceof DocDBAccountTreeItemBase) {
-                actual = parseDocDBConnectionString(dbAccount.connectionString);
-            } else if (dbAccount instanceof PostgresServerTreeItem) {
+            if (dbAccount instanceof PostgresServerTreeItem) {
                 actual = dbAccount.partialConnectionString;
             } else {
                 return undefined;
@@ -129,12 +124,6 @@ async function searchDbAccounts(
                 if (expected.databaseName) {
                     const dbs = await dbAccount.getCachedChildren(context);
                     for (const db of dbs) {
-                        if (
-                            (db instanceof MongoDatabaseTreeItem || db instanceof DocDBDatabaseTreeItemBase) &&
-                            expected.databaseName === db.databaseName
-                        ) {
-                            return new DatabaseTreeItemInternal(expected, expected.databaseName, dbAccount, db);
-                        }
                         if (
                             db instanceof PostgresDatabaseTreeItem &&
                             dbAccount instanceof PostgresServerTreeItem &&

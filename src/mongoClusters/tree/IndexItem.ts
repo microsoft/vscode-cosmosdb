@@ -3,13 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { type CollectionItemModel, type DatabaseItemModel, type IndexItemModel } from '../MongoClustersClient';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class IndexItem {
-    id: string;
+export class IndexItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+    public readonly id: string;
+    public readonly experience: Experience;
+    public readonly contextValue: string = 'treeItem.index';
+
+    private readonly experienceContextValue: string = '';
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -18,9 +26,12 @@ export class IndexItem {
         readonly indexInfo: IndexItemModel,
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes/${indexInfo.name}`;
+        this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience.api}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         return Object.keys(this.indexInfo.key).map((key) => {
             const value = this.indexInfo.key[key];
 
@@ -31,14 +42,14 @@ export class IndexItem {
                 // TODO: add a custom icons, and more options here
                 description: value === -1 ? 'desc' : value === 1 ? 'asc' : value.toString(),
                 iconPath: new ThemeIcon('combine'),
-            });
+            }) as CosmosDBTreeElement;
         });
     }
 
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.index',
+            contextValue: this.contextValue,
             label: this.indexInfo.name,
             iconPath: new ThemeIcon('combine'), // TODO: create our onw icon here, this one's shape can change
             collapsibleState: TreeItemCollapsibleState.Collapsed,

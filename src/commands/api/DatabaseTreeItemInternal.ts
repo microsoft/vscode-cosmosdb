@@ -8,11 +8,7 @@ import {
     type AzExtTreeItem,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-import { type DocDBAccountTreeItemBase } from '../../docdb/tree/DocDBAccountTreeItemBase';
-import { type DocDBDatabaseTreeItemBase } from '../../docdb/tree/DocDBDatabaseTreeItemBase';
 import { ext } from '../../extensionVariables';
-import { type MongoAccountTreeItem } from '../../mongo/tree/MongoAccountTreeItem';
-import { type MongoDatabaseTreeItem } from '../../mongo/tree/MongoDatabaseTreeItem';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { type PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { type PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
@@ -26,8 +22,8 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
     constructor(
         parsedCS: ParsedConnectionString,
         databaseName: string,
-        accountNode?: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem,
-        dbNode?: MongoDatabaseTreeItem | DocDBDatabaseTreeItemBase | PostgresDatabaseTreeItem,
+        accountNode?: PostgresServerTreeItem,
+        dbNode?: PostgresDatabaseTreeItem,
     ) {
         super(parsedCS, accountNode);
         this.databaseName = databaseName;
@@ -39,8 +35,7 @@ export class DatabaseTreeItemInternal extends DatabaseAccountTreeItemInternal im
             context.errorHandling.suppressDisplay = true;
             context.errorHandling.rethrow = true;
 
-            const accountNode: MongoAccountTreeItem | DocDBAccountTreeItemBase | PostgresServerTreeItem =
-                await this.getAccountNode(context);
+            const accountNode: PostgresServerTreeItem = await this.getAccountNode(context);
             if (!this._dbNode) {
                 const databaseId = `${accountNode.fullId}/${this.databaseName}`;
                 this._dbNode = await ext.rgApi.workspaceResourceTree.findTreeItem(databaseId, context);

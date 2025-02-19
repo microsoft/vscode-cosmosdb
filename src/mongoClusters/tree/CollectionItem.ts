@@ -3,21 +3,22 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
-import { type Document } from 'bson';
-import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
-import { ext } from '../../extensionVariables';
-import {
-    MongoClustersClient,
-    type CollectionItemModel,
-    type DatabaseItemModel,
-    type InsertDocumentsResult,
-} from '../MongoClustersClient';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
+import { ThemeIcon, type TreeItem, TreeItemCollapsibleState } from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
+import { type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
-export class CollectionItem {
-    id: string;
+export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+    public readonly id: string;
+    public readonly experience: Experience;
+    public readonly contextValue: string = 'treeItem.collection';
+
+    private readonly experienceContextValue: string = '';
 
     constructor(
         readonly mongoCluster: MongoClusterModel,
@@ -25,12 +26,15 @@ export class CollectionItem {
         readonly collectionInfo: CollectionItemModel,
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}`;
+        this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience.api}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         return [
             createGenericElement({
-                contextValue: 'mongoClusters.item.documents',
+                contextValue: createContextValue(['treeItem.documents', this.experienceContextValue]),
                 id: `${this.id}/documents`,
                 label: 'Documents',
                 commandId: 'command.internal.mongoClusters.containerView.open',
@@ -40,47 +44,22 @@ export class CollectionItem {
                         viewTitle: `${this.collectionInfo.name}`,
                         // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
 
-                        liveConnectionId: this.mongoCluster.id,
+                        clusterId: this.mongoCluster.id,
                         databaseName: this.databaseInfo.name,
                         collectionName: this.collectionInfo.name,
                         collectionTreeItem: this,
                     },
                 ],
                 iconPath: new ThemeIcon('explorer-view-icon'),
-            }),
+            }) as CosmosDBTreeElement,
             new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
-    }
-
-    async delete(_context: IActionContext): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        let success = false;
-        await ext.state.showDeleting(this.id, async () => {
-            success = await client.dropCollection(this.databaseInfo.name, this.collectionInfo.name);
-        });
-
-        ext.state.notifyChildrenChanged(`${this.mongoCluster.id}/${this.databaseInfo.name}`);
-
-        return success;
-    }
-
-    async insertDocuments(_context: IActionContext, documents: Document[]): Promise<InsertDocumentsResult> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        let result: InsertDocumentsResult = { acknowledged: false, insertedCount: 0 };
-
-        await ext.state.runWithTemporaryDescription(this.id, 'Importing...', async () => {
-            result = await client.insertDocuments(this.databaseInfo.name, this.collectionInfo.name, documents);
-        });
-
-        return result;
     }
 
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.collection',
+            contextValue: this.contextValue,
             label: this.collectionInfo.name,
             iconPath: new ThemeIcon('folder-opened'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,

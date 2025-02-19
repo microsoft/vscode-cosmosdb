@@ -8,11 +8,27 @@ import { CollectionViewController } from '../../webviews/mongoClusters/collectio
 import { MongoClustersSession } from '../MongoClusterSession';
 import { type CollectionItem } from '../tree/CollectionItem';
 
-export async function openCollectionView(
+export async function openCollectionView(context: IActionContext, node?: CollectionItem) {
+    if (!node) {
+        throw new Error('Invalid collection node');
+    }
+
+    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+
+    return openCollectionViewInternal(context, {
+        id: node.id,
+        clusterId: node.mongoCluster.id,
+        databaseName: node.databaseInfo.name,
+        collectionName: node.collectionInfo.name,
+        collectionTreeItem: node,
+    });
+}
+
+export async function openCollectionViewInternal(
     _context: IActionContext,
     props: {
         id: string;
-        liveConnectionId: string;
+        clusterId: string;
         databaseName: string;
         collectionName: string;
         collectionTreeItem: CollectionItem;
@@ -22,12 +38,13 @@ export async function openCollectionView(
      * We're starting a new "session" using the existing connection.
      * A session can cache data, handle paging, and convert data.
      */
-    const sessionId = await MongoClustersSession.initNewSession(props.liveConnectionId);
+    const sessionId = await MongoClustersSession.initNewSession(props.clusterId);
 
     const view = new CollectionViewController({
         id: props.id,
 
         sessionId: sessionId,
+        clusterId: props.clusterId,
         databaseName: props.databaseName,
         collectionName: props.collectionName,
         collectionTreeItem: props.collectionTreeItem,

@@ -25,12 +25,45 @@ import { ProvideUserNameStep } from '../wizards/authenticate/ProvideUsernameStep
 import { MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
 
+import ConnectionString from 'mongodb-connection-string-url';
+
 export class MongoClusterResourceItem extends MongoClusterItemBase {
     constructor(
-        private readonly subscription: AzureSubscription,
+        readonly subscription: AzureSubscription,
         mongoCluster: MongoClusterModel,
     ) {
         super(mongoCluster);
+    }
+
+    public async getConnectionString(): Promise<string | undefined> {
+        return callWithTelemetryAndErrorHandling(
+            'cosmosDB.mongoClusters.getConnectionString',
+            async (context: IActionContext) => {
+                // Create a client to interact with the MongoDB vCore management API and read the cluster details
+                const managementClient = await createMongoClustersManagementClient(context, this.subscription);
+
+                const clusterInformation = await managementClient.mongoClusters.get(
+                    this.mongoCluster.resourceGroup as string,
+                    this.mongoCluster.name,
+                );
+
+                if (!clusterInformation.connectionString) {
+                    return undefined;
+                }
+
+                context.valuesToMask.push(clusterInformation.connectionString);
+                const connectionString = new ConnectionString(clusterInformation.connectionString as string);
+
+                if (clusterInformation.administratorLogin) {
+                    context.valuesToMask.push(clusterInformation.administratorLogin);
+                    connectionString.username = clusterInformation.administratorLogin;
+                }
+
+                connectionString.password = '';
+
+                return connectionString.toString();
+            },
+        );
     }
 
     /**
@@ -82,6 +115,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                     nonNullValue(clusterConnectionString),
                     nonNullProp(wizardContext, 'selectedUserName'),
                     nonNullProp(wizardContext, 'password'),
+                    // here, isEmulator is not set, as it's a resource item from Azure resources, not a workspace item, therefore, no emulator support needed
                 );
 
                 ext.outputChannel.append(

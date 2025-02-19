@@ -3,12 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createGenericElement, type IActionContext, type TreeElementBase } from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import { type TreeItem } from 'vscode';
 
 import * as vscode from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
+import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
+import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient, type DatabaseItemModel } from '../MongoClustersClient';
@@ -16,14 +19,20 @@ import { DatabaseItem } from './DatabaseItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
 // This info will be available at every level in the tree for immediate access
-export abstract class MongoClusterItemBase implements TreeElementBase {
-    id: string;
+export abstract class MongoClusterItemBase
+    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly experience: Experience;
+    public readonly contextValue: string = 'treeItem.mongoCluster';
 
-    constructor(
-        // public readonly subscription: AzureSubscription,
-        public mongoCluster: MongoClusterModel,
-    ) {
+    private readonly experienceContextValue: string = '';
+
+    protected constructor(public mongoCluster: MongoClusterModel) {
         this.id = mongoCluster.id ?? '';
+        this.experience = mongoCluster.dbExperience;
+        this.experienceContextValue = `experience.${this.experience.api}`;
+        this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     /**
@@ -34,6 +43,14 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
     protected abstract authenticateAndConnect(): Promise<MongoClustersClient | null>;
+
+    /**
+     * Abstract method to get the connection string for the MongoDB cluster.
+     * Must be implemented by subclasses.
+     *
+     * @returns A promise that resolves to the connection string if successful; otherwise, undefined.
+     */
+    public abstract getConnectionString(): Promise<string | undefined>;
 
     /**
      * Authenticates and connects to the cluster to list all available databases.
@@ -48,7 +65,7 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
      *
      * @returns A list of databases in the cluster or a single element to create a new database.
      */
-    async getChildren(): Promise<TreeElementBase[]> {
+    async getChildren(): Promise<CosmosDBTreeElement[]> {
         ext.outputChannel.appendLine(`MongoDB Clusters: Loading cluster details for "${this.mongoCluster.name}"`);
 
         let mongoClustersClient: MongoClustersClient | null;
@@ -73,7 +90,7 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
                     label: 'Failed to authenticate (click to retry)',
                     iconPath: new vscode.ThemeIcon('error'),
                     commandId: 'azureResourceGroups.refreshTree',
-                }),
+                }) as CosmosDBTreeElement,
             ];
         }
 
@@ -82,13 +99,13 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
             if (databases.length === 0) {
                 return [
                     createGenericElement({
-                        contextValue: 'mongoClusters.item.no-databases',
+                        contextValue: createContextValue(['treeItem.no-databases', this.experienceContextValue]),
                         id: `${this.id}/no-databases`,
                         label: 'Create database...',
                         iconPath: new vscode.ThemeIcon('plus'),
-                        commandId: 'command.mongoClusters.createDatabase',
+                        commandId: 'cosmosDB.createDatabase',
                         commandArgs: [this],
-                    }),
+                    }) as CosmosDBTreeElement,
                 ];
             }
 
@@ -98,35 +115,13 @@ export abstract class MongoClusterItemBase implements TreeElementBase {
     }
 
     /**
-     * Creates a new database in the cluster.
-     * @param _context The action context.
-     * @param databaseName The name of the database to create.
-     * @returns A boolean indicating success.
-     */
-    async createDatabase(_context: IActionContext, databaseName: string): Promise<boolean> {
-        const client = await MongoClustersClient.getClient(this.mongoCluster.id);
-
-        let success = false;
-
-        await ext.state.showCreatingChild(
-            this.id,
-            localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
-            async () => {
-                success = await client.createDatabase(databaseName);
-            },
-        );
-
-        return success;
-    }
-
-    /**
      * Returns the tree item representation of the cluster.
      * @returns The TreeItem object.
      */
     getTreeItem(): TreeItem {
         return {
             id: this.id,
-            contextValue: 'mongoClusters.item.mongoCluster',
+            contextValue: this.contextValue,
             label: this.mongoCluster.name,
             description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
             // iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'), // Uncomment if icon is available

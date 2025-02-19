@@ -4,10 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { executeAllCommandsFromActiveEditor } from '../MongoScrapbook';
-import { loadPersistedMongoDB } from './connectMongoDatabase';
+import * as vscode from 'vscode';
+import { withProgress } from '../../utils/withProgress';
+import { MongoScrapbookService } from '../MongoScrapbookService';
 
 export async function executeAllMongoCommand(context: IActionContext): Promise<void> {
-    await loadPersistedMongoDB();
-    await executeAllCommandsFromActiveEditor(context);
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+        throw new Error('You must open a *.mongo file to run commands.');
+    }
+    await withProgress(
+        MongoScrapbookService.executeAllCommands(context, editor.document),
+        'Executing all Mongo commands in shell...',
+    );
 }

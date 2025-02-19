@@ -5,16 +5,17 @@
 
 import {
     AzExtTreeFileSystem,
+    AzExtTreeItem,
     DialogResponses,
     UserCancelledError,
-    type AzExtTreeItem,
+    type AzExtTreeFileSystemItem,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-import { FileType, workspace, type FileStat, type MessageItem, type Uri } from 'vscode';
+import vscode, { FileType, workspace, type FileStat, type MessageItem, type Uri } from 'vscode';
 import { FileChangeType } from 'vscode-languageclient';
 import { ext } from './extensionVariables';
+import { SettingsService } from './services/SettingsService';
 import { localize } from './utils/localize';
-import { getWorkspaceSetting, updateGlobalSetting } from './utils/settingUtils';
 import { getNodeEditorLabel } from './utils/vscodeUtils';
 
 export interface IEditableTreeItem extends AzExtTreeItem {
@@ -26,12 +27,24 @@ export interface IEditableTreeItem extends AzExtTreeItem {
     writeFileContent(context: IActionContext, data: string): Promise<void>;
 }
 
-export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> {
+export interface EditableFileSystemItem extends AzExtTreeFileSystemItem {
+    id: string;
+    filePath: string;
+    cTime: number;
+    mTime: number;
+    getFileContent(context: IActionContext): Promise<string>;
+    writeFileContent(context: IActionContext, data: string): Promise<void>;
+}
+
+export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem | EditableFileSystemItem> {
     public static scheme: string = 'azureDatabases';
     public scheme: string = DatabasesFileSystem.scheme;
     private _showSaveConfirmation: boolean = true;
 
-    public async statImpl(context: IActionContext, node: IEditableTreeItem): Promise<FileStat> {
+    public async statImpl(
+        context: IActionContext,
+        node: IEditableTreeItem | EditableFileSystemItem,
+    ): Promise<FileStat> {
         const size: number = Buffer.byteLength(await node.getFileContent(context));
         return { type: FileType.File, ctime: node.cTime, mtime: node.mTime, size };
     }
@@ -42,7 +55,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
 
     public async writeFileImpl(
         context: IActionContext,
-        node: IEditableTreeItem,
+        node: IEditableTreeItem | EditableFileSystemItem,
         content: Uint8Array,
         _originalUri: Uri,
     ): Promise<void> {
@@ -50,7 +63,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         // NOTE: Using "cosmosDB" instead of "azureDatabases" here for the sake of backwards compatibility. If/when this file system adds support for non-cosmosdb items, we should consider changing this to "azureDatabases"
         const prefix: string = 'cosmosDB';
         const nodeEditorLabel: string = getNodeEditorLabel(node);
-        if (this._showSaveConfirmation && getWorkspaceSetting<boolean>(showSavePromptKey, undefined, prefix)) {
+        if (this._showSaveConfirmation && SettingsService.getSetting<boolean>(showSavePromptKey, prefix)) {
             const message: string = localize(
                 'saveConfirmation',
                 'Saving "{0}" will update the entity "{1}" to the cloud.',
@@ -65,20 +78,25 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
                 DialogResponses.dontUpload,
             );
             if (result === DialogResponses.alwaysUpload) {
-                await updateGlobalSetting(showSavePromptKey, false, prefix);
+                await SettingsService.updateGlobalSetting(showSavePromptKey, false, prefix);
             } else if (result === DialogResponses.dontUpload) {
                 throw new UserCancelledError('dontUpload');
             }
         }
 
         await node.writeFileContent(context, content.toString());
-        await node.refresh(context);
+        if (node instanceof AzExtTreeItem) {
+            await node.refresh(context);
+        } else {
+            this.fireChangedEvent(node);
+            await vscode.commands.executeCommand('azureDatabases.refresh', node);
+        }
 
         const updatedMessage: string = localize('updatedEntity', 'Updated entity "{0}".', nodeEditorLabel);
         ext.outputChannel.appendLog(updatedMessage);
     }
 
-    public getFilePath(node: IEditableTreeItem): string {
+    public getFilePath(node: IEditableTreeItem | EditableFileSystemItem): string {
         return node.filePath;
     }
 
@@ -92,7 +110,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem> 
         }
     }
 
-    public fireChangedEvent(node: IEditableTreeItem): void {
+    public fireChangedEvent(node: IEditableTreeItem | EditableFileSystemItem): void {
         node.mTime = Date.now();
         this.fireSoon({ type: FileChangeType.Changed, item: node });
     }

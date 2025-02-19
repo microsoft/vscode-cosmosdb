@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { emulatorPassword } from '../constants';
+import { wellKnownEmulatorPassword } from '../constants';
 import { isCosmosEmulatorConnectionString } from './connectToMongoClient';
 import {
     addDatabaseToAccountConnectionString,
@@ -100,16 +100,16 @@ describe(`mongoCollectionStrings`, () => {
 
         // emulator: mongodb://localhost:C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==@localhost:10255?ssl=true
         testDatabaseNameFromConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/admin?ssl=true`,
             'admin',
         );
         testDatabaseNameFromConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/admin-master?ssl=true`,
             'admin-master',
         );
         // test characters mentioned in : https://docs.mongodb.com/manual/reference/limits/#Restrictions-on-Database-Names-for-Windows
         testDatabaseNameFromConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin!@%^()-_,[]?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/admin!@%^()-_,[]?ssl=true`,
             'admin!@%^()-_,[]',
         );
     });
@@ -251,20 +251,20 @@ describe(`mongoCollectionStrings`, () => {
 
         // Emulator
         testDatabaseToAccountConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/?ssl=true`,
             'admin',
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/admin?ssl=true`,
         );
         // Collection within emulator
         testDatabaseToAccountConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/?ssl=true`,
             'admin-master',
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/admin-master?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/admin-master?ssl=true`,
         );
         testDatabaseToAccountConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/?ssl=true`,
             'admin!@%^()-_,[]',
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/${encodeURIComponent('admin!@%^()-_,[]')}?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/${encodeURIComponent('admin!@%^()-_,[]')}?ssl=true`,
         );
     });
 
@@ -349,15 +349,15 @@ describe(`mongoCollectionStrings`, () => {
 
         // Emulator
         testIsCosmosEmulatorConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/?ssl=true`,
             true,
         );
         testIsCosmosEmulatorConnectionString(
-            `mongodb://127.0.0.1:${encodeURIComponent(emulatorPassword)}@127.0.0.1:10255/?ssl=true`,
+            `mongodb://127.0.0.1:${encodeURIComponent(wellKnownEmulatorPassword)}@127.0.0.1:10255/?ssl=true`,
             true,
         );
         testIsCosmosEmulatorConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/database?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/database?ssl=true`,
             true,
         );
     });
@@ -385,8 +385,8 @@ describe(`mongoCollectionStrings`, () => {
         );
         testEncodeMongoConnectionString(`mongodb://localhost`, `mongodb://localhost`);
         testEncodeMongoConnectionString(
-            `mongodb://localhost:${encodeURIComponent(emulatorPassword)}@localhost:10255/?ssl=true`,
-            `mongodb://localhost:${encodeURIComponent(encodeURIComponent(emulatorPassword))}@localhost:10255/?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:10255/?ssl=true`,
+            `mongodb://localhost:${encodeURIComponent(encodeURIComponent(wellKnownEmulatorPassword))}@localhost:10255/?ssl=true`,
         );
         testEncodeMongoConnectionString(
             `mongodb://username@example.com:password@localhost/`,

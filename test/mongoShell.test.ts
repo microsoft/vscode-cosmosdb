@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // CONSIDER: Run in pipeline
+import { parseError } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import * as cp from 'child_process';
 import * as fse from 'fs-extra';
@@ -11,7 +12,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { isNumber } from 'util';
 import type * as vscode from 'vscode';
-import { ext, isWindows, MongoShell, parseError, type IDisposable } from '../extension.bundle';
+import { ext, isWindows, type IDisposable } from '../extension.bundle';
+import { MongoShellScriptRunner } from '../src/mongo/MongoShellScriptRunner';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 
@@ -167,15 +169,16 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             assert(mongoDErrors === '');
 
             let previousEnv: IDisposable | undefined;
-            let shell: MongoShell | undefined;
+            let shell: MongoShellScriptRunner | undefined;
             const outputChannel = new FakeOutputChannel();
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
-                shell = await MongoShell.create(
+                shell = await MongoShellScriptRunner.createShellProcessHelper(
                     options.mongoPath || mongoPath,
                     options.args || [],
                     '',
+                    false,
                     false,
                     outputChannel,
                     options.timeoutSeconds || 5,
@@ -291,7 +294,15 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
     });
 
     await testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
-        const shell = await MongoShell.create(mongoPath, [], '', false, new FakeOutputChannel(), 5);
+        const shell = await MongoShellScriptRunner.createShellProcessHelper(
+            mongoPath,
+            [],
+            '',
+            false,
+            false,
+            new FakeOutputChannel(),
+            5,
+        );
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');
 

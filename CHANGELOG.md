@@ -1,5 +1,24 @@
 # Change Log
 
+## 0.25.0
+
+### Added
+
+- Feature parity across all MongoDB API platforms.
+  - Improved Azure Cosmos DB for MongoDB (RU) interface.
+  - MongoDB Scrapbook support added for all MongoDB API-supported databases.
+- Unified context menus across all experiences.
+- Supporting TenantId for CosmosDB authentication
+- Improved support for local emulators.
+- Added support for the [Cosmos DB Emulator on Linux](https://aka.ms/CosmosVNextEmulator) and MacOS (Intel)
+
+### Changed
+
+- Optimized resource tree exploration.
+  - Time-consuming queries are now executed only when interacting with a selected cluster.
+- Migrated Tree View API from V1 to V2.
+- Create server/account command opens Azure Portal with corresponding blade instead of going through command palette wizard.
+
 ## 0.24.2
 
 ### Changed

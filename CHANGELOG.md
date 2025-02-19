@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.25.0
+
+### Added
+
+-
+
+### Changed
+
+-
+
 ## 0.24.2
 
 ### Changed

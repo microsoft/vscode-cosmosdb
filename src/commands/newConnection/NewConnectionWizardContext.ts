@@ -8,6 +8,7 @@ import type ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
 import { type ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { type QuickPickType } from '../../utils/pickItem/pickExperience';
+import { type MongoEmulatorConfiguration } from './MongoEmulatorConfiguration';
 
 export interface NewConnectionWizardContext extends IActionContext {
     quickPickType: QuickPickType;
@@ -20,5 +21,5 @@ export interface NewConnectionWizardContext extends IActionContext {
     username?: string;
     password?: string;
 
-    mongodbapiIsEmulator?: boolean;
+    emulatorConfiguration?: MongoEmulatorConfiguration;
 }

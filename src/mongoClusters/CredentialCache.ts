@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { addAuthenticationDataToConnectionString } from './utils/connectionStringHelpers';
+import { MongoEmulatorConfiguration } from '../commands/newConnection/MongoEmulatorConfiguration';
 
 export interface MongoClustersCredentials {
     mongoClusterId: string;
     connectionStringWithPassword?: string;
     connectionString: string;
     connectionUser: string;
-    isEmulator?: boolean;
-    disableEmulatorSecurity?: boolean;
+    emulatorConfiguration?: MongoEmulatorConfiguration;
 }
 
 export class CredentialCache {
@@ -26,12 +26,8 @@ export class CredentialCache {
         return CredentialCache._store.has(mongoClusterId) as boolean;
     }
 
-    public static isEmulator(mongoClusterId: string): boolean {
-        return CredentialCache._store.get(mongoClusterId)?.isEmulator as boolean;
-    }
-
-    public static disableEmulatorSecurity(mongoClusterId: string): boolean {
-        return CredentialCache._store.get(mongoClusterId)?.disableEmulatorSecurity as boolean;
+    public static getEmulatorConfiguration(mongoClusterId: string): MongoEmulatorConfiguration | undefined {
+        return CredentialCache._store.get(mongoClusterId)?.emulatorConfiguration;
     }
 
     public static getCredentials(mongoClusterId: string): MongoClustersCredentials | undefined {
@@ -43,26 +39,20 @@ export class CredentialCache {
     }
 
     /**
-     *
-     * @param connectionString connection string with credentials
-     */
-    /**
      * Sets the credentials for a given connection string and stores them in the credential cache.
      *
      * @param id - The credential id. It's supposed to be the same as the tree item id of the mongo cluster item to simplify the lookup.
      * @param connectionString - The connection string to which the credentials will be added.
      * @param username - The username to be used for authentication.
      * @param password - The password to be used for authentication.
-     * @param isEmulator - Indicates whether the account is an emulator. It is optional as it's only relevant for workspace items
-     * @param disableEmulatorSecurity - Indicates whether the emulator security is disabled. It is optional as it's only relevant for workspace items
+     * @param emulatorConfiguration - The emulator configuration object.
      */
     public static setCredentials(
         mongoClusterId: string,
         connectionString: string,
         username: string,
         password: string,
-        isEmulator?: boolean,
-        disableEmulatorSecurity?: boolean,
+        emulatorConfiguration?: MongoEmulatorConfiguration,
     ): void {
         const connectionStringWithPassword = addAuthenticationDataToConnectionString(
             connectionString,
@@ -75,8 +65,7 @@ export class CredentialCache {
             connectionStringWithPassword: connectionStringWithPassword,
             connectionString: connectionString,
             connectionUser: username,
-            isEmulator: isEmulator,
-            disableEmulatorSecurity: disableEmulatorSecurity,
+            emulatorConfiguration: emulatorConfiguration,
         };
 
         CredentialCache._store.set(mongoClusterId, credentials);

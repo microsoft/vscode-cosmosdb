@@ -17,6 +17,7 @@ import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
+import { type MongoEmulatorConfiguration } from '../../commands/newConnection/MongoEmulatorConfiguration';
 
 /**
  * This implementation relies on information from the MongoAccountModel, i.e.
@@ -33,7 +34,7 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
         account: MongoAccountModel,
         experience: Experience,
         readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
-        readonly isEmulator?: boolean, // TODO: exploring during v1->v2 migration
+        readonly emulatorConfiguration?: MongoEmulatorConfiguration, // TODO: exploring during v1->v2 migration
     ) {
         super(account, experience);
     }
@@ -106,7 +107,7 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
             //TODO: simplify the api for CrednetialCache to accept full connection strings with credentials
             const username: string | undefined = cString.username;
             const password: string | undefined = cString.password;
-            CredentialCache.setCredentials(this.id, cString.toString(), username, password);
+            CredentialCache.setCredentials(this.id, cString.toString(), username, password, this.account.emulatorConfiguration);
 
             mongoClient = await MongoClustersClient.getClient(this.id).catch(async (error) => {
                 console.error(error);

@@ -22,6 +22,7 @@ import { ProvidePasswordStep } from '../../wizards/authenticate/ProvidePasswordS
 import { ProvideUserNameStep } from '../../wizards/authenticate/ProvideUsernameStep';
 import { MongoClusterItemBase } from '../MongoClusterItemBase';
 import { type MongoClusterModel } from '../MongoClusterModel';
+import { type MongoEmulatorConfiguration } from '../../newConnection/MongoEmulatorConfiguration';
 
 import ConnectionString from 'mongodb-connection-string-url';
 
@@ -89,8 +90,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     connectionString.toString(),
                     username,
                     password,
-                    this.mongoCluster.isEmulator, // only workspace items can potentially be connecting to an emulator
-                    this.mongoCluster.disableEmulatorSecurity, // only workspace items can potentially be connecting to an emulator
+                    this.mongoCluster.emulatorConfiguration, // only workspace items can potentially be connecting to an emulator
                 );
 
                 // Attempt to create the client with the provided credentials
@@ -165,9 +165,9 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         let description: string | undefined = undefined;
         let tooltipMessage: string | undefined = undefined;
 
-        if (this.mongoCluster.isEmulator) {
+        if (this.mongoCluster.emulatorConfiguration?.isEmulator) {
             // For emulator clusters, show TLS/SSL status if security is disabled
-            if (this.mongoCluster.disableEmulatorSecurity) {
+            if (this.mongoCluster.emulatorConfiguration?.disableEmulatorConfiguration) {
                 description = '⚠ TLS/SSL Disabled';
                 tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
             } else {
@@ -185,7 +185,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
             contextValue: this.contextValue,
             label: this.mongoCluster.name,
             description: description,
-            iconPath: this.mongoCluster.isEmulator
+            iconPath: this.mongoCluster.emulatorConfiguration?.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : new vscode.ThemeIcon('server-environment'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,

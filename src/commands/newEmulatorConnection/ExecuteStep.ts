@@ -15,6 +15,7 @@ import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
 } from './NewEmulatorConnectionWizardContext';
+import { type MongoEmulatorConfiguration } from '../newConnection/MongoEmulatorConfiguration';
 
 export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWizardContext> {
     public priority: number = 100;
@@ -55,9 +56,9 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                 name: label,
                 properties: {
                     api: experience.api,
-                    isEmulator: true,
+                    isEmulator: (context.emulatorConfiguration as MongoEmulatorConfiguration)?.isEmulator ?? true,
                     // only adds 'disableEmulatorSecurity' when it's set (for Mongo)
-                    ...(context.disableMongoEmulatorSecurity && { disableEmulatorSecurity: true }),
+                    ...((context.emulatorConfiguration as MongoEmulatorConfiguration)?.disableEmulatorSecurity && { disableEmulatorSecurity: true }),
                 },
                 secrets: [connectionString],
             };

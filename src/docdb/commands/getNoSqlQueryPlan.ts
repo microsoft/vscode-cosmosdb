@@ -11,6 +11,7 @@ import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { type MongoEmulatorConfiguration } from '../newConnection/MongoEmulatorConfiguration';
 
 export async function getNoSqlQueryPlan(
     _context: IActionContext,
@@ -39,7 +40,8 @@ export async function getNoSqlQueryPlan(
             credentials.push({ type: 'key', key: masterKey });
         }
         credentials.push({ type: 'auth', tenantId: tenantId });
-        const client = getCosmosClient(endpoint, credentials, isEmulator);
+        const emulatorConfiguration: MongoEmulatorConfiguration = { isEmulator, disableEmulatorSecurity: false };
+        const client = getCosmosClient(endpoint, credentials, emulatorConfiguration.isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
         await vscodeUtil.showNewFile(
             JSON.stringify(response.result, undefined, 2),

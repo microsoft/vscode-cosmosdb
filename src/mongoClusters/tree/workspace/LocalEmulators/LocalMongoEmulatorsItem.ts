@@ -14,6 +14,7 @@ import { SharedWorkspaceStorage } from '../../../../tree/workspace-api/SharedWor
 import { type MongoClusterModel } from '../../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from '../MongoClusterWorkspaceItem';
 import { NewMongoEmulatorConnectionItem } from './NewMongoEmulatorConnectionItem';
+import { type MongoEmulatorConfiguration } from '../../../newConnection/MongoEmulatorConfiguration';
 
 export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string;
@@ -29,13 +30,17 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
             ...allItems
                 .filter((item) => item.properties?.isEmulator) // only show emulators
                 .map((item) => {
+                    const emulatorConfiguration: MongoEmulatorConfiguration = {
+                        isEmulator: true,
+                        disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,
+                    };
+
                     const model: MongoClusterModel = {
                         id: item.id,
                         name: item.name,
                         dbExperience: MongoClustersExperience,
                         connectionString: item?.secrets?.[0],
-                        isEmulator: true,
-                        disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,
+                        emulatorConfiguration: emulatorConfiguration,
                     };
 
                     return new MongoClusterWorkspaceItem(model);

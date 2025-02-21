@@ -19,7 +19,6 @@ Browse, manage, and query your Azure Cosmos DB databases both locally and in the
 The Azure Databases Explorer provides a comprehensive interface to explore and manage your Azure databases.
 
 - **Discover Database Servers**: Find database servers in your Azure subscription.
-- **Create Database Servers**: Use the `+` button to create a new database server.
 - **Azure Portal Integration**: Open database servers directly in the Azure portal.
 - **Full Database Management**: View, create, and delete databases, collections, stored procedures, documents, and queries.
 - **Integrated Document Editor**: Open documents, stored procedures, or queries directly in the editor for easy viewing and editing.
@@ -65,17 +64,6 @@ The extension allows you to import documents into CosmosDB.
 - **Workspace Integration**: Use the context menu of a collection or document file (JSON) to initiate import.
 
   ![Import documents](resources/readme/import_documents.gif)
-
-## Create an Azure Databases Server
-
-Creating an Azure Databases Server is simple and straightforward, allowing you to get started quickly.
-
-1. **Sign In to Azure**: Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer.
-   - If you don't have an Azure Account, select "Create a Free Azure Account" to get started.
-2. **Open the Create Resource Menu**: Select the `+` button to open the "Create Resource" menu.
-
-   ![Create resource](resources/readme/createResource.png)
-
 
 ## Attach to the Cosmos DB Emulator
 

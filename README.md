@@ -19,7 +19,8 @@ Browse, manage, and query your Azure Cosmos DB databases both locally and in the
 
 The Azure Databases Explorer helps you find, view, and manage your Azure databases.
 
-- **Discover Database Servers**: can your Azure subscription for available database servers and get a structured list of your resources.
+- **Discover Database Servers**: scan your Azure subscription for available database servers and get a structured list of your resources.
+
 
 - **Open in Azure Portal**: Access database servers directly in the Azure portal.
 

@@ -59,7 +59,7 @@ The Azure Databases VS Code Extension supports MongoDB, making it easier to conn
 
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
 
-For a step-by-step guide, check out the [official blog post](https://devblogs.microsoft.com/cosmosdb/a-powerful-open-source-mongodb-gui-for-everyone/).
+For a step-by-step guide, check out the [A Powerful, Open-Source MongoDB GUI for Everyone](https://devblogs.microsoft.com/cosmosdb/a-powerful-open-source-mongodb-gui-for-everyone/) tutorial.
 
 ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
 

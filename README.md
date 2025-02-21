@@ -12,10 +12,6 @@ Browse, manage, and query your Azure databases both locally and in the cloud wit
 
 > Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
 
-# Prerequisites
-
-- **Mongo Shell Requirement (Optional)**: Some advanced commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
-
 # Features
 
 ## Azure Databases Explorer
@@ -25,11 +21,11 @@ The Azure Databases Explorer provides a comprehensive interface to explore and m
 - **Discover Database Servers**: Find database servers in your Azure subscription.
 - **Create Database Servers**: Use the `+` button to create a new database server.
 - **Azure Portal Integration**: Open database servers directly in the Azure portal.
-- **Full Database Management**: View, create, and delete databases, collections, graphs, stored procedures, documents, and queries.
+- **Full Database Management**: View, create, and delete databases, collections, stored procedures, documents, and queries.
 - **Integrated Document Editor**: Open documents, stored procedures, or queries directly in the editor for easy viewing and editing.
 - **Edit and Persist Changes**: Make changes to documents and persist them to the cloud.
 - **Workspace Integration**: Attach database servers to your workspace using connection strings, enabling centralized management.
-- **Flexible MongoDB Connectivity**: Easily establish connections to MongoDB clusters across both Azure and non-Azure environments using a simple connection string.
+- **Flexible MongoDB Connectivity**: Easily establish connections to MongoDB clusters and databases across both Azure and non-Azure environments using a simple connection string.
 
 ![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
 
@@ -39,12 +35,12 @@ The Query Editor provides a powerful interface to write and execute queries acro
 
 - **Rich Syntax Highlighting**: Write queries with built-in syntax highlighting to improve readability and reduce errors.
 - **Query History and Management**: Save and open queries from disk, and access query history for re-use.
-- **Execute Queries**: Run queries and view the results in multiple formats including Table, JSON, or a hierarchical Tree view (currently NoSQL only).
+- **Execute Queries**: Run queries and view the results in multiple formats including Table, JSON, or a hierarchical Tree view.
 - **Flexible Result Management**: Copy query results as JSON or CSV to the clipboard or store them in a file as needed.
 - **Paging Support**: Choose how many results to display at once with convenient paging support, allowing navigation through large datasets.
 - **Query Statistics and Index Advisor**: View detailed query statistics such as consumed RUs, execution time, and index optimization suggestions.
-- **Document Management**: View, edit, and update single documents from the result view directly.
-- **New Document Creation**: Create new documents with syntax highlighting and partition key validation.
+- **Document Management**: View, edit, and update single documents from the result view.
+- **New Document Creation**: Create new documents with syntax highlighting and validation.
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
@@ -107,6 +103,11 @@ Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for dev
 
 ![Attach Emulator](resources/readme/attachEmulator.png)
 
+
+# Prerequisites
+
+- **Mongo Shell Requirement (Optional)**: Some advanced commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
+
 ## Known Issues
 
 Here are some known issues and limitations to be aware of when using the Azure Databases extension:
@@ -115,6 +116,8 @@ Here are some known issues and limitations to be aware of when using the Azure D
 - **Graphs Not Supported with Emulator**: Graphs are not currently supported with the Cosmos DB Emulator.
 - **Table Viewing/Editing**: Viewing and editing tables is not currently supported by the extension.
 - **Escaped Characters in Scrapbooks**: Scrapbook support for escaped characters is preliminary. Use double escaping for newlines (`\\n` instead of `\n`). If you find issues, report them to [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
+
+
 
 <!-- region exclude-from-marketplace -->
 

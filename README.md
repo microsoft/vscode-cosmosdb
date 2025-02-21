@@ -8,7 +8,6 @@
 
 Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Cosmos DB NoSQL**, **MongoDB (RU)**, **MongoDB (vCore)**, and any other MongoDB API Database.
 
-
 ![Azure Databases Extension](resources/readme/overview.png)
 
 > Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
@@ -19,21 +18,19 @@ Browse, manage, and query your Azure Cosmos DB databases both locally and in the
 
 The Azure Databases Explorer helps you find, view, and manage your Azure databases.
 
-- **Discover Database Servers**: scan your Azure subscription for available database servers and get a structured list of your resources.
+- **Discover Database Servers**: Find database servers in your Azure subscription.
 
+- **Azure Portal Integration**: Open database servers directly in the Azure portal.
 
-- **Open in Azure Portal**: Access database servers directly in the Azure portal.
+- **Full Database Management**: View, create, and delete databases, collections, stored procedures, documents, and queries.
 
-- **Manage Databases**: View, create, and delete databases, collections, stored procedures, and documents.
+- **Integrated Document Editor**: Open documents, stored procedures, or queries directly in the editor for easy viewing and editing.
 
-- **Edit Documents and Queries**: Open documents, stored procedures, and queries in the editor.
+- **Edit and Persist Changes**: Make changes to documents and persist them to the cloud.
 
-- **Save Changes**:  Make updates and persist them to the cloud.
+- **Workspace Integration**: Attach database servers to your workspace using connection strings, enabling centralized management.
 
-- **Workspace Support**: Attach database servers to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
-
-- **MongoDB Connectivity**: Connect to MongoDB databases on Azure and beyond using connection strings.
-
+- **Flexible MongoDB Connectivity**: Easily establish connections to MongoDB clusters and databases across both Azure and non-Azure environments using a simple connection string.
 
 ![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
 

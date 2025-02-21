@@ -6,103 +6,113 @@
 
 <!-- endregion exclude-from-marketplace -->
 
-Browse, manage and query your Azure databases both locally and in the cloud with support for MongoDB, Graph (Gremlin), and NoSQL (previously known as DocumentDB).
+Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Cosmos DB NoSQL**, **MongoDB (RU)**, **MongoDB (vCore)**, and any other MongoDB API Database.
+
 
 ![Azure Databases Extension](resources/readme/overview.png)
 
 > Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
 
-# Prerequisites
-
-- Some less-common commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
-
 # Features
 
 ## Azure Databases Explorer
 
-- Find database servers in your Azure subscription
-- Create a database server using the `+` button
-- Open database servers in the Azure portal
-- View/Create/Delete databases, collections, graphs, stored procedures, documents, and queries
-- Open documents, stored procedures, or queries in the editor
-- Edit documents and persist changes to the cloud
-- Attach database servers to your Workspace using connection strings
+The Azure Databases Explorer helps you find, view, and manage your Azure databases.
+
+- **Discover Database Servers**: scan your Azure subscription for available database servers and get a structured list of your resources.
+
+
+- **Open in Azure Portal**: Access database servers directly in the Azure portal.
+
+- **Manage Databases**: View, create, and delete databases, collections, stored procedures, and documents.
+
+- **Edit Documents and Queries**: Open documents, stored procedures, and queries in the editor.
+
+- **Save Changes**:  Make updates and persist them to the cloud.
+
+- **Workspace Support**: Attach database servers to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
+
+- **MongoDB Connectivity**: Connect to MongoDB databases on Azure and beyond using connection strings.
+
 
 ![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
 
 ## Query Editor
 
-- Write Queries with Syntax Highlighting
-- Show Query history and save/open queries on disk
-- Execute Queries and see the results (currently NoSQL only)
-- Show results in a table, as JSON or in a hierarchical tree view
-- Copy results as JSON or CSV to the clipboard or store them in a file
-- Choose how many results to show at once with paging support
-- Show Query Statistics (consumed RUs, time, size and other metrics)
-- View, Edit and Update single documents from the result view
-- Create new documents with syntax highlighting and partition key validation
+The Query Editor allows you to write and execute queries across your databases.
+
+- **Rich Syntax Highlighting**: Highlights query syntax to make it more readable and help prevent errors.
+
+- **Query History**: Automatically saves previously executed queries, allowing you to open and reuse them later.
+
+- **Run Queries**: Execute queries and view results in Table, JSON, or Tree view.
+
+- **Export Results**: Provides options to copy query results as JSON or CSV or to save them to a file for later use.
+
+- **Pagination**: Adjust how many results are displayed at a time when working with large datasets.
+
+- **Query Insights and Index Advisor**: Displays key details such as execution time, resource consumption, and indexing recommendations.
+
+- **Edit Documents**: Open, update, and save individual documents.
+
+
+- **Create New Documents**: Write and validate documents with syntax highlighting.
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
-## MongoDB Cluster Support
+## Universal MongoDB Support
 
-The extension now offers enhanced support for MongoDB clusters, making it easier than ever to connect, view, and manage your MongoDB resources, whether on Azure or any external cluster.
+The Azure Databases VS Code Extension supports MongoDB, making it easier to connect to and manage different types of MongoDB databases:
 
-- **Seamless Connectivity with Azure Cosmos DB for MongoDB vCore**: Effortlessly connect to Azure Cosmos DB for MongoDB vCore.
-- **Universal MongoDB Connectivity**: Easily connect to any MongoDB cluster using a connection string, giving you flexibility in managing databases across multiple environments.
-- **Comprehensive Collection Viewer**: Navigate collections with rich visualization options, including **Table**, **Tree**, and **JSON views**, to quickly understand and explore your data.
-- **Enhanced Query Experience**: Execute find queries with **syntax highlighting** and **intelligent auto-completion**, including field name suggestions, to boost productivity and reduce errors.
-- **Paging Support for Large Datasets**: Efficiently browse through large collections with built-in paging support, enabling you to handle data exploration without overwhelming the interface.
-- **Document Management**: View, edit, and delete individual documents directly from the interface. Gain the flexibility to manage documents in-place, streamlining the database management process.
+- **Works with Azure Cosmos DB for MongoDB**: Connect to Azure Cosmos DB for MongoDB, including both Request Units (RU) and vCore-based models. Browse, query, and modify data without leaving VS Code.
+
+- **Supports Any MongoDB Database**: Connect to any MongoDB instance, whether it’s hosted on Azure, another cloud provider, or a local server.
+
+- **Different Ways to View Data**: Explore collections using Table, Tree, or JSON views. Paging controls help manage large datasets.
+
+- **Enhanced Query Experience**: Execute find queries with syntax highlighting and intelligent auto-completion, including field name suggestions, to reduce errors.
+
+- **Edit and Manage Documents**: Open, edit, and delete individual documents directly in the extension.
+
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
+
+> For a step-by-step guide, check out the [A Powerful, Open-Source MongoDB GUI for Everyone](https://devblogs.microsoft.com/cosmosdb/a-powerful-open-source-mongodb-gui-for-everyone/) tutorial.
 
 ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
 
-## Scrapbooks
-
-### Run Mongo Commands with Rich Intellisense
-
-- View your MongoDB database account by clicking "Sign in to Azure..." in the Azure Resources explorer or using "New Connection" to connect via a connection string
-- Optionally configure the settings `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not already on your system's PATH (many of the common commands have built-in support and do not require the Mongo shell to be installed - see [Prerequisites](#prerequisites))
-- Click on "New Mongo Scrapbook" in the tree title bar
-- Click on "Connect to a database" to indicate which database to run the commands against
-- Enter your commands and/or comments, eg: `db.<collectionName>.find()`
-- IntelliSense (auto-completions) will be provided
-- Click on "Execute" above a command to execute it, or press <kbd>CMD</kbd>+<kbd>"</kbd> (Mac) or <kbd>CTRL</kbd>+<kbd>"</kbd> (Windows and Linux) to execute the line with the cursor
-- To run all commands, click on "Execute All", or press <kbd>CMD</kbd>+<kbd>:</kbd> or <kbd>Ctrl</kbd>+<kbd>:</kbd>
-- Save and re-use later
-  ![Mongo Scrapbook](resources/readme/Scrapbook.gif)
-
 ## Import into Cosmos DB
 
-- You can now import documents from your workspace into CosmosDB. Use the context menu of a collection or a document file (json) to get started!
+The extension allows you to import documents into CosmosDB.
+
+- **Workspace Integration**: Use the context menu of a collection or document file (JSON) to initiate import.
+
   ![Import documents](resources/readme/import_documents.gif)
-
-## Create an Azure Databases Server
-
-1. Sign in to your Azure Account by clicking "Sign in to Azure..." in the Azure Resources explorer
-   > If you don't already have an Azure Account, select "Create a Free Azure Account"
-2. Select the `+` button to open the "Create Resource" menu
-
-   ![Create resource](resources/readme/createResource.png)
-
-3. Choose "Create Database Server..."
-
-   ![Create Database Server](resources/readme/createDatabaseServer.png)
 
 ## Attach to the Cosmos DB Emulator
 
-- Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine
-- Right click 'Attached Database Accounts' and select 'New Emulator Connection'
+Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for development and testing purposes.
 
-![New Emulator Connection](resources/readme/attachEmulator.png)
+- **Emulator Installation**: Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine.
+
+- **New Emulator Connection**: Expand 'Attached Database Accounts', next expand 'Local Emulators', and select 'New Emulator Connection' to link the emulator to your workspace.
+
+# Prerequisites
+
+- **Mongo Shell Requirement (Optional)**: Some advanced commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).
 
 ## Known Issues
 
-- Azure no longer supports gremlin queries on pre-GA graph accounts. If you see the error "Could not find a valid gremlin endpoint for _graph_", then choose "Open Portal" on the graph node and check the "Gremlin Endpoint" in the Overview tab. If it does not take the form of '...[graph-name].**_gremlin_**.cosmosdb.azure.com...', then you will need to create a new graph account using the Azure portal or the current version of the extension.
-- Graphs are not currently supported with the emulator
-- Viewing/editing tables is not currently supported
-- Support for escapes in the scrapbooks is preliminary. We currently do not support escaped characters as is inside a string - the characters need to be double escaped. For example, newlines in the string should be '\\\\n' instead of '\\n' to be recognized correctly. If you find any issues with how the scrapbook handles escapes, please add to issue [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
+Here are some known issues and limitations to be aware of when using the Azure Databases extension:
+
+- **Gremlin Endpoint Limitation**: Azure no longer supports Gremlin queries on pre-GA graph accounts. If you encounter an error like "Could not find a valid gremlin endpoint for _graph_", open the graph node in the portal and verify the "Gremlin Endpoint" format. If it does not match the expected form '...[graph-name].**_gremlin_**.cosmosdb.azure.com...', you may need to create a new graph account.
+
+- **Graphs Not Supported with Emulator**: Graphs are not currently supported with the Cosmos DB Emulator.
+
+- **Table Viewing/Editing**: Viewing and editing tables is not currently supported by the extension.
+
+- **Escaped Characters in Scrapbooks**: Scrapbook support for escaped characters is preliminary. Use double escaping for newlines (`\\n` instead of `\n`). If you find issues, report them to [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
+
+
 
 <!-- region exclude-from-marketplace -->
 
@@ -111,12 +121,17 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 There are several ways you can contribute to the [vscode-cosmosdb repository](https://github.com/Microsoft/vscode-cosmosdb):
 
 - **Ideas, feature requests and bugs**: We are open to all ideas, and we want to get rid of bugs! Use the [Issues](https://github.com/Microsoft/vscode-cosmosdb/issues) section to report a new issue, provide your ideas or contribute to existing threads.
+
 - **Documentation**: Found a typo or strangely worded sentences? Submit a PR!
+
 - **Code**: Contribute bug fixes, features or design changes:
   - Clone the repository and open it in VS Code.
   - Run `Extensions: Show Recommended Extensions` from the [command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) and install all extensions listed under "Workspace Recommendations"
+
   - Open the terminal (press <kbd>CTRL</kbd>+<kbd>\`</kbd>) and run `npm install`.
+
   - Build: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>, or press <kbd>F1</kbd> and type `Tasks: Run Build Task`.
+
   - Debug: Select the `Launch Extension (webpack)` configuration in the Debug side bar and press <kbd>F5</kbd> to start debugging the extension.
 
 ## Legal

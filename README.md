@@ -43,17 +43,23 @@ The Query Editor provides a powerful interface to write and execute queries acro
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
-## MongoDB Support
+## Universal MongoDB Support
 
-The extension now offers enhanced support for MongoDB clusters, making it easier than ever to connect, view, and manage your MongoDB resources, whether on Azure or any external cluster.
+The Azure Databases VS Code Extension supports MongoDB, making it easier to connect to and manage different types of MongoDB databases:
 
-- **Seamless Connectivity with Azure Cosmos DB for MongoDB vCore**: Effortlessly connect to Azure Cosmos DB for MongoDB vCore.
-- **Universal MongoDB Connectivity**: Easily connect to any MongoDB cluster using a connection string, giving you flexibility in managing databases across multiple environments.
-- **Comprehensive Collection Viewer**: Navigate collections with rich visualization options, including **Table**, **Tree**, and **JSON views**, to quickly understand and explore your data.
-- **Enhanced Query Experience**: Execute find queries with **syntax highlighting** and **intelligent auto-completion**, including field name suggestions, to boost productivity and reduce errors.
-- **Paging Support for Large Datasets**: Efficiently browse through large collections with built-in paging support, enabling you to handle data exploration without overwhelming the interface.
-- **Document Management**: View, edit, and delete individual documents directly from the interface. Gain the flexibility to manage documents in-place, streamlining the database management process.
+- **Works with Azure Cosmos DB for MongoDB**: Connect to Azure Cosmos DB for MongoDB, including both Request Units (RU) and vCore-based models. Browse, query, and modify data without leaving VS Code.
+
+- **Supports Any MongoDB Database**: Connect to any MongoDB instance, whether it’s hosted on Azure, another cloud provider, or a local server.
+
+- **Different Ways to View Data**: Explore collections using Table, Tree, or JSON views. Paging controls help manage large datasets.
+
+- **Enhanced Query Experience**: Execute find queries with syntax highlighting and intelligent auto-completion, including field name suggestions, to reduce errors.
+
+- **Edit and Manage Documents**: Open, edit, and delete individual documents directly in the extension.
+
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
+
+For a step-by-step guide, check out the [official blog post](https://devblogs.microsoft.com/cosmosdb/a-powerful-open-source-mongodb-gui-for-everyone/).
 
 ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
 

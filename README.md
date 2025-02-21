@@ -52,7 +52,8 @@ The Query Editor allows you to write and execute queries across your databases.
 
 - **Query Insights and Index Advisor**: Displays key details such as execution time, resource consumption, and indexing recommendations.
 
-- **Edit Documents**:  Open, update, and save individual documents.
+- **Edit Documents**: Open, update, and save individual documents.
+
 
 - **Create New Documents**: Write and validate documents with syntax highlighting.
 

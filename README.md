@@ -52,7 +52,6 @@ The Query Editor allows you to write and execute queries across your databases.
 
 - **Edit Documents**: Open, update, and save individual documents.
 
-
 - **Create New Documents**: Write and validate documents with syntax highlighting.
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
@@ -109,8 +108,6 @@ Here are some known issues and limitations to be aware of when using the Azure D
 
 - **Escaped Characters in Scrapbooks**: Scrapbook support for escaped characters is preliminary. Use double escaping for newlines (`\\n` instead of `\n`). If you find issues, report them to [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
 
-
-
 <!-- region exclude-from-marketplace -->
 
 # Contributing
@@ -122,6 +119,7 @@ There are several ways you can contribute to the [vscode-cosmosdb repository](ht
 - **Documentation**: Found a typo or strangely worded sentences? Submit a PR!
 
 - **Code**: Contribute bug fixes, features or design changes:
+
   - Clone the repository and open it in VS Code.
   - Run `Extensions: Show Recommended Extensions` from the [command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) and install all extensions listed under "Workspace Recommendations"
 

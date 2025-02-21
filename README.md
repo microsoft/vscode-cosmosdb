@@ -6,7 +6,7 @@
 
 <!-- endregion exclude-from-marketplace -->
 
-Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for Core (NoSQL), MongoDB (RU), MongoDB (vCore), and any other MongoDB API Database.
+Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Core (NoSQL)**, **MongoDB (RU)**, **MongoDB (vCore)**, and any other MongoDB API Database.
 
 ![Azure Databases Extension](resources/readme/overview.png)
 

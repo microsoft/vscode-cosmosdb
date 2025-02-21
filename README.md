@@ -19,11 +19,17 @@ Browse, manage, and query your Azure Cosmos DB databases both locally and in the
 The Azure Databases Explorer provides a comprehensive interface to explore and manage your Azure databases.
 
 - **Discover Database Servers**: Find database servers in your Azure subscription.
+
 - **Azure Portal Integration**: Open database servers directly in the Azure portal.
+
 - **Full Database Management**: View, create, and delete databases, collections, stored procedures, documents, and queries.
+
 - **Integrated Document Editor**: Open documents, stored procedures, or queries directly in the editor for easy viewing and editing.
+
 - **Edit and Persist Changes**: Make changes to documents and persist them to the cloud.
+
 - **Workspace Integration**: Attach database servers to your workspace using connection strings, enabling centralized management.
+
 - **Flexible MongoDB Connectivity**: Easily establish connections to MongoDB clusters and databases across both Azure and non-Azure environments using a simple connection string.
 
 ![Browse PostgreSQL, CosmosDB, and MongoDB databases](resources/readme/explorer.png)
@@ -33,12 +39,19 @@ The Azure Databases Explorer provides a comprehensive interface to explore and m
 The Query Editor provides a powerful interface to write and execute queries across your databases.
 
 - **Rich Syntax Highlighting**: Write queries with built-in syntax highlighting to improve readability and reduce errors.
+
 - **Query History and Management**: Save and open queries from disk, and access query history for re-use.
+
 - **Execute Queries**: Run queries and view the results in multiple formats including Table, JSON, or a hierarchical Tree view.
+
 - **Flexible Result Management**: Copy query results as JSON or CSV to the clipboard or store them in a file as needed.
+
 - **Paging Support**: Choose how many results to display at once with convenient paging support, allowing navigation through large datasets.
+
 - **Query Statistics and Index Advisor**: View detailed query statistics such as consumed RUs, execution time, and index optimization suggestions.
+
 - **Document Management**: View, edit, and update single documents from the result view.
+
 - **New Document Creation**: Create new documents with syntax highlighting and validation.
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
@@ -59,7 +72,7 @@ The Azure Databases VS Code Extension supports MongoDB, making it easier to conn
 
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
 
-For a step-by-step guide, check out the [A Powerful, Open-Source MongoDB GUI for Everyone](https://devblogs.microsoft.com/cosmosdb/a-powerful-open-source-mongodb-gui-for-everyone/) tutorial.
+> For a step-by-step guide, check out the [A Powerful, Open-Source MongoDB GUI for Everyone](https://devblogs.microsoft.com/cosmosdb/a-powerful-open-source-mongodb-gui-for-everyone/) tutorial.
 
 ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
 
@@ -76,6 +89,7 @@ The extension allows you to import documents into CosmosDB.
 Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for development and testing purposes.
 
 - **Emulator Installation**: Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine.
+
 - **New Emulator Connection**: Expand 'Attached Database Accounts', next expand 'Local Emulators', and select 'New Emulator Connection' to link the emulator to your workspace.
 
 # Prerequisites

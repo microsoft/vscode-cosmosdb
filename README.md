@@ -6,7 +6,7 @@
 
 <!-- endregion exclude-from-marketplace -->
 
-Browse, manage, and query your Azure databases both locally and in the cloud with support for MongoDB, Graph (Gremlin), and NoSQL (previously known as DocumentDB).
+Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for Core (NoSQL), MongoDB (RU), MongoDB (vCore), and any other MongoDB API Database.
 
 ![Azure Databases Extension](resources/readme/overview.png)
 
@@ -44,7 +44,7 @@ The Query Editor provides a powerful interface to write and execute queries acro
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
-## MongoDB Cluster Support
+## MongoDB Support
 
 The extension now offers enhanced support for MongoDB clusters, making it easier than ever to connect, view, and manage your MongoDB resources, whether on Azure or any external cluster.
 
@@ -57,20 +57,6 @@ The extension now offers enhanced support for MongoDB clusters, making it easier
 - **JSON Import and Export**: Import data from JSON files or export documents as needed. You can even export entire collections or the result of a query, making data sharing simpler and more efficient.
 
 ![MongoDB Clusters with a Collection View and auto-completion](resources/readme/vscode-cosmosdb-vcore.png)
-
-## Scrapbooks
-
-Scrapbooks allow you to run Mongo commands with a rich IntelliSense experience, making it easier to work with your MongoDB databases.
-
-- **Quick Account Viewing**: View your MongoDB database account by clicking "Sign in to Azure..." or use "Attach Database Account" to connect via a connection string.
-- **Configurable Shell Settings**: Configure `mongo.shell.path` and `mongo.shell.args` if your mongo executable is not on your system's PATH.
-- **Create New Scrapbooks**: Click "New Mongo Scrapbook" in the tree title bar to create a new scrapbook.
-- **Database Connection**: Click "Connect to a database" to indicate which database to run commands against.
-- **IntelliSense Integration**: Enter commands like `db.<collectionName>.find()` and enjoy full IntelliSense support with auto-completions.
-- **Execute Commands Easily**: Click "Execute" or press <kbd>CMD</kbd>+<kbd>"</kbd> (Mac) or <kbd>CTRL</kbd>+<kbd>"</kbd> (Windows/Linux) to execute a command.
-- **Batch Execution Support**: Click "Execute All" or press <kbd>CMD</kbd>+<kbd>:</kbd> or <kbd>Ctrl</kbd>+<kbd>:</kbd> to run all commands at once.
-
-  ![Mongo Scrapbook](resources/readme/Scrapbook.gif)
 
 ## Import into Cosmos DB
 
@@ -90,19 +76,13 @@ Creating an Azure Databases Server is simple and straightforward, allowing you t
 
    ![Create resource](resources/readme/createResource.png)
 
-3. **Select Create Database Server**: Choose "Create Database Server..." and follow the guided prompts to set up your server.
-
-   ![Create Database Server](resources/readme/createDatabaseServer.png)
 
 ## Attach to the Cosmos DB Emulator
 
 Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for development and testing purposes.
 
 - **Emulator Installation**: Install and run the [Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator) on your local machine.
-- **Attach Emulator**: Right-click 'Attached Database Accounts' and select 'Attach Emulator' to link the emulator to your workspace.
-
-![Attach Emulator](resources/readme/attachEmulator.png)
-
+- **New Emulator Connection**: Expand 'Attached Database Accounts', next expand 'Local Emulators', and select 'New Emulator Connection' to link the emulator to your workspace.
 
 # Prerequisites
 

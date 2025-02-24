@@ -243,7 +243,7 @@ export class QueryEditorTab extends BaseTab {
                         .createHash('sha256')
                         .update(containerId)
                         .digest('hex');
-                    context.telemetry.properties.isEmulator = connection.isEmulator.toString();
+                    context.telemetry.properties.isEmulator = connection.emulatorConfiguration.isEmulator.toString();
 
                     await this.updateConnection(connection);
                 }

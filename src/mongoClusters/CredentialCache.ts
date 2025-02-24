@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { addAuthenticationDataToConnectionString } from './utils/connectionStringHelpers';
-import { MongoEmulatorConfiguration } from '../commands/newConnection/MongoEmulatorConfiguration';
 
 export interface MongoClustersCredentials {
     mongoClusterId: string;

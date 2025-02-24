@@ -22,7 +22,6 @@ import { ProvidePasswordStep } from '../../wizards/authenticate/ProvidePasswordS
 import { ProvideUserNameStep } from '../../wizards/authenticate/ProvideUsernameStep';
 import { MongoClusterItemBase } from '../MongoClusterItemBase';
 import { type MongoClusterModel } from '../MongoClusterModel';
-import { type MongoEmulatorConfiguration } from '../../newConnection/MongoEmulatorConfiguration';
 
 import ConnectionString from 'mongodb-connection-string-url';
 
@@ -167,7 +166,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
 
         if (this.mongoCluster.emulatorConfiguration?.isEmulator) {
             // For emulator clusters, show TLS/SSL status if security is disabled
-            if (this.mongoCluster.emulatorConfiguration?.disableEmulatorConfiguration) {
+            if (this.mongoCluster.emulatorConfiguration?.disableEmulatorSecurity) {
                 description = '⚠ TLS/SSL Disabled';
                 tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
             } else {

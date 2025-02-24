@@ -14,10 +14,10 @@ import { type DatabaseItemModel, MongoClustersClient } from '../../mongoClusters
 import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
-import { type MongoEmulatorConfiguration } from '../../commands/newConnection/MongoEmulatorConfiguration';
 
 /**
  * This implementation relies on information from the MongoAccountModel, i.e.

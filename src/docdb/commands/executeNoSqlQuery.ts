@@ -11,7 +11,6 @@ import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
-import { type MongoEmulatorConfiguration } from '../newConnection/MongoEmulatorConfiguration';
 
 export async function executeNoSqlQuery(
     _context: IActionContext,
@@ -38,14 +37,13 @@ export async function executeNoSqlQuery(
         );
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } =
+        const { databaseId, containerId, endpoint, masterKey, emulatorConfiguration, tenantId } =
             connectedCollection as NoSqlQueryConnection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
             credentials.push({ type: 'key', key: masterKey });
         }
         credentials.push({ type: 'auth', tenantId: tenantId });
-        const emulatorConfiguration: MongoEmulatorConfiguration = { isEmulator, disableEmulatorSecurity: false };
         const client = getCosmosClient(endpoint, credentials, emulatorConfiguration.isEmulator);
         const options = { populateQueryMetrics };
         const response = await client

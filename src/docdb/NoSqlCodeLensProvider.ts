@@ -16,13 +16,14 @@ import {
     type TextDocument,
 } from 'vscode';
 import { KeyValueStore } from '../KeyValueStore';
+import { type CoreEmulatorConfiguration } from '../utils/coreEmulatorConfiguration';
 
 export type NoSqlQueryConnection = {
     databaseId: string;
     containerId: string;
     endpoint: string;
     masterKey?: string;
-    isEmulator: boolean;
+    emulatorConfiguration: CoreEmulatorConfiguration;
     tenantId: string | undefined;
 };
 

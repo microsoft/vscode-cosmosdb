@@ -11,11 +11,11 @@ import {
     SharedWorkspaceStorage,
     type SharedWorkspaceStorageItem,
 } from '../../tree/workspace-api/SharedWorkspaceStorage';
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
 } from './NewEmulatorConnectionWizardContext';
-import { type MongoEmulatorConfiguration } from '../newConnection/MongoEmulatorConfiguration';
 
 export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWizardContext> {
     public priority: number = 100;

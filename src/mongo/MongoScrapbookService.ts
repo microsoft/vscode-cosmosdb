@@ -11,11 +11,11 @@ import { CredentialCache } from '../mongoClusters/CredentialCache';
 import { type DatabaseItemModel } from '../mongoClusters/MongoClustersClient';
 import { type MongoClusterModel } from '../mongoClusters/tree/MongoClusterModel';
 import { type MongoAccountModel } from '../tree/mongo/MongoAccountModel';
+import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { type MongoCommand } from './MongoCommand';
 import { findCommandAtPosition, getAllCommandsFromText } from './MongoScrapbookHelpers';
 import { MongoShellScriptRunner } from './MongoShellScriptRunner';
 import { MongoCodeLensProvider } from './services/MongoCodeLensProvider';
-import { type MongoEmulatorConfiguration } from '../commands/newConnection/MongoEmulatorConfiguration';
 
 export class MongoScrapbookServiceImpl {
     //--------------------------------------------------------------------------------

@@ -37,7 +37,7 @@ export async function openNoSqlQueryEditor(
         containerId: node.model.container.id,
         endpoint: accountInfo.endpoint,
         masterKey: keyCred?.key,
-        isEmulator: accountInfo.isEmulator,
+        emulatorConfiguration: { isEmulator: accountInfo.isEmulator },
         tenantId: tenantId,
     };
 

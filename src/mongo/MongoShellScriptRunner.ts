@@ -11,10 +11,10 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import * as cpUtils from '../utils/cp';
 import { InteractiveChildProcess } from '../utils/InteractiveChildProcess';
+import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { randomUtils } from '../utils/randomUtils';
 import { getBatchSizeSetting } from '../utils/workspacUtils';
 import { wrapError } from '../utils/wrapError';
-import { type MongoEmulatorConfiguration } from '../commands/newConnection/MongoEmulatorConfiguration';
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongosh';
 

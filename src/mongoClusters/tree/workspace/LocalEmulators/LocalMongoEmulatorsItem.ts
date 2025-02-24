@@ -11,10 +11,10 @@ import { type CosmosDBTreeElement } from '../../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../../../tree/TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../../tree/workspace-api/SharedWorkspaceStorage';
+import { type MongoEmulatorConfiguration } from '../../../../utils/mongoEmulatorConfiguration';
 import { type MongoClusterModel } from '../../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from '../MongoClusterWorkspaceItem';
 import { NewMongoEmulatorConnectionItem } from './NewMongoEmulatorConnectionItem';
-import { type MongoEmulatorConfiguration } from '../../../newConnection/MongoEmulatorConfiguration';
 
 export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string;

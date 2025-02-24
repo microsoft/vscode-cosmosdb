@@ -40,7 +40,7 @@ export class DocumentSession {
     private isDisposed = false;
 
     constructor(connection: NoSqlQueryConnection, channel: Channel) {
-        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } = connection;
+        const { databaseId, containerId, endpoint, masterKey, emulatorConfiguration, tenantId } = connection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
             credentials.push({ type: 'key', key: masterKey });
@@ -49,7 +49,7 @@ export class DocumentSession {
 
         this.id = uuid();
         this.channel = channel;
-        this.client = getCosmosClient(endpoint, credentials, isEmulator);
+        this.client = getCosmosClient(endpoint, credentials, emulatorConfiguration.isEmulator);
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;

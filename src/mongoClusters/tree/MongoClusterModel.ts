@@ -5,12 +5,7 @@
 
 import { type MongoCluster, type Resource } from '@azure/arm-cosmosdb';
 import { type Experience } from '../../AzureDBExperiences';
-import { type MongoEmulatorConfiguration } from '../../commands/newConnection/MongoEmulatorConfiguration';
-
-export interface EmulatorConfiguration {
-    isEmulator: boolean;
-    disableEmulatorConfiguration: boolean;
-}
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 
 // Selecting only the properties used in the extension, but keeping an easy option to extend the model later and offer full coverage of MongoCluster
 // '|' means that you can only access properties that are common to both types.

@@ -25,11 +25,11 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { Links } from '../constants';
+import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { CredentialCache } from './CredentialCache';
 import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
 import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
 import { toFilterQueryObj } from './utils/toFilterQuery';
-import { MongoEmulatorConfiguration } from '../commands/newConnection/MongoEmulatorConfiguration';
 
 export interface DatabaseItemModel {
     name: string;
@@ -65,7 +65,7 @@ export class MongoClustersClient {
     static _clients: Map<string, MongoClustersClient> = new Map();
 
     private _mongoClient: MongoClient;
-    private emulatorConfiguration: MongoEmulatorConfiguration;
+    private emulatorConfiguration?: MongoEmulatorConfiguration;
 
     /**
      * Use getClient instead of a constructor. Connections/Client are being cached and reused.

@@ -81,7 +81,7 @@ export async function launchShell(
 
     // If the cluster is an emulator, we need to allow invalid certificates, if the user has disabled security
     const tlsConfiguration =
-        'mongoCluster' in node && node?.mongoCluster?.isEmulator && node?.mongoCluster.disableEmulatorSecurity
+        'mongoCluster' in node && node?.mongoCluster?.emulatorConfiguration?.isEmulator && node?.mongoCluster.emulatorConfiguration.disableEmulatorSecurity
             ? '--tlsAllowInvalidCertificates'
             : '';
 

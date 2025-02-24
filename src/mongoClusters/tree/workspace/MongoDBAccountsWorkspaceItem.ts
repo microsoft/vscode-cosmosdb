@@ -48,7 +48,7 @@ export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeEl
         return {
             id: this.id,
             contextValue: 'vscode.cosmosdb.workspace.mongoclusters.accounts',
-            label: 'MongoDB Cluster Accounts',
+            label: 'MongoDB Accounts',
             iconPath: new ThemeIcon('link'),
             collapsibleState: TreeItemCollapsibleState.Collapsed,
         };

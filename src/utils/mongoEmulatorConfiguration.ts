@@ -21,5 +21,5 @@ export interface MongoEmulatorConfiguration {
  */
 export const defaultMongoEmulatorConfiguration: MongoEmulatorConfiguration = {
     isEmulator: true,
-    disableEmulatorSecurity: false
+    disableEmulatorSecurity: false,
 };

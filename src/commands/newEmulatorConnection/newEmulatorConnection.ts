@@ -32,17 +32,21 @@ export async function newEmulatorConnection(
         throw new Error(
             node instanceof NewMongoEmulatorConnectionItem
                 ? localize(
-                    'mongoEmulatorNotSupported',
-                    'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
-                )
+                      'mongoEmulatorNotSupported',
+                      'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
+                  )
                 : localize(
-                    'emulatorNotSupported',
-                    'The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
-                ),
+                      'emulatorNotSupported',
+                      'The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
+                  ),
         );
     }
 
-    const wizardContext: NewEmulatorConnectionWizardContext = { ...context, parentTreeElementId: node.parentId, emulatorConfiguration: defaultMongoEmulatorConfiguration };
+    const wizardContext: NewEmulatorConnectionWizardContext = {
+        ...context,
+        parentTreeElementId: node.parentId,
+        emulatorConfiguration: defaultMongoEmulatorConfiguration,
+    };
 
     let title: string = '';
     const steps: AzureWizardPromptStep<NewEmulatorConnectionWizardContext>[] = [];

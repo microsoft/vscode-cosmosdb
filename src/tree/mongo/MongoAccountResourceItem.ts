@@ -107,7 +107,13 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
             //TODO: simplify the api for CrednetialCache to accept full connection strings with credentials
             const username: string | undefined = cString.username;
             const password: string | undefined = cString.password;
-            CredentialCache.setCredentials(this.id, cString.toString(), username, password, this.account.emulatorConfiguration);
+            CredentialCache.setCredentials(
+                this.id,
+                cString.toString(),
+                username,
+                password,
+                this.account.emulatorConfiguration,
+            );
 
             mongoClient = await MongoClustersClient.getClient(this.id).catch(async (error) => {
                 console.error(error);

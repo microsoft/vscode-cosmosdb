@@ -58,7 +58,9 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                     api: experience.api,
                     isEmulator: (context.emulatorConfiguration as MongoEmulatorConfiguration)?.isEmulator ?? true,
                     // only adds 'disableEmulatorSecurity' when it's set (for Mongo)
-                    ...((context.emulatorConfiguration as MongoEmulatorConfiguration)?.disableEmulatorSecurity && { disableEmulatorSecurity: true }),
+                    ...((context.emulatorConfiguration as MongoEmulatorConfiguration)?.disableEmulatorSecurity && {
+                        disableEmulatorSecurity: true,
+                    }),
                 },
                 secrets: [connectionString],
             };

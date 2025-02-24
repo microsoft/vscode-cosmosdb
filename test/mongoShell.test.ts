@@ -74,13 +74,13 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             assert(value !== undefined);
             this.append(value + os.EOL);
         }
-        public clear(): void { }
+        public clear(): void {}
         public show(preserveFocus?: boolean): void;
         public show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
-        public show(_column?: any, _preserveFocus?: any): void { }
-        public hide(): void { }
-        public dispose(): void { }
-        public replace(_value: string): void { }
+        public show(_column?: any, _preserveFocus?: any): void {}
+        public hide(): void {}
+        public dispose(): void {}
+        public replace(_value: string): void {}
     }
 
     function log(text: string, linePrefix: string): void {

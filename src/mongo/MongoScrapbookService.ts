@@ -127,7 +127,9 @@ export class MongoScrapbookServiceImpl {
 
             const shellRunner = await MongoShellScriptRunner.createShell(context, {
                 connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                emulatorConfiguration: CredentialCache.getEmulatorConfiguration(this.getClusterId()!) as MongoEmulatorConfiguration,
+                emulatorConfiguration: CredentialCache.getEmulatorConfiguration(
+                    this.getClusterId()!,
+                ) as MongoEmulatorConfiguration,
             });
 
             try {
@@ -240,7 +242,9 @@ export class MongoScrapbookServiceImpl {
             if (!shellRunner) {
                 shellRunner = await MongoShellScriptRunner.createShell(context, {
                     connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                    emulatorConfiguration: CredentialCache.getEmulatorConfiguration(this.getClusterId()!) as MongoEmulatorConfiguration,
+                    emulatorConfiguration: CredentialCache.getEmulatorConfiguration(
+                        this.getClusterId()!,
+                    ) as MongoEmulatorConfiguration,
                 });
                 ephemeralShell = true;
             }

@@ -62,7 +62,7 @@ export class MongoDBLanguageClient {
             connectionString: connectionString,
             databaseName: databaseName,
             extensionUserAgent: appendExtensionUserAgent(),
-            emulatorConfiguration: { isEmulator: isEmulator, disableEmulatorSecurity: disableEmulatorSecurity }
+            emulatorConfiguration: { isEmulator: isEmulator, disableEmulatorSecurity: disableEmulatorSecurity },
         });
     }
 

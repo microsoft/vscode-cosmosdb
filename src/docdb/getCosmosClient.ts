@@ -51,7 +51,9 @@ export function getCosmosClientByConnection(
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
-        agent: new https.Agent({ rejectUnauthorized: emulatorConfiguration.isEmulator ? !emulatorConfiguration.isEmulator : vscodeStrictSSL }),
+        agent: new https.Agent({
+            rejectUnauthorized: emulatorConfiguration.isEmulator ? !emulatorConfiguration.isEmulator : vscodeStrictSSL,
+        }),
         connectionPolicy,
     };
 

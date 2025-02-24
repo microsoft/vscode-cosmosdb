@@ -14,6 +14,7 @@ import { isEmulatorSupported } from '../../constants';
 import { NewMongoEmulatorConnectionItem } from '../../mongoClusters/tree/workspace/LocalEmulators/NewMongoEmulatorConnectionItem';
 import { NewCoreEmulatorConnectionItem } from '../../tree/workspace/LocalEmulators/NewCoreEmulatorConnectionItem';
 import { localize } from '../../utils/localize';
+import { defaultMongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { ExecuteStep } from './ExecuteStep';
 import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
 import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
@@ -41,7 +42,11 @@ export async function newEmulatorConnection(
         );
     }
 
-    const wizardContext: NewEmulatorConnectionWizardContext = { ...context, parentTreeElementId: node.parentId };
+    const wizardContext: NewEmulatorConnectionWizardContext = {
+        ...context,
+        parentTreeElementId: node.parentId,
+        emulatorConfiguration: defaultMongoEmulatorConfiguration,
+    };
 
     let title: string = '';
     const steps: AzureWizardPromptStep<NewEmulatorConnectionWizardContext>[] = [];

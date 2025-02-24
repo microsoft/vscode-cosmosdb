@@ -25,6 +25,7 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { Links } from '../constants';
+import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { CredentialCache } from './CredentialCache';
 import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
 import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
@@ -64,8 +65,7 @@ export class MongoClustersClient {
     static _clients: Map<string, MongoClustersClient> = new Map();
 
     private _mongoClient: MongoClient;
-    private isEmulator: boolean;
-    private disableEmulatorSecurity: boolean;
+    private emulatorConfiguration?: MongoEmulatorConfiguration;
 
     /**
      * Use getClient instead of a constructor. Connections/Client are being cached and reused.
@@ -86,8 +86,7 @@ export class MongoClustersClient {
         const userAgentString = areMongoDBAzure(hosts) ? appendExtensionUserAgent() : undefined;
 
         const cStringPassword = CredentialCache.getConnectionStringWithPassword(this.credentialId);
-        this.isEmulator = CredentialCache.isEmulator(this.credentialId);
-        this.disableEmulatorSecurity = CredentialCache.disableEmulatorSecurity(this.credentialId);
+        this.emulatorConfiguration = CredentialCache.getEmulatorConfiguration(this.credentialId);
 
         // Prepare the options object and prepare the appName
         // appname appears to be the correct equivalent to user-agent for mongo
@@ -96,10 +95,10 @@ export class MongoClustersClient {
             appName: userAgentString,
         };
 
-        if (this.isEmulator) {
+        if (this.emulatorConfiguration?.isEmulator) {
             mongoClientOptions.serverSelectionTimeoutMS = 4000;
 
-            if (this.disableEmulatorSecurity) {
+            if (this.emulatorConfiguration?.disableEmulatorSecurity) {
                 // Prevents self signed certificate error for emulator https://github.com/microsoft/vscode-cosmosdb/issues/1241#issuecomment-614446198
                 mongoClientOptions.tlsAllowInvalidCertificates = true;
             }
@@ -109,10 +108,10 @@ export class MongoClustersClient {
             this._mongoClient = await MongoClient.connect(cStringPassword as string, mongoClientOptions);
         } catch (error) {
             const message = parseError(error).message;
-            if (this.isEmulator && message.includes('ECONNREFUSED')) {
+            if (this.emulatorConfiguration?.isEmulator && message.includes('ECONNREFUSED')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 error.message = `Unable to connect to local Mongo DB emulator. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`;
-            } else if (this.isEmulator && message.includes('self-signed certificate')) {
+            } else if (this.emulatorConfiguration?.isEmulator && message.includes('self-signed certificate')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 error.message = `The local Mongo DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate. See ${Links.LocalConnectionDebuggingTips} for tips.`;
             }

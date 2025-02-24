@@ -178,8 +178,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
                     options.mongoPath || mongoPath,
                     options.args || [],
                     '',
-                    false,
-                    false,
+                    { isEmulator: false, disableEmulatorSecurity: false },
                     outputChannel,
                     options.timeoutSeconds || 5,
                 );
@@ -298,8 +297,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             mongoPath,
             [],
             '',
-            false,
-            false,
+            { disableEmulatorSecurity: false, isEmulator: false },
             new FakeOutputChannel(),
             5,
         );

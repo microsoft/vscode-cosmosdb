@@ -46,7 +46,7 @@ export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEm
         );
 
         if (selectedItem.id === 'disableTLS') {
-            context.disableMongoEmulatorSecurity = true;
+            context.emulatorConfiguration.disableEmulatorSecurity = true;
         }
 
         if (selectedItem.id === 'learnMore') {

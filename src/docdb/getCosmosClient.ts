@@ -57,17 +57,17 @@ export function getCosmosClientByConnection(
 
     if (masterKey !== undefined) {
         commonProperties.key = masterKey;
-    } else {
-        commonProperties.aadCredentials = {
-            getToken: async (scopes, _options) => {
-                const session = await getSessionFromVSCode(scopes, tenantId, { createIfNone: true });
-                return {
-                    token: session?.accessToken ?? '',
-                    expiresOnTimestamp: 0,
-                };
-            },
-        };
     }
+
+    commonProperties.aadCredentials = {
+        getToken: async (scopes, _options) => {
+            const session = await getSessionFromVSCode(scopes, tenantId, { createIfNone: true });
+            return {
+                token: session?.accessToken ?? '',
+                expiresOnTimestamp: 0,
+            };
+        },
+    };
 
     return new CosmosClient(merge(options ?? {}, commonProperties));
 }

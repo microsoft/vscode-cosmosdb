@@ -83,6 +83,7 @@
         "@types/pg": "^8.11.10",
         "@types/react": "^18.3.11",
         "@types/react-dom": "^18.3.1",
+        "@types/semver": "^7.3.12",
         "@types/uuid": "^10.0.0",
         "@types/vscode": "1.82.0",
         "@types/vscode-webview": "^1.57.5",
@@ -1131,103 +1132,132 @@
                 "when": "editorLangId == 'mongo' && editorTextFocus"
             }
         ],
-        "configuration": {
-            "title": "Azure Databases",
-            "properties": {
-                "mongo.shell.path": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
-                    "default": null
-                },
-                "mongo.shell.args": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
+        "configuration": [
+            {
+                "title": "Authentication",
+                "properties": {
+                    "azureDatabases.cosmosDB.preferredAuthenticationMethod": {
+                        "type": "string",
+                        "enum": ["accountKey", "entraId", "managedIdentity", "azureCLI"],
+                        "markdownEnumDescriptions": [
+                            "Account Key ([LocalAuth](https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-disable-key-based-authentication) must be enabled, this is not recommended for production environments)",
+                            "VS Code Entra ID (Sign in using Entra ID in VS Code)",
+                            "Managed Identity (For user-assigned identites please specify `#azureDatabases.cosmosDB.managedIdentityClientID#`)",
+                            "Azure CLI (open the Terminal and sign in with `az login` first)"
+                        ],
+                        "enumItemLabels": ["Account Key", "VS Code Entra ID", "Managed Identity", "Azure CLI"],
+                        "markdownDescription": "Select a preferred authentication method for Cosmos DB NoSQL accounts.\n\nIf the preferred authentication fails, other methods will be tried in the following order:\n\n * Account Key (only if [LocalAuth](https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-disable-key-based-authentication) is enabled, this is not recommended for production environments)\n\n  * VS Code Entra ID ([Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac), sign in using VS Code)\n\n * Managed Identity (For user-assigned identites please specify `#azureDatabases.cosmosDB.managedIdentity.ClientID#`)\n\n * Azure CLI (open the Terminal and sign in with `az login` first)",
+                        "default": "accountKey",
+                        "order": 0
                     },
-                    "description": "Arguments to pass when starting the Mongo shell.",
-                    "default": [
-                        "--quiet"
-                    ]
-                },
-                "mongo.shell.timeout": {
-                    "type": "number",
-                    "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
-                    "default": 30
-                },
-                "azureDatabases.batchSize": {
-                    "type": "number",
-                    "description": "The batch size to be used when querying Azure Database resources.",
-                    "default": 50
-                },
-                "azureDatabases.useCosmosOAuth": {
-                    "type": "boolean",
-                    "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
-                    "default": false
-                },
-                "azureDatabases.confirmationStyle": {
-                    "type": "string",
-                    "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
-                    "enum": [
-                        "wordConfirmation",
-                        "challengeConfirmation",
-                        "buttonConfirmation"
-                    ],
-                    "enumItemLabels": [
-                        "Word Entry Confirmation",
-                        "Challenge Confirmation",
-                        "Button Click Confirmation"
-                    ],
-                    "enumDescriptions": [
-                        "Prompts with an input box where you enter the name of the resource to confirm deletion.",
-                        "Prompts with a challenge where you select the correct number among multiple options to confirm deletion.",
-                        "Prompts with a warning dialog where you click a button to confirm deletion."
-                    ],
-                    "default": "wordConfirmation"
-                },
-                "azureDatabases.showOperationSummaries": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events."
-                },
-                "cosmosDB.documentLabelFields": {
-                    "type": "array",
-                    "default": [
-                        "name",
-                        "Name",
-                        "NAME",
-                        "ID",
-                        "UUID",
-                        "Id",
-                        "id",
-                        "_id",
-                        "uuid"
-                    ],
-                    "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
-                },
-                "cosmosDB.emulator.mongoPort": {
-                    "type": "integer",
-                    "default": 10255,
-                    "description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
-                },
-                "cosmosDB.emulator.port": {
-                    "type": "integer",
-                    "default": 8081,
-                    "description": "Port to use when connecting to a CosmosDB Emulator instance"
-                },
-                "cosmosDB.enableEndpointDiscovery": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
-                },
-                "cosmosDB.showSavePrompt": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show warning dialog when uploading a document to the cloud."
+                    "azureDatabases.cosmosDB.managedIdentity.ClientID": {
+                        "type": "string",
+                        "markdownDescription": "Specify the user-assigned managed identity [Client ID](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/tutorial-vm-managed-identities-cosmos) to use for the Managed Identity authentication.",
+                        "default": null,
+                        "order": 1
+                    }
+                }
+            },
+            {
+                "title": "Azure Databases",
+                "properties": {
+                    "mongo.shell.path": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
+                        "default": null
+                    },
+                    "mongo.shell.args": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Arguments to pass when starting the Mongo shell.",
+                        "default": [
+                            "--quiet"
+                        ]
+                    },
+                    "mongo.shell.timeout": {
+                        "type": "number",
+                        "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
+                        "default": 30
+                    },
+                    "azureDatabases.batchSize": {
+                        "type": "number",
+                        "description": "The batch size to be used when querying Azure Database resources.",
+                        "default": 50
+                    },
+                    "azureDatabases.useCosmosOAuth": {
+                        "type": "boolean",
+                        "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
+                        "markdownDeprecationMessage": "**Deprecated**: Please use `#azureDatabases.cosmosDB.preferredAuthenticationMethod#` instead.",
+                        "deprecationMessage": "Deprecated: Please use azureDatabases.cosmosDB.preferredAuthenticationMethod instead.",
+                        "default": false
+                    },
+                    "azureDatabases.confirmationStyle": {
+                        "type": "string",
+                        "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
+                        "enum": [
+                            "wordConfirmation",
+                            "challengeConfirmation",
+                            "buttonConfirmation"
+                        ],
+                        "enumItemLabels": [
+                            "Word Entry Confirmation",
+                            "Challenge Confirmation",
+                            "Button Click Confirmation"
+                        ],
+                        "enumDescriptions": [
+                            "Prompts with an input box where you enter the name of the resource to confirm deletion.",
+                            "Prompts with a challenge where you select the correct number among multiple options to confirm deletion.",
+                            "Prompts with a warning dialog where you click a button to confirm deletion."
+                        ],
+                        "default": "wordConfirmation"
+                    },
+                    "azureDatabases.showOperationSummaries": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events."
+                    },
+                    "cosmosDB.documentLabelFields": {
+                        "type": "array",
+                        "default": [
+                            "name",
+                            "Name",
+                            "NAME",
+                            "ID",
+                            "UUID",
+                            "Id",
+                            "id",
+                            "_id",
+                            "uuid"
+                        ],
+                        "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
+                    },
+                    "cosmosDB.emulator.mongoPort": {
+                        "type": "integer",
+                        "default": 10255,
+                        "description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
+                    },
+                    "cosmosDB.emulator.port": {
+                        "type": "integer",
+                        "default": 8081,
+                        "description": "Port to use when connecting to a CosmosDB Emulator instance"
+                    },
+                    "cosmosDB.enableEndpointDiscovery": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
+                    },
+                    "cosmosDB.showSavePrompt": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show warning dialog when uploading a document to the cloud."
+                    }
                 }
             }
-        }
+        ]
     }
 }

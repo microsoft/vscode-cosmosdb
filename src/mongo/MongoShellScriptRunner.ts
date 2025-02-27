@@ -47,13 +47,17 @@ export class MongoShellScriptRunner extends vscode.Disposable {
         connectionString: string,
         outputChannel: vscode.OutputChannel,
         timeoutSeconds: number,
-        emulatorConfiguration?: MongoEmulatorConfiguration
+        emulatorConfiguration?: MongoEmulatorConfiguration,
     ): Promise<MongoShellScriptRunner> {
         try {
             const args: string[] = execArgs.slice() || []; // Snapshot since we modify it
             args.push(connectionString);
 
-            if (emulatorConfiguration && emulatorConfiguration.isEmulator && emulatorConfiguration.disableEmulatorSecurity) {
+            if (
+                emulatorConfiguration &&
+                emulatorConfiguration.isEmulator &&
+                emulatorConfiguration.disableEmulatorSecurity
+            ) {
                 // Without these the connection will fail due to the self-signed DocDB certificate
                 if (args.indexOf('--tlsAllowInvalidCertificates') < 0) {
                     args.push('--tlsAllowInvalidCertificates');

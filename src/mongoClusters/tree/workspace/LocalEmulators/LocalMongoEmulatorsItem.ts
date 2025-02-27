@@ -30,6 +30,8 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
             ...allItems
                 .filter((item) => item.properties?.isEmulator) // only show emulators
                 .map((item) => {
+                    // we need to create the emulator configuration object from
+                    // the flat properties object
                     const emulatorConfiguration: MongoEmulatorConfiguration = {
                         isEmulator: true,
                         disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,

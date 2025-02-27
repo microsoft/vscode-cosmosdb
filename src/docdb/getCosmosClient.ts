@@ -37,7 +37,7 @@ export function getCosmosClientByConnection(
     connection: NoSqlQueryConnection,
     options?: Partial<CosmosClientOptions>,
 ): CosmosClient {
-    const { endpoint, masterKey, emulatorConfiguration, tenantId } = connection;
+    const { endpoint, masterKey, isEmulator, tenantId } = connection;
 
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
         .getConfiguration()
@@ -52,7 +52,7 @@ export function getCosmosClientByConnection(
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
         agent: new https.Agent({
-            rejectUnauthorized: emulatorConfiguration.isEmulator ? !emulatorConfiguration.isEmulator : vscodeStrictSSL,
+            rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL,
         }),
         connectionPolicy,
     };
@@ -77,7 +77,7 @@ export function getCosmosClientByConnection(
 export function getCosmosClient(
     endpoint: string,
     credentials: CosmosDBCredential[],
-    isEmulator: boolean | undefined,
+    isEmulator: boolean,
 ): CosmosClient {
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
         .getConfiguration()

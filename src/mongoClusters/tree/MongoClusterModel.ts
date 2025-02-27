@@ -42,6 +42,7 @@ interface ResourceModelInUse extends Resource {
     // adding support for MongoRU and vCore
     dbExperience: Experience;
 
+    // TODO: is this still in use?
     isServerless?: boolean;
 
     /**

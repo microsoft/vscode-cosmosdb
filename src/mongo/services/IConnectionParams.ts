@@ -9,5 +9,5 @@ export interface IConnectionParams {
     connectionString: string;
     databaseName: string;
     extensionUserAgent: string;
-    emulatorConfiguration: MongoEmulatorConfiguration;
+    emulatorConfiguration?: MongoEmulatorConfiguration;
 }

@@ -25,7 +25,7 @@ export function createNoSqlQueryConnection(
         containerId: containerId,
         endpoint: accountInfo.endpoint,
         masterKey: keyCred?.key,
-        emulatorConfiguration: { isEmulator: accountInfo.isEmulator },
+        isEmulator: accountInfo.isEmulator,
         tenantId: tenantId,
     };
 }

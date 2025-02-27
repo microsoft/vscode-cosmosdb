@@ -5,7 +5,6 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CoreEmulatorConfiguration } from '../../utils/coreEmulatorConfiguration';
 import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 
 export enum NewEmulatorConnectionMode {
@@ -21,7 +20,9 @@ export interface NewEmulatorConnectionWizardContext extends IActionContext {
     connectionString?: string;
     port?: number;
 
-    emulatorConfiguration?: MongoEmulatorConfiguration | CoreEmulatorConfiguration;
+    mongoEmulatorConfiguration?: MongoEmulatorConfiguration;
+    // TODO: refactor to CoreEmulatorConfiguration as it's done for MongoEmulatorConfiguration in case more core-emulator properties are added
+    isCoreEmulator?: boolean;
 
     // The selected mode; defaults to Unknown
     mode?: NewEmulatorConnectionMode;

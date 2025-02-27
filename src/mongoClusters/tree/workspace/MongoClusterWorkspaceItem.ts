@@ -89,7 +89,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     connectionString.toString(),
                     username,
                     password,
-                    this.mongoCluster.emulatorConfiguration, // only workspace items can potentially be connecting to an emulator
+                    this.mongoCluster.emulatorConfiguration, // workspace items can potentially be connecting to an emulator, so we always pass it
                 );
 
                 // Attempt to create the client with the provided credentials

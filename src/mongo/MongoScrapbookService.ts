@@ -47,8 +47,7 @@ export class MongoScrapbookServiceImpl {
         await ext.mongoLanguageClient.connect(
             CredentialCache.getConnectionStringWithPassword(this._cluster.id),
             this._database.name,
-            (cluster.emulatorConfiguration as MongoEmulatorConfiguration)?.isEmulator ?? false,
-            (cluster.emulatorConfiguration as MongoEmulatorConfiguration)?.disableEmulatorSecurity ?? false,
+            cluster.emulatorConfiguration,
         );
     }
 
@@ -127,9 +126,7 @@ export class MongoScrapbookServiceImpl {
 
             const shellRunner = await MongoShellScriptRunner.createShell(context, {
                 connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                emulatorConfiguration: CredentialCache.getEmulatorConfiguration(
-                    this.getClusterId()!,
-                ),
+                emulatorConfiguration: CredentialCache.getEmulatorConfiguration(this.getClusterId()!),
             });
 
             try {

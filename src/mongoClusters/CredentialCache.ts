@@ -11,6 +11,7 @@ export interface MongoClustersCredentials {
     connectionStringWithPassword?: string;
     connectionString: string;
     connectionUser: string;
+    // Optional, as it's only relevant for local workspace connetions
     emulatorConfiguration?: MongoEmulatorConfiguration;
 }
 
@@ -45,7 +46,7 @@ export class CredentialCache {
      * @param connectionString - The connection string to which the credentials will be added.
      * @param username - The username to be used for authentication.
      * @param password - The password to be used for authentication.
-     * @param emulatorConfiguration - The emulator configuration object.
+     * @param emulatorConfiguration - The emulator configuration object (optional).
      */
     public static setCredentials(
         mongoClusterId: string,

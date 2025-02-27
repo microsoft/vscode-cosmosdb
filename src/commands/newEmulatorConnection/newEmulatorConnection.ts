@@ -14,7 +14,6 @@ import { isEmulatorSupported } from '../../constants';
 import { NewMongoEmulatorConnectionItem } from '../../mongoClusters/tree/workspace/LocalEmulators/NewMongoEmulatorConnectionItem';
 import { NewCoreEmulatorConnectionItem } from '../../tree/workspace/LocalEmulators/NewCoreEmulatorConnectionItem';
 import { localize } from '../../utils/localize';
-import { defaultMongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { ExecuteStep } from './ExecuteStep';
 import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
 import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
@@ -32,20 +31,19 @@ export async function newEmulatorConnection(
         throw new Error(
             node instanceof NewMongoEmulatorConnectionItem
                 ? localize(
-                      'mongoEmulatorNotSupported',
-                      'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
-                  )
+                    'mongoEmulatorNotSupported',
+                    'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
+                )
                 : localize(
-                      'emulatorNotSupported',
-                      'The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
-                  ),
+                    'emulatorNotSupported',
+                    'The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
+                ),
         );
     }
 
     const wizardContext: NewEmulatorConnectionWizardContext = {
         ...context,
         parentTreeElementId: node.parentId,
-        emulatorConfiguration: defaultMongoEmulatorConfiguration,
     };
 
     let title: string = '';

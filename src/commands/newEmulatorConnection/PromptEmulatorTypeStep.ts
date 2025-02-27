@@ -7,6 +7,8 @@ import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/v
 import { QuickPickItemKind } from 'vscode';
 import { API, CoreExperience, MongoExperience } from '../../AzureDBExperiences';
 import { SettingsService } from '../../services/SettingsService';
+import { defaultCoreEmulatorConfiguration } from '../../utils/coreEmulatorConfiguration';
+import { defaultMongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -25,24 +27,24 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
 
         const preconfiguredEmulators = isCore
             ? [
-                  {
-                      id: API.Core,
-                      label: 'Azure Cosmos DB (NoSQL)',
-                      detail: 'I want to connect to the Azure Cosmos DB (NoSQL) Emulator.',
-                      alwaysShow: true,
-                      group: 'Preconfigured Emulators',
-                  },
-              ]
+                {
+                    id: API.Core,
+                    label: 'Azure Cosmos DB (NoSQL)',
+                    detail: 'I want to connect to the Azure Cosmos DB (NoSQL) Emulator.',
+                    alwaysShow: true,
+                    group: 'Preconfigured Emulators',
+                },
+            ]
             : [
-                  {
-                      id: API.MongoDB,
-                      label: 'Azure Cosmos DB for MongoDB (RU)',
-                      detail: 'I want to connect to the Azure Cosmos DB Emulator for MongoDB (RU).',
-                      alwaysShow: true,
-                      group: 'Preconfigured Emulators',
-                  },
-                  // Additional MongoDB emulator options can be added here
-              ];
+                {
+                    id: API.MongoDB,
+                    label: 'Azure Cosmos DB for MongoDB (RU)',
+                    detail: 'I want to connect to the Azure Cosmos DB Emulator for MongoDB (RU).',
+                    alwaysShow: true,
+                    group: 'Preconfigured Emulators',
+                },
+                // Additional MongoDB emulator options can be added here
+            ];
 
         const commonItems = [
             { label: '', kind: QuickPickItemKind.Separator },
@@ -84,16 +86,21 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
         if (selectedItem.id === 'connectionString') {
             context.mode = NewEmulatorConnectionMode.CustomConnectionString;
             context.experience = isCore ? CoreExperience : MongoExperience;
+            context.emulatorConfiguration = isCore ? defaultCoreEmulatorConfiguration : defaultMongoEmulatorConfiguration;
+            return;
         }
 
         if (preconfiguredEmulators.some((emulator) => emulator.id === selectedItem.id)) {
             context.mode = NewEmulatorConnectionMode.Preconfigured;
             context.experience = isCore ? CoreExperience : MongoExperience;
+            context.emulatorConfiguration = isCore ? defaultCoreEmulatorConfiguration : defaultMongoEmulatorConfiguration;
+
             const settingName = isCore ? 'cosmosDB.emulator.port' : 'cosmosDB.emulator.mongoPort';
 
             context.port =
                 SettingsService.getWorkspaceSetting<number>(settingName) ??
                 SettingsService.getGlobalSetting<number>(settingName);
+            return;
         }
     }
 

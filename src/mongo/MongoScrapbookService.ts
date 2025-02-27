@@ -129,7 +129,7 @@ export class MongoScrapbookServiceImpl {
                 connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
                 emulatorConfiguration: CredentialCache.getEmulatorConfiguration(
                     this.getClusterId()!,
-                ) as MongoEmulatorConfiguration,
+                ),
             });
 
             try {

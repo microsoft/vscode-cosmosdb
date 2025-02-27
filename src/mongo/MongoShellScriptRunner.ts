@@ -45,15 +45,15 @@ export class MongoShellScriptRunner extends vscode.Disposable {
         execPath: string,
         execArgs: string[],
         connectionString: string,
-        emulatorConfiguration: MongoEmulatorConfiguration,
         outputChannel: vscode.OutputChannel,
         timeoutSeconds: number,
+        emulatorConfiguration?: MongoEmulatorConfiguration
     ): Promise<MongoShellScriptRunner> {
         try {
             const args: string[] = execArgs.slice() || []; // Snapshot since we modify it
             args.push(connectionString);
 
-            if (emulatorConfiguration.isEmulator && emulatorConfiguration.disableEmulatorSecurity) {
+            if (emulatorConfiguration && emulatorConfiguration.isEmulator && emulatorConfiguration.disableEmulatorSecurity) {
                 // Without these the connection will fail due to the self-signed DocDB certificate
                 if (args.indexOf('--tlsAllowInvalidCertificates') < 0) {
                     args.push('--tlsAllowInvalidCertificates');
@@ -123,7 +123,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
 
     public static async createShell(
         context: IActionContext,
-        connectionInfo: { connectionString: string; emulatorConfiguration: MongoEmulatorConfiguration },
+        connectionInfo: { connectionString: string; emulatorConfiguration?: MongoEmulatorConfiguration },
     ): Promise<MongoShellScriptRunner> {
         const config = vscode.workspace.getConfiguration();
         let shellPath: string | undefined = config.get(ext.settingsKeys.mongoShellPath);
@@ -146,9 +146,9 @@ export class MongoShellScriptRunner extends vscode.Disposable {
             shellPath,
             shellArgs,
             connectionInfo.connectionString,
-            connectionInfo.emulatorConfiguration,
             ext.outputChannel,
             timeout,
+            connectionInfo.emulatorConfiguration,
         );
     }
 

@@ -5,6 +5,7 @@
 
 import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import { QuickPickItemKind } from 'vscode';
+import { defaultMongoEmulatorConfiguration, type MongoEmulatorConfiguration } from '../../../utils/mongoEmulatorConfiguration';
 import { type NewEmulatorConnectionWizardContext } from '../NewEmulatorConnectionWizardContext';
 
 export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
@@ -46,7 +47,13 @@ export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEm
         );
 
         if (selectedItem.id === 'disableTLS') {
-            context.emulatorConfiguration.disableEmulatorSecurity = true;
+            if (!context.emulatorConfiguration) {
+                context.emulatorConfiguration = defaultMongoEmulatorConfiguration;
+            }
+
+            const config = context.emulatorConfiguration as MongoEmulatorConfiguration;
+            config.disableEmulatorSecurity = true;
+            return;
         }
 
         if (selectedItem.id === 'learnMore') {

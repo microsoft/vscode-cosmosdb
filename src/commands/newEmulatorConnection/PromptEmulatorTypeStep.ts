@@ -7,6 +7,7 @@ import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/v
 import { QuickPickItemKind } from 'vscode';
 import { API, CoreExperience, MongoExperience } from '../../AzureDBExperiences';
 import { SettingsService } from '../../services/SettingsService';
+import { defaultMongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -84,16 +85,32 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
         if (selectedItem.id === 'connectionString') {
             context.mode = NewEmulatorConnectionMode.CustomConnectionString;
             context.experience = isCore ? CoreExperience : MongoExperience;
+
+            if (isCore) {
+                context.isCoreEmulator = true;
+            } else {
+                context.mongoEmulatorConfiguration = defaultMongoEmulatorConfiguration;
+            }
+
+            return;
         }
 
         if (preconfiguredEmulators.some((emulator) => emulator.id === selectedItem.id)) {
             context.mode = NewEmulatorConnectionMode.Preconfigured;
             context.experience = isCore ? CoreExperience : MongoExperience;
+
+            if (isCore) {
+                context.isCoreEmulator = true;
+            } else {
+                context.mongoEmulatorConfiguration = defaultMongoEmulatorConfiguration;
+            }
+
             const settingName = isCore ? 'cosmosDB.emulator.port' : 'cosmosDB.emulator.mongoPort';
 
             context.port =
                 SettingsService.getWorkspaceSetting<number>(settingName) ??
                 SettingsService.getGlobalSetting<number>(settingName);
+            return;
         }
     }
 

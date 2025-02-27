@@ -89,8 +89,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     connectionString.toString(),
                     username,
                     password,
-                    this.mongoCluster.isEmulator, // only workspace items can potentially be connecting to an emulator
-                    this.mongoCluster.disableEmulatorSecurity, // only workspace items can potentially be connecting to an emulator
+                    this.mongoCluster.emulatorConfiguration, // workspace items can potentially be connecting to an emulator, so we always pass it
                 );
 
                 // Attempt to create the client with the provided credentials
@@ -165,9 +164,9 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         let description: string | undefined = undefined;
         let tooltipMessage: string | undefined = undefined;
 
-        if (this.mongoCluster.isEmulator) {
+        if (this.mongoCluster.emulatorConfiguration?.isEmulator) {
             // For emulator clusters, show TLS/SSL status if security is disabled
-            if (this.mongoCluster.disableEmulatorSecurity) {
+            if (this.mongoCluster.emulatorConfiguration?.disableEmulatorSecurity) {
                 description = '⚠ TLS/SSL Disabled';
                 tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
             } else {
@@ -185,7 +184,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
             contextValue: this.contextValue,
             label: this.mongoCluster.name,
             description: description,
-            iconPath: this.mongoCluster.isEmulator
+            iconPath: this.mongoCluster.emulatorConfiguration?.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : new vscode.ThemeIcon('server-environment'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,

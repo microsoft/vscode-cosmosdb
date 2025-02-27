@@ -11,6 +11,7 @@ import { CredentialCache } from '../mongoClusters/CredentialCache';
 import { type DatabaseItemModel } from '../mongoClusters/MongoClustersClient';
 import { type MongoClusterModel } from '../mongoClusters/tree/MongoClusterModel';
 import { type MongoAccountModel } from '../tree/mongo/MongoAccountModel';
+import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { type MongoCommand } from './MongoCommand';
 import { findCommandAtPosition, getAllCommandsFromText } from './MongoScrapbookHelpers';
 import { MongoShellScriptRunner } from './MongoShellScriptRunner';
@@ -46,8 +47,7 @@ export class MongoScrapbookServiceImpl {
         await ext.mongoLanguageClient.connect(
             CredentialCache.getConnectionStringWithPassword(this._cluster.id),
             this._database.name,
-            cluster.isEmulator ?? false,
-            cluster.disableEmulatorSecurity ?? false,
+            cluster.emulatorConfiguration,
         );
     }
 
@@ -126,8 +126,7 @@ export class MongoScrapbookServiceImpl {
 
             const shellRunner = await MongoShellScriptRunner.createShell(context, {
                 connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                isEmulator: CredentialCache.isEmulator(this.getClusterId()!),
-                disableEmulatorSecurity: CredentialCache.disableEmulatorSecurity(this.getClusterId()!),
+                emulatorConfiguration: CredentialCache.getEmulatorConfiguration(this.getClusterId()!),
             });
 
             try {
@@ -240,8 +239,9 @@ export class MongoScrapbookServiceImpl {
             if (!shellRunner) {
                 shellRunner = await MongoShellScriptRunner.createShell(context, {
                     connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
-                    isEmulator: CredentialCache.isEmulator(this.getClusterId()!),
-                    disableEmulatorSecurity: CredentialCache.disableEmulatorSecurity(this.getClusterId()!),
+                    emulatorConfiguration: CredentialCache.getEmulatorConfiguration(
+                        this.getClusterId()!,
+                    ) as MongoEmulatorConfiguration,
                 });
                 ephemeralShell = true;
             }

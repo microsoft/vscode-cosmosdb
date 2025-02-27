@@ -19,6 +19,4 @@ export interface NewConnectionWizardContext extends IActionContext {
 
     username?: string;
     password?: string;
-
-    mongodbapiIsEmulator?: boolean;
 }

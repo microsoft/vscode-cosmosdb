@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 
 export type MongoAccountModel = CosmosAccountModel & {
     connectionString?: string;
-    isEmulator?: boolean;
-    disableEmulatorSecurity?: boolean;
+    emulatorConfiguration?: MongoEmulatorConfiguration;
 };

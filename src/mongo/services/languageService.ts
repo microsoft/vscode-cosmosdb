@@ -58,8 +58,7 @@ export class LanguageService {
             void connectToMongoClient(
                 connectionParams.connectionString,
                 connectionParams.extensionUserAgent,
-                connectionParams.isEmulator,
-                connectionParams.disableEmulatorSecurity,
+                connectionParams.emulatorConfiguration,
             ).then((account) => {
                 this.db = account.db(connectionParams.databaseName);
                 void this.schemaService.registerSchemas(this.db).then((schemas) => {

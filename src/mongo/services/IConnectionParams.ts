@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
+
 export interface IConnectionParams {
     connectionString: string;
     databaseName: string;
     extensionUserAgent: string;
-    isEmulator: boolean;
-    disableEmulatorSecurity: boolean;
+    emulatorConfiguration?: MongoEmulatorConfiguration;
 }

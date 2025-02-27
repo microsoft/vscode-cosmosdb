@@ -33,7 +33,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
                 const storageItem: SharedWorkspaceStorageItem = {
                     id: parsedCS.username + '@' + parsedCS.redact().toString(),
                     name: label,
-                    properties: { isEmulator: context.mongodbapiIsEmulator ?? false, api },
+                    properties: { isEmulator: false, api },
                     secrets: [connectionString],
                 };
 

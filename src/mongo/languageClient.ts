@@ -8,6 +8,7 @@ import * as path from 'path';
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient';
 import { ext } from '../extensionVariables';
 import { localize } from '../utils/localize';
+import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { type IConnectionParams } from './services/IConnectionParams';
 
 export class MongoDBLanguageClient {
@@ -55,15 +56,13 @@ export class MongoDBLanguageClient {
     public async connect(
         connectionString: string,
         databaseName: string,
-        isEmulator?: boolean,
-        disableEmulatorSecurity?: boolean,
+        emulatorConfiguration?: MongoEmulatorConfiguration,
     ): Promise<void> {
         await this.client.sendRequest('connect', <IConnectionParams>{
             connectionString: connectionString,
             databaseName: databaseName,
             extensionUserAgent: appendExtensionUserAgent(),
-            isEmulator: isEmulator,
-            disableEmulatorSecurity: disableEmulatorSecurity,
+            emulatorConfiguration: emulatorConfiguration,
         });
     }
 

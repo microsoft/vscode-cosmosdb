@@ -51,7 +51,9 @@ export function getCosmosClientByConnection(
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
-        agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }),
+        agent: new https.Agent({
+            rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL,
+        }),
         connectionPolicy,
     };
 
@@ -75,7 +77,7 @@ export function getCosmosClientByConnection(
 export function getCosmosClient(
     endpoint: string,
     credentials: CosmosDBCredential[],
-    isEmulator: boolean | undefined,
+    isEmulator: boolean,
 ): CosmosClient {
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
         .getConfiguration()

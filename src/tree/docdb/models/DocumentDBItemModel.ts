@@ -10,5 +10,5 @@ export type DocumentDBItemModel = {
     accountInfo: AccountInfo;
     database: DatabaseDefinition & Resource;
     container: ContainerDefinition & Resource;
-    item: ItemDefinition;
+    item: ItemDefinition & Resource;
 };

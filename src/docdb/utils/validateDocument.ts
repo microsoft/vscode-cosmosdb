@@ -14,7 +14,7 @@ export function validateDocument(content: string, partitionKey?: PartitionKeyDef
         // Check JSON schema
         const resource = parseJson(content) as JSONObject;
 
-        if (resource && typeof resource !== 'object') {
+        if (resource === null || typeof resource !== 'object') {
             throw new Error('Document must be an object.');
         }
 

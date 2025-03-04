@@ -3,7 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient, type FeedOptions, type ItemDefinition, type QueryIterator } from '@azure/cosmos';
+import {
+    type CosmosClient,
+    type FeedOptions,
+    type ItemDefinition,
+    type QueryIterator,
+    type Resource,
+} from '@azure/cosmos';
 import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -74,14 +80,19 @@ export abstract class DocumentDBItemsResourceItem
         };
     }
 
-    protected getIterator(cosmosClient: CosmosClient, feedOptions: FeedOptions): QueryIterator<ItemDefinition> {
+    protected getIterator(
+        cosmosClient: CosmosClient,
+        feedOptions: FeedOptions,
+    ): QueryIterator<ItemDefinition & Resource> {
         return cosmosClient
             .database(this.model.database.id)
             .container(this.model.container.id)
-            .items.readAll(feedOptions);
+            .items.readAll<ItemDefinition & Resource>(feedOptions);
     }
 
-    protected async getItems(iterator: QueryIterator<ItemDefinition>): Promise<ItemDefinition[]> {
+    protected async getItems(
+        iterator: QueryIterator<ItemDefinition & Resource>,
+    ): Promise<(ItemDefinition & Resource)[]> {
         const result = await iterator.fetchNext();
         const items = result.resources;
         this.hasMoreChildren = result.hasMoreResults;
@@ -89,5 +100,5 @@ export abstract class DocumentDBItemsResourceItem
         return items;
     }
 
-    protected abstract getChildrenImpl(items: ItemDefinition[]): Promise<CosmosDBTreeElement[]>;
+    protected abstract getChildrenImpl(items: (ItemDefinition & Resource)[]): Promise<CosmosDBTreeElement[]>;
 }

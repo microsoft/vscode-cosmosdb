@@ -52,6 +52,7 @@ import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './vie
 
 export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
     registerAccountCommands();
     registerDatabaseCommands();
@@ -65,13 +66,8 @@ export function registerCommands(): void {
     registerMongoCommands();
     registerPostgresCommands();
 
-    registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
-
     // For DocumentDB FileSystem (Scrapbook)
-    registerCommandWithTreeNodeUnwrapping(
-        'azureDatabases.update',
-        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
-    );
+    registerFsCommands();
 }
 
 export function registerAccountCommands() {
@@ -121,4 +117,19 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBTrigger', createDocumentDBTrigger);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', openDocumentDBTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBTrigger', deleteDocumentDBTrigger);
+}
+
+export function registerFsCommands() {
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.fs.save',
+        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.save(uri),
+    );
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.fs.revert',
+        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.revert(uri),
+    );
+    registerCommandWithTreeNodeUnwrapping(
+        'azureDatabases.update',
+        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+    );
 }

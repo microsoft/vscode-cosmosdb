@@ -284,6 +284,20 @@
                 "icon": "$(cloud-upload)"
             },
             {
+                "//": "Databases FileSystem",
+                "category": "Azure Databases",
+                "command": "azureDatabases.fs.save",
+                "title": "Upload to Cloud",
+                "icon": "$(cloud-upload)"
+            },
+            {
+                "//": "Databases FileSystem",
+                "category": "Azure Databases",
+                "command": "azureDatabases.fs.revert",
+                "title": "Revert",
+                "icon": "$(refresh)"
+            },
+            {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.newConnection",
                 "title": "New Connection...",
@@ -694,17 +708,32 @@
                     "group": "navigation"
                 },
                 {
-                    "command": "azureDatabases.update",
+                    "command": "azureDatabases.fs.save",
                     "when": "resourceFilename=~/(.*cosmos-document[.]json)(?![a-z])/i",
                     "group": "navigation"
                 },
                 {
-                    "command": "azureDatabases.update",
+                    "command": "azureDatabases.fs.save",
                     "when": "resourceFilename=~/(.*cosmos-collection[.]json)(?![a-z])/i",
                     "group": "navigation"
                 },
                 {
-                    "command": "azureDatabases.update",
+                    "command": "azureDatabases.fs.save",
+                    "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)(?![a-z])/i",
+                    "group": "navigation"
+                },
+                {
+                    "command": "azureDatabases.fs.revert",
+                    "when": "resourceFilename=~/(.*cosmos-document[.]json)(?![a-z])/i",
+                    "group": "navigation"
+                },
+                {
+                    "command": "azureDatabases.fs.revert",
+                    "when": "resourceFilename=~/(.*cosmos-collection[.]json)(?![a-z])/i",
+                    "group": "navigation"
+                },
+                {
+                    "command": "azureDatabases.fs.revert",
                     "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)(?![a-z])/i",
                     "group": "navigation"
                 }

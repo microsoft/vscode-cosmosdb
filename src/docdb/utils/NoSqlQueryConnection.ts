@@ -6,17 +6,19 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
+import { type DocumentDBContainerModel } from '../../tree/docdb/models/DocumentDBContainerModel';
+import { type DocumentDBItemModel } from '../../tree/docdb/models/DocumentDBItemModel';
+import { type DocumentDBItemsModel } from '../../tree/docdb/models/DocumentDBItemsModel';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getCosmosAuthCredential, getCosmosKeyCredential } from '../getCosmosClient';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 
 export function createNoSqlQueryConnection(
-    node: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
+    model: DocumentDBContainerModel | DocumentDBItemsModel | DocumentDBItemModel,
 ): NoSqlQueryConnection {
-    const accountInfo = node.model.accountInfo;
-    const databaseId = node.model.database.id;
-    const containerId = node.model.container.id;
+    const accountInfo = model.accountInfo;
+    const databaseId = model.database.id;
+    const containerId = model.container.id;
     const keyCred = getCosmosKeyCredential(accountInfo.credentials);
     const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
 
@@ -36,6 +38,6 @@ export async function getNoSqlQueryConnection(): Promise<NoSqlQueryConnection | 
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.container'],
         });
-        return createNoSqlQueryConnection(node);
+        return createNoSqlQueryConnection(node.model);
     });
 }

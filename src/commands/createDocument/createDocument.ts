@@ -5,10 +5,11 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import vscode, { ViewColumn } from 'vscode';
+import vscode from 'vscode';
+import { DocumentFileDescriptor } from '../../docdb/fs/DocumentFileDescriptor';
 import { createNoSqlQueryConnection } from '../../docdb/utils/NoSqlQueryConnection';
+import { ext } from '../../extensionVariables';
 import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
-import { DocumentTab } from '../../panels/DocumentTab';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
@@ -28,7 +29,17 @@ export async function createDocumentDBDocument(
         return;
     }
 
-    DocumentTab.render(createNoSqlQueryConnection(node), 'add', undefined, ViewColumn.Active);
+    context.telemetry.properties.experience = node.experience.api;
+
+    const fsNode = new DocumentFileDescriptor(
+        node.id,
+        node.experience,
+        createNoSqlQueryConnection(node.model),
+        node.model.container.partitionKey,
+    );
+    await ext.fileSystem.showTextDocument(fsNode);
+
+    // DocumentTab.render(createNoSqlQueryConnection(node.model), 'add', undefined, ViewColumn.Active);
 }
 
 export async function createMongoDocument(context: IActionContext, node?: CollectionItem): Promise<void> {

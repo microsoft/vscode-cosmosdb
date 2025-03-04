@@ -7,6 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { ViewColumn } from 'vscode';
 import { DocumentFileDescriptor } from '../../docdb/fs/DocumentFileDescriptor';
+import { createNoSqlQueryConnection } from '../../docdb/utils/NoSqlQueryConnection';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItemResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
@@ -26,7 +27,13 @@ export async function openDocumentDBItem(context: IActionContext, node?: Documen
 
     context.telemetry.properties.experience = node.experience.api;
 
-    const fsNode = new DocumentFileDescriptor(node.id, node.model, node.experience);
+    const fsNode = new DocumentFileDescriptor(
+        node.id,
+        node.experience,
+        createNoSqlQueryConnection(node.model),
+        node.model.container.partitionKey,
+        node.model.item,
+    );
     // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
     ext.fileSystem.fireChangedEvent(fsNode);
     await ext.fileSystem.showTextDocument(fsNode);

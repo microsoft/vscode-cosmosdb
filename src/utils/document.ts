@@ -75,3 +75,47 @@ export const getDocumentId = (
 
     return undefined;
 };
+
+/**
+ * Warning: This method is used to generate a partition key value for the document tree item.
+ * It is not used to generate the actual partition key value.
+ */
+export const generatePartitionKeyValue = (
+    item: ItemDefinition,
+    partitionKeyDefinition?: PartitionKeyDefinition,
+): string => {
+    if (!partitionKeyDefinition || partitionKeyDefinition.paths.length === 0) {
+        return '';
+    }
+
+    let partitionKeyValues = extractPartitionKey(item, partitionKeyDefinition);
+    partitionKeyValues = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
+    partitionKeyValues = partitionKeyValues
+        .map((v) => {
+            if (v === null) {
+                return '\\<null>';
+            }
+            if (v === undefined) {
+                return '\\<undefined>';
+            }
+            if (typeof v === 'object') {
+                return JSON.stringify(v);
+            }
+            return v;
+        })
+        .join(', ');
+
+    return partitionKeyValues;
+};
+
+/**
+ * Warning: This method is used to generate a unique ID for the document tree item.
+ */
+export const generateUniqueId = (item: ItemDefinition, partitionKeyDefinition?: PartitionKeyDefinition): string => {
+    const documentId = getDocumentId(item, partitionKeyDefinition);
+    const id = documentId?.id;
+    const rid = documentId?._rid;
+    const partitionKeyValues = generatePartitionKeyValue(item, partitionKeyDefinition);
+
+    return `${id || '<empty id>'}|${partitionKeyValues || '<empty partition key>'}|${rid || '<empty rid>'}`;
+};

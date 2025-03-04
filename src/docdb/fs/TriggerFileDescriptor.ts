@@ -7,11 +7,11 @@ import { TriggerOperation, TriggerType } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import type vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type DocumentDBTriggerModel } from '../../tree/docdb/models/DocumentDBTriggerModel';
 import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { getCosmosClient } from '../getCosmosClient';
+import { type EditableFileSystemItem } from './CosmosFileSystem';
 
 export async function getTriggerType(context: IActionContext): Promise<TriggerType> {
     const options = Object.keys(TriggerType).map((type) => ({ label: type }));
@@ -32,6 +32,7 @@ export async function getTriggerOperation(context: IActionContext): Promise<Trig
 export class TriggerFileDescriptor implements EditableFileSystemItem {
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
+    public isReadOnly: boolean = false;
 
     constructor(
         public readonly id: string,
@@ -43,11 +44,11 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
         return this.model.trigger.id + '-cosmos-trigger.js';
     }
 
-    public getFileContent(): Promise<string> {
+    public read(): Promise<string> {
         return Promise.resolve(typeof this.model.trigger.body === 'string' ? this.model.trigger.body : '');
     }
 
-    public async writeFileContent(context: IActionContext, content: string): Promise<void> {
+    public async update(context: IActionContext, content: string): Promise<void> {
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
         const readResponse = await cosmosClient

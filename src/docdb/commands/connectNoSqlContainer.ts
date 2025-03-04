@@ -13,7 +13,7 @@ import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
 import { createNoSqlQueryConnection } from '../utils/NoSqlQueryConnection';
 
 export function setConnectedNoSqlContainer(node: DocumentDBContainerResourceItem): void {
-    const noSqlQueryConnection = createNoSqlQueryConnection(node);
+    const noSqlQueryConnection = createNoSqlQueryConnection(node.model);
     KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
     ext.noSqlCodeLensProvider.updateCodeLens();
 }

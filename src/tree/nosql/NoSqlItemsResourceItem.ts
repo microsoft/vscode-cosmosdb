@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ItemDefinition } from '@azure/cosmos';
+import { type ItemDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DocumentDBItemsResourceItem } from '../docdb/DocumentDBItemsResourceItem';
@@ -15,7 +15,7 @@ export class NoSqlItemsResourceItem extends DocumentDBItemsResourceItem {
         super(model, experience);
     }
 
-    protected getChildrenImpl(items: ItemDefinition[]): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(items: (ItemDefinition & Resource)[]): Promise<CosmosDBTreeElement[]> {
         return Promise.resolve(
             items.map((item) => new NoSqlItemResourceItem({ ...this.model, item }, this.experience)),
         );

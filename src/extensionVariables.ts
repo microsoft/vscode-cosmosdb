@@ -7,7 +7,7 @@ import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@micr
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
 import { type ExtensionContext, type SecretStorage } from 'vscode';
-import { type DatabasesFileSystem } from './DatabasesFileSystem';
+import { type CosmosFileSystem } from './docdb/fs/CosmosFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
 import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
@@ -33,7 +33,7 @@ export namespace ext {
     export let isBundle: boolean | undefined;
     export let secretStorage: SecretStorage;
     export const prefix: string = 'azureDatabases';
-    export let fileSystem: DatabasesFileSystem;
+    export let fileSystem: CosmosFileSystem;
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;

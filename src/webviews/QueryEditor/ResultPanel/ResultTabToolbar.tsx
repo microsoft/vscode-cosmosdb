@@ -7,7 +7,7 @@ import { type OptionOnSelectData } from '@fluentui/react-combobox';
 import { Dropdown, Option, Toolbar, ToolbarButton, Tooltip, useRestoreFocusTarget } from '@fluentui/react-components';
 import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
 import { useMemo } from 'react';
-import { type CosmosDbRecordIdentifier } from 'src/docdb/types/queryResult';
+import { type CosmosDbRecordIdentifier } from '../../../docdb/types/queryResult';
 import { getDocumentId, isSelectStar } from '../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { type TableViewMode } from '../state/QueryEditorState';

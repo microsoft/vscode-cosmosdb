@@ -21,9 +21,26 @@ export type NoSqlQueryConnection = {
     databaseId: string;
     containerId: string;
     endpoint: string;
-    masterKey?: string;
     isEmulator: boolean;
+    masterKey: string | undefined;
     tenantId: string | undefined;
+};
+
+export const isNoSqlQueryConnection = (obj: unknown): obj is NoSqlQueryConnection => {
+    return <boolean>(
+        (obj &&
+            typeof obj === 'object' &&
+            'databaseId' in obj &&
+            typeof obj.databaseId === 'string' &&
+            'containerId' in obj &&
+            typeof obj.containerId === 'string' &&
+            'endpoint' in obj &&
+            typeof obj.endpoint === 'string' &&
+            'isEmulator' in obj &&
+            typeof obj.isEmulator === 'boolean' &&
+            ('masterKey' in obj ? typeof obj.masterKey === 'string' : true) &&
+            ('tenantId' in obj ? typeof obj.tenantId === 'string' : true))
+    );
 };
 
 export const noSqlQueryConnectionKey = 'NO_SQL_QUERY_CONNECTION_KEY.v1';

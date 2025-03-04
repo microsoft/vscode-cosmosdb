@@ -27,7 +27,7 @@ import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { registerCommands } from './commands/registerCommands';
-import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { CosmosFileSystem } from './docdb/fs/CosmosFileSystem';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
 import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
@@ -94,11 +94,10 @@ export async function activateInternal(
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
         ext.rgApi.registerWorkspaceResourceProvider('AttachedDatabaseAccount', databaseWorkspaceProvider);
 
-        ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
+        ext.fileSystem = new CosmosFileSystem();
+        context.subscriptions.push(ext.fileSystem);
 
         registerCommands();
-        // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
-        // registerCommandsCompatibility();
 
         // init and activate mongoClusters-support (branch data provider, commands, ...)
         const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
@@ -106,7 +105,7 @@ export async function activateInternal(
         await mongoClustersSupport.activate();
 
         context.subscriptions.push(
-            vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
+            vscode.workspace.registerFileSystemProvider(CosmosFileSystem.scheme, ext.fileSystem),
         );
 
         registerEvent(

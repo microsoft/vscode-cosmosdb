@@ -29,7 +29,7 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
 
     public async getChildren(): Promise<CosmosDBTreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
-        const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
+        const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
         const databases = await this.getDatabases(accountInfo, cosmosClient);
 
         return this.getChildrenImpl(accountInfo, databases);
@@ -37,7 +37,12 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
 
     public getTreeItem(): TreeItem {
         let tooltipMessage: string | undefined = undefined;
-        if (this.account.isEmulator) {
+        let description: string | undefined = undefined;
+
+        if (this.account.isEmulator && this.account.connectionString.includes('http://')) {
+            description = '⚠ TLS/SSL Disabled';
+            tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
+        } else {
             tooltipMessage = '✅ **Security:** TLS/SSL Enabled';
         }
 
@@ -48,6 +53,7 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
 
         return {
             ...treeItem,
+            description: description,
             tooltip: new vscode.MarkdownString(tooltipMessage),
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')

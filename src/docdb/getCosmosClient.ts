@@ -48,12 +48,13 @@ export function getCosmosClientByConnection(
     const connectionPolicy = {
         enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
     };
+    const agent = endpoint.startsWith('https:')
+        ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })
+        : undefined;
     const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
-        agent: new https.Agent({
-            rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL,
-        }),
+        agent: agent,
         connectionPolicy,
     };
 
@@ -92,10 +93,13 @@ export function getCosmosClient(
     const keyCred = getCosmosKeyCredential(credentials);
     const authCred = getCosmosAuthCredential(credentials);
 
+    const agent = endpoint.startsWith('https:')
+        ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })
+        : undefined;
     const commonProperties = {
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
-        agent: new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL }),
+        agent: agent,
         connectionPolicy,
     };
     // @todo: Add telemetry to monitor usage of each credential type

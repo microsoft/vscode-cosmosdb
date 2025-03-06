@@ -8,6 +8,7 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { countExperienceUsageForSurvey, ExperienceKind, UsageImpact } from '../../utils/survey';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -32,6 +33,7 @@ export abstract class DocumentDBDatabaseResourceItem
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
         const containers = await this.getContainers(cosmosClient);
 
+        countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Low);
         return this.getChildrenImpl(containers);
     }
 

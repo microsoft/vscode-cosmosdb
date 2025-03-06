@@ -18,6 +18,8 @@ const STATE_KEY_BASE = 'ms-azuretools.vscode-cosmosdb.survey';
 const SESSION_COUNT_KEY = `${STATE_KEY_BASE}/sessionCount`;
 const LAST_SESSION_DATE_KEY = `${STATE_KEY_BASE}/lastSessionDate`;
 const SKIP_VERSION_KEY = `${STATE_KEY_BASE}/skipVersion`; // skip this version, will be set to the version where the user clicked "Don't Ask Again" or opened the survey
+const SURVEY_TAKEN_DATE_KEY = `${STATE_KEY_BASE}/surveyTaken`;
+const OPT_OUT_DATE_KEY = `${STATE_KEY_BASE}/surveyOptOut`;
 const IS_CANDIDATE_KEY = `${STATE_KEY_BASE}/isCandidate`; // stores the last decision if the user is a candidate, currently not used anywhere
 
 // Survey settings
@@ -28,6 +30,8 @@ const PROMPT_VERSION_ONLY_ONCE = true; // only prompt once per major/minor versi
 const PROMPT_DATE_ONLY_ONCE = true; // only prompt once per day
 const SKIP_INITIAL_SESSIONS = 9; // skip the first N sessions after installing or rearming after update
 const SNOOZE_SESSIONS = 3; // snooze for N sessions after "remind me later"
+const REARM_AFTER_DAYS = 90;
+const REARM_OPT_OUT = true;
 
 let isCandidate: boolean | undefined = undefined;
 let wasPromptedInSession: boolean = false;
@@ -112,18 +116,39 @@ export async function initSurvey(): Promise<void> {
             }
         }
 
+        const today = new Date();
+        const rearmAfterDate = new Date();
+        rearmAfterDate.setDate(today.getDate() - REARM_AFTER_DAYS);
+
+        // Skip if Survey has been taken within the last REARM_AFTER_DAYS days
+        const surveyTakenDate = new Date(ext.context.globalState.get(SURVEY_TAKEN_DATE_KEY, new Date(0).toDateString()));
+        if (surveyTakenDate.getTime() >= rearmAfterDate.getTime()) {
+            context.telemetry.properties.isCandidate = (isCandidate = false).toString();
+            return;
+        }
+
+        // Check if the user has opted out
+        const optOutDateString = ext.context.globalState.get(OPT_OUT_DATE_KEY, undefined);
+        if (optOutDateString) {
+            // Skip if opted out within the last REARM_AFTER_DAYS days
+            const optOutDate = new Date(optOutDateString);
+            if (!REARM_OPT_OUT || optOutDate.getTime() >= rearmAfterDate.getTime()) {
+                context.telemetry.properties.isCandidate = (isCandidate = false).toString();
+                return;
+            }
+        }
+
         // Prompt only once per day,
         // LAST_SESSION_DATE_KEY will be set to the last date the user was prompted
-        const date = new Date().toDateString();
-        const lastSessionDate = ext.context.globalState.get(LAST_SESSION_DATE_KEY, new Date(0).toDateString());
-        if (PROMPT_DATE_ONLY_ONCE && date === lastSessionDate) {
+        const lastSessionDate = ext.context.globalState.get(LAST_SESSION_DATE_KEY, new Date(0));
+        if (PROMPT_DATE_ONLY_ONCE && today === lastSessionDate) {
             context.telemetry.properties.isCandidate = (isCandidate = false).toString();
             return;
         }
 
         // Count sessions and decide if the user is a candidate
         const sessionCount = ext.context.globalState.get(SESSION_COUNT_KEY, 0) + 1;
-        await ext.context.globalState.update(LAST_SESSION_DATE_KEY, date);
+        await ext.context.globalState.update(LAST_SESSION_DATE_KEY, today);
         await ext.context.globalState.update(SESSION_COUNT_KEY, sessionCount);
         if (sessionCount < SKIP_INITIAL_SESSIONS) {
             context.telemetry.properties.isCandidate = (isCandidate = false).toString();
@@ -148,6 +173,7 @@ export async function surveyPromptIfCandidate(experience: ExperienceKind = Exper
         wasPromptedInSession = true; // don't prompt again in this session
 
         const extensionVersion = (ext.context.extension.packageJSON as { version: string }).version;
+        const date = new Date().toDateString();
         const surveyUrl = experience === ExperienceKind.Mongo ? NPS_MONGO_SURVEY_URL : NPS_NOSQL_SURVEY_URL;
 
         const take = {
@@ -160,6 +186,7 @@ export async function surveyPromptIfCandidate(experience: ExperienceKind = Exper
                 await ext.context.globalState.update(IS_CANDIDATE_KEY, false);
                 await ext.context.globalState.update(SKIP_VERSION_KEY, extensionVersion);
                 await ext.context.globalState.update(SESSION_COUNT_KEY, 0);
+                await ext.context.globalState.update(SURVEY_TAKEN_DATE_KEY, date);
             },
         };
         const remind = {
@@ -177,6 +204,7 @@ export async function surveyPromptIfCandidate(experience: ExperienceKind = Exper
                 await ext.context.globalState.update(IS_CANDIDATE_KEY, false);
                 await ext.context.globalState.update(SKIP_VERSION_KEY, extensionVersion);
                 await ext.context.globalState.update(SESSION_COUNT_KEY, 0);
+                await ext.context.globalState.update(OPT_OUT_DATE_KEY, date);
             },
         };
 

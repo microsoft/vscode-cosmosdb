@@ -8,6 +8,7 @@ import { createContextValue, createGenericElement, type IActionContext } from '@
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { countExperienceUsageForSurvey, ExperienceKind, UsageImpact } from '../../utils/survey';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
@@ -55,12 +56,14 @@ export abstract class DocumentDBItemsResourceItem
                             context.telemetry.properties.parentContext = this.contextValue;
 
                             this.batchSize *= 2;
+                            countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Medium);
                         },
                     ],
                 }) as CosmosDBTreeElement,
             );
         }
 
+        countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Low);
         return result;
     }
 

@@ -11,11 +11,11 @@ import { ext } from '../extensionVariables';
 
 const localize = nls.loadMessageBundle();
 
-const NPS_NOSQL_SURVEY_URL = 'https://nam.dcv.ms/xLYx6Mv8Q1';
-const NPS_MONGO_SURVEY_URL = 'https://nam.dcv.ms/xLYx6Mv8Q1';
+const NPS_NOSQL_SURVEY_URL = 'https://aka.ms/AzureDatabasesSurvey';
+const NPS_MONGO_SURVEY_URL = 'https://aka.ms/AzureDatabasesSurvey/mongo';
 
 const STATE_KEY_BASE = 'ms-azuretools.vscode-cosmosdb.survey';
-const SESSION_COUNT_KEY = `${STATE_KEY_BASE}/sessionCount/`;
+const SESSION_COUNT_KEY = `${STATE_KEY_BASE}/sessionCount`;
 const LAST_SESSION_DATE_KEY = `${STATE_KEY_BASE}/lastSessionDate`;
 const SKIP_VERSION_KEY = `${STATE_KEY_BASE}/skipVersion`; // skip this version, will be set to the version where the user clicked "Don't Ask Again" or opened the survey
 const IS_CANDIDATE_KEY = `${STATE_KEY_BASE}/isCandidate`; // stores the last decision if the user is a candidate, currently not used anywhere
@@ -33,7 +33,7 @@ let isCandidate: boolean | undefined = undefined;
 let wasPromptedInSession: boolean = false;
 
 export enum UsageImpact {
-    Low = 1,
+    Low = 5,
     Medium = 10,
     High = 20,
 }
@@ -80,7 +80,7 @@ export async function getIsSurveyCandidate(): Promise<boolean> {
 
 export async function initSurvey(): Promise<void> {
     //TODO: REMOVE! This is a test
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    //await new Promise((resolve) => setTimeout(resolve, 5000));
 
     await callWithTelemetryAndErrorHandling('survey.init', async (context: IActionContext) => {
         if (DEBUG_ALWAYS_PROMPT) {
@@ -154,6 +154,7 @@ export async function surveyPromptIfCandidate(experience: ExperienceKind = Exper
             title: localize('azureResourceGroups.takeSurvey', 'Take Survey'),
             run: async () => {
                 context.telemetry.properties.takeShortSurvey = 'true';
+                //NOTE: Customer Voice does not support URL parameters, keeping this comment for reference if we switch to another platform which supports that
                 //void env.openExternal(Uri.parse(`${surveyUrl}?o=${encodeURIComponent(process.platform)}&v=${encodeURIComponent(extensionVersion)}&m=${encodeURIComponent(env.machineId)}`));
                 void env.openExternal(Uri.parse(surveyUrl));
                 await ext.context.globalState.update(IS_CANDIDATE_KEY, false);

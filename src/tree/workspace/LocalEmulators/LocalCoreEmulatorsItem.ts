@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { nonNullValue } from '@microsoft/vscode-azext-utils';
-import type vscode from 'vscode';
-import { TreeItemCollapsibleState } from 'vscode';
+import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../constants';
 import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
@@ -38,7 +37,7 @@ export class LocalCoreEmulatorsItem implements CosmosDBTreeElement, TreeElementW
             contextValue: this.contextValue,
             label: 'Local Emulators',
             iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 

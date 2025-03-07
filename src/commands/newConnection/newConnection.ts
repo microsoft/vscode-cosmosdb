@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { MongoDBAttachAccountResourceItem } from '../../mongoClusters/tree/workspace/MongoDBAttachAccountResourceItem';
 import { CosmosDBAttachAccountResourceItem } from '../../tree/workspace/CosmosDBAttachAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { QuickPickType } from '../../utils/pickItem/pickExperience';
 import { ExperienceStep } from './ExperienceStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
@@ -42,7 +42,7 @@ export async function newConnection(
     };
 
     const wizard = new AzureWizard(wizardContext, {
-        title: localize('attachAccountTitle', 'New Connection'),
+        title: vscode.l10n.t('New Connection'),
         promptSteps: [new ExperienceStep()],
         executeSteps: [],
         showLoadingPrompt: true,
@@ -51,7 +51,5 @@ export async function newConnection(
     await wizard.prompt();
     await wizard.execute();
 
-    showConfirmationAsInSettings(
-        localize('showConfirmation.addedWorkspaceConnection', 'New connection has been added to your workspace.'),
-    );
+    showConfirmationAsInSettings(vscode.l10n.t('New connection has been added to your workspace.'));
 }

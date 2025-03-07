@@ -13,6 +13,7 @@ import {
     type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import {
     cosmosGremlinFilter,
     cosmosMongoFilter,
@@ -27,7 +28,6 @@ import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterR
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
 import { type DeleteWizardContext } from './DeleteWizardContext';
@@ -109,20 +109,12 @@ export async function deleteDatabaseAccount(
     });
 
     const title = isPostgres
-        ? localize('deletePoSer', 'Delete Postgres Server "{0}"', accountName)
-        : localize('deleteDbAcc', 'Delete Database Account "{0}"', accountName);
+        ? vscode.l10n.t('Delete Postgres Server "{0}"', accountName)
+        : vscode.l10n.t('Delete Database Account "{0}"', accountName);
 
     const confirmationMessage = isPostgres
-        ? localize(
-              'deleteAccountConfirm',
-              'Are you sure you want to delete server "{0}" and its contents?',
-              accountName,
-          )
-        : localize(
-              'deleteAccountConfirm',
-              'Are you sure you want to delete account "{0}" and its contents?',
-              accountName,
-          );
+        ? vscode.l10n.t('Are you sure you want to delete server "{0}" and its contents?', accountName)
+        : vscode.l10n.t('Are you sure you want to delete account "{0}" and its contents?', accountName);
 
     const wizard = new AzureWizard(wizardContext, {
         title,

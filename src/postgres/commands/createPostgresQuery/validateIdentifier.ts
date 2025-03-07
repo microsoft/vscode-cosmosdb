@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { localize } from '../../../utils/localize';
+import * as vscode from 'vscode';
 
 export function validateIdentifier(identifier: string): string | undefined {
     // Identifier naming rules: https://aka.ms/AA8618j
@@ -13,27 +13,19 @@ export function validateIdentifier(identifier: string): string | undefined {
     const max = 63;
 
     if (identifier.length < min || identifier.length > max) {
-        return localize(
-            'postgresResourcesNameLengthCheck',
-            'The name must be between {0} and {1} characters.',
-            min,
-            max,
-        );
+        return vscode.l10n.t('The name must be between {0} and {1} characters.', min, max);
     }
 
     if (!identifier[0].match(/[a-z_]/i)) {
-        return localize('mustStartWithLetterOrUnderscore', 'Name must start with a letter or underscore.');
+        return vscode.l10n.t('Name must start with a letter or underscore.');
     }
 
     if (identifier.match(/[^a-z_\d$]/i)) {
-        return localize(
-            'canOnlyContainCertainCharacters',
-            'Name can only contain letters, underscores, digits (0-9), and dollar signs ($).',
-        );
+        return vscode.l10n.t('Name can only contain letters, underscores, digits (0-9), and dollar signs ($).');
     }
 
     if (reservedWords.has(identifier.toLowerCase())) {
-        return localize('cantBeReservedWord', 'Name cannot be reserved word "{0}".', identifier);
+        return vscode.l10n.t('Name cannot be reserved word "{0}".', identifier);
     }
 
     return undefined;

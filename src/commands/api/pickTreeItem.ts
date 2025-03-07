@@ -5,12 +5,12 @@
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type PickAppResourceOptions } from '@microsoft/vscode-azext-utils/hostapi';
+import * as vscode from 'vscode';
 import { databaseAccountType } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { localize } from '../../utils/localize';
 import {
     type AzureDatabasesApiType,
     type DatabaseAccountTreeItem,
@@ -70,7 +70,7 @@ export async function pickTreeItem(
             accountNode = pickedItem.parent;
             databaseNode = pickedItem;
         } else {
-            throw new RangeError(localize('invalidItem', 'Invalid item "{0}".', pickedItem.constructor.name));
+            throw new RangeError(vscode.l10n.t('Invalid item "{0}".', pickedItem.constructor.name));
         }
 
         const result = databaseNode

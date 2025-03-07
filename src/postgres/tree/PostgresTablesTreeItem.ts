@@ -5,7 +5,7 @@
 
 import { type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { type ClientConfig } from 'pg';
-import { ThemeIcon } from 'vscode';
+import * as vscode from 'vscode';
 import { getTables, type IPostgresTable } from '../getTables';
 import { type PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
@@ -24,7 +24,7 @@ export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
     }
 
     public get iconPath(): TreeItemIconPath {
-        return new ThemeIcon('window');
+        return new vscode.ThemeIcon('window');
     }
 
     public hasMoreChildrenImpl(): boolean {

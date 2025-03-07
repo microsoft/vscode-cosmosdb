@@ -5,18 +5,17 @@
 
 import { TriggerOperation, TriggerType } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import type vscode from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type DocumentDBTriggerModel } from '../../tree/docdb/models/DocumentDBTriggerModel';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { getCosmosClient } from '../getCosmosClient';
 
 export async function getTriggerType(context: IActionContext): Promise<TriggerType> {
     const options = Object.keys(TriggerType).map((type) => ({ label: type }));
     const triggerTypeOption = await context.ui.showQuickPick<vscode.QuickPickItem>(options, {
-        placeHolder: localize('createDocDBTriggerSelectType', 'Select the trigger type'),
+        placeHolder: vscode.l10n.t('Select the trigger type'),
     });
     return triggerTypeOption.label === 'Pre' ? TriggerType.Pre : TriggerType.Post;
 }
@@ -24,7 +23,7 @@ export async function getTriggerType(context: IActionContext): Promise<TriggerTy
 export async function getTriggerOperation(context: IActionContext): Promise<TriggerOperation> {
     const options = Object.keys(TriggerOperation).map((key) => ({ label: key }));
     const triggerOperationOption = await context.ui.showQuickPick<vscode.QuickPickItem>(options, {
-        placeHolder: localize('createDocDBTriggerSelectOperation', 'Select the trigger operation'),
+        placeHolder: vscode.l10n.t('Select the trigger operation'),
     });
     return TriggerOperation[triggerOperationOption.label as keyof typeof TriggerOperation];
 }

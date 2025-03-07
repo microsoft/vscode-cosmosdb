@@ -16,7 +16,6 @@ import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirm
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
-import { localize } from '../../../utils/localize';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
 export type RouterContext = BaseRouterContext & {
@@ -185,19 +184,11 @@ export const collectionsViewRouter = router({
             if (acknowledged) {
                 showConfirmationAsInSettings(
                     input.length > 1
-                        ? localize(
-                              'showConfirmation.deletedNdocuments',
-                              '{0} documents have been deleted.',
-                              input.length,
-                          )
-                        : localize(
-                              'showConfirmation.deletedNdocuments',
-                              '{0} document has been deleted.',
-                              input.length,
-                          ),
+                        ? vscode.l10n.t('{0} documents have been deleted.', input.length)
+                        : vscode.l10n.t('{0} document has been deleted.', input.length),
                 );
             } else {
-                void vscode.window.showErrorMessage('Failed to delete documents. Unknown error.', {
+                void vscode.window.showErrorMessage(vscode.l10n.t('Failed to delete documents. Unknown error.'), {
                     modal: true,
                 });
             }

@@ -5,17 +5,17 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../utils/localize';
 
+import * as vscode from 'vscode';
 import { type AuthenticateWizardContext } from './AuthenticateWizardContext';
 
 export class ProvideUserNameStep extends AzureWizardPromptStep<AuthenticateWizardContext> {
     public async prompt(context: AuthenticateWizardContext): Promise<void> {
         const username = await context.ui.showInputBox({
-            prompt: `Please provide the username for '${context.resourceName}':`,
-            placeHolder: `Username for ${context.resourceName}`,
+            prompt: vscode.l10n.t(`Please provide the username for '{0}':`, context.resourceName),
+            placeHolder: vscode.l10n.t(`Username for {0}`, context.resourceName),
             value: context.adminUserName,
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            title: vscode.l10n.t('Authenticate to connect with your MongoDB cluster'),
             ignoreFocusOut: true,
         });
 

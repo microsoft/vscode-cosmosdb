@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../../../utils/localize';
+import * as vscode from 'vscode';
 import { type IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
 
 export class FunctionQueryCustomReturnTypeStep extends AzureWizardPromptStep<IPostgresFunctionQueryWizardContext> {
     public async prompt(context: IPostgresFunctionQueryWizardContext): Promise<void> {
         context.returnType = await context.ui.showInputBox({
-            prompt: localize('provideCustomReturnType', 'Provide custom return type'),
+            prompt: vscode.l10n.t('Provide custom return type'),
         });
     }
 

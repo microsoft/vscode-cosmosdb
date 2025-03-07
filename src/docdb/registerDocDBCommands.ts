@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
-import { languages } from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
@@ -16,7 +16,9 @@ const nosqlLanguageId = 'nosql';
 
 export function registerDocDBCommands(): void {
     ext.noSqlCodeLensProvider = new NoSqlCodeLensProvider();
-    ext.context.subscriptions.push(languages.registerCodeLensProvider(nosqlLanguageId, ext.noSqlCodeLensProvider));
+    ext.context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider(nosqlLanguageId, ext.noSqlCodeLensProvider),
+    );
 
     // # region Scrapbook command
     registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);

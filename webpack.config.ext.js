@@ -109,6 +109,10 @@ module.exports = (env, { mode }) => {
                         to: 'grammar',
                     },
                     {
+                        from: 'l10n',
+                        to: 'l10n',
+                    },
+                    {
                         from: 'resources',
                         to: 'resources',
                     },

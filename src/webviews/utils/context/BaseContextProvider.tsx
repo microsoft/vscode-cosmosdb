@@ -4,7 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Link, Toast, ToastBody, ToastTitle, ToastTrigger } from '@fluentui/react-components';
+import { parseError } from '@microsoft/vscode-azext-utils';
 import type * as React from 'react';
+import * as vscode from 'vscode';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
 
 export class BaseContextProvider {
@@ -92,7 +94,9 @@ export class BaseContextProvider {
             });
         } catch (error) {
             try {
-                await this.showErrorMessage(`Failed to execute command ${command}: ${error}`);
+                await this.showErrorMessage(
+                    vscode.l10n.t('Failed to execute command {0}: {1}', command, parseError(error).message),
+                );
             } catch {
                 // Ignore
             }

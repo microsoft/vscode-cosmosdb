@@ -4,13 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import vscode, { type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
-import { localize } from '../../utils/localize';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -35,7 +34,7 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
         return this.getChildrenImpl(accountInfo, databases);
     }
 
-    public getTreeItem(): TreeItem {
+    public getTreeItem(): vscode.TreeItem {
         let tooltipMessage: string | undefined = undefined;
         let description: string | undefined = undefined;
 
@@ -95,11 +94,10 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
                     void showRbacPermissionError(this.id, principalId);
                 }
                 if (this.account.isEmulator && e instanceof RestError && e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-                    const message = localize(
-                        'keyPermissionErrorMsg',
+                    const message = vscode.l10n.t(
                         "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
                     );
-                    const readMoreItem = localize('learnMore', 'Learn More');
+                    const readMoreItem = vscode.l10n.t('Learn More');
                     void vscode.window.showErrorMessage(message, ...[readMoreItem]).then((item) => {
                         if (item === readMoreItem) {
                             void vscode.env.openExternal(

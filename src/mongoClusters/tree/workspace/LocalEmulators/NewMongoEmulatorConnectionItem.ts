@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { type CosmosDBTreeElement } from '../../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../../../tree/TreeElementWithContextValue';
 

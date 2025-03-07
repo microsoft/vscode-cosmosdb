@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import { type TreeItem } from 'vscode';
+import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
@@ -33,7 +33,7 @@ export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResou
         return this.getChildrenImpl(accountInfo, databases);
     }
 
-    public getTreeItem(): TreeItem {
+    public getTreeItem(): vscode.TreeItem {
         return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
     }
 

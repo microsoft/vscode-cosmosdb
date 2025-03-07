@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
@@ -38,7 +38,7 @@ export abstract class DocumentDBItemResourceItem
         this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

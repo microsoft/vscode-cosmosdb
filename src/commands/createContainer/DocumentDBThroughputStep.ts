@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 const minThroughput: number = 400;
@@ -14,11 +15,12 @@ export class DocumentDBThroughputStep extends AzureWizardPromptStep<CreateContai
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
-        const prompt = `Initial throughput capacity, between ${
-            minThroughput
-        } and ${maxThroughput} inclusive in increments of ${
-            throughputStepSize
-        }. Enter 0 if the account doesn't support throughput.`;
+        const prompt = vscode.l10n.t(
+            "Initial throughput capacity, between {0} and {1} inclusive in increments of {2}. Enter 0 if the account doesn't support throughput.",
+            minThroughput,
+            maxThroughput,
+            throughputStepSize,
+        );
 
         context.throughput = Number(
             await context.ui.showInputBox({
@@ -45,10 +47,15 @@ export class DocumentDBThroughputStep extends AzureWizardPromptStep<CreateContai
         try {
             const value = Number(throughput);
             if (value < minThroughput || value > maxThroughput || (value - minThroughput) % throughputStepSize !== 0) {
-                return `Value must be between ${minThroughput} and ${maxThroughput} in increments of ${throughputStepSize}`;
+                return vscode.l10n.t(
+                    `Value must be between {0} and {1} in increments of {2}`,
+                    minThroughput,
+                    maxThroughput,
+                    throughputStepSize,
+                );
             }
         } catch {
-            return 'Input must be a number';
+            return vscode.l10n.t('Input must be a number');
         }
         return undefined;
     }

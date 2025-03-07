@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { MongoExperience, type Experience } from '../../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../../constants';
 import {
@@ -22,13 +23,13 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
         switch (context.experience) {
             case MongoExperience:
                 defaultPort = context.port ? context.port.toString() : '10255';
-                promptText = 'Enter the port number of the Emulator';
-                placeHolder = 'The default port: 10255';
+                promptText = vscode.l10n.t('Enter the port number of the Emulator');
+                placeHolder = vscode.l10n.t('The default port: 10255');
                 break;
             default:
                 defaultPort = context.port ? context.port.toString() : '8081';
-                placeHolder = 'The default port: 8081';
-                promptText = 'Enter the port number for the Azure Cosmos DB Emulator';
+                placeHolder = vscode.l10n.t('The default port: 8081');
+                promptText = vscode.l10n.t('Enter the port number for the Azure Cosmos DB Emulator');
                 break;
         }
 
@@ -54,16 +55,16 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
         port = port ? port.trim() : '';
 
         if (!port) {
-            return 'Port number is required';
+            return vscode.l10n.t('Port number is required');
         }
 
         const portNumber = parseInt(port, 10);
         if (isNaN(portNumber)) {
-            return 'Port number must be a number';
+            return vscode.l10n.t('Port number must be a number');
         }
 
         if (portNumber <= 0 || portNumber > 65535) {
-            return 'Port number must be between 1 and 65535';
+            return vscode.l10n.t('Port number must be between 1 and 65535');
         }
 
         return undefined;

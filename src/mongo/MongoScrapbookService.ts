@@ -110,7 +110,7 @@ export class MongoScrapbookServiceImpl {
 
         const commands: MongoCommand[] = getAllCommandsFromText(document.getText());
         if (!commands.length) {
-            void vscode.window.showInformationMessage('No commands found in this document.');
+            void vscode.window.showInformationMessage(vscode.l10n.t('No commands found in this document.'));
             return;
         }
 

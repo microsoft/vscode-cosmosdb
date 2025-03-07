@@ -5,7 +5,7 @@
 
 import { type ContainerDefinition, type CosmosClient, type Resource } from '@azure/cosmos';
 import { createContextValue } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -35,7 +35,7 @@ export abstract class DocumentDBDatabaseResourceItem
         return this.getChildrenImpl(containers);
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

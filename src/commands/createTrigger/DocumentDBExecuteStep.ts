@@ -5,6 +5,7 @@
 
 import { type TriggerDefinition } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
@@ -17,7 +18,7 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerW
         const { containerId, databaseId, triggerBody, triggerName, triggerOperation, triggerType, nodeId } = context;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-        return ext.state.showCreatingChild(nodeId, `Creating "${triggerName}"...`, async () => {
+        return ext.state.showCreatingChild(nodeId, vscode.l10n.t(`Creating "{0}"...`, triggerName!), async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
 
             const body: TriggerDefinition = {

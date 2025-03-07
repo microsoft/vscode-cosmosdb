@@ -16,7 +16,6 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
-import { localize } from '../../utils/localize';
 import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type AuthenticateWizardContext } from '../wizards/authenticate/AuthenticateWizardContext';
@@ -128,7 +127,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                     mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
                         ext.outputChannel.appendLine(`Error: ${error.message}`);
 
-                        void vscode.window.showErrorMessage(`Failed to connect: ${error.message}`);
+                        void vscode.window.showErrorMessage(vscode.l10n.t('Failed to connect: {0}', error.message));
 
                         throw error;
                     });
@@ -162,7 +161,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
     private async promptForCredentials(wizardContext: AuthenticateWizardContext): Promise<boolean> {
         const wizard = new AzureWizard(wizardContext, {
             promptSteps: [new ProvideUserNameStep(), new ProvidePasswordStep()],
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            title: vscode.l10n.t('Authenticate to connect with your MongoDB cluster'),
             showLoadingPrompt: true,
         });
 

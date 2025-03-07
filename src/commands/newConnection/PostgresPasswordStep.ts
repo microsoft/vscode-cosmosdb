@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { buildPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
-import { localize } from '../../utils/localize';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class PostgresPasswordStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
-        const prompt: string = `Enter the password for ${context.experience!.shortName}`;
+        const prompt: string = vscode.l10n.t(`Enter the password for {0}`, context.experience!.shortName);
 
         context.password = await context.ui.showInputBox({
             prompt: prompt,
@@ -58,7 +58,7 @@ export class PostgresPasswordStep extends AzureWizardPromptStep<NewConnectionWiz
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return localize('invalidPostgresConnectionString', 'Invalid connection string: {0}', `${error}`);
+                return vscode.l10n.t('Invalid connection string: {0}', `${error}`);
             }
         }
 

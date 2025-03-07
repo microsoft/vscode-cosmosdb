@@ -209,9 +209,12 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find((s) => s.id === treeItem.id)) {
-            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, {
-                stepName: 'attachAccount',
-            });
+            void context.ui.showWarningMessage(
+                vscode.l10n.t(`Database Account '{0}' is already attached.`, treeItem.id ?? ''),
+                {
+                    stepName: 'attachAccount',
+                },
+            );
         } else {
             attachedAccounts.push(treeItem);
             await ext.secretStorage.store(

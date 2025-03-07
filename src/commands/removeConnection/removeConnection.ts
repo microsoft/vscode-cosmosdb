@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
@@ -14,7 +14,6 @@ import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceR
 import { SharedWorkspaceStorage } from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';
 
 export async function removeConnectionV1(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
@@ -22,7 +21,7 @@ export async function removeConnectionV1(context: IActionContext, node?: AzExtTr
 
     const children = await ext.attachedAccountsNode.loadAllChildren(context);
     if (children.length < 2) {
-        const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
+        const message = vscode.l10n.t('There are no Attached Accounts.');
         void vscode.window.showInformationMessage(message);
     } else {
         if (!node) {
@@ -109,10 +108,5 @@ export async function removeConnection(
         ext.cosmosDBWorkspaceBranchDataProvider.refresh();
     }
 
-    showConfirmationAsInSettings(
-        localize(
-            'showConfirmation.removedWorkspaceConnection',
-            'The selected connection has been removed from your workspace.',
-        ),
-    );
+    showConfirmationAsInSettings(vscode.l10n.t('The selected connection has been removed from your workspace.'));
 }

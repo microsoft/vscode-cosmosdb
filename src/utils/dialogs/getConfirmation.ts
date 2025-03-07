@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, UserCancelledError } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 
 enum ConfirmationStyle {
@@ -46,13 +46,17 @@ export async function getConfirmationWithWordQuestion(
 ): Promise<boolean> {
     const result = await vscode.window.showInputBox({
         title: title,
-        prompt: `${message}\n\nPlease enter the word "${expectedConfirmationWord}" to confirm the operation.`,
+        prompt: vscode.l10n.t(
+            `{0}\n\nPlease enter the word "{1}" to confirm the operation.`,
+            message,
+            expectedConfirmationWord,
+        ),
         ignoreFocusOut: true,
         validateInput: (val: string | undefined) => {
             if (val && 0 === val.localeCompare(expectedConfirmationWord, undefined, { sensitivity: 'accent' })) {
                 return undefined;
             }
-            return `Please enter the word "${expectedConfirmationWord}" to confirm the operation.`;
+            return vscode.l10n.t(`Please enter the word "{0}" to confirm the operation.`, expectedConfirmationWord);
         },
     });
 
@@ -70,7 +74,9 @@ export async function getConfirmationWithNumberQuiz(title: string, message: stri
         title,
         {
             modal: true,
-            detail: message + `\n\nPick '${randomInput.numbers[randomInput.index]}' to confirm and continue.`,
+            detail:
+                message +
+                vscode.l10n.t(`\n\nPick '{0}' to confirm and continue.`, randomInput.numbers[randomInput.index]),
         },
         randomInput.numbers[0].toString(),
         randomInput.numbers[1].toString(),

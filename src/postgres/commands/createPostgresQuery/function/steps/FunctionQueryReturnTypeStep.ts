@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, type IAzureQuickPickItem, type IWizardOptions } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../../../utils/localize';
+import * as vscode from 'vscode';
 import { type IPostgresFunctionQueryWizardContext } from '../IPostgresFunctionQueryWizardContext';
 import { FunctionQueryCustomReturnTypeStep } from './FunctionQueryCustomReturnTypeStep';
 
@@ -14,13 +14,13 @@ export class FunctionQueryReturnTypeStep extends AzureWizardPromptStep<IPostgres
             return { label: r, data: r };
         });
         returnTypeQuickPicks.push({
-            label: localize('enterCustomReturnType', '$(pencil) Enter custom return type...'),
+            label: vscode.l10n.t('$(pencil) Enter custom return type...'),
             data: undefined,
         });
 
         context.returnType = (
             await context.ui.showQuickPick(returnTypeQuickPicks, {
-                placeHolder: localize('selectReturnType', 'Select return type'),
+                placeHolder: vscode.l10n.t('Select return type'),
             })
         ).data;
     }

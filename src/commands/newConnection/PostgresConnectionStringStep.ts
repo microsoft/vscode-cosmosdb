@@ -4,19 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
-import { localize } from '../../utils/localize';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class PostgresConnectionStringStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
         context.connectionString = (
             await context.ui.showInputBox({
-                placeHolder: localize(
-                    'attachedPostgresPlaceholder',
+                placeHolder: vscode.l10n.t(
                     '"postgres://username:password@host" or "postgres://username:password@host/database"',
                 ),
-                prompt: 'Enter the connection string for your database account',
+                prompt: vscode.l10n.t('Enter the connection string for your database account'),
                 validateInput: (connectionString?: string) => this.validateInput(connectionString),
                 asyncValidationTask: (connectionString: string) => this.validateConnectionString(connectionString),
             })
@@ -42,7 +41,7 @@ export class PostgresConnectionStringStep extends AzureWizardPromptStep<NewConne
         }
 
         if (!connectionString.startsWith(`postgres://`)) {
-            return localize('invalidPostgresConnectionString', 'Connection string must start with "postgres://"');
+            return vscode.l10n.t('Connection string must start with "postgres://"');
         }
 
         return undefined;
@@ -51,7 +50,7 @@ export class PostgresConnectionStringStep extends AzureWizardPromptStep<NewConne
     //eslint-disable-next-line @typescript-eslint/require-await
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         if (connectionString.length === 0) {
-            return 'Connection string is required.';
+            return vscode.l10n.t('Connection string is required.');
         }
 
         try {
@@ -60,7 +59,7 @@ export class PostgresConnectionStringStep extends AzureWizardPromptStep<NewConne
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return localize('invalidPostgresConnectionString', 'Invalid connection string: {0}', `${error}`);
+                return vscode.l10n.t('Invalid connection string: {0}', `${error}`);
             }
         }
 

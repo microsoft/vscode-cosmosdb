@@ -5,12 +5,12 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBTriggerResourceItem } from '../../tree/docdb/DocumentDBTriggerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteDocumentDBTrigger(
@@ -59,9 +59,7 @@ export async function deleteDocumentDBTrigger(
         });
 
         if (success) {
-            showConfirmationAsInSettings(
-                localize('showConfirmation.droppedTrigger', 'The trigger {0} has been deleted.', triggerId),
-            );
+            showConfirmationAsInSettings(vscode.l10n.t('The trigger {0} has been deleted.', triggerId));
         }
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');

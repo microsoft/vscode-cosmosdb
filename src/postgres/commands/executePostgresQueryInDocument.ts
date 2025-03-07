@@ -10,7 +10,6 @@ import { type ClientConfig, type QueryResult } from 'pg';
 import * as vscode from 'vscode';
 import { connectedPostgresKey, postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { runPostgresQuery } from '../runPostgresQuery';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
@@ -60,12 +59,12 @@ export async function executePostgresQueryInDocument(context: IActionContext): P
     const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
 
     if (!activeEditor?.document) {
-        throw new Error(localize('openQueryBeforeExecuting', 'Open a PostgreSQL query before executing.'));
+        throw new Error(vscode.l10n.t('Open a PostgreSQL query before executing.'));
     }
 
     const query: string | undefined = activeEditor.document.getText();
     const queryResult: QueryResult = await runPostgresQuery(clientConfig, query);
-    ext.outputChannel.appendLog(localize('executedQuery', 'Successfully executed "{0}" query.', queryResult.command));
+    ext.outputChannel.appendLog(vscode.l10n.t('Successfully executed "{0}" query.', queryResult.command));
 
     if (queryResult.rowCount) {
         const fileExtension: string = path.extname(activeEditor.document.fileName);

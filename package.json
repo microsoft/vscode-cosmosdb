@@ -36,6 +36,7 @@
         "url": "https://github.com/microsoft/vscode-cosmosdb"
     },
     "main": "./main",
+    "l10n": "./l10n",
     "activationEvents": [
         "onFileSystem:azureDatabases",
         "onView:azureWorkspace"
@@ -64,7 +65,11 @@
         "watch:ext": "webpack --mode development --config ./webpack.config.ext.js --watch",
         "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
         "resapi.resetall": "rimraf out node_modules dist && npm install && npm run resapi.link",
-        "resapi.link": "npm link @microsoft/vscode-azureresources-api"
+        "resapi.link": "npm link @microsoft/vscode-azureresources-api",
+        "l10n": "npx @vscode/l10n-dev export --outDir ./l10n ./src",
+        "l10n:auto": "cross-env AZURE_TRANSLATOR_KEY= cross-env AZURE_TRANSLATOR_REGION= npx @vscode/l10n-dev generate-azure --outDir ./l10n ./l10n/bundle.l10n.json",
+        "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
+        "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf"
     },
     "devDependencies": {
         "@microsoft/vscode-azext-dev": "^2.0.4",
@@ -91,8 +96,10 @@
         "@vscode/test-cli": "^0.0.10",
         "@vscode/test-electron": "^2.4.1",
         "@vscode/vsce": "~2.32.0",
+        "@vscode/l10n-dev": "^0.0.35",
         "antlr4ts-cli": "^0.5.0-alpha.4",
         "copy-webpack-plugin": "^12.0.2",
+        "cross-env": "^7.0.3",
         "css-loader": "^7.1.2",
         "eslint": "^8.57.1",
         "eslint-plugin-import": "^2.31.0",
@@ -165,7 +172,6 @@
         "vscode-languageclient": "^6.1.4",
         "vscode-languageserver": "^6.1.1",
         "vscode-languageserver-textdocument": "^1.0.12",
-        "vscode-nls": "^4.0.0",
         "vscode-uri": "^3.0.8",
         "zod": "^3.23.8"
     },

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { ext } from '../../extensionVariables';
@@ -26,7 +27,7 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<NewConnectionW
             const parsedCS = parseDocDBConnectionString(connectionString);
             const label = `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
 
-            return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
+            return ext.state.showCreatingChild(parentId, vscode.l10n.t(`Creating "{0}"...`, label), async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
                 const storageItem: SharedWorkspaceStorageItem = {

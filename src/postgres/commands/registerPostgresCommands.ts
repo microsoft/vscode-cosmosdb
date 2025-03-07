@@ -5,7 +5,7 @@
 
 import { registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
 import { defaults } from 'pg';
-import { languages } from 'vscode';
+import * as vscode from 'vscode';
 import { removeConnectionV1 } from '../../commands/removeConnection/removeConnection';
 import { doubleClickDebounceDelay, postgresDefaultDatabase, postgresLanguageId } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -30,7 +30,7 @@ import { showPasswordlessWiki } from './showPasswordlessWiki';
 export function registerPostgresCommands(): void {
     ext.postgresCodeLensProvider = new PostgresCodeLensProvider();
     ext.context.subscriptions.push(
-        languages.registerCodeLensProvider(postgresLanguageId, ext.postgresCodeLensProvider),
+        vscode.languages.registerCodeLensProvider(postgresLanguageId, ext.postgresCodeLensProvider),
     );
 
     void loadPersistedPostgresDatabase();

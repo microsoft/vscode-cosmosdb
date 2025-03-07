@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithExperience } from '../../../tree/TreeElementWithExperience';
@@ -44,13 +44,13 @@ export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeEl
         ];
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: 'vscode.cosmosdb.workspace.mongoclusters.accounts',
             label: 'MongoDB Accounts',
-            iconPath: new ThemeIcon('link'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            iconPath: new vscode.ThemeIcon('link'),
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

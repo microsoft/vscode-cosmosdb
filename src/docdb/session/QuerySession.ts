@@ -11,7 +11,6 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
-import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClientByConnection } from '../getCosmosClient';
 import {
@@ -317,7 +316,7 @@ export class QuerySession {
                 message = `${message}\nActivityId: ${error.ActivityId}`;
             }
 
-            const showLogButton = localize('goToOutput', 'Go to output');
+            const showLogButton = vscode.l10n.t('Go to output');
             if (await vscode.window.showErrorMessage(message, showLogButton)) {
                 ext.outputChannel.show();
             }

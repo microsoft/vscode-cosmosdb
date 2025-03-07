@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, createContextValue, nonNullValue } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon, TreeItemCollapsibleState } from 'vscode';
+import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -47,8 +47,8 @@ export class CosmosDBWorkspaceItem implements CosmosDBTreeElement, TreeElementWi
             id: this.id,
             contextValue: this.contextValue,
             label: 'Attached Database Accounts',
-            iconPath: new ThemeIcon('plug'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            iconPath: new vscode.ThemeIcon('plug'),
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 

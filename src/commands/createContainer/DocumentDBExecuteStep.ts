@@ -5,6 +5,7 @@
 
 import { PartitionKeyDefinitionVersion, PartitionKeyKind, type RequestOptions } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -22,7 +23,7 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<CreateContaine
             options.offerThroughput = throughput;
         }
 
-        return ext.state.showCreatingChild(nodeId, `Creating "${containerName}"...`, async () => {
+        return ext.state.showCreatingChild(nodeId, vscode.l10n.t(`Creating "{0}"...`, containerName!), async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
 
             const partitionKeyDefinition = {

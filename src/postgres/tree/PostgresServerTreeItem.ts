@@ -19,7 +19,6 @@ import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constan
 import { ext } from '../../extensionVariables';
 import { isIpInRanges } from '../../utils/getIp';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { createAbstractPostgresClient, type AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresServerType, type PostgresAbstractServer } from '../abstract/models';
@@ -167,17 +166,12 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
 
     public async createChildImpl(context: ICreateChildImplContext): Promise<PostgresDatabaseTreeItem> {
         if (this.partialConnectionString.databaseName) {
-            throw new Error(
-                localize(
-                    'noPermissionToCreateDatabase',
-                    `This attached account does not have permissions to create a database.`,
-                ),
-            );
+            throw new Error(vscode.l10n.t(`This attached account does not have permissions to create a database.`));
         }
         const getChildrenTask: Promise<AzExtTreeItem[]> = this.getCachedChildren(context);
         const databaseName = await context.ui.showInputBox({
-            placeHolder: 'Database Name',
-            prompt: 'Enter the name of the database',
+            placeHolder: vscode.l10n.t('Database Name'),
+            prompt: vscode.l10n.t('Enter the name of the database'),
             stepName: 'createPostgresDatabase',
             validateInput: (name: string) => validateDatabaseName(name, getChildrenTask),
         });
@@ -192,7 +186,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
 
     public async deleteTreeItemImpl(context: IActionContext): Promise<void> {
         const client = await createAbstractPostgresClient(this.serverType, [context, this.subscription]);
-        const deletingMessage: string = `Deleting server "${this.label}"...`;
+        const deletingMessage: string = vscode.l10n.t(`Deleting server "{0}"...`, this.label);
         await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: deletingMessage },
             async () => {
@@ -202,11 +196,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
                 );
                 await this.deletePostgresCredentials();
 
-                const deleteMessage: string = localize(
-                    'deleteServerMsg',
-                    'Successfully deleted server "{0}".',
-                    this.label,
-                );
+                const deleteMessage: string = vscode.l10n.t('Successfully deleted server "{0}".', this.label);
                 void vscode.window.showInformationMessage(deleteMessage);
                 ext.outputChannel.appendLog(deleteMessage);
             },
@@ -306,7 +296,7 @@ async function validateDatabaseName(
     getChildrenTask: Promise<AzExtTreeItem[]>,
 ): Promise<string | undefined | null> {
     if (!name) {
-        return localize('NameCannotBeEmpty', 'Name cannot be empty.');
+        return vscode.l10n.t('Name cannot be empty.');
     }
     const currDatabaseList = await getChildrenTask;
     const currDatabaseNames: string[] = [];
@@ -316,7 +306,7 @@ async function validateDatabaseName(
         }
     }
     if (currDatabaseNames.includes(name)) {
-        return localize('NameExists', 'Database "{0}" already exists.', name);
+        return vscode.l10n.t('Database "{0}" already exists.', name);
     }
     return undefined;
 }

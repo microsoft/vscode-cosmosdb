@@ -12,7 +12,6 @@ import { ext } from '../../extensionVariables';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
-import { localize } from '../../utils/localize';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteCosmosDBAccount(
@@ -49,11 +48,7 @@ export async function deleteCosmosDBAccount(
             { location: vscode.ProgressLocation.Notification, title: deletingMessage },
             async () => {
                 await deletePromise;
-                const deleteMessage: string = localize(
-                    'deleteAccountMsg',
-                    `Successfully deleted account "{0}".`,
-                    accountName,
-                );
+                const deleteMessage: string = vscode.l10n.t(`Successfully deleted account "{0}".`, accountName);
                 void vscode.window.showInformationMessage(deleteMessage);
                 ext.outputChannel.appendLog(deleteMessage);
             },

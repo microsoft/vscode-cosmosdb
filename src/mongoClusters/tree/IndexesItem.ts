@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
@@ -39,13 +39,13 @@ export class IndexesItem implements CosmosDBTreeElement, TreeElementWithExperien
         });
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             label: 'Indexes',
-            iconPath: new ThemeIcon('combine'), // TODO: create our onw icon here, this one's shape can change
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            iconPath: new vscode.ThemeIcon('combine'), // TODO: create our onw icon here, this one's shape can change
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

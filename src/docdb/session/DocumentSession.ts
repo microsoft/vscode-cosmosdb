@@ -15,12 +15,11 @@ import {
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { extractPartitionKey } from '../../utils/document';
-import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
 import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
@@ -391,7 +390,7 @@ export class DocumentSession {
                 message = `${message}\nActivityId: ${error.ActivityId}`;
             }
 
-            const showLogButton = localize('goToOutput', 'Go to output');
+            const showLogButton = vscode.l10n.t('Go to output');
             if (await vscode.window.showErrorMessage(message, showLogButton)) {
                 ext.outputChannel.show();
             }

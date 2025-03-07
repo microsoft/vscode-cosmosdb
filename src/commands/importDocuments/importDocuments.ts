@@ -64,7 +64,7 @@ export async function importDocuments(
 
     context.telemetry.properties.experience = selectedItem.experience.api;
 
-    await ext.state.runWithTemporaryDescription(selectedItem.id, 'Importing...', async () => {
+    await ext.state.runWithTemporaryDescription(selectedItem.id, vscode.l10n.t('Importing...'), async () => {
         await importDocumentsWithProgress(selectedItem, uris);
     });
 
@@ -133,7 +133,11 @@ export async function importDocumentsWithProgress(
 
             progress.report({ increment: 50, message: 'Finished importing' });
 
-            return `${hasErrors ? 'Import has accomplished with errors' : 'Import successful'}. Inserted ${count} document(s). See output for more details.`;
+            return hasErrors
+                ? vscode.l10n.t('Import has accomplished with errors.')
+                : vscode.l10n.t('Import successful.') +
+                      ' ' +
+                      vscode.l10n.t(`Inserted {0} document(s). See output for more details.`, count);
         },
     );
 
@@ -190,14 +194,16 @@ async function parseAndValidateFileForMongo(uri: vscode.Uri): Promise<{ document
     const documents: unknown[] = [];
 
     if (!parsed || typeof parsed !== 'object') {
-        errors.push('Document must be an object.');
+        errors.push(vscode.l10n.t('Document must be an object.'));
     } else if (Array.isArray(parsed)) {
         documents.push(
             ...parsed
                 .map((document: unknown) => {
                     // Only top-level array is supported
                     if (!document || typeof document !== 'object' || Array.isArray(document)) {
-                        errors.push(`Document must be an object. Skipping...\n${EJSON.stringify(document)}`);
+                        errors.push(
+                            vscode.l10n.t(`Document must be an object. Skipping...\n{0}`, EJSON.stringify(document)),
+                        );
                         return undefined;
                     }
 
@@ -240,14 +246,16 @@ async function parseAndValidateFileForDocumentDB(
     const parsed = parseJson(fileContent) as JSONValue;
 
     if (!parsed || typeof parsed !== 'object') {
-        errors.push('Document must be an object.');
+        errors.push(vscode.l10n.t('Document must be an object.'));
     } else if (Array.isArray(parsed)) {
         documents.push(
             ...parsed
                 .map((document: unknown) => {
                     // Only top-level array is supported
                     if (!document || typeof document !== 'object' || Array.isArray(document)) {
-                        errors.push(`Document must be an object. Skipping...\n${EJSON.stringify(document)}`);
+                        errors.push(
+                            vscode.l10n.t(`Document must be an object. Skipping...\n{0}`, EJSON.stringify(document)),
+                        );
                         return undefined;
                     }
 
@@ -282,7 +290,7 @@ async function insertDocument(
         return { document, error: parseError(e).message };
     }
 
-    return { document, error: 'Unknown error' };
+    return { document, error: vscode.l10n.t('Unknown error') };
 }
 
 async function insertDocumentIntoDocumentDB(

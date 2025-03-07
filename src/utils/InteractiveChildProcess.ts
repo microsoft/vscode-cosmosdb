@@ -7,8 +7,7 @@ import { parseError } from '@microsoft/vscode-azext-utils';
 import * as cp from 'child_process';
 import * as os from 'os';
 import { isNumber } from 'util';
-import type * as vscode from 'vscode';
-import { EventEmitter, type Event } from 'vscode';
+import * as vscode from 'vscode';
 import { improveError } from './improveError';
 
 // We add these when we display to the output window
@@ -33,23 +32,23 @@ export class InteractiveChildProcess {
     private _error: unknown;
     private _isKilling: boolean;
 
-    private readonly _onStdOutEmitter: EventEmitter<string> = new EventEmitter<string>();
-    private readonly _onStdErrEmitter: EventEmitter<string> = new EventEmitter<string>();
-    private readonly _onErrorEmitter: EventEmitter<unknown> = new EventEmitter<unknown>();
+    private readonly _onStdOutEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly _onStdErrEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly _onErrorEmitter: vscode.EventEmitter<unknown> = new vscode.EventEmitter<unknown>();
 
     private constructor(options: IInteractiveChildProcessOptions) {
         this._options = options;
     }
 
-    public get onStdOut(): Event<string> {
+    public get onStdOut(): vscode.Event<string> {
         return this._onStdOutEmitter.event;
     }
 
-    public get onStdErr(): Event<string> {
+    public get onStdErr(): vscode.Event<string> {
         return this._onStdErrEmitter.event;
     }
 
-    public get onError(): Event<unknown> {
+    public get onError(): vscode.Event<unknown> {
         return this._onErrorEmitter.event;
     }
 

@@ -11,6 +11,7 @@ import {
     SharedWorkspaceStorage,
     type SharedWorkspaceStorageItem,
 } from '../../tree/workspace-api/SharedWorkspaceStorage';
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -50,14 +51,31 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
         return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
 
+            let isEmulator: boolean = true;
+            let disableEmulatorSecurity: boolean | undefined;
+
+            switch (experience.api) {
+                case API.MongoDB:
+                case API.MongoClusters: {
+                    const mongoConfig = context.mongoEmulatorConfiguration as MongoEmulatorConfiguration;
+                    isEmulator = mongoConfig?.isEmulator ?? true;
+                    disableEmulatorSecurity = mongoConfig?.disableEmulatorSecurity;
+                    break;
+                }
+                // Add additional cases here for APIs that require different handling
+                default: {
+                    isEmulator = context.isCoreEmulator ?? true;
+                    break;
+                }
+            }
+
             const storageItem: SharedWorkspaceStorageItem = {
                 id: connectionString,
                 name: label,
                 properties: {
                     api: experience.api,
-                    isEmulator: true,
-                    // only adds 'disableEmulatorSecurity' when it's set (for Mongo)
-                    ...(context.disableMongoEmulatorSecurity && { disableEmulatorSecurity: true }),
+                    isEmulator,
+                    ...(disableEmulatorSecurity && { disableEmulatorSecurity }),
                 },
                 secrets: [connectionString],
             };

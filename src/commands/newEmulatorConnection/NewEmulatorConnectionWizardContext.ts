@@ -5,6 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type Experience } from '../../AzureDBExperiences';
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 
 export enum NewEmulatorConnectionMode {
     Preconfigured = 'preconfigured', // using a preconfigured emulator
@@ -19,9 +20,9 @@ export interface NewEmulatorConnectionWizardContext extends IActionContext {
     connectionString?: string;
     port?: number;
 
-    // Currently specific to MongoDB Emulator, allows the user to override the default TLS/SSL configuration (e.g. disable it)
-    // It's only relevant for the MongoDB Emulator
-    disableMongoEmulatorSecurity?: boolean;
+    mongoEmulatorConfiguration?: MongoEmulatorConfiguration;
+    // TODO: refactor to CoreEmulatorConfiguration as it's done for MongoEmulatorConfiguration in case more core-emulator properties are added
+    isCoreEmulator?: boolean;
 
     // The selected mode; defaults to Unknown
     mode?: NewEmulatorConnectionMode;

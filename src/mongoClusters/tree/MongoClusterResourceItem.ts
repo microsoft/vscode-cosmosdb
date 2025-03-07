@@ -115,7 +115,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                     nonNullValue(clusterConnectionString),
                     nonNullProp(wizardContext, 'selectedUserName'),
                     nonNullProp(wizardContext, 'password'),
-                    // here, isEmulator is not set, as it's a resource item from Azure resources, not a workspace item, therefore, no emulator support needed
+                    // here, emulatorConfiguration is not set, as it's a resource item from Azure resources, not a workspace item, therefore, no emulator support needed
                 );
 
                 ext.outputChannel.append(

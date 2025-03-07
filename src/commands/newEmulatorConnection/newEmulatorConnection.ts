@@ -41,7 +41,10 @@ export async function newEmulatorConnection(
         );
     }
 
-    const wizardContext: NewEmulatorConnectionWizardContext = { ...context, parentTreeElementId: node.parentId };
+    const wizardContext: NewEmulatorConnectionWizardContext = {
+        ...context,
+        parentTreeElementId: node.parentId,
+    };
 
     let title: string = '';
     const steps: AzureWizardPromptStep<NewEmulatorConnectionWizardContext>[] = [];

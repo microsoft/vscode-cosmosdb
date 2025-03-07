@@ -14,6 +14,7 @@ import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
 import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../docdb/utils/NoSqlQueryConnection';
+import { ExperienceKind, promptAfterActionEventually, UsageImpact } from '../utils/survey';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
@@ -271,6 +272,7 @@ export class QueryEditorTab extends BaseTab {
 
             await session.run();
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High);
     }
 
     private async stopQuery(executionId: string): Promise<void> {
@@ -301,6 +303,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.nextPage();
+            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
     }
 
@@ -318,6 +321,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.prevPage();
+            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
     }
 
@@ -335,6 +339,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.firstPage();
+            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
     }
 
@@ -353,6 +358,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
+            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
     }
 
@@ -368,6 +374,7 @@ export class QueryEditorTab extends BaseTab {
 
             const session = new DocumentSession(this.connection, this.channel);
             await session.delete(documentId);
+            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
     }
 

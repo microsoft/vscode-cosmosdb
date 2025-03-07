@@ -39,6 +39,7 @@ import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
+import { initSurvey } from './utils/survey';
 
 export async function activateInternal(
     context: vscode.ExtensionContext,
@@ -124,6 +125,10 @@ export async function activateInternal(
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
+
+        //TODO: we probably don't need to init this on startup?
+        void initSurvey();
+        //void surveyPromptIfCandidate();
     });
 
     return createApiProvider([

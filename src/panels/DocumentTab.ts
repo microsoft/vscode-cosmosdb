@@ -9,6 +9,7 @@ import vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
+import { ExperienceKind, promptAfterActionEventually, UsageImpact } from '../utils/survey';
 import { BaseTab, type CommandPayload } from './BaseTab';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
@@ -190,6 +191,7 @@ export class DocumentTab extends BaseTab {
 
             this.panel.title = `${this.documentId.id}.json`;
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High);
     }
 
     private isCosmosDbItemDefinition(documentContent: unknown): documentContent is ItemDefinition {

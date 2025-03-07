@@ -5,6 +5,7 @@
 
 import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
@@ -13,7 +14,6 @@ import { checkAuthentication } from '../../postgres/commands/checkAuthentication
 import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function copyPostgresConnectionString(
@@ -76,36 +76,27 @@ export async function copyConnectionString(
             );
         }
     } else if (node instanceof CosmosDBAccountResourceItemBase || node instanceof MongoClusterItemBase) {
-        connectionString = await ext.state.runWithTemporaryDescription(
-            node.id,
-            localize('copyConnectionString.working', 'Working...'),
-            async () => {
-                if (node instanceof CosmosDBAccountResourceItemBase) {
-                    context.telemetry.properties.experience = node.experience.api;
-                    return await node.getConnectionString();
-                }
+        connectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
+            if (node instanceof CosmosDBAccountResourceItemBase) {
+                context.telemetry.properties.experience = node.experience.api;
+                return await node.getConnectionString();
+            }
 
-                if (node instanceof MongoClusterItemBase) {
-                    context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
-                    return node.getConnectionString();
-                }
+            if (node instanceof MongoClusterItemBase) {
+                context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
+                return node.getConnectionString();
+            }
 
-                return undefined;
-            },
-        );
+            return undefined;
+        });
     }
 
     if (!connectionString) {
         void vscode.window.showErrorMessage(
-            localize(
-                'copyConnectionString.noConnectionString',
-                'Failed to extract the connection string from the selected account.',
-            ),
+            l10n.t('Failed to extract the connection string from the selected account.'),
         );
     } else {
         await vscode.env.clipboard.writeText(connectionString);
-        void vscode.window.showInformationMessage(
-            localize('copyConnectionString.success', 'The connection string has been copied to the clipboard'),
-        );
+        void vscode.window.showInformationMessage(l10n.t('The connection string has been copied to the clipboard'));
     }
 }

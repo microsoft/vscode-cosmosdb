@@ -3,14 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
-import { localize } from '../../utils/localize';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class MongoUsernameStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
-        const prompt: string = `Enter the username for ${context.experience!.shortName}`;
+        const prompt: string = l10n.t('Enter the username for {experience}', {
+            experience: context.experience!.shortName,
+        });
 
         const username = await context.ui.showInputBox({
             prompt: prompt,
@@ -51,11 +53,7 @@ export class MongoUsernameStep extends AzureWizardPromptStep<NewConnectionWizard
             if (error instanceof Error && error.name === 'MongoParseError') {
                 return error.message;
             } else {
-                return localize(
-                    'mongoClusters.addWorkspaceConnection.connectionString.invalid',
-                    'Invalid Connection String: {0}',
-                    `${error}`,
-                );
+                return l10n.t('Invalid Connection String: {error}', { error: parseError(error).message });
             }
         }
 

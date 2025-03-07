@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import {
     getCosmosExperienceQuickPicks,
     getExperienceQuickPicks,
@@ -11,7 +12,6 @@ import {
     getPostgresExperienceQuickPicks,
     type Experience,
 } from '../../AzureDBExperiences';
-import { localize } from '../localize';
 
 export enum QuickPickType {
     ALL,
@@ -38,7 +38,7 @@ export async function pickExperience(context: IActionContext, type: QuickPickTyp
     }
 
     if (quickPicks.length === 0) {
-        throw new Error('No experiences found');
+        throw new Error(l10n.t('No experiences found'));
     }
 
     if (quickPicks.length === 1) {
@@ -46,7 +46,7 @@ export async function pickExperience(context: IActionContext, type: QuickPickTyp
     }
 
     const result: IAzureQuickPickItem<Experience> = await context.ui.showQuickPick(quickPicks, {
-        placeHolder: localize('selectDBServerMsg', 'Select an Azure Database Server'),
+        placeHolder: l10n.t('Select an Azure Database Server'),
     });
 
     return result.data;

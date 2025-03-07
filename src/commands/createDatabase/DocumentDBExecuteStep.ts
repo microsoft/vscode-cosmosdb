@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
@@ -16,10 +17,14 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<CreateDatabase
         const { databaseName, nodeId } = context;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-        return ext.state.showCreatingChild(nodeId, `Creating "${databaseName}"...`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 250));
-            await cosmosClient.databases.create({ id: databaseName });
-        });
+        return ext.state.showCreatingChild(
+            nodeId,
+            l10n.t('Creating "{nodeName}"…', { nodeName: databaseName! }),
+            async () => {
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                await cosmosClient.databases.create({ id: databaseName });
+            },
+        );
     }
 
     public shouldExecute(context: CreateDatabaseWizardContext): boolean {

@@ -5,6 +5,7 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type Experience } from '../../AzureDBExperiences';
 import { type AccountInfo } from '../../tree/docdb/AccountInfo';
 
 export interface CreateContainerWizardContext extends IActionContext {
@@ -14,6 +15,6 @@ export interface CreateContainerWizardContext extends IActionContext {
 
     accountInfo: AccountInfo;
     databaseId: string;
+    experience: Experience;
     nodeId: string;
-    containerTypeName: string;
 }

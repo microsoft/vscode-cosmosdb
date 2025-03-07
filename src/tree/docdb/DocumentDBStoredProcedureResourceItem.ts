@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
@@ -25,7 +26,7 @@ export abstract class DocumentDBStoredProcedureResourceItem
         this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
@@ -33,7 +34,7 @@ export abstract class DocumentDBStoredProcedureResourceItem
             label: this.model.procedure.id,
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
-                title: 'Open Stored Procedure',
+                title: l10n.t('Open Stored Procedure'),
                 command: 'cosmosDB.openStoredProcedure',
                 arguments: [this],
             },

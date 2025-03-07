@@ -5,13 +5,13 @@
 
 import { AbortError, ErrorResponse, TimeoutError, type QueryIterator } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
-import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClientByConnection } from '../getCosmosClient';
 import {
@@ -67,11 +67,11 @@ export class QuerySession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (this.iterator) {
-                throw new Error('Session is already running');
+                throw new Error(l10n.t('Session is already running'));
             }
 
             const isFetchAll = this.resultViewMetadata.countPerPage === -1;
@@ -116,11 +116,11 @@ export class QuerySession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (!this.iterator) {
-                throw new Error('Session is not running! Please run the session first');
+                throw new Error(l10n.t('Session is not running! Please run the session first'));
             }
 
             await this.wrappedFetch(context, async () => {
@@ -136,19 +136,19 @@ export class QuerySession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (!this.iterator) {
-                throw new Error('Session is not running! Please run the session first');
+                throw new Error(l10n.t('Session is not running! Please run the session first'));
             }
 
             if (this.resultViewMetadata.countPerPage === -1) {
-                throw new Error('Cannot fetch next page if all records have been fetched before');
+                throw new Error(l10n.t('Cannot fetch next page if all records have been fetched before'));
             }
 
             if (this.sessionResult.getResult(this.currentIteration)?.hasMoreResults === false) {
-                throw new Error('Cannot fetch next page if current page is the last page');
+                throw new Error(l10n.t('Cannot fetch next page if current page is the last page'));
             }
 
             await this.wrappedFetch(context, async () => {
@@ -167,19 +167,19 @@ export class QuerySession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (!this.iterator) {
-                throw new Error('Session is not running! Please run the session first');
+                throw new Error(l10n.t('Session is not running! Please run the session first'));
             }
 
             if (this.resultViewMetadata.countPerPage === -1) {
-                throw new Error('Cannot fetch previous page if all records have been fetched before');
+                throw new Error(l10n.t('Cannot fetch previous page if all records have been fetched before'));
             }
 
             if (this.currentIteration - 1 <= 0) {
-                throw new Error('Cannot fetch previous page if current page is the first page');
+                throw new Error(l10n.t('Cannot fetch previous page if current page is the first page'));
             }
 
             await this.wrappedFetch(context, async () => {
@@ -193,11 +193,11 @@ export class QuerySession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (!this.iterator) {
-                throw new Error('Session is not running! Please run the session first');
+                throw new Error(l10n.t('Session is not running! Please run the session first'));
             }
 
             await this.wrappedFetch(context, async () => {
@@ -211,11 +211,11 @@ export class QuerySession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (!this.iterator) {
-                throw new Error('Session is not running! Please run the session first');
+                throw new Error(l10n.t('Session is not running! Please run the session first'));
             }
 
             try {
@@ -243,27 +243,27 @@ export class QuerySession {
         const isObject = error && typeof error === 'object';
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
-            const message: string = error.body?.message ?? `Query failed with status code ${code}`;
+            const message: string = error.body?.message ?? l10n.t('Query failed with status code {0}', code);
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, message],
             });
-            void this.logAndThrowError('Query failed', error);
+            void this.logAndThrowError(l10n.t('Query failed'), error);
         } else if (error instanceof TimeoutError) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
-                params: [this.id, 'Query timed out'],
+                params: [this.id, l10n.t('Query timed out')],
             });
-            void this.logAndThrowError('Query timed out', error);
+            void this.logAndThrowError(l10n.t('Query timed out'), error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
-                params: [this.id, 'Query was aborted'],
+                params: [this.id, l10n.t('Query was aborted')],
             });
-            void this.logAndThrowError('Query was aborted', error);
+            void this.logAndThrowError(l10n.t('Query was aborted'), error);
         } else {
             // always force unexpected query errors to be included in report issue command
             context.errorHandling.forceIncludeInReportIssueCommand = true;
@@ -272,7 +272,7 @@ export class QuerySession {
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
-            await this.logAndThrowError('Query failed', error);
+            await this.logAndThrowError(l10n.t('Query failed'), error);
         }
     }
 
@@ -317,7 +317,7 @@ export class QuerySession {
                 message = `${message}\nActivityId: ${error.ActivityId}`;
             }
 
-            const showLogButton = localize('goToOutput', 'Go to output');
+            const showLogButton = l10n.t('Go to output');
             if (await vscode.window.showErrorMessage(message, showLogButton)) {
                 ext.outputChannel.show();
             }

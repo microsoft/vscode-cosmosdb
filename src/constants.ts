@@ -102,7 +102,7 @@ export const testDb: string = 'test';
 
 export const connectedPostgresKey: string = 'ms-azuretools.vscode-azuredatabases.connectedPostgresDB';
 export const postgresLanguageId: string = 'postgres';
-export const postgresFileExtension: string = `.psql`;
+export const postgresFileExtension: string = '.psql';
 export const postgresBaseFileName: string = 'query';
 export const postgresDefaultPort = '5432';
 export const postgresDefaultDatabase = 'postgres';

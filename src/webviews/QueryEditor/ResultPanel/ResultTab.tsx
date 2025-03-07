@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import { Suspense, useMemo } from 'react';
 import { queryResultToJSON, queryResultToTable, queryResultToTree } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
@@ -36,7 +37,7 @@ export const ResultTab = () => {
 
     return (
         <div className={[classes.container, 'resultsDisplayArea'].join(' ')}>
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={<div>{l10n.t('Loading…')})</div>}>
                 {tableViewMode === 'Table' && <ResultTabViewTable {...tableViewData} />}
                 {tableViewMode === 'Tree' && <ResultTabViewTree data={treeViewData ?? []} />}
                 {tableViewMode === 'JSON' && <ResultTabViewJson data={jsonViewData} />}

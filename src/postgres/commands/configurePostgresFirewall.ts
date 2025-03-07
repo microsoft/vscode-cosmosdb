@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { getPublicIpv4 } from '../../utils/getIp';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { randomUtils } from '../../utils/randomUtils';
 import { createAbstractPostgresClient, type AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
@@ -27,9 +27,8 @@ export async function configurePostgresFirewall(
 
     const ip: string = await getPublicIp(context);
     await context.ui.showWarningMessage(
-        localize(
-            'firewallRuleWillBeAdded',
-            'A firewall rule for your IP ({0}) will be added to server "{1}". Would you like to continue?',
+        l10n.t(
+            'A firewall rule for your IP {0} will be added to server "{1}". Would you like to continue?',
             ip,
             treeItem.label,
         ),
@@ -63,12 +62,7 @@ export async function setFirewallRule(
         endIpAddress: ip,
     };
 
-    const progressMessage: string = localize(
-        'configuringFirewallRule',
-        'Adding firewall rule for IP "{0}" to server "{1}"...',
-        ip,
-        serverName,
-    );
+    const progressMessage: string = l10n.t('Adding firewall rule for IP "{0}" to server "{1}"…', ip, serverName);
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
         title: progressMessage,
@@ -82,8 +76,7 @@ export async function setFirewallRule(
             newFirewallRule,
         );
     });
-    const completedMessage: string = localize(
-        'addedFirewallRule',
+    const completedMessage: string = l10n.t(
         'Successfully added firewall rule for IP "{0}" to server "{1}".',
         ip,
         serverName,

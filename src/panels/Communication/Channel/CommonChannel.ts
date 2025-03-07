@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
 import { type Transport, type TransportMessage } from '../Transport/Transport';
 import {
@@ -74,7 +75,7 @@ export class CommonChannel implements Channel {
             const now = Date.now();
             Object.entries(this.pendingRequests).forEach(([id, request]) => {
                 if (request.expiresAt < now) {
-                    request.deferred.reject(new Error(`Request timed out`));
+                    request.deferred.reject(new Error(l10n.t('Request timed out')));
                     delete this.pendingRequests[id];
                 }
             });
@@ -85,7 +86,7 @@ export class CommonChannel implements Channel {
     postMessage(message: ChannelMessage): PromiseLike<unknown>;
     postMessage(message: ChannelMessage | ChannelPayload): PromiseLike<unknown> {
         if (this.isDisposed) {
-            return Promise.reject(new Error('Channel disposed'));
+            return Promise.reject(new Error(l10n.t('Channel disposed')));
         }
 
         const now = Date.now();
@@ -171,7 +172,7 @@ export class CommonChannel implements Channel {
         // Clean up pending requests
         clearTimeout(this.timeoutId);
         Object.values(this.pendingRequests).forEach((request) => {
-            request.deferred.reject(new Error('Channel disposed'));
+            request.deferred.reject(new Error(l10n.t('Channel disposed')));
         });
 
         this.pendingRequests = {};
@@ -239,7 +240,7 @@ export class CommonChannel implements Channel {
                             });
                     } catch (error) {
                         const errorMessage = getErrorMessage(error);
-                        console.error(`[VSCodeTransport] Error occurred calling callback`, errorMessage);
+                        console.error(l10n.t('[VSCodeTransport] Error occurred calling callback'), errorMessage);
                     }
                 });
             }
@@ -247,7 +248,7 @@ export class CommonChannel implements Channel {
             const errorMessage = getErrorMessage(error);
             if (this.pendingRequests[msg.id]) {
                 this.pendingRequests[msg.id].deferred.reject(
-                    new Error(`Error occurred handling received message : ${errorMessage}`),
+                    new Error(l10n.t('Error occurred handling received message: {errorMessage}', { errorMessage })),
                 );
             }
             console.error(errorMessage);

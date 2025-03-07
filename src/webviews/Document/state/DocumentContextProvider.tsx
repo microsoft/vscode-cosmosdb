@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONObject, type JSONValue, type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
+import * as l10n from '@vscode/l10n';
 import type * as React from 'react';
 import { type CosmosDbRecord } from '../../../docdb/types/queryResult';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
@@ -81,7 +82,7 @@ export class DocumentContextProvider extends BaseContextProvider {
                 this.dispatch({ type: 'setSaving', isSaving: false });
 
                 if (documentContent === undefined) {
-                    this.dispatch({ type: 'setError', error: 'Document content is undefined' });
+                    this.dispatch({ type: 'setError', error: l10n.t('Document content is undefined') });
                     return;
                 }
 

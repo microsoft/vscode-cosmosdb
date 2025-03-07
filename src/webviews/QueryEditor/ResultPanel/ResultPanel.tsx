@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import { useState, type PropsWithChildren } from 'react';
 import { ResultPanelToolbarOverflow } from './ResultPanelToolbarOverflow';
 import { ResultTab } from './ResultTab';
@@ -94,10 +95,10 @@ export const ResultPanel = () => {
                 <div className={styles.tabs}>
                     <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>
                         <Tab id="Result" value="result__tab">
-                            Result
+                            {l10n.t('Result')}
                         </Tab>
                         <Tab id="Stats" value="stats__tab">
-                            Stats
+                            {l10n.t('Stats')}
                         </Tab>
                     </TabList>
                 </div>

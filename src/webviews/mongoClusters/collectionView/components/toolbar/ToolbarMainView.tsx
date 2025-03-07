@@ -20,6 +20,7 @@ import {
     EmojiSmileSlightRegular,
     PlayRegular,
 } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { useContext, type JSX } from 'react';
 import { ExperienceKind } from '../../../../../utils/surveyTypes';
 import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
@@ -36,7 +37,10 @@ export const ToolbarMainView = (): JSX.Element => {
             <ToolbarDivider />
             <Menu>
                 <MenuTrigger>
-                    <ToolbarButton aria-label="Provide Feedback" icon={<EmojiSmileSlightRegular />}></ToolbarButton>
+                    <ToolbarButton
+                        aria-label={l10n.t('Provide Feedback')}
+                        icon={<EmojiSmileSlightRegular />}
+                    ></ToolbarButton>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
@@ -50,7 +54,7 @@ export const ToolbarMainView = (): JSX.Element => {
                                     .catch(() => {});
                             }}
                         >
-                            Provide Feedback
+                            {l10n.t('Provide Feedback')}
                         </MenuItem>
                     </MenuList>
                 </MenuPopover>
@@ -81,7 +85,7 @@ const ToolbarQueryOperations = (): JSX.Element => {
         const queryContent = currentContext.queryEditor?.getCurrentContent() ?? '';
         setCurrentContext((prev) => ({
             ...prev,
-            currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: queryContent, pageNumber: 1 },
+            currentQueryDefinition: { ...prev.currentQueryDefinition, queryText: queryContent, pageNumber: 1 },
         }));
 
         trpcClient.common.reportEvent
@@ -91,7 +95,7 @@ const ToolbarQueryOperations = (): JSX.Element => {
                     ui: 'button',
                 },
                 measurements: {
-                    queryLenth: queryContent.length,
+                    queryLength: queryContent.length,
                 },
             })
             .catch((error) => {
@@ -103,7 +107,7 @@ const ToolbarQueryOperations = (): JSX.Element => {
         // basically, do not modify the query at all, do not use the input from the editor
         setCurrentContext((prev) => ({
             ...prev,
-            currrentQueryDefinition: { ...prev.currrentQueryDefinition },
+            currentQueryDefinition: { ...prev.currentQueryDefinition },
         }));
 
         trpcClient.common.reportEvent
@@ -114,9 +118,9 @@ const ToolbarQueryOperations = (): JSX.Element => {
                     view: currentContext.currentView,
                 },
                 measurements: {
-                    page: currentContext.currrentQueryDefinition.pageNumber,
-                    pageSize: currentContext.currrentQueryDefinition.pageSize,
-                    queryLength: currentContext.currrentQueryDefinition.queryText.length,
+                    page: currentContext.currentQueryDefinition.pageNumber,
+                    pageSize: currentContext.currentQueryDefinition.pageSize,
+                    queryLength: currentContext.currentQueryDefinition.queryText.length,
                 },
             })
             .catch((error) => {
@@ -127,23 +131,23 @@ const ToolbarQueryOperations = (): JSX.Element => {
     return (
         <Toolbar size="small">
             <ToolbarButton
-                aria-label="Execute the find query"
+                aria-label={l10n.t('Execute the find query')}
                 disabled={currentContext.isLoading}
                 icon={<PlayRegular />}
                 onClick={handleExecuteQuery}
                 appearance="primary"
             >
-                Find Query
+                {l10n.t('Find Query')}
             </ToolbarButton>
 
             <ToolbarDividerTransparent />
 
             <ToolbarButton
-                aria-label="Refresh current view"
+                aria-label={l10n.t('Refresh current view')}
                 onClick={handleRefreshResults}
                 icon={<ArrowClockwiseRegular />}
             >
-                Refresh
+                {l10n.t('Refresh')}
             </ToolbarButton>
         </Toolbar>
     );
@@ -164,7 +168,7 @@ const ToolbarDataOperations = (): JSX.Element => {
 
     const handleExportQueryResults = () => {
         void trpcClient.mongoClusters.collectionView.exportDocuments.query({
-            query: currentContext.currrentQueryDefinition.queryText,
+            query: currentContext.currentQueryDefinition.queryText,
         });
     };
 
@@ -172,22 +176,26 @@ const ToolbarDataOperations = (): JSX.Element => {
         <Toolbar size="small">
             <Menu>
                 <MenuTrigger>
-                    <ToolbarButton icon={<ArrowImportRegular />}>Import</ToolbarButton>
+                    <ToolbarButton icon={<ArrowImportRegular />}>{l10n.t('Import')}</ToolbarButton>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
-                        <MenuItem onClick={handleImportFromJson}>Import From JSON...</MenuItem>
+                        <MenuItem onClick={handleImportFromJson}>{l10n.t('Import From JSON…')}</MenuItem>
                     </MenuList>
                 </MenuPopover>
             </Menu>
             <Menu>
                 <MenuTrigger>
-                    <ToolbarButton icon={<ArrowExportRegular />}>Export</ToolbarButton>
+                    <ToolbarButton icon={<ArrowExportRegular />}>{l10n.t('Export')}</ToolbarButton>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
-                        <MenuItem onClick={handleExportEntireCollection}>Export Entire Collection...</MenuItem>
-                        <MenuItem onClick={handleExportQueryResults}>Export Current Query Results...</MenuItem>
+                        <MenuItem onClick={handleExportEntireCollection}>
+                            {l10n.t('Export Entire Collection…')}
+                        </MenuItem>
+                        <MenuItem onClick={handleExportQueryResults}>
+                            {l10n.t('Export Current Query Results…')}
+                        </MenuItem>
                     </MenuList>
                 </MenuPopover>
             </Menu>

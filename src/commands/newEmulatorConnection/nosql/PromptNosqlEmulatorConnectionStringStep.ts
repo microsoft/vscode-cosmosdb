@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { parseDocDBConnectionString } from '../../../docdb/docDBConnectionStrings';
 import {
     NewEmulatorConnectionMode,
@@ -15,9 +16,9 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {
         context.connectionString = (
             await context.ui.showInputBox({
-                prompt: 'Enter the connection string of your Emulator',
+                prompt: l10n.t('Enter the connection string of your Emulator'),
                 ignoreFocusOut: true,
-                placeHolder: 'AccountEndpoint=...;AccountKey=...',
+                placeHolder: 'AccountEndpoint=…;AccountKey=…',
                 validateInput: (connectionString?: string) => this.validateInput(connectionString),
                 asyncValidationTask: (connectionString: string) => this.validateConnectionString(connectionString),
             })
@@ -36,7 +37,7 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
+                return l10n.t('Connection string must be of the form "AccountEndpoint=…;AccountKey=…"');
             }
         }
 

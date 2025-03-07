@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
@@ -14,7 +15,7 @@ export class DocumentDBDatabaseNameStep extends AzureWizardPromptStep<CreateData
     public async prompt(context: CreateDatabaseWizardContext): Promise<void> {
         context.databaseName = (
             await context.ui.showInputBox({
-                prompt: `Enter a database name`,
+                prompt: l10n.t('Enter a database name'),
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
@@ -36,11 +37,11 @@ export class DocumentDBDatabaseNameStep extends AzureWizardPromptStep<CreateData
         }
 
         if (/[/\\?#=]/.test(name)) {
-            return `Database name cannot contain the characters '\\', '/', '#', '?', '='`;
+            return l10n.t("Database name cannot contain the characters '\\', '/', '#', '?', '='");
         }
 
         if (name.length > 255) {
-            return 'Database name cannot be longer than 255 characters';
+            return l10n.t('Database name cannot be longer than 255 characters');
         }
 
         return undefined;
@@ -51,7 +52,7 @@ export class DocumentDBDatabaseNameStep extends AzureWizardPromptStep<CreateData
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {
-            return 'Database name is required.';
+            return l10n.t('Database name is required.');
         }
 
         try {
@@ -61,10 +62,12 @@ export class DocumentDBDatabaseNameStep extends AzureWizardPromptStep<CreateData
             const result = await cosmosClient.databases.readAll().fetchAll();
 
             if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
-                return `The database "${name}" already exists in the account.`;
+                return l10n.t('The database "{name}" already exists in the account.', { name });
             }
         } catch (error) {
-            ext.outputChannel.appendLine(`Failed to validate database name: ${parseError(error).message}`);
+            ext.outputChannel.appendLine(
+                l10n.t('Failed to validate database name: {error}', { error: parseError(error).message }),
+            );
             return undefined; // we don't want to block the user from continuing if we can't validate the name
         }
 

@@ -5,12 +5,12 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBStoredProcedureResourceItem } from '../../tree/docdb/DocumentDBStoredProcedureResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteDocumentDBStoredProcedure(
@@ -35,8 +35,10 @@ export async function deleteDocumentDBStoredProcedure(
     const procedureId = node.model.procedure.id;
 
     const confirmed = await getConfirmationAsInSettings(
-        `Delete "${procedureId}"?`,
-        `Delete stored procedure "${procedureId}" and its contents?\nThis can't be undone.`,
+        l10n.t('Delete "{nodeName}"?', { nodeName: procedureId }),
+        l10n.t('Delete stored procedure "{procedureId}" and its contents?', { procedureId }) +
+            '\n' +
+            l10n.t('This cannot be undone.'),
         procedureId,
     );
 
@@ -60,11 +62,7 @@ export async function deleteDocumentDBStoredProcedure(
 
         if (success) {
             showConfirmationAsInSettings(
-                localize(
-                    'showConfirmation.droppedStoredProcedure',
-                    'The stored procedure {0} has been deleted.',
-                    procedureId,
-                ),
+                l10n.t('The stored procedure {procedureId} has been deleted.', { procedureId }),
             );
         }
     } finally {

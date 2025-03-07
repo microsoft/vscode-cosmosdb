@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Dropdown, Option } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import { useContext, type JSX } from 'react';
 import { CollectionViewContext } from '../../collectionViewContext';
 
@@ -20,9 +21,9 @@ export function ViewSwitcher({ onViewChanged }): JSX.Element {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
             onOptionSelect={(_, data) => onViewChanged(data.optionValue)}
         >
-            <Option key="table">Table View</Option>
-            <Option key="tree">Tree View</Option>
-            <Option key="json">JSON View</Option>
+            <Option key="table">{l10n.t('Table View')}</Option>
+            <Option key="tree">{l10n.t('Tree View')}</Option>
+            <Option key="json">{l10n.t('JSON View')}</Option>
         </Dropdown>
     );
 }

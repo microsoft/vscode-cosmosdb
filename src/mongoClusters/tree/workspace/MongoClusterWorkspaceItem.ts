@@ -11,10 +11,9 @@ import {
     UserCancelledError,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
-import { localize } from '../../../utils/localize';
 import { CredentialCache } from '../../CredentialCache';
 import { MongoClustersClient } from '../../MongoClustersClient';
 import { type AuthenticateWizardContext } from '../../wizards/authenticate/AuthenticateWizardContext';
@@ -46,7 +45,9 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 context.telemetry.properties.view = 'workspace';
 
                 ext.outputChannel.appendLine(
-                    `MongoDB Clusters: Attempting to authenticate with ${this.mongoCluster.name}`,
+                    l10n.t('MongoDB Clusters: Attempting to authenticate with {cluster}', {
+                        cluster: this.mongoCluster.name,
+                    }),
                 );
 
                 let mongoClustersClient: MongoClustersClient;
@@ -81,7 +82,9 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     password = nonNullProp(wizardContext, 'password');
                 }
 
-                ext.outputChannel.append(`MongoDB Clusters: Connecting to the cluster as "${username}"... `);
+                ext.outputChannel.append(
+                    l10n.t('MongoDB Clusters: Connecting to the cluster as "{username}"…', { username }),
+                );
 
                 // Cache the credentials
                 CredentialCache.setCredentials(
@@ -95,13 +98,19 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 // Attempt to create the client with the provided credentials
                 try {
                     mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
-                        ext.outputChannel.appendLine('failed.');
-                        ext.outputChannel.appendLine(`Error: ${error.message}`);
+                        ext.outputChannel.appendLine(l10n.t('failed.'));
+                        ext.outputChannel.appendLine(l10n.t('Error: {error}', { error: error.message }));
 
-                        void vscode.window.showErrorMessage(`Failed to connect to "${this.mongoCluster.name}"`, {
-                            modal: true,
-                            detail: `Revisit connection details and try again.\n\nError: ${error.message}`,
-                        });
+                        void vscode.window.showErrorMessage(
+                            l10n.t('Failed to connect to "{cluster}"', { cluster: this.mongoCluster.name }),
+                            {
+                                modal: true,
+                                detail:
+                                    l10n.t('Revisit connection details and try again.') +
+                                    '\n\n' +
+                                    l10n.t('Error: {error}', { error: error.message }),
+                            },
+                        );
 
                         throw error;
                     });
@@ -116,7 +125,10 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 }
 
                 ext.outputChannel.appendLine(
-                    `MongoDB Clusters: Connected to "${this.mongoCluster.name}" as "${username}"`,
+                    l10n.t('MongoDB Clusters: Connected to "{cluster}" as "{username}"', {
+                        cluster: this.mongoCluster.name,
+                        username,
+                    }),
                 );
 
                 return mongoClustersClient;
@@ -133,7 +145,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
     private async promptForCredentials(wizardContext: AuthenticateWizardContext): Promise<boolean> {
         const wizard = new AzureWizard(wizardContext, {
             promptSteps: [new ProvideUserNameStep(), new ProvidePasswordStep()],
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            title: l10n.t('Authenticate to connect with your MongoDB cluster'),
             showLoadingPrompt: true,
         });
 
@@ -170,10 +182,10 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
         if (this.mongoCluster.emulatorConfiguration?.isEmulator) {
             // For emulator clusters, show TLS/SSL status if security is disabled
             if (this.mongoCluster.emulatorConfiguration?.disableEmulatorSecurity) {
-                description = '⚠ TLS/SSL Disabled';
-                tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
+                description = l10n.t('⚠ TLS/SSL Disabled');
+                tooltipMessage = l10n.t('⚠️ **Security:** TLS/SSL Disabled');
             } else {
-                tooltipMessage = '✅ **Security:** TLS/SSL Enabled';
+                tooltipMessage = l10n.t('✅ **Security:** TLS/SSL Enabled');
             }
         } else {
             // For non-emulator clusters, show SKU if defined

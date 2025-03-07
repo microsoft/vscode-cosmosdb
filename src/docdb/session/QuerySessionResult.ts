@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type FeedResponse, type QueryMetrics } from '@azure/cosmos';
+import * as l10n from '@vscode/l10n';
 import {
     type QueryResult,
     type QueryResultRecord,
@@ -43,13 +44,13 @@ export class QuerySessionResult {
 
     public push(response: FeedResponse<QueryResultRecord>): void {
         if (this.iterationsCount > 0 && this.isFetchedAll) {
-            throw new Error('Cannot add more results after fetching all');
+            throw new Error(l10n.t('Cannot add more results after fetching all'));
         }
 
         const pageNumber = this.iterationsCount + 1;
 
         if (this.queryResults.has(pageNumber)) {
-            throw new Error(`Results for page ${pageNumber} already exists`);
+            throw new Error(l10n.t('Results for page {pageNumber} already exists', { pageNumber: `${pageNumber}` }));
         }
 
         this.queryResults.set(pageNumber, {

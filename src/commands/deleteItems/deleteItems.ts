@@ -5,14 +5,14 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import vscode from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItemResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { extractPartitionKey } from '../../utils/document';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteDocumentDBItem(context: IActionContext, node: DocumentDBItemResourceItem): Promise<void> {
@@ -35,13 +35,13 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
     const item = node.model.item;
 
     if (item.id === undefined) {
-        vscode.window.showErrorMessage('Document id is required');
+        vscode.window.showErrorMessage(l10n.t('Item id is required'));
         return undefined;
     }
 
     const confirmed = await getConfirmationAsInSettings(
-        `Delete ${item.id ? `"${item.id}"` : 'document'}?`,
-        `Delete document ${item.id ? `"${item.id}"` : ''} and its contents?\nThis can't be undone.`,
+        l10n.t('Delete item?'),
+        l10n.t('Delete item and its contents?') + '\n' + l10n.t('This cannot be undone.'),
         item.id,
     );
 
@@ -65,11 +65,7 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
 
         if (success) {
             showConfirmationAsInSettings(
-                localize(
-                    'showConfirmation.droppedItem',
-                    'The document {0} has been deleted.',
-                    item.id ? `"${item.id}"` : '',
-                ),
+                l10n.t('The item {id} has been deleted.', { id: item.id ? `"${item.id}"` : '' }),
             );
         }
     } finally {

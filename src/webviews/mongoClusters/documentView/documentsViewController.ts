@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ViewColumn } from 'vscode';
+import * as vscode from 'vscode';
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { WebviewController } from '../../api/extension-server/WebviewController';
@@ -34,7 +34,14 @@ export class DocumentsViewController extends WebviewController<DocumentsViewWebv
             }
         }
 
-        super(ext.context, API.MongoClusters, title, 'mongoClustersDocumentView', initialData, ViewColumn.Active);
+        super(
+            ext.context,
+            API.MongoClusters,
+            title,
+            'mongoClustersDocumentView',
+            initialData,
+            vscode.ViewColumn.Active,
+        );
 
         const trpcContext: RouterContext = {
             dbExperience: API.MongoClusters,

@@ -6,6 +6,7 @@
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { callWithTelemetryAndErrorHandling, type IActionContext, nonNullProp } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
@@ -73,19 +74,29 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        ext.outputChannel.appendLine(`Cosmos DB for MongoDB (RU): Loading details for "${this.account.name}"`);
+        ext.outputChannel.appendLine(
+            l10n.t('Cosmos DB for MongoDB (RU): Loading details for "{accountName}"', {
+                accountName: this.account.name,
+            }),
+        );
 
         let mongoClient: MongoClustersClient | null = null;
 
         // Check if credentials are cached, and return the cached client if available
         if (CredentialCache.hasCredentials(this.id)) {
             ext.outputChannel.appendLine(
-                `${this.experience.longName}: Reusing active connection details for "${this.account.name}".`,
+                `${this.experience.longName}: ` +
+                    l10n.t('Reusing active connection details for "{accountName}".', {
+                        accountName: this.account.name,
+                    }),
             );
             mongoClient = await MongoClustersClient.getClient(this.id);
         } else {
             ext.outputChannel.appendLine(
-                `${this.experience.longName}: Activating connection for "${this.account.name}"`,
+                `${this.experience.longName}: ` +
+                    l10n.t('Activating connection for "{accountName}"', {
+                        accountName: this.account.name,
+                    }),
             );
 
             if (this.account.subscription) {
@@ -93,7 +104,7 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
             }
 
             if (!this.account.connectionString) {
-                throw new Error('Connection string not found.');
+                throw new Error(l10n.t('Connection string not found.'));
             }
 
             const cString = new ConnectionString(this.account.connectionString);
@@ -125,7 +136,7 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
         }
 
         if (!mongoClient) {
-            throw new Error('Failed to connect.');
+            throw new Error(l10n.t('Failed to connect.'));
         }
 
         // TODO: add support for single databases via connection string. move it to monogoclustersclient

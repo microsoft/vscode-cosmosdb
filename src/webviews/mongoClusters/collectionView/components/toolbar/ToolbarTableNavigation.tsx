@@ -15,6 +15,7 @@ import {
     Tooltip,
 } from '@fluentui/react-components';
 import { ArrowUp16Filled } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { useContext } from 'react';
 import { ExperienceKind, UsageImpact } from '../../../../../utils/surveyTypes';
 import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
@@ -105,10 +106,10 @@ export const ToolbarTableNavigation = (): JSX.Element => {
 
     return (
         <Toolbar aria-label="with Popover" size="small">
-            <Tooltip content="Level up" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Level up')} relationship="description" withArrow>
                 <ToolbarButton
                     onClick={levelUp}
-                    aria-label="Up"
+                    aria-label={l10n.t('Up')}
                     icon={<ArrowUp16Filled />}
                     disabled={
                         currentContext.currentView !== Views.TABLE ||
@@ -120,7 +121,7 @@ export const ToolbarTableNavigation = (): JSX.Element => {
 
             <ToolbarDivider />
 
-            <Breadcrumb aria-label="Small breadcrumb example with buttons" size="small">
+            <Breadcrumb aria-label={l10n.t('Small breadcrumb example with buttons')} size="small">
                 {items?.map((item, index) => (
                     <BreadcrumbItem key={item.key}>
                         <BreadcrumbButton onClick={() => jumpToLevel(index)}>{item.item}</BreadcrumbButton>
@@ -131,11 +132,14 @@ export const ToolbarTableNavigation = (): JSX.Element => {
             <InfoLabel
                 info={
                     <>
-                        Your database stores documents with embedded fields, allowing for hierarchical data
-                        organization.
+                        {l10n.t(
+                            'Your database stores documents with embedded fields, allowing for hierarchical data organization.',
+                        )}
                         <br />
-                        This table view presents data at the root level by default. Using the table navigation, you can
-                        explore deeper levels or move back and forth between them.
+                        {l10n.t('This table view presents data at the root level by default.')}{' '}
+                        {l10n.t(
+                            'Using the table navigation, you can explore deeper levels or move back and forth between them.',
+                        )}
                         <br />
                         <ul>
                             <li>

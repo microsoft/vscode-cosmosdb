@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { type PostgresFunctionsTreeItem } from '../../../tree/PostgresFunctionsTreeItem';
 import { runPostgresQueryWizard } from '../runPostgresQueryWizard';
 import { type IPostgresFunctionQueryWizardContext } from './IPostgresFunctionQueryWizardContext';
@@ -19,7 +20,7 @@ export async function createPostgresFunctionQuery(
     const wizard = new AzureWizard(wizardContext, {
         promptSteps: [new FunctionQueryNameStep(), new FunctionQueryReturnTypeStep()],
         executeSteps: [new FunctionQueryCreateStep()],
-        title: 'Create PostgreSQL Function Query',
+        title: l10n.t('Create PostgreSQL Function Query'),
     });
 
     await runPostgresQueryWizard(wizard, wizardContext, treeItem);

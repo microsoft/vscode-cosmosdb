@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
@@ -80,7 +81,7 @@ export class DatabaseAccountTreeItemInternal implements DatabaseAccountTreeItem 
                     apiType,
                 );
             } else {
-                throw new Error('Unsupported connection string.');
+                throw new Error(l10n.t('Unsupported connection string.'));
             }
         }
 

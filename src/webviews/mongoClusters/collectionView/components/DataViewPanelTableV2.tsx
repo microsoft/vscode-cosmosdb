@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
+import debounce from 'lodash.debounce';
 import * as React from 'react';
 import { useContext, useRef } from 'react';
 import {
@@ -12,14 +14,12 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { type CellValue } from '../../../../utils/slickgrid/CellValue';
-import { LoadingAnimationTable } from './LoadingAnimationTable';
-
-import debounce from 'lodash.debounce';
 import { type TableDataEntry } from '../../../../mongoClusters/MongoClusterSession';
+import { type CellValue } from '../../../../utils/slickgrid/CellValue';
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import { CollectionViewContext } from '../collectionViewContext';
 import './dataViewPanelTableV2.scss';
+import { LoadingAnimationTable } from './LoadingAnimationTable';
 
 interface Props {
     liveHeaders: string[];
@@ -31,7 +31,7 @@ const cellFormatter: Formatter<object> = (_row: number, _cell: number, value: Ce
     if (value === undefined || value === null) {
         return {
             text: '',
-            toolTip: 'This field is not set',
+            toolTip: l10n.t('This field is not set'),
         };
     }
     return {

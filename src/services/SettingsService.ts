@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import path from 'path';
-import { ConfigurationTarget, Uri, workspace, type WorkspaceConfiguration, type WorkspaceFolder } from 'vscode';
+import * as vscode from 'vscode';
 
 export const vscodeFolder: string = '.vscode';
 export const settingsFile: string = 'settings.json';
@@ -17,8 +17,8 @@ export class SettingUtils {
      * @param prefix The optional extension prefix.
      */
     async updateGlobalSetting<T = string>(key: string, value: T, prefix?: string): Promise<void> {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix);
-        await projectConfiguration.update(key, value, ConfigurationTarget.Global);
+        const projectConfiguration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(prefix);
+        await projectConfiguration.update(key, value, vscode.ConfigurationTarget.Global);
     }
 
     /**
@@ -27,7 +27,7 @@ export class SettingUtils {
      * @param prefix The optional extension prefix.
      */
     getGlobalSetting<T>(key: string, prefix?: string): T | undefined {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix);
+        const projectConfiguration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(prefix);
         const result: { globalValue?: T; defaultValue?: T } | undefined = projectConfiguration.inspect<T>(key);
         return result?.globalValue === undefined ? result?.defaultValue : result?.globalValue;
     }
@@ -45,13 +45,12 @@ export class SettingUtils {
         value: T,
         prefix?: string,
         fsPath?: string,
-        targetSetting:
-            | ConfigurationTarget.Workspace
-            | ConfigurationTarget.WorkspaceFolder = ConfigurationTarget.Workspace,
+        targetSetting: vscode.ConfigurationTarget.Workspace | vscode.ConfigurationTarget.WorkspaceFolder = vscode
+            .ConfigurationTarget.Workspace,
     ): Promise<void> {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(
+        const projectConfiguration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
             prefix,
-            fsPath ? Uri.file(fsPath) : undefined,
+            fsPath ? vscode.Uri.file(fsPath) : undefined,
         );
         await projectConfiguration.update(key, value, targetSetting);
     }
@@ -67,13 +66,12 @@ export class SettingUtils {
         key: string,
         prefix?: string,
         fsPath?: string,
-        targetLimit:
-            | ConfigurationTarget.Workspace
-            | ConfigurationTarget.WorkspaceFolder = ConfigurationTarget.Workspace,
+        targetLimit: vscode.ConfigurationTarget.Workspace | vscode.ConfigurationTarget.WorkspaceFolder = vscode
+            .ConfigurationTarget.Workspace,
     ): T | undefined {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(
+        const projectConfiguration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
             prefix,
-            fsPath ? Uri.file(fsPath) : undefined,
+            fsPath ? vscode.Uri.file(fsPath) : undefined,
         );
 
         const configurationLevel = this.getLowestConfigurationLevel(projectConfiguration, key);
@@ -91,9 +89,9 @@ export class SettingUtils {
      * @param prefix The optional extension prefix.
      */
     getSetting<T>(key: string, prefix?: string, fsPath?: string): T | undefined {
-        const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(
+        const projectConfiguration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
             prefix,
-            fsPath ? Uri.file(fsPath) : undefined,
+            fsPath ? vscode.Uri.file(fsPath) : undefined,
         );
         return projectConfiguration.get<T>(key);
     }
@@ -102,10 +100,13 @@ export class SettingUtils {
      * Searches through all open folders and gets the current workspace setting (as long as there are no conflicts)
      */
     getWorkspaceSettingFromAnyFolder(key: string, prefix?: string): string | undefined {
-        if (workspace.workspaceFolders && workspace.workspaceFolders.length > 0) {
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
             let result: string | undefined;
-            for (const folder of workspace.workspaceFolders) {
-                const projectConfiguration: WorkspaceConfiguration = workspace.getConfiguration(prefix, folder.uri);
+            for (const folder of vscode.workspace.workspaceFolders) {
+                const projectConfiguration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
+                    prefix,
+                    folder.uri,
+                );
                 const folderResult: string | undefined = projectConfiguration.get<string>(key);
                 if (!result) {
                     result = folderResult;
@@ -119,23 +120,23 @@ export class SettingUtils {
         }
     }
 
-    getDefaultRootWorkspaceSettingsPath(rootWorkspaceFolder: WorkspaceFolder): string {
+    getDefaultRootWorkspaceSettingsPath(rootWorkspaceFolder: vscode.WorkspaceFolder): string {
         return path.join(rootWorkspaceFolder.uri.fsPath, vscodeFolder, settingsFile);
     }
 
     getLowestConfigurationLevel(
-        projectConfiguration: WorkspaceConfiguration,
+        projectConfiguration: vscode.WorkspaceConfiguration,
         key: string,
-    ): ConfigurationTarget | undefined {
+    ): vscode.ConfigurationTarget | undefined {
         const configuration = projectConfiguration.inspect(key);
 
-        let lowestLevelConfiguration: ConfigurationTarget | undefined;
+        let lowestLevelConfiguration: vscode.ConfigurationTarget | undefined;
         if (configuration?.workspaceFolderValue !== undefined) {
-            lowestLevelConfiguration = ConfigurationTarget.WorkspaceFolder;
+            lowestLevelConfiguration = vscode.ConfigurationTarget.WorkspaceFolder;
         } else if (configuration?.workspaceValue !== undefined) {
-            lowestLevelConfiguration = ConfigurationTarget.Workspace;
+            lowestLevelConfiguration = vscode.ConfigurationTarget.Workspace;
         } else if (configuration?.globalValue !== undefined) {
-            lowestLevelConfiguration = ConfigurationTarget.Global;
+            lowestLevelConfiguration = vscode.ConfigurationTarget.Global;
         }
 
         return lowestLevelConfiguration;

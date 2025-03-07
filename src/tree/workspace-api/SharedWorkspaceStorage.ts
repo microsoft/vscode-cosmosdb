@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type WorkspaceResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
 
 /**
@@ -68,7 +69,7 @@ export class SharedWorkspaceStorage {
                     try {
                         secrets = JSON.parse(secretsJson) as string[];
                     } catch (error) {
-                        console.error(`Failed to parse secrets for key ${key}:`, error);
+                        console.error(l10n.t('Failed to parse secrets for key {0}:', key), error);
                         secrets = [];
                     }
                 }
@@ -101,7 +102,9 @@ export class SharedWorkspaceStorage {
         // Check for existing item
         const existingItem = ext.context.globalState.get<SharedWorkspaceStorageItem>(storageKey);
         if (existingItem && !overwrite) {
-            throw new Error(`An item with id '${item.id}' already exists for workspaceType '${workspaceType}'.`);
+            throw new Error(
+                l10n.t('An item with id "{0}" already exists for workspaceType "{1}".', item.id, workspaceType),
+            );
         }
 
         // Save all secrets
@@ -111,7 +114,7 @@ export class SharedWorkspaceStorage {
             try {
                 await ext.secretStorage.store(secretKey, secretsJson);
             } catch (error) {
-                console.error(`Failed to store secrets for key ${secretKey}:`, error);
+                console.error(l10n.t('Failed to store secrets for key {0}:', secretKey), error);
                 throw error;
             }
         }

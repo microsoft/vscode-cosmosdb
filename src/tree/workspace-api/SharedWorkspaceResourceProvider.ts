@@ -5,6 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { type WorkspaceResource, type WorkspaceResourceProvider } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
 
 /**
@@ -56,12 +57,12 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
             {
                 resourceType: WorkspaceResourceType.MongoClusters,
                 id: 'vscode.cosmosdb.workspace.mongoclusters',
-                name: 'MongoDB Cluster Accounts', // this name will be displayed in the workspace view, when no WorkspaceResourceBranchDataProvider is registered
+                name: l10n.t('MongoDB Cluster Accounts'), // this name will be displayed in the workspace view, when no WorkspaceResourceBranchDataProvider is registered
             },
             {
                 resourceType: WorkspaceResourceType.AttachedAccounts,
                 id: 'vscode.cosmosdb.workspace.attachedaccounts',
-                name: 'Attached Database Accounts',
+                name: l10n.t('CosmosDB Accounts'),
             },
         ];
     }

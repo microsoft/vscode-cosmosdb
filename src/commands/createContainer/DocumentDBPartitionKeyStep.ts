@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 export enum HierarchyStep {
@@ -22,15 +23,18 @@ export class DocumentDBPartitionKeyStep extends AzureWizardPromptStep<CreateCont
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
         const placeHolder =
             this.hierarchyStep === HierarchyStep.First
-                ? 'first partition key e.g., /TenantId'
+                ? l10n.t('first partition key e.g., /TenantId')
                 : this.hierarchyStep === HierarchyStep.Second
-                  ? 'second partition key e.g., /UserId'
+                  ? l10n.t('second partition key e.g., /UserId')
                   : this.hierarchyStep === HierarchyStep.Third
-                    ? 'third partition key e.g., /address/zipCode'
-                    : 'partition key';
-        const prompt =
-            `Enter the partition key for the container` +
-            (this.hierarchyStep === HierarchyStep.First ? '' : ` (leave blank to skip)`);
+                    ? l10n.t('third partition key e.g., /address/zipCode')
+                    : l10n.t('partition key');
+        const prompt = l10n
+            .t(
+                'Enter the partition key for the container {0}',
+                this.hierarchyStep === HierarchyStep.First ? '' : l10n.t('(leave blank to skip)'),
+            )
+            .trim();
 
         let partitionKey = (
             await context.ui.showInputBox({
@@ -77,15 +81,15 @@ export class DocumentDBPartitionKeyStep extends AzureWizardPromptStep<CreateCont
         }
 
         if (/[^a-zA-Z0-9_/]/.test(partitionKey)) {
-            return `Partition key cannot contain the wildcard characters`;
+            return l10n.t('Partition key cannot contain the wildcard characters');
         }
 
         if (!/^\/?[^/]*$/.test(partitionKey)) {
-            return 'Partition key can only start with a forward slash (/)';
+            return l10n.t('Partition key can only start with a forward slash (/)');
         }
 
         if (partitionKey.length > 255) {
-            return 'Partition key cannot be longer than 255 characters';
+            return l10n.t('Partition key cannot be longer than 255 characters');
         }
 
         return undefined;
@@ -96,7 +100,7 @@ export class DocumentDBPartitionKeyStep extends AzureWizardPromptStep<CreateCont
         partitionKey: string,
     ): Promise<string | undefined> {
         if (this.hierarchyStep === HierarchyStep.First && partitionKey.length === 0) {
-            return 'Partition key is required.';
+            return l10n.t('Partition key is required.');
         }
 
         if (partitionKey && partitionKey.length && partitionKey[0] !== '/') {
@@ -104,7 +108,7 @@ export class DocumentDBPartitionKeyStep extends AzureWizardPromptStep<CreateCont
         }
 
         if (context.partitionKey?.paths?.includes(partitionKey)) {
-            return 'Partition key must be unique.';
+            return l10n.t('Partition key must be unique.');
         }
 
         return undefined;

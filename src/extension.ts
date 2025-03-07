@@ -22,6 +22,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
@@ -51,6 +52,12 @@ export async function activateInternal(
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
     registerAzureUtilsExtensionVariables(ext);
+
+    if (vscode.l10n.uri) {
+        l10n.config({
+            contents: vscode.l10n.bundle ?? {},
+        });
+    }
 
     await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';

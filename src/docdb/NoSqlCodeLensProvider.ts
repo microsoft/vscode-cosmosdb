@@ -4,17 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import {
-    CodeLens,
-    EventEmitter,
-    Position,
-    Range,
-    type CancellationToken,
-    type CodeLensProvider,
-    type Event,
-    type ProviderResult,
-    type TextDocument,
-} from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { KeyValueStore } from '../KeyValueStore';
 
 export type NoSqlQueryConnection = {
@@ -28,10 +19,10 @@ export type NoSqlQueryConnection = {
 
 export const noSqlQueryConnectionKey = 'NO_SQL_QUERY_CONNECTION_KEY.v1';
 
-export class NoSqlCodeLensProvider implements CodeLensProvider {
-    private _onDidChangeEmitter: EventEmitter<void> = new EventEmitter<void>();
+export class NoSqlCodeLensProvider implements vscode.CodeLensProvider {
+    private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
 
-    public get onDidChangeCodeLenses(): Event<void> {
+    public get onDidChangeCodeLenses(): vscode.Event<void> {
         return this._onDidChangeEmitter.event;
     }
 
@@ -39,7 +30,10 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
         this._onDidChangeEmitter.fire();
     }
 
-    public provideCodeLenses(document: TextDocument, _token: CancellationToken): ProviderResult<CodeLens[]> {
+    public provideCodeLenses(
+        document: vscode.TextDocument,
+        _token: vscode.CancellationToken,
+    ): vscode.ProviderResult<vscode.CodeLens[]> {
         return callWithTelemetryAndErrorHandling('nosql.provideCodeLenses', (context: IActionContext) => {
             context.telemetry.suppressIfSuccessful = true;
             const text = document.getText();
@@ -49,34 +43,42 @@ export class NoSqlCodeLensProvider implements CodeLensProvider {
             const connectedCollection: NoSqlQueryConnection | undefined = KeyValueStore.instance.get(
                 noSqlQueryConnectionKey,
             ) as unknown as NoSqlQueryConnection;
-            let connectCodeLens: CodeLens;
+            let connectCodeLens: vscode.CodeLens;
             if (!connectedCollection) {
-                connectCodeLens = new CodeLens(new Range(new Position(0, 0), new Position(0, 0)), {
-                    title: 'Not connected',
-                    command: 'cosmosDB.connectNoSqlContainer',
-                    arguments: [],
-                });
+                connectCodeLens = new vscode.CodeLens(
+                    new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+                    {
+                        title: l10n.t('Not connected'),
+                        command: 'cosmosDB.connectNoSqlContainer',
+                        arguments: [],
+                    },
+                );
             } else {
-                connectCodeLens = new CodeLens(new Range(new Position(0, 0), new Position(0, 0)), {
-                    title: `Connected to ${connectedCollection.databaseId}.${connectedCollection.containerId}`,
-                    command: 'cosmosDB.connectNoSqlContainer',
-                    arguments: [],
-                });
+                connectCodeLens = new vscode.CodeLens(
+                    new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
+                    {
+                        title: l10n.t('Connected to {database_container}', {
+                            database_container: `${connectedCollection.databaseId}.${connectedCollection.containerId}`,
+                        }),
+                        command: 'cosmosDB.connectNoSqlContainer',
+                        arguments: [],
+                    },
+                );
             }
-            const lenses: CodeLens[] = [
+            const lenses: vscode.CodeLens[] = [
                 connectCodeLens,
-                new CodeLens(new Range(new Position(0, 0), new Position(0, 0)), {
-                    title: 'Execute',
+                new vscode.CodeLens(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)), {
+                    title: l10n.t('Execute'),
                     command: 'cosmosDB.executeNoSqlQuery',
                     arguments: [{ queryText }],
                 }),
-                new CodeLens(new Range(new Position(0, 0), new Position(0, 0)), {
-                    title: 'Execute with Query Metrics',
+                new vscode.CodeLens(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)), {
+                    title: l10n.t('Execute with Query Metrics'),
                     command: 'cosmosDB.executeNoSqlQuery',
                     arguments: [{ queryText, populateQueryMetrics: true }],
                 }),
-                new CodeLens(new Range(new Position(0, 0), new Position(0, 0)), {
-                    title: 'Get Query Plan',
+                new vscode.CodeLens(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)), {
+                    title: l10n.t('Get Query Plan'),
                     command: 'cosmosDB.getNoSqlQueryPlan',
                     arguments: [{ queryText }],
                 }),

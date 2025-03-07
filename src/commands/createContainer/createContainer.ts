@@ -5,11 +5,11 @@
 
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -54,18 +54,17 @@ export async function createDocumentDBContainer(
     context.telemetry.properties.experience = node.experience.api;
 
     const isCore = node.experience.api === API.Core;
-    const containerTypeName = isCore ? 'container' : 'graph';
 
     const wizardContext: CreateContainerWizardContext = {
         ...context,
         accountInfo: node.model.accountInfo,
         databaseId: node.model.database.id,
+        experience: node.experience,
         nodeId: node.id,
-        containerTypeName,
     };
 
     const wizard = new AzureWizard(wizardContext, {
-        title: `Create ${containerTypeName}`,
+        title: isCore ? l10n.t('Create container') : l10n.t('Create graph'),
         promptSteps: [
             new DocumentDBContainerNameStep(),
             new DocumentDBPartitionKeyStep(HierarchyStep.First),
@@ -81,7 +80,7 @@ export async function createDocumentDBContainer(
     await wizard.execute();
 
     const newContainerName = nonNullValue(wizardContext.containerName);
-    showConfirmationAsInSettings(`The "${newContainerName}" container has been created.`);
+    showConfirmationAsInSettings(l10n.t('The "{newContainerName}" container has been created.', { newContainerName }));
 }
 
 export async function createMongoCollection(context: IActionContext, node?: DatabaseItem): Promise<void> {
@@ -106,7 +105,7 @@ export async function createMongoCollection(context: IActionContext, node?: Data
     };
 
     const wizard: AzureWizard<CreateCollectionWizardContext> = new AzureWizard(wizardContext, {
-        title: localize('mongoClusters.createCollection.title', 'Create collection'),
+        title: l10n.t('Create collection'),
         promptSteps: [new CollectionNameStep()],
         executeSteps: [new MongoExecuteStep()],
         showLoadingPrompt: true,
@@ -116,5 +115,7 @@ export async function createMongoCollection(context: IActionContext, node?: Data
     await wizard.execute();
 
     const newCollectionName = nonNullValue(wizardContext.newCollectionName);
-    showConfirmationAsInSettings(`The "${newCollectionName}" collection has been created.`);
+    showConfirmationAsInSettings(
+        l10n.t('The "{newCollectionName}" collection has been created.', { newCollectionName }),
+    );
 }

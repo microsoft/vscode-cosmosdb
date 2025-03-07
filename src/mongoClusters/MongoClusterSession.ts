@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import { ObjectId, type Document, type WithId } from 'mongodb';
 import { type JSONSchema } from '../utils/json/JSONSchema';
@@ -195,7 +196,7 @@ export class MongoClustersSession {
     public static getSession(sessionId: string): MongoClustersSession {
         const session = this._sessions.get(sessionId);
         if (session === undefined) {
-            throw new Error(`No session found for id ${sessionId}`);
+            throw new Error(l10n.t('No session found for id {sessionId}', { sessionId }));
         }
 
         return session;

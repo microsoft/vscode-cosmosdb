@@ -5,6 +5,7 @@
 
 import { type MongoCluster, type Resource } from '@azure/arm-cosmosdb';
 import { type Experience } from '../../AzureDBExperiences';
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 
 // Selecting only the properties used in the extension, but keeping an easy option to extend the model later and offer full coverage of MongoCluster
 // '|' means that you can only access properties that are common to both types.
@@ -41,6 +42,7 @@ interface ResourceModelInUse extends Resource {
     // adding support for MongoRU and vCore
     dbExperience: Experience;
 
+    // TODO: is this still in use?
     isServerless?: boolean;
 
     /**
@@ -50,15 +52,5 @@ interface ResourceModelInUse extends Resource {
      * We use it to filter the list of accounts when displaying them.
      * Also, sometimes we need to know if the account is an emulator to show/hide some UI elements.
      */
-    isEmulator?: boolean;
-
-    /**
-     * Indicates whether the emulator security should be disabled.
-     *
-     * This property is set when an account is being added to the workspace.
-     *
-     * We use it to disable the tls/ssl when connecting to the emulator,
-     * as it can be complicated for some users to set up the emulator correctly.
-     */
-    disableEmulatorSecurity?: boolean;
+    emulatorConfiguration?: MongoEmulatorConfiguration;
 }

@@ -178,10 +178,9 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
                     options.mongoPath || mongoPath,
                     options.args || [],
                     '',
-                    false,
-                    false,
                     outputChannel,
                     options.timeoutSeconds || 5,
+                    { isEmulator: false, disableEmulatorSecurity: false },
                 );
                 const result = await shell.executeScript(options.script);
                 if (options.expectedError) {
@@ -298,10 +297,9 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             mongoPath,
             [],
             '',
-            false,
-            false,
             new FakeOutputChannel(),
             5,
+            { disableEmulatorSecurity: false, isEmulator: false },
         );
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');

@@ -5,7 +5,7 @@
 
 import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';

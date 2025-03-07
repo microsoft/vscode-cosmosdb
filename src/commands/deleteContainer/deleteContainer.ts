@@ -5,6 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
@@ -13,7 +14,6 @@ import { CollectionItem } from '../../mongoClusters/tree/CollectionItem';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteGraph(context: IActionContext, node?: DocumentDBContainerResourceItem): Promise<void> {
@@ -61,8 +61,8 @@ export async function deleteContainer(
         node instanceof CollectionItem ? 'collection' : node.experience.api === API.Graph ? 'graph' : 'container';
 
     const confirmed = await getConfirmationAsInSettings(
-        `Delete "${containerId}"?`,
-        `Delete ${containerTypeName} "${containerId}" and its contents?\nThis can't be undone.`,
+        vscode.l10n.t(`Delete "{0}"?`, containerId),
+        vscode.l10n.t(`Delete {0} "{1}" and its contents?\nThis can't be undone.`, containerTypeName, containerId),
         containerId,
     );
 
@@ -76,11 +76,7 @@ export async function deleteContainer(
 
         if (success) {
             showConfirmationAsInSettings(
-                localize(
-                    'showConfirmation.droppedDatabase',
-                    `The "{0}" ${containerTypeName} has been deleted.`,
-                    containerId,
-                ),
+                vscode.l10n.t(`The "{0}" {1} has been deleted.`, containerId, containerTypeName),
             );
         }
     } finally {

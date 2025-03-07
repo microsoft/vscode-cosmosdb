@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
-import { window } from 'vscode';
+import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
 import { PostgresTableTreeItem } from '../tree/PostgresTableTreeItem';
 
 export async function deletePostgresTable(context: IActionContext, node?: PostgresTableTreeItem): Promise<void> {
@@ -22,18 +21,14 @@ export async function deletePostgresTable(context: IActionContext, node?: Postgr
             },
         );
     }
-    const message: string = localize(
-        'deletesPostgresTable',
-        'Are you sure you want to delete table "{0}"?',
-        node.label,
-    );
+    const message: string = vscode.l10n.t('Are you sure you want to delete table "{0}"?', node.label);
     await context.ui.showWarningMessage(
         message,
         { modal: true, stepName: 'deletePostgresTable' },
         DialogResponses.deleteResponse,
     );
     await node.deleteTreeItem(context);
-    const deleteMessage: string = localize('successfullyDeletedTable', 'Successfully deleted table "{0}".', node.label);
-    void window.showInformationMessage(deleteMessage);
+    const deleteMessage: string = vscode.l10n.t('Successfully deleted table "{0}".', node.label);
+    void vscode.window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

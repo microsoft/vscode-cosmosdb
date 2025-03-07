@@ -5,7 +5,7 @@
 
 import { type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
 import { type ClientConfig } from 'pg';
-import { ThemeIcon } from 'vscode';
+import * as vscode from 'vscode';
 import { getPostgresProcedureQueryRows, type IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { type PostgresDatabaseTreeItem } from './PostgresDatabaseTreeItem';
 import { PostgresResourcesTreeItemBase } from './PostgresResourcesTreeItemBase';
@@ -24,7 +24,7 @@ export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemB
     }
 
     public get iconPath(): TreeItemIconPath {
-        return new ThemeIcon('server-process');
+        return new vscode.ThemeIcon('server-process');
     }
 
     public hasMoreChildrenImpl(): boolean {

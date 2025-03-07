@@ -14,7 +14,6 @@ import * as vscode from 'vscode';
 import { API, CoreExperience, tryGetExperience } from '../AzureDBExperiences';
 import { databaseAccountType } from '../constants';
 import { ext } from '../extensionVariables';
-import { localize } from '../utils/localize';
 import { nonNullProp } from '../utils/nonNull';
 import { type CosmosAccountModel, type CosmosDBResource } from './CosmosAccountModel';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
@@ -77,7 +76,7 @@ export class CosmosDBBranchDataProvider
             return [
                 createGenericElement({
                     contextValue: 'cosmosDB.item.error',
-                    label: localize('Error: {0}', parseError(error).message),
+                    label: vscode.l10n.t('Error: {0}', parseError(error).message),
                 }) as CosmosDBTreeElement,
             ];
         }

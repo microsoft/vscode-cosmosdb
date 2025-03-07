@@ -13,7 +13,6 @@ import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
-import { localize } from '../utils/localize';
 import { type CosmosDBResource } from './CosmosAccountModel';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
 import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
@@ -73,7 +72,7 @@ export class CosmosDBWorkspaceBranchDataProvider
             return [
                 createGenericElement({
                     contextValue: 'cosmosDB.workspace.item.error',
-                    label: localize('Error: {0}', parseError(error).message),
+                    label: vscode.l10n.t('Error: {0}', parseError(error).message),
                 }) as CosmosDBTreeElement,
             ];
         }

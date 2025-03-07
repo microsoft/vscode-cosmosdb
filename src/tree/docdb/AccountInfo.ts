@@ -6,12 +6,11 @@
 import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
@@ -118,12 +117,11 @@ async function getCredentialsForGeneric(
             } catch {
                 context.telemetry.properties.receivedKeyCreds = 'false';
 
-                const message = localize(
-                    'keyPermissionErrorMsg',
+                const message = vscode.l10n.t(
                     'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
                     name,
                 );
-                const openSettingsItem = localize('openSettings', 'Open Settings');
+                const openSettingsItem = vscode.l10n.t('Open Settings');
                 void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
                     if (item === openSettingsItem) {
                         void vscode.commands.executeCommand(
@@ -206,12 +204,11 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
                 // Clean up keyCred if local auth is disabled
                 keyCred = undefined;
 
-                const message = localize(
-                    'keyPermissionErrorMsg',
+                const message = vscode.l10n.t(
                     'You do not have the required permissions to list auth keys for [{0}].\nFalling back to using Entra ID.\nYou can change the default authentication in the settings.',
                     account.name,
                 );
-                const openSettingsItem = localize('openSettings', 'Open Settings');
+                const openSettingsItem = vscode.l10n.t('Open Settings');
                 void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
                     if (item === openSettingsItem) {
                         void vscode.commands.executeCommand(

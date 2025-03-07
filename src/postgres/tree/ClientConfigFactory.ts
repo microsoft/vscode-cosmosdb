@@ -10,8 +10,8 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type ClientConfig } from 'pg';
+import * as vscode from 'vscode';
 import { getTokenFunction } from '../../azureAccountUtils';
-import { localize } from '../../utils/localize';
 import { getClientConfigs, testClientConfig, type PostgresClientConfigType } from '../getClientConfig';
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType, timeoutErrorType } from '../postgresConstants';
 import { PostgresServerTreeItem } from './PostgresServerTreeItem';
@@ -88,8 +88,7 @@ export class PostgresClientConfigFactory {
                     const publicIp = PostgresServerTreeItem.ipAddr;
                     let ipMessage: string;
                     if (publicIp !== undefined) {
-                        ipMessage = localize(
-                            'ipAlreadyInFirewall',
+                        ipMessage = vscode.l10n.t(
                             "The IP address '{0}' already exists in the firewall rules.",
                             publicIp,
                         );
@@ -97,8 +96,7 @@ export class PostgresClientConfigFactory {
                         // The code should never reach here but handle it just in case.
                         ipMessage = 'Your IP address is already in the firewall rules.';
                     }
-                    const configureFirewallMessage = localize(
-                        'mustConfigureFirewall',
+                    const configureFirewallMessage = vscode.l10n.t(
                         'Some network environments may not report the actual public-facing IP address needed to access your server. Contact your network administrator to add the actual IP address to the firewall rules.',
                     );
                     // eslint-disable-next-line @typescript-eslint/only-throw-error
@@ -114,7 +112,7 @@ export class PostgresClientConfigFactory {
 
         // eslint-disable-next-line @typescript-eslint/only-throw-error
         throw {
-            message: localize('mustEnterCredentials', 'Must enter credentials to connect to server.'),
+            message: vscode.l10n.t('Must enter credentials to connect to server.'),
             code: invalidCredentialsErrorType,
         };
     }

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
@@ -14,7 +15,7 @@ export class DocumentDBStoredProcedureNameStep extends AzureWizardPromptStep<Cre
     public async prompt(context: CreateStoredProcedureWizardContext): Promise<void> {
         context.storedProcedureName = (
             await context.ui.showInputBox({
-                prompt: `Enter a stored procedure name for ${context.containerId}`,
+                prompt: vscode.l10n.t(`Enter a stored procedure name for {0}`, context.containerId),
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
@@ -36,11 +37,11 @@ export class DocumentDBStoredProcedureNameStep extends AzureWizardPromptStep<Cre
         }
 
         if (/[/\\?#&]/.test(name)) {
-            return `Container name cannot contain the characters '\\', '/', '#', '?', '&'`;
+            return vscode.l10n.t(`Container name cannot contain the characters '\\', '/', '#', '?', '&'`);
         }
 
         if (name.length > 255) {
-            return 'Trigger name cannot be longer than 255 characters';
+            return vscode.l10n.t('Trigger name cannot be longer than 255 characters');
         }
 
         return undefined;
@@ -51,7 +52,7 @@ export class DocumentDBStoredProcedureNameStep extends AzureWizardPromptStep<Cre
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {
-            return 'Stored procedure name is required.';
+            return vscode.l10n.t('Stored procedure name is required.');
         }
 
         try {
@@ -65,7 +66,11 @@ export class DocumentDBStoredProcedureNameStep extends AzureWizardPromptStep<Cre
                 .fetchAll();
 
             if (result.resources && result.resources.filter((t) => t.id === name).length > 0) {
-                return `The stored procedure "${name}" already exists in the container "${context.databaseId}".`;
+                return vscode.l10n.t(
+                    `The stored procedure "{0}" already exists in the container "{1}".`,
+                    name,
+                    context.databaseId,
+                );
             }
         } catch (error) {
             ext.outputChannel.appendLine(`Failed to validate stored procedure name: ${parseError(error).message}`);

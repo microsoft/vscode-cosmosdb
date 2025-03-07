@@ -5,11 +5,11 @@
 
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -106,7 +106,7 @@ export async function createMongoCollection(context: IActionContext, node?: Data
     };
 
     const wizard: AzureWizard<CreateCollectionWizardContext> = new AzureWizard(wizardContext, {
-        title: localize('mongoClusters.createCollection.title', 'Create collection'),
+        title: vscode.l10n.t('Create collection'),
         promptSteps: [new CollectionNameStep()],
         executeSteps: [new MongoExecuteStep()],
         showLoadingPrompt: true,

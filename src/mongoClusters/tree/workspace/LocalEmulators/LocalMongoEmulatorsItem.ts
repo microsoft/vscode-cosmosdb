@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type vscode from 'vscode';
-import { TreeItemCollapsibleState } from 'vscode';
+import * as vscode from 'vscode';
 import { MongoClustersExperience } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
 import { type CosmosDBTreeElement } from '../../../../tree/CosmosDBTreeElement';
@@ -57,7 +56,7 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
             contextValue: this.contextValue,
             label: 'Local Emulators',
             iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

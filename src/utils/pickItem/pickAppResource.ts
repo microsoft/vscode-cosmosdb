@@ -9,7 +9,7 @@ import {
     type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { type TreeItem, type TreeItemLabel } from 'vscode';
+import type * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -47,7 +47,7 @@ export async function pickAppResource<T extends CosmosDBTreeElement>(
     );
 }
 
-const isPick = (node: TreeItem, contextValueFilter?: ContextValueFilter): boolean => {
+const isPick = (node: vscode.TreeItem, contextValueFilter?: ContextValueFilter): boolean => {
     if (!contextValueFilter) {
         return true;
     }
@@ -117,7 +117,7 @@ export async function pickWorkspaceResource<T extends CosmosDBTreeElement>(
         .filter(([treeItem]) => isPick(treeItem, contextValueFilter))
         .map(([treeItem, item]) => {
             return {
-                label: ((treeItem.label as TreeItemLabel)?.label || treeItem.label) as string,
+                label: ((treeItem.label as vscode.TreeItemLabel)?.label || treeItem.label) as string,
                 description: treeItem.description as string,
                 data: item,
             };

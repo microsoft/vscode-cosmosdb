@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { ViewColumn } from 'vscode';
+import * as vscode from 'vscode';
 import { DocumentFileDescriptor } from '../../docdb/fs/DocumentFileDescriptor';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItemResourceItem';
@@ -56,5 +56,5 @@ export function openMongoDocumentView(
         mode: props.mode,
     });
 
-    view.revealToForeground(ViewColumn.Active);
+    view.revealToForeground(vscode.ViewColumn.Active);
 }

@@ -5,7 +5,7 @@
 
 import { type CosmosClient, type FeedOptions, type ItemDefinition, type QueryIterator } from '@azure/cosmos';
 import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
@@ -64,7 +64,7 @@ export abstract class DocumentDBItemsResourceItem
         return result;
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

@@ -10,7 +10,6 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type WorkspaceResourceBranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { type TreeItem } from 'vscode';
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { MongoDBAccountsWorkspaceItem } from './MongoDBAccountsWorkspaceItem';
@@ -55,7 +54,7 @@ export class MongoClustersWorkspaceBranchDataProvider
         return ext.state.wrapItemInStateHandling(resourceItem!, () => this.refresh(resourceItem));
     }
 
-    getTreeItem(element: TreeElementBase): TreeItem | Thenable<TreeItem> {
+    getTreeItem(element: TreeElementBase): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element.getTreeItem();
     }
 

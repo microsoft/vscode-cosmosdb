@@ -4,8 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
-import { type TreeItem } from 'vscode';
-
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
@@ -118,7 +116,7 @@ export abstract class MongoClusterItemBase
      * Returns the tree item representation of the cluster.
      * @returns The TreeItem object.
      */
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

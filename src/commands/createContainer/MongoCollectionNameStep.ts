@@ -4,15 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { localize } from '../../utils/localize';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 
 export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWizardContext> {
     public hideStepCount: boolean = true;
 
     public async prompt(context: CreateCollectionWizardContext): Promise<void> {
-        const prompt: string = localize('mongoClusters.collectionNamePrompt', 'Enter a collection name.');
+        const prompt: string = vscode.l10n.t('Enter a collection name.');
         context.newCollectionName = (
             await context.ui.showInputBox({
                 prompt,
@@ -39,32 +39,23 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
         }
 
         if (!/^[a-zA-Z_]/.test(collectionName)) {
-            return localize(
-                'mongoClusters.collectionNameDoesntStartWithLetter',
-                'Collection names should begin with an underscore or a letter character.',
-            );
+            return vscode.l10n.t('Collection names should begin with an underscore or a letter character.');
         }
 
         if (/[$]/.test(collectionName)) {
-            return localize('mongoClusters.collectionNameContainsDollar', 'Collection name cannot contain the $.');
+            return vscode.l10n.t('Collection name cannot contain the $.');
         }
 
         if (collectionName.includes('\0')) {
-            return localize(
-                'mongoClusters.collectionNameContainsNull',
-                'Collection name cannot contain the null character.',
-            );
+            return vscode.l10n.t('Collection name cannot contain the null character.');
         }
 
         if (collectionName.startsWith('system.')) {
-            return localize(
-                'mongoClusters.collectionNameStartsWithSystem',
-                'Collection name cannot begin with the system. prefix (Reserved for internal use).',
-            );
+            return vscode.l10n.t('Collection name cannot begin with the system. prefix (Reserved for internal use).');
         }
 
         if (collectionName.includes('.system.')) {
-            return localize('mongoClusters.collectionNameContainsSystem', 'Collection name cannot contain .system.');
+            return vscode.l10n.t('Collection name cannot contain .system.');
         }
 
         return undefined;
@@ -75,7 +66,7 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {
-            return localize('mongoClusters.collectionNameRequired', 'Collection name is required.');
+            return vscode.l10n.t('Collection name is required.');
         }
 
         try {
@@ -83,8 +74,7 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
             const collections = await client.listCollections(context.databaseId);
 
             if (collections.filter((c) => c.name === name).length > 0) {
-                return localize(
-                    'mongoClusters.collectionExists',
+                return vscode.l10n.t(
                     'The collection "{0}" already exists in the database "{1}".',
                     name,
                     context.databaseId,

@@ -5,9 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { ViewColumn } from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
-import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
@@ -22,7 +20,7 @@ export async function executeNoSqlQuery(
         const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
 
         if (!activeEditor?.document) {
-            throw new Error(localize('openQueryBeforeExecuting', 'Open a NoSQL query before executing.'));
+            throw new Error(vscode.l10n.t('Open a NoSQL query before executing.'));
         }
         queryText = activeEditor.document.getText();
         populateQueryMetrics = false;
@@ -64,14 +62,14 @@ export async function executeNoSqlQuery(
                 ),
                 resultDocumentTitle,
                 '.json',
-                ViewColumn.Beside,
+                vscode.ViewColumn.Beside,
             );
         } else {
             await vscodeUtil.showNewFile(
                 JSON.stringify(response.resources, undefined, 2),
                 resultDocumentTitle,
                 '.json',
-                ViewColumn.Beside,
+                vscode.ViewColumn.Beside,
             );
         }
     }

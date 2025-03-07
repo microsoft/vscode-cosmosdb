@@ -5,6 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
@@ -12,7 +13,6 @@ import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteAzureDatabase(
@@ -56,9 +56,7 @@ export async function deleteDatabase(
             : deleteDocumentDBDatabase(node));
 
         if (success) {
-            showConfirmationAsInSettings(
-                localize('showConfirmation.droppedDatabase', 'The "{0}" database has been deleted.', databaseId),
-            );
+            showConfirmationAsInSettings(vscode.l10n.t('The "{0}" database has been deleted.', databaseId));
         }
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');

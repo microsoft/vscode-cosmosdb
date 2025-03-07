@@ -13,7 +13,6 @@ import { checkAuthentication } from '../../postgres/commands/checkAuthentication
 import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function copyPostgresConnectionString(
@@ -78,7 +77,7 @@ export async function copyConnectionString(
     } else if (node instanceof CosmosDBAccountResourceItemBase || node instanceof MongoClusterItemBase) {
         connectionString = await ext.state.runWithTemporaryDescription(
             node.id,
-            localize('copyConnectionString.working', 'Working...'),
+            vscode.l10n.t('Working...'),
             async () => {
                 if (node instanceof CosmosDBAccountResourceItemBase) {
                     context.telemetry.properties.experience = node.experience.api;
@@ -97,15 +96,12 @@ export async function copyConnectionString(
 
     if (!connectionString) {
         void vscode.window.showErrorMessage(
-            localize(
-                'copyConnectionString.noConnectionString',
-                'Failed to extract the connection string from the selected account.',
-            ),
+            vscode.l10n.t('Failed to extract the connection string from the selected account.'),
         );
     } else {
         await vscode.env.clipboard.writeText(connectionString);
         void vscode.window.showInformationMessage(
-            localize('copyConnectionString.success', 'The connection string has been copied to the clipboard'),
+            vscode.l10n.t('The connection string has been copied to the clipboard'),
         );
     }
 }

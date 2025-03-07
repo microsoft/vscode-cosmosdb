@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import vscode, { ViewColumn } from 'vscode';
+import * as vscode from 'vscode';
 import { createNoSqlQueryConnection } from '../../docdb/utils/NoSqlQueryConnection';
 import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
 import { DocumentTab } from '../../panels/DocumentTab';
@@ -28,7 +28,7 @@ export async function createDocumentDBDocument(
         return;
     }
 
-    DocumentTab.render(createNoSqlQueryConnection(node), 'add', undefined, ViewColumn.Active);
+    DocumentTab.render(createNoSqlQueryConnection(node), 'add', undefined, vscode.ViewColumn.Active);
 }
 
 export async function createMongoDocument(context: IActionContext, node?: CollectionItem): Promise<void> {

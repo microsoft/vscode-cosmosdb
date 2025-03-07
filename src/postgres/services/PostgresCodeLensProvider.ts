@@ -4,23 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import {
-    EventEmitter,
-    Position,
-    Range,
-    type CodeLens,
-    type CodeLensProvider,
-    type Event,
-    type ProviderResult,
-} from 'vscode';
-import { localize } from '../../utils/localize';
+import * as vscode from 'vscode';
 
-export class PostgresCodeLensProvider implements CodeLensProvider {
-    private _onDidChangeEmitter: EventEmitter<void> = new EventEmitter<void>();
+export class PostgresCodeLensProvider implements vscode.CodeLensProvider {
+    private _onDidChangeEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private _connectedDatabase: string | undefined;
     private _connectedDatabaseInitialized: boolean;
 
-    public get onDidChangeCodeLenses(): Event<void> {
+    public get onDidChangeCodeLenses(): vscode.Event<void> {
         return this._onDidChangeEmitter.event;
     }
 
@@ -30,41 +21,41 @@ export class PostgresCodeLensProvider implements CodeLensProvider {
         this._onDidChangeEmitter.fire();
     }
 
-    public provideCodeLenses(): ProviderResult<CodeLens[]> {
+    public provideCodeLenses(): vscode.ProviderResult<vscode.CodeLens[]> {
         return callWithTelemetryAndErrorHandling('postgreSQL.provideCodeLenses', (context: IActionContext) => {
             // Suppress except for errors - this can fire on every keystroke
             context.telemetry.suppressIfSuccessful = true;
 
             const isInitialized = this._connectedDatabaseInitialized;
             const isConnected = !!this._connectedDatabase;
-            const database = isConnected && this._connectedDatabase;
-            const lenses: CodeLens[] = [];
+            const database = (isConnected && this._connectedDatabase) || '';
+            const lenses: vscode.CodeLens[] = [];
 
             let title: string;
             if (!isInitialized) {
-                title = localize('initializing', 'Initializing...');
+                title = vscode.l10n.t('Initializing...');
             } else if (isConnected) {
-                title = localize('connectedToDatabase', 'Connected to "{0}"', database);
+                title = vscode.l10n.t('Connected to "{0}"', database);
             } else {
-                title = localize('connectToDatabase', 'Connect to a database');
+                title = vscode.l10n.t('Connect to a database');
             }
 
             //  Allow displaying and changing connected database
-            lenses.push(<CodeLens>{
+            lenses.push(<vscode.CodeLens>{
                 command: {
                     title,
                     command: isInitialized && 'postgreSQL.connectDatabase',
                 },
-                range: new Range(new Position(0, 0), new Position(0, 0)),
+                range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
             });
 
             if (isConnected) {
-                lenses.push(<CodeLens>{
+                lenses.push(<vscode.CodeLens>{
                     command: {
                         title: 'Execute Query',
                         command: 'postgreSQL.executeQuery',
                     },
-                    range: new Range(new Position(0, 0), new Position(0, 0)),
+                    range: new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0)),
                 });
             }
 

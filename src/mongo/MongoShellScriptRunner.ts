@@ -333,8 +333,9 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                 // If all else fails, prompt the user for the mongo path
                 const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
                 const browse: vscode.MessageItem = { title: 'Open installation page' };
-                const noMongoError: string =
-                    'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
+                const noMongoError: string = vscode.l10n.t(
+                    'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.',
+                );
                 const response = await context.ui.showWarningMessage(
                     noMongoError,
                     { stepName: 'promptForMongoPath' },
@@ -346,16 +347,20 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                     while (true) {
                         const newPath: vscode.Uri[] = await context.ui.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
-                            openLabel: `Select ${mongoExecutableFileName}`,
+                            openLabel: vscode.l10n.t(`Select {0}`, mongoExecutableFileName),
                             stepName: 'openMongoExeFile',
                         });
                         const fsPath = newPath[0].fsPath;
                         const baseName = path.basename(fsPath);
                         if (baseName !== mongoExecutableFileName) {
-                            const useAnyway: vscode.MessageItem = { title: 'Use anyway' };
-                            const tryAgain: vscode.MessageItem = { title: 'Try again' };
+                            const useAnyway: vscode.MessageItem = { title: vscode.l10n.t('Use anyway') };
+                            const tryAgain: vscode.MessageItem = { title: vscode.l10n.t('Try again') };
                             const response2 = await context.ui.showWarningMessage(
-                                `Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
+                                vscode.l10n.t(
+                                    `Expected a file named "{0}, but the selected filename is "{1}"`,
+                                    mongoExecutableFileName,
+                                    baseName,
+                                ),
                                 { stepName: 'confirmMongoExeFile' },
                                 useAnyway,
                                 tryAgain,

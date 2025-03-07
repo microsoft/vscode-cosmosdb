@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon, type TreeItem, TreeItemCollapsibleState } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
@@ -50,19 +50,19 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
                         collectionTreeItem: this,
                     },
                 ],
-                iconPath: new ThemeIcon('explorer-view-icon'),
+                iconPath: new vscode.ThemeIcon('explorer-view-icon'),
             }) as CosmosDBTreeElement,
             new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             label: this.collectionInfo.name,
-            iconPath: new ThemeIcon('folder-opened'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            iconPath: new vscode.ThemeIcon('folder-opened'),
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

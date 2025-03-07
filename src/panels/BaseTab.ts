@@ -6,7 +6,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import { type Channel } from './Communication/Channel/Channel';

@@ -44,9 +44,13 @@ export async function launchShell(
         node instanceof MongoClusterWorkspaceItem
     ) {
         // we need to discover the connection string
-        rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, 'Working...', async () => {
-            return node.getConnectionString();
-        });
+        rawConnectionString = await ext.state.runWithTemporaryDescription(
+            node.id,
+            vscode.l10n.t('Working...'),
+            async () => {
+                return node.getConnectionString();
+            },
+        );
     } else {
         // node is instanceof DatabaseItem or CollectionItem and we alrady have the connection string somewhere
         const client: MongoClustersClient = await MongoClustersClient.getClient(node.mongoCluster.id);
@@ -54,7 +58,9 @@ export async function launchShell(
     }
 
     if (!rawConnectionString) {
-        void vscode.window.showErrorMessage('Failed to extract the connection string from the selected node.');
+        void vscode.window.showErrorMessage(
+            vscode.l10n.t('Failed to extract the connection string from the selected node.'),
+        );
         return;
     }
 

@@ -7,7 +7,6 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
 import { nonNullProp } from '../../utils/nonNull';
 import { PostgresServerType } from '../abstract/models';
 import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
@@ -23,10 +22,10 @@ async function getUsernamePassword(
     serverDisplayName: string,
 ): Promise<{ username: string; password: string }> {
     let username: string = await context.ui.showInputBox({
-        prompt: localize('enterUsername', 'Enter username for server "{0}"', serverDisplayName),
+        prompt: vscode.l10n.t('Enter username for server "{0}"', serverDisplayName),
         stepName: 'enterPostgresUsername',
         validateInput: (value: string) => {
-            return value && value.length ? undefined : localize('usernameCannotBeEmpty', 'Username cannot be empty.');
+            return value && value.length ? undefined : vscode.l10n.t('Username cannot be empty.');
         },
     });
 
@@ -38,11 +37,11 @@ async function getUsernamePassword(
     }
 
     const password: string = await context.ui.showInputBox({
-        prompt: localize('enterPassword', 'Enter password for server "{0}"', serverDisplayName),
+        prompt: vscode.l10n.t('Enter password for server "{0}"', serverDisplayName),
         stepName: 'enterPostgresPassword',
         password: true,
         validateInput: (value: string) => {
-            return value && value.length ? undefined : localize('passwordCannotBeEmpty', 'Password cannot be empty.');
+            return value && value.length ? undefined : vscode.l10n.t('Password cannot be empty.');
         },
     });
 
@@ -58,11 +57,7 @@ async function persistUsernamePassword(
     username: string,
     password: string,
 ): Promise<void> {
-    const progressMessage: string = localize(
-        'setupCredentialsMessage',
-        'Setting up credentials for server "{0}"...',
-        serverName,
-    );
+    const progressMessage: string = vscode.l10n.t('Setting up credentials for server "{0}"...', serverName);
     const options: vscode.ProgressOptions = {
         location: vscode.ProgressLocation.Notification,
         title: progressMessage,
@@ -72,11 +67,7 @@ async function persistUsernamePassword(
         await setPostgresCredentials(username, password, id);
     });
 
-    const completedMessage: string = localize(
-        'setupCredentialsMessage',
-        'Successfully added credentials to server "{0}".',
-        serverName,
-    );
+    const completedMessage: string = vscode.l10n.t('Successfully added credentials to server "{0}".', serverName);
     void vscode.window.showInformationMessage(completedMessage);
     ext.outputChannel.appendLog(completedMessage);
 }

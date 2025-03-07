@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon } from 'vscode';
+import * as vscode from 'vscode';
 import { type IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { type PostgresFunctionsTreeItem } from './PostgresFunctionsTreeItem';
@@ -39,7 +39,7 @@ export class PostgresFunctionTreeItem extends AzExtTreeItem {
     }
 
     public get iconPath(): TreeItemIconPath {
-        return new ThemeIcon('symbol-function');
+        return new vscode.ThemeIcon('symbol-function');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

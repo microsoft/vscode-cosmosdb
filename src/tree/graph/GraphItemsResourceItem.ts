@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import vscode, { type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DocumentDBItemsResourceItem } from '../docdb/DocumentDBItemsResourceItem';
@@ -18,7 +18,7 @@ export class GraphItemsResourceItem extends DocumentDBItemsResourceItem {
         return [];
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

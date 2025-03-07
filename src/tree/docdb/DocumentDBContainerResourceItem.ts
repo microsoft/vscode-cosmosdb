@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
@@ -33,7 +33,7 @@ export abstract class DocumentDBContainerResourceItem
         return [items, storedProcedures, triggers].filter((r) => r !== undefined);
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

@@ -5,6 +5,7 @@
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import ConnectionString from 'mongodb-connection-string-url';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -27,7 +28,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
 
             const label = parsedCS.username + '@' + parsedCS.hosts.join(',');
 
-            return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
+            return ext.state.showCreatingChild(parentId, vscode.l10n.t(`Creating "{0}"...`, label), async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
                 const storageItem: SharedWorkspaceStorageItem = {

@@ -5,9 +5,9 @@
 
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as path from 'path';
+import * as vscode from 'vscode';
 import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient';
 import { ext } from '../extensionVariables';
-import { localize } from '../utils/localize';
 import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { type IConnectionParams } from './services/IConnectionParams';
 
@@ -40,12 +40,7 @@ export class MongoDBLanguageClient {
         };
 
         // Create the language client and start the client.
-        this.client = new LanguageClient(
-            'mongo',
-            localize('mongo.server.name', 'Mongo Language Server'),
-            serverOptions,
-            clientOptions,
-        );
+        this.client = new LanguageClient('mongo', vscode.l10n.t('Mongo Language Server'), serverOptions, clientOptions);
         const disposable = this.client.start();
 
         // Push the disposable to the context's subscriptions so that the

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -48,7 +49,7 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
             label = `MongoDB Emulator${portSuffix}`;
         }
 
-        return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
+        return ext.state.showCreatingChild(parentId, vscode.l10n.t(`Creating "{0}"...`, label), async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
 
             let isEmulator: boolean = true;

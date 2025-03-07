@@ -5,13 +5,13 @@
 
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { defaultTrigger } from '../../constants';
 import { TriggerFileDescriptor } from '../../docdb/fs/TriggerFileDescriptor';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { DocumentDBTriggersResourceItem } from '../../tree/docdb/DocumentDBTriggersResourceItem';
 import { type DocumentDBTriggerModel } from '../../tree/docdb/models/DocumentDBTriggerModel';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 import { DocumentDBExecuteStep } from './DocumentDBExecuteStep';
@@ -48,7 +48,7 @@ export async function createDocumentDBTrigger(
     };
 
     const wizard: AzureWizard<CreateTriggerWizardContext> = new AzureWizard(wizardContext, {
-        title: localize('cosmosDB.createTrigger.title', 'Create trigger'),
+        title: vscode.l10n.t('Create trigger'),
         promptSteps: [
             new DocumentDBTriggerNameStep(),
             new DocumentDBTriggerTypeStep(),

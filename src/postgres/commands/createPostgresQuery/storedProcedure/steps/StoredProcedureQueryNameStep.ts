@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../../../utils/localize';
+import * as vscode from 'vscode';
 import { type IPostgresQueryWizardContext } from '../../IPostgresQueryWizardContext';
 import { validateIdentifier } from '../../validateIdentifier';
 
@@ -12,7 +12,7 @@ export class StoredProcedureQueryNameStep extends AzureWizardPromptStep<IPostgre
     public async prompt(context: IPostgresQueryWizardContext): Promise<void> {
         context.name = (
             await context.ui.showInputBox({
-                prompt: localize('provideStoredProcedureName', 'Provide stored procedure name'),
+                prompt: vscode.l10n.t('Provide stored procedure name'),
                 validateInput: validateIdentifier,
             })
         ).trim();

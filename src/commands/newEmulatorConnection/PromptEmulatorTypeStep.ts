@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/vscode-azext-utils';
-import { QuickPickItemKind } from 'vscode';
+import * as vscode from 'vscode';
 import { API, CoreExperience, MongoExperience } from '../../AzureDBExperiences';
 import { SettingsService } from '../../services/SettingsService';
 import { defaultMongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
@@ -29,7 +29,7 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
                   {
                       id: API.Core,
                       label: 'Azure Cosmos DB (NoSQL)',
-                      detail: 'I want to connect to the Azure Cosmos DB (NoSQL) Emulator.',
+                      detail: vscode.l10n.t('I want to connect to the Azure Cosmos DB (NoSQL) Emulator.'),
                       alwaysShow: true,
                       group: 'Preconfigured Emulators',
                   },
@@ -37,8 +37,8 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
             : [
                   {
                       id: API.MongoDB,
-                      label: 'Azure Cosmos DB for MongoDB (RU)',
-                      detail: 'I want to connect to the Azure Cosmos DB Emulator for MongoDB (RU).',
+                      label: vscode.l10n.t('Azure Cosmos DB for MongoDB (RU)'),
+                      detail: vscode.l10n.t('I want to connect to the Azure Cosmos DB Emulator for MongoDB (RU).'),
                       alwaysShow: true,
                       group: 'Preconfigured Emulators',
                   },
@@ -46,21 +46,21 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
               ];
 
         const commonItems = [
-            { label: '', kind: QuickPickItemKind.Separator },
+            { label: '', kind: vscode.QuickPickItemKind.Separator },
             {
                 id: 'connectionString',
-                label: 'Connection String',
-                detail: 'I want to connect using a connection string.',
+                label: vscode.l10n.t('Connection String'),
+                detail: vscode.l10n.t('I want to connect using a connection string.'),
                 alwaysShow: true,
                 group: 'Custom Emulators',
             },
-            { label: '', kind: QuickPickItemKind.Separator },
+            { label: '', kind: vscode.QuickPickItemKind.Separator },
             {
                 id: 'learnMore',
-                label: 'Learn more',
+                label: vscode.l10n.t('Learn more'),
                 detail: isCore
-                    ? 'Learn more about the Azure Cosmos DB (NoSQL) Emulator.'
-                    : 'Learn more about the Azure Cosmos DB Emulator for MongoDB.',
+                    ? vscode.l10n.t('Learn more about the Azure Cosmos DB (NoSQL) Emulator.')
+                    : vscode.l10n.t('Learn more about the Azure Cosmos DB Emulator for MongoDB.'),
                 learnMoreUrl: isCore
                     ? 'https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?pivots=api-nosql'
                     : 'https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-develop-emulator?pivots=api-mongodb',
@@ -71,7 +71,9 @@ export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorCon
 
         const selectedItem = await context.ui.showQuickPick([...preconfiguredEmulators, ...commonItems], {
             enableGrouping: true,
-            placeHolder: isCore ? 'Select the Azure Cosmos DB Emulator Type...' : 'Select the MongoDB Emulator Type...',
+            placeHolder: isCore
+                ? vscode.l10n.t('Select the Azure Cosmos DB Emulator Type...')
+                : vscode.l10n.t('Select the MongoDB Emulator Type...'),
             stepName: 'selectEmulatorType',
             suppressPersistence: true,
         });

@@ -121,7 +121,9 @@ export async function initSurvey(): Promise<void> {
         rearmAfterDate.setDate(today.getDate() - REARM_AFTER_DAYS);
 
         // Skip if Survey has been taken within the last REARM_AFTER_DAYS days
-        const surveyTakenDate = new Date(ext.context.globalState.get(SURVEY_TAKEN_DATE_KEY, new Date(0).toDateString()));
+        const surveyTakenDate = new Date(
+            ext.context.globalState.get(SURVEY_TAKEN_DATE_KEY, new Date(0).toDateString()),
+        );
         if (surveyTakenDate.getTime() >= rearmAfterDate.getTime()) {
             context.telemetry.properties.isCandidate = (isCandidate = false).toString();
             return;

@@ -140,8 +140,8 @@ export async function initSurvey(): Promise<void> {
 
         // Prompt only once per day,
         // LAST_SESSION_DATE_KEY will be set to the last date the user was prompted
-        const lastSessionDate = ext.context.globalState.get(LAST_SESSION_DATE_KEY, new Date(0));
-        if (PROMPT_DATE_ONLY_ONCE && today === lastSessionDate) {
+        const lastSessionDate = new Date(ext.context.globalState.get(LAST_SESSION_DATE_KEY, new Date(0).toISOString()));
+        if (PROMPT_DATE_ONLY_ONCE && today.toDateString() === lastSessionDate.toDateString()) {
             context.telemetry.properties.isCandidate = (isCandidate = false).toString();
             return;
         }

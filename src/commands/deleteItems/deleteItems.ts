@@ -6,12 +6,12 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import vscode from 'vscode';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { DocumentFileDescriptor } from '../../docdb/fs/DocumentFileDescriptor';
+import { createNoSqlQueryConnection } from '../../docdb/utils/NoSqlQueryConnection';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItemResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { extractPartitionKey } from '../../utils/document';
 import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
@@ -29,9 +29,9 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
         return undefined;
     }
 
-    const databaseId = node.model.database.id;
-    const containerId = node.model.container.id;
-    const partitionKeyDefinition = node.model.container.partitionKey;
+    // const databaseId = node.model.database.id;
+    // const containerId = node.model.container.id;
+    // const partitionKeyDefinition = node.model.container.partitionKey;
     const item = node.model.item;
 
     if (item.id === undefined) {
@@ -49,18 +49,19 @@ export async function deleteDocumentDBItem(context: IActionContext, node: Docume
         return;
     }
 
-    const accountInfo = node.model.accountInfo;
-    const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
-
     try {
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .item(item.id!, partitionKeyDefinition ? extractPartitionKey(item, partitionKeyDefinition) : undefined)
-                .delete();
-            success = response.statusCode === 204;
+            const fsNode = new DocumentFileDescriptor(
+                node.id,
+                node.experience,
+                createNoSqlQueryConnection(node.model),
+                node.model.container.partitionKey,
+                node.model.item,
+            );
+            const document = await ext.fileSystem.openTextDocument(fsNode);
+            await vscode.workspace.fs.delete(document.uri);
+            success = true;
         });
 
         if (success) {

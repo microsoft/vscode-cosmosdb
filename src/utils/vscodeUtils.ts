@@ -8,7 +8,7 @@ import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { type EditableFileSystemItem } from '../DatabasesFileSystem';
+import { type EditableFileSystemItem } from '../docdb/fs/CosmosFileSystem';
 import { ext } from '../extensionVariables';
 import { type CosmosDBTreeElement } from '../tree/CosmosDBTreeElement';
 import { getRootPath } from './workspacUtils';

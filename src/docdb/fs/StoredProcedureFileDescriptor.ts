@@ -5,14 +5,15 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type Experience } from '../../AzureDBExperiences';
-import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type DocumentDBStoredProcedureModel } from '../../tree/docdb/models/DocumentDBStoredProcedureModel';
 import { nonNullProp } from '../../utils/nonNull';
 import { getCosmosClient } from '../getCosmosClient';
+import { type EditableFileSystemItem } from './CosmosFileSystem';
 
 export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
+    public isReadOnly: boolean = false;
 
     constructor(
         public readonly id: string,
@@ -24,11 +25,11 @@ export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
         return this.model.procedure.id + '-cosmos-stored-procedure.js';
     }
 
-    public getFileContent(): Promise<string> {
+    public read(): Promise<string> {
         return Promise.resolve(typeof this.model.procedure.body === 'string' ? this.model.procedure.body : '');
     }
 
-    public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
+    public async update(_context: IActionContext, content: string): Promise<void> {
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
         const replace = await cosmosClient

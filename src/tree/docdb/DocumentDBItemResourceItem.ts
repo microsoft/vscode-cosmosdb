@@ -6,7 +6,7 @@
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import vscode, { type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { extractPartitionKey, getDocumentId } from '../../utils/document';
+import { generatePartitionKeyValue, generateUniqueId } from '../../utils/document';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
@@ -31,7 +31,7 @@ export abstract class DocumentDBItemResourceItem
         public readonly model: DocumentDBItemModel,
         public readonly experience: Experience,
     ) {
-        const uniqueId = this.generateUniqueId(this.model);
+        const uniqueId = generateUniqueId(this.model.item, this.model.container.partitionKey);
         this.id = sanitizeId(
             `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents/${uniqueId}`,
         );
@@ -75,7 +75,7 @@ export abstract class DocumentDBItemResourceItem
         }
 
         const partitionKeyPaths = this.model.container.partitionKey.paths.join(', ');
-        const partitionKeyValues = this.generatePartitionKeyValue(this.model);
+        const partitionKeyValues = generatePartitionKeyValue(this.model.item, this.model.container.partitionKey);
 
         return (
             '### Partition Key\n' +
@@ -83,47 +83,5 @@ export abstract class DocumentDBItemResourceItem
             `- Paths: **${partitionKeyPaths}**\n` +
             `- Values: **${partitionKeyValues}**\n`
         );
-    }
-
-    /**
-     * Warning: This method is used to generate a unique ID for the document tree item.
-     * It is not used to generate the actual document ID.
-     */
-    protected generateUniqueId(model: DocumentDBItemModel): string {
-        const documentId = getDocumentId(model.item, model.container.partitionKey);
-        const id = documentId?.id;
-        const rid = documentId?._rid;
-        const partitionKeyValues = this.generatePartitionKeyValue(model);
-
-        return `${id || '<empty id>'}|${partitionKeyValues || '<empty partition key>'}|${rid || '<empty rid>'}`;
-    }
-
-    /**
-     * Warning: This method is used to generate a partition key value for the document tree item.
-     * It is not used to generate the actual partition key value.
-     */
-    protected generatePartitionKeyValue(model: DocumentDBItemModel): string {
-        if (!model.container.partitionKey || model.container.partitionKey.paths.length === 0) {
-            return '';
-        }
-
-        let partitionKeyValues = extractPartitionKey(model.item, model.container.partitionKey);
-        partitionKeyValues = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
-        partitionKeyValues = partitionKeyValues
-            .map((v) => {
-                if (v === null) {
-                    return '\\<null>';
-                }
-                if (v === undefined) {
-                    return '\\<undefined>';
-                }
-                if (typeof v === 'object') {
-                    return JSON.stringify(v);
-                }
-                return v;
-            })
-            .join(', ');
-
-        return partitionKeyValues;
     }
 }

@@ -11,6 +11,7 @@ import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
 import { ProgressBar } from '@fluentui/react-components';
 import debounce from 'lodash.debounce';
+import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { MonacoEditor } from '../../MonacoEditor';
@@ -198,6 +199,10 @@ export const DocumentView = (): JSX.Element => {
             .catch((error) => {
                 console.debug('Failed to report an event:', error);
             });
+
+        trpcClient.common.surveyPing
+            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+            .catch(() => {});
     }
 
     function handleOnSaveRequest(): void {

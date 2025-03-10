@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-components';
 import { ArrowUp16Filled } from '@fluentui/react-icons';
 import { useContext } from 'react';
+import { ExperienceKind, UsageImpact } from '../../../../../utils/surveyTypes';
 import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
 import { CollectionViewContext, Views } from '../../collectionViewContext';
 
@@ -51,6 +52,10 @@ export const ToolbarTableNavigation = (): JSX.Element => {
             .catch((error) => {
                 console.debug('Failed to report an event:', error);
             });
+
+        trpcClient.common.surveyPing
+            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+            .catch(() => {});
     }
 
     function jumpToLevel(level: number) {
@@ -77,6 +82,10 @@ export const ToolbarTableNavigation = (): JSX.Element => {
             .catch((error) => {
                 console.debug('Failed to report an event:', error);
             });
+
+        trpcClient.common.surveyPing
+            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+            .catch(() => {});
     }
 
     type Item = {

@@ -6,6 +6,7 @@
 import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
 import { useContext } from 'react';
+import { ExperienceKind, UsageImpact } from '../../../../../utils/surveyTypes';
 import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
 import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
@@ -45,6 +46,10 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             .catch((error) => {
                 console.debug('Failed to report an event:', error);
             });
+
+        trpcClient.common.surveyPing
+            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+            .catch(() => {});
     }
 
     function goToPreviousPage() {
@@ -74,6 +79,10 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             .catch((error) => {
                 console.debug('Failed to report an event:', error);
             });
+
+        trpcClient.common.surveyPing
+            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+            .catch(() => {});
     }
 
     function goToFirstPage() {

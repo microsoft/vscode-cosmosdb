@@ -233,7 +233,8 @@ suite('scrapbook parsing Tests', () => {
                 collection: 'heros',
                 name: 'find',
                 args: [],
-                firstErrorText: "mismatched input 'hello' expecting <EOF>",
+                firstErrorText:
+                    "mismatched input 'hello' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', 'db'}",
             },
         );
     });
@@ -247,7 +248,8 @@ suite('scrapbook parsing Tests', () => {
             collection: undefined,
             name: undefined,
             args: undefined,
-            firstErrorText: "mismatched input 'hello' expecting <EOF>",
+            firstErrorText:
+                "mismatched input 'hello' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', 'db'}",
         });
     });
 
@@ -313,7 +315,7 @@ suite('scrapbook parsing Tests', () => {
             collection: undefined,
             name: undefined,
             args: undefined,
-            firstErrorText: "mismatched input '.' expecting <EOF>",
+            firstErrorText: "mismatched input '.' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', 'db'}",
         });
 
         // Just make sure doesn't throw
@@ -1013,7 +1015,8 @@ suite('scrapbook parsing Tests', () => {
             collection: 'timesheets',
             name: 'sort',
             args: [{ name: 'Andy' }, { age: 1 }],
-            firstErrorText: "mismatched input 'skip' expecting <EOF>",
+            firstErrorText:
+                "mismatched input 'skip' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', '.', 'db'}",
         });
     });
 

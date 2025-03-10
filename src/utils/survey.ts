@@ -68,6 +68,7 @@ export async function promptAfterActionEventually(
             fullScore += entry[1];
             return entry[1] > max[1] ? entry : max;
         },
+        [ExperienceKind.Mongo, 0] as [ExperienceKind, number] // dummy initial value, to ensure that the reduce function has a starting point and reducer runs for every entry
     )[0];
 
     if (fullScore >= 100) {

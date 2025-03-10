@@ -8,6 +8,7 @@ import * as semver from 'semver';
 import { env, Uri, window } from 'vscode';
 import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
+import { ExperienceKind, type UsageImpact } from './surveyTypes';
 
 const localize = nls.loadMessageBundle();
 
@@ -36,17 +37,6 @@ const REARM_OPT_OUT = true;
 let isCandidate: boolean | undefined = undefined;
 let wasPromptedInSession: boolean = false;
 
-export enum UsageImpact {
-    Low = 5,
-    Medium = 10,
-    High = 20,
-}
-
-export enum ExperienceKind {
-    Mongo = 'Mongo',
-    NoSQL = 'NoSQL',
-}
-
 const usageScoreByExperience: Record<ExperienceKind, number> = {
     [ExperienceKind.Mongo]: 0,
     [ExperienceKind.NoSQL]: 0,
@@ -68,7 +58,7 @@ export async function promptAfterActionEventually(
             fullScore += entry[1];
             return entry[1] > max[1] ? entry : max;
         },
-        [ExperienceKind.Mongo, 0] as [ExperienceKind, number] // dummy initial value, to ensure that the reduce function has a starting point and reducer runs for every entry
+        [ExperienceKind.Mongo, 0] as [ExperienceKind, number], // dummy initial value, to ensure that the reduce function has a starting point and reducer runs for every entry
     )[0];
 
     if (fullScore >= 100) {

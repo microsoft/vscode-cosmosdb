@@ -17,6 +17,8 @@ import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirm
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
 import { localize } from '../../../utils/localize';
+import { promptAfterActionEventually } from '../../../utils/survey';
+import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
 export type RouterContext = BaseRouterContext & {
@@ -56,6 +58,8 @@ export const collectionsViewRouter = router({
                 input.pageNumber,
                 input.pageSize,
             );
+
+            void promptAfterActionEventually(ExperienceKind.Mongo, UsageImpact.High);
 
             return { documentCount: size };
         }),

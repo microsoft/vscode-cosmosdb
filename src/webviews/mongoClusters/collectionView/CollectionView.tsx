@@ -7,6 +7,7 @@
 import { ProgressBar, Tab, TabList } from '@fluentui/react-components';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
+import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './collectionView.scss';
 import {
@@ -157,6 +158,10 @@ export const CollectionView = (): JSX.Element => {
 
         setCurrentContext((prev) => ({ ...prev, currentView: selection }));
         getDataForView(selection);
+
+        trpcClient.common.surveyPing
+            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+            .catch(() => {});
     };
 
     function getDataForView(selectedView: Views): void {

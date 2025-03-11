@@ -22,7 +22,7 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { AuthenticationMethod, getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
 import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
 
 export class DocumentSession {
@@ -43,9 +43,9 @@ export class DocumentSession {
         const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } = connection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
-            credentials.push({ type: 'key', key: masterKey });
+            credentials.push({ type: AuthenticationMethod.accountKey, key: masterKey });
         }
-        credentials.push({ type: 'auth', tenantId: tenantId });
+        credentials.push({ type: AuthenticationMethod.entraId, tenantId: tenantId });
 
         this.id = uuid();
         this.channel = channel;

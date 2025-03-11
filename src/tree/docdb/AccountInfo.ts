@@ -5,12 +5,18 @@
 
 import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import {
+    AuthenticationMethod,
+    getCosmosClient,
+    type CosmosDBCredential,
+    type CosmosDBKeyCredential,
+} from '../../docdb/getCosmosClient';
+import { ext } from '../../extensionVariables';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
@@ -91,12 +97,14 @@ async function getCredentialsForGeneric(
         context.valuesToMask.push(name, resourceGroup);
         context.telemetry.properties.attachedAccount = 'false';
 
-        const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
-        context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
+        const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
 
         let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-        if (!forceOAuth) {
+
+        if (
+            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
+            preferredAuthenticationMethod === AuthenticationMethod.auto
+        ) {
             try {
                 const localAuthDisabled = databaseAccount.disableLocalAuth === true;
                 context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
@@ -107,7 +115,7 @@ async function getCredentialsForGeneric(
                     keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
                     keyCred = keyResult?.primaryMasterKey
                         ? {
-                              type: 'key',
+                              type: AuthenticationMethod.accountKey,
                               key: keyResult.primaryMasterKey,
                           }
                         : undefined;
@@ -117,29 +125,12 @@ async function getCredentialsForGeneric(
                 }
             } catch {
                 context.telemetry.properties.receivedKeyCreds = 'false';
-
-                const message =
-                    l10n.t('You do not have the required permissions to list auth keys for {account}.', {
-                        account: name,
-                    }) +
-                    '\n' +
-                    l10n.t('Falling back to using Entra ID.') +
-                    '\n' +
-                    l10n.t('You can change the default authentication in the settings.');
-                const openSettingsItem = l10n.t('Open Settings');
-                void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                    if (item === openSettingsItem) {
-                        void vscode.commands.executeCommand(
-                            'workbench.action.openSettings',
-                            'azureDatabases.useCosmosOAuth',
-                        );
-                    }
-                });
+                logLocalAuthDisabledWarningIfPreferred(name, preferredAuthenticationMethod);
             }
         }
 
         // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-        const authCred = { type: 'auth', tenantId: tenantId };
+        const authCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
         return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
     });
 
@@ -170,20 +161,22 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
         context.valuesToMask.push(account.connectionString);
         context.telemetry.properties.attachedAccount = 'true';
 
-        const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
-        context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
+        const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
 
         let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        // disable key auth if the user has opted in to OAuth (AAD/Entra ID), or if the account is the emulator
-        if (!forceOAuth || account.isEmulator) {
-            let localAuthDisabled = false;
+        let localAuthDisabled = false;
 
+        if (
+            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
+            preferredAuthenticationMethod === AuthenticationMethod.auto ||
+            account.isEmulator
+        ) {
             const parsedCS = parseDocDBConnectionString(account.connectionString);
             if (parsedCS.masterKey) {
                 context.telemetry.properties.receivedKeyCreds = 'true';
 
                 keyCred = {
-                    type: 'key',
+                    type: AuthenticationMethod.accountKey,
                     key: parsedCS.masterKey,
                 };
 
@@ -195,12 +188,16 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
                 try {
                     // Since here we don't have subscription,
                     // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
-                    // Will try to connect to the account and if it fails, we will assume local auth is disabled
+                    // Will try to connect to the account and catch if it fails due to local auth being disabled.
                     const cosmosClient = getCosmosClient(parsedCS.documentEndpoint, [keyCred], account.isEmulator);
                     await cosmosClient.getDatabaseAccount();
-                } catch {
-                    context.telemetry.properties.receivedKeyCreds = 'false';
-                    localAuthDisabled = true;
+                } catch (e) {
+                    const error = parseError(e);
+                    // handle errors caused by local auth being disabled only, all other errors will be thrown
+                    if (error.message.includes('Local Authorization is disabled.')) {
+                        context.telemetry.properties.receivedKeyCreds = 'false';
+                        localAuthDisabled = true;
+                    }
                 }
             }
 
@@ -208,32 +205,49 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
             if (localAuthDisabled && !account.isEmulator) {
                 // Clean up keyCred if local auth is disabled
                 keyCred = undefined;
-
-                const message =
-                    l10n.t('You do not have the required permissions to list auth keys for {account}.', {
-                        account: account.name,
-                    }) +
-                    '\n' +
-                    l10n.t('Falling back to using Entra ID.') +
-                    '\n' +
-                    l10n.t('You can change the default authentication in the settings.');
-                const openSettingsItem = l10n.t('Open Settings');
-                void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                    if (item === openSettingsItem) {
-                        void vscode.commands.executeCommand(
-                            'workbench.action.openSettings',
-                            'azureDatabases.useCosmosOAuth',
-                        );
-                    }
-                });
+                logLocalAuthDisabledWarningIfPreferred(account.name, preferredAuthenticationMethod);
             }
         }
 
         // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
         // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use OAuth for foreign tenants
-        const authCred = { type: 'auth', tenantId: undefined };
+        const authCred = { type: AuthenticationMethod.entraId, tenantId: undefined };
         return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
     });
 
     return result ?? [];
+}
+
+function getPreferredAuthenticationMethod(): AuthenticationMethod {
+    const configuration = vscode.workspace.getConfiguration();
+    //migrate old setting
+    const deprecatedOauthSetting = configuration.get<boolean>('azureDatabases.useCosmosOAuth');
+    let preferredAuthMethod = configuration.get<AuthenticationMethod>(
+        ext.settingsKeys.cosmosDbAuthentication,
+        AuthenticationMethod.auto,
+    );
+
+    if (deprecatedOauthSetting) {
+        if (preferredAuthMethod === AuthenticationMethod.auto) {
+            preferredAuthMethod = AuthenticationMethod.entraId;
+            configuration.update(ext.settingsKeys.cosmosDbAuthentication, preferredAuthMethod, true);
+        }
+        configuration.update('azureDatabases.useCosmosOAuth', undefined, true);
+    }
+
+    return preferredAuthMethod;
+}
+
+function logLocalAuthDisabledWarningIfPreferred(name: string, authenticationMethod: AuthenticationMethod): void {
+    if (authenticationMethod === AuthenticationMethod.accountKey) {
+        const message = l10n.t(
+            'You do not have the required permissions to list auth keys for "{account}", falling back to using Entra ID. You can change the preferred authentication method with the {settingId} setting.',
+            {
+                account: name,
+                settingId: ext.settingsKeys.cosmosDbAuthentication,
+            },
+        );
+        ext.outputChannel.warn(message);
+        ext.outputChannel.show();
+    }
 }

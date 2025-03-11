@@ -14,24 +14,32 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
 
+export enum AuthenticationMethod {
+    auto = 'auto',
+    accountKey = 'accountKey',
+    entraId = 'entraId',
+}
+
 export type CosmosDBKeyCredential = {
-    type: 'key';
+    type: AuthenticationMethod.accountKey;
     key: string;
 };
 
 export type CosmosDBAuthCredential = {
-    type: 'auth';
+    type: AuthenticationMethod.entraId;
     tenantId: string | undefined;
 };
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
 
 export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
-    return credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === 'key')[0];
+    return credentials.filter(
+        (cred): cred is CosmosDBKeyCredential => cred.type === AuthenticationMethod.accountKey,
+    )[0];
 }
 
 export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBAuthCredential | undefined {
-    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === 'auth')[0];
+    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === AuthenticationMethod.entraId)[0];
 }
 
 export function getCosmosClientByConnection(

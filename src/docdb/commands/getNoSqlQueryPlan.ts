@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { AuthenticationMethod, getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
 
 export async function getNoSqlQueryPlan(
     _context: IActionContext,
@@ -37,9 +37,9 @@ export async function getNoSqlQueryPlan(
             connectedCollection as NoSqlQueryConnection;
         const credentials: CosmosDBCredential[] = [];
         if (masterKey !== undefined) {
-            credentials.push({ type: 'key', key: masterKey });
+            credentials.push({ type: AuthenticationMethod.accountKey, key: masterKey });
         }
-        credentials.push({ type: 'auth', tenantId: tenantId });
+        credentials.push({ type: AuthenticationMethod.entraId, tenantId: tenantId });
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
         await vscodeUtil.showNewFile(

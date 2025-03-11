@@ -74,19 +74,12 @@ export async function getIsSurveyCandidate(): Promise<boolean> {
 }
 
 export async function initSurvey(): Promise<void> {
-    //TODO: REMOVE! This is a test
-    //await new Promise((resolve) => setTimeout(resolve, 5000));
-
     await callWithTelemetryAndErrorHandling('survey.init', async (context: IActionContext) => {
         if (DEBUG_ALWAYS_PROMPT) {
             context.telemetry.properties.isCandidate = (isCandidate = true).toString();
             await ext.context.globalState.update(IS_CANDIDATE_KEY, isCandidate);
             return;
         }
-
-        //TODO: REMOVE! This is a test
-        //await ext.context.globalState.update(SESSION_COUNT_KEY, 20);
-        //await ext.context.globalState.update(SKIP_VERSION_KEY, null);
 
         // Prompt only for English locales
         if (PROMPT_ENGLISH_ONLY && env.language !== 'en' && !env.language.startsWith('en-')) {

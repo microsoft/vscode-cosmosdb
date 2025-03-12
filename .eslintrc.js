@@ -15,10 +15,11 @@ module.exports = {
         'plugin:@typescript-eslint/recommended-requiring-type-checking',
     ],
     rules: {
-        '@typescript-eslint/no-restricted-types': 'error',
         '@typescript-eslint/consistent-type-imports': 'error',
+        '@typescript-eslint/no-base-to-string': 'warn',
         '@typescript-eslint/no-inferrable-types': 'off',
         '@typescript-eslint/no-namespace': 'off',
+        '@typescript-eslint/no-restricted-types': 'error',
         '@typescript-eslint/no-unnecessary-type-assertion': 'off',
         '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
         '@typescript-eslint/prefer-regexp-exec': 'off',

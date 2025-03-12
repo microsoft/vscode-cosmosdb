@@ -30,7 +30,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     public contextValue: string = PostgresDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Resource Type';
     public readonly databaseName: string;
-    public declare readonly parent: PostgresServerTreeItem;
+    declare public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
     public isShowingPasswordWarning: boolean;
 

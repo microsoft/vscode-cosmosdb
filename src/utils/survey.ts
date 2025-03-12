@@ -52,17 +52,19 @@ export async function promptAfterActionEventually(
 ): Promise<void> {
     usageScoreByExperience[experience] += score;
 
-    let fullScore = 0;
-    const highestExperience = (Object.entries(usageScoreByExperience) as [ExperienceKind, number][]).reduce(
-        (max, entry) => {
-            fullScore += entry[1];
-            return entry[1] > max[1] ? entry : max;
+    const { fullScore, highestExperience } = (Object.entries(usageScoreByExperience) as [ExperienceKind, number][]).reduce(
+        (acc, entry) => {
+            acc.fullScore += entry[1];
+            if (entry[1] > acc.highestExperience[1]) {
+                acc.highestExperience = entry;
+            }
+            return acc;
         },
-        [ExperienceKind.Mongo, 0] as [ExperienceKind, number], // dummy initial value, to ensure that the reduce function has a starting point and reducer runs for every entry
-    )[0];
+        { fullScore: 0, highestExperience: [ExperienceKind.Mongo, 0] as [ExperienceKind, number] } // initial value
+    );
 
     if (fullScore >= 100) {
-        await surveyPromptIfCandidate(highestExperience);
+        await surveyPromptIfCandidate(highestExperience[0]);
     }
 }
 

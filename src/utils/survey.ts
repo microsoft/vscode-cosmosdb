@@ -52,6 +52,7 @@ export function countExperienceUsageForSurvey(experience: ExperienceKind, score:
 export async function promptAfterActionEventually(
     experience: ExperienceKind,
     score: UsageImpact | number,
+    triggerAction?: string,
 ): Promise<void> {
     if (DISABLE_SURVEY) {
         return;
@@ -73,7 +74,7 @@ export async function promptAfterActionEventually(
     );
 
     if (fullScore >= 100) {
-        await surveyPromptIfCandidate(highestExperience[0]);
+        await surveyPromptIfCandidate(highestExperience[0], triggerAction);
     }
 }
 
@@ -163,10 +164,16 @@ export async function initSurvey(): Promise<void> {
     });
 }
 
-export async function surveyPromptIfCandidate(experience: ExperienceKind = ExperienceKind.NoSQL): Promise<void> {
+export async function surveyPromptIfCandidate(
+    experience: ExperienceKind = ExperienceKind.NoSQL,
+    triggerAction?: string,
+): Promise<void> {
     await callWithTelemetryAndErrorHandling('survey.prompt', async (context: IActionContext) => {
         const isCandidate = await getIsSurveyCandidate();
         context.telemetry.properties.isCandidate = isCandidate.toString();
+        context.telemetry.properties.experience = experience;
+        context.telemetry.properties.triggerAction = triggerAction;
+        context.telemetry.properties.userAsked = 'false';
         if (!isCandidate || wasPromptedInSession) {
             return;
         }

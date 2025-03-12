@@ -260,7 +260,8 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.runQuery', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
                 throw new Error('No connection');
             }
@@ -273,7 +274,7 @@ export class QueryEditorTab extends BaseTab {
 
             await session.run();
         });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High);
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
 
     private async stopQuery(executionId: string): Promise<void> {
@@ -291,7 +292,8 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async nextPage(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.nextPage', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.nextPage';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
@@ -304,12 +306,13 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.nextPage();
-            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private async prevPage(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.prevPage', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.prevPage';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
@@ -322,12 +325,13 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.prevPage();
-            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private async firstPage(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.firstPage', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.firstPage';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
@@ -340,12 +344,13 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.firstPage();
-            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private async openDocument(mode: string, documentId?: CosmosDbRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openDocument', () => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, () => {
             if (!this.connection) {
                 throw new Error('No connection');
             }
@@ -359,12 +364,13 @@ export class QueryEditorTab extends BaseTab {
             }
 
             DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
-            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private async deleteDocument(documentId: CosmosDbRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteDocument', async () => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
                 throw new Error('No connection');
             }
@@ -375,8 +381,8 @@ export class QueryEditorTab extends BaseTab {
 
             const session = new DocumentSession(this.connection, this.channel);
             await session.delete(documentId);
-            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium);
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private getNextViewColumn(): vscode.ViewColumn {

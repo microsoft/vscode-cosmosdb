@@ -171,7 +171,8 @@ export class DocumentTab extends BaseTab {
     }
 
     private async saveDocument(documentText: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.saveDocument', async (context) => {
+        const callbackId = 'cosmosDB.nosql.document.saveDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
 
             if (!this.isCosmosDbItemDefinition(documentContent)) {
@@ -192,7 +193,7 @@ export class DocumentTab extends BaseTab {
 
             this.panel.title = `${this.documentId.id}.json`;
         });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High);
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
 
     private isCosmosDbItemDefinition(documentContent: unknown): documentContent is ItemDefinition {

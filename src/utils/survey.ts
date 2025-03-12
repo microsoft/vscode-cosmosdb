@@ -10,10 +10,20 @@ import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
 import { ExperienceKind, type UsageImpact } from './surveyTypes';
 
-const localize = nls.loadMessageBundle();
-
 const NPS_NOSQL_SURVEY_URL = 'https://aka.ms/AzureDatabasesSurvey';
 const NPS_MONGO_SURVEY_URL = 'https://aka.ms/AzureDatabasesSurvey/mongo';
+
+// Survey settings
+const DEBUG_ALWAYS_PROMPT = false; // setting to true will always prompt the survey ignoring all conditions
+const DISABLE_SURVEY = false; // setting to true will disable the survey
+const PROBABILITY = 1; // Probability to become a candidate, Azure Tools has 0.15
+const PROMPT_ENGLISH_ONLY = false; // TODO: do we want to survey non-English users? Needs survey to be localized?
+const PROMPT_VERSION_ONLY_ONCE = true; // only prompt once per major/minor version
+const PROMPT_DATE_ONLY_ONCE = true; // only prompt once per day
+const MIN_SESSIONS_BEFORE_PROMPT = 9; // skip the first N sessions after installing or rearming after update
+const SNOOZE_SESSIONS = 3; // snooze for N sessions after "remind me later"
+const REARM_AFTER_DAYS = 90;
+const REARM_OPT_OUT = true;
 
 const STATE_KEY_BASE = 'ms-azuretools.vscode-cosmosdb.survey';
 const SESSION_COUNT_KEY = `${STATE_KEY_BASE}/sessionCount`;
@@ -23,17 +33,7 @@ const SURVEY_TAKEN_DATE_KEY = `${STATE_KEY_BASE}/surveyTaken`;
 const OPT_OUT_DATE_KEY = `${STATE_KEY_BASE}/surveyOptOut`;
 const IS_CANDIDATE_KEY = `${STATE_KEY_BASE}/isCandidate`; // stores the last decision if the user is a candidate, currently not used anywhere
 
-// Survey settings
-const DEBUG_ALWAYS_PROMPT = false; // setting to true will always prompt the survey ignoring all conditions
-const PROBABILITY = 1; // Probability to become a candidate, Azure Tools has 0.15
-const PROMPT_ENGLISH_ONLY = false; // TODO: do we want to survey non-English users? Needs survey to be localized?
-const PROMPT_VERSION_ONLY_ONCE = true; // only prompt once per major/minor version
-const PROMPT_DATE_ONLY_ONCE = true; // only prompt once per day
-const SKIP_INITIAL_SESSIONS = 9; // skip the first N sessions after installing or rearming after update
-const SNOOZE_SESSIONS = 3; // snooze for N sessions after "remind me later"
-const REARM_AFTER_DAYS = 90;
-const REARM_OPT_OUT = true;
-
+const localize = nls.loadMessageBundle();
 let isCandidate: boolean | undefined = undefined;
 let wasPromptedInSession: boolean = false;
 
@@ -43,6 +43,9 @@ const usageScoreByExperience: Record<ExperienceKind, number> = {
 };
 
 export function countExperienceUsageForSurvey(experience: ExperienceKind, score: UsageImpact | number): void {
+    if (DISABLE_SURVEY) {
+        return;
+    }
     usageScoreByExperience[experience] += score;
 }
 
@@ -50,7 +53,11 @@ export async function promptAfterActionEventually(
     experience: ExperienceKind,
     score: UsageImpact | number,
 ): Promise<void> {
-    usageScoreByExperience[experience] += score;
+    if (DISABLE_SURVEY) {
+        return;
+    }
+
+    countExperienceUsageForSurvey(experience, score);
 
     const { fullScore, highestExperience } = (
         Object.entries(usageScoreByExperience) as [ExperienceKind, number][]
@@ -71,6 +78,9 @@ export async function promptAfterActionEventually(
 }
 
 export async function getIsSurveyCandidate(): Promise<boolean> {
+    if (DISABLE_SURVEY) {
+        return false;
+    }
     if (isCandidate === undefined) {
         await initSurvey();
     }
@@ -140,7 +150,7 @@ export async function initSurvey(): Promise<void> {
         const sessionCount = ext.context.globalState.get(SESSION_COUNT_KEY, 0) + 1;
         await ext.context.globalState.update(LAST_SESSION_DATE_KEY, today);
         await ext.context.globalState.update(SESSION_COUNT_KEY, sessionCount);
-        if (sessionCount < SKIP_INITIAL_SESSIONS) {
+        if (sessionCount < MIN_SESSIONS_BEFORE_PROMPT) {
             context.telemetry.properties.isCandidate = (isCandidate = false).toString();
             return;
         }
@@ -183,7 +193,7 @@ export async function surveyPromptIfCandidate(experience: ExperienceKind = Exper
             title: localize('azureResourceGroups.remindLater', 'Remind Me Later'),
             run: async () => {
                 context.telemetry.properties.remindMeLater = 'true';
-                await ext.context.globalState.update(SESSION_COUNT_KEY, SKIP_INITIAL_SESSIONS - SNOOZE_SESSIONS + 1);
+                await ext.context.globalState.update(SESSION_COUNT_KEY, MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS + 1);
             },
         };
         const never = {

@@ -35,6 +35,8 @@ const IS_CANDIDATE_KEY = `${STATE_KEY_BASE}/isCandidate`; // stores the last dec
 
 const localize = nls.loadMessageBundle();
 let isCandidate: boolean | undefined = undefined;
+// this will be set to true if the user interacts with the prompt,
+// from there on whole logic will be disarmed for the rest of the session including scoring
 let wasPromptedInSession: boolean = false;
 
 const usageScoreByExperience: Record<ExperienceKind, number> = {
@@ -43,7 +45,7 @@ const usageScoreByExperience: Record<ExperienceKind, number> = {
 };
 
 export function countExperienceUsageForSurvey(experience: ExperienceKind, score: UsageImpact | number): void {
-    if (DISABLE_SURVEY) {
+    if (DISABLE_SURVEY || wasPromptedInSession) {
         return;
     }
     usageScoreByExperience[experience] += score;
@@ -54,7 +56,7 @@ export async function promptAfterActionEventually(
     score: UsageImpact | number,
     triggerAction?: string,
 ): Promise<void> {
-    if (DISABLE_SURVEY) {
+    if (DISABLE_SURVEY || wasPromptedInSession) {
         return;
     }
 
@@ -88,7 +90,7 @@ export async function getIsSurveyCandidate(): Promise<boolean> {
     return isCandidate ?? false;
 }
 
-export async function initSurvey(): Promise<void> {
+async function initSurvey(): Promise<void> {
     await callWithTelemetryAndErrorHandling('survey.init', async (context: IActionContext) => {
         if (DEBUG_ALWAYS_PROMPT) {
             context.telemetry.properties.isCandidate = (isCandidate = true).toString();
@@ -168,16 +170,19 @@ export async function surveyPromptIfCandidate(
     experience: ExperienceKind = ExperienceKind.NoSQL,
     triggerAction?: string,
 ): Promise<void> {
+    if (wasPromptedInSession) {
+        return;
+    }
     await callWithTelemetryAndErrorHandling('survey.prompt', async (context: IActionContext) => {
         const isCandidate = await getIsSurveyCandidate();
         context.telemetry.properties.isCandidate = isCandidate.toString();
         context.telemetry.properties.experience = experience;
         context.telemetry.properties.triggerAction = triggerAction;
-        context.telemetry.properties.userAsked = 'false';
-        if (!isCandidate || wasPromptedInSession) {
+        context.telemetry.properties.userAsked = 'false'; // this will be set to 'true' later if the user interacts with the prompt
+        wasPromptedInSession = true; // disarm for the rest of the session
+        if (!isCandidate) {
             return;
         }
-        wasPromptedInSession = true; // don't prompt again in this session
 
         const extensionVersion = (ext.context.extension.packageJSON as { version: string }).version;
         const date = new Date().toDateString();

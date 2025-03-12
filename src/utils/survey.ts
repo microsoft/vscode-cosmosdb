@@ -52,7 +52,9 @@ export async function promptAfterActionEventually(
 ): Promise<void> {
     usageScoreByExperience[experience] += score;
 
-    const { fullScore, highestExperience } = (Object.entries(usageScoreByExperience) as [ExperienceKind, number][]).reduce(
+    const { fullScore, highestExperience } = (
+        Object.entries(usageScoreByExperience) as [ExperienceKind, number][]
+    ).reduce(
         (acc, entry) => {
             acc.fullScore += entry[1];
             if (entry[1] > acc.highestExperience[1]) {
@@ -60,7 +62,7 @@ export async function promptAfterActionEventually(
             }
             return acc;
         },
-        { fullScore: 0, highestExperience: [ExperienceKind.Mongo, 0] as [ExperienceKind, number] } // initial value
+        { fullScore: 0, highestExperience: [ExperienceKind.Mongo, 0] as [ExperienceKind, number] }, // initial value
     );
 
     if (fullScore >= 100) {

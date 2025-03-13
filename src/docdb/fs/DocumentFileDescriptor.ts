@@ -10,6 +10,8 @@ import { DocumentDBHiddenFields } from '../../constants';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type DocumentDBItemModel } from '../../tree/docdb/models/DocumentDBItemModel';
 import { extractPartitionKey } from '../../utils/document';
+import { promptAfterActionEventually } from '../../utils/survey';
+import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { getCosmosClient } from '../getCosmosClient';
 
@@ -74,6 +76,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
 
         if (response.resource) {
             this.model.item = response.resource;
+            void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, 'writeFile');
         } else {
             throw new Error('Failed to update the document');
         }

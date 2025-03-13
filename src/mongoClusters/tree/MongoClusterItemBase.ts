@@ -83,13 +83,15 @@ export abstract class MongoClusterItemBase
 
         // If authentication failed, return the error element
         if (!mongoClustersClient) {
+            ext.outputChannel.appendLine(`MongoDB Clusters: Failed to authenticate with "${this.mongoCluster.name}".`);
             return [
                 createGenericElement({
                     contextValue: 'error',
                     id: `${this.id}/error`,
                     label: 'Failed to authenticate (click to retry)',
                     iconPath: new vscode.ThemeIcon('error'),
-                    commandId: 'azureResourceGroups.refreshTree',
+                    commandId: 'azureDatabases.refresh',
+                    commandArgs: [this],
                 }) as CosmosDBTreeElement,
             ];
         }

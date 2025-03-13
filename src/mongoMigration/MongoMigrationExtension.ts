@@ -12,6 +12,7 @@
 import { callWithTelemetryAndErrorHandling, registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
+import { AssessmentWizardViewController } from '../webviews/mongoMigration/assessmentWizardView/assessmentWizardViewController';
 import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
 import { isMongoMigrationSupportEnabled } from './utils/isMongoMigrationSupportEnabled';
 
@@ -47,6 +48,15 @@ export class MongoMigrationExtension implements vscode.Disposable {
 
                 registerCommand('command.migration.startView', () => {
                     const view = new MigrationPanelViewController({
+                        databaserName: 'aDatabaseName',
+                        moreSettings: false,
+                    });
+
+                    view.revealToForeground();
+                });
+
+                registerCommand('command.migration.startView', () => {
+                    const view = new AssessmentWizardViewController({
                         databaserName: 'aDatabaseName',
                         moreSettings: false,
                     });

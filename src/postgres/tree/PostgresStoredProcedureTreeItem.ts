@@ -12,7 +12,7 @@ import { type PostgresStoredProceduresTreeItem } from './PostgresStoredProcedure
 export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresStoredProcedure';
     public readonly contextValue: string = PostgresStoredProcedureTreeItem.contextValue;
-    public declare readonly parent: PostgresStoredProceduresTreeItem;
+    declare public readonly parent: PostgresStoredProceduresTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly args: string;

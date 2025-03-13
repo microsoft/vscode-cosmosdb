@@ -11,6 +11,7 @@ import { type CosmosDBTreeElement } from '../../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../../../tree/TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../../tree/workspace-api/SharedWorkspaceStorage';
+import { type MongoEmulatorConfiguration } from '../../../../utils/mongoEmulatorConfiguration';
 import { type MongoClusterModel } from '../../MongoClusterModel';
 import { MongoClusterWorkspaceItem } from '../MongoClusterWorkspaceItem';
 import { NewMongoEmulatorConnectionItem } from './NewMongoEmulatorConnectionItem';
@@ -29,13 +30,19 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
             ...allItems
                 .filter((item) => item.properties?.isEmulator) // only show emulators
                 .map((item) => {
+                    // we need to create the emulator configuration object from
+                    // the flat properties object
+                    const emulatorConfiguration: MongoEmulatorConfiguration = {
+                        isEmulator: true,
+                        disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,
+                    };
+
                     const model: MongoClusterModel = {
                         id: item.id,
                         name: item.name,
                         dbExperience: MongoClustersExperience,
                         connectionString: item?.secrets?.[0],
-                        isEmulator: true,
-                        disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,
+                        emulatorConfiguration: emulatorConfiguration,
                     };
 
                     return new MongoClusterWorkspaceItem(model);

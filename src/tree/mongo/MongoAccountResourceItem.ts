@@ -14,6 +14,7 @@ import { type DatabaseItemModel, MongoClustersClient } from '../../mongoClusters
 import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
+import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
@@ -26,14 +27,14 @@ import { type MongoAccountModel } from './MongoAccountModel';
 // TODO: currently MongoAccountResourceItem does not reuse MongoClusterItemBase, this will be refactored after the v1 to v2 tree migration
 
 export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
-    public declare readonly account: MongoAccountModel;
+    declare public readonly account: MongoAccountModel;
     public readonly contextValue: string = 'treeItem.mongoCluster'; // TODO: this is a bug and overwrites the contextValue from the base class, fix this.
 
     constructor(
         account: MongoAccountModel,
         experience: Experience,
         readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
-        readonly isEmulator?: boolean, // TODO: exploring during v1->v2 migration
+        readonly emulatorConfiguration?: MongoEmulatorConfiguration, // TODO: exploring during v1->v2 migration
     ) {
         super(account, experience);
     }
@@ -106,7 +107,13 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
             //TODO: simplify the api for CrednetialCache to accept full connection strings with credentials
             const username: string | undefined = cString.username;
             const password: string | undefined = cString.password;
-            CredentialCache.setCredentials(this.id, cString.toString(), username, password);
+            CredentialCache.setCredentials(
+                this.id,
+                cString.toString(),
+                username,
+                password,
+                this.account.emulatorConfiguration,
+            );
 
             mongoClient = await MongoClustersClient.getClient(this.id).catch(async (error) => {
                 console.error(error);

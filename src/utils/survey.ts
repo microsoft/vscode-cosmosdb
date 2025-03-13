@@ -25,6 +25,9 @@ const SNOOZE_SESSIONS = 3; // snooze for N sessions after "remind me later"
 const REARM_AFTER_DAYS = 90;
 const REARM_OPT_OUT = true;
 
+const REQUIRED_SCORE = 100; // Score needed to trigger survey
+const MAX_SCORE = 1000; // Score Cap to prevent overcounting, could also be Number.MAX_SAFE_INTEGER - REQUIRED_SCORE
+
 const STATE_KEY_BASE = 'ms-azuretools.vscode-cosmosdb.survey';
 const SESSION_COUNT_KEY = `${STATE_KEY_BASE}/sessionCount`;
 const LAST_SESSION_DATE_KEY = `${STATE_KEY_BASE}/lastSessionDate`;
@@ -48,7 +51,7 @@ export function countExperienceUsageForSurvey(experience: ExperienceKind, score:
     if (DISABLE_SURVEY || wasPromptedInSession) {
         return;
     }
-    usageScoreByExperience[experience] += score;
+    usageScoreByExperience[experience] = Math.min(MAX_SCORE, usageScoreByExperience[experience] + score);
 }
 
 export async function promptAfterActionEventually(
@@ -66,7 +69,7 @@ export async function promptAfterActionEventually(
         Object.entries(usageScoreByExperience) as [ExperienceKind, number][]
     ).reduce(
         (acc, entry) => {
-            acc.fullScore += entry[1];
+            acc.fullScore = Math.min(MAX_SCORE, acc.fullScore + entry[1]);
             if (entry[1] > acc.highestExperience[1]) {
                 acc.highestExperience = entry;
             }
@@ -75,7 +78,7 @@ export async function promptAfterActionEventually(
         { fullScore: 0, highestExperience: [ExperienceKind.Mongo, 0] as [ExperienceKind, number] }, // initial value
     );
 
-    if (fullScore >= 100) {
+    if (fullScore >= REQUIRED_SCORE) {
         await surveyPromptIfCandidate(highestExperience[0], triggerAction);
     }
 }

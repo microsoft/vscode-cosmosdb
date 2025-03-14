@@ -34,7 +34,6 @@ const LAST_SESSION_DATE_KEY = `${STATE_KEY_BASE}/lastSessionDate`;
 const SKIP_VERSION_KEY = `${STATE_KEY_BASE}/skipVersion`; // skip this version, will be set to the version where the user clicked "Don't Ask Again" or opened the survey
 const SURVEY_TAKEN_DATE_KEY = `${STATE_KEY_BASE}/surveyTaken`;
 const OPT_OUT_DATE_KEY = `${STATE_KEY_BASE}/surveyOptOut`;
-const IS_CANDIDATE_KEY = `${STATE_KEY_BASE}/isCandidate`; // stores the last decision if the user is a candidate, currently not used anywhere
 
 const localize = nls.loadMessageBundle();
 let isCandidate: boolean | undefined = undefined;
@@ -97,7 +96,6 @@ async function initSurvey(): Promise<void> {
     await callWithTelemetryAndErrorHandling('survey.init', async (context: IActionContext) => {
         if (DEBUG_ALWAYS_PROMPT) {
             context.telemetry.properties.isCandidate = (isCandidate = true).toString();
-            await ext.context.globalState.update(IS_CANDIDATE_KEY, isCandidate);
             return;
         }
 
@@ -163,9 +161,8 @@ async function initSurvey(): Promise<void> {
 
         // If the user is a candidate (has not opted out or participated for the current version),
         // decide randomly with given probability
-        isCandidate = ext.context.globalState.get(IS_CANDIDATE_KEY, false) || Math.random() < PROBABILITY;
+        isCandidate = isCandidate || Math.random() < PROBABILITY;
         context.telemetry.properties.isCandidate = isCandidate.toString();
-        await ext.context.globalState.update(IS_CANDIDATE_KEY, isCandidate);
     });
 }
 
@@ -198,7 +195,6 @@ export async function surveyPromptIfCandidate(
                 //NOTE: Customer Voice does not support URL parameters, keeping this comment for reference if we switch to another platform which supports that
                 //void env.openExternal(Uri.parse(`${surveyUrl}?o=${encodeURIComponent(process.platform)}&v=${encodeURIComponent(extensionVersion)}&m=${encodeURIComponent(env.machineId)}`));
                 void env.openExternal(Uri.parse(surveyUrl));
-                await ext.context.globalState.update(IS_CANDIDATE_KEY, false);
                 await ext.context.globalState.update(SKIP_VERSION_KEY, extensionVersion);
                 await ext.context.globalState.update(SESSION_COUNT_KEY, 0);
                 await ext.context.globalState.update(SURVEY_TAKEN_DATE_KEY, date);
@@ -216,7 +212,6 @@ export async function surveyPromptIfCandidate(
             isSecondary: true,
             run: async () => {
                 context.telemetry.properties.dontShowAgain = 'true';
-                await ext.context.globalState.update(IS_CANDIDATE_KEY, false);
                 await ext.context.globalState.update(SKIP_VERSION_KEY, extensionVersion);
                 await ext.context.globalState.update(SESSION_COUNT_KEY, 0);
                 await ext.context.globalState.update(OPT_OUT_DATE_KEY, date);

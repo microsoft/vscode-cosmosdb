@@ -97,6 +97,9 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
     // Fetch host information
     try {
         const hostInfo = await adminDb.command({ hostInfo: 1 });
+        if (hostInfo && typeof hostInfo.currentTime !== 'undefined') {
+            hostInfo.currentTime = 'redacted'; // Redact current time
+        }
         result['hostInfo.json'] = JSON.stringify(hostInfo);
     } catch (error) {
         result['hostInfo.error'] = error instanceof Error ? error.message : String(error);

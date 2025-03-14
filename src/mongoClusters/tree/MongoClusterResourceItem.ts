@@ -128,7 +128,10 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                     mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
                         ext.outputChannel.appendLine(`Error: ${error.message}`);
 
-                        void vscode.window.showErrorMessage(`Failed to connect: ${error.message}`);
+                        void vscode.window.showErrorMessage(`Failed to connect to "${this.mongoCluster.name}"`, {
+                            modal: true,
+                            detail: `Revisit connection details and try again.\n\nError: ${error.message}`,
+                        });
 
                         throw error;
                     });

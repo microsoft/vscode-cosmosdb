@@ -9,6 +9,8 @@ import vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
+import { promptAfterActionEventually } from '../utils/survey';
+import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import { BaseTab, type CommandPayload } from './BaseTab';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
@@ -169,7 +171,8 @@ export class DocumentTab extends BaseTab {
     }
 
     private async saveDocument(documentText: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.saveDocument', async (context) => {
+        const callbackId = 'cosmosDB.nosql.document.saveDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
 
             if (!this.isCosmosDbItemDefinition(documentContent)) {
@@ -190,6 +193,7 @@ export class DocumentTab extends BaseTab {
 
             this.panel.title = `${this.documentId.id}.json`;
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
 
     private isCosmosDbItemDefinition(documentContent: unknown): documentContent is ItemDefinition {

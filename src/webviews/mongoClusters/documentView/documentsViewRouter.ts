@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 import { localize } from '../../../utils/localize';
+import { promptAfterActionEventually } from '../../../utils/survey';
+import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
@@ -100,6 +102,8 @@ export const documentsViewRouter = router({
                     newDocumentId,
                 ),
             );
+
+            void promptAfterActionEventually(ExperienceKind.Mongo, UsageImpact.High);
 
             return { documentStringified: newDocumentStringified, documentId: newDocumentId };
         }),

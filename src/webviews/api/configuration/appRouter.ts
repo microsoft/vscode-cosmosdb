@@ -10,6 +10,8 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
+import { promptAfterActionEventually } from '../../../utils/survey';
+import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
 import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
 import { publicProcedure, router } from '../extension-server/trpc';
@@ -108,6 +110,16 @@ const commonRouter = router({
                 modal: input.modal,
                 detail: input.modal ? input.cause : undefined, // The content of the 'detail' field is only shown when modal is true
             });
+        }),
+    surveyPing: publicProcedure
+        .input(
+            z.object({
+                experienceKind: z.nativeEnum(ExperienceKind),
+                usageImpact: z.nativeEnum(UsageImpact),
+            }),
+        )
+        .mutation(({ input }) => {
+            void promptAfterActionEventually(input.experienceKind, input.usageImpact);
         }),
 });
 

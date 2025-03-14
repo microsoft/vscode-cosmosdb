@@ -17,28 +17,27 @@ import { ExperienceKind, type UsageImpact } from './surveyTypes';
 export const SurveyConfig = {
     urls: {
         NOSQL: 'https://aka.ms/AzureDatabasesSurvey',
-        MONGO: 'https://aka.ms/AzureDatabasesSurvey/mongo'
+        MONGO: 'https://aka.ms/AzureDatabasesSurvey/mongo',
     },
     settings: {
-        DEBUG_ALWAYS_PROMPT: false,      // Forces survey prompt regardless of conditions
-        DISABLE_SURVEY: false,           // Completely disables survey functionality
-        PROBABILITY: 1,                  // Probability to become candidate (0-1), Azure Tools uses 0.15
-        PROMPT_ENGLISH_ONLY: false,      // Whether to limit survey to English locales
-        PROMPT_VERSION_ONLY_ONCE: true,  // Only prompt once per major/minor version
-        PROMPT_DATE_ONLY_ONCE: true,     // Only prompt once per day
-        MIN_SESSIONS_BEFORE_PROMPT: 9,   // Sessions required before eligible for prompting
-        SNOOZE_SESSIONS: 3,              // Sessions to skip after "remind me later"
-        REARM_AFTER_DAYS: 90,            // Days before re-prompting after taking survey
-        REARM_OPT_OUT: true              // Whether to re-prompt after opt-out period
+        DEBUG_ALWAYS_PROMPT: false, // Forces survey prompt regardless of conditions
+        DISABLE_SURVEY: false, // Completely disables survey functionality
+        PROBABILITY: 1, // Probability to become candidate (0-1), Azure Tools uses 0.15
+        PROMPT_ENGLISH_ONLY: false, // Whether to limit survey to English locales
+        PROMPT_VERSION_ONLY_ONCE: true, // Only prompt once per major/minor version
+        PROMPT_DATE_ONLY_ONCE: true, // Only prompt once per day
+        MIN_SESSIONS_BEFORE_PROMPT: 9, // Sessions required before eligible for prompting
+        SNOOZE_SESSIONS: 3, // Sessions to skip after "remind me later"
+        REARM_AFTER_DAYS: 90, // Days before re-prompting after taking survey
+        REARM_OPT_OUT: true, // Whether to re-prompt after opt-out period
     },
     scoring: {
-        REQUIRED_SCORE: 100,             // Score needed to trigger survey
-        MAX_SCORE: 1000                  // Maximum score to prevent overcounting
-    }
+        REQUIRED_SCORE: 100, // Score needed to trigger survey
+        MAX_SCORE: 1000, // Maximum score to prevent overcounting
+    },
 };
 
 class SurveyState {
-
     private _isCandidate: boolean | undefined = undefined;
     private _wasPromptedInSession = false;
     private _usageScoreByExperience: Record<ExperienceKind, number> = {
@@ -82,7 +81,7 @@ export const StateKeys = {
     LAST_SESSION_DATE: `${GLOBAL_STATE_KEY_PREFIX}/lastSessionDate`,
     SKIP_VERSION: `${GLOBAL_STATE_KEY_PREFIX}/skipVersion`,
     SURVEY_TAKEN_DATE: `${GLOBAL_STATE_KEY_PREFIX}/surveyTaken`,
-    OPT_OUT_DATE: `${GLOBAL_STATE_KEY_PREFIX}/surveyOptOut`
+    OPT_OUT_DATE: `${GLOBAL_STATE_KEY_PREFIX}/surveyOptOut`,
 };
 
 /**
@@ -96,10 +95,7 @@ export function countExperienceUsageForSurvey(experience: ExperienceKind, score:
     if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
         return;
     }
-    const newScore = Math.min(
-        SurveyConfig.scoring.MAX_SCORE,
-        surveyState.getUsageScore(experience) + score
-    );
+    const newScore = Math.min(SurveyConfig.scoring.MAX_SCORE, surveyState.getUsageScore(experience) + score);
     surveyState.setUsageScore(experience, newScore);
 }
 
@@ -198,7 +194,9 @@ export async function initSurvey(): Promise<void> {
 
         // Prompt only once per day,
         // LAST_SESSION_DATE_KEY will be set to the last date the user was prompted
-        const lastSessionDate = new Date(ext.context.globalState.get(StateKeys.LAST_SESSION_DATE, new Date(0).toISOString()));
+        const lastSessionDate = new Date(
+            ext.context.globalState.get(StateKeys.LAST_SESSION_DATE, new Date(0).toISOString()),
+        );
         if (SurveyConfig.settings.PROMPT_DATE_ONLY_ONCE && today.toDateString() === lastSessionDate.toDateString()) {
             context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
             return;
@@ -258,7 +256,10 @@ export async function surveyPromptIfCandidate(
             title: localize('azureResourceGroups.remindLater', 'Remind Me Later'),
             run: async () => {
                 context.telemetry.properties.remindMeLater = 'true';
-                await ext.context.globalState.update(StateKeys.SESSION_COUNT, SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT - SurveyConfig.settings.SNOOZE_SESSIONS);
+                await ext.context.globalState.update(
+                    StateKeys.SESSION_COUNT,
+                    SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT - SurveyConfig.settings.SNOOZE_SESSIONS,
+                );
             },
         };
         const never = {

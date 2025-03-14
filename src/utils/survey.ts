@@ -210,7 +210,7 @@ export async function surveyPromptIfCandidate(
                 context.telemetry.properties.remindMeLater = 'true';
                 await ext.context.globalState.update(
                     SESSION_COUNT_KEY,
-                    MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS + 1,
+                    MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS,
                 );
             },
         };

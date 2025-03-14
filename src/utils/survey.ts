@@ -35,37 +35,12 @@ const SurveyConfig = {
 };
 
 class SurveyState {
-    private _isCandidate: boolean | undefined = undefined;
-    private _wasPromptedInSession = false;
-    private _usageScoreByExperience: Record<ExperienceKind, number> = {
+    public isCandidate: boolean | undefined = undefined;
+    public wasPromptedInSession = false;
+    public usageScoreByExperience: Record<ExperienceKind, number> = {
         [ExperienceKind.Mongo]: 0,
         [ExperienceKind.NoSQL]: 0,
     };
-
-    // In-memory state getters/setters
-    public get isCandidate(): boolean | undefined {
-        return this._isCandidate;
-    }
-
-    public set isCandidate(value: boolean | undefined) {
-        this._isCandidate = value;
-    }
-
-    public get wasPromptedInSession(): boolean {
-        return this._wasPromptedInSession;
-    }
-
-    public set wasPromptedInSession(value: boolean) {
-        this._wasPromptedInSession = value;
-    }
-
-    public getUsageScore(experience: ExperienceKind): number {
-        return this._usageScoreByExperience[experience];
-    }
-
-    public setUsageScore(experience: ExperienceKind, score: number): void {
-        this._usageScoreByExperience[experience] = score;
-    }
 }
 
 const GLOBAL_STATE_KEY_PREFIX = 'ms-azuretools.vscode-cosmosdb.survey';
@@ -85,8 +60,8 @@ export function countExperienceUsageForSurvey(experience: ExperienceKind, score:
     if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
         return;
     }
-    const newScore = Math.min(SurveyConfig.scoring.MAX_SCORE, surveyState.getUsageScore(experience) + score);
-    surveyState.setUsageScore(experience, newScore);
+    const newScore = Math.min(SurveyConfig.scoring.MAX_SCORE, surveyState.usageScoreByExperience[experience] + score);
+    surveyState.usageScoreByExperience[experience] = newScore;
 }
 
 export async function promptAfterActionEventually(
@@ -101,7 +76,7 @@ export async function promptAfterActionEventually(
     countExperienceUsageForSurvey(experience, score);
 
     const { fullScore, highestExperience } = (
-        Object.entries(surveyState['_usageScoreByExperience']) as [ExperienceKind, number][]
+        Object.entries(surveyState.usageScoreByExperience) as [ExperienceKind, number][]
     ).reduce(
         (acc, entry) => {
             acc.fullScore = Math.min(SurveyConfig.scoring.MAX_SCORE, acc.fullScore + entry[1]);

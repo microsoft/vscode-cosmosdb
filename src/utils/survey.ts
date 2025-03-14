@@ -10,11 +10,8 @@ import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
 import { ExperienceKind, type UsageImpact } from './surveyTypes';
 
-/**
- * Survey Configuration
- * @internal
- */
-export const SurveyConfig = {
+// Survey Configuration
+const SurveyConfig = {
     urls: {
         NOSQL: 'https://aka.ms/AzureDatabasesSurvey',
         MONGO: 'https://aka.ms/AzureDatabasesSurvey/mongo',
@@ -72,11 +69,8 @@ class SurveyState {
 }
 
 const GLOBAL_STATE_KEY_PREFIX = 'ms-azuretools.vscode-cosmosdb.survey';
-/**
- * Survey keys for persistent storage
- * @internal
- */
-export const StateKeys = {
+//Survey keys for persistent storage
+const StateKeys = {
     SESSION_COUNT: `${GLOBAL_STATE_KEY_PREFIX}/sessionCount`,
     LAST_SESSION_DATE: `${GLOBAL_STATE_KEY_PREFIX}/lastSessionDate`,
     SKIP_VERSION: `${GLOBAL_STATE_KEY_PREFIX}/skipVersion`,
@@ -84,11 +78,7 @@ export const StateKeys = {
     OPT_OUT_DATE: `${GLOBAL_STATE_KEY_PREFIX}/surveyOptOut`,
 };
 
-/**
- * Internal export solely for testing.
- * @internal
- */
-export const surveyState = new SurveyState();
+const surveyState = new SurveyState();
 const localize = nls.loadMessageBundle();
 
 export function countExperienceUsageForSurvey(experience: ExperienceKind, score: UsageImpact | number): void {
@@ -281,4 +271,35 @@ export async function surveyPromptIfCandidate(
         context.telemetry.properties.userAsked = 'true';
         await (button || remind).run();
     });
+}
+
+/**
+ * This section is only for tests
+ * Currently we use swc which doesn't support "@internal" alongside with the stripInternal option.
+ * So we rely on webpack to set the NODE_ENV to 'test' and return the real states for tests only.
+ * Once we can switch to tsc or swc adds this option, we should remove the (process.env.NODE_ENV === 'test') checks.
+ */
+
+/**
+ * Internal export solely for testing.
+ * @internal
+ */
+export function getSurveyState(): SurveyState | undefined {
+    return process.env.NODE_ENV === 'test' ? surveyState : undefined;
+}
+
+/**
+ * Internal export solely for testing.
+ * @internal
+ */
+export function getSurveyConfig() {
+    return process.env.NODE_ENV === 'test' ? SurveyConfig : undefined;
+}
+
+/**
+ * Internal export solely for testing.
+ * @internal
+ */
+export function getSurveyStateKeys() {
+    return process.env.NODE_ENV === 'test' ? StateKeys : undefined;
 }

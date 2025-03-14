@@ -5,9 +5,15 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../extensionVariables';
-import { getIsSurveyCandidate, StateKeys, SurveyConfig, surveyState } from './survey';
+import { getIsSurveyCandidate, getSurveyConfig, getSurveyState, getSurveyStateKeys } from './survey';
 
 let globalState: { get: jest.Mock; update: jest.Mock };
+// Using type assertion here to tell TypeScript that we're confident getSurveyConfig() will not return undefined
+// in the test environment. This approach avoids null checks throughout the test code but requires the validation
+// in beforeAll() to fail the test explicitly if the assumption is incorrect.
+const SurveyConfig = getSurveyConfig() as NonNullable<ReturnType<typeof getSurveyConfig>>;
+const StateKeys = getSurveyStateKeys() as NonNullable<ReturnType<typeof getSurveyStateKeys>>;
+const SurveyState = getSurveyState() as NonNullable<ReturnType<typeof getSurveyState>>;
 
 const currentExtensionVersion = '1.1.1';
 const previousPatchExtensionVersion = '1.1.0';
@@ -39,6 +45,12 @@ jest.mock('@microsoft/vscode-azext-utils', () => {
     };
 });
 
+beforeAll(() => {
+    if (!SurveyState || !SurveyConfig || !SurveyConfig.settings || !StateKeys) {
+        throw new Error('SurveyState is missing or invalid. Please compile with "test" mode when using webpack.');
+    }
+});
+
 /**
  * Tests for survey initialization logic
  * These tests verify that users are correctly identified as survey candidates
@@ -61,8 +73,8 @@ describe('Survey Initialization', () => {
 
     function resetSurveyState(): void {
         jest.restoreAllMocks();
-        surveyState.isCandidate = undefined;
-        surveyState.wasPromptedInSession = false;
+        SurveyState.isCandidate = undefined;
+        SurveyState.wasPromptedInSession = false;
     }
 
     afterEach(() => {
@@ -70,6 +82,7 @@ describe('Survey Initialization', () => {
     });
 
     function mockSurveyTaken(date: Date, version: string): void {
+        expect(SurveyConfig).toBeDefined();
         mockGlobalStateValues({
             [StateKeys.SKIP_VERSION]: version,
             [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
@@ -250,7 +263,6 @@ describe('Survey Initialization', () => {
 
     describe('Remind Me Later functionality', () => {
         test('Should postpone prompting for SNOOZE_SESSIONS after clicking Remind Me Later', async () => {
-
             // Starting point: User has just clicked "Remind Me Later"
             // This sets the count to MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS
             const initialCount =

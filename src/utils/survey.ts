@@ -208,10 +208,7 @@ export async function surveyPromptIfCandidate(
             title: localize('azureResourceGroups.remindLater', 'Remind Me Later'),
             run: async () => {
                 context.telemetry.properties.remindMeLater = 'true';
-                await ext.context.globalState.update(
-                    SESSION_COUNT_KEY,
-                    MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS,
-                );
+                await ext.context.globalState.update(SESSION_COUNT_KEY, MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS);
             },
         };
         const never = {

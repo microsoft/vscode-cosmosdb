@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../extensionVariables';
-import { initSurvey, StateKeys, SurveyConfig, surveyState } from './survey';
+import { getIsSurveyCandidate, StateKeys, SurveyConfig, surveyState } from './survey';
 
 let globalState: { get: jest.Mock; update: jest.Mock };
 
@@ -59,21 +59,15 @@ describe('Survey Initialization', () => {
         jest.spyOn(Math, 'random').mockReturnValue(0);
     });
 
-    afterEach(() => {
+    function resetSurveyState(): void {
         jest.restoreAllMocks();
-
-        // Reset survey state after each test
         surveyState.isCandidate = undefined;
         surveyState.wasPromptedInSession = false;
+    }
+
+    afterEach(() => {
+        resetSurveyState();
     });
-
-    function assertIsCandidate() {
-        expect(surveyState.isCandidate).toBe(true);
-    }
-
-    function assertIsNotCandidate() {
-        expect(surveyState.isCandidate).toBe(false);
-    }
 
     function mockSurveyTaken(date: Date, version: string): void {
         mockGlobalStateValues({
@@ -102,8 +96,6 @@ describe('Survey Initialization', () => {
             ['Should not mark user as candidate if last session was today', 0, false],
             ['Should mark user as candidate if last session was yesterday', -1, true],
         ])('%s', async (_, daysOffset, shouldBeCandidate) => {
-            expect.hasAssertions();
-
             const date = new Date();
             date.setDate(date.getDate() + daysOffset);
 
@@ -111,13 +103,7 @@ describe('Survey Initialization', () => {
                 [StateKeys.LAST_SESSION_DATE]: date.toDateString(),
             });
 
-            await initSurvey();
-
-            if (shouldBeCandidate) {
-                assertIsCandidate();
-            } else {
-                assertIsNotCandidate();
-            }
+            expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
         });
     });
 
@@ -144,21 +130,12 @@ describe('Survey Initialization', () => {
         ])(
             'with session count %s should increment to %s and %s mark as candidate',
             async (initialCount, expectedCount, shouldBeCandidate) => {
-                expect.hasAssertions();
-
                 mockGlobalStateValues({
                     [StateKeys.SESSION_COUNT]: initialCount,
                 });
 
-                await initSurvey();
-
+                expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
                 expect(globalState.update).toHaveBeenCalledWith(StateKeys.SESSION_COUNT, expectedCount);
-
-                if (shouldBeCandidate) {
-                    assertIsCandidate();
-                } else {
-                    assertIsNotCandidate();
-                }
             },
         );
     });
@@ -172,19 +149,11 @@ describe('Survey Initialization', () => {
             ['previous major release (0.1.1 → 1.1.1)', previousMajorExtensionVersion, true],
         ])('When Survey was taken for %s', (_description, skipVersion, shouldBeCandidate) => {
             test(`Should ${shouldBeCandidate ? '' : 'not '}mark user as candidate`, async () => {
-                expect.hasAssertions();
-
                 mockGlobalStateValues({
                     [StateKeys.SKIP_VERSION]: skipVersion,
                 });
 
-                await initSurvey();
-
-                if (shouldBeCandidate) {
-                    assertIsCandidate();
-                } else {
-                    assertIsNotCandidate();
-                }
+                expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
             });
         });
     });
@@ -250,8 +219,6 @@ describe('Survey Initialization', () => {
             ],
         ])('%s %s', (testType, _description, daysSince, version, shouldBeCandidate) => {
             test(`Should ${shouldBeCandidate ? '' : 'not '}mark as candidate`, async () => {
-                expect.hasAssertions();
-
                 const date = new Date();
                 date.setDate(date.getDate() - daysSince);
 
@@ -263,13 +230,7 @@ describe('Survey Initialization', () => {
                     mockOptedOut(date, version);
                 }
 
-                await initSurvey();
-
-                if (shouldBeCandidate) {
-                    assertIsCandidate();
-                } else {
-                    assertIsNotCandidate();
-                }
+                expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
             });
         });
     });
@@ -279,23 +240,16 @@ describe('Survey Initialization', () => {
             [0, true], // random < PROBABILITY => shouldBeCandidate
             [Math.min(1, SurveyConfig.settings.PROBABILITY), false], // random >= PROBABILITY => shouldNotBeCandidate
         ])('random value %s => candidate: %s', async (mockRandom, shouldBeCandidate) => {
-            expect.hasAssertions();
             jest.spyOn(Math, 'random').mockReturnValue(mockRandom);
 
             mockGlobalStateValues({}); // Provide no disqualifying conditions
 
-            await initSurvey();
-            if (shouldBeCandidate) {
-                assertIsCandidate();
-            } else {
-                assertIsNotCandidate();
-            }
+            expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
         });
     });
 
     describe('Remind Me Later functionality', () => {
         test('Should postpone prompting for SNOOZE_SESSIONS after clicking Remind Me Later', async () => {
-            expect.hasAssertions();
 
             // Starting point: User has just clicked "Remind Me Later"
             // This sets the count to MIN_SESSIONS_BEFORE_PROMPT - SNOOZE_SESSIONS
@@ -306,16 +260,14 @@ describe('Survey Initialization', () => {
             });
 
             // First session after clicking "Remind Me Later"
-            await initSurvey();
+            // below threshold, so user should not be a candidate
+            expect(await getIsSurveyCandidate()).toBe(false);
 
             // Session count should be incremented by 1
             expect(globalState.update).toHaveBeenCalledWith(StateKeys.SESSION_COUNT, initialCount + 1);
 
-            // below threshold, so user should not be a candidate
-            assertIsNotCandidate();
-
             // Reset mocks for next initSurvey call
-            jest.clearAllMocks();
+            resetSurveyState();
 
             // Mock the last session before the threshold
             const lastSnoozedSession = SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT - 1;
@@ -324,16 +276,13 @@ describe('Survey Initialization', () => {
             });
 
             // Another session - this should reach the threshold
-            await initSurvey();
+            expect(await getIsSurveyCandidate()).toBe(true);
 
             // Session count should be incremented to the threshold
             expect(globalState.update).toHaveBeenCalledWith(
                 StateKeys.SESSION_COUNT,
                 SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
             );
-
-            // Now the user should be a candidate since we've reached the threshold
-            assertIsCandidate();
         });
     });
 });

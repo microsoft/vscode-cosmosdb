@@ -138,11 +138,7 @@ export async function getIsSurveyCandidate(): Promise<boolean> {
     return surveyState.isCandidate ?? false;
 }
 
-/**
- * Internal exports solely for testing. These should not be used in production code.
- * @internal
- */
-export async function initSurvey(): Promise<void> {
+async function initSurvey(): Promise<void> {
     await callWithTelemetryAndErrorHandling('survey.init', async (context: IActionContext) => {
         if (SurveyConfig.settings.DEBUG_ALWAYS_PROMPT) {
             context.telemetry.properties.isCandidate = (surveyState.isCandidate = true).toString();

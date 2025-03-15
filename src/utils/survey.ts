@@ -56,6 +56,11 @@ const StateKeys = {
 const surveyState = new SurveyState();
 const localize = nls.loadMessageBundle();
 
+/**
+ * Opens the survey in the default browser, determining the appropriate URL based on user experience
+ * @param experience The experience type to open survey for, or undefined to use the highest score experience
+ * @param triggerAction Optional action that triggered the survey for telemetry
+ */
 export function openSurvey(experience: ExperienceKind | undefined, triggerAction?: string): void {
     if (experience === undefined) {
         const { highestExperience, fullScore } = calculateScoreMetrics();
@@ -65,7 +70,9 @@ export function openSurvey(experience: ExperienceKind | undefined, triggerAction
     }
 
     void callWithTelemetryAndErrorHandling('survey.open', (context: IActionContext) => {
-        context.telemetry.properties.isCandidate = (surveyState.isCandidate === undefined ? false : surveyState.isCandidate).toString();
+        context.telemetry.properties.isCandidate = (
+            surveyState.isCandidate === undefined ? false : surveyState.isCandidate
+        ).toString();
         context.telemetry.properties.experience = experience;
         context.telemetry.properties.triggerAction = triggerAction;
         void env.openExternal(
@@ -76,6 +83,11 @@ export function openSurvey(experience: ExperienceKind | undefined, triggerAction
     });
 }
 
+/**
+ * Increments the usage score for a specific experience type
+ * @param experience The experience type to increment score for
+ * @param score The amount to increment the score by
+ */
 export function countExperienceUsageForSurvey(experience: ExperienceKind, score: UsageImpact | number): void {
     if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
         return;
@@ -84,6 +96,12 @@ export function countExperienceUsageForSurvey(experience: ExperienceKind, score:
     surveyState.usageScoreByExperience[experience] = newScore;
 }
 
+/**
+ * Increments the usage score and potentially displays the survey prompt if threshold is reached
+ * @param experience The experience type to count
+ * @param score The amount to increment the score by
+ * @param triggerAction Optional action that triggered this function for telemetry
+ */
 export async function promptAfterActionEventually(
     experience: ExperienceKind,
     score: UsageImpact | number,
@@ -204,7 +222,7 @@ async function initSurvey(): Promise<void> {
     });
 }
 
-export async function surveyPromptIfCandidate(
+async function surveyPromptIfCandidate(
     experience: ExperienceKind = ExperienceKind.NoSQL,
     triggerAction?: string,
 ): Promise<void> {

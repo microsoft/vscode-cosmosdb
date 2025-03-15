@@ -56,6 +56,26 @@ const StateKeys = {
 const surveyState = new SurveyState();
 const localize = nls.loadMessageBundle();
 
+export function openSurvey(experience: ExperienceKind | undefined, triggerAction?: string): void {
+    if (experience === undefined) {
+        const { highestExperience, fullScore } = calculateScoreMetrics();
+        // Use the highest experience only if there's actual usage data,
+        // otherwise fall back to NoSQL as default
+        experience = fullScore > 0 ? highestExperience[0] : ExperienceKind.NoSQL;
+    }
+
+    void callWithTelemetryAndErrorHandling('survey.open', (context: IActionContext) => {
+        context.telemetry.properties.isCandidate = (surveyState.isCandidate === undefined ? false : surveyState.isCandidate).toString();
+        context.telemetry.properties.experience = experience;
+        context.telemetry.properties.triggerAction = triggerAction;
+        void env.openExternal(
+            //NOTE: Customer Voice does not support URL parameters, keeping this comment for reference if we switch to another platform which supports that
+            //void env.openExternal(Uri.parse(`${surveyUrl}?o=${encodeURIComponent(process.platform)}&v=${encodeURIComponent(extensionVersion)}&m=${encodeURIComponent(env.machineId)}`));
+            Uri.parse(experience === ExperienceKind.Mongo ? SurveyConfig.urls.MONGO : SurveyConfig.urls.NOSQL),
+        );
+    });
+}
+
 export function countExperienceUsageForSurvey(experience: ExperienceKind, score: UsageImpact | number): void {
     if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
         return;
@@ -75,9 +95,18 @@ export async function promptAfterActionEventually(
 
     countExperienceUsageForSurvey(experience, score);
 
-    const { fullScore, highestExperience } = (
-        Object.entries(surveyState.usageScoreByExperience) as [ExperienceKind, number][]
-    ).reduce(
+    const { fullScore, highestExperience } = calculateScoreMetrics();
+
+    if (fullScore >= SurveyConfig.scoring.REQUIRED_SCORE) {
+        await surveyPromptIfCandidate(highestExperience[0], triggerAction);
+    }
+}
+
+function calculateScoreMetrics(): {
+    fullScore: number;
+    highestExperience: [ExperienceKind, number];
+} {
+    return (Object.entries(surveyState.usageScoreByExperience) as [ExperienceKind, number][]).reduce(
         (acc, entry) => {
             acc.fullScore = Math.min(SurveyConfig.scoring.MAX_SCORE, acc.fullScore + entry[1]);
             if (entry[1] > acc.highestExperience[1]) {
@@ -85,12 +114,8 @@ export async function promptAfterActionEventually(
             }
             return acc;
         },
-        { fullScore: 0, highestExperience: [ExperienceKind.Mongo, 0] as [ExperienceKind, number] }, // initial value
+        { fullScore: 0, highestExperience: [ExperienceKind.NoSQL, 0] as [ExperienceKind, number] },
     );
-
-    if (fullScore >= SurveyConfig.scoring.REQUIRED_SCORE) {
-        await surveyPromptIfCandidate(highestExperience[0], triggerAction);
-    }
 }
 
 export async function getIsSurveyCandidate(): Promise<boolean> {
@@ -199,15 +224,12 @@ export async function surveyPromptIfCandidate(
 
         const extensionVersion = (ext.context.extension.packageJSON as { version: string }).version;
         const date = new Date().toDateString();
-        const surveyUrl = experience === ExperienceKind.Mongo ? SurveyConfig.urls.MONGO : SurveyConfig.urls.NOSQL;
 
         const take = {
             title: localize('azureResourceGroups.takeSurvey', 'Take Survey'),
             run: async () => {
                 context.telemetry.properties.takeShortSurvey = 'true';
-                //NOTE: Customer Voice does not support URL parameters, keeping this comment for reference if we switch to another platform which supports that
-                //void env.openExternal(Uri.parse(`${surveyUrl}?o=${encodeURIComponent(process.platform)}&v=${encodeURIComponent(extensionVersion)}&m=${encodeURIComponent(env.machineId)}`));
-                void env.openExternal(Uri.parse(surveyUrl));
+                openSurvey(experience, triggerAction);
                 await ext.context.globalState.update(StateKeys.SKIP_VERSION, extensionVersion);
                 await ext.context.globalState.update(StateKeys.SESSION_COUNT, 0);
                 await ext.context.globalState.update(StateKeys.SURVEY_TAKEN_DATE, date);

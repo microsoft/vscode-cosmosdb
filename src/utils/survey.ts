@@ -92,7 +92,10 @@ export function countExperienceUsageForSurvey(experience: ExperienceKind, score:
     if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
         return;
     }
-    const newScore = Math.min(SurveyConfig.scoring.MAX_SCORE, surveyState.usageScoreByExperience[experience] + score);
+    const newScore = Math.min(
+        SurveyConfig.scoring.MAX_SCORE,
+        surveyState.usageScoreByExperience[experience] + Math.max(0, score),
+    );
     surveyState.usageScoreByExperience[experience] = newScore;
 }
 
@@ -127,7 +130,14 @@ function calculateScoreMetrics(): {
     return (Object.entries(surveyState.usageScoreByExperience) as [ExperienceKind, number][]).reduce(
         (acc, entry) => {
             acc.fullScore = Math.min(SurveyConfig.scoring.MAX_SCORE, acc.fullScore + entry[1]);
-            if (entry[1] > acc.highestExperience[1]) {
+
+            // Only update the highest experience if:
+            // 1. The new score is strictly higher than the current highest, OR
+            // 2. The current highest is NoSQL and scores are equal (to preserve NoSQL as default)
+            if (
+                entry[1] > acc.highestExperience[1] ||
+                (entry[0] === ExperienceKind.NoSQL && entry[1] === acc.highestExperience[1])
+            ) {
                 acc.highestExperience = entry;
             }
             return acc;

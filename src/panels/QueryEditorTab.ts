@@ -14,7 +14,7 @@ import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
 import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../docdb/utils/NoSqlQueryConnection';
-import { promptAfterActionEventually } from '../utils/survey';
+import { getIsSurveyCandidate, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
@@ -96,6 +96,11 @@ export class QueryEditorTab extends BaseTab {
                     params: [this.query],
                 });
             }
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'isSurveyCandidateChanged',
+                params: [await getIsSurveyCandidate()],
+            });
         });
     }
 
@@ -132,6 +137,8 @@ export class QueryEditorTab extends BaseTab {
                 return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
             case 'deleteDocument':
                 return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
+            case 'provideFeedback':
+                return this.provideFeedback();
         }
 
         return super.getCommand(payload);
@@ -394,5 +401,10 @@ export class QueryEditorTab extends BaseTab {
         }
 
         return viewColumn;
+    }
+
+    private async provideFeedback(): Promise<void> {
+        openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
+        return Promise.resolve();
     }
 }

@@ -14,7 +14,7 @@ import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
 import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../docdb/utils/NoSqlQueryConnection';
-import { getIsSurveyCandidate, openSurvey, promptAfterActionEventually } from '../utils/survey';
+import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
@@ -99,7 +99,7 @@ export class QueryEditorTab extends BaseTab {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'isSurveyCandidateChanged',
-                params: [await getIsSurveyCandidate()],
+                params: [!getIsSurveyDisabledGlobally()],
             });
         });
     }

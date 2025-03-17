@@ -3,14 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import crypto from 'crypto';
 import { ext } from '../extensionVariables';
+
+// Mock the vscode module
+jest.mock('vscode', () => ({
+    env: {
+        machineId: 'default-machine-id',
+        language: 'en',
+        openExternal: jest.fn(),
+    },
+}));
+
+import { env } from 'vscode';
 import { getIsSurveyCandidate, getSurveyConfig, getSurveyState, getSurveyStateKeys } from './survey';
 
 let globalState: { get: jest.Mock; update: jest.Mock };
 // Using type assertion here to tell TypeScript that we're confident getSurveyConfig() will not return undefined
-// in the test environment. This approach avoids null checks throughout the test code but requires the validation
-// in beforeAll() to fail the test explicitly if the assumption is incorrect.
+// in the test environment.
 const SurveyConfig = getSurveyConfig() as NonNullable<ReturnType<typeof getSurveyConfig>>;
 const StateKeys = getSurveyStateKeys() as NonNullable<ReturnType<typeof getSurveyStateKeys>>;
 const SurveyState = getSurveyState() as NonNullable<ReturnType<typeof getSurveyState>>;
@@ -21,27 +31,23 @@ const previousMinorExtensionVersion = '1.0.0';
 const previousMajorExtensionVersion = '0.1.1';
 
 jest.mock('@microsoft/vscode-azext-utils', () => {
-    const actualModule = jest.requireActual('@microsoft/vscode-azext-utils');
     return {
-        ...actualModule, // don't mock the rest of the module
-        // Mock out the internal telemetry function to avoid triggering real event emitters
-        callWithTelemetryAndErrorHandling: jest.fn(
-            async (_eventName, callback: (context: IActionContext) => Promise<void>) => {
-                await callback({
-                    telemetry: { properties: {}, measurements: {} },
-                    errorHandling: { issueProperties: {} },
-                    ui: {
-                        showWarningMessage: jest.fn(),
-                        onDidFinishPrompt: jest.fn(),
-                        showQuickPick: jest.fn(),
-                        showInputBox: jest.fn(),
-                        showOpenDialog: jest.fn(),
-                        showWorkspaceFolderPick: jest.fn(),
-                    },
-                    valuesToMask: [],
-                } as IActionContext);
-            },
-        ),
+        // Only mock the callWithTelemetryAndErrorHandling function that we need
+        callWithTelemetryAndErrorHandling: jest.fn(async (_eventName, callback: (context: any) => Promise<void>) => {
+            await callback({
+                telemetry: { properties: {}, measurements: {} },
+                errorHandling: { issueProperties: {} },
+                ui: {
+                    showWarningMessage: jest.fn(),
+                    onDidFinishPrompt: jest.fn(),
+                    showQuickPick: jest.fn(),
+                    showInputBox: jest.fn(),
+                    showOpenDialog: jest.fn(),
+                    showWorkspaceFolderPick: jest.fn(),
+                },
+                valuesToMask: [],
+            });
+        }),
     };
 });
 
@@ -54,7 +60,7 @@ beforeAll(() => {
 /**
  * Tests for survey initialization logic
  * These tests verify that users are correctly identified as survey candidates
- * based on version, session count, and time-based triggers
+ * based on version, session count, date‐ and time‐based triggers, as well as the new AB test logic.
  */
 describe('Survey Initialization', () => {
     beforeEach(() => {
@@ -67,8 +73,14 @@ describe('Survey Initialization', () => {
             globalState,
             extension: { packageJSON: { version: currentExtensionVersion } }, // extension version for version based checks
         };
-        // ensure not do disqualify user by probability, to reliably test all other conditions
-        jest.spyOn(Math, 'random').mockReturnValue(0);
+        // Reset any previously set candidate flag
+        SurveyState.isCandidate = undefined;
+
+        // Set up default A/B test mocks for passing
+        mockABTestPassing();
+
+        // Set a consistent machine ID
+        (env as any).machineId = 'test-machine-id';
     });
 
     function resetSurveyState(): void {
@@ -80,6 +92,34 @@ describe('Survey Initialization', () => {
     afterEach(() => {
         resetSurveyState();
     });
+
+    // Helper to mock the crypto hash to always pass A/B test
+    function mockABTestPassing() {
+        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+            return {
+                update: () => ({
+                    digest: () => '0a000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+                }),
+            } as any;
+        });
+
+        // Also mock Math.random as fallback
+        jest.spyOn(Math, 'random').mockReturnValue(0.1); // Ensure PROBABILITY check passes
+    }
+
+    // Helper to mock the crypto hash to always fail A/B test
+    function mockABTestFailing() {
+        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+            return {
+                update: () => ({
+                    digest: () => 'f0000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+                }),
+            } as any;
+        });
+
+        // Also mock Math.random as fallback
+        jest.spyOn(Math, 'random').mockReturnValue(0.9); // Ensure PROBABILITY check fails
+    }
 
     function mockSurveyTaken(date: Date, version: string): void {
         expect(SurveyConfig).toBeDefined();
@@ -113,7 +153,7 @@ describe('Survey Initialization', () => {
             date.setDate(date.getDate() + daysOffset);
 
             mockGlobalStateValues({
-                [StateKeys.LAST_SESSION_DATE]: date.toDateString(),
+                [StateKeys.LAST_SESSION_DATE]: date.toISOString(),
             });
 
             expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
@@ -151,6 +191,15 @@ describe('Survey Initialization', () => {
                 expect(globalState.update).toHaveBeenCalledWith(StateKeys.SESSION_COUNT, expectedCount);
             },
         );
+
+        test('should respect A/B test and not mark as candidate when hash fails threshold', async () => {
+            mockABTestFailing();
+            mockGlobalStateValues({
+                [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
+            });
+
+            expect(await getIsSurveyCandidate()).toBe(false);
+        });
     });
 
     describe('Rearm survey only after extension update excluding patch releases', () => {
@@ -235,7 +284,6 @@ describe('Survey Initialization', () => {
                 const date = new Date();
                 date.setDate(date.getDate() - daysSince);
 
-                // Call the appropriate mock based on the test type
                 if (testType === 'Survey taken') {
                     mockSurveyTaken(date, version);
                 } else {
@@ -245,19 +293,22 @@ describe('Survey Initialization', () => {
 
                 expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
             });
-        });
-    });
 
-    describe('Enable Survey with a given Probability', () => {
-        test.each([
-            [0, true], // random < PROBABILITY => shouldBeCandidate
-            [Math.min(1, SurveyConfig.settings.PROBABILITY), false], // random >= PROBABILITY => shouldNotBeCandidate
-        ])('random value %s => candidate: %s', async (mockRandom, shouldBeCandidate) => {
-            jest.spyOn(Math, 'random').mockReturnValue(mockRandom);
+            test(`Should not mark as candidate when A/B test fails`, async () => {
+                mockABTestFailing();
+                const date = new Date();
+                date.setDate(date.getDate() - daysSince);
 
-            mockGlobalStateValues({}); // Provide no disqualifying conditions
+                if (testType === 'Survey taken') {
+                    mockSurveyTaken(date, version);
+                } else {
+                    // 'Opted Out'
+                    mockOptedOut(date, version);
+                }
 
-            expect(await getIsSurveyCandidate()).toBe(shouldBeCandidate);
+                // Regardless of other conditions, A/B test failure should result in false
+                expect(await getIsSurveyCandidate()).toBe(false);
+            });
         });
     });
 
@@ -278,8 +329,8 @@ describe('Survey Initialization', () => {
             // Session count should be incremented by 1
             expect(globalState.update).toHaveBeenCalledWith(StateKeys.SESSION_COUNT, initialCount + 1);
 
-            // Reset mocks for next initSurvey call
             resetSurveyState();
+            mockABTestPassing(); // Re-setup mocks after reset
 
             // Mock the last session before the threshold
             const lastSnoozedSession = SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT - 1;
@@ -296,5 +347,85 @@ describe('Survey Initialization', () => {
                 SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
             );
         });
+
+        test('Should not mark as candidate when above threshold but A/B test fails', async () => {
+            mockABTestFailing();
+
+            // User has sufficient sessions for candidacy
+            mockGlobalStateValues({
+                [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
+            });
+
+            // But should be rejected due to A/B test
+            expect(await getIsSurveyCandidate()).toBe(false);
+        });
+    });
+});
+
+describe('A/B Test Evaluation', () => {
+    // For these tests we want to force the AB test branch. In order to do that,
+    // we ensure the session count passes the threshold and we set SurveyState.isCandidate to true.
+    beforeEach(() => {
+        globalState = {
+            get: jest.fn(),
+            update: jest.fn(),
+        };
+        (ext.context as any) = {
+            globalState,
+            extension: { packageJSON: { version: currentExtensionVersion } },
+        };
+        mockGlobalStateValues({
+            [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
+        });
+        SurveyState.isCandidate = true;
+    });
+
+    // Helper that sets up the globalState.get mock in one place
+    function mockGlobalStateValues(values: Record<string, unknown>): void {
+        globalState.get.mockImplementation((key: string) => values[key]);
+    }
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    test.each([
+        // For a machine id that produces a hash whose first 8 hex digits represent a number
+        // less than A_B_TEST_SELECTION * 0xffffffff, the candidate should be accepted.
+        ['acceptedMachine', '0a000000', true],
+        // For a machine id that produces a hash yielding a high normalized value,
+        // the candidate should be rejected.
+        ['rejectedMachine', 'f0000000', false],
+    ])('with machineId %s producing hash %s should mark candidate as %s', async (machineId, fakeHash, expected) => {
+        (env as any).machineId = machineId;
+        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+            return {
+                update: () => ({
+                    digest: () => fakeHash,
+                }),
+            } as any;
+        });
+        expect(await getIsSurveyCandidate()).toBe(expected);
+    });
+
+    test('Fallback to probability when crypto.createHash fails', async () => {
+        (env as any).machineId = 'anyMachine';
+        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+            throw new Error('hash failure');
+        });
+        // For fallback, candidate is determined by Math.random < PROBABILITY.
+        // Here we simulate Math.random returning 0.1 (< PROBABILITY by default) so candidate should be true.
+        jest.spyOn(Math, 'random').mockReturnValue(0.1);
+        expect(await getIsSurveyCandidate()).toBe(true);
+    });
+
+    test('Fallback should respect probability threshold', async () => {
+        (env as any).machineId = 'anyMachine';
+        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+            throw new Error('hash failure');
+        });
+        // Simulate Math.random returning a value higher than PROBABILITY
+        jest.spyOn(Math, 'random').mockReturnValue(0.9);
+        expect(await getIsSurveyCandidate()).toBe(false);
     });
 });

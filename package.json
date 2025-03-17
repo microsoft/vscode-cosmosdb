@@ -992,6 +992,12 @@
                     "group": "5@1"
                 },
                 {
+                    "//": "[Collection/Documents] Mongo DB|Cluster Open collection",
+                    "command": "command.mongoClusters.containerView.open",
+                    "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+                    "group": "1@1"
+                },
+                {
                     "//": "[Stored Procedures] Create Stored Procedure",
                     "command": "cosmosDB.createDocDBStoredProcedure",
                     "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",

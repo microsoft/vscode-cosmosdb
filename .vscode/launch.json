@@ -53,7 +53,7 @@
                 "./*": "${workspaceFolder}/*"
             },
             "env": {
-                "DEBUGTELEMETRY": "",
+                "DEBUGTELEMETRY": "v",
                 "NODE_DEBUG": "",
                 "DEBUG_WEBPACK": "",
                 "DEVSERVER": "true",

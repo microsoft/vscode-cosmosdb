@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import crypto from 'crypto';
 import * as semver from 'semver';
 import { env, Uri, window } from 'vscode';
 import * as nls from 'vscode-nls';
@@ -20,6 +21,7 @@ const SurveyConfig = {
         DEBUG_ALWAYS_PROMPT: false, // Forces survey prompt regardless of conditions
         DISABLE_SURVEY: false, // Completely disables survey functionality
         PROBABILITY: 1, // Probability to become candidate (0-1), Azure Tools uses 0.15
+        A_B_TEST_SELECTION: 0.25, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
         PROMPT_ENGLISH_ONLY: false, // Whether to limit survey to English locales
         PROMPT_VERSION_ONLY_ONCE: true, // Only prompt once per major/minor version
         PROMPT_DATE_ONLY_ONCE: true, // Only prompt once per day
@@ -225,9 +227,48 @@ async function initSurvey(): Promise<void> {
             return;
         }
 
-        // If the user is a candidate (has not opted out or participated for the current version),
-        // decide randomly with given probability
-        surveyState.isCandidate = surveyState.isCandidate || Math.random() < SurveyConfig.settings.PROBABILITY;
+        /*
+         * Deterministic A/B test selection using machine ID hash.
+         * Falls back to random selection if the hashing process fails.
+         */
+
+        // Check if surveyState.isCandidate is true
+        if (surveyState.isCandidate) {
+            try {
+                // Create sha256 hash of env.machineId
+                const hash = crypto.createHash('sha256').update(env.machineId).digest('hex');
+
+                // Take first 8 characters of the hash to represent 32 bits
+                const hashPrefix = hash.substring(0, 8);
+
+                // Convert hash prefix to an integer
+                const hashInt = parseInt(hashPrefix, 16);
+
+                // Normalize integer to a value between 0 and 1
+                const normalized = hashInt / 0xffffffff; // maximum 32-bit unsigned integer
+
+                // Determine candidate selection based on normalized value and threshold A_B_TEST_SELECTION
+                // Reverse the logic to select the opposite group
+                const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
+
+                // Record selection result in telemetry
+                context.telemetry.properties.acceptedForABTest = acceptedForABTest.toString();
+
+                // Update surveyState.isCandidate based on selection result
+                surveyState.isCandidate = acceptedForABTest;
+            } catch (error) {
+                // Record error message from hashing in telemetry if available
+                context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
+
+                // Record that fallback selection was used in telemetry
+                context.telemetry.properties.usedFallbackSelection = 'true';
+
+                surveyState.isCandidate = Math.random() < SurveyConfig.settings.PROBABILITY;
+            }
+        } else {
+            surveyState.isCandidate = false;
+        }
+
         context.telemetry.properties.isCandidate = surveyState.isCandidate.toString();
     });
 }

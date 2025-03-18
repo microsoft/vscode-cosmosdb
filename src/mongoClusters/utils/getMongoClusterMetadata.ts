@@ -7,50 +7,27 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
+import * as crypto from 'crypto';
 import { type MongoClient } from 'mongodb';
+import { AzureDomains, extractDomainFromHost, hasAzureDomain, hasDomainSuffix } from './connectionStringHelpers';
 
 /**
  * Interface to define the structure of MongoDB cluster metadata.
- * The data structure is flat with dot notation in field names to meet requirements in the telemetry section.
- *
- * The fields are optional to allow for partial data collection in case of errors.
  */
 export interface MongoClusterMetadata {
-    'serverInfo.version'?: string; // MongoDB server version (non-sensitive)
-    'serverInfo.gitVersion'?: string; // Git version of the MongoDB server (non-sensitive)
-    'serverInfo.opensslVersion'?: string; // OpenSSL version used by the server (non-sensitive)
-    'serverInfo.platform'?: string; // Server platform information (non-sensitive)
-    'serverInfo.storageEngines'?: string; // Storage engine used by the server (non-sensitive)
-    'serverInfo.modules'?: string; // List of modules loaded by the server (non-sensitive)
-    'serverInfo.error'?: string; // Error message if fetching server info fails
-
-    'topology.type'?: string; // Type of topology (e.g., replica set, sharded cluster)
-    'topology.numberOfServers'?: string; // Number of servers
-    'topology.minWireVersion'?: string; // Minimum wire protocol version supported
-    'topology.maxWireVersion'?: string; // Maximum wire protocol version supported
-    'topology.error'?: string; // Error message if fetching topology info fails
-
-    'serverStatus.uptime'?: string; // Server uptime in seconds (non-sensitive)
-    'serverStatus.connections.current'?: string; // Current number of connections (non-sensitive)
-    'serverStatus.connections.available'?: string; // Available connections (non-sensitive)
-    'serverStatus.memory.resident'?: string; // Resident memory usage in MB (non-sensitive)
-    'serverStatus.memory.virtual'?: string; // Virtual memory usage in MB (non-sensitive)
-    'serverStatus.error'?: string; // Error message if fetching server status fails
-
-    'hostInfo.json'?: string; // JSON stringified host information
-    'hostInfo.error'?: string; // Error message if fetching host info fails
+    [key: string]: string | undefined;
 }
 
 /**
- * Retrieves metadata information about a MongoDB cluster.
- * This data helps improve diagnostics and user experience.
- * No internal server addresses or sensitive information are read.
+ * Retrieves non-sensitive metadata for a MongoDB cluster.
+ * Telemetry-friendly techniques (such as hashing parts of a host) are used to avoid exposing sensitive data.
  *
  * @param client - The MongoClient instance connected to the MongoDB cluster.
+ * @param hosts  An array of host strings.
  * @returns A promise that resolves to an object containing various metadata about the MongoDB cluster.
  *
  */
-export async function getMongoClusterMetadata(client: MongoClient): Promise<MongoClusterMetadata> {
+export async function getMongoClusterMetadata(client: MongoClient, hosts: string[]): Promise<MongoClusterMetadata> {
     const result: MongoClusterMetadata = {};
 
     const adminDb = client.db().admin();
@@ -87,7 +64,7 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         result['topology_error'] = error instanceof Error ? error.message : String(error);
     }
 
-    // Fetch host information
+    // Fetch host information, redacting sensitive data.
     try {
         const hostInfo = await adminDb.command({ hostInfo: 1 });
         if (hostInfo && typeof hostInfo.currentTime !== 'undefined') {
@@ -97,6 +74,50 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         result['hostInfo_json'] = JSON.stringify(hostInfo);
     } catch (error) {
         result['hostInfo_error'] = error instanceof Error ? error.message : String(error);
+    }
+
+    // Explore domain information from the hosts. This is non-sensitive and can be useful for diagnostics.
+    // Only information about known domains is collected to avoid any sensitive data.
+    try {
+        for (const [index, host] of hosts.entries()) {
+            const telemetrySuffix = index > 0 ? `_h${index}` : '';
+
+            const hostWithoutPort = extractDomainFromHost(host);
+            if (hasAzureDomain(hostWithoutPort)) {
+                // For Azure domains, record that fact and identify the API when applicable.
+                result['domainInfo_isAzure' + telemetrySuffix] = 'true';
+                if (hasDomainSuffix(AzureDomains.RU, hostWithoutPort)) {
+                    result['domainInfo_api' + telemetrySuffix] = 'RU';
+                } else if (hasDomainSuffix(AzureDomains.vCore, hostWithoutPort)) {
+                    result['domainInfo_api' + telemetrySuffix] = 'vCore';
+                }
+            } else {
+                // For non-Azure domains, do not log the full host.
+                // Instead, capture aggregated statistics by analyzing only the most significant 3 segments.
+                result['domainInfo_isAzure' + telemetrySuffix] = 'false';
+
+                const domainParts = hostWithoutPort.split('.'); // e.g., ['private', 'acluster', 'server', 'tld']
+                result['domainInfo_levels' + telemetrySuffix] = domainParts.length.toString(); // Store the full domain for reference
+
+                // Only consider the last three segments.
+                const levelsToProcess = Math.min(3, domainParts.length);
+
+                for (let level = 1; level <= levelsToProcess; level++) {
+                    // Construct a domain fragment from the last `level` segments.
+                    // Example: level 1 -> "tld"; level 2 -> "server.tld"; level 3 -> "acluster.server.tld".
+                    const partialDomain = domainParts.slice(-level).join('.');
+                    // Generate a SHA256 hash for the domain fragment and use only the first 8 hex characters.
+                    const hashedDomain = crypto
+                        .createHash('sha256')
+                        .update(partialDomain)
+                        .digest('hex')
+                        .substring(0, 8);
+                    result[`domainInfo_domain_l${level}${telemetrySuffix}`] = hashedDomain;
+                }
+            }
+        }
+    } catch (error) {
+        result['domainInfo_error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Return the collected metadata.

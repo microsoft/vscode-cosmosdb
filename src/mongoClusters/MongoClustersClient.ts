@@ -27,7 +27,7 @@ import {
 import { Links } from '../constants';
 import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
 import { CredentialCache } from './CredentialCache';
-import { areMongoDBAzure, getHostsFromConnectionString } from './utils/connectionStringHelpers';
+import { getHostsFromConnectionString, hasAzureDomain } from './utils/connectionStringHelpers';
 import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
@@ -83,7 +83,7 @@ export class MongoClustersClient {
 
         const cString = CredentialCache.getCredentials(this.credentialId)?.connectionString as string;
         const hosts = getHostsFromConnectionString(cString);
-        const userAgentString = areMongoDBAzure(hosts) ? appendExtensionUserAgent() : undefined;
+        const userAgentString = hasAzureDomain(...hosts) ? appendExtensionUserAgent() : undefined;
 
         const cStringPassword = CredentialCache.getConnectionStringWithPassword(this.credentialId);
         this.emulatorConfiguration = CredentialCache.getEmulatorConfiguration(this.credentialId);
@@ -119,7 +119,7 @@ export class MongoClustersClient {
         }
 
         void callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.connect.getmetadata', async (context) => {
-            const metadata: MongoClusterMetadata = await getMongoClusterMetadata(this._mongoClient);
+            const metadata: MongoClusterMetadata = await getMongoClusterMetadata(this._mongoClient, hosts);
 
             context.telemetry.properties = {
                 ...context.telemetry.properties,

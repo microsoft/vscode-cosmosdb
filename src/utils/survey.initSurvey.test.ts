@@ -360,72 +360,72 @@ describe('Survey Initialization', () => {
             expect(await getIsSurveyCandidate()).toBe(false);
         });
     });
-});
 
-describe('A/B Test Evaluation', () => {
-    // For these tests we want to force the AB test branch. In order to do that,
-    // we ensure the session count passes the threshold and we set SurveyState.isCandidate to true.
-    beforeEach(() => {
-        globalState = {
-            get: jest.fn(),
-            update: jest.fn(),
-        };
-        (ext.context as any) = {
-            globalState,
-            extension: { packageJSON: { version: currentExtensionVersion } },
-        };
-        mockGlobalStateValues({
-            [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
+    describe('A/B Test Evaluation', () => {
+        // For these tests we want to force the AB test branch. In order to do that,
+        // we ensure the session count passes the threshold and we set SurveyState.isCandidate to true.
+        beforeEach(() => {
+            globalState = {
+                get: jest.fn(),
+                update: jest.fn(),
+            };
+            (ext.context as any) = {
+                globalState,
+                extension: { packageJSON: { version: currentExtensionVersion } },
+            };
+            mockGlobalStateValues({
+                [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
+            });
+            SurveyState.isCandidate = true;
         });
-        SurveyState.isCandidate = true;
-    });
 
-    // Helper that sets up the globalState.get mock in one place
-    function mockGlobalStateValues(values: Record<string, unknown>): void {
-        globalState.get.mockImplementation((key: string) => values[key]);
-    }
+        // Helper that sets up the globalState.get mock in one place
+        function mockGlobalStateValues(values: Record<string, unknown>): void {
+            globalState.get.mockImplementation((key: string) => values[key]);
+        }
 
-    afterEach(() => {
-        jest.restoreAllMocks();
-    });
-
-    test.each([
-        // For a machine id that produces a hash whose first 8 hex digits represent a number
-        // less than A_B_TEST_SELECTION * 0xffffffff, the candidate should be accepted.
-        ['acceptedMachine', '0a000000', true],
-        // For a machine id that produces a hash yielding a high normalized value,
-        // the candidate should be rejected.
-        ['rejectedMachine', 'f0000000', false],
-    ])('with machineId %s producing hash %s should mark candidate as %s', async (machineId, fakeHash, expected) => {
-        (env as any).machineId = machineId;
-        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-            return {
-                update: () => ({
-                    digest: () => fakeHash,
-                }),
-            } as any;
+        afterEach(() => {
+            jest.restoreAllMocks();
         });
-        expect(await getIsSurveyCandidate()).toBe(expected);
-    });
 
-    test('Fallback to probability when crypto.createHash fails', async () => {
-        (env as any).machineId = 'anyMachine';
-        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-            throw new Error('hash failure');
+        test.each([
+            // For a machine id that produces a hash whose first 8 hex digits represent a number
+            // less than A_B_TEST_SELECTION * 0xffffffff, the candidate should be accepted.
+            ['acceptedMachine', '0a000000', true],
+            // For a machine id that produces a hash yielding a high normalized value,
+            // the candidate should be rejected.
+            ['rejectedMachine', 'f0000000', false],
+        ])('with machineId %s producing hash %s should mark candidate as %s', async (machineId, fakeHash, expected) => {
+            (env as any).machineId = machineId;
+            jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+                return {
+                    update: () => ({
+                        digest: () => fakeHash,
+                    }),
+                } as any;
+            });
+            expect(await getIsSurveyCandidate()).toBe(expected);
         });
-        // For fallback, candidate is determined by Math.random < PROBABILITY.
-        // Here we simulate Math.random returning 0.1 (< PROBABILITY by default) so candidate should be true.
-        jest.spyOn(Math, 'random').mockReturnValue(0.1);
-        expect(await getIsSurveyCandidate()).toBe(true);
-    });
 
-    test('Fallback should respect probability threshold', async () => {
-        (env as any).machineId = 'anyMachine';
-        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-            throw new Error('hash failure');
+        test('Fallback to probability when crypto.createHash fails', async () => {
+            (env as any).machineId = 'anyMachine';
+            jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+                throw new Error('hash failure');
+            });
+            // For fallback, candidate is determined by Math.random < PROBABILITY.
+            // Here we simulate Math.random returning 0.1 (< PROBABILITY by default) so candidate should be true.
+            jest.spyOn(Math, 'random').mockReturnValue(0.1);
+            expect(await getIsSurveyCandidate()).toBe(true);
         });
-        // Simulate Math.random returning a value higher than PROBABILITY
-        jest.spyOn(Math, 'random').mockReturnValue(0.9);
-        expect(await getIsSurveyCandidate()).toBe(false);
+
+        test('Fallback should respect probability threshold', async () => {
+            (env as any).machineId = 'anyMachine';
+            jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+                throw new Error('hash failure');
+            });
+            // Simulate Math.random returning a value higher than PROBABILITY
+            jest.spyOn(Math, 'random').mockReturnValue(0.9);
+            expect(await getIsSurveyCandidate()).toBe(false);
+        });
     });
 });

@@ -5,8 +5,10 @@
     },
     "editor.detectIndentation": false,
     "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "search.exclude": {
@@ -24,7 +26,7 @@
     },
     "vscode-nmake-tools.workspaceBuildDirectories": ["."],
     "vscode-nmake-tools.installOsRepoRustHelperExtension": false,
-    "sarif-viewer.connectToGithubCodeScanning": "off",
+    "sarif-viewer.connectToGithubCodeScanning": "off"
     // "eslint.workingDirectories": [
     //     ".", "src"
     //   ]

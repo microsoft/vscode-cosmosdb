@@ -104,7 +104,14 @@ describe('Survey Initialization', () => {
         jest.spyOn(crypto, 'createHash').mockImplementation(() => {
             return {
                 update: () => ({
-                    digest: () => '0a000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+                    digest: () => {
+                        // Create a buffer with first 4 bytes that will produce a low value
+                        // 0x0a000000 as the first 4 bytes = 167772160 (decimal)
+                        // 167772160 / 0xffffffff ≈ 0.039 (well below threshold)
+                        const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
+                        buffer.writeUInt32BE(0x0a000000, 0);
+                        return buffer;
+                    }
                 }),
             } as any;
         });
@@ -118,7 +125,14 @@ describe('Survey Initialization', () => {
         jest.spyOn(crypto, 'createHash').mockImplementation(() => {
             return {
                 update: () => ({
-                    digest: () => 'f0000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+                    digest: () => {
+                        // Create a buffer with first 4 bytes that will produce a high value
+                        // 0xf0000000 as the first 4 bytes = 4026531840 (decimal)
+                        // 4026531840 / 0xffffffff ≈ 0.937 (well above threshold)
+                        const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
+                        buffer.writeUInt32BE(0xf0000000, 0);
+                        return buffer;
+                    }
                 }),
             } as any;
         });
@@ -393,18 +407,21 @@ describe('Survey Initialization', () => {
         });
 
         test.each([
-            // For a machine id that produces a hash whose first 8 hex digits represent a number
-            // less than A_B_TEST_SELECTION * 0xffffffff, the candidate should be accepted.
-            ['acceptedMachine', '0a000000', true],
-            // For a machine id that produces a hash yielding a high normalized value,
-            // the candidate should be rejected.
-            ['rejectedMachine', 'f0000000', false],
-        ])('with machineId %s producing hash %s should mark candidate as %s', async (machineId, fakeHash, expected) => {
+            // For a machine id that produces a hash whose first 4 bytes represent a value
+            // that when divided by 0xffffffff is less than A_B_TEST_SELECTION
+            ['acceptedMachine', 0x0a000000, true],
+            // For a machine id that produces a hash yielding a high normalized value
+            ['rejectedMachine', 0xf0000000, false],
+        ])('with machineId %s producing hash int %s should mark candidate as %s', async (machineId, hashInt, expected) => {
             (env as any).machineId = machineId;
             jest.spyOn(crypto, 'createHash').mockImplementation(() => {
                 return {
                     update: () => ({
-                        digest: () => fakeHash,
+                        digest: () => {
+                            const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
+                            buffer.writeUInt32BE(hashInt, 0);
+                            return buffer;
+                        }
                     }),
                 } as any;
             });

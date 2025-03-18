@@ -60,6 +60,10 @@ export type DispatchAction =
     | {
           type: 'setQuerySelectedValue';
           selectedValue: string;
+      }
+    | {
+          type: 'setIsSurveyCandidate';
+          isSurveyCandidate: boolean;
       };
 
 export type QueryEditorState = {
@@ -74,6 +78,8 @@ export type QueryEditorState = {
     isExecuting: boolean;
     startExecutionTime: number; // Time when the query execution started
     endExecutionTime: number; // Time when the query execution ended
+
+    isSurveyCandidate: boolean; // Whether the user is a survey candidate
 
     // Result state
     pageNumber: number; // Current page number (Readonly, only server can change it) (Value exists on both client and server)
@@ -97,6 +103,8 @@ export const defaultState: QueryEditorState = {
     isExecuting: false,
     startExecutionTime: 0,
     endExecutionTime: 0,
+
+    isSurveyCandidate: false,
 
     // Result state
     pageNumber: 1,
@@ -157,5 +165,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, selectedRows: action.selectedRows };
         case 'setQuerySelectedValue':
             return { ...state, querySelectedValue: action.selectedValue };
+        case 'setIsSurveyCandidate':
+            return { ...state, isSurveyCandidate: action.isSurveyCandidate };
     }
 }

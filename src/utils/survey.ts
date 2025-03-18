@@ -57,11 +57,29 @@ const surveyState = new SurveyState();
 const localize = nls.loadMessageBundle();
 
 /**
+ * Determines whether surveys are disabled globally across the extension.
+ *
+ * @returns {boolean} True if surveys are disabled globally, false otherwise.
+ *
+ * @remarks
+ * Currently uses the extension's setting but per TODO note, this should
+ * be migrated to a global admin constant setting.
+ */
+export function getIsSurveyDisabledGlobally(): boolean {
+    // TODO: This should be a global admin constent setting, not just for the extension,
+    // also tests will fail if `true` and need to take the disabled scenario into account
+    return SurveyConfig.settings.DISABLE_SURVEY;
+}
+
+/**
  * Opens the survey in the default browser, determining the appropriate URL based on user experience
  * @param experience The experience type to open survey for, or undefined to use the highest score experience
  * @param triggerAction Optional action that triggered the survey for telemetry
  */
 export function openSurvey(experience: ExperienceKind | undefined, triggerAction?: string): void {
+    if (getIsSurveyDisabledGlobally()) {
+        return;
+    }
     if (experience === undefined) {
         const { highestExperience, fullScore } = calculateScoreMetrics();
         // Use the highest experience only if there's actual usage data,
@@ -89,7 +107,7 @@ export function openSurvey(experience: ExperienceKind | undefined, triggerAction
  * @param score The amount to increment the score by
  */
 export function countExperienceUsageForSurvey(experience: ExperienceKind, score: UsageImpact | number): void {
-    if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
+    if (getIsSurveyDisabledGlobally() || surveyState.wasPromptedInSession) {
         return;
     }
     const newScore = Math.min(
@@ -110,7 +128,7 @@ export async function promptAfterActionEventually(
     score: UsageImpact | number,
     triggerAction?: string,
 ): Promise<void> {
-    if (SurveyConfig.settings.DISABLE_SURVEY || surveyState.wasPromptedInSession) {
+    if (getIsSurveyDisabledGlobally() || surveyState.wasPromptedInSession) {
         return;
     }
 
@@ -147,7 +165,7 @@ function calculateScoreMetrics(): {
 }
 
 export async function getIsSurveyCandidate(): Promise<boolean> {
-    if (SurveyConfig.settings.DISABLE_SURVEY) {
+    if (getIsSurveyDisabledGlobally()) {
         return false;
     }
     if (surveyState.isCandidate === undefined) {

@@ -101,21 +101,24 @@ describe('Survey Initialization', () => {
 
     // Helper function to create a mock for crypto.createHash that returns a buffer with the specified hash value
     function createHashDigestMock(hashInt: number) {
-        return jest.spyOn(crypto, 'createHash').mockImplementation(() => ({
-            update: () => ({
-                digest: () => {
-                    const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
-                    buffer.writeUInt32BE(hashInt, 0);
-                    return buffer;
-                }
-            }),
-        } as any));
+        return jest.spyOn(crypto, 'createHash').mockImplementation(
+            () =>
+                ({
+                    update: () => ({
+                        digest: () => {
+                            const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
+                            buffer.writeUInt32BE(hashInt, 0);
+                            return buffer;
+                        },
+                    }),
+                }) as any,
+        );
     }
 
     // Hash constants for A/B testing - these represent specific values when normalized by 0xffffffff
     // When using MD5 hash, we read the first 4 bytes as a 32-bit unsigned integer
     // Values below A_B_TEST_SELECTION threshold pass, values above fail
-    const HASH_LOW_VALUE = 0x0a000000;  // ~0.039 when normalized (167772160/4294967295)
+    const HASH_LOW_VALUE = 0x0a000000; // ~0.039 when normalized (167772160/4294967295)
     const HASH_HIGH_VALUE = 0xf0000000; // ~0.937 when normalized (4026531840/4294967295)
 
     // Helper to mock the crypto hash to always pass or fail A/B test
@@ -409,14 +412,17 @@ describe('Survey Initialization', () => {
             // that when divided by HASH_LOW_VALUE is less than A_B_TEST_SELECTION, the user should be a candidate
             { machineId: 'acceptedMachine', hashInt: HASH_LOW_VALUE, expected: true, description: 'below threshold' },
             // For a machine id that produces a hash yielding a high normalized value, the user should not be a candidate
-            { machineId: 'rejectedMachine', hashInt: HASH_HIGH_VALUE, expected: false, description: 'above threshold' }
-        ])('With machineId $machineId producing hash int $hashInt ($description), isCandidate should be $expected', async ({ machineId, hashInt, expected }) => {
-            (env as any).machineId = machineId;
+            { machineId: 'rejectedMachine', hashInt: HASH_HIGH_VALUE, expected: false, description: 'above threshold' },
+        ])(
+            'With machineId $machineId producing hash int $hashInt ($description), isCandidate should be $expected',
+            async ({ machineId, hashInt, expected }) => {
+                (env as any).machineId = machineId;
 
-            createHashDigestMock(hashInt);
+                createHashDigestMock(hashInt);
 
-            expect(await getIsSurveyCandidate()).toBe(expected);
-        });
+                expect(await getIsSurveyCandidate()).toBe(expected);
+            },
+        );
 
         // Test that different A_B_TEST_SELECTION thresholds affect selection as expected
         test('should respect different A_B_TEST_SELECTION thresholds', async () => {
@@ -443,7 +449,7 @@ describe('Survey Initialization', () => {
 
         test.each([
             { randomValue: SurveyConfig.settings.PROBABILITY - 0.1, expected: true, description: 'below probability' },
-            { randomValue: SurveyConfig.settings.PROBABILITY + 0.1, expected: false, description: 'above probability' }
+            { randomValue: SurveyConfig.settings.PROBABILITY + 0.1, expected: false, description: 'above probability' },
         ])('Fallback with Math.random $description should return $expected', async ({ randomValue, expected }) => {
             (env as any).machineId = 'anyMachine';
 
@@ -454,6 +460,50 @@ describe('Survey Initialization', () => {
 
             jest.spyOn(Math, 'random').mockReturnValue(randomValue);
             expect(await getIsSurveyCandidate()).toBe(expected);
+        });
+
+        test('should select approximately the target percentage of users with random machine IDs', async () => {
+            // Save original threshold
+            const originalThreshold = SurveyConfig.settings.A_B_TEST_SELECTION;
+
+            // Set threshold to 25%
+            SurveyConfig.settings.A_B_TEST_SELECTION = 0.25;
+
+            // Number of simulated machine IDs (higher is more accurate but slower)
+            const sampleSize = 1000;
+
+            // Restore the real hash implementation
+            jest.restoreAllMocks();
+
+            let candidateCount = 0;
+
+            // Create a set of machine IDs and count how many become candidates
+            for (let i = 0; i < sampleSize; i++) {
+                // Generate random ID - using index as part of string to ensure uniqueness
+                (env as any).machineId = `test-machine-${i}-${Math.random().toString(36).substring(2)}`;
+
+                // Reset candidate state between checks
+                surveyStateRef.isCandidate = undefined;
+
+                // Check if this machine ID would be selected
+                if (await getIsSurveyCandidate()) {
+                    candidateCount++;
+                }
+            }
+
+            // Calculate the actual percentage
+            const actualPercentage = candidateCount / sampleSize;
+
+            // We expect approximately 25% (with reasonable margin for statistical variation)
+            // Using 10% tolerance (so between 15% and 35% is acceptable)
+            const tolerance = 0.1;
+            const expectedPercentage = SurveyConfig.settings.A_B_TEST_SELECTION;
+
+            expect(actualPercentage).toBeGreaterThanOrEqual(expectedPercentage - tolerance);
+            expect(actualPercentage).toBeLessThanOrEqual(expectedPercentage + tolerance);
+
+            // Restore original threshold
+            SurveyConfig.settings.A_B_TEST_SELECTION = originalThreshold;
         });
     });
 });

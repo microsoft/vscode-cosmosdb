@@ -23,7 +23,10 @@ let globalState: { get: jest.Mock; update: jest.Mock };
 // in the test environment.
 const SurveyConfig = getSurveyConfig() as NonNullable<ReturnType<typeof getSurveyConfig>>;
 const StateKeys = getSurveyStateKeys() as NonNullable<ReturnType<typeof getSurveyStateKeys>>;
-const SurveyState = getSurveyState() as NonNullable<ReturnType<typeof getSurveyState>>;
+// Important: This is NOT a mock but a direct reference to the actual surveyState object in survey.ts
+// The getSurveyState() function returns the real surveyState instance when NODE_ENV is 'test'
+// So any modifications to this object will directly affect the surveyState in the survey.ts module
+const surveyStateRef = getSurveyState() as NonNullable<ReturnType<typeof getSurveyState>>;
 
 const currentExtensionVersion = '1.1.1';
 const previousPatchExtensionVersion = '1.1.0';
@@ -52,7 +55,8 @@ jest.mock('@microsoft/vscode-azext-utils', () => {
 });
 
 beforeAll(() => {
-    if (!SurveyState || !SurveyConfig || !SurveyConfig.settings || !StateKeys) {
+    // Verify the exported references are available
+    if (!surveyStateRef || !SurveyConfig || !SurveyConfig.settings || !StateKeys) {
         throw new Error('SurveyState is missing or invalid. Please compile with "test" mode when using webpack.');
     }
 });
@@ -74,7 +78,8 @@ describe('Survey Initialization', () => {
             extension: { packageJSON: { version: currentExtensionVersion } }, // extension version for version based checks
         };
         // Reset any previously set candidate flag
-        SurveyState.isCandidate = undefined;
+        // This directly modifies the surveyState object in the survey.ts module
+        surveyStateRef.isCandidate = undefined;
 
         // Set up default A/B test mocks for passing
         mockABTestPassing();
@@ -85,8 +90,9 @@ describe('Survey Initialization', () => {
 
     function resetSurveyState(): void {
         jest.restoreAllMocks();
-        SurveyState.isCandidate = undefined;
-        SurveyState.wasPromptedInSession = false;
+        // These modifications directly affect the original surveyState object in survey.ts
+        surveyStateRef.isCandidate = undefined;
+        surveyStateRef.wasPromptedInSession = false;
     }
 
     afterEach(() => {
@@ -363,7 +369,6 @@ describe('Survey Initialization', () => {
 
     describe('A/B Test Evaluation', () => {
         // For these tests we want to force the AB test branch. In order to do that,
-        // we ensure the session count passes the threshold and we set SurveyState.isCandidate to true.
         beforeEach(() => {
             globalState = {
                 get: jest.fn(),
@@ -376,7 +381,6 @@ describe('Survey Initialization', () => {
             mockGlobalStateValues({
                 [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
             });
-            SurveyState.isCandidate = true;
         });
 
         // Helper that sets up the globalState.get mock in one place
@@ -413,8 +417,7 @@ describe('Survey Initialization', () => {
                 throw new Error('hash failure');
             });
             // For fallback, candidate is determined by Math.random < PROBABILITY.
-            // Here we simulate Math.random returning 0.1 (< PROBABILITY by default) so candidate should be true.
-            jest.spyOn(Math, 'random').mockReturnValue(0.1);
+            jest.spyOn(Math, 'random').mockReturnValue(SurveyConfig.settings.PROBABILITY - 0.1);
             expect(await getIsSurveyCandidate()).toBe(true);
         });
 
@@ -424,7 +427,7 @@ describe('Survey Initialization', () => {
                 throw new Error('hash failure');
             });
             // Simulate Math.random returning a value higher than PROBABILITY
-            jest.spyOn(Math, 'random').mockReturnValue(0.9);
+            jest.spyOn(Math, 'random').mockReturnValue(SurveyConfig.settings.PROBABILITY + 0.1);
             expect(await getIsSurveyCandidate()).toBe(false);
         });
     });

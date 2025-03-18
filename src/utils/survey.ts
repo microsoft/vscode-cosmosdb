@@ -227,46 +227,44 @@ async function initSurvey(): Promise<void> {
             return;
         }
 
-        /*
+        /**
+         * At this point, the user is a candidate for the survey, all checks above abourt/return on 'false'.
+         * We need to determine if they are part of the A/B test group or not.
+         *
          * Deterministic A/B test selection using machine ID hash.
          * Falls back to random selection if the hashing process fails.
          */
 
-        // Check if surveyState.isCandidate is true
-        if (surveyState.isCandidate) {
-            try {
-                // Create sha256 hash of env.machineId
-                const hash = crypto.createHash('sha256').update(env.machineId).digest('hex');
+        try {
+            // Create sha256 hash of env.machineId
+            const hash = crypto.createHash('sha256').update(env.machineId).digest('hex');
 
-                // Take first 8 characters of the hash to represent 32 bits
-                const hashPrefix = hash.substring(0, 8);
+            // Take first 8 characters of the hash to represent 32 bits
+            const hashPrefix = hash.substring(0, 8);
 
-                // Convert hash prefix to an integer
-                const hashInt = parseInt(hashPrefix, 16);
+            // Convert hash prefix to an integer
+            const hashInt = parseInt(hashPrefix, 16);
 
-                // Normalize integer to a value between 0 and 1
-                const normalized = hashInt / 0xffffffff; // maximum 32-bit unsigned integer
+            // Normalize integer to a value between 0 and 1
+            const normalized = hashInt / 0xffffffff; // maximum 32-bit unsigned integer
 
-                // Determine candidate selection based on normalized value and threshold A_B_TEST_SELECTION
-                // Reverse the logic to select the opposite group
-                const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
+            // Determine candidate selection based on normalized value and threshold A_B_TEST_SELECTION
+            // Reverse the logic to select the opposite group
+            const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
 
-                // Record selection result in telemetry
-                context.telemetry.properties.acceptedForABTest = acceptedForABTest.toString();
+            // Record selection result in telemetry
+            context.telemetry.properties.acceptedForABTest = acceptedForABTest.toString();
 
-                // Update surveyState.isCandidate based on selection result
-                surveyState.isCandidate = acceptedForABTest;
-            } catch (error) {
-                // Record error message from hashing in telemetry if available
-                context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
+            // Update surveyState.isCandidate based on selection result
+            surveyState.isCandidate = acceptedForABTest;
+        } catch (error) {
+            // Record error message from hashing in telemetry if available
+            context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
 
-                // Record that fallback selection was used in telemetry
-                context.telemetry.properties.usedFallbackSelection = 'true';
+            // Record that fallback selection was used in telemetry
+            context.telemetry.properties.usedFallbackSelection = 'true';
 
-                surveyState.isCandidate = Math.random() < SurveyConfig.settings.PROBABILITY;
-            }
-        } else {
-            surveyState.isCandidate = false;
+            surveyState.isCandidate = Math.random() < SurveyConfig.settings.PROBABILITY;
         }
 
         context.telemetry.properties.isCandidate = surveyState.isCandidate.toString();

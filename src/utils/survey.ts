@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import crypto from 'crypto';
 import * as semver from 'semver';
 import { env, Uri, window } from 'vscode';
 import * as nls from 'vscode-nls';
@@ -20,6 +21,7 @@ const SurveyConfig = {
         DEBUG_ALWAYS_PROMPT: false, // Forces survey prompt regardless of conditions
         DISABLE_SURVEY: false, // Completely disables survey functionality
         PROBABILITY: 1, // Probability to become candidate (0-1), Azure Tools uses 0.15
+        A_B_TEST_SELECTION: 0.25, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
         PROMPT_ENGLISH_ONLY: false, // Whether to limit survey to English locales
         PROMPT_VERSION_ONLY_ONCE: true, // Only prompt once per major/minor version
         PROMPT_DATE_ONLY_ONCE: true, // Only prompt once per day
@@ -243,9 +245,47 @@ async function initSurvey(): Promise<void> {
             return;
         }
 
-        // If the user is a candidate (has not opted out or participated for the current version),
-        // decide randomly with given probability
-        surveyState.isCandidate = surveyState.isCandidate || Math.random() < SurveyConfig.settings.PROBABILITY;
+        /**
+         * At this point, the user is a candidate for the survey, all checks above abourt/return on 'false'.
+         * We need to determine if they are part of the A/B test group or not.
+         *
+         * Deterministic A/B test selection using machine ID hash.
+         * Falls back to random selection if the hashing process fails.
+         */
+
+        try {
+            // Deterministic machine ID selection using MD5 (faster than SHA-256)
+            // MD5 is sufficient for non-security random distribution needs
+            const buffer = crypto.createHash('md5').update(env.machineId).digest();
+
+            // Read a 32-bit unsigned integer from the buffer directly
+            // (Using the first 4 bytes gives a full 32-bit range)
+            const hashInt = buffer.readUInt32BE(0);
+
+            // Normalize to a value between 0 and 1
+            // 0xffffffff = 4294967295 (max value of a 32-bit unsigned integer)
+            const normalized = hashInt / 0xffffffff;
+
+            // Determine if this machine is selected for the survey
+            // Lower normalized values = selected
+            const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
+
+            // Record selection result in telemetry
+            context.telemetry.properties.acceptedForABTest = acceptedForABTest.toString();
+            context.telemetry.properties.normalizedValue = normalized.toFixed(6);
+
+            // Update surveyState.isCandidate based on selection result
+            surveyState.isCandidate = acceptedForABTest;
+        } catch (error) {
+            // Record error message from hashing in telemetry if available
+            context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
+
+            // Record that fallback selection was used in telemetry
+            context.telemetry.properties.usedFallbackSelection = 'true';
+
+            surveyState.isCandidate = Math.random() < SurveyConfig.settings.PROBABILITY;
+        }
+
         context.telemetry.properties.isCandidate = surveyState.isCandidate.toString();
     });
 }

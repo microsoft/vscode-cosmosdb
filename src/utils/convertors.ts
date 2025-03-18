@@ -484,11 +484,7 @@ export const queryMetricsToJSON = (queryResult: SerializedQueryResult | null): s
 };
 
 export const escapeCsvValue = (value: string): string => {
-    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-        return `"${value.replace(/"/g, '""')}"`;
-    }
-
-    return value;
+    return `"${value.replace(/"/g, '""')}"`;
 };
 
 export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): string => {
@@ -500,9 +496,9 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
 
     stats.push(indexMetricsToTableItem(queryResult));
 
-    const titles = stats.map((item) => item.metric).join(',');
+    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(',');
     const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(',');
-    return `${titles}\n${values}`;
+    return `sep=,\n${titles}\n${values}`;
 };
 
 export const queryResultToCsv = (
@@ -515,7 +511,7 @@ export const queryResultToCsv = (
     }
 
     const tableView = queryResultToTable(queryResult, partitionKey);
-    const headers = tableView.headers.join(',');
+    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(',');
 
     if (selection) {
         tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
@@ -537,5 +533,5 @@ export const queryResultToCsv = (
             return rowValues.join(',');
         })
         .join('\n');
-    return `${headers}\n${rows}`;
+    return `sep=,\n${headers}\n${rows}`;
 };

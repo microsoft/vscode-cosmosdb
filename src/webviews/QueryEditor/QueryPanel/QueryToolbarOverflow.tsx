@@ -29,6 +29,7 @@ import {
 } from '@fluentui/react-components';
 import {
     DatabasePlugConnectedRegular,
+    EmojiSmileSlightRegular,
     FolderOpenRegular,
     LibraryRegular,
     MoreHorizontal20Filled,
@@ -247,6 +248,39 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
     );
 });
 
+const ProvideFeedbackButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
+    const dispatcher = useQueryEditorDispatcher();
+
+    if (props.type === 'button') {
+        return (
+            <Menu>
+                <MenuTrigger>
+                    <ToolbarButton
+                        ref={ref}
+                        aria-label="Provide Feedback"
+                        icon={<EmojiSmileSlightRegular />}
+                    ></ToolbarButton>
+                </MenuTrigger>
+                <MenuPopover>
+                    <MenuList>
+                        <MenuItem onClick={() => void dispatcher.provideFeedback()}>Provide Feedback</MenuItem>
+                    </MenuList>
+                </MenuPopover>
+            </Menu>
+        );
+    } else {
+        return (
+            <MenuItem
+                aria-label="Provide Feedback"
+                icon={<EmojiSmileSlightRegular />}
+                onClick={() => void dispatcher.provideFeedback()}
+            >
+                Provide Feedback
+            </MenuItem>
+        );
+    }
+});
+
 const ConnectionButton = forwardRef(
     (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
         const classes = useClasses();
@@ -347,8 +381,13 @@ const OverflowMenu = () => {
                     <ToolbarOverflowMenuItem id="6">
                         <LearnButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
+                    {useQueryEditorState().isSurveyCandidate && (
+                        <ToolbarOverflowMenuItem id="7">
+                            <ProvideFeedbackButton type={'menuitem'} />
+                        </ToolbarOverflowMenuItem>
+                    )}
                     <ToolbarMenuOverflowDivider id="2" />
-                    <ToolbarOverflowMenuItem id="7">
+                    <ToolbarOverflowMenuItem id="8">
                         <ConnectionButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                 </MenuList>
@@ -394,8 +433,13 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                 <OverflowItem id={'6'} groupId={'2'}>
                     <LearnButton type={'button'} />
                 </OverflowItem>
+                {useQueryEditorState().isSurveyCandidate && (
+                    <OverflowItem id={'7'} groupId={'2'}>
+                        <ProvideFeedbackButton type={'button'} />
+                    </OverflowItem>
+                )}
                 <ToolbarOverflowDivider groupId="2" />
-                <OverflowItem id={'7'} groupId={'3'}>
+                <OverflowItem id={'8'} groupId={'3'}>
                     <ConnectionButton type={'button'} />
                 </OverflowItem>
                 <OverflowMenu />

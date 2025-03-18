@@ -3,18 +3,58 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, Toolbar, ToolbarButton } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, ArrowExportRegular, ArrowImportRegular, PlayRegular } from '@fluentui/react-icons';
+import {
+    Menu,
+    MenuItem,
+    MenuList,
+    MenuPopover,
+    MenuTrigger,
+    Toolbar,
+    ToolbarButton,
+    ToolbarDivider,
+} from '@fluentui/react-components';
+import {
+    ArrowClockwiseRegular,
+    ArrowExportRegular,
+    ArrowImportRegular,
+    EmojiSmileSlightRegular,
+    PlayRegular,
+} from '@fluentui/react-icons';
 import { useContext, type JSX } from 'react';
+import { ExperienceKind } from '../../../../../utils/surveyTypes';
 import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
 import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 
 export const ToolbarMainView = (): JSX.Element => {
+    const { trpcClient } = useTrpcClient();
+
     return (
         <>
             <ToolbarQueryOperations />
             <ToolbarDataOperations />
+            <ToolbarDivider />
+            <Menu>
+                <MenuTrigger>
+                    <ToolbarButton aria-label="Provide Feedback" icon={<EmojiSmileSlightRegular />}></ToolbarButton>
+                </MenuTrigger>
+                <MenuPopover>
+                    <MenuList>
+                        <MenuItem
+                            onClick={() => {
+                                trpcClient.common.surveyOpen
+                                    .mutate({
+                                        experienceKind: ExperienceKind.Mongo,
+                                        triggerAction: 'cosmosDB.mongo.collectionView.provideFeedback',
+                                    })
+                                    .catch(() => {});
+                            }}
+                        >
+                            Provide Feedback
+                        </MenuItem>
+                    </MenuList>
+                </MenuPopover>
+            </Menu>
         </>
     );
 };

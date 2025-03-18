@@ -10,7 +10,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
-import { promptAfterActionEventually } from '../../../utils/survey';
+import { openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
 import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
@@ -120,6 +120,16 @@ const commonRouter = router({
         )
         .mutation(({ input }) => {
             void promptAfterActionEventually(input.experienceKind, input.usageImpact);
+        }),
+    surveyOpen: publicProcedure
+        .input(
+            z.object({
+                experienceKind: z.nativeEnum(ExperienceKind),
+                triggerAction: z.string(), // Optional action that triggered the survey for telemetry
+            }),
+        )
+        .mutation(({ input }) => {
+            void openSurvey(input.experienceKind, input.triggerAction);
         }),
 });
 

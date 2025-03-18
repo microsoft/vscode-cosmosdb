@@ -27,11 +27,15 @@
 
         display: flex;
         flex-direction: row;
-        justify-content: space-between;
         align-items: center;
         gap: 10px;
 
         text-wrap: nowrap;
+
+        // Push all elements after the first one to the right
+        > :first-child {
+            margin-right: auto; // This ensures space is created between the first and remaining elements.
+        }
     }
 
     .resultsActionBar {

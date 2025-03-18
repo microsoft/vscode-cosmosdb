@@ -103,6 +103,9 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             await this.deleteDocument(document);
         }
     }
+    public async provideFeedback(): Promise<void> {
+        await this.sendCommand('provideFeedback');
+    }
 
     protected initEventListeners() {
         super.initEventListeners();
@@ -132,6 +135,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('queryResults', (executionId: string, result: SerializedQueryResult, currentPage: number) => {
             this.dispatch({ type: 'updateQueryResult', executionId, result, currentPage });
+        });
+
+        this.channel.on('isSurveyCandidateChanged', (isSurveyCandidate: boolean) => {
+            this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: isSurveyCandidate });
         });
 
         //TODO: there should be no queryError event that needs to show a toast,

@@ -418,6 +418,29 @@ describe('Survey Initialization', () => {
             expect(await getIsSurveyCandidate()).toBe(expected);
         });
 
+        // Test that different A_B_TEST_SELECTION thresholds affect selection as expected
+        test('should respect different A_B_TEST_SELECTION thresholds', async () => {
+            // Use a hash that will be ~0.5 when normalized
+            const midRangeHashInt = Math.round(0xffffffff * 0.5);
+            createHashDigestMock(midRangeHashInt);
+
+            // With low selection threshold, should not be selected
+            const originalThreshold = SurveyConfig.settings.A_B_TEST_SELECTION;
+            SurveyConfig.settings.A_B_TEST_SELECTION = 0.25;
+            expect(await getIsSurveyCandidate()).toBe(false);
+
+            // Reset state
+            resetSurveyState();
+            createHashDigestMock(midRangeHashInt);
+
+            // With high selection threshold, should be selected
+            SurveyConfig.settings.A_B_TEST_SELECTION = 0.75;
+            expect(await getIsSurveyCandidate()).toBe(true);
+
+            // Restore original threshold
+            SurveyConfig.settings.A_B_TEST_SELECTION = originalThreshold;
+        });
+
         test.each([
             { randomValue: SurveyConfig.settings.PROBABILITY - 0.1, expected: true, description: 'below probability' },
             { randomValue: SurveyConfig.settings.PROBABILITY + 0.1, expected: false, description: 'above probability' }

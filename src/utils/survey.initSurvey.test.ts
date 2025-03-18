@@ -99,46 +99,44 @@ describe('Survey Initialization', () => {
         resetSurveyState();
     });
 
-    // Helper to mock the crypto hash to always pass A/B test
-    function mockABTestPassing() {
-        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-            return {
-                update: () => ({
-                    digest: () => {
-                        // Create a buffer with first 4 bytes that will produce a low value
-                        // 0x0a000000 as the first 4 bytes = 167772160 (decimal)
-                        // 167772160 / 0xffffffff ≈ 0.039 (well below threshold)
-                        const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
-                        buffer.writeUInt32BE(0x0a000000, 0);
-                        return buffer;
-                    }
-                }),
-            } as any;
-        });
+    // Helper function to create a mock for crypto.createHash that returns a buffer with the specified hash value
+    function createHashDigestMock(hashInt: number) {
+        return jest.spyOn(crypto, 'createHash').mockImplementation(() => ({
+            update: () => ({
+                digest: () => {
+                    const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
+                    buffer.writeUInt32BE(hashInt, 0);
+                    return buffer;
+                }
+            }),
+        } as any));
+    }
+
+    // Hash constants for A/B testing - these represent specific values when normalized by 0xffffffff
+    // When using MD5 hash, we read the first 4 bytes as a 32-bit unsigned integer
+    // Values below A_B_TEST_SELECTION threshold pass, values above fail
+    const HASH_LOW_VALUE = 0x0a000000;  // ~0.039 when normalized (167772160/4294967295)
+    const HASH_HIGH_VALUE = 0xf0000000; // ~0.937 when normalized (4026531840/4294967295)
+
+    // Helper to mock the crypto hash to always pass or fail A/B test
+    function mockABTest(shouldPass: boolean) {
+        const hashInt = shouldPass ? HASH_LOW_VALUE : HASH_HIGH_VALUE;
+        const randomValue = shouldPass ? 0.1 : 0.9; // Low value for pass, high value for fail
+
+        createHashDigestMock(hashInt);
 
         // Also mock Math.random as fallback
-        jest.spyOn(Math, 'random').mockReturnValue(0.1); // Ensure PROBABILITY check passes
+        jest.spyOn(Math, 'random').mockReturnValue(randomValue);
+    }
+
+    // Helper to mock the crypto hash to always pass A/B test
+    function mockABTestPassing() {
+        mockABTest(true);
     }
 
     // Helper to mock the crypto hash to always fail A/B test
     function mockABTestFailing() {
-        jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-            return {
-                update: () => ({
-                    digest: () => {
-                        // Create a buffer with first 4 bytes that will produce a high value
-                        // 0xf0000000 as the first 4 bytes = 4026531840 (decimal)
-                        // 4026531840 / 0xffffffff ≈ 0.937 (well above threshold)
-                        const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
-                        buffer.writeUInt32BE(0xf0000000, 0);
-                        return buffer;
-                    }
-                }),
-            } as any;
-        });
-
-        // Also mock Math.random as fallback
-        jest.spyOn(Math, 'random').mockReturnValue(0.9); // Ensure PROBABILITY check fails
+        mockABTest(false);
     }
 
     function mockSurveyTaken(date: Date, version: string): void {
@@ -408,44 +406,31 @@ describe('Survey Initialization', () => {
 
         test.each([
             // For a machine id that produces a hash whose first 4 bytes represent a value
-            // that when divided by 0xffffffff is less than A_B_TEST_SELECTION
-            ['acceptedMachine', 0x0a000000, true],
-            // For a machine id that produces a hash yielding a high normalized value
-            ['rejectedMachine', 0xf0000000, false],
-        ])('with machineId %s producing hash int %s should mark candidate as %s', async (machineId, hashInt, expected) => {
+            // that when divided by HASH_LOW_VALUE is less than A_B_TEST_SELECTION, the user should be a candidate
+            { machineId: 'acceptedMachine', hashInt: HASH_LOW_VALUE, expected: true, description: 'below threshold' },
+            // For a machine id that produces a hash yielding a high normalized value, the user should not be a candidate
+            { machineId: 'rejectedMachine', hashInt: HASH_HIGH_VALUE, expected: false, description: 'above threshold' }
+        ])('With machineId $machineId producing hash int $hashInt ($description), isCandidate should be $expected', async ({ machineId, hashInt, expected }) => {
             (env as any).machineId = machineId;
-            jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-                return {
-                    update: () => ({
-                        digest: () => {
-                            const buffer = Buffer.alloc(16); // MD5 produces 16 bytes
-                            buffer.writeUInt32BE(hashInt, 0);
-                            return buffer;
-                        }
-                    }),
-                } as any;
-            });
+
+            createHashDigestMock(hashInt);
+
             expect(await getIsSurveyCandidate()).toBe(expected);
         });
 
-        test('Fallback to probability when crypto.createHash fails', async () => {
+        test.each([
+            { randomValue: SurveyConfig.settings.PROBABILITY - 0.1, expected: true, description: 'below probability' },
+            { randomValue: SurveyConfig.settings.PROBABILITY + 0.1, expected: false, description: 'above probability' }
+        ])('Fallback with Math.random $description should return $expected', async ({ randomValue, expected }) => {
             (env as any).machineId = 'anyMachine';
-            jest.spyOn(crypto, 'createHash').mockImplementation(() => {
-                throw new Error('hash failure');
-            });
-            // For fallback, candidate is determined by Math.random < PROBABILITY.
-            jest.spyOn(Math, 'random').mockReturnValue(SurveyConfig.settings.PROBABILITY - 0.1);
-            expect(await getIsSurveyCandidate()).toBe(true);
-        });
 
-        test('Fallback should respect probability threshold', async () => {
-            (env as any).machineId = 'anyMachine';
+            // Consistent error implementation
             jest.spyOn(crypto, 'createHash').mockImplementation(() => {
                 throw new Error('hash failure');
             });
-            // Simulate Math.random returning a value higher than PROBABILITY
-            jest.spyOn(Math, 'random').mockReturnValue(SurveyConfig.settings.PROBABILITY + 0.1);
-            expect(await getIsSurveyCandidate()).toBe(false);
+
+            jest.spyOn(Math, 'random').mockReturnValue(randomValue);
+            expect(await getIsSurveyCandidate()).toBe(expected);
         });
     });
 });

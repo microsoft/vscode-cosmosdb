@@ -59,39 +59,32 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
     // This information is non-sensitive and aids in diagnostics.
     try {
         const buildInfo = await adminDb.command({ buildInfo: 1 });
-        result['serverInfo.version'] = buildInfo.version;
-        result['serverInfo.gitVersion'] = buildInfo.gitVersion;
-        result['serverInfo.opensslVersion'] = buildInfo.opensslVersion;
-        result['serverInfo.platform'] = buildInfo.platform;
-        result['serverInfo.storageEngines'] = (buildInfo.storageEngines as string[])?.join(';');
-        result['serverInfo.modules'] = (buildInfo.modules as string[])?.join(';');
+        result['serverInfo_version'] = buildInfo.version;
+        result['serverInfo_platform'] = buildInfo.platform;
+        result['serverInfo_storageEngines'] = (buildInfo.storageEngines as string[])?.join(';');
     } catch (error) {
-        result['serverInfo.error'] = error instanceof Error ? error.message : String(error);
+        result['serverInfo_error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Fetch server status information.
     // Includes non-sensitive data like uptime and connection metrics.
     try {
         const serverStatus = await adminDb.command({ serverStatus: 1 });
-        result['serverStatus.uptime'] = serverStatus.uptime.toString();
-        result['serverStatus.connections.current'] = serverStatus.connections?.current.toString();
-        result['serverStatus.connections.available'] = serverStatus.connections?.available.toString();
-        result['serverStatus.memory.resident'] = serverStatus.mem?.resident.toString();
-        result['serverStatus.memory.virtual'] = serverStatus.mem?.virtual.toString();
+        result['serverStatus_uptime'] = serverStatus.uptime.toString();
     } catch (error) {
-        result['serverStatus.error'] = error instanceof Error ? error.message : String(error);
+        result['serverStatus_error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Fetch topology information using the 'hello' command.
     // Internal server addresses are not collected to ensure privacy.
     try {
         const helloInfo = await adminDb.command({ hello: 1 });
-        result['topology.type'] = helloInfo.msg || 'unknown';
-        result['topology.numberOfServers'] = (helloInfo.hosts?.length || 0).toString();
-        result['topology.minWireVersion'] = helloInfo.minWireVersion.toString();
-        result['topology.maxWireVersion'] = helloInfo.maxWireVersion.toString();
+        result['topology_type'] = helloInfo.msg || 'unknown';
+        result['topology_numberOfServers'] = (helloInfo.hosts?.length || 0).toString();
+        result['topology_minWireVersion'] = helloInfo.minWireVersion.toString();
+        result['topology_maxWireVersion'] = helloInfo.maxWireVersion.toString();
     } catch (error) {
-        result['topology.error'] = error instanceof Error ? error.message : String(error);
+        result['topology_error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Fetch host information
@@ -100,9 +93,10 @@ export async function getMongoClusterMetadata(client: MongoClient): Promise<Mong
         if (hostInfo && typeof hostInfo.currentTime !== 'undefined') {
             hostInfo.currentTime = 'redacted'; // Redact current time
         }
-        result['hostInfo.json'] = JSON.stringify(hostInfo);
+        // TODO: review in April 2024 if we need to redact more of the hostInfo fields.
+        result['hostInfo_json'] = JSON.stringify(hostInfo);
     } catch (error) {
-        result['hostInfo.error'] = error instanceof Error ? error.message : String(error);
+        result['hostInfo_error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Return the collected metadata.

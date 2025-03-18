@@ -39,32 +39,30 @@ export const addDatabasePathToConnectionString = (connectionString: string, data
     connectionStringOb.pathname = databaseName;
     return connectionStringOb.toString();
 };
-
 /**
- * Checks if any of the given hosts end with any of the provided suffixes.
+ * Checks if any of the given hosts end with the provided domain name suffix.
  *
  * @param hosts - An array of host strings to check.
- * @param suffixes - An array of suffixes to check against the hosts.
- * @returns True if any host ends with any of the suffixes, false otherwise.
+ * @param tld - The domain suffix to check against the hosts.
+ * @returns True if any host ends with the suffix, false otherwise.
  */
-function hostsEndWithAny(hosts: string[], suffixes: string[]): boolean {
+export function hasDomainSuffix(tld: string, ...hosts: string[]): boolean {
     return hosts.some((host) => {
-        const hostWithoutPort = host.split(':')[0].toLowerCase();
-        return suffixes.some((suffix) => hostWithoutPort.endsWith(suffix));
+        const hostWithoutPort = extractDomainFromHost(host);
+        return hostWithoutPort.endsWith(tld);
     });
 }
 
-export function areMongoDBRU(hosts: string[]): boolean {
-    const knownSuffixes = ['mongo.cosmos.azure.com'];
-    return hostsEndWithAny(hosts, knownSuffixes);
+export function hasAzureDomain(...hosts: string[]): boolean {
+    return hasDomainSuffix(AzureDomains.GeneralAzure, ...hosts);
 }
 
-export function areMongoDBvCore(hosts: string[]): boolean {
-    const knownSuffixes = ['mongocluster.cosmos.azure.com'];
-    return hostsEndWithAny(hosts, knownSuffixes);
+export function extractDomainFromHost(host: string): string {
+    return host.split(':')[0].toLowerCase();
 }
 
-export function areMongoDBAzure(hosts: string[]): boolean {
-    const knownSuffixes = ['azure.com'];
-    return hostsEndWithAny(hosts, knownSuffixes);
-}
+export const AzureDomains = {
+    RU: 'mongo.cosmos.azure.com',
+    vCore: 'mongocluster.cosmos.azure.com',
+    GeneralAzure: 'azure.com',
+};

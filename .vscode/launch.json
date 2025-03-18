@@ -11,7 +11,7 @@
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
-                "DEBUGTELEMETRY": "v",
+                "DEBUGTELEMETRY": "true", // set this to "verbose" to see telemetry events in debug console
                 "NODE_DEBUG": ""
             }
         },
@@ -27,7 +27,7 @@
             "outFiles": ["${workspaceFolder}/out/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}",
             "env": {
-                "DEBUGTELEMETRY": "v",
+                "DEBUGTELEMETRY": "verbose", // set this to "true" to suppress telemetry events in debug console
                 "NODE_DEBUG": ""
             }
         },
@@ -53,7 +53,7 @@
                 "./*": "${workspaceFolder}/*"
             },
             "env": {
-                "DEBUGTELEMETRY": "v",
+                "DEBUGTELEMETRY": "true", // set this to "verbose" to see telemetry events in debug console
                 "NODE_DEBUG": "",
                 "DEBUG_WEBPACK": "",
                 "DEVSERVER": "true",
@@ -80,7 +80,7 @@
             },
             "preLaunchTask": "Watch",
             "env": {
-                "DEBUGTELEMETRY": "v",
+                "DEBUGTELEMETRY": "verbose", // set this to "true" to suppress telemetry events in debug console
                 "NODE_DEBUG": "",
                 "DEBUG_WEBPACK": "",
                 "DEVSERVER": "true",
@@ -115,7 +115,7 @@
             "env": {
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
                 "MOCHA_timeout": "0", // Disable time-outs
-                "DEBUGTELEMETRY": "v",
+                "DEBUGTELEMETRY": "true", // set this to "verbose" to see telemetry events in debug console
                 "NODE_DEBUG": "",
                 "AzCode_EnableLongRunningTestsLocal": ""
             }
@@ -135,7 +135,7 @@
             "env": {
                 "MOCHA_grep": "", // RegExp of tests to run (empty for all)
                 "MOCHA_timeout": "0", // Disable time-outs
-                "DEBUGTELEMETRY": "v",
+                "DEBUGTELEMETRY": "true", // set this to "verbose" to see telemetry events in debug console
                 "NODE_DEBUG": "",
                 "DEBUG_WEBPACK": "1",
                 "ENABLE_LONG_RUNNING_TESTS": ""

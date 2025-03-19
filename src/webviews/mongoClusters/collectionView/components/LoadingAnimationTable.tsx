@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Skeleton, SkeletonItem, type SkeletonProps } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 
 export const LoadingAnimationTable = (props: Partial<SkeletonProps>) => {
     return (
         <div className="loadingAnimationTable">
-            <Skeleton {...props} appearance="translucent" aria-label="Loading Content">
+            <Skeleton {...props} appearance="translucent" aria-label={l10n.t('Loading Content')}>
                 <div className="headerRow">
                     <SkeletonItem size={24} />
                 </div>

@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
 import * as semver from 'semver';
 import { env, Uri, window } from 'vscode';
-import * as nls from 'vscode-nls';
 import { ext } from '../extensionVariables';
 import { ExperienceKind, type UsageImpact } from './surveyTypes';
 
@@ -56,7 +56,6 @@ const StateKeys = {
 };
 
 const surveyState = new SurveyState();
-const localize = nls.loadMessageBundle();
 
 /**
  * Determines whether surveys are disabled globally across the extension.
@@ -312,7 +311,7 @@ async function surveyPromptIfCandidate(
         const date = new Date().toDateString();
 
         const take = {
-            title: localize('azureResourceGroups.takeSurvey', 'Take Survey'),
+            title: l10n.t('Take Survey'),
             run: async () => {
                 context.telemetry.properties.takeShortSurvey = 'true';
                 openSurvey(experience, triggerAction);
@@ -322,7 +321,7 @@ async function surveyPromptIfCandidate(
             },
         };
         const remind = {
-            title: localize('azureResourceGroups.remindLater', 'Remind Me Later'),
+            title: l10n.t('Remind Me Later'),
             run: async () => {
                 context.telemetry.properties.remindMeLater = 'true';
                 await ext.context.globalState.update(
@@ -332,7 +331,7 @@ async function surveyPromptIfCandidate(
             },
         };
         const never = {
-            title: localize('azureResourceGroups.neverAgain', "Don't Ask Again"),
+            title: l10n.t("Don't Ask Again"),
             isSecondary: true,
             run: async () => {
                 context.telemetry.properties.dontShowAgain = 'true';
@@ -343,10 +342,7 @@ async function surveyPromptIfCandidate(
         };
 
         const button = await window.showInformationMessage(
-            localize(
-                'azureDatabases.surveyQuestion',
-                'Do you mind taking a quick feedback survey about Azure Databases for VS Code?',
-            ),
+            l10n.t('Do you mind taking a quick feedback survey about Azure Databases for VS Code?'),
             take,
             remind,
             never,

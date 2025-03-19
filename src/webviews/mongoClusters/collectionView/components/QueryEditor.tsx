@@ -6,19 +6,12 @@
 import { useContext, type JSX } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
-
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
-
 // eslint-disable-next-line import/no-internal-modules
 import { type editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CollectionViewContext } from '../collectionViewContext';
 import { MonacoAdaptive } from './MonacoAdaptive';
-// eslint-disable-next-line import/no-internal-modules
-
-// eslint-disable-next-line import/no-internal-modules
-
-// eslint-disable-next-line import/no-internal-modules
 
 export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
     const [, setCurrentContext] = useContext(CollectionViewContext);

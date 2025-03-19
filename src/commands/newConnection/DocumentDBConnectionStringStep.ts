@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
@@ -11,8 +12,8 @@ export class DocumentDBConnectionStringStep extends AzureWizardPromptStep<NewCon
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
         context.connectionString = (
             await context.ui.showInputBox({
-                placeHolder: `AccountEndpoint=...;AccountKey=...`,
-                prompt: 'Enter the connection string for your database account',
+                placeHolder: 'AccountEndpoint=…;AccountKey=…',
+                prompt: l10n.t('Enter the connection string for your database account'),
                 validateInput: (connectionString?: string) => this.validateInput(connectionString),
                 asyncValidationTask: (connectionString: string) => this.validateConnectionString(connectionString),
             })
@@ -44,7 +45,7 @@ export class DocumentDBConnectionStringStep extends AzureWizardPromptStep<NewCon
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return 'Connection string must be of the form "AccountEndpoint=...;AccountKey=..."';
+                return l10n.t('Connection string must be of the form "AccountEndpoint=…;AccountKey=…"');
             }
         }
 

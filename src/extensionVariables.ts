@@ -6,7 +6,7 @@
 import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
-import { type ExtensionContext, type SecretStorage } from 'vscode';
+import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './mongo/languageClient';
@@ -27,11 +27,11 @@ export namespace ext {
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
     export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
 
-    export let context: ExtensionContext;
+    export let context: vscode.ExtensionContext;
     export let outputChannel: IAzExtLogOutputChannel;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let isBundle: boolean | undefined;
-    export let secretStorage: SecretStorage;
+    export let secretStorage: vscode.SecretStorage;
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;

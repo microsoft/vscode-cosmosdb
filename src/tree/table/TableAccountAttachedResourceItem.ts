@@ -8,6 +8,7 @@ import {
     createGenericElement,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
@@ -26,7 +27,7 @@ export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedR
             return Promise.resolve([
                 createGenericElement({
                     contextValue: `${this.contextValue}/notSupported`,
-                    label: 'Table Accounts are not supported yet.',
+                    label: l10n.t('Table Accounts are not supported yet.'),
                     id: `${this.id}/notSupported`,
                 }) as CosmosDBTreeElement,
             ]);
@@ -36,6 +37,6 @@ export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedR
     }
 
     protected getChildrenImpl(): Promise<CosmosDBTreeElement[]> {
-        throw new Error('Method not implemented.');
+        throw new Error(l10n.t('Method not implemented.'));
     }
 }

@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/vscode-azext-utils';
-import { QuickPickItemKind } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import {
     defaultMongoEmulatorConfiguration,
     type MongoEmulatorConfiguration,
@@ -17,33 +18,33 @@ export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEm
             [
                 {
                     id: 'enableTLS',
-                    label: 'Enable TLS/SSL (Default)',
-                    detail: 'Enforce TLS/SSL checks for a secure connection to the MongoDB Emulator.',
+                    label: l10n.t('Enable TLS/SSL (Default)'),
+                    detail: l10n.t('Enforce TLS/SSL checks for a secure connection to the MongoDB Emulator.'),
                     alwaysShow: true,
                     group: 'TLS/SSL',
                 },
                 {
                     id: 'disableTLS',
-                    label: 'Disable TLS/SSL (Not recommended)',
-                    detail: 'Disable TLS/SSL checks when connecting to the MongoDB Emulator.',
+                    label: l10n.t('Disable TLS/SSL (Not recommended)'),
+                    detail: l10n.t('Disable TLS/SSL checks when connecting to the MongoDB Emulator.'),
                     alwaysShow: true,
                     group: 'TLS/SSL',
                 },
                 {
                     label: '',
-                    kind: QuickPickItemKind.Separator,
+                    kind: vscode.QuickPickItemKind.Separator,
                 },
                 {
                     id: 'learnMore',
-                    label: 'Learn more',
-                    detail: 'Learn more about enabling TLS/SSL for the MongoDB Emulator.',
+                    label: l10n.t('Learn more…'),
+                    detail: l10n.t('Learn more about enabling TLS/SSL for the MongoDB Emulator.'),
                     alwaysShow: true,
                     group: 'Learn More',
                 },
             ],
             {
                 enableGrouping: true,
-                placeHolder: 'Configure TLS/SSL Security',
+                placeHolder: l10n.t('Configure TLS/SSL Security'),
                 stepName: 'securityConfiguration',
                 suppressPersistence: true, // == the order of items will not be altered
             },

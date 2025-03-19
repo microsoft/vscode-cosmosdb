@@ -131,12 +131,14 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                 </head>
                     <body>
                         <div id="root"></div>
-
+                            <script nonce="${nonce}">
+                                globalThis.l10n_bundle = ${JSON.stringify(vscode.l10n.bundle ?? {})};
+                            </script>
                             <script type="module" nonce="${nonce}">
                                 window.config = {
                                     ...window.config,
                                     __initialData: '${encodeURIComponent(JSON.stringify(this.configuration))}'
-                            };
+                                };
 
                                 import { render } from "${srcUri}";
                                 render('${this._webviewName}', acquireVsCodeApi());

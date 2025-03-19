@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseError, type IParsedError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { ANTLRInputStream as InputStream } from 'antlr4ts/ANTLRInputStream';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
@@ -189,7 +190,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         } else if (child instanceof ErrorNode) {
             return {};
         } else {
-            this.addErrorToCommand(`Unrecognized node type encountered. We could not parse ${child.text}`, ctx);
+            this.addErrorToCommand(
+                l10n.t('Unrecognized node type encountered. We could not parse {text}', { text: child.text }),
+                ctx,
+            );
             return {};
         }
     }
@@ -214,7 +218,7 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return JSON.parse(text);
         } else {
-            this.addErrorToCommand(`Unrecognized token. Token text: ${text}`, ctx);
+            this.addErrorToCommand(l10n.t('Unrecognized token. Token text: {text}', { text }), ctx);
             return {};
         }
     }
@@ -264,7 +268,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         );
         if (!(argumentsToken._CLOSED_PARENTHESIS && argumentsToken._OPEN_PARENTHESIS)) {
             //argumentsToken does not have '(' or ')'
-            this.addErrorToCommand(`Expecting parentheses or quotes at '${constructorCall.text}'`, ctx);
+            this.addErrorToCommand(
+                l10n.t('Expecting parentheses or quotes at "{text}"', { text: constructorCall.text }),
+                ctx,
+            );
             return {};
         }
 
@@ -273,7 +280,12 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
             mongoParser.ArgumentContext,
         );
         if (argumentContextArray.length > 1) {
-            this.addErrorToCommand(`Too many arguments. Expecting 0 or 1 argument(s) to ${constructorCall}`, ctx);
+            this.addErrorToCommand(
+                l10n.t('Too many arguments. Expecting 0 or 1 argument(s) to {constructorCall}', {
+                    constructorCall: constructorCall.text,
+                }),
+                ctx,
+            );
             return {};
         }
 
@@ -287,7 +299,10 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                 return this.dateToObject(ctx, tokenText);
             default:
                 this.addErrorToCommand(
-                    `Unrecognized node type encountered. Could not parse ${constructorCall.text} as part of ${child.text}`,
+                    l10n.t(
+                        'Unrecognized node type encountered. Could not parse {constructorCall} as part of {functionCall}',
+                        { constructorCall: constructorCall.text, functionCall: child.text },
+                    ),
                     ctx,
                 );
                 return {};
@@ -431,6 +446,6 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
         We need to convert this appropriately. Other special characters (\n, \t, \r) don't carry significance in regexes - we don't handle those
         What the regex does: '\\{4}' looks for the escaped slash 4 times. Lookahead checks if the character being escaped has a special meaning.
         */
-        return argAsString.replace(removeDuplicatedBackslash, `\\\\$1`);
+        return argAsString.replace(removeDuplicatedBackslash, '\\\\$1');
     }
 }

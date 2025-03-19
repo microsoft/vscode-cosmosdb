@@ -8,6 +8,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 
+import * as l10n from '@vscode/l10n';
 import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
@@ -157,7 +158,7 @@ export class QueryEditorTab extends BaseTab {
 
             if (container.resource === undefined) {
                 // Should be impossible since here we have a connection from the extension
-                throw new Error(`Container ${containerId} not found`);
+                throw new Error(l10n.t('Container {0} not found', containerId));
             }
 
             // Probably need to pass the entire container object to the webview
@@ -191,10 +192,10 @@ export class QueryEditorTab extends BaseTab {
     private async openFile(): Promise<void> {
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
-            openLabel: 'Select',
+            openLabel: l10n.t('Select'),
             canSelectFiles: true,
             canSelectFolders: false,
-            title: 'Select query',
+            title: l10n.t('Select query'),
             filters: {
                 'Query files': ['sql', 'nosql'],
                 'Text files': ['txt'],
@@ -270,7 +271,7 @@ export class QueryEditorTab extends BaseTab {
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = new QuerySession(this.connection, this.channel, query, options);
@@ -290,7 +291,7 @@ export class QueryEditorTab extends BaseTab {
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.stop();
@@ -304,12 +305,12 @@ export class QueryEditorTab extends BaseTab {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.nextPage();
@@ -323,12 +324,12 @@ export class QueryEditorTab extends BaseTab {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.prevPage();
@@ -342,12 +343,12 @@ export class QueryEditorTab extends BaseTab {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.firstPage();
@@ -359,15 +360,15 @@ export class QueryEditorTab extends BaseTab {
         const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
         await callWithTelemetryAndErrorHandling(callbackId, () => {
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             if (!documentId && mode !== 'add') {
-                throw new Error('Impossible to open a document without an id');
+                throw new Error(l10n.t('Impossible to open a document without an id'));
             }
 
             if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
-                throw new Error(`Invalid mode: ${mode}`);
+                throw new Error(l10n.t('Invalid mode: {0}', mode));
             }
 
             DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
@@ -379,11 +380,11 @@ export class QueryEditorTab extends BaseTab {
         const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             if (!documentId) {
-                throw new Error('Impossible to open a document without an id');
+                throw new Error(l10n.t('Impossible to open a document without an id'));
             }
 
             const session = new DocumentSession(this.connection, this.channel);

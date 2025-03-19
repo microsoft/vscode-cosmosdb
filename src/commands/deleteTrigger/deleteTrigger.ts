@@ -5,12 +5,12 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBTriggerResourceItem } from '../../tree/docdb/DocumentDBTriggerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteDocumentDBTrigger(
@@ -35,8 +35,10 @@ export async function deleteDocumentDBTrigger(
     const triggerId = node.model.trigger.id;
 
     const confirmed = await getConfirmationAsInSettings(
-        `Delete "${triggerId}"?`,
-        `Delete trigger "${triggerId}" and its contents?\nThis can't be undone.`,
+        l10n.t('Delete "{nodeName}"?', { nodeName: triggerId }),
+        l10n.t('Delete trigger "{triggerId}" and its contents?', { triggerId }) +
+            '\n' +
+            l10n.t('This cannot be undone.'),
         triggerId,
     );
 
@@ -59,9 +61,7 @@ export async function deleteDocumentDBTrigger(
         });
 
         if (success) {
-            showConfirmationAsInSettings(
-                localize('showConfirmation.droppedTrigger', 'The trigger {0} has been deleted.', triggerId),
-            );
+            showConfirmationAsInSettings(l10n.t('The trigger {triggerId} has been deleted.', { triggerId }));
         }
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');

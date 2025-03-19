@@ -26,7 +26,7 @@ export function createPostgresConnectionString(
     password?: string,
     databaseName?: string,
 ): string {
-    let connectionString: string = `postgres://`;
+    let connectionString = 'postgres://';
     if (username) {
         const encodedUsername = encodeURIComponent(username);
         if (password) {
@@ -51,7 +51,7 @@ export function buildPostgresConnectionString(
     password?: string,
     databaseName?: string,
 ): string {
-    let connectionString: string = `postgres://`;
+    let connectionString = 'postgres://';
     if (username) {
         const encodedUsername = encodeURIComponent(username);
         if (password) {

@@ -13,6 +13,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 
 export type AlertDialogProps = {
     open: boolean;
@@ -27,17 +28,19 @@ export const UnsavedChangesDialog = ({ open, setOpen, doAction }: AlertDialogPro
                 <DialogBody>
                     <DialogTitle>Attention</DialogTitle>
                     <DialogContent>
-                        <div>Your document has unsaved changes. If you continue, these changes will be lost.</div>
-                        <div>Are you sure you want to continue?</div>
+                        <div>
+                            {l10n.t('Your document has unsaved changes. If you continue, these changes will be lost.')}
+                        </div>
+                        <div>{l10n.t('Are you sure you want to continue?')}</div>
                     </DialogContent>
 
                     <DialogActions>
                         <Button appearance="secondary" onClick={() => void doAction()}>
-                            Continue
+                            {l10n.t('Continue')}
                         </Button>
 
                         <DialogTrigger disableButtonEnhancement>
-                            <Button appearance="primary">Close</Button>
+                            <Button appearance="primary">{l10n.t('Close')}</Button>
                         </DialogTrigger>
                     </DialogActions>
                 </DialogBody>

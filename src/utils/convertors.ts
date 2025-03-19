@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
+import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
 import { type QueryResultRecord, type SerializedQueryResult } from '../docdb/types/queryResult';
 import { extractPartitionKey } from './document';
@@ -358,101 +359,113 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
     }
 
     const { queryMetrics, iteration, metadata } = queryResult;
+    const documentsCount = queryResult.documents?.length ?? 0;
     const countPerPage = metadata.countPerPage ?? 100;
+
+    const recordsCount =
+        countPerPage === -1
+            ? documentsCount
+                ? `0 - ${documentsCount}`
+                : l10n.t('All')
+            : `${(iteration - 1) * countPerPage} - ${iteration * countPerPage}`;
 
     const stats: StatsItem[] = [
         {
-            metric: 'Request Charge',
+            metric: l10n.t('Request Charge', { comment: 'Cosmos DB metrics' }),
             value: queryResult.requestCharge,
             formattedValue: `${queryResult.requestCharge} RUs`,
-            tooltip: 'Request Charge',
+            tooltip: l10n.t('Request Charge', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Showing Results',
-            value: `${(iteration - 1) * countPerPage} - ${iteration * countPerPage}`,
-            formattedValue: `${(iteration - 1) * countPerPage} - ${iteration * countPerPage}`,
-            tooltip: 'Showing Results',
+            metric: l10n.t('Showing Results', { comment: 'Cosmos DB metrics' }),
+            value: recordsCount,
+            formattedValue: recordsCount,
+            tooltip: l10n.t('Showing Results', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Retrieved document count',
+            metric: l10n.t('Retrieved document count', { comment: 'Cosmos DB metrics' }),
             value: queryResult.documents?.length ?? 0,
             formattedValue: `${queryResult.documents?.length ?? 0}`,
-            tooltip: 'Total number of retrieved documents',
+            tooltip: l10n.t('Total number of retrieved documents', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Retrieved document size',
+            metric: l10n.t('Retrieved document size', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.retrievedDocumentSize ?? 0,
             formattedValue: `${queryMetrics.retrievedDocumentSize ?? 0} bytes`,
-            tooltip: 'Total size of retrieved documents in bytes',
+            tooltip: l10n.t('Total size of retrieved documents in bytes', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Output document count',
+            metric: l10n.t('Output document count', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.outputDocumentCount ?? 0,
             formattedValue: `${queryMetrics.outputDocumentCount ?? ''}`,
-            tooltip: 'Number of output documents',
+            tooltip: l10n.t('Number of output documents', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Output document size',
+            metric: l10n.t('Output document size', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.outputDocumentSize ?? 0,
             formattedValue: `${queryMetrics.outputDocumentSize ?? 0} bytes`,
-            tooltip: 'Total size of output documents in bytes',
+            tooltip: l10n.t('Total size of output documents in bytes', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Index hit document count',
+            metric: l10n.t('Index hit document count', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.indexHitDocumentCount ?? 0,
             formattedValue: `${queryMetrics.indexHitDocumentCount ?? ''}`,
-            tooltip: 'Total number of documents matched by the filter',
+            tooltip: l10n.t('Total number of documents matched by the filter', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Index lookup time',
+            metric: l10n.t('Index lookup time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.indexLookupTime ?? 0,
             formattedValue: `${queryMetrics.indexLookupTime ?? 0} ms`,
-            tooltip: 'Time spent in physical index layer',
+            tooltip: l10n.t('Time spent in physical index layer', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Document load time',
+            metric: l10n.t('Document load time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.documentLoadTime ?? 0,
             formattedValue: `${queryMetrics.documentLoadTime ?? 0} ms`,
-            tooltip: 'Time spent in loading documents',
+            tooltip: l10n.t('Time spent in loading documents', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Query engine execution time',
+            metric: l10n.t('Query engine execution time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.runtimeExecutionTimes.queryEngineExecutionTime ?? 0,
             formattedValue: `${queryMetrics.runtimeExecutionTimes.queryEngineExecutionTime ?? 0} ms`,
-            tooltip:
+            tooltip: l10n.t(
                 'Time spent by the query engine to execute the query expression (excludes other execution times like load documents or write results)',
+                { comment: 'Cosmos DB metrics' },
+            ),
         },
         {
-            metric: 'System function execution time',
+            metric: l10n.t('System function execution time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.runtimeExecutionTimes.systemFunctionExecutionTime ?? 0,
             formattedValue: `${queryMetrics.runtimeExecutionTimes.systemFunctionExecutionTime ?? 0} ms`,
-            tooltip: 'Total time spent executing system (built-in) functions',
+            tooltip: l10n.t('Total time spent executing system (built-in) functions', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'User defined function execution time',
+            metric: l10n.t('User defined function execution time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.runtimeExecutionTimes.userDefinedFunctionExecutionTime ?? 0,
             formattedValue: `${queryMetrics.runtimeExecutionTimes.userDefinedFunctionExecutionTime ?? 0} ms`,
-            tooltip: 'Total time spent executing user-defined functions',
+            tooltip: l10n.t('Total time spent executing user-defined functions', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: 'Document write time',
+            metric: l10n.t('Document write time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.documentWriteTime ?? 0,
             formattedValue: `${queryMetrics.documentWriteTime ?? 0} ms`,
-            tooltip: 'Time spent to write query result set to response buffer',
+            tooltip: l10n.t('Time spent to write query result set to response buffer', {
+                comment: 'Cosmos DB metrics',
+            }),
         },
     ];
 
     if (queryResult.roundTrips) {
         stats.push({
-            metric: 'Round Trips',
+            metric: l10n.t('Round Trips'),
             value: queryResult.roundTrips,
             formattedValue: `${queryResult.roundTrips}`,
-            tooltip: 'Number of round trips',
+            tooltip: l10n.t('Number of round trips'),
         });
     }
     if (queryResult.activityId) {
         stats.push({
-            metric: 'Activity id',
+            metric: l10n.t('Activity id'),
             value: queryResult.activityId,
             formattedValue: `${queryResult.activityId}`,
             tooltip: '',
@@ -464,7 +477,7 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
 
 const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {
     return {
-        metric: 'Index Metrics',
+        metric: l10n.t('Index Metrics'),
         value: queryResult.indexMetrics.trim(),
         formattedValue: queryResult.indexMetrics.trim(),
         tooltip: '',

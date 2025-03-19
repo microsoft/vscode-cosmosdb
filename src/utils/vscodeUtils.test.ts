@@ -3,13 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { workspace } from 'vscode';
+import * as vscode from 'vscode';
 
 import { getDocumentTreeItemLabel } from './vscodeUtils';
 
 describe('Document Label Tests', () => {
     beforeAll(() => {
-        jest.spyOn(workspace, 'getConfiguration').mockReturnValue({
+        jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
             get: jest.fn().mockReturnValue(['name']),
             has: jest.fn(),
             inspect: jest.fn(),

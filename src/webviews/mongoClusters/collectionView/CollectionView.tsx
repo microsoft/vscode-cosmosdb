@@ -5,6 +5,7 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import { ProgressBar, Tab, TabList } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import { type JSX, useEffect, useRef, useState } from 'react';
 import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
@@ -95,9 +96,9 @@ export const CollectionView = (): JSX.Element => {
         //    Next we need to load the ones we need.
         trpcClient.mongoClusters.collectionView.runQuery
             .query({
-                findQuery: currentContext.currrentQueryDefinition.queryText,
-                pageNumber: currentContext.currrentQueryDefinition.pageNumber,
-                pageSize: currentContext.currrentQueryDefinition.pageSize,
+                findQuery: currentContext.currentQueryDefinition.queryText,
+                pageNumber: currentContext.currentQueryDefinition.pageNumber,
+                pageSize: currentContext.currentQueryDefinition.pageSize,
             })
             .then((_response) => {
                 // 2. This is the time to update the auto-completion data
@@ -111,7 +112,7 @@ export const CollectionView = (): JSX.Element => {
             })
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error while running the query',
+                    message: l10n.t('Error while running the query'),
                     modal: false,
                     cause: error instanceof Error ? error.message : String(error),
                 });
@@ -119,7 +120,7 @@ export const CollectionView = (): JSX.Element => {
             .finally(() => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             });
-    }, [currentContext.currrentQueryDefinition]);
+    }, [currentContext.currentQueryDefinition]);
 
     useEffect(() => {
         if (currentContext.currentView === Views.TABLE && currentContext.currentViewState?.currentPath) {
@@ -193,7 +194,7 @@ export const CollectionView = (): JSX.Element => {
                     })
                     .catch((error) => {
                         void trpcClient.common.displayErrorMessage.mutate({
-                            message: 'Error while loading the data',
+                            message: l10n.t('Error while loading the data'),
                             modal: false,
                             cause: error instanceof Error ? error.message : String(error),
                         });
@@ -211,7 +212,7 @@ export const CollectionView = (): JSX.Element => {
                     })
                     .catch((error) => {
                         void trpcClient.common.displayErrorMessage.mutate({
-                            message: 'Error while loading the data',
+                            message: l10n.t('Error while loading the data'),
                             modal: false,
                             cause: error instanceof Error ? error.message : String(error),
                         });
@@ -228,7 +229,7 @@ export const CollectionView = (): JSX.Element => {
                     })
                     .catch((error) => {
                         void trpcClient.common.displayErrorMessage.mutate({
-                            message: 'Error while loading the data',
+                            message: l10n.t('Error while loading the data'),
                             modal: false,
                             cause: error instanceof Error ? error.message : String(error),
                         });
@@ -247,7 +248,7 @@ export const CollectionView = (): JSX.Element => {
             })
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error while loading the autocompletion data',
+                    message: l10n.t('Error while loading the autocompletion data'),
                     modal: false,
                     cause: error instanceof Error ? error.message : String(error),
                 });
@@ -288,7 +289,7 @@ export const CollectionView = (): JSX.Element => {
             })
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error deleting selected documents',
+                    message: l10n.t('Error deleting selected documents'),
                     modal: false,
                     cause: error instanceof Error ? error.message : String(error),
                 });
@@ -300,7 +301,7 @@ export const CollectionView = (): JSX.Element => {
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error opening the document view',
+                    message: l10n.t('Error opening the document view'),
                     modal: false,
                     cause: error instanceof Error ? error.message : String(error),
                 });
@@ -312,7 +313,7 @@ export const CollectionView = (): JSX.Element => {
             .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error opening the document view',
+                    message: l10n.t('Error opening the document view'),
                     modal: false,
                     cause: error instanceof Error ? error.message : String(error),
                 });
@@ -322,7 +323,7 @@ export const CollectionView = (): JSX.Element => {
     function handleAddDocumentRequest(): void {
         trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error) => {
             void trpcClient.common.displayErrorMessage.mutate({
-                message: 'Error opening the document view',
+                message: l10n.t('Error opening the document view'),
                 modal: false,
                 cause: error instanceof Error ? error.message : String(error),
             });
@@ -384,7 +385,7 @@ export const CollectionView = (): JSX.Element => {
                     onExecuteRequest={(q: string) => {
                         setCurrentContext((prev) => ({
                             ...prev,
-                            currrentQueryDefinition: { ...prev.currrentQueryDefinition, queryText: q, pageNumber: 1 },
+                            currentQueryDefinition: { ...prev.currentQueryDefinition, queryText: q, pageNumber: 1 },
                         }));
 
                         trpcClient.common.reportEvent

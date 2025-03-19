@@ -5,6 +5,7 @@
 
 import { type StoredProcedureDefinition } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
@@ -17,21 +18,25 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<CreateStoredPr
         const { containerId, databaseId, storedProcedureBody, storedProcedureName, nodeId } = context;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-        return ext.state.showCreatingChild(nodeId, `Creating "${storedProcedureName}"...`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 250));
+        return ext.state.showCreatingChild(
+            nodeId,
+            l10n.t('Creating "{nodeName}"…', { nodeName: storedProcedureName! }),
+            async () => {
+                await new Promise((resolve) => setTimeout(resolve, 250));
 
-            const body: StoredProcedureDefinition = {
-                id: storedProcedureName,
-                body: storedProcedureBody!,
-            };
+                const body: StoredProcedureDefinition = {
+                    id: storedProcedureName,
+                    body: storedProcedureBody!,
+                };
 
-            const response = await cosmosClient
-                .database(databaseId)
-                .container(containerId)
-                .scripts.storedProcedures.create(body);
+                const response = await cosmosClient
+                    .database(databaseId)
+                    .container(containerId)
+                    .scripts.storedProcedures.create(body);
 
-            context.response = response.resource;
-        });
+                context.response = response.resource;
+            },
+        );
     }
 
     public shouldExecute(context: CreateStoredProcedureWizardContext): boolean {

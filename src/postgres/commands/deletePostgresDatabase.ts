@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 
 export async function deletePostgresDatabase(context: IActionContext, node?: PostgresDatabaseTreeItem): Promise<void> {
@@ -19,11 +19,7 @@ export async function deletePostgresDatabase(context: IActionContext, node?: Pos
             expectedChildContextValue: PostgresDatabaseTreeItem.contextValue,
         });
     }
-    const message: string = localize(
-        'deletesPostgresDatabase',
-        'Are you sure you want to delete database "{0}"?',
-        node.databaseName,
-    );
+    const message = l10n.t('Are you sure you want to delete database "{0}"?', node.databaseName);
     const result = await context.ui.showWarningMessage(
         message,
         { modal: true, stepName: 'deletePostgresDatabase' },
@@ -32,11 +28,7 @@ export async function deletePostgresDatabase(context: IActionContext, node?: Pos
     if (result === DialogResponses.deleteResponse) {
         await node.deleteTreeItem(context);
     }
-    const deleteMessage: string = localize(
-        'deletePostgresDatabaseMsg',
-        'Successfully deleted database "{0}".',
-        node.databaseName,
-    );
+    const deleteMessage = l10n.t('Successfully deleted database "{0}".', node.databaseName);
     void vscode.window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

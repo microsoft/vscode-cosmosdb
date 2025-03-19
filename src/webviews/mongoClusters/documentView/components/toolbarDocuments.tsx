@@ -5,6 +5,7 @@
 
 import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, SaveRegular, TextGrammarCheckmarkRegular } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { type JSX } from 'react';
 import { ToolbarDividerTransparent } from '../../collectionView/components/toolbar/ToolbarDividerTransparent';
 
@@ -23,38 +24,42 @@ export const ToolbarDocuments = ({
 }: ToolbarDocumentsProps): JSX.Element => {
     return (
         <Toolbar size="small">
-            <Tooltip content="Save document to the database" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Save document to the database')} relationship="description" withArrow>
                 <ToolbarButton
                     onClick={onSaveRequest}
-                    aria-label="Save to the database"
+                    aria-label={l10n.t('Save to the database')}
                     icon={<SaveRegular />}
                     appearance={'primary'}
                     disabled={disableSaveButton}
                 >
-                    Save
+                    {l10n.t('Save')}
                 </ToolbarButton>
             </Tooltip>
 
             <ToolbarDividerTransparent />
 
-            <Tooltip content="Check document syntax" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Check document syntax')} relationship="description" withArrow>
                 <ToolbarButton
                     onClick={onValidateRequest}
-                    aria-label="Check document syntax"
+                    aria-label={l10n.t('Check document syntax')}
                     icon={<TextGrammarCheckmarkRegular />}
                     disabled={true}
                 >
-                    Validate
+                    {l10n.t('Validate')}
                 </ToolbarButton>
             </Tooltip>
 
-            <Tooltip content="Reload original document from the database" relationship="description" withArrow>
+            <Tooltip
+                content={l10n.t('Reload original document from the database')}
+                relationship="description"
+                withArrow
+            >
                 <ToolbarButton
                     onClick={onRefreshRequest}
-                    aria-label="Reload original document from the database"
+                    aria-label={l10n.t('Reload original document from the database')}
                     icon={<ArrowClockwiseRegular />}
                 >
-                    Refresh
+                    {l10n.t('Refresh')}
                 </ToolbarButton>
             </Tooltip>
         </Toolbar>

@@ -16,8 +16,6 @@ export const useThemeMutationObserver = (callback: (themeKind: string) => void) 
             new MutationObserver((mutations) => {
                 mutations.forEach(function (mutation) {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'data-vscode-theme-kind') {
-                        console.log('theme attributes changed');
-
                         const newValue =
                             (mutation.target as HTMLElement).getAttribute('data-vscode-theme-kind') ?? 'vscode-light';
                         callback(newValue);

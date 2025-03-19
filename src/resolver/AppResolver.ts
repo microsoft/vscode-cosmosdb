@@ -25,6 +25,7 @@ const resourceTypes = [
     'microsoft.documentdb/databaseaccounts',
     'microsoft.dbforpostgresql/servers',
     'microsoft.dbforpostgresql/flexibleservers',
+    'Microsoft.DBforPostgreSQL/serverGroupsv2',
 ];
 
 export class DatabaseResolver implements AppResourceResolver {

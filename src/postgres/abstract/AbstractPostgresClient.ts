@@ -6,6 +6,7 @@
 import { type PostgreSQLManagementClient as PostgreSQLSingleManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { type AzExtClientContext } from '@microsoft/vscode-azext-azureutils';
+import * as l10n from '@vscode/l10n';
 import { createPostgreSQLClient, createPostgreSQLFlexibleClient } from '../../utils/azureClients';
 import { PostgresServerType } from './models';
 
@@ -21,6 +22,6 @@ export async function createAbstractPostgresClient(
         case PostgresServerType.Single:
             return await createPostgreSQLClient(context);
         default:
-            throw new Error('Service not implemented.');
+            throw new Error(l10n.t('Service not implemented.'));
     }
 }

@@ -3,17 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../utils/localize';
+import * as l10n from '@vscode/l10n';
 import { type AuthenticateWizardContext } from './AuthenticateWizardContext';
 
 export class ProvidePasswordStep extends AzureWizardPromptStep<AuthenticateWizardContext> {
     public async prompt(context: AuthenticateWizardContext): Promise<void> {
         const passwordTemp = await context.ui.showInputBox({
-            prompt: `You need to provide the password for '${context.selectedUserName}' in order to continue. Your password will not be stored.`,
-            placeHolder: `Password for ${context.selectedUserName}@${context.resourceName}`,
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            prompt: l10n.t(
+                'You need to provide the password for "{username}" in order to continue. Your password will not be stored.',
+                { username: context.selectedUserName ?? '' },
+            ),
+            placeHolder: l10n.t('Password for {username_at_resource}', {
+                username_at_resource: `${context.selectedUserName}@${context.resourceName}`,
+            }),
+            title: l10n.t('Authenticate to connect with your MongoDB cluster'),
             password: true,
             ignoreFocusOut: true,
         });

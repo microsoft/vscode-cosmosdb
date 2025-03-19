@@ -5,6 +5,7 @@
 
 import { type ItemDefinition } from '@azure/cosmos';
 import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -78,7 +79,7 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
         count += 1;
     }
 
-    throw new Error('Could not find unique name for new file.');
+    throw new Error(l10n.t('Could not find unique name for new file.'));
 }
 
 export function getNodeEditorLabel(node: AzExtTreeItem | CosmosDBTreeElement | EditableFileSystemItem): string {

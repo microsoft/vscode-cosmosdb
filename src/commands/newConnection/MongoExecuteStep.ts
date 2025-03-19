@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
@@ -27,18 +28,22 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
 
             const label = parsedCS.username + '@' + parsedCS.hosts.join(',');
 
-            return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
-                await new Promise((resolve) => setTimeout(resolve, 250));
+            return ext.state.showCreatingChild(
+                parentId,
+                l10n.t('Creating "{nodeName}"…', { nodeName: label }),
+                async () => {
+                    await new Promise((resolve) => setTimeout(resolve, 250));
 
-                const storageItem: SharedWorkspaceStorageItem = {
-                    id: parsedCS.username + '@' + parsedCS.redact().toString(),
-                    name: label,
-                    properties: { isEmulator: false, api },
-                    secrets: [connectionString],
-                };
+                    const storageItem: SharedWorkspaceStorageItem = {
+                        id: parsedCS.username + '@' + parsedCS.redact().toString(),
+                        name: label,
+                        properties: { isEmulator: false, api },
+                        secrets: [connectionString],
+                    };
 
-                await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
-            });
+                    await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                },
+            );
         }
     }
 

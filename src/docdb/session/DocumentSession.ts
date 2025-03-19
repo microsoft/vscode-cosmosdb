@@ -13,14 +13,14 @@ import {
     type PartitionKeyDefinition,
 } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { extractPartitionKey } from '../../utils/document';
-import { localize } from '../../utils/localize';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
 import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
@@ -62,7 +62,7 @@ export class DocumentSession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             try {
@@ -109,11 +109,11 @@ export class DocumentSession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (documentId.id === undefined || documentId._rid === undefined) {
-                throw new Error('Document id or _rid is required');
+                throw new Error(l10n.t('Item id or _rid is required'));
             }
 
             try {
@@ -175,11 +175,11 @@ export class DocumentSession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (documentId.id === undefined) {
-                throw new Error('Document id is required');
+                throw new Error(l10n.t('Item id is required'));
             }
 
             try {
@@ -226,11 +226,11 @@ export class DocumentSession {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
-                throw new Error('Session is disposed');
+                throw new Error(l10n.t('Session is disposed'));
             }
 
             if (documentId.id === undefined) {
-                throw new Error('Document id is required');
+                throw new Error(l10n.t('Item id is required'));
             }
 
             try {
@@ -268,7 +268,7 @@ export class DocumentSession {
                 this.setTelemetryProperties(context);
 
                 if (this.isDisposed) {
-                    throw new Error('Session is disposed');
+                    throw new Error(l10n.t('Session is disposed'));
                 }
 
                 const partitionKey = await this.getPartitionKey();
@@ -312,27 +312,27 @@ export class DocumentSession {
         const isObject = error && typeof error === 'object';
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
-            const message: string = error.body?.message ?? `Query failed with status code ${code}`;
+            const message: string = error.body?.message ?? l10n.t('Query failed with status code {0}', code);
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, message],
             });
-            await this.logAndThrowError('Query failed', error);
+            await this.logAndThrowError(l10n.t('Query failed'), error);
         } else if (error instanceof TimeoutError) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
-                params: [this.id, 'Query timed out'],
+                params: [this.id, l10n.t('Query timed out')],
             });
-            await this.logAndThrowError('Query timed out', error);
+            await this.logAndThrowError(l10n.t('Query timed out'), error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
-                params: [this.id, 'Query was aborted'],
+                params: [this.id, l10n.t('Query was aborted')],
             });
-            await this.logAndThrowError('Query was aborted', error);
+            await this.logAndThrowError(l10n.t('Query was aborted'), error);
         } else {
             // always force unexpected query errors to be included in report issue command
             context.errorHandling.forceIncludeInReportIssueCommand = true;
@@ -341,7 +341,7 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
-            await this.logAndThrowError('Query failed', error);
+            await this.logAndThrowError(l10n.t('Query failed'), error);
         }
 
         throw error;
@@ -368,7 +368,7 @@ export class DocumentSession {
 
             if (container.resource === undefined) {
                 // Should be impossible since here we have a connection from the extension
-                throw new Error(`Container ${this.containerId} not found`);
+                throw new Error(l10n.t('Container {0} not found', this.containerId));
             }
 
             this.partitionKey = container.resource.partitionKey;
@@ -391,7 +391,7 @@ export class DocumentSession {
                 message = `${message}\nActivityId: ${error.ActivityId}`;
             }
 
-            const showLogButton = localize('goToOutput', 'Go to output');
+            const showLogButton = l10n.t('Go to output');
             if (await vscode.window.showErrorMessage(message, showLogButton)) {
                 ext.outputChannel.show();
             }

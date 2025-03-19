@@ -16,6 +16,7 @@ import {
     TableRow,
     Tooltip,
 } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import { queryMetricsToTable } from '../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { IndexMetricsView } from './IndexMetricsView';
@@ -62,14 +63,14 @@ export const StatsTab = () => {
             <div className={styles.container}>
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
-                        <Label size={'large'}>Query metrics</Label> (
-                        <Link href={QUERY_METRICS_DOC_URL}>Learn More…</Link>)
+                        <Label size={'large'}>{l10n.t('Query metrics')}</Label> (
+                        <Link href={QUERY_METRICS_DOC_URL}>{l10n.t('Learn more…')}</Link>)
                     </div>
-                    <Table arial-label="Stats table" style={{ minWidth: '510px' }}>
+                    <Table arial-label={l10n.t('Stats table')} style={{ minWidth: '510px' }}>
                         <TableHeader>
                             <TableRow>
-                                <TableHeaderCell key={'metric'}>Metric</TableHeaderCell>
-                                <TableHeaderCell key={'value'}>Value</TableHeaderCell>
+                                <TableHeaderCell key={'metric'}>{l10n.t('Metric')}</TableHeaderCell>
+                                <TableHeaderCell key={'value'}>{l10n.t('Value')}</TableHeaderCell>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

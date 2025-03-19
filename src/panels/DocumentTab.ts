@@ -5,7 +5,8 @@
 
 import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
@@ -88,7 +89,7 @@ export class DocumentTab extends BaseTab {
             }
         }
 
-        const title = `${documentId?.id ? documentId.id : 'New Document'}.json`;
+        const title = `${documentId?.id ? documentId.id : l10n.t('New Document')}.json`;
         const panel = vscode.window.createWebviewPanel(DocumentTab.viewType, title, column, {
             enableScripts: true,
             retainContextWhenHidden: true,
@@ -176,7 +177,7 @@ export class DocumentTab extends BaseTab {
             const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
 
             if (!this.isCosmosDbItemDefinition(documentContent)) {
-                throw new Error('Document is not a valid Cosmos DB item definition');
+                throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
             }
 
             const result = this.documentId
@@ -186,7 +187,7 @@ export class DocumentTab extends BaseTab {
             if (!result) {
                 // TODO: should we show an error message notification?
                 context.errorHandling.suppressDisplay = true;
-                throw new Error('Failed to create document');
+                throw new Error(l10n.t('Failed to create document'));
             }
 
             this.documentId = result;

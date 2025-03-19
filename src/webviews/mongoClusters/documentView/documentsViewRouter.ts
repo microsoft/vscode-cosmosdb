@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import { type Document } from 'mongodb';
 import { z } from 'zod';
 import { MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
-import { localize } from '../../../utils/localize';
 import { promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
@@ -27,7 +27,7 @@ export const documentsViewRouter = router({
     getInfo: publicProcedure.query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        return 'Info from the webview: ' + JSON.stringify(myCtx);
+        return l10n.t('Info from the webview: ') + JSON.stringify(myCtx);
     }),
     getDocumentById: publicProcedure
         .use(trpcToTelemetry)
@@ -95,13 +95,7 @@ export const documentsViewRouter = router({
 
             myCtx.viewPanelTitleSetter(`${myCtx.databaseName}/${myCtx.collectionName}/${newDocumentId}`);
 
-            showConfirmationAsInSettings(
-                localize(
-                    'showConfirmation.mongoClusters.documentView.saveDocument',
-                    'The document with the _id "{0}" has been saved.',
-                    newDocumentId,
-                ),
-            );
+            showConfirmationAsInSettings(l10n.t('The document with the _id "{0}" has been saved.', newDocumentId));
 
             void promptAfterActionEventually(ExperienceKind.Mongo, UsageImpact.High);
 

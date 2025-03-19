@@ -8,6 +8,7 @@ import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-se
 // eslint-disable-next-line import/no-internal-modules
 import { z } from 'zod';
 import { getThemeAgnosticIconPath } from '../../../constants';
+import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
 /**
@@ -18,10 +19,10 @@ export type RouterContext = BaseRouterContext & {
 };
 
 export const migrationPanelViewRouter = router({
-    getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
-        const myCtx = ctx as RouterContext;
-
-        return 'Info from the webview: ' + JSON.stringify(myCtx);
+    getAllAssessments: publicProcedure.use(trpcToTelemetry).query(() => {
+        const assessmentServiceClient = new AssessmentServiceClient();
+        const assessments = assessmentServiceClient.getAllAssessments();
+        return 'Assessment data returned ' + JSON.stringify(assessments);
     }),
     getWaterMarkIconPath: publicProcedure.use(trpcToTelemetry).query(() => {
         return getThemeAgnosticIconPath('mongoMigrationWatermark.svg').light;

@@ -9,12 +9,15 @@
  * We'll try to have everything related to mongoClusters-support managed from here.
  * In case of a failure with this plan, this comment section will be updated.
  */
-import { callWithTelemetryAndErrorHandling, registerCommand, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext, registerCommand } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { AssessmentWizardViewController } from '../webviews/mongoMigration/assessmentWizardView/assessmentWizardViewController';
 import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
+import { MongoAssessmentServiceRunner } from './assessmentService/assessmentServiceRunner';
+import { DotnetRuntimeExtensionResolver } from './dotnetRuntime/dotnetRuntimeExtensionResolver';
 import { isMongoMigrationSupportEnabled } from './utils/isMongoMigrationSupportEnabled';
+
 
 export class MongoMigrationExtension implements vscode.Disposable {
     dispose(): Promise<void> {
@@ -24,7 +27,7 @@ export class MongoMigrationExtension implements vscode.Disposable {
     async activate(): Promise<void> {
         await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongoMigration.activate',
-            (activateContext: IActionContext) => {
+            async (activateContext: IActionContext) => {
                 activateContext.telemetry.properties.isActivationEvent = 'true';
 
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -41,7 +44,11 @@ export class MongoMigrationExtension implements vscode.Disposable {
                     return;
                 }
 
-                // // // Mongo migration support is enabled // // //
+                const dotNetInfo = await new DotnetRuntimeExtensionResolver(ext.outputChannel).getDotNetHostInfo();
+
+                ext.outputChannel.appendLine(`Dotnet runtime path: ${dotNetInfo.path}`);
+
+                await this.launchService();
 
                 // using registerCommand instead of vscode.commands.registerCommand for better telemetry:
                 // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
@@ -68,4 +75,20 @@ export class MongoMigrationExtension implements vscode.Disposable {
             },
         );
     }
+
+    /**
+ * Launches the JSON-RPC backend for this extension.
+ *
+ * @param dotnetPath Path to the 'dotnet' executable.
+ * @param backendPath Path to the app that acts as a backend service for the extension.
+ * @param context The VSCode extension context.
+ */
+    async launchService(): Promise<void> {
+        await MongoAssessmentServiceRunner.createShell();
+        //  await vscode.commands.executeCommand('dotnet.runproject', backendPath);
+        console.log('MongoDB Migration backend service started.');
+    }
+
+
+
 }

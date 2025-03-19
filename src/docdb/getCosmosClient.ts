@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
+import * as l10n from '@vscode/l10n';
 // eslint-disable-next-line import/no-internal-modules
 import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
@@ -122,6 +123,6 @@ export function getCosmosClient(
             },
         });
     } else {
-        throw Error('No credential available to create CosmosClient.');
+        throw Error(l10n.t('No credential available to create CosmosClient.'));
     }
 }

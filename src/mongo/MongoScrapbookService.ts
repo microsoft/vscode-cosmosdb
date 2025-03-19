@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { openReadOnlyContent, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -105,12 +106,12 @@ export class MongoScrapbookServiceImpl {
      */
     public async executeAllCommands(context: IActionContext, document: vscode.TextDocument): Promise<void> {
         if (!this.isConnected()) {
-            throw new Error('Please connect to a MongoDB database before running a Scrapbook command.');
+            throw new Error(l10n.t('Please connect to a MongoDB database before running a Scrapbook command.'));
         }
 
         const commands: MongoCommand[] = getAllCommandsFromText(document.getText());
         if (!commands.length) {
-            void vscode.window.showInformationMessage('No commands found in this document.');
+            void vscode.window.showInformationMessage(l10n.t('No commands found in this document.'));
             return;
         }
 
@@ -158,7 +159,7 @@ export class MongoScrapbookServiceImpl {
         position: vscode.Position,
     ): Promise<void> {
         if (!this.isConnected()) {
-            throw new Error('Please connect to a MongoDB database before running a Scrapbook command.');
+            throw new Error(l10n.t('Please connect to a MongoDB database before running a Scrapbook command.'));
         }
 
         const commands = getAllCommandsFromText(document.getText());
@@ -222,13 +223,17 @@ export class MongoScrapbookServiceImpl {
         preselectedDatabase?: string, // this will run the 'use <database>' command before the actual command.
     ): Promise<void> {
         if (!this.isConnected()) {
-            throw new Error('Not connected to any MongoDB database.');
+            throw new Error(l10n.t('Not connected to any MongoDB database.'));
         }
 
         if (command.errors?.length) {
             const firstErr = command.errors[0];
             throw new Error(
-                `Unable to parse syntax near line ${firstErr.range.start.line + 1}, col ${firstErr.range.start.character + 1}: ${firstErr.message}`,
+                l10n.t('Unable to parse syntax near line {line}, col {column}: {message}', {
+                    line: firstErr.range.start.line + 1,
+                    column: firstErr.range.start.character + 1,
+                    message: firstErr.message,
+                }),
             );
         }
 
@@ -252,7 +257,7 @@ export class MongoScrapbookServiceImpl {
 
             const result = await shellRunner.executeScript(command.text);
             if (!result) {
-                throw new Error('No result returned from the MongoDB shell.');
+                throw new Error(l10n.t('No result returned from the MongoDB shell.'));
             }
 
             if (readOnlyContent) {

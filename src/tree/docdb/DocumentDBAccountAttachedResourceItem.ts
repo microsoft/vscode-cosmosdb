@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
-import vscode, { type TreeItem } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
-import { localize } from '../../utils/localize';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -35,15 +35,15 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
         return this.getChildrenImpl(accountInfo, databases);
     }
 
-    public getTreeItem(): TreeItem {
+    public getTreeItem(): vscode.TreeItem {
         let tooltipMessage: string | undefined = undefined;
         let description: string | undefined = undefined;
 
         if (this.account.isEmulator && this.account.connectionString.includes('http://')) {
-            description = '⚠ TLS/SSL Disabled';
-            tooltipMessage = '⚠️ **Security:** TLS/SSL Disabled';
+            description = l10n.t('⚠ TLS/SSL Disabled');
+            tooltipMessage = l10n.t('⚠️ **Security:** TLS/SSL Disabled');
         } else {
-            tooltipMessage = '✅ **Security:** TLS/SSL Enabled';
+            tooltipMessage = l10n.t('✅ **Security:** TLS/SSL Enabled');
         }
 
         const treeItem = super.getTreeItem();
@@ -80,7 +80,9 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
                 return await rejectOnTimeout(
                     2000,
                     () => getResources(),
-                    "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
+                    l10n.t(
+                        "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
+                    ),
                 );
             } else {
                 return await getResources();
@@ -95,11 +97,10 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
                     void showRbacPermissionError(this.id, principalId);
                 }
                 if (this.account.isEmulator && e instanceof RestError && e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-                    const message = localize(
-                        'keyPermissionErrorMsg',
+                    const message = l10n.t(
                         "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
                     );
-                    const readMoreItem = localize('learnMore', 'Learn More');
+                    const readMoreItem = l10n.t('Learn more');
                     void vscode.window.showErrorMessage(message, ...[readMoreItem]).then((item) => {
                         if (item === readMoreItem) {
                             void vscode.env.openExternal(

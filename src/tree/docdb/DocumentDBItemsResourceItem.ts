@@ -5,7 +5,8 @@
 
 import { type CosmosClient, type FeedOptions, type ItemDefinition, type QueryIterator } from '@azure/cosmos';
 import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
@@ -47,7 +48,7 @@ export abstract class DocumentDBItemsResourceItem
                 createGenericElement({
                     contextValue: this.contextValue,
                     iconPath: new vscode.ThemeIcon('refresh'),
-                    label: 'Load more\u2026',
+                    label: l10n.t('Load more…'),
                     id: `${this.id}/loadMore`,
                     commandId: 'cosmosDB.loadMore',
                     commandArgs: [
@@ -68,12 +69,12 @@ export abstract class DocumentDBItemsResourceItem
         return result;
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('files'),
-            label: 'Documents',
+            label: l10n.t('Documents'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

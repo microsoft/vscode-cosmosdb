@@ -38,6 +38,7 @@ import {
     StopRegular,
     TabDesktopMultipleRegular,
 } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, type PropsWithChildren } from 'react';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -60,7 +61,7 @@ const RunQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: Forward
 
     const truncateString = (str: string, maxLength: number) => {
         if (str.length > maxLength) {
-            return str.slice(0, maxLength - 1) + '\u2026';
+            return str.slice(0, maxLength - 1) + '…';
         }
         return str;
     };
@@ -80,29 +81,29 @@ const RunQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: Forward
                     (triggerProps: MenuButtonProps) => (
                         <SplitButton
                             ref={ref}
-                            aria-label="Run"
+                            aria-label={l10n.t('Run')}
                             icon={<PlayRegular />}
                             disabled={state.isExecuting || !state.isConnected}
                             appearance={'primary'}
                             menuButton={triggerProps}
                             primaryActionButton={{ onClick: () => runQuery() }}
                         >
-                            Run
+                            {l10n.t('Run')}
                         </SplitButton>
                     )
                 ) : (
                     <MenuItem
-                        aria-label="Run"
+                        aria-label={l10n.t('Run')}
                         icon={<PlayRegular />}
                         disabled={state.isExecuting || !state.isConnected}
                         onClick={() => runQuery()}
                     >
-                        Run
+                        {l10n.t('Run')}
                     </MenuItem>
                 )}
             </MenuTrigger>
             <MenuPopover>
-                {state.queryHistory.length === 0 && <MenuItem disabled>No history</MenuItem>}
+                {state.queryHistory.length === 0 && <MenuItem disabled>{l10n.t('No history')}</MenuItem>}
                 {state.queryHistory.length > 0 &&
                     state.queryHistory.map((query, index) => (
                         <MenuItem onClick={() => dispatcher.insertText(query)} key={index}>
@@ -126,12 +127,12 @@ const CancelQueryButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label="Cancel"
+                aria-label={l10n.t('Cancel')}
                 icon={<StopRegular className={classes.iconStop} />}
                 disabled={!state.isExecuting}
                 onClick={() => void dispatcher.stopQuery(state.currentExecutionId)}
             >
-                Cancel
+                {l10n.t('Cancel')}
             </Component>
         );
     },
@@ -147,11 +148,11 @@ const OpenFileButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label="Open"
+                aria-label={l10n.t('Open')}
                 icon={<FolderOpenRegular />}
                 onClick={() => void dispatcher.openFile()}
             >
-                Open
+                {l10n.t('Open')}
             </Component>
         );
     },
@@ -168,11 +169,11 @@ const SaveToFileButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label="Save query"
+                aria-label={l10n.t('Save query')}
                 icon={<SaveRegular />}
                 onClick={() => void dispatcher.saveToFile(state.queryValue, 'New query', 'nosql')}
             >
-                Save
+                {l10n.t('Save')}
             </Component>
         );
     },
@@ -189,12 +190,12 @@ const DuplicateTabButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label="Copy into new tab"
+                aria-label={l10n.t('Copy into new tab')}
                 icon={<TabDesktopMultipleRegular />}
                 onClick={() => void dispatcher.duplicateTab(state.queryValue)}
                 disabled={!state.isConnected}
             >
-                Duplicate
+                {l10n.t('Duplicate')}
             </Component>
         );
     },
@@ -212,12 +213,12 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
         <Menu>
             <MenuTrigger>
                 {props.type === 'button' ? (
-                    <ToolbarButton ref={ref} aria-label="Learn more" icon={<LibraryRegular />}>
-                        Learn
+                    <ToolbarButton ref={ref} aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
+                        {l10n.t('Learn')}
                     </ToolbarButton>
                 ) : (
-                    <MenuItem aria-label="Learn more" icon={<LibraryRegular />}>
-                        Learn
+                    <MenuItem aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
+                        {l10n.t('Learn')}
                     </MenuItem>
                 )}
             </MenuTrigger>
@@ -225,7 +226,7 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
                 <MenuList>
                     <Menu>
                         <MenuTrigger>
-                            <MenuItem>Query examples</MenuItem>
+                            <MenuItem>{l10n.t('Query examples')}</MenuItem>
                         </MenuTrigger>
                         <MenuPopover>
                             {samples.map((sample, index) => (
@@ -239,9 +240,9 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
                             ))}
                         </MenuPopover>
                     </Menu>
-                    <MenuItemLink href={noSqlQuickReferenceUrl}>NoSQL quick reference</MenuItemLink>
-                    <MenuItemLink href={noSqlLearningCenterUrl}>Learning center</MenuItemLink>
-                    <MenuItemLink href={cosmosDBLimitations}>CosmosDB SDK limitations</MenuItemLink>
+                    <MenuItemLink href={noSqlQuickReferenceUrl}>{l10n.t('NoSQL quick reference')}</MenuItemLink>
+                    <MenuItemLink href={noSqlLearningCenterUrl}>{l10n.t('Learning center')}</MenuItemLink>
+                    <MenuItemLink href={cosmosDBLimitations}>{l10n.t('CosmosDB SDK limitations')}</MenuItemLink>
                 </MenuList>
             </MenuPopover>
         </Menu>
@@ -257,13 +258,15 @@ const ProvideFeedbackButton = forwardRef((props: OverflowToolbarItemProps, ref: 
                 <MenuTrigger>
                     <ToolbarButton
                         ref={ref}
-                        aria-label="Provide Feedback"
+                        aria-label={l10n.t('Provide Feedback')}
                         icon={<EmojiSmileSlightRegular />}
                     ></ToolbarButton>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
-                        <MenuItem onClick={() => void dispatcher.provideFeedback()}>Provide Feedback</MenuItem>
+                        <MenuItem onClick={() => void dispatcher.provideFeedback()}>
+                            {l10n.t('Provide Feedback')}
+                        </MenuItem>
                     </MenuList>
                 </MenuPopover>
             </Menu>
@@ -271,11 +274,11 @@ const ProvideFeedbackButton = forwardRef((props: OverflowToolbarItemProps, ref: 
     } else {
         return (
             <MenuItem
-                aria-label="Provide Feedback"
+                aria-label={l10n.t('Provide Feedback')}
                 icon={<EmojiSmileSlightRegular />}
                 onClick={() => void dispatcher.provideFeedback()}
             >
-                Provide Feedback
+                {l10n.t('Provide Feedback')}
             </MenuItem>
         );
     }
@@ -294,11 +297,11 @@ const ConnectionButton = forwardRef(
                     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                     // @ts-ignore
                     ref={ref}
-                    aria-label="Disconnect"
+                    aria-label={l10n.t('Disconnect')}
                     icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                     onClick={() => void dispatcher.disconnectFromDatabase()}
                 >
-                    Disconnect
+                    {l10n.t('Disconnect')}
                 </Component>
             );
         }
@@ -308,11 +311,11 @@ const ConnectionButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label="Connect"
+                aria-label={l10n.t('Connect')}
                 icon={<DatabasePlugConnectedRegular />}
                 onClick={() => void dispatcher.connectToDatabase()}
             >
-                Connect
+                {l10n.t('Connect')}
             </Component>
         );
     },
@@ -357,7 +360,12 @@ const OverflowMenu = () => {
     return (
         <Menu>
             <MenuTrigger disableButtonEnhancement>
-                <Button ref={ref} icon={<MoreHorizontal20Filled />} aria-label="More items" appearance="subtle" />
+                <Button
+                    ref={ref}
+                    icon={<MoreHorizontal20Filled />}
+                    aria-label={l10n.t('More items')}
+                    appearance="subtle"
+                />
             </MenuTrigger>
 
             <MenuPopover>
@@ -413,7 +421,7 @@ const ToolbarOverflowDivider = ({ groupId }: ToolbarOverflowDividerProps) => {
 export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
     return (
         <Overflow padding={40}>
-            <Toolbar aria-label="Default" size={'small'} {...props}>
+            <Toolbar aria-label={l10n.t('Default')} size={'small'} {...props}>
                 <OverflowItem id={'1'} groupId={'1'}>
                     <RunQueryButton type={'button'} />
                 </OverflowItem>

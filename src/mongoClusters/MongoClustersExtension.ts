@@ -16,6 +16,7 @@ import {
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { createMongoCollection } from '../commands/createContainer/createContainer';
 import { createMongoDocument } from '../commands/createDocument/createDocument';
@@ -121,7 +122,7 @@ export class MongoClustersExtension implements vscode.Disposable {
                     mongoClustersExportEntireCollection,
                 );
 
-                ext.outputChannel.appendLine(`MongoDB Clusters: activated.`);
+                ext.outputChannel.appendLine(l10n.t('MongoDB Clusters: activated.'));
             },
         );
     }

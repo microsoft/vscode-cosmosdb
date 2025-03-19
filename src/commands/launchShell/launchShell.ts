@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
@@ -29,7 +30,7 @@ export async function launchShell(
         | MongoAccountResourceItem,
 ): Promise<void> {
     if (!node) {
-        throw new Error('No database or collection selected.');
+        throw new Error(l10n.t('No database or collection selected.'));
     }
 
     context.telemetry.properties.experience = node.experience.api;
@@ -44,7 +45,7 @@ export async function launchShell(
         node instanceof MongoClusterWorkspaceItem
     ) {
         // we need to discover the connection string
-        rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, 'Working...', async () => {
+        rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
             return node.getConnectionString();
         });
     } else {
@@ -54,7 +55,7 @@ export async function launchShell(
     }
 
     if (!rawConnectionString) {
-        void vscode.window.showErrorMessage('Failed to extract the connection string from the selected node.');
+        void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
         return;
     }
 

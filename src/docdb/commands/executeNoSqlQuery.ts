@@ -4,10 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { ViewColumn } from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
-import { localize } from '../../utils/localize';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
@@ -22,7 +21,7 @@ export async function executeNoSqlQuery(
         const activeEditor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
 
         if (!activeEditor?.document) {
-            throw new Error(localize('openQueryBeforeExecuting', 'Open a NoSQL query before executing.'));
+            throw new Error(l10n.t('Open a NoSQL query before executing.'));
         }
         queryText = activeEditor.document.getText();
         populateQueryMetrics = false;
@@ -33,7 +32,7 @@ export async function executeNoSqlQuery(
     const connectedCollection = KeyValueStore.instance.get(noSqlQueryConnectionKey);
     if (!connectedCollection) {
         throw new Error(
-            'Unable to execute query due to missing node data. Please connect to a Cosmos DB collection node.',
+            l10n.t('Unable to execute query due to missing node data. Please connect to a Cosmos DB container node.'),
         );
     } else {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -51,7 +50,7 @@ export async function executeNoSqlQuery(
             .container(containerId)
             .items.query(queryText, options)
             .fetchAll();
-        const resultDocumentTitle = `query results for ${containerId}`;
+        const resultDocumentTitle = l10n.t('query results for {0}', containerId);
         if (populateQueryMetrics === true) {
             await vscodeUtil.showNewFile(
                 JSON.stringify(
@@ -64,14 +63,14 @@ export async function executeNoSqlQuery(
                 ),
                 resultDocumentTitle,
                 '.json',
-                ViewColumn.Beside,
+                vscode.ViewColumn.Beside,
             );
         } else {
             await vscodeUtil.showNewFile(
                 JSON.stringify(response.resources, undefined, 2),
                 resultDocumentTitle,
                 '.json',
-                ViewColumn.Beside,
+                vscode.ViewColumn.Beside,
             );
         }
     }

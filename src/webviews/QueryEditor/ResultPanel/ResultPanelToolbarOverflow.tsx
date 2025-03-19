@@ -45,6 +45,7 @@ import {
     MoreHorizontal20Filled,
     NumberSymbolSquareRegular,
 } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, type PropsWithChildren, useEffect, useState } from 'react';
 import { queryMetricsToCsv, queryMetricsToJSON, queryResultToCsv, queryResultToJSON } from '../../../utils/convertors';
 import { Timer } from '../../Timer';
@@ -66,19 +67,21 @@ const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
         <Dialog modalType="alert" open={open} onOpenChange={(_event, data) => setOpen(data.open)}>
             <DialogSurface>
                 <DialogBody>
-                    <DialogTitle>Attention</DialogTitle>
+                    <DialogTitle>{l10n.t('Attention')}</DialogTitle>
                     <DialogContent>
-                        <div>All loaded data will be lost. The query will be executed again in new session.</div>
-                        <div>Are you sure you want to continue?</div>
+                        <div>
+                            {l10n.t('All loaded data will be lost. The query will be executed again in new session.')}
+                        </div>
+                        <div>{l10n.t('Are you sure you want to continue?')}</div>
                     </DialogContent>
 
                     <DialogActions>
                         <Button appearance="secondary" onClick={() => void doAction()}>
-                            Continue
+                            {l10n.t('Continue')}
                         </Button>
 
                         <DialogTrigger disableButtonEnhancement>
-                            <Button appearance="primary">Close</Button>
+                            <Button appearance="primary">{l10n.t('Close')}</Button>
                         </DialogTrigger>
                     </DialogActions>
                 </DialogBody>
@@ -111,11 +114,11 @@ const ReloadQueryButton = forwardRef(
         return (
             <>
                 {props.type === 'button' && (
-                    <Tooltip content="Reload query results" relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Reload query results')} relationship="description" withArrow>
                         <ToolbarButton
                             ref={ref}
                             onClick={() => reloadData()}
-                            aria-label="Refresh"
+                            aria-label={l10n.t('Refresh')}
                             icon={<ArrowClockwiseFilled />}
                             {...restoreFocusTargetAttribute}
                             disabled={!state.isConnected || !state.currentExecutionId}
@@ -125,11 +128,11 @@ const ReloadQueryButton = forwardRef(
                 {props.type === 'menuitem' && (
                     <MenuItem
                         onClick={() => reloadData()}
-                        aria-label="Refresh"
+                        aria-label={l10n.t('Refresh')}
                         icon={<ArrowClockwiseFilled />}
                         disabled={!state.isConnected || !state.currentExecutionId}
                     >
-                        Reload query results
+                        {l10n.t('Reload query results')}
                     </MenuItem>
                 )}
             </>
@@ -148,11 +151,11 @@ const GoToFirstPageButton = forwardRef((props: OverflowToolbarItemProps, ref: Fo
 
     if (props.type === 'button') {
         return (
-            <Tooltip content="Go to first page" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Go to first page')} relationship="description" withArrow>
                 <ToolbarButton
                     ref={ref}
                     onClick={() => void firstPage()}
-                    aria-label="Go to start"
+                    aria-label={l10n.t('Go to start')}
                     icon={<ArrowPreviousFilled />}
                     disabled={toFirstPageDisabled}
                 />
@@ -163,11 +166,11 @@ const GoToFirstPageButton = forwardRef((props: OverflowToolbarItemProps, ref: Fo
     return (
         <MenuItem
             onClick={() => void firstPage()}
-            aria-label="Go to start"
+            aria-label={l10n.t('Go to start')}
             icon={<ArrowPreviousFilled />}
             disabled={toFirstPageDisabled}
         >
-            Go to first page
+            {l10n.t('Go to first page')}
         </MenuItem>
     );
 });
@@ -183,11 +186,11 @@ const GoToPrevPageButton = forwardRef((props: OverflowToolbarItemProps, ref: For
 
     if (props.type === 'button') {
         return (
-            <Tooltip content="Go to previous page" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Go to previous page')} relationship="description" withArrow>
                 <ToolbarButton
                     ref={ref}
                     onClick={() => void prevPage()}
-                    aria-label="Go to previous page"
+                    aria-label={l10n.t('Go to previous page')}
                     icon={<ArrowLeftFilled />}
                     disabled={toPrevPageDisabled}
                 />
@@ -198,11 +201,11 @@ const GoToPrevPageButton = forwardRef((props: OverflowToolbarItemProps, ref: For
     return (
         <MenuItem
             onClick={() => void prevPage()}
-            aria-label="Go to previous page"
+            aria-label={l10n.t('Go to previous page')}
             icon={<ArrowLeftFilled />}
             disabled={toPrevPageDisabled}
         >
-            Go to previous page
+            {l10n.t('Go to previous page')}
         </MenuItem>
     );
 });
@@ -223,11 +226,11 @@ const GoToNextPageButton = forwardRef((props: OverflowToolbarItemProps, ref: For
 
     if (props.type === 'button') {
         return (
-            <Tooltip content="Go to next page (Load more)" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Go to next page (Load more)')} relationship="description" withArrow>
                 <ToolbarButton
                     ref={ref}
                     onClick={() => void nextPage()}
-                    aria-label="Go to next page"
+                    aria-label={l10n.t('Go to next page')}
                     icon={<ArrowRightFilled />}
                     disabled={toNextPageDisabled}
                 />
@@ -238,11 +241,11 @@ const GoToNextPageButton = forwardRef((props: OverflowToolbarItemProps, ref: For
     return (
         <MenuItem
             onClick={() => void nextPage()}
-            aria-label="Go to next page"
+            aria-label={l10n.t('Go to next page')}
             icon={<ArrowRightFilled />}
             disabled={toNextPageDisabled}
         >
-            Go to next page
+            {l10n.t('Go to next page')}
         </MenuItem>
     );
 });
@@ -280,11 +283,11 @@ const ChangePageSizeButton = forwardRef(
         if (props.type === 'button') {
             return (
                 <div ref={ref} style={{ paddingLeft: '8px' }}>
-                    <Tooltip content="Change page size" relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Change page size')} relationship="description" withArrow>
                         <Dropdown
                             onOptionSelect={(_event, data) => onOptionSelect(data)}
                             style={{ minWidth: '100px', maxWidth: '100px' }}
-                            value={pageSize.toString()}
+                            value={pageSize === -1 ? l10n.t('All') : pageSize.toString()}
                             selectedOptions={[pageSize.toString()]}
                             {...restoreFocusTargetAttribute}
                         >
@@ -301,7 +304,7 @@ const ChangePageSizeButton = forwardRef(
                                 500
                             </Option>
                             <Option key="All" value={'-1'}>
-                                All
+                                {l10n.t('All')}
                             </Option>
                         </Dropdown>
                     </Tooltip>
@@ -313,8 +316,8 @@ const ChangePageSizeButton = forwardRef(
             <>
                 <Menu>
                     <MenuTrigger>
-                        <MenuItem aria-label="Change page size" icon={<NumberSymbolSquareRegular />}>
-                            Change page size
+                        <MenuItem aria-label={l10n.t('Change page size')} icon={<NumberSymbolSquareRegular />}>
+                            {l10n.t('Change page size')}
                         </MenuItem>
                     </MenuTrigger>
                     <MenuPopover>
@@ -361,7 +364,7 @@ const ChangePageSizeButton = forwardRef(
                                     <Checkmark16Filled style={{ visibility: pageSize === -1 ? 'visible' : 'hidden' }} />
                                 }
                             >
-                                All
+                                {l10n.t('All')}
                             </MenuItem>
                         </MenuList>
                     </MenuPopover>
@@ -380,7 +383,7 @@ const StatusBar = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef
         ? state.pageSize === -1
             ? state.currentQueryResult?.documents?.length
                 ? `0 - ${state.currentQueryResult?.documents?.length}`
-                : 'All'
+                : l10n.t('All')
             : `${(state.pageNumber - 1) * state.pageSize} - ${state.pageNumber * state.pageSize}`
         : `0 - 0`;
 
@@ -425,8 +428,8 @@ const CopyToClipboardButton = forwardRef(
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipClipboardContent = hasSelection
-            ? 'Copy selected documents to clipboard'
-            : 'Copy all results from the current page to clipboard';
+            ? l10n.t('Copy selected documents to clipboard')
+            : l10n.t('Copy all results from the current page to clipboard');
 
         async function onSaveToClipboardAsCSV() {
             if (selectedTab === 'result__tab') {
@@ -463,17 +466,17 @@ const CopyToClipboardButton = forwardRef(
                         {props.type === 'button' ? (
                             <ToolbarButton
                                 ref={ref}
-                                aria-label="Copy to clipboard"
+                                aria-label={l10n.t('Copy to clipboard')}
                                 icon={<DocumentCopyRegular />}
                                 disabled={!state.isConnected}
                             />
                         ) : (
                             <MenuItem
-                                aria-label="Copy to clipboard"
+                                aria-label={l10n.t('Copy to clipboard')}
                                 icon={<DocumentCopyRegular />}
                                 disabled={!state.isConnected}
                             >
-                                Copy to clipboard
+                                {l10n.t('Copy to clipboard')}
                             </MenuItem>
                         )}
                     </Tooltip>
@@ -496,8 +499,8 @@ const ExportButton = forwardRef(
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipExportContent = hasSelection
-            ? 'Export selected documents'
-            : 'Export all results from the current page';
+            ? l10n.t('Export selected documents')
+            : l10n.t('Export all results from the current page');
 
         async function onSaveAsCSV() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
@@ -532,13 +535,13 @@ const ExportButton = forwardRef(
                         {props.type === 'button' ? (
                             <ToolbarButton
                                 ref={ref}
-                                aria-label="Export"
+                                aria-label={l10n.t('Export')}
                                 icon={<ArrowDownloadRegular />}
                                 disabled={!state.isConnected}
                             />
                         ) : (
                             <MenuItem aria-label="Export" icon={<ArrowDownloadRegular />} disabled={!state.isConnected}>
-                                Export
+                                {l10n.t('Export')}
                             </MenuItem>
                         )}
                     </Tooltip>
@@ -597,7 +600,12 @@ const OverflowMenu = ({ selectedTab }: ResultToolbarProps & OpenAlertDialogProps
             <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
             <Menu>
                 <MenuTrigger disableButtonEnhancement>
-                    <Button ref={ref} icon={<MoreHorizontal20Filled />} aria-label="More items" appearance="subtle" />
+                    <Button
+                        ref={ref}
+                        icon={<MoreHorizontal20Filled />}
+                        aria-label={l10n.t('More items')}
+                        appearance="subtle"
+                    />
                 </MenuTrigger>
 
                 <MenuPopover>

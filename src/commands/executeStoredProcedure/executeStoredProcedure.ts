@@ -5,9 +5,9 @@
 
 import { type IActionContext, openReadOnlyJson, randomUtils } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { type DocumentDBStoredProcedureResourceItem } from '../../tree/docdb/DocumentDBStoredProcedureResourceItem';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function executeDocumentDBStoredProcedure(
@@ -22,16 +22,13 @@ export async function executeDocumentDBStoredProcedure(
     }
 
     const partitionKey = await context.ui.showInputBox({
-        title: 'Partition Key',
+        title: l10n.t('Partition Key'),
         // @todo: add a learnMoreLink
     });
 
     const paramString = await context.ui.showInputBox({
-        title: 'Parameters',
-        placeHolder: localize(
-            'executeCosmosStoredProcedureParameters',
-            'empty or array of values e.g. [1, {key: value}]',
-        ),
+        title: l10n.t('Parameters'),
+        placeHolder: l10n.t('empty or array of values e.g. [1, {key: value}]'),
         // @todo: add a learnMoreLink
     });
 
@@ -59,6 +56,6 @@ export async function executeDocumentDBStoredProcedure(
         const resultFileName = `${procedureId}-result`;
         await openReadOnlyJson({ label: resultFileName, fullId: randomUtils.getRandomHexString() }, result);
     } catch {
-        await context.ui.showWarningMessage(`Unable to parse execution result`);
+        await context.ui.showWarningMessage(l10n.t('Unable to parse execution result'));
     }
 }

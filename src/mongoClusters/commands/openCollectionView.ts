@@ -4,13 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { CollectionViewController } from '../../webviews/mongoClusters/collectionView/collectionViewController';
 import { MongoClustersSession } from '../MongoClusterSession';
 import { type CollectionItem } from '../tree/CollectionItem';
 
 export async function openCollectionView(context: IActionContext, node?: CollectionItem) {
     if (!node) {
-        throw new Error('Invalid collection node');
+        throw new Error(l10n.t('Invalid collection node'));
     }
 
     context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;

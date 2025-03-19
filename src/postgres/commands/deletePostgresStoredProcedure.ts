@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
-import { window } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
 import { PostgresStoredProcedureTreeItem } from '../tree/PostgresStoredProcedureTreeItem';
 
 export async function deletePostgresStoredProcedure(
@@ -26,22 +26,14 @@ export async function deletePostgresStoredProcedure(
         );
     }
 
-    const message: string = localize(
-        'deleteStoredProcedure',
-        'Are you sure you want to delete stored procedure "{0}"?',
-        treeItem.label,
-    );
+    const message = l10n.t('Are you sure you want to delete stored procedure "{0}"?', treeItem.label);
     await context.ui.showWarningMessage(
         message,
         { modal: true, stepName: 'deletePostgresStoredProcedure' },
         DialogResponses.deleteResponse,
     );
     await treeItem.deleteTreeItem(context);
-    const deleteMessage: string = localize(
-        'successfullyDeletedStoredProcedure',
-        'Successfully deleted stored procedure "{0}".',
-        treeItem.label,
-    );
-    void window.showInformationMessage(deleteMessage);
+    const deleteMessage = l10n.t('Successfully deleted stored procedure "{0}".', treeItem.label);
+    void vscode.window.showInformationMessage(deleteMessage);
     ext.outputChannel.appendLog(deleteMessage);
 }

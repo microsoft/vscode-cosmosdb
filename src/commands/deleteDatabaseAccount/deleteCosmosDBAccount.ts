@@ -7,12 +7,12 @@ import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { AzExtTreeItem, createSubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
-import { localize } from '../../utils/localize';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteCosmosDBAccount(
@@ -31,7 +31,7 @@ export async function deleteCosmosDBAccount(
         // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
         // so we need to create a subscription context
         if (!('subscription' in node.account)) {
-            throw new Error('Subscription is required to delete an account.');
+            throw new Error(l10n.t('Subscription is required to delete an account.'));
         }
 
         const subscriptionContext = createSubscriptionContext(node.account.subscription as AzureSubscription);
@@ -39,21 +39,17 @@ export async function deleteCosmosDBAccount(
         resourceGroup = getResourceGroupFromId(node.account.id);
         accountName = node.account.name;
     } else {
-        throw new Error('Unexpected node type');
+        throw new Error(l10n.t('Unexpected node type'));
     }
 
     const deletePromise = client.databaseAccounts.beginDeleteAndWait(resourceGroup, accountName);
     if (!context.suppressNotification) {
-        const deletingMessage: string = `Deleting account "${accountName}"...`;
+        const deletingMessage = l10n.t('Deleting account "{accountName}"…', { accountName });
         await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: deletingMessage },
             async () => {
                 await deletePromise;
-                const deleteMessage: string = localize(
-                    'deleteAccountMsg',
-                    `Successfully deleted account "{0}".`,
-                    accountName,
-                );
+                const deleteMessage = l10n.t('Successfully deleted account "{accountName}".', { accountName });
                 void vscode.window.showInformationMessage(deleteMessage);
                 ext.outputChannel.appendLog(deleteMessage);
             },

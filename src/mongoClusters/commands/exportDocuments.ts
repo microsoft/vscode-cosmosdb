@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext, parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -27,7 +28,7 @@ export async function mongoClustersExportQueryResults(
 
     // node ??= ... pick a node if not provided
     if (!node) {
-        throw new Error('No collection selected.');
+        throw new Error(l10n.t('No collection selected.'));
     }
 
     context.telemetry.properties.calledFrom = props?.source || 'contextMenu';
@@ -49,7 +50,7 @@ export async function mongoClustersExportQueryResults(
     );
 
     const filePath = targetUri.fsPath; // Convert `vscode.Uri` to a regular file path
-    ext.outputChannel.appendLog(`MongoDB Clusters: Exporting data to: ${filePath}`);
+    ext.outputChannel.appendLog(l10n.t('MongoDB Clusters: Exporting data to: {filePath}', { filePath }));
 
     let documentCount = 0;
 
@@ -70,7 +71,9 @@ export async function mongoClustersExportQueryResults(
         actionContext.telemetry.measurements.documentCount = documentCount;
     });
 
-    ext.outputChannel.appendLog(`MongoDB Clusters: Exported document count: ${documentCount}`);
+    ext.outputChannel.appendLog(
+        l10n.t('MongoDB Clusters: Exported document count: {documentCount}', { documentCount }),
+    );
 }
 
 async function runExportWithProgressAndDescription(
@@ -80,19 +83,25 @@ async function runExportWithProgressAndDescription(
         cancellationToken: vscode.CancellationToken,
     ) => Promise<void>,
 ) {
-    await ext.state.runWithTemporaryDescription(nodeId, 'Exporting...', async () => {
+    await ext.state.runWithTemporaryDescription(nodeId, l10n.t('Exporting…'), async () => {
         await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
-                title: 'Exporting documents',
+                title: l10n.t('Exporting documents'),
                 cancellable: true,
             },
             async (progress, cancellationToken) => {
                 try {
                     await exportFunction(progress, cancellationToken);
                 } catch (error) {
-                    vscode.window.showErrorMessage('Failed to export documents. Please see the output for details.');
-                    ext.outputChannel.appendLog(`MongoDB Clusters: Error exporting documents: ${error}`);
+                    vscode.window.showErrorMessage(
+                        l10n.t('Failed to export documents. Please see the output for details.'),
+                    );
+                    ext.outputChannel.appendLog(
+                        l10n.t('MongoDB Clusters: Error exporting documents: {error}', {
+                            error: parseError(error).message,
+                        }),
+                    );
                 }
                 progress.report({ increment: 100 }); // Complete the progress bar
             },
@@ -120,7 +129,7 @@ async function exportDocumentsToFile(
                 // Cancel the operation
                 documentStreamAbortController.abort();
                 await vscode.workspace.fs.delete(vscode.Uri.file(filePath)); // Clean up the file if canceled
-                vscode.window.showWarningMessage('The export operation was canceled.');
+                vscode.window.showWarningMessage(l10n.t('The export operation was canceled.'));
                 return documentCount;
             }
 
@@ -129,7 +138,7 @@ async function exportDocumentsToFile(
 
             // Progress reporting for every 100 documents
             if (documentCount % 100 === 0) {
-                progress.report({ message: `${documentCount} documents exported...` });
+                progress.report({ message: l10n.t('{documentCount} documents exported…', { documentCount }) });
             }
 
             // Prepare buffer for writing
@@ -149,9 +158,11 @@ async function exportDocumentsToFile(
 
         await appendToFile(filePath, '\n]'); // End the JSON array
 
-        vscode.window.showInformationMessage(`Exported document count: ${documentCount}`);
+        vscode.window.showInformationMessage(l10n.t('Exported document count: {documentCount}', { documentCount }));
     } catch (error) {
-        vscode.window.showErrorMessage(`Error exporting documents: ${error}`);
+        vscode.window.showErrorMessage(
+            l10n.t('Error exporting documents: {error}', { error: parseError(error).message }),
+        );
         throw error; // Re-throw the error to be caught by the outer error handler
     }
 
@@ -168,8 +179,8 @@ async function askForTargetFile(_context: IActionContext): Promise<vscode.Uri | 
     }
 
     const saveDialogOptions: vscode.SaveDialogOptions = {
-        title: 'Where to save the exported documents?',
-        saveLabel: 'Export',
+        title: l10n.t('Where to save the exported documents?'),
+        saveLabel: l10n.t('Export'),
         defaultUri: defaultUri,
         filters: {
             'JSON files': ['json'],

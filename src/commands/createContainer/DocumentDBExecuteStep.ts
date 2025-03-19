@@ -5,6 +5,7 @@
 
 import { PartitionKeyDefinitionVersion, PartitionKeyKind, type RequestOptions } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -22,25 +23,29 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<CreateContaine
             options.offerThroughput = throughput;
         }
 
-        return ext.state.showCreatingChild(nodeId, `Creating "${containerName}"...`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 250));
+        return ext.state.showCreatingChild(
+            nodeId,
+            l10n.t('Creating "{nodeName}"…', { nodeName: containerName! }),
+            async () => {
+                await new Promise((resolve) => setTimeout(resolve, 250));
 
-            const partitionKeyDefinition = {
-                paths: partitionKey?.paths ?? [],
-                kind:
-                    (partitionKey?.kind ?? (partitionKey?.paths?.length ?? 0) > 1)
-                        ? PartitionKeyKind.MultiHash // Multi-hash partition key if there are sub-partitions
-                        : PartitionKeyKind.Hash, // Hash partition key if there is only one partition
-                version: PartitionKeyDefinitionVersion.V2,
-            };
+                const partitionKeyDefinition = {
+                    paths: partitionKey?.paths ?? [],
+                    kind:
+                        (partitionKey?.kind ?? (partitionKey?.paths?.length ?? 0) > 1)
+                            ? PartitionKeyKind.MultiHash // Multi-hash partition key if there are sub-partitions
+                            : PartitionKeyKind.Hash, // Hash partition key if there is only one partition
+                    version: PartitionKeyDefinitionVersion.V2,
+                };
 
-            const containerDefinition = {
-                id: containerName,
-                partitionKey: partitionKeyDefinition,
-            };
+                const containerDefinition = {
+                    id: containerName,
+                    partitionKey: partitionKeyDefinition,
+                };
 
-            await cosmosClient.database(databaseId).containers.create(containerDefinition, options);
-        });
+                await cosmosClient.database(databaseId).containers.create(containerDefinition, options);
+            },
+        );
     }
 
     public shouldExecute(context: CreateContainerWizardContext): boolean {

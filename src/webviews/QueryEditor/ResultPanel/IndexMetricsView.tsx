@@ -13,6 +13,7 @@ import {
     TableHeaderCell,
     TableRow,
 } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import type React from 'react';
 
 interface IndexMetricsSection {
@@ -34,18 +35,19 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
     // TODO Uncomment this example for testing
     //indexMetricsStr = "Index Utilization Information\n  Utilized Single Indexes\n    Index Spec: /name/?\n    Index Impact Score: High\n    ---\n    Index Spec: /age/?\n    Index Impact Score: High\n    ---\n    Index Spec: /town/?\n    Index Impact Score: High\n    ---\n    Index Spec: /timestamp/?\n    Index Impact Score: High\n    ---\n  Potential Single Indexes\n  Utilized Composite Indexes\n  Potential Composite Indexes\n    Index Spec: /name ASC, /town ASC, /age ASC\n    Index Impact Score: High\n    ---\n    Index Spec: /name ASC, /town ASC, /timestamp ASC\n    Index Impact Score: High\n    ---"
     const parsed = parseIndexMetrics(indexMetricsStr);
-    const columns = ['Index Spec', 'Index Impact Score'];
+    const columns = [l10n.t('Index Spec'), l10n.t('Index Impact Score')];
 
     return (
         <>
             <div className={topLabelStyle}>
-                <Label size={'large'}>{parsed.title}</Label> (<Link href={INDEX_METRICS_DOC_URL}>Learn More…</Link>)
+                <Label size={'large'}>{parsed.title}</Label> (
+                <Link href={INDEX_METRICS_DOC_URL}>{l10n.t('Learn more…')}</Link>)
             </div>
 
-            <Table arial-label="Index metrics table" style={{ minWidth: '510px' }}>
+            <Table arial-label={l10n.t('Index metrics table')} style={{ minWidth: '510px' }}>
                 <TableHeader>
                     <TableRow>
-                        <TableHeaderCell>Metric</TableHeaderCell>
+                        <TableHeaderCell>{l10n.t('Metric')}</TableHeaderCell>
                         <TableHeaderCell>
                             <Table>
                                 <TableBody>

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { nonNullValue, parseError, UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
@@ -18,10 +19,11 @@ import { wrapError } from '../utils/wrapError';
 
 const mongoExecutableFileName = process.platform === 'win32' ? 'mongo.exe' : 'mongosh';
 
-const timeoutMessage =
-    "Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.";
+const timeoutMessage = l10n.t(
+    "Timed out trying to execute the Mongo script. To use a longer timeout, modify the VS Code 'mongo.shell.timeout' setting.",
+);
 
-const mongoShellMoreMessage = 'Type "it" for more';
+const mongoShellMoreMessage = l10n.t('Type "it" for more');
 const extensionMoreMessage = '(More)';
 
 const sentinelBase = 'EXECUTION COMPLETED';
@@ -114,7 +116,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
             // to catch any errors related to the start-up of the process before trying to write to it.
             await shell.executeScript('');
 
-            ext.outputChannel.appendLine('Mongo Shell connected.');
+            ext.outputChannel.appendLine(l10n.t('Mongo Shell connected.'));
 
             // Configure the batch size
             await shell.executeScript(`config.set("displayBatchSize", ${getBatchSizeSetting()})`);
@@ -234,7 +236,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                             // If there are any lines left after filtering, assume they are real errors
                             if (unknownErrorLines.length > 0) {
                                 for (const line of unknownErrorLines) {
-                                    ext.outputChannel.appendLine('Mongo Shell Error: ' + line);
+                                    ext.outputChannel.appendLine(l10n.t('Mongo Shell Error: {error}', line));
                                 }
                                 // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                                 reject(wrapCheckOutputWindow(unknownErrorLines.join('\n')));
@@ -267,7 +269,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                         // Give a chance for start-up errors to show up before rejecting with this more general error message
                         await delay(500);
                         // eslint-disable-next-line no-ex-assign
-                        error = new Error('The process exited prematurely.');
+                        error = new Error(l10n.t('The process exited prematurely.'));
                     }
 
                     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
@@ -331,10 +333,13 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                 return 'mongo';
             } else {
                 // If all else fails, prompt the user for the mongo path
-                const openFile: vscode.MessageItem = { title: `Browse to ${mongoExecutableFileName}` };
-                const browse: vscode.MessageItem = { title: 'Open installation page' };
-                const noMongoError: string =
-                    'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.';
+                const openFile: vscode.MessageItem = {
+                    title: l10n.t('Browse to {mongoExecutableFileName}', { mongoExecutableFileName }),
+                };
+                const browse: vscode.MessageItem = { title: l10n.t('Open installation page') };
+                const noMongoError: string = l10n.t(
+                    'This functionality requires the Mongo DB shell, but we could not find it in the path or using the mongo.shell.path setting.',
+                );
                 const response = await context.ui.showWarningMessage(
                     noMongoError,
                     { stepName: 'promptForMongoPath' },
@@ -346,16 +351,20 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                     while (true) {
                         const newPath: vscode.Uri[] = await context.ui.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
-                            openLabel: `Select ${mongoExecutableFileName}`,
+                            openLabel: l10n.t('Select {mongoExecutableFileName}', { mongoExecutableFileName }),
                             stepName: 'openMongoExeFile',
                         });
                         const fsPath = newPath[0].fsPath;
                         const baseName = path.basename(fsPath);
                         if (baseName !== mongoExecutableFileName) {
-                            const useAnyway: vscode.MessageItem = { title: 'Use anyway' };
-                            const tryAgain: vscode.MessageItem = { title: 'Try again' };
+                            const useAnyway: vscode.MessageItem = { title: l10n.t('Use anyway') };
+                            const tryAgain: vscode.MessageItem = { title: l10n.t('Try again') };
                             const response2 = await context.ui.showWarningMessage(
-                                `Expected a file named "${mongoExecutableFileName}, but the selected filename is "${baseName}"`,
+                                l10n.t(
+                                    'Expected a file name "{0}", but the selected filename is "{1}"',
+                                    mongoExecutableFileName,
+                                    baseName,
+                                ),
                                 { stepName: 'confirmMongoExeFile' },
                                 useAnyway,
                                 tryAgain,
@@ -466,6 +475,6 @@ async function delay(milliseconds: number): Promise<void> {
 }
 
 function wrapCheckOutputWindow(error: unknown): unknown {
-    const checkOutputMsg = 'The output window may contain additional information.';
+    const checkOutputMsg = l10n.t('The output window may contain additional information.');
     return parseError(error).message.includes(checkOutputMsg) ? error : wrapError(error, checkOutputMsg);
 }

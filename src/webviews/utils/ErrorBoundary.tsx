@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Link, makeStyles } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import React, { useCallback } from 'react';
 import { useQueryEditorDispatcher } from '../QueryEditor/state/QueryEditorContext';
 import { type BaseContextProvider } from './context/BaseContextProvider';
@@ -45,10 +46,10 @@ const ErrorDisplay: React.FC<{ message: string | undefined; details: string | nu
     const styles = useStyles();
     return (
         <div className={styles.container}>
-            <h1>An unexpected error occurred</h1>
+            <h1>{l10n.t('An unexpected error occurred')}</h1>
             <p>
-                Please try again. If the error persists, please{' '}
-                <Link onClick={() => void dispatcher.executeReportIssueCommand()}>report the issue</Link>
+                {l10n.t('Please try again. If the error persists, please')}{' '}
+                <Link onClick={() => void dispatcher.executeReportIssueCommand()}>{l10n.t('report the issue')}</Link>
             </p>
             <div className={styles.details}>
                 <pre>{message}</pre>

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { MongoClient, type MongoClientOptions } from 'mongodb';
 import { Links, wellKnownEmulatorPassword } from '../constants';
 import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
@@ -47,7 +48,10 @@ export async function connectToMongoClient(
 export class MongoConnectError extends Error {
     constructor() {
         super(
-            `Unable to connect to local Mongo DB instance. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`,
+            l10n.t(
+                'Unable to connect to local Mongo DB instance. Make sure it is started correctly. See {link} for tips.',
+                { link: Links.LocalConnectionDebuggingTips },
+            ),
         );
     }
 }

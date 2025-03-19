@@ -11,11 +11,11 @@ import {
     type AzExtTreeFileSystemItem,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
-import vscode, { FileType, workspace, type FileStat, type MessageItem, type Uri } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { FileChangeType } from 'vscode-languageclient';
 import { ext } from './extensionVariables';
 import { SettingsService } from './services/SettingsService';
-import { localize } from './utils/localize';
 import { getNodeEditorLabel } from './utils/vscodeUtils';
 
 export interface IEditableTreeItem extends AzExtTreeItem {
@@ -44,9 +44,9 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
     public async statImpl(
         context: IActionContext,
         node: IEditableTreeItem | EditableFileSystemItem,
-    ): Promise<FileStat> {
+    ): Promise<vscode.FileStat> {
         const size: number = Buffer.byteLength(await node.getFileContent(context));
-        return { type: FileType.File, ctime: node.cTime, mtime: node.mTime, size };
+        return { type: vscode.FileType.File, ctime: node.cTime, mtime: node.mTime, size };
     }
 
     public async readFileImpl(context: IActionContext, node: IEditableTreeItem): Promise<Uint8Array> {
@@ -57,20 +57,18 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
         context: IActionContext,
         node: IEditableTreeItem | EditableFileSystemItem,
         content: Uint8Array,
-        _originalUri: Uri,
+        _originalUri: vscode.Uri,
     ): Promise<void> {
         const showSavePromptKey: string = 'showSavePrompt';
         // NOTE: Using "cosmosDB" instead of "azureDatabases" here for the sake of backwards compatibility. If/when this file system adds support for non-cosmosdb items, we should consider changing this to "azureDatabases"
         const prefix: string = 'cosmosDB';
         const nodeEditorLabel: string = getNodeEditorLabel(node);
         if (this._showSaveConfirmation && SettingsService.getSetting<boolean>(showSavePromptKey, prefix)) {
-            const message: string = localize(
-                'saveConfirmation',
-                'Saving "{0}" will update the entity "{1}" to the cloud.',
-                node.filePath,
-                nodeEditorLabel,
-            );
-            const result: MessageItem | undefined = await context.ui.showWarningMessage(
+            const message: string = l10n.t('Saving "{path}" will update the entity "{name}" to the cloud.', {
+                path: node.filePath,
+                name: nodeEditorLabel,
+            });
+            const result: vscode.MessageItem | undefined = await context.ui.showWarningMessage(
                 message,
                 { stepName: 'writeFile' },
                 DialogResponses.upload,
@@ -92,7 +90,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
             await vscode.commands.executeCommand('azureDatabases.refresh', node);
         }
 
-        const updatedMessage: string = localize('updatedEntity', 'Updated entity "{0}".', nodeEditorLabel);
+        const updatedMessage: string = l10n.t('Updated entity "{name}".', { name: nodeEditorLabel });
         ext.outputChannel.appendLog(updatedMessage);
     }
 
@@ -100,8 +98,8 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
         return node.filePath;
     }
 
-    public async updateWithoutPrompt(uri: Uri): Promise<void> {
-        const textDoc = await workspace.openTextDocument(uri);
+    public async updateWithoutPrompt(uri: vscode.Uri): Promise<void> {
+        const textDoc = await vscode.workspace.openTextDocument(uri);
         this._showSaveConfirmation = false;
         try {
             await textDoc.save();

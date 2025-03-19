@@ -5,6 +5,7 @@
 
 import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import { parse as parseJson } from '@prantlf/jsonlint';
+import * as l10n from '@vscode/l10n';
 import { extractPartitionKey } from '../../utils/document';
 
 export function validateDocument(content: string, partitionKey?: PartitionKeyDefinition) {
@@ -15,7 +16,7 @@ export function validateDocument(content: string, partitionKey?: PartitionKeyDef
         const resource = parseJson(content) as JSONObject;
 
         if (resource && typeof resource !== 'object') {
-            throw new Error('Document must be an object.');
+            throw new Error(l10n.t('Item must be an object.'));
         }
 
         // Check partition key
@@ -34,7 +35,7 @@ export function validateDocument(content: string, partitionKey?: PartitionKeyDef
         } else if (err instanceof Error) {
             errors.push(err.message);
         } else {
-            errors.push('Unknown error');
+            errors.push(l10n.t('Unknown error'));
         }
     }
 
@@ -54,14 +55,14 @@ export function validatePartitionKey(
     const partitionKeyValues = extractPartitionKey(resource, partitionKey);
 
     if (!partitionKeyValues) {
-        errors.push('Partition key is incomplete.');
+        errors.push(l10n.t('Partition key is incomplete.'));
     }
 
     if (Array.isArray(partitionKeyValues)) {
         partitionKeyValues
             .map((value, index) => {
                 if (!value) {
-                    return `Partition key ${partitionKeyPaths[index]} is invalid.`;
+                    return l10n.t('Partition key {path} is invalid.', { path: partitionKeyPaths[index] });
                 }
                 return null;
             })
@@ -77,7 +78,7 @@ export function validateDocumentId(resource: JSONObject): string[] | undefined {
 
     if ('id' in resource && resource.id) {
         if (typeof resource.id !== 'string') {
-            errors.push('Id must be a string.');
+            errors.push(l10n.t('Id must be a string.'));
         } else {
             if (
                 resource.id.indexOf('/') !== -1 ||
@@ -85,11 +86,11 @@ export function validateDocumentId(resource: JSONObject): string[] | undefined {
                 resource.id.indexOf('?') !== -1 ||
                 resource.id.indexOf('#') !== -1
             ) {
-                errors.push('Id contains illegal chars (/, \\, ?, #).');
+                errors.push(l10n.t('Id contains illegal chars (/, \\, ?, #).'));
             }
 
             if (resource.id[resource.id.length - 1] === ' ') {
-                errors.push('Id ends with a space.');
+                errors.push(l10n.t('Id ends with a space.'));
             }
         }
     }

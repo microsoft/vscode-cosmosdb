@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
 import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { localize } from '../../utils/localize';
 import { type CreateMongoDatabaseWizardContext } from './CreateMongoDatabaseWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<CreateMongoDatabaseWizardContext> {
@@ -20,7 +20,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<CreateMongoDatabase
 
         return ext.state.showCreatingChild(
             nodeId,
-            localize('mongoClusters.tree.creating', 'Creating "{0}"...', databaseName),
+            l10n.t('Creating "{nodeName}"…', { nodeName: databaseName }),
             async () => {
                 // Adding a delay to ensure the "creating child" animation is visible.
                 // The `showCreatingChild` function refreshes the parent to show the

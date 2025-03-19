@@ -4,15 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { localize } from '../../utils/localize';
 import { type CreateMongoDatabaseWizardContext } from './CreateMongoDatabaseWizardContext';
 
 export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoDatabaseWizardContext> {
     public hideStepCount: boolean = true;
 
     public async prompt(context: CreateMongoDatabaseWizardContext): Promise<void> {
-        const prompt: string = localize('mongoClusters.databaseNamePrompt', 'Enter a database name.');
+        const prompt: string = l10n.t('Enter a database name.');
         context.databaseName = (
             await context.ui.showInputBox({
                 prompt,
@@ -42,8 +42,7 @@ export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoData
         const forbiddenCharsWindows = /[\\/."$*<>:|?]/;
 
         if (forbiddenCharsLinux.test(databaseName) || forbiddenCharsWindows.test(databaseName)) {
-            return localize(
-                'mongoClusters.databaseContainsForbiddenChars',
+            return l10n.t(
                 'Database name cannot contain any of the following characters: "{0}{1}"',
                 forbiddenCharsLinux.source,
                 forbiddenCharsWindows.source,
@@ -51,11 +50,7 @@ export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoData
         }
 
         if (databaseName.length > 64) {
-            return localize(
-                'mongoClusters.databaseNameTooLong',
-                'Database name cannot be longer than {0} characters.',
-                64,
-            );
+            return l10n.t('Database name cannot be longer than 64 characters.');
         }
 
         return undefined;
@@ -66,7 +61,7 @@ export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoData
         name: string,
     ): Promise<string | undefined> {
         if (name.length === 0) {
-            return localize('mongoClusters.databaseNameRequired', 'Database name is required.');
+            return l10n.t('Database name is required.');
         }
 
         try {
@@ -77,12 +72,16 @@ export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoData
                 databases.filter((c) => 0 === c.name.localeCompare(name, undefined, { sensitivity: 'accent' })).length >
                 0
             ) {
-                return localize(
-                    'mongoClusters.databaseExists',
-                    'The database "{0}" already exists in the MongoDB Cluster "{1}". \n' +
+                return (
+                    l10n.t(
+                        'The database "{0}" already exists in the MongoDB Cluster "{1}".',
+                        name,
+                        context.clusterName,
+                    ) +
+                    '\n' +
+                    l10n.t(
                         'Do not rely on case to distinguish between databases. For example, you cannot use two databases with names like, salesData and SalesData.',
-                    name,
-                    context.clusterName,
+                    )
                 );
             }
         } catch (_error) {

@@ -7,7 +7,6 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import { type ResourceBase } from '@microsoft/vscode-azureresources-api';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
-import { type TreeItem } from 'vscode';
 import { type Experience } from '../AzureDBExperiences';
 import { type CosmosDBTreeElement } from './CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from './TreeElementWithContextValue';
@@ -39,7 +38,7 @@ export abstract class CosmosDBAccountResourceItemBase
      * Returns the tree item representation of the cluster.
      * @returns The TreeItem object.
      */
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

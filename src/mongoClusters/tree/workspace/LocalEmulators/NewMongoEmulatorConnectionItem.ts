@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import vscode from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type CosmosDBTreeElement } from '../../../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../../../tree/TreeElementWithContextValue';
 
@@ -19,7 +20,7 @@ export class NewMongoEmulatorConnectionItem implements CosmosDBTreeElement, Tree
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: 'New Emulator Connection\u2026',
+            label: l10n.t('New Emulator Connection…'),
             iconPath: new vscode.ThemeIcon('plus'),
             command: {
                 command: 'cosmosDB.newEmulatorConnection',

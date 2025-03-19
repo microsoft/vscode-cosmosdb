@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { DialogResponses, UserCancelledError } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 
 enum ConfirmationStyle {
@@ -46,13 +47,20 @@ export async function getConfirmationWithWordQuestion(
 ): Promise<boolean> {
     const result = await vscode.window.showInputBox({
         title: title,
-        prompt: `${message}\n\nPlease enter the word "${expectedConfirmationWord}" to confirm the operation.`,
+        prompt:
+            message +
+            '\n\n' +
+            l10n.t('Please enter the word "{expectedConfirmationWord}" to confirm the operation.', {
+                expectedConfirmationWord,
+            }),
         ignoreFocusOut: true,
         validateInput: (val: string | undefined) => {
             if (val && 0 === val.localeCompare(expectedConfirmationWord, undefined, { sensitivity: 'accent' })) {
                 return undefined;
             }
-            return `Please enter the word "${expectedConfirmationWord}" to confirm the operation.`;
+            return l10n.t('Please enter the word "{expectedConfirmationWord}" to confirm the operation.', {
+                expectedConfirmationWord,
+            });
         },
     });
 
@@ -70,7 +78,10 @@ export async function getConfirmationWithNumberQuiz(title: string, message: stri
         title,
         {
             modal: true,
-            detail: message + `\n\nPick '${randomInput.numbers[randomInput.index]}' to confirm and continue.`,
+            detail:
+                message +
+                '\n\n' +
+                l10n.t('Pick "{number}" to confirm and continue.', { number: randomInput.numbers[randomInput.index] }),
         },
         randomInput.numbers[0].toString(),
         randomInput.numbers[1].toString(),
@@ -102,7 +113,7 @@ export async function getConfirmationWithClick(title: string, message: string): 
  */
 function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
     if (length <= 1) {
-        throw new Error('Length must be greater than 1');
+        throw new Error(l10n.t('Length must be greater than 1'));
     }
 
     // Generate an array of random numbers between 0 and 100 (can adjust range).

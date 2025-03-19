@@ -23,7 +23,7 @@ More details about localization API can be found in the [VS Code documentation](
 Replace text fields with localized placeholders, such as `%extension.configuration.setting%`.
 Add these placeholders to the `package.nls.json` file. The tool `@vscode/l10n-dev` will replace them with localized strings.
 
-### pcakage.json
+### package.json
 ```json
 {
   "contributes": {

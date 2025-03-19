@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.25.1
+
+### Added
+
+- A feature to Provide Feedback using a button in the query editor toolbars and a prompt, which will open a survey if you would like to share some feedback about the extension. The prompt will only be shown after the extension has been used for a while and provides an option to be reminded later or to fully opt out from being prompted again.
+
+### Changed
+
+- Fixed a performance issue when reconnecting to Mongo with incorrect auth data.
+- Improved NoSQL CSV export compatibility.
+- Moved to Node.js 20.0.
+- Minor Bugfixes.
+
 ## 0.25.0
 
 ### Added

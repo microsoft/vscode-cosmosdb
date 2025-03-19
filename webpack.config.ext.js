@@ -127,6 +127,7 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'package.nls.*.json',
                         to: '[name][ext]',
+                        noErrorOnMissing: true,
                     },
                     {
                         from: 'CHANGELOG.md',

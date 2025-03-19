@@ -16,7 +16,7 @@ export type CollectionViewContextType = {
     isFirstTimeLoad: boolean; // this will be set to true during the first data fetch, here we need more time and add more loading animations, but only on the first load
     currentView: Views;
     currentViewState?: TableViewState; // | TreeViewConfiguration |  other views can get config over time
-    currrentQueryDefinition: {
+    currentQueryDefinition: {
         // holds the current query, we run a new database query when this changes
         queryText: string;
         pageNumber: number;
@@ -48,7 +48,7 @@ export const DefaultCollectionViewContext: CollectionViewContextType = {
     isLoading: false,
     isFirstTimeLoad: true,
     currentView: Views.TABLE,
-    currrentQueryDefinition: {
+    currentQueryDefinition: {
         queryText: '{  }',
         pageNumber: 1,
         pageSize: 10,

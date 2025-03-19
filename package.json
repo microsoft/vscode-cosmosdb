@@ -37,6 +37,7 @@
         "url": "https://github.com/microsoft/vscode-cosmosdb"
     },
     "main": "./main",
+    "l10n": "./l10n",
     "activationEvents": [
         "onFileSystem:azureDatabases",
         "onView:azureWorkspace"
@@ -65,7 +66,11 @@
         "watch:ext": "webpack --mode development --config ./webpack.config.ext.js --watch",
         "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
         "resapi.resetall": "rimraf out node_modules dist && npm install && npm run resapi.link",
-        "resapi.link": "npm link @microsoft/vscode-azureresources-api"
+        "resapi.link": "npm link @microsoft/vscode-azureresources-api",
+        "l10n": "npx @vscode/l10n-dev export --outDir ./l10n ./src",
+        "l10n:auto": "cross-env AZURE_TRANSLATOR_KEY= cross-env AZURE_TRANSLATOR_REGION= npx @vscode/l10n-dev generate-azure --outDir ./l10n ./l10n/bundle.l10n.json ./package.nls.json",
+        "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
+        "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf"
     },
     "devDependencies": {
         "@microsoft/vscode-azext-dev": "^2.1.0",
@@ -92,8 +97,10 @@
         "@vscode/test-cli": "^0.0.10",
         "@vscode/test-electron": "^2.4.1",
         "@vscode/vsce": "^3.2.2",
+        "@vscode/l10n-dev": "^0.0.35",
         "antlr4ts-cli": "^0.5.0-alpha.4",
         "copy-webpack-plugin": "^13.0.0",
+        "cross-env": "^7.0.3",
         "css-loader": "^7.1.2",
         "eslint": "^8.57.1",
         "eslint-plugin-import": "^2.31.0",
@@ -144,6 +151,7 @@
         "@tanstack/react-query": "^5.67.1",
         "@trpc/client": "11.0.0-rc.781",
         "@trpc/server": "11.0.0-rc.781",
+        "@vscode/l10n": "^0.0.18",
         "allotment": "^1.20.3",
         "antlr4ts": "^0.5.0-alpha.4",
         "bson": "^6.10.3",
@@ -165,7 +173,6 @@
         "vscode-languageclient": "~6.1.4",
         "vscode-languageserver": "~6.1.1",
         "vscode-languageserver-textdocument": "^1.0.12",
-        "vscode-nls": "~4.1.2",
         "vscode-uri": "^3.1.0",
         "zod": "^3.24.2"
     },
@@ -201,9 +208,9 @@
             "commands": [
                 {
                     "command": "azureDatabases.createServer",
-                    "title": "Create Database Server...",
+                    "title": "%cosmosdb.command.account.create%",
                     "type": "microsoft.documentdb/databaseaccounts",
-                    "detail": "SQL or NoSQL databases for your web apps."
+                    "detail": "%cosmosdb.command.account.create.description%"
                 }
             ],
             "activation": {
@@ -263,334 +270,334 @@
             {
                 "category": "Azure Databases",
                 "command": "azureDatabases.createServer",
-                "title": "Create Server...",
+                "title": "%cosmosdb.command.account.create%",
                 "icon": "$(add)"
             },
             {
                 "category": "Azure Databases",
                 "command": "azureDatabases.refresh",
-                "title": "Refresh",
+                "title": "%cosmosdb.command.refresh%",
                 "icon": "$(refresh)"
             },
             {
                 "category": "Azure Databases",
                 "command": "azureDatabases.reportIssue",
-                "title": "Report Issue..."
+                "title": "%cosmosdb.command.issue.report%"
             },
             {
                 "category": "Azure Databases",
                 "command": "azureDatabases.update",
-                "title": "Update to Cloud",
+                "title": "%cosmosdb.command.update%",
                 "icon": "$(cloud-upload)"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.newConnection",
-                "title": "New Connection...",
+                "title": "%cosmosdb.command.connection.add%",
                 "icon": "$(plug)"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.removeConnection",
-                "title": "Remove Connection..."
+                "title": "%cosmosdb.command.connection.remove%"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.newEmulatorConnection",
-                "title": "New Emulator Connection..."
+                "title": "%cosmosdb.command.connection.emulator.add%"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.copyConnectionString",
-                "title": "Copy Connection String"
+                "title": "%cosmosdb.command.connection.copy%"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.deleteAccount",
-                "title": "Delete Account..."
+                "title": "%cosmosdb.command.account.delete%"
             },
             {
                 "category": "Cosmos DB",
                 "command": "cosmosDB.createDatabase",
-                "title": "Create Database..."
+                "title": "%cosmosdb.command.database.create%"
             },
             {
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.createGraph",
-                "title": "Create Graph..."
+                "title": "%cosmosdb.command.graph.create%"
             },
             {
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.deleteGraph",
-                "title": "Delete Graph..."
+                "title": "%cosmosdb.command.graph.delete%"
             },
             {
                 "category": "Graph (Gremlin)",
                 "command": "cosmosDB.openGraphExplorer",
-                "title": "Open Graph Explorer"
+                "title": "%cosmosdb.command.graph.explorer%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBContainer",
-                "title": "Create Container..."
+                "title": "%cosmosdb.command.container.create%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBContainer",
-                "title": "Delete Container..."
+                "title": "%cosmosdb.command.container.delete%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDatabase",
-                "title": "Delete Database..."
+                "title": "%cosmosdb.command.database.delete%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBDocument",
-                "title": "Create Document..."
+                "title": "%cosmosdb.command.item.create%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.openDocument",
-                "title": "Open Document"
+                "title": "%cosmosdb.command.item.open%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBDocument",
-                "title": "Delete Document..."
+                "title": "%cosmosdb.command.item.delete%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBStoredProcedure",
-                "title": "Create Stored Procedure..."
+                "title": "%cosmosdb.command.stored_procedure.create%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.openStoredProcedure",
-                "title": "Open Stored Procedure"
+                "title": "%cosmosdb.command.stored_procedure.open%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.executeDocDBStoredProcedure",
-                "title": "Execute Stored Procedure..."
+                "title": "%cosmosdb.command.stored_procedure.execute%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBStoredProcedure",
-                "title": "Delete Stored Procedure..."
+                "title": "%cosmosdb.command.stored_procedure.delete%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.createDocDBTrigger",
-                "title": "Create Trigger..."
+                "title": "%cosmosdb.command.trigger.create%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.openTrigger",
-                "title": "Open Trigger"
+                "title": "%cosmosdb.command.trigger.open%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.deleteDocDBTrigger",
-                "title": "Delete Trigger..."
+                "title": "%cosmosdb.command.trigger.delete%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBContainerOffer",
-                "title": "View Container Offer"
+                "title": "%cosmosdb.command.offer.container.view%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.viewDocDBDatabaseOffer",
-                "title": "View Database Offer"
+                "title": "%cosmosdb.command.offer.database.view%"
             },
             {
                 "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.writeNoSqlQuery",
-                "title": "Open Query Scrapbook"
+                "title": "%cosmosdb.command.query.scrapbook.open%"
             },
             {
                 "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.connectNoSqlContainer",
-                "title": "Connect to NoSQL container",
+                "title": "%cosmosdb.command.query.container.connect%",
                 "when": "false"
             },
             {
                 "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.executeNoSqlQuery",
-                "title": "Execute NoSQL Query",
+                "title": "%cosmosdb.command.query.execute%",
                 "when": "false"
             },
             {
                 "//": "NoSQL Scrapbook",
                 "category": "NoSQL",
                 "command": "cosmosDB.getNoSqlQueryPlan",
-                "title": "Get NoSQL Query Plan",
+                "title": "%cosmosdb.command.query.plan%",
                 "when": "false"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.openNoSqlQueryEditor",
-                "title": "Open Query Editor"
+                "title": "%cosmosdb.command.query.editor.open%"
             },
             {
                 "category": "NoSQL",
                 "command": "cosmosDB.importDocument",
-                "title": "Import Document into a Container..."
+                "title": "%cosmosdb.command.document.import%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.configureFirewall",
-                "title": "Configure Firewall"
+                "title": "%cosmosdb.command.postgres.firewall.configure%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.connectDatabase",
-                "title": "Connect to Database..."
+                "title": "%cosmosdb.command.postgres.database.connect%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.copyConnectionString",
-                "title": "Copy Connection String"
+                "title": "%cosmosdb.command.postgres.connection.copy%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.createDatabase",
-                "title": "Create Database..."
+                "title": "%cosmosdb.command.postgres.database.create%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.createFunctionQuery",
-                "title": "Create Function Query..."
+                "title": "%cosmosdb.command.postgres.function.create%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.createStoredProcedureQuery",
-                "title": "Create Stored Procedure Query..."
+                "title": "%cosmosdb.command.postgres.stored_procedure.create%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteDatabase",
-                "title": "Delete Database..."
+                "title": "%cosmosdb.command.postgres.database.delete%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteFunction",
-                "title": "Delete Function..."
+                "title": "%cosmosdb.command.postgres.function.delete%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteServer",
-                "title": "Delete Server..."
+                "title": "%cosmosdb.command.postgres.account.delete%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.detachServer",
-                "title": "Detach Server..."
+                "title": "%cosmosdb.command.postgres.account.detach%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteStoredProcedure",
-                "title": "Delete Stored Procedure..."
+                "title": "%cosmosdb.command.postgres.stored_procedure.delete%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.deleteTable",
-                "title": "Delete Table..."
+                "title": "%cosmosdb.command.postgres.table.delete%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.enterCredentials",
-                "title": "Enter Server Credentials"
+                "title": "%cosmosdb.command.postgres.credentials.enter%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.executeQuery",
-                "title": "Execute Query..."
+                "title": "%cosmosdb.command.postgres.query.execute%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.openFunction",
-                "title": "Open Function"
+                "title": "%cosmosdb.command.postgres.function.open%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.openStoredProcedure",
-                "title": "Open Stored Procedure"
+                "title": "%cosmosdb.command.postgres.stored_procedure.open%"
             },
             {
                 "category": "PostgreSQL",
                 "command": "postgreSQL.showPasswordlessWiki",
-                "title": "Learn more about authenticating with Azure Active Directory",
+                "title": "%cosmosdb.command.postgres.passwordless.wiki%",
                 "icon": "$(warning)"
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook Connect Database",
                 "category": "MongoDB Clusters",
                 "command": "cosmosDB.connectMongoDB",
-                "title": "Connect to this database"
+                "title": "%cosmosdb.command.mongo.database.connect%"
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook Execute All Commands",
                 "category": "MongoDB Clusters",
                 "command": "cosmosDB.executeAllMongoCommands",
-                "title": "Execute All MongoDB Commands"
+                "title": "%cosmosdb.command.mongo.scrapbook.execute_all%"
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook Execute Command",
                 "category": "MongoDB Clusters",
                 "command": "cosmosDB.executeMongoCommand",
-                "title": "Execute MongoDB Command"
+                "title": "%cosmosdb.command.mongo.scrapbook.execute%"
             },
             {
                 "//": "Mongo DB|Cluster Scrapbook New Scrapbook",
                 "category": "MongoDB Clusters",
                 "command": "cosmosDB.newMongoScrapbook",
-                "title": "New Mongo Scrapbook",
+                "title": "%cosmosdb.command.mongo.scrapbook.new%",
                 "icon": "$(new-file)"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.dropCollection",
-                "title": "Delete Collection..."
+                "title": "%cosmosdb.command.mongo.collection.delete%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.dropDatabase",
-                "title": "Delete Database..."
+                "title": "%cosmosdb.command.mongo.database.delete%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.createCollection",
-                "title": "Create Collection..."
+                "title": "%cosmosdb.command.mongo.collection.create%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.importDocuments",
-                "title": "Import Documents into Collection..."
+                "title": "%cosmosdb.command.mongo.document.import%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.exportDocuments",
-                "title": "Export Documents from Collection..."
+                "title": "%cosmosdb.command.mongo.document.export%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.createDocument",
-                "title": "Create Document..."
+                "title": "%cosmosdb.command.mongo.document.create%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.launchShell",
-                "title": "Launch Shell"
+                "title": "%cosmosdb.command.mongo.shell.launch%"
             },
             {
                 "category": "MongoDB Clusters",
                 "command": "command.mongoClusters.containerView.open",
-                "title": "Open Collection"
+                "title": "%cosmosdb.command.mongo.collection.open%"
             }
         ],
         "submenus": [
@@ -1145,7 +1152,7 @@
                         "string",
                         "null"
                     ],
-                    "description": "Full path to folder and executable to start the Mongo shell, needed by some Mongo scrapbook commands. The default is to search in the system path for 'mongo'.",
+                    "description": "%cosmosdb.configuration.mongo.shell.path%",
                     "default": null
                 },
                 "mongo.shell.args": {
@@ -1153,50 +1160,50 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "Arguments to pass when starting the Mongo shell.",
+                    "description": "%cosmosdb.configuration.mongo.shell.args%",
                     "default": [
                         "--quiet"
                     ]
                 },
                 "mongo.shell.timeout": {
                     "type": "number",
-                    "description": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
+                    "description": "%cosmosdb.configuration.mongo.shell.timeout%",
                     "default": 30
                 },
                 "azureDatabases.batchSize": {
                     "type": "number",
-                    "description": "The batch size to be used when querying Azure Database resources.",
+                    "description": "%cosmosdb.configuration.batch.size%",
                     "default": 50
                 },
                 "azureDatabases.useCosmosOAuth": {
                     "type": "boolean",
-                    "markdownDescription": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
+                    "markdownDescription": "%cosmosdb.configuration.oauth.enable%",
                     "default": false
                 },
                 "azureDatabases.confirmationStyle": {
                     "type": "string",
-                    "description": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
+                    "description": "%cosmosdb.configuration.confirmation.style%",
                     "enum": [
                         "wordConfirmation",
                         "challengeConfirmation",
                         "buttonConfirmation"
                     ],
                     "enumItemLabels": [
-                        "Word Entry Confirmation",
-                        "Challenge Confirmation",
-                        "Button Click Confirmation"
+                        "%cosmosdb.configuration.confirmation.style.word%",
+                        "%cosmosdb.configuration.confirmation.style.challenge%",
+                        "%cosmosdb.configuration.confirmation.style.button%"
                     ],
                     "enumDescriptions": [
-                        "Prompts with an input box where you enter the name of the resource to confirm deletion.",
-                        "Prompts with a challenge where you select the correct number among multiple options to confirm deletion.",
-                        "Prompts with a warning dialog where you click a button to confirm deletion."
+                        "%cosmosdb.configuration.confirmation.style.word.description%",
+                        "%cosmosdb.configuration.confirmation.style.challenge.description%",
+                        "%cosmosdb.configuration.confirmation.style.button.description%"
                     ],
                     "default": "wordConfirmation"
                 },
                 "azureDatabases.showOperationSummaries": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events."
+                    "description": "%cosmosdb.configuration.operation.summaries%"
                 },
                 "cosmosDB.documentLabelFields": {
                     "type": "array",
@@ -1211,27 +1218,27 @@
                         "_id",
                         "uuid"
                     ],
-                    "description": "The field values to display as labels in the treeview for Cosmos DB and MongoDB documents, in priority order"
+                    "description": "%cosmosdb.configuration.document.label.fields%"
                 },
                 "cosmosDB.emulator.mongoPort": {
                     "type": "integer",
                     "default": 10255,
-                    "description": "Port to use when connecting to a CosmosDB Mongo Emulator instance"
+                    "description": "%cosmosdb.configuration.emulator.mongo.port%"
                 },
                 "cosmosDB.emulator.port": {
                     "type": "integer",
                     "default": 8081,
-                    "description": "Port to use when connecting to a CosmosDB Emulator instance"
+                    "description": "%cosmosdb.configuration.emulator.port%"
                 },
                 "cosmosDB.enableEndpointDiscovery": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Flag to enable/disable automatic redirecting of requests based on read/write operations."
+                    "description": "%cosmosdb.configuration.endpoint.discovery%"
                 },
                 "cosmosDB.showSavePrompt": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Show warning dialog when uploading a document to the cloud."
+                    "description": "%cosmosdb.configuration.save.prompt%"
                 }
             }
         }

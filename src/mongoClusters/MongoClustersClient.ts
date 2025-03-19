@@ -10,6 +10,7 @@
  */
 
 import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import {
     MongoClient,
@@ -78,7 +79,7 @@ export class MongoClustersClient {
         // TODO: why is this a separate function? move its contents to the constructor.
 
         if (!CredentialCache.hasCredentials(this.credentialId)) {
-            throw new Error(`No credentials found for id ${this.credentialId}`);
+            throw new Error(l10n.t('No credentials found for id {credentialId}', { credentialId: this.credentialId }));
         }
 
         const cString = CredentialCache.getCredentials(this.credentialId)?.connectionString as string;
@@ -110,10 +111,16 @@ export class MongoClustersClient {
             const message = parseError(error).message;
             if (this.emulatorConfiguration?.isEmulator && message.includes('ECONNREFUSED')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                error.message = `Unable to connect to local Mongo DB emulator. Make sure it is started correctly. See ${Links.LocalConnectionDebuggingTips} for tips.`;
+                error.message = l10n.t(
+                    'Unable to connect to local Mongo DB emulator. Make sure it is started correctly. See {link} for tips.',
+                    { link: Links.LocalConnectionDebuggingTips },
+                );
             } else if (this.emulatorConfiguration?.isEmulator && message.includes('self-signed certificate')) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                error.message = `The local Mongo DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate. See ${Links.LocalConnectionDebuggingTips} for tips.`;
+                error.message = l10n.t(
+                    "The local Mongo DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate. See {link} for tips.",
+                    { link: Links.LocalConnectionDebuggingTips },
+                );
             }
             throw error;
         }
@@ -313,7 +320,7 @@ export class MongoClustersClient {
                 if (ObjectId.isValid(id)) {
                     parsedId = new ObjectId(id);
                 } else {
-                    throw new Error(`Invalid document ID: ${id}`);
+                    throw new Error(l10n.t('Invalid document ID: {0}', id));
                 }
             }
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return

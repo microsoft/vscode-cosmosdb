@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
-import { type TreeItem } from 'vscode';
-
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
@@ -66,14 +65,18 @@ export abstract class MongoClusterItemBase
      * @returns A list of databases in the cluster or a single element to create a new database.
      */
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        ext.outputChannel.appendLine(`MongoDB Clusters: Loading cluster details for "${this.mongoCluster.name}"`);
+        ext.outputChannel.appendLine(
+            l10n.t('MongoDB Clusters: Loading cluster details for "{cluster}"', { cluster: this.mongoCluster.name }),
+        );
 
         let mongoClustersClient: MongoClustersClient | null;
 
         // Check if credentials are cached, and return the cached client if available
         if (CredentialCache.hasCredentials(this.id)) {
             ext.outputChannel.appendLine(
-                `MongoDB Clusters: Reusing active connection for "${this.mongoCluster.name}".`,
+                l10n.t('MongoDB Clusters: Reusing active connection for "{cluster}".', {
+                    cluster: this.mongoCluster.name,
+                }),
             );
             mongoClustersClient = await MongoClustersClient.getClient(this.id);
         } else {
@@ -88,7 +91,7 @@ export abstract class MongoClusterItemBase
                 createGenericElement({
                     contextValue: 'error',
                     id: `${this.id}/error`,
-                    label: 'Failed to authenticate (click to retry)',
+                    label: l10n.t('Failed to authenticate (click to retry)'),
                     iconPath: new vscode.ThemeIcon('error'),
                     commandId: 'azureDatabases.refresh',
                     commandArgs: [this],
@@ -103,7 +106,7 @@ export abstract class MongoClusterItemBase
                     createGenericElement({
                         contextValue: createContextValue(['treeItem.no-databases', this.experienceContextValue]),
                         id: `${this.id}/no-databases`,
-                        label: 'Create database...',
+                        label: l10n.t('Create database…'),
                         iconPath: new vscode.ThemeIcon('plus'),
                         commandId: 'cosmosDB.createDatabase',
                         commandArgs: [this],
@@ -120,7 +123,7 @@ export abstract class MongoClusterItemBase
      * Returns the tree item representation of the cluster.
      * @returns The TreeItem object.
      */
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,

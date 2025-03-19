@@ -5,6 +5,7 @@
 
 import { Toolbar, ToolbarButton } from '@fluentui/react-components';
 import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { useContext, type JSX } from 'react';
 import { CollectionViewContext } from '../../collectionViewContext';
 
@@ -24,30 +25,30 @@ export const ToolbarDocumentManipulation = ({
     const [currentContext] = useContext(CollectionViewContext);
 
     return (
-        <Toolbar aria-label="with Popover" size="small">
+        <Toolbar aria-label={l10n.t('with Popover')} size="small">
             <ToolbarButton
-                aria-label="Add new document"
+                aria-label={l10n.t('Add new document')}
                 icon={<AddFilled />}
                 disabled={currentContext.commands.disableAddDocument}
                 onClick={onAddClick}
             />
 
             <ToolbarButton
-                aria-label="View selected document"
+                aria-label={l10n.t('View selected document')}
                 icon={<EyeRegular />}
                 disabled={currentContext.commands.disableViewDocument}
                 onClick={onViewClick}
             />
 
             <ToolbarButton
-                aria-label="Edit selected document"
+                aria-label={l10n.t('Edit selected document')}
                 icon={<EditRegular />}
                 disabled={currentContext.commands.disableEditDocument}
                 onClick={onEditClick}
             />
 
             <ToolbarButton
-                aria-label="Delete selected document"
+                aria-label={l10n.t('Delete selected document')}
                 icon={<DeleteRegular />}
                 disabled={currentContext.commands.disableDeleteDocument}
                 onClick={onDeleteClick}

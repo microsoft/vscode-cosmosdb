@@ -5,6 +5,7 @@
 
 import { Dropdown, Label, Option, Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowLeftFilled, ArrowPreviousFilled, ArrowRightFilled } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { useContext } from 'react';
 import { ExperienceKind, UsageImpact } from '../../../../../utils/surveyTypes';
 import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
@@ -20,12 +21,12 @@ export const ToolbarViewNavigation = (): JSX.Element => {
     const [currentContext, setCurrentContext] = useContext(CollectionViewContext);
 
     function goToNextPage() {
-        const newPage = currentContext.currrentQueryDefinition.pageNumber + 1;
+        const newPage = currentContext.currentQueryDefinition.pageNumber + 1;
 
         setCurrentContext({
             ...currentContext,
-            currrentQueryDefinition: {
-                ...currentContext.currrentQueryDefinition,
+            currentQueryDefinition: {
+                ...currentContext.currentQueryDefinition,
                 pageNumber: newPage,
             },
         });
@@ -40,7 +41,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
                 measurements: {
                     page: newPage,
-                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                    pageSize: currentContext.currentQueryDefinition.pageSize,
                 },
             })
             .catch((error) => {
@@ -53,12 +54,12 @@ export const ToolbarViewNavigation = (): JSX.Element => {
     }
 
     function goToPreviousPage() {
-        const newPage = Math.max(1, currentContext.currrentQueryDefinition.pageNumber - 1);
+        const newPage = Math.max(1, currentContext.currentQueryDefinition.pageNumber - 1);
 
         setCurrentContext({
             ...currentContext,
-            currrentQueryDefinition: {
-                ...currentContext.currrentQueryDefinition,
+            currentQueryDefinition: {
+                ...currentContext.currentQueryDefinition,
                 pageNumber: newPage,
             },
         });
@@ -73,7 +74,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
                 measurements: {
                     page: newPage,
-                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                    pageSize: currentContext.currentQueryDefinition.pageSize,
                 },
             })
             .catch((error) => {
@@ -88,7 +89,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
     function goToFirstPage() {
         setCurrentContext({
             ...currentContext,
-            currrentQueryDefinition: { ...currentContext.currrentQueryDefinition, pageNumber: 1 },
+            currentQueryDefinition: { ...currentContext.currentQueryDefinition, pageNumber: 1 },
         });
 
         trpcClient.common.reportEvent
@@ -101,7 +102,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                 },
                 measurements: {
                     page: 1,
-                    pageSize: currentContext.currrentQueryDefinition.pageSize,
+                    pageSize: currentContext.currentQueryDefinition.pageSize,
                 },
             })
             .catch((error) => {
@@ -112,8 +113,8 @@ export const ToolbarViewNavigation = (): JSX.Element => {
     function setPageSize(pageSize: number) {
         setCurrentContext({
             ...currentContext,
-            currrentQueryDefinition: {
-                ...currentContext.currrentQueryDefinition,
+            currentQueryDefinition: {
+                ...currentContext.currentQueryDefinition,
                 pageSize: pageSize,
                 pageNumber: 1,
             },
@@ -128,7 +129,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                     view: currentContext.currentView,
                 },
                 measurements: {
-                    page: currentContext.currrentQueryDefinition.pageNumber,
+                    page: currentContext.currentQueryDefinition.pageNumber,
                     pageSize: pageSize,
                 },
             })
@@ -139,28 +140,28 @@ export const ToolbarViewNavigation = (): JSX.Element => {
 
     return (
         <Toolbar aria-label="with Popover" size="small">
-            <Tooltip content="Go to first page" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Go to first page')} relationship="description" withArrow>
                 <ToolbarButton
                     onClick={goToFirstPage}
-                    aria-label="Go to start"
+                    aria-label={l10n.t('Go to start')}
                     icon={<ArrowPreviousFilled />}
                     disabled={currentContext.isLoading}
                 />
             </Tooltip>
 
-            <Tooltip content="Go to previous page" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Go to previous page')} relationship="description" withArrow>
                 <ToolbarButton
                     onClick={goToPreviousPage}
-                    aria-label="Go to previous page"
+                    aria-label={l10n.t('Go to previous page')}
                     icon={<ArrowLeftFilled />}
                     disabled={currentContext.isLoading}
                 />
             </Tooltip>
 
-            <Tooltip content="Go to next page" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Go to next page')} relationship="description" withArrow>
                 <ToolbarButton
                     onClick={goToNextPage}
-                    aria-label="Go to next page"
+                    aria-label={l10n.t('Go to next page')}
                     icon={<ArrowRightFilled />}
                     disabled={currentContext.isLoading}
                 />
@@ -168,7 +169,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
 
             <ToolbarDividerTransparent />
 
-            <Tooltip content="Change page size" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Change page size')} relationship="description" withArrow>
                 <Dropdown
                     disabled={currentContext.isLoading}
                     onOptionSelect={(_e, data) => {
@@ -188,7 +189,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
             <ToolbarDividerTransparent />
 
             <Label weight="semibold" className="lblPageNumber">
-                <pre>Page {currentContext.currrentQueryDefinition.pageNumber}</pre>
+                <pre>Page {currentContext.currentQueryDefinition.pageNumber}</pre>
             </Label>
         </Toolbar>
     );

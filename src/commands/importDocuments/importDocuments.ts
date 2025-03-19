@@ -7,6 +7,7 @@ import { type ItemDefinition, type JSONObject, type JSONValue, type PartitionKey
 import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { parse as parseJson } from '@prantlf/jsonlint';
+import * as l10n from '@vscode/l10n';
 import { EJSON, type Document } from 'bson';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
@@ -46,7 +47,9 @@ export async function importDocuments(
     });
 
     if (ignoredUris.length) {
-        ext.outputChannel.appendLog(`Ignoring the following files that do not match the "*.json" file name pattern:`);
+        ext.outputChannel.appendLog(
+            l10n.t('Ignoring the following files that do not match the "*.json" file name pattern:'),
+        );
         ignoredUris.forEach((uri) => ext.outputChannel.appendLog(`${uri.fsPath}`));
         ext.outputChannel.show();
     }
@@ -64,7 +67,7 @@ export async function importDocuments(
 
     context.telemetry.properties.experience = selectedItem.experience.api;
 
-    await ext.state.runWithTemporaryDescription(selectedItem.id, 'Importing...', async () => {
+    await ext.state.runWithTemporaryDescription(selectedItem.id, l10n.t('Importing…'), async () => {
         await importDocumentsWithProgress(selectedItem, uris);
     });
 
@@ -78,10 +81,10 @@ export async function importDocumentsWithProgress(
     const result = await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: 'Importing documents...',
+            title: l10n.t('Importing documents…'),
         },
         async (progress) => {
-            progress.report({ increment: 0, message: 'Loading documents...' });
+            progress.report({ increment: 0, message: l10n.t('Loading documents…') });
 
             const countUri = uris.length;
             const incrementUri = 50 / (countUri || 1);
@@ -91,13 +94,15 @@ export async function importDocumentsWithProgress(
             for (let i = 0, percent = 0; i < countUri; i++, percent += incrementUri) {
                 progress.report({
                     increment: Math.floor(percent),
-                    message: `Loading document ${i + 1} of ${countUri}`,
+                    message: l10n.t('Loading document {num} of {countUri}', { num: i + 1, countUri }),
                 });
 
                 const result = await parseAndValidateFile(selectedItem, uris[i]);
 
                 if (result.errors && result.errors.length) {
-                    ext.outputChannel.appendLog(`Errors found in document ${uris[i].path}. Please fix these.`);
+                    ext.outputChannel.appendLog(
+                        l10n.t('Errors found in document {path}. Please fix these.', { path: uris[i].path }),
+                    );
                     ext.outputChannel.appendLog(result.errors.join('\n'));
                     ext.outputChannel.show();
                     hasErrors = true;
@@ -115,14 +120,20 @@ export async function importDocumentsWithProgress(
             for (let i = 0, percent = 0; i < countDocuments; i++, percent += incrementDocuments) {
                 progress.report({
                     increment: Math.floor(percent),
-                    message: `Importing document ${i + 1} of ${countDocuments}`,
+                    message: l10n.t('Importing document {num} of {countDocuments}', {
+                        num: i + 1,
+                        countDocuments,
+                    }),
                 });
 
                 const result = await insertDocument(selectedItem, documents[i]);
 
                 if (result.error) {
                     ext.outputChannel.appendLog(
-                        `The insertion of document ${i + 1} failed with error: ${result.error}`,
+                        l10n.t('The insertion of document {number} failed with error: {error}', {
+                            number: i + 1,
+                            error: result.error,
+                        }),
                     );
                     ext.outputChannel.show();
                     hasErrors = true;
@@ -131,9 +142,13 @@ export async function importDocumentsWithProgress(
                 }
             }
 
-            progress.report({ increment: 50, message: 'Finished importing' });
+            progress.report({ increment: 50, message: l10n.t('Finished importing') });
 
-            return `${hasErrors ? 'Import has accomplished with errors' : 'Import successful'}. Inserted ${count} document(s). See output for more details.`;
+            return hasErrors
+                ? l10n.t('Import has accomplished with errors.')
+                : l10n.t('Import successful.') +
+                      ' ' +
+                      l10n.t('Inserted {0} document(s). See output for more details.', count);
         },
     );
 
@@ -144,7 +159,7 @@ export async function importDocumentsWithProgress(
 async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
     const openDialogOptions: vscode.OpenDialogOptions = {
         canSelectMany: true,
-        openLabel: 'Import',
+        openLabel: l10n.t('Import'),
         filters: {
             JSON: ['json'],
         },
@@ -174,7 +189,7 @@ async function parseAndValidateFile(
         return { documents: [], errors: [parseError(e).message] };
     }
 
-    return { documents: [], errors: ['Unknown error'] };
+    return { documents: [], errors: [l10n.t('Unknown error')] };
 }
 
 /**
@@ -190,14 +205,14 @@ async function parseAndValidateFileForMongo(uri: vscode.Uri): Promise<{ document
     const documents: unknown[] = [];
 
     if (!parsed || typeof parsed !== 'object') {
-        errors.push('Document must be an object.');
+        errors.push(l10n.t('Document must be an object.'));
     } else if (Array.isArray(parsed)) {
         documents.push(
             ...parsed
                 .map((document: unknown) => {
                     // Only top-level array is supported
                     if (!document || typeof document !== 'object' || Array.isArray(document)) {
-                        errors.push(`Document must be an object. Skipping...\n${EJSON.stringify(document)}`);
+                        errors.push(l10n.t('Document must be an object. Skipping…') + '\n' + EJSON.stringify(document));
                         return undefined;
                     }
 
@@ -240,14 +255,14 @@ async function parseAndValidateFileForDocumentDB(
     const parsed = parseJson(fileContent) as JSONValue;
 
     if (!parsed || typeof parsed !== 'object') {
-        errors.push('Document must be an object.');
+        errors.push(l10n.t('Document must be an object.'));
     } else if (Array.isArray(parsed)) {
         documents.push(
             ...parsed
                 .map((document: unknown) => {
                     // Only top-level array is supported
                     if (!document || typeof document !== 'object' || Array.isArray(document)) {
-                        errors.push(`Document must be an object. Skipping...\n${EJSON.stringify(document)}`);
+                        errors.push(l10n.t('Document must be an object. Skipping…') + '\n' + EJSON.stringify(document));
                         return undefined;
                     }
 
@@ -282,7 +297,7 @@ async function insertDocument(
         return { document, error: parseError(e).message };
     }
 
-    return { document, error: 'Unknown error' };
+    return { document, error: l10n.t('Unknown error') };
 }
 
 async function insertDocumentIntoDocumentDB(
@@ -299,7 +314,7 @@ async function insertDocumentIntoDocumentDB(
     if (response.resource) {
         return { document, error: '' };
     } else {
-        return { document, error: `The insertion failed with status code ${response.statusCode}` };
+        return { document, error: l10n.t('The insertion failed with status code {0}', response.statusCode) };
     }
 }
 
@@ -313,6 +328,9 @@ async function insertDocumentIntoMongoCluster(
     if (response?.acknowledged) {
         return { document, error: '' };
     } else {
-        return { document, error: `The insertion failed. The operation was not acknowledged by the database.` };
+        return {
+            document,
+            error: l10n.t('The insertion failed. The operation was not acknowledged by the database.'),
+        };
     }
 }

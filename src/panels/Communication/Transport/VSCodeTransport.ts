@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
 import { isTransportMessage, type Transport, type TransportMessage } from './Transport';
 
@@ -42,7 +43,7 @@ export class VSCodeTransport implements Transport {
     private handleMessage(msg: unknown): void {
         try {
             if (!isTransportMessage(msg)) {
-                console.warn(`[VSCodeTransport] Received message that is not a transport message`, msg);
+                console.warn('[VSCodeTransport] Received message that is not a transport message', msg);
                 return;
             }
 
@@ -52,12 +53,12 @@ export class VSCodeTransport implements Transport {
                 try {
                     cb(message);
                 } catch (error) {
-                    console.error(`[VSCodeTransport] Error occurred calling callback`, error);
+                    console.error(l10n.t('[VSCodeTransport] Error occurred calling callback'), error);
                 }
             });
         } catch (error) {
             // TODO: Telemetry
-            console.error(`[VSCodeTransport] Error occurred handling received message`, error);
+            console.error(l10n.t('[VSCodeTransport] Error occurred handling received message'), error);
         }
     }
 }

@@ -12,11 +12,11 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-
+import * as l10n from '@vscode/l10n';
+import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
-import { localize } from '../../utils/localize';
 import { CredentialCache } from '../CredentialCache';
 import { MongoClustersClient } from '../MongoClustersClient';
 import { type AuthenticateWizardContext } from '../wizards/authenticate/AuthenticateWizardContext';
@@ -24,8 +24,6 @@ import { ProvidePasswordStep } from '../wizards/authenticate/ProvidePasswordStep
 import { ProvideUserNameStep } from '../wizards/authenticate/ProvideUsernameStep';
 import { MongoClusterItemBase } from './MongoClusterItemBase';
 import { type MongoClusterModel } from './MongoClusterModel';
-
-import ConnectionString from 'mongodb-connection-string-url';
 
 export class MongoClusterResourceItem extends MongoClusterItemBase {
     constructor(
@@ -76,7 +74,9 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
             'cosmosDB.mongoClusters.connect',
             async (context: IActionContext) => {
                 ext.outputChannel.appendLine(
-                    `MongoDB Clusters: Attempting to authenticate with "${this.mongoCluster.name}"...`,
+                    l10n.t('MongoDB Clusters: Attempting to authenticate with "{cluster}"…', {
+                        cluster: this.mongoCluster.name,
+                    }),
                 );
 
                 // Create a client to interact with the MongoDB vCore management API and read the cluster details
@@ -119,24 +119,31 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                 );
 
                 ext.outputChannel.append(
-                    `MongoDB Clusters: Connecting to the cluster as "${wizardContext.selectedUserName}"... `,
+                    l10n.t('MongoDB Clusters: Connecting to the cluster as "{username}"…', {
+                        username: wizardContext.selectedUserName ?? '',
+                    }),
                 );
 
                 // Attempt to create the client with the provided credentials
                 let mongoClustersClient: MongoClustersClient;
                 try {
                     mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
-                        ext.outputChannel.appendLine(`Error: ${error.message}`);
+                        ext.outputChannel.appendLine(l10n.t('Error: {error}', { error: error.message }));
 
-                        void vscode.window.showErrorMessage(`Failed to connect to "${this.mongoCluster.name}"`, {
-                            modal: true,
-                            detail: `Revisit connection details and try again.\n\nError: ${error.message}`,
-                        });
+                        void vscode.window.showErrorMessage(
+                            l10n.t('Failed to connect to "{cluster}"', { cluster: this.mongoCluster.name }),
+                            {
+                                modal: true,
+                                detail:
+                                    l10n.t('Revisit connection details and try again.') +
+                                    '\n\n' +
+                                    l10n.t('Error: {error}', { error: error.message }),
+                            },
+                        );
 
                         throw error;
                     });
-                } catch (error) {
-                    console.log(error);
+                } catch {
                     // If connection fails, remove cached credentials
                     await MongoClustersClient.deleteClient(this.id);
                     CredentialCache.deleteCredentials(this.id);
@@ -146,7 +153,10 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                 }
 
                 ext.outputChannel.appendLine(
-                    `MongoDB Clusters: Connected to "${this.mongoCluster.name}" as "${wizardContext.selectedUserName}".`,
+                    l10n.t('MongoDB Clusters: Connected to "{cluster}" as "{username}".', {
+                        cluster: this.mongoCluster.name,
+                        username: wizardContext.selectedUserName ?? '',
+                    }),
                 );
 
                 return mongoClustersClient;
@@ -165,7 +175,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
     private async promptForCredentials(wizardContext: AuthenticateWizardContext): Promise<boolean> {
         const wizard = new AzureWizard(wizardContext, {
             promptSteps: [new ProvideUserNameStep(), new ProvidePasswordStep()],
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            title: l10n.t('Authenticate to connect with your MongoDB cluster'),
             showLoadingPrompt: true,
         });
 

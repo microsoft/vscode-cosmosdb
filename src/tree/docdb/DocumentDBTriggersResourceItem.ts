@@ -5,7 +5,8 @@
 
 import { type CosmosClient, type Resource, type TriggerDefinition } from '@azure/cosmos';
 import { createContextValue } from '@microsoft/vscode-azext-utils';
-import vscode, { type TreeItem } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -35,12 +36,12 @@ export abstract class DocumentDBTriggersResourceItem
         return this.getChildrenImpl(triggers);
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('zap'),
-            label: 'Triggers',
+            label: l10n.t('Triggers'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

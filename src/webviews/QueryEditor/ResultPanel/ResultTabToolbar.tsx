@@ -6,6 +6,7 @@
 import { type OptionOnSelectData } from '@fluentui/react-combobox';
 import { Dropdown, Option, Toolbar, ToolbarButton, Tooltip, useRestoreFocusTarget } from '@fluentui/react-components';
 import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
+import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
 import { type CosmosDbRecordIdentifier } from 'src/docdb/types/queryResult';
 import { getDocumentId, isSelectStar } from '../../utils';
@@ -50,38 +51,46 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
     }
 
     return (
-        <Toolbar aria-label="Result view toolbar" size="small">
+        <Toolbar aria-label={l10n.t('Result view toolbar')} size="small">
             {isEditMode && (
                 <>
-                    <Tooltip content="Add new document in separate tab" relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Add new document in separate tab')} relationship="description" withArrow>
                         <ToolbarButton
-                            aria-label={'Add new document'}
+                            aria-label={l10n.t('Add new document')}
                             icon={<AddFilled />}
                             onClick={() => void dispatcher.openDocument('add')}
                             style={{ visibility }}
                         />
                     </Tooltip>
-                    <Tooltip content="View selected document in separate tab" relationship="description" withArrow>
+                    <Tooltip
+                        content={l10n.t('View selected document in separate tab')}
+                        relationship="description"
+                        withArrow
+                    >
                         <ToolbarButton
-                            aria-label={'View selected document'}
+                            aria-label={l10n.t('View selected document')}
                             icon={<EyeRegular />}
                             onClick={() => void dispatcher.openDocuments('view', getSelectedDocuments())}
                             disabled={!hasSelectedRows}
                             style={{ visibility }}
                         />
                     </Tooltip>
-                    <Tooltip content="Edit selected document in separate tab" relationship="description" withArrow>
+                    <Tooltip
+                        content={l10n.t('Edit selected document in separate tab')}
+                        relationship="description"
+                        withArrow
+                    >
                         <ToolbarButton
-                            aria-label={'Edit selected document'}
+                            aria-label={l10n.t('Edit selected document')}
                             icon={<EditRegular />}
                             onClick={() => void dispatcher.openDocuments('edit', getSelectedDocuments())}
                             disabled={!hasSelectedRows}
                             style={{ visibility }}
                         />
                     </Tooltip>
-                    <Tooltip content="Delete selected document" relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Delete selected document')} relationship="description" withArrow>
                         <ToolbarButton
-                            aria-label={'Delete selected document'}
+                            aria-label={l10n.t('Delete selected document')}
                             icon={<DeleteRegular />}
                             onClick={() => void dispatcher.deleteDocuments(getSelectedDocuments())}
                             disabled={!hasSelectedRows}
@@ -93,22 +102,29 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
                 </>
             )}
 
-            <Tooltip content="Change view mode" relationship="description" withArrow>
+            <Tooltip content={l10n.t('Change view mode')} relationship="description" withArrow>
                 <Dropdown
                     onOptionSelect={(_event, data) => onOptionSelect(data)}
                     style={{ minWidth: '100px', maxWidth: '100px' }}
-                    defaultValue={state.tableViewMode}
+                    // The value is always set "as is"
+                    value={
+                        state.tableViewMode === 'Tree'
+                            ? l10n.t('Tree')
+                            : state.tableViewMode === 'JSON'
+                              ? l10n.t('JSON')
+                              : l10n.t('Table')
+                    }
                     defaultSelectedOptions={[state.tableViewMode]}
                     {...restoreFocusTargetAttribute}
                 >
-                    <Option key="Tree" value={'Tree'}>
-                        Tree
+                    <Option key="Tree" value="Tree">
+                        {l10n.t('Tree')}
                     </Option>
-                    <Option key="JSON" value={'JSON'}>
-                        JSON
+                    <Option key="JSON" value="JSON">
+                        {l10n.t('JSON')}
                     </Option>
-                    <Option key="Table" value={'Table'}>
-                        Table
+                    <Option key="Table" value="Table">
+                        {l10n.t('Table')}
                     </Option>
                 </Dropdown>
             </Tooltip>

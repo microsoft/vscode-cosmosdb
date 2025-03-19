@@ -6,9 +6,9 @@
 import { wellKnownEmulatorPassword } from '../constants';
 import { parseDocDBConnectionString } from './docDBConnectionStrings';
 
-describe(`docDBConnectionStrings`, () => {
+describe('docDBConnectionStrings', () => {
     // Testing different ordering, different use of ';', different casing, etc.
-    describe(`Without database name`, () => {
+    describe('Without database name', () => {
         it('Connection string with empty database', () => {
             const parsedCS = parseDocDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==',
@@ -111,7 +111,7 @@ describe(`docDBConnectionStrings`, () => {
     });
 
     // Testing different ordering, different use of ';', different casing, etc.
-    describe(`With database name`, () => {
+    describe('With database name', () => {
         it('Connection string with database', () => {
             const parsedCS = parseDocDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;Database=abcd',
@@ -159,7 +159,7 @@ describe(`docDBConnectionStrings`, () => {
         });
     });
 
-    it(`Invalid connection strings`, () => {
+    it('Invalid connection strings', () => {
         expect(() => parseDocDBConnectionString('')).toThrow(Error);
         expect(() => parseDocDBConnectionString('AccountKey=abcdef==')).toThrow(Error);
         expect(() => parseDocDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/')).toThrow(

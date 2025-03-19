@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getAllCommandsFromText } from '../MongoScrapbookHelpers';
 import { MongoScrapbookService } from '../MongoScrapbookService';
@@ -63,11 +64,11 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 
     private createConnectionStatusLens(): vscode.CodeLens {
         const title = MongoScrapbookService.isConnected()
-            ? `Connected to "${MongoScrapbookService.getDisplayName()}"`
-            : 'Connect to a database';
+            ? l10n.t('Connected to "{name}"', { name: MongoScrapbookService.getDisplayName() ?? '' })
+            : l10n.t('Connect to a database');
 
         const shortenedTitle =
-            title.length > 64 ? title.slice(0, 64 / 2) + '...' + title.slice(-(64 - 3 - 64 / 2)) : title;
+            title.length > 64 ? title.slice(0, 64 / 2) + '…' + title.slice(-(64 - 3 - 64 / 2)) : title;
 
         return <vscode.CodeLens>{
             command: {
@@ -80,7 +81,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     private createRunAllCommandsLens(): vscode.CodeLens {
-        const title = MongoScrapbookService.isExecutingAllCommands() ? '⏳ Running All...' : '⏩ Run All';
+        const title = MongoScrapbookService.isExecutingAllCommands() ? l10n.t('⏳ Running All…') : l10n.t('⏩ Run All');
 
         return <vscode.CodeLens>{
             command: {
@@ -96,7 +97,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
 
         return commands.map((cmd) => {
             const running = currentCommandInExectution && cmd.range.isEqual(currentCommandInExectution.range);
-            const title = running ? '⏳ Running Command...' : '▶️ Run Command';
+            const title = running ? l10n.t('⏳ Running Command…') : l10n.t('▶️ Run Command');
 
             return <vscode.CodeLens>{
                 command: {

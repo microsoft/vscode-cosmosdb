@@ -9,11 +9,11 @@ import {
     type AzureWizardPromptStep,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../constants';
 import { NewMongoEmulatorConnectionItem } from '../../mongoClusters/tree/workspace/LocalEmulators/NewMongoEmulatorConnectionItem';
 import { NewCoreEmulatorConnectionItem } from '../../tree/workspace/LocalEmulators/NewCoreEmulatorConnectionItem';
-import { localize } from '../../utils/localize';
 import { ExecuteStep } from './ExecuteStep';
 import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
 import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
@@ -30,14 +30,10 @@ export async function newEmulatorConnection(
         context.errorHandling.suppressReportIssue = true;
         throw new Error(
             node instanceof NewMongoEmulatorConnectionItem
-                ? localize(
-                      'mongoEmulatorNotSupported',
+                ? l10n.t(
                       'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
                   )
-                : localize(
-                      'emulatorNotSupported',
-                      'The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).',
-                  ),
+                : l10n.t('The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).'),
         );
     }
 
@@ -51,7 +47,7 @@ export async function newEmulatorConnection(
     const executeSteps: AzureWizardExecuteStep<NewEmulatorConnectionWizardContext>[] = [];
 
     if (node instanceof NewMongoEmulatorConnectionItem) {
-        title = 'New Emulator Connection';
+        title = l10n.t('New Emulator Connection');
         steps.push(
             new PromptEmulatorTypeStep(API.MongoDB),
             new PromptMongoEmulatorConnectionStringStep(),
@@ -70,7 +66,7 @@ export async function newEmulatorConnection(
      */
 
     if (node instanceof NewCoreEmulatorConnectionItem) {
-        title = 'New Emulator Connection';
+        title = l10n.t('New Emulator Connection');
         steps.push(
             new PromptEmulatorTypeStep(API.Core),
             new PromptNosqlEmulatorConnectionStringStep(),

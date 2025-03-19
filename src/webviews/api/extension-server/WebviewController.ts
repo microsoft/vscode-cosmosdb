@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { getTRPCErrorFromUnknown } from '@trpc/server';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type API } from '../../../AzureDBExperiences';
 import { appRouter, type BaseRouterContext } from '../configuration/appRouter';
@@ -127,7 +128,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
             const procedure = caller[message.op.path];
 
             if (typeof procedure !== 'function') {
-                throw new Error(`Procedure not found: ${message.op.path}`);
+                throw new Error(l10n.t('Procedure not found: {name}', { name: message.op.path }));
             }
 
             // In v12, tRPC will have better cancellation support. For now, we use AbortController.
@@ -198,7 +199,7 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
             const procedure = caller[message.op.path];
 
             if (typeof procedure !== 'function') {
-                throw new Error(`Procedure not found: ${message.op.path}`);
+                throw new Error(l10n.t('Procedure not found: {name}', { name: message.op.path }));
             }
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call

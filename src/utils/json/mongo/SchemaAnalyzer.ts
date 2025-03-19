@@ -55,6 +55,7 @@
  *
  */
 
+import * as l10n from '@vscode/l10n';
 import { assert } from 'console';
 import Denque from 'denque';
 import { type Document, type WithId } from 'mongodb';
@@ -641,7 +642,7 @@ function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema {
                 return currentNode;
             }
         } else {
-            throw new Error(`No properties found in the schema at path "${path.slice(0, i + 1).join('/')}"`);
+            throw new Error(l10n.t('No properties found in the schema at path "{0}"', path.slice(0, i + 1).join('/')));
         }
     }
 

@@ -109,12 +109,25 @@ module.exports = (env, { mode }) => {
                         to: 'grammar',
                     },
                     {
+                        from: 'l10n',
+                        to: 'l10n',
+                    },
+                    {
                         from: 'resources',
                         to: 'resources',
                     },
                     {
                         from: 'package.json',
                         to: 'package.json',
+                    },
+                    {
+                        from: 'package.nls.json',
+                        to: 'package.nls.json',
+                    },
+                    {
+                        from: 'package.nls.*.json',
+                        to: '[name][ext]',
+                        noErrorOnMissing: true,
                     },
                     {
                         from: 'CHANGELOG.md',
@@ -131,13 +144,15 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'README.md',
                         to: 'README.md',
-                        transform(content, absoluteFrom) {
-                            let data = content.toString();
-                            return data.replace(
-                                /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis,
-                                '',
-                            );
-                        },
+                        transform: isDev
+                            ? undefined
+                            : function transform(content, absoluteFrom) {
+                                  let data = content.toString();
+                                  return data.replace(
+                                      /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis,
+                                      '',
+                                  );
+                              },
                     },
                     {
                         from: 'SECURITY.md',

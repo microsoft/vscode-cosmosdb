@@ -5,6 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
@@ -13,7 +14,6 @@ import { CollectionItem } from '../../mongoClusters/tree/CollectionItem';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { localize } from '../../utils/localize';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function deleteGraph(context: IActionContext, node?: DocumentDBContainerResourceItem): Promise<void> {
@@ -57,12 +57,23 @@ export async function deleteContainer(
     context.telemetry.properties.experience = node.experience.api;
 
     const containerId = node instanceof CollectionItem ? node.collectionInfo.name : node.model.container.id;
-    const containerTypeName =
-        node instanceof CollectionItem ? 'collection' : node.experience.api === API.Graph ? 'graph' : 'container';
+    const message =
+        node instanceof CollectionItem
+            ? l10n.t('Delete collection "{containerId}" and its contents?', { containerId })
+            : node.experience.api === API.Graph
+              ? l10n.t('Delete graph "{containerId}" and its contents?', { containerId })
+              : l10n.t('Delete container "{containerId}" and its contents?', { containerId });
+
+    const successMessage =
+        node instanceof CollectionItem
+            ? l10n.t('The collection "{containerId}" has been deleted.', { containerId })
+            : node.experience.api === API.Graph
+              ? l10n.t('The graph "{containerId}" has been deleted.', { containerId })
+              : l10n.t('The container "{containerId}" has been deleted.', { containerId });
 
     const confirmed = await getConfirmationAsInSettings(
-        `Delete "${containerId}"?`,
-        `Delete ${containerTypeName} "${containerId}" and its contents?\nThis can't be undone.`,
+        l10n.t('Delete "{nodeName}"?', { nodeName: containerId }),
+        message + '\n' + l10n.t('This cannot be undone.'),
         containerId,
     );
 
@@ -75,13 +86,7 @@ export async function deleteContainer(
             node instanceof CollectionItem ? await deleteMongoCollection(node) : await deleteDocumentDBContainer(node);
 
         if (success) {
-            showConfirmationAsInSettings(
-                localize(
-                    'showConfirmation.droppedDatabase',
-                    `The "{0}" ${containerTypeName} has been deleted.`,
-                    containerId,
-                ),
-            );
+            showConfirmationAsInSettings(successMessage);
         }
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');

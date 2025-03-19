@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
 import { ext } from '../../extensionVariables';
@@ -26,18 +27,22 @@ export class DocumentDBExecuteStep extends AzureWizardExecuteStep<NewConnectionW
             const parsedCS = parseDocDBConnectionString(connectionString);
             const label = `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
 
-            return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
-                await new Promise((resolve) => setTimeout(resolve, 250));
+            return ext.state.showCreatingChild(
+                parentId,
+                l10n.t('Creating "{nodeName}"…', { nodeName: label }),
+                async () => {
+                    await new Promise((resolve) => setTimeout(resolve, 250));
 
-                const storageItem: SharedWorkspaceStorageItem = {
-                    id: parsedCS.accountId,
-                    name: label,
-                    properties: { isEmulator: false, api },
-                    secrets: [connectionString],
-                };
+                    const storageItem: SharedWorkspaceStorageItem = {
+                        id: parsedCS.accountId,
+                        name: label,
+                        properties: { isEmulator: false, api },
+                        secrets: [connectionString],
+                    };
 
-                await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
-            });
+                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                },
+            );
         }
     }
 

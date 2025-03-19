@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { type PostgresStoredProceduresTreeItem } from '../../../tree/PostgresStoredProceduresTreeItem';
 import { runPostgresQueryWizard } from '../runPostgresQueryWizard';
 import { StoredProcedureQueryCreateStep } from './steps/StoredProcedureQueryCreateStep';
@@ -16,7 +17,7 @@ export async function createPostgresStoredProcedureQuery(
     const wizard = new AzureWizard(context, {
         promptSteps: [new StoredProcedureQueryNameStep()],
         executeSteps: [new StoredProcedureQueryCreateStep()],
-        title: 'Create PostgreSQL Stored Procedure Query',
+        title: l10n.t('Create PostgreSQL Stored Procedure Query'),
     });
 
     await runPostgresQueryWizard(wizard, context, treeItem);

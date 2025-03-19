@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
-import { localize } from '../../utils/localize';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
 export async function deleteMongoClustersAccount(
@@ -20,16 +20,12 @@ export async function deleteMongoClustersAccount(
 
     const deletePromise = (await client).mongoClusters.beginDeleteAndWait(resourceGroup, accountName);
     if (!context.suppressNotification) {
-        const deletingMessage: string = `Deleting account "${accountName}"...`;
+        const deletingMessage = l10n.t('Deleting account "{accountName}"…', { accountName });
         await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: deletingMessage },
             async () => {
                 await deletePromise;
-                const deleteMessage: string = localize(
-                    'deleteAccountMsg',
-                    `Successfully deleted account "{0}".`,
-                    accountName,
-                );
+                const deleteMessage = l10n.t('Successfully deleted account "{accountName}".', { accountName });
                 void vscode.window.showInformationMessage(deleteMessage);
                 ext.outputChannel.appendLog(deleteMessage);
             },

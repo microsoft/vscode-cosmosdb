@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -29,16 +30,16 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
         switch (context.mode) {
             case NewEmulatorConnectionMode.Preconfigured:
                 if (connectionString === undefined || port === undefined || experience === undefined) {
-                    throw new Error('Internal error: connectionString, port, and api must be defined.');
+                    throw new Error(l10n.t('Internal error: connectionString, port, and api must be defined.'));
                 }
                 break;
             case NewEmulatorConnectionMode.CustomConnectionString:
                 if (connectionString === undefined || experience === undefined) {
-                    throw new Error('Internal error: connectionString must be defined.');
+                    throw new Error(l10n.t('Internal error: connectionString must be defined.'));
                 }
                 break;
             default:
-                throw new Error('Internal error: mode must be defined.');
+                throw new Error(l10n.t('Internal error: mode must be defined.'));
         }
 
         const portSuffix = typeof port !== 'undefined' ? ` : ${port}` : '';
@@ -48,44 +49,48 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
             label = `MongoDB Emulator${portSuffix}`;
         }
 
-        return ext.state.showCreatingChild(parentId, `Creating "${label}"...`, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 250));
+        return ext.state.showCreatingChild(
+            parentId,
+            l10n.t('Creating "{nodeName}"…', { nodeName: label }),
+            async () => {
+                await new Promise((resolve) => setTimeout(resolve, 250));
 
-            let isEmulator: boolean = true;
-            let disableEmulatorSecurity: boolean | undefined;
+                let isEmulator: boolean = true;
+                let disableEmulatorSecurity: boolean | undefined;
 
-            switch (experience.api) {
-                case API.MongoDB:
-                case API.MongoClusters: {
-                    const mongoConfig = context.mongoEmulatorConfiguration as MongoEmulatorConfiguration;
-                    isEmulator = mongoConfig?.isEmulator ?? true;
-                    disableEmulatorSecurity = mongoConfig?.disableEmulatorSecurity;
-                    break;
+                switch (experience.api) {
+                    case API.MongoDB:
+                    case API.MongoClusters: {
+                        const mongoConfig = context.mongoEmulatorConfiguration as MongoEmulatorConfiguration;
+                        isEmulator = mongoConfig?.isEmulator ?? true;
+                        disableEmulatorSecurity = mongoConfig?.disableEmulatorSecurity;
+                        break;
+                    }
+                    // Add additional cases here for APIs that require different handling
+                    default: {
+                        isEmulator = context.isCoreEmulator ?? true;
+                        break;
+                    }
                 }
-                // Add additional cases here for APIs that require different handling
-                default: {
-                    isEmulator = context.isCoreEmulator ?? true;
-                    break;
+
+                const storageItem: SharedWorkspaceStorageItem = {
+                    id: connectionString,
+                    name: label,
+                    properties: {
+                        api: experience.api,
+                        isEmulator,
+                        ...(disableEmulatorSecurity && { disableEmulatorSecurity }),
+                    },
+                    secrets: [connectionString],
+                };
+
+                if (experience.api === API.MongoDB) {
+                    await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                } else {
+                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
                 }
-            }
-
-            const storageItem: SharedWorkspaceStorageItem = {
-                id: connectionString,
-                name: label,
-                properties: {
-                    api: experience.api,
-                    isEmulator,
-                    ...(disableEmulatorSecurity && { disableEmulatorSecurity }),
-                },
-                secrets: [connectionString],
-            };
-
-            if (experience.api === API.MongoDB) {
-                await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
-            } else {
-                await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
-            }
-        });
+            },
+        );
     }
 
     public shouldExecute(context: NewEmulatorConnectionWizardContext): boolean {

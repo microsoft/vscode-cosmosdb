@@ -3,7 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-const timedOutMessage = 'Execution timed out';
+import * as l10n from '@vscode/l10n';
+
+const timedOutMessage = l10n.t('Execution timed out');
 
 /**
  * Returns the result of awaiting a specified action. Rejects if the action throws. Returns timeoutValue if a time-out occurs.

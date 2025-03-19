@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
 import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
@@ -28,7 +29,7 @@ export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWiza
             );
             ext.mongoClustersBranchDataProvider.refresh();
         } else {
-            throw new Error('Unexpected node type');
+            throw new Error(l10n.t('Unexpected node type'));
         }
     }
 

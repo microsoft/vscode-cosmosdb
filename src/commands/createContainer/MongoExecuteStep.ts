@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
 import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { localize } from '../../utils/localize';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<CreateCollectionWizardContext> {
@@ -19,7 +19,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<CreateCollectionWiz
 
         return ext.state.showCreatingChild(
             context.nodeId,
-            localize('mongoClusters.tree.creating', 'Creating "{0}"...', collectionName),
+            l10n.t('Creating "{nodeName}"…', { nodeName: collectionName }),
             async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
                 await client.createCollection(databaseName, collectionName);

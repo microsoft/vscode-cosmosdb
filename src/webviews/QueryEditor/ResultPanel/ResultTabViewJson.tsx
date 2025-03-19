@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { MonacoEditor } from '../../MonacoEditor';
 
 type ResultTabViewJsonProps = {
@@ -15,7 +16,7 @@ export const ResultTabViewJson = ({ data }: ResultTabViewJsonProps) => {
             height={'100%'}
             width={'100%'}
             defaultLanguage={'json'}
-            value={data || 'No result'}
+            value={data || l10n.t('No result')}
             options={{ domReadOnly: true, readOnly: true }}
         />
     );

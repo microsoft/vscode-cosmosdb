@@ -11,12 +11,12 @@ import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmat
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
+import * as l10n from '@vscode/l10n';
 import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
-import { localize } from '../../../utils/localize';
 import { promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
@@ -33,7 +33,7 @@ export const collectionsViewRouter = router({
     getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        return 'Info from the webview: ' + JSON.stringify(myCtx);
+        return l10n.t('Info from the webview: ') + JSON.stringify(myCtx);
     }),
     runQuery: publicProcedure
         .use(trpcToTelemetry)
@@ -174,8 +174,8 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             const confirmed = await getConfirmationAsInSettings(
-                'Are you sure?',
-                `Delete ${input.length} documents?\n\nThis can't be undone.`,
+                l10n.t('Are you sure?'),
+                l10n.t('Delete {count} documents?', { count: input.length }) + '\n' + l10n.t('This cannot be undone.'),
                 'delete',
             );
 
@@ -189,19 +189,11 @@ export const collectionsViewRouter = router({
             if (acknowledged) {
                 showConfirmationAsInSettings(
                     input.length > 1
-                        ? localize(
-                              'showConfirmation.deletedNdocuments',
-                              '{0} documents have been deleted.',
-                              input.length,
-                          )
-                        : localize(
-                              'showConfirmation.deletedNdocuments',
-                              '{0} document has been deleted.',
-                              input.length,
-                          ),
+                        ? l10n.t('{countMany} documents have been deleted.', { countMany: input.length })
+                        : l10n.t('{countOne} document has been deleted.', { countOne: input.length }),
                 );
             } else {
-                void vscode.window.showErrorMessage('Failed to delete documents. Unknown error.', {
+                void vscode.window.showErrorMessage(l10n.t('Failed to delete documents. Unknown error.'), {
                     modal: true,
                 });
             }

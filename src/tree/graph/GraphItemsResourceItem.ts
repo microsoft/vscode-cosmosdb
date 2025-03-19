@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import vscode, { type TreeItem } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DocumentDBItemsResourceItem } from '../docdb/DocumentDBItemsResourceItem';
@@ -18,21 +19,21 @@ export class GraphItemsResourceItem extends DocumentDBItemsResourceItem {
         return [];
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('file'),
-            label: 'Graph',
+            label: l10n.t('Graph'),
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
-                title: 'Open Graph Explorer',
+                title: l10n.t('Open Graph Explorer'),
                 command: 'cosmosDB.openGraphExplorer',
             },
         };
     }
 
     protected getChildrenImpl(): Promise<CosmosDBTreeElement[]> {
-        throw new Error('Method not implemented.');
+        throw new Error(l10n.t('Method not implemented.'));
     }
 }

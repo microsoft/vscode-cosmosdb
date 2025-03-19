@@ -3,8 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon, type TreeItem, TreeItemCollapsibleState } from 'vscode';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
@@ -39,13 +40,13 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
         ];
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             label: this.collectionInfo.name,
-            iconPath: new ThemeIcon('folder-opened'),
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            iconPath: new vscode.ThemeIcon('folder-opened'),
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

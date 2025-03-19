@@ -3,19 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-import { localize } from '../../../utils/localize';
 
+import * as l10n from '@vscode/l10n';
 import { type AuthenticateWizardContext } from './AuthenticateWizardContext';
 
 export class ProvideUserNameStep extends AzureWizardPromptStep<AuthenticateWizardContext> {
     public async prompt(context: AuthenticateWizardContext): Promise<void> {
         const username = await context.ui.showInputBox({
-            prompt: `Please provide the username for '${context.resourceName}':`,
-            placeHolder: `Username for ${context.resourceName}`,
+            prompt: l10n.t('Please provide the username for "{resource}":', { resource: context.resourceName }),
+            placeHolder: l10n.t('Username for {resource}', { resource: context.resourceName }),
             value: context.adminUserName,
-            title: localize('mongoClustersAuthenticateCluster', 'Authenticate to connect with your MongoDB cluster'),
+            title: l10n.t('Authenticate to connect with your MongoDB cluster'),
             ignoreFocusOut: true,
         });
 

@@ -5,6 +5,7 @@
 
 import { type ItemDefinition, type JSONValue, type RequestOptions } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
 import { DocumentDBHiddenFields } from '../../constants';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
@@ -44,11 +45,11 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
         const newData: JSONValue = JSON.parse(content) as JSONValue;
 
         if (typeof newData !== 'object' || newData === null) {
-            throw new Error('The document content is not a valid JSON object');
+            throw new Error(l10n.t('The item content is not a valid JSON object'));
         }
 
         if (!newData['id'] || typeof newData['id'] !== 'string') {
-            throw new Error('The "id" field is required to update a document');
+            throw new Error(l10n.t('The "id" field is required to update a item'));
         }
 
         // TODO: Does it matter to keep the same fields in the document? Why user can't change them?
@@ -59,7 +60,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
 
         // TODO: Does it make sense now? This check was created 4 years ago
         if (!newData['_etag'] || typeof newData['_etag'] !== 'string') {
-            throw new Error(`The "_etag" field is required to update a document`);
+            throw new Error(l10n.t('The "_etag" field is required to update a document'));
         }
 
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;
@@ -78,7 +79,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
             this.model.item = response.resource;
             void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, 'writeFile');
         } else {
-            throw new Error('Failed to update the document');
+            throw new Error(l10n.t('Failed to update the item'));
         }
     }
 }

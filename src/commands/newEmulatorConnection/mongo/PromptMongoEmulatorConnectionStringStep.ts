@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
-import { localize } from '../../../utils/localize';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -16,18 +16,12 @@ export class PromptMongoEmulatorConnectionStringStep extends AzureWizardPromptSt
     public hideStepCount: boolean = true;
 
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {
-        const prompt: string = localize(
-            'mongoClusters.addEmulatorConnection.connectionString.prompt',
-            'Enter the connection string of your Emulator',
-        );
+        const prompt: string = l10n.t('Enter the connection string of your Emulator');
         context.connectionString = (
             await context.ui.showInputBox({
                 prompt: prompt,
                 ignoreFocusOut: true,
-                placeHolder: localize(
-                    'mongoClusters.addWorkspaceConnection.connectionString.placeholder',
-                    'Starts with mongodb:// or mongodb+srv://',
-                ),
+                placeHolder: l10n.t('Starts with mongodb:// or mongodb+srv://'),
                 validateInput: (connectionString?: string) => this.validateInput(connectionString),
                 asyncValidationTask: (connectionString: string) => this.validateConnectionString(connectionString),
             })
@@ -46,11 +40,7 @@ export class PromptMongoEmulatorConnectionStringStep extends AzureWizardPromptSt
             if (error instanceof Error && error.name === 'MongoParseError') {
                 return error.message;
             } else {
-                return localize(
-                    'mongoClusters.addWorkspaceConnection.connectionString.invalid',
-                    'Invalid Connection String: {0}',
-                    `${error}`,
-                );
+                return l10n.t('Invalid Connection String: {error}', { error: parseError(error).message });
             }
         }
 
@@ -70,10 +60,7 @@ export class PromptMongoEmulatorConnectionStringStep extends AzureWizardPromptSt
         }
 
         if (!(connectionString.startsWith('mongodb://') || connectionString.startsWith('mongodb+srv://'))) {
-            return localize(
-                'mongoClusters.addWorkspaceConnection.connectionString.invalidPrefix',
-                '"mongodb://" or "mongodb+srv://" must be the prefix of the connection string.',
-            );
+            return l10n.t('"mongodb://" or "mongodb+srv://" must be the prefix of the connection string.');
         }
 
         return undefined;

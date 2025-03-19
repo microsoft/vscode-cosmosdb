@@ -3,14 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
+import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { buildPostgresConnectionString, parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
-import { localize } from '../../utils/localize';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class PostgresPasswordStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
-        const prompt: string = `Enter the password for ${context.experience!.shortName}`;
+        const prompt: string = l10n.t('Enter the password for {experience}', {
+            experience: context.experience!.shortName,
+        });
 
         context.password = await context.ui.showInputBox({
             prompt: prompt,
@@ -58,7 +60,7 @@ export class PostgresPasswordStep extends AzureWizardPromptStep<NewConnectionWiz
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return localize('invalidPostgresConnectionString', 'Invalid connection string: {0}', `${error}`);
+                return l10n.t('Invalid Connection String: {error}', { error: parseError(error).message });
             }
         }
 

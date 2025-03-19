@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as url from 'url';
 import { ParsedConnectionString } from '../ParsedConnectionString';
 import { nonNullProp } from '../utils/nonNull';
@@ -13,7 +14,7 @@ export function parseDocDBConnectionString(connectionString: string): ParsedDocD
     const databaseName = getPropertyFromConnectionString(connectionString, 'Database');
 
     if (!endpoint || !masterKey) {
-        throw new Error('Invalid Document DB connection string.');
+        throw new Error(l10n.t('Invalid Document DB connection string.'));
     }
 
     return new ParsedDocDBConnectionString(connectionString, endpoint, masterKey, databaseName);

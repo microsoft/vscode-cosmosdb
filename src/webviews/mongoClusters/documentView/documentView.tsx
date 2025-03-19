@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
+import { ProgressBar } from '@fluentui/react-components';
 import { loader } from '@monaco-editor/react';
+import * as l10n from '@vscode/l10n';
+import debounce from 'lodash.debounce';
 import { type JSX, useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
-
-import { ProgressBar } from '@fluentui/react-components';
-import debounce from 'lodash.debounce';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
@@ -43,7 +43,7 @@ export const DocumentView = (): JSX.Element => {
      */
     const { trpcClient } = useTrpcClient();
 
-    const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading...": true }');
+    const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading…": true }');
     const [isLoading, setIsLoading] = useState(configuration.mode !== 'add');
     const [isDirty, setIsDirty] = useState(true);
 
@@ -61,7 +61,7 @@ export const DocumentView = (): JSX.Element => {
                 })
                 .catch((error) => {
                     void trpcClient.common.displayErrorMessage.mutate({
-                        message: 'Error while loading the document',
+                        message: l10n.t('Error while loading the document'),
                         modal: false,
                         cause: error instanceof Error ? error.message : String(error),
                     });
@@ -177,7 +177,7 @@ export const DocumentView = (): JSX.Element => {
             })
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error while refreshing the document',
+                    message: l10n.t('Error while refreshing the document'),
                     modal: false,
                     cause: error instanceof Error ? error.message : String(error),
                 });
@@ -228,7 +228,7 @@ export const DocumentView = (): JSX.Element => {
             })
             .catch((error) => {
                 void trpcClient.common.displayErrorMessage.mutate({
-                    message: 'Error saving the document',
+                    message: l10n.t('Error saving the document'),
                     modal: true, // we want to show the error in a modal dialog as it's an important one, failed to save the document
                     cause: error instanceof Error ? error.message : String(error),
                 });

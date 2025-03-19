@@ -11,6 +11,7 @@ import {
     type ISubscriptionContext,
     type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { removeTreeItemFromCache } from '../commands/api/apiCache';
@@ -43,7 +44,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         'cosmosDBAttachedAccounts' + (isEmulatorSupported ? 'WithEmulator' : 'WithoutEmulator');
     public static readonly serviceName: string = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
     public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
-    public readonly label: string = 'Attached Database Accounts (Postgres)';
+    public readonly label: string = l10n.t('PostgreSQL servers');
     public childTypeLabel: string = 'Account';
     public suppressMaskLabel = true;
 
@@ -140,7 +141,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     private getAttachAccountActionItems(): AzExtTreeItem[] {
         const newConnection = new GenericTreeItem(this, {
             contextValue: 'cosmosDBAttachDatabaseAccount',
-            label: 'New Connection...',
+            label: l10n.t('New Connection…'),
             iconPath: new vscode.ThemeIcon('plus'),
             commandId: 'cosmosDB.newConnection',
             includeInTreeItemPicker: true,
@@ -194,7 +195,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                 this._attachedAccounts = await this._loadPersistedAccountsTask;
             } catch {
                 this._attachedAccounts = [];
-                throw new Error('Failed to load persisted Database Accounts. Reattach the accounts manually.');
+                throw new Error(l10n.t('Failed to load persisted Database Accounts. Reattach the accounts manually.'));
             }
         }
 
@@ -209,9 +210,12 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
         const attachedAccounts: AzExtTreeItem[] = await this.getAttachedAccounts();
 
         if (attachedAccounts.find((s) => s.id === treeItem.id)) {
-            void context.ui.showWarningMessage(`Database Account '${treeItem.id}' is already attached.`, {
-                stepName: 'attachAccount',
-            });
+            void context.ui.showWarningMessage(
+                l10n.t('Database Account "{name}" is already attached.', { name: treeItem.id ?? '' }),
+                {
+                    stepName: 'attachAccount',
+                },
+            );
         } else {
             attachedAccounts.push(treeItem);
             await ext.secretStorage.store(
@@ -245,7 +249,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             const parsedPostgresConnString = parsePostgresConnectionString(connectionString);
             treeItem = new PostgresServerTreeItem(this, parsedPostgresConnString);
         } else {
-            throw new Error(`Unexpected defaultExperience "${api}".`);
+            throw new Error(l10n.t('Unexpected defaultExperience "{experienceName}".', { experienceName: api }));
         }
 
         treeItem.contextValue += AttachedAccountSuffix;
@@ -258,7 +262,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
             if (node instanceof PostgresServerTreeItem) {
                 api = API.PostgresSingle;
             } else {
-                throw new Error(`Unexpected account node "${node.constructor.name}".`);
+                throw new Error(l10n.t('Unexpected account node "{name}".', { name: node.constructor.name }));
             }
             return { id: nonNullProp(node, 'id'), defaultExperience: api, isEmulator: false };
         });
@@ -267,7 +271,9 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
 }
 
 class AttachedAccountRoot implements ISubscriptionContext {
-    private _error: Error = new Error('Cannot retrieve Azure subscription information for an attached account.');
+    private _error: Error = new Error(
+        l10n.t('Cannot retrieve Azure subscription information for an attached account.'),
+    );
 
     public get credentials(): never {
         throw this._error;

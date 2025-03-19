@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { ThemeIcon, TreeItemCollapsibleState, type TreeItem } from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
@@ -41,7 +41,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
                 createGenericElement({
                     contextValue: createContextValue(['treeItem.no-collections', this.experienceContextValue]),
                     id: `${this.id}/no-collections`,
-                    label: 'Create collection...',
+                    label: l10n.t('Create collection…'),
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'command.mongoClusters.createCollection',
                     commandArgs: [this],
@@ -54,13 +54,13 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
         });
     }
 
-    getTreeItem(): TreeItem {
+    getTreeItem(): vscode.TreeItem {
         return {
             id: this.id,
             contextValue: this.contextValue,
             label: this.databaseInfo.name,
-            iconPath: new ThemeIcon('database'), // TODO: create our own icon here, this one's shape can change
-            collapsibleState: TreeItemCollapsibleState.Collapsed,
+            iconPath: new vscode.ThemeIcon('database'), // TODO: create our own icon here, this one's shape can change
+            collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }
 }

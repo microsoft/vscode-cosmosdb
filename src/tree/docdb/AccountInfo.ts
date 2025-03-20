@@ -147,9 +147,6 @@ async function getCosmosDBCredentials(params: {
         if (tenantId) {
             context.valuesToMask.push(tenantId);
         }
-        if (tenantId) {
-            context.valuesToMask.push(tenantId);
-        }
         if (masterKey) {
             context.valuesToMask.push(masterKey);
         }

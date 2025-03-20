@@ -60,6 +60,9 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
     const client = await callWithTelemetryAndErrorHandling(
         'createCosmosDBManagementClient',
         async (context: IActionContext) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
+            context.valuesToMask.push(account.subscription.subscriptionId);
             return createCosmosDBManagementClient(context, account.subscription);
         },
     );
@@ -105,28 +108,13 @@ async function getCredentialsForGeneric(
             preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
             preferredAuthenticationMethod === AuthenticationMethod.auto
         ) {
-            try {
-                const localAuthDisabled = databaseAccount.disableLocalAuth === true;
-                context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-
-                let keyResult: DatabaseAccountListKeysResult | undefined;
-                // If the account has local auth disabled, don't even try to use key auth
-                if (!localAuthDisabled) {
-                    keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-                    keyCred = keyResult?.primaryMasterKey
-                        ? {
-                              type: AuthenticationMethod.accountKey,
-                              key: keyResult.primaryMasterKey,
-                          }
-                        : undefined;
-                    context.telemetry.properties.receivedKeyCreds = 'true';
-                } else {
-                    throw new Error(l10n.t('Local auth is disabled'));
-                }
-            } catch {
-                context.telemetry.properties.receivedKeyCreds = 'false';
-                logLocalAuthDisabledWarningIfPreferred(name, preferredAuthenticationMethod);
-            }
+            keyCred = await getAccountKeyCredentialWithArm(
+                context,
+                name,
+                resourceGroup,
+                client,
+                databaseAccount.disableLocalAuth ?? false,
+            );
         }
 
         // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
@@ -135,6 +123,38 @@ async function getCredentialsForGeneric(
     });
 
     return result ?? [];
+}
+
+async function getAccountKeyCredentialWithArm(
+    context: IActionContext,
+    accountName: string,
+    resourceGroup: string,
+    client: CosmosDBManagementClient,
+    localAuthDisabled: boolean,
+): Promise<CosmosDBKeyCredential | undefined> {
+    let keyCred: CosmosDBKeyCredential | undefined = undefined;
+    try {
+        context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+
+        let keyResult: DatabaseAccountListKeysResult | undefined;
+        // If the account has local auth disabled, don't even try to use key auth
+        if (!localAuthDisabled) {
+            keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
+            keyCred = keyResult?.primaryMasterKey
+                ? {
+                      type: AuthenticationMethod.accountKey,
+                      key: keyResult.primaryMasterKey,
+                  }
+                : undefined;
+            context.telemetry.properties.receivedKeyCreds = 'true';
+        } else {
+            throw new Error(l10n.t('Local auth is disabled'));
+        }
+    } catch {
+        context.telemetry.properties.receivedKeyCreds = 'false';
+        logLocalAuthDisabledWarning(accountName);
+    }
+    return keyCred;
 }
 
 async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {
@@ -160,62 +180,100 @@ async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel):
     const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
         context.valuesToMask.push(account.connectionString);
         context.telemetry.properties.attachedAccount = 'true';
-
-        const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
-
-        let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        let localAuthDisabled = false;
-
-        if (
-            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
-            preferredAuthenticationMethod === AuthenticationMethod.auto ||
-            account.isEmulator
-        ) {
-            const parsedCS = parseDocDBConnectionString(account.connectionString);
-            if (parsedCS.masterKey) {
-                context.telemetry.properties.receivedKeyCreds = 'true';
-
-                keyCred = {
-                    type: AuthenticationMethod.accountKey,
-                    key: parsedCS.masterKey,
-                };
-
-                // If the account is the emulator, we just return the only supported key credential
-                if (account.isEmulator) {
-                    return [keyCred];
-                }
-
-                try {
-                    // Since here we don't have subscription,
-                    // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
-                    // Will try to connect to the account and catch if it fails due to local auth being disabled.
-                    const cosmosClient = getCosmosClient(parsedCS.documentEndpoint, [keyCred], account.isEmulator);
-                    await cosmosClient.getDatabaseAccount();
-                } catch (e) {
-                    const error = parseError(e);
-                    // handle errors caused by local auth being disabled only, all other errors will be thrown
-                    if (error.message.includes('Local Authorization is disabled.')) {
-                        context.telemetry.properties.receivedKeyCreds = 'false';
-                        localAuthDisabled = true;
-                    }
-                }
-            }
-
-            context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-            if (localAuthDisabled && !account.isEmulator) {
-                // Clean up keyCred if local auth is disabled
-                keyCred = undefined;
-                logLocalAuthDisabledWarningIfPreferred(account.name, preferredAuthenticationMethod);
-            }
+        const parsedCS = parseDocDBConnectionString(account.connectionString);
+        context.valuesToMask.push(parsedCS.masterKey);
+        if (parsedCS.databaseName) {
+            context.valuesToMask.push(parsedCS.databaseName);
         }
-
-        // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use OAuth for foreign tenants
-        const authCred = { type: AuthenticationMethod.entraId, tenantId: undefined };
-        return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
+        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
+        return getConfiguredCredentials(
+            context,
+            account.name,
+            parsedCS.documentEndpoint,
+            parsedCS.masterKey,
+            undefined,
+            account.isEmulator,
+        );
     });
 
     return result ?? [];
+}
+
+async function getConfiguredCredentials(
+    context: IActionContext,
+    accountName: string,
+    documentEndpoint: string,
+    masterKey?: string,
+    tenantId?: string,
+    isEmulator: boolean = false,
+): Promise<CosmosDBCredential[]> {
+    const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
+
+    let keyCred: CosmosDBKeyCredential | undefined = undefined;
+
+    if (
+        preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
+        preferredAuthenticationMethod === AuthenticationMethod.auto ||
+        isEmulator
+    ) {
+        keyCred = await getAccountKeyCredentialNoArm(context, accountName, documentEndpoint, masterKey, isEmulator);
+        // If the account is the emulator, we just return the only supported key credential
+        if (isEmulator && keyCred) {
+            return [keyCred];
+        }
+    }
+
+    // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
+    const authCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
+    return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
+}
+
+async function getAccountKeyCredentialNoArm(
+    context: IActionContext,
+    accountName: string,
+    documentEndpoint: string,
+    masterKey?: string,
+    isEmulator: boolean = false,
+): Promise<CosmosDBKeyCredential | undefined> {
+    let keyCred: CosmosDBKeyCredential | undefined = undefined;
+    let localAuthDisabled = false;
+
+    if (masterKey) {
+        context.telemetry.properties.receivedKeyCreds = 'true';
+
+        keyCred = {
+            type: AuthenticationMethod.accountKey,
+            key: masterKey,
+        };
+
+        // If the account is the emulator, we just return the only supported key credential
+        if (isEmulator) {
+            return keyCred;
+        }
+
+        try {
+            // Since here we don't have subscription,
+            // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
+            // Will try to connect to the account and catch if it fails due to local auth being disabled.
+            const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator);
+            await cosmosClient.getDatabaseAccount();
+        } catch (e) {
+            const error = parseError(e);
+            // handle errors caused by local auth being disabled only, all other errors will be thrown
+            if (error.message.includes('Local Authorization is disabled.')) {
+                context.telemetry.properties.receivedKeyCreds = 'false';
+                localAuthDisabled = true;
+            }
+        }
+    }
+
+    context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+    if (localAuthDisabled && !isEmulator) {
+        // Clean up keyCred if local auth is disabled
+        keyCred = undefined;
+        logLocalAuthDisabledWarning(accountName);
+    }
+    return keyCred;
 }
 
 function getPreferredAuthenticationMethod(): AuthenticationMethod {
@@ -238,16 +296,14 @@ function getPreferredAuthenticationMethod(): AuthenticationMethod {
     return preferredAuthMethod;
 }
 
-function logLocalAuthDisabledWarningIfPreferred(name: string, authenticationMethod: AuthenticationMethod): void {
-    if (authenticationMethod === AuthenticationMethod.accountKey) {
-        const message = l10n.t(
-            'You do not have the required permissions to list auth keys for "{account}", falling back to using Entra ID. You can change the preferred authentication method with the {settingId} setting.',
-            {
-                account: name,
-                settingId: ext.settingsKeys.cosmosDbAuthentication,
-            },
-        );
-        ext.outputChannel.warn(message);
-        ext.outputChannel.show();
-    }
+function logLocalAuthDisabledWarning(name: string): void {
+    const message = l10n.t(
+        'You do not have the required permissions to list auth keys for "{account}", falling back to using Entra ID. You can change the preferred authentication method with the {settingId} setting.',
+        {
+            account: name,
+            settingId: ext.settingsKeys.cosmosDbAuthentication,
+        },
+    );
+    ext.outputChannel.warn(message);
+    ext.outputChannel.show();
 }

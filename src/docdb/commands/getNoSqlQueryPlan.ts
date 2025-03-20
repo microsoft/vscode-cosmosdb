@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { AuthenticationMethod, getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { getCosmosClient } from '../getCosmosClient';
 
 export async function getNoSqlQueryPlan(
     _context: IActionContext,
@@ -32,14 +32,8 @@ export async function getNoSqlQueryPlan(
             l10n.t('Unable to get query plan due to missing node data. Please connect to a Cosmos DB container node.'),
         );
     } else {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } =
+        const { databaseId, containerId, endpoint, credentials, isEmulator } =
             connectedCollection as NoSqlQueryConnection;
-        const credentials: CosmosDBCredential[] = [];
-        if (masterKey !== undefined) {
-            credentials.push({ type: AuthenticationMethod.accountKey, key: masterKey });
-        }
-        credentials.push({ type: AuthenticationMethod.entraId, tenantId: tenantId });
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
         await vscodeUtil.showNewFile(

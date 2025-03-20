@@ -22,7 +22,7 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { AuthenticationMethod, getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
 import { type CosmosDbRecord, type CosmosDbRecordIdentifier } from '../types/queryResult';
 
 export class DocumentSession {
@@ -40,12 +40,7 @@ export class DocumentSession {
     private isDisposed = false;
 
     constructor(connection: NoSqlQueryConnection, channel: Channel) {
-        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } = connection;
-        const credentials: CosmosDBCredential[] = [];
-        if (masterKey !== undefined) {
-            credentials.push({ type: AuthenticationMethod.accountKey, key: masterKey });
-        }
-        credentials.push({ type: AuthenticationMethod.entraId, tenantId: tenantId });
+        const { databaseId, containerId, endpoint, credentials, isEmulator } = connection;
 
         this.id = uuid();
         this.channel = channel;
@@ -53,7 +48,7 @@ export class DocumentSession {
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
-        this.masterKey = masterKey ?? '';
+        this.masterKey = getCosmosKeyCredential(credentials)?.key ?? '';
         this.abortController = new AbortController();
     }
 

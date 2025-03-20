@@ -7,14 +7,14 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { KeyValueStore } from '../KeyValueStore';
+import { type CosmosDBCredential } from './getCosmosClient';
 
 export type NoSqlQueryConnection = {
     databaseId: string;
     containerId: string;
     endpoint: string;
-    masterKey?: string;
+    credentials: CosmosDBCredential[];
     isEmulator: boolean;
-    tenantId: string | undefined;
 };
 
 export const noSqlQueryConnectionKey = 'NO_SQL_QUERY_CONNECTION_KEY.v1';

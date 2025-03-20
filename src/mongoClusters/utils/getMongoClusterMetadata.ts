@@ -70,6 +70,9 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
         if (hostInfo && typeof hostInfo.currentTime !== 'undefined') {
             hostInfo.currentTime = 'redacted'; // Redact current time
         }
+        if (hostInfo && hostInfo.system && typeof hostInfo.system.currentTime !== 'undefined') {
+            hostInfo.system.currentTime = 'redacted'; // Redact system current time
+        }
         // TODO: review in April 2024 if we need to redact more of the hostInfo fields.
         result['hostInfo_json'] = JSON.stringify(hostInfo);
     } catch (error) {
@@ -78,10 +81,10 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
 
     // Explore domain information from the hosts. This is non-sensitive and can be useful for diagnostics.
     // Only information about known domains is collected to avoid any sensitive data.
-    try {
-        for (const [index, host] of hosts.entries()) {
-            const telemetrySuffix = index > 0 ? `_h${index}` : '';
-
+    for (const [index, host] of hosts.entries()) {
+        const telemetrySuffix = index > 0 ? `_h${index}` : '';
+        try {
+            let domainStatistics = false;
             const hostWithoutPort = extractDomainFromHost(host);
             if (hasAzureDomain(hostWithoutPort)) {
                 // For Azure domains, record that fact and identify the API when applicable.
@@ -90,12 +93,17 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
                     result['domainInfo_api' + telemetrySuffix] = 'RU';
                 } else if (hasDomainSuffix(AzureDomains.vCore, hostWithoutPort)) {
                     result['domainInfo_api' + telemetrySuffix] = 'vCore';
+                } else {
+                    domainStatistics = true; // For other Azure domains, produce hash values for diagnostics.
                 }
             } else {
                 // For non-Azure domains, do not log the full host.
                 // Instead, capture aggregated statistics by analyzing only the most significant 3 segments.
                 result['domainInfo_isAzure' + telemetrySuffix] = 'false';
+                domainStatistics = true; // For non-Azure domains, produce hash values for diagnostics.
+            }
 
+            if (domainStatistics) {
                 const domainParts = hostWithoutPort.split('.'); // e.g., ['private', 'acluster', 'server', 'tld']
                 result['domainInfo_levels' + telemetrySuffix] = domainParts.length.toString(); // Store the full domain for reference
 
@@ -115,9 +123,9 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
                     result[`domainInfo_domain_l${level}${telemetrySuffix}`] = hashedDomain;
                 }
             }
+        } catch (error) {
+            result[`domainInfo_error${telemetrySuffix}`] = error instanceof Error ? error.message : String(error);
         }
-    } catch (error) {
-        result['domainInfo_error'] = error instanceof Error ? error.message : String(error);
     }
 
     // Return the collected metadata.

@@ -73,7 +73,15 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
 
     const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
     const tenantId = account?.subscription?.tenantId;
-    const credentials = await getCredentialsForGeneric(name, resourceGroup, tenantId, client, databaseAccount);
+    const credentials = await getCosmosDBCredentials({
+        accountName: name,
+        documentEndpoint: nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`),
+        isEmulator: false,
+        armClient: client,
+        resourceGroup,
+        databaseAccount,
+        tenantId,
+    });
     const documentEndpoint = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`);
     const isServerless = databaseAccount?.capabilities
         ? databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
@@ -89,43 +97,119 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
     };
 }
 
-async function getCredentialsForGeneric(
-    name: string,
-    resourceGroup: string,
-    tenantId: string,
-    client: CosmosDBManagementClient,
-    databaseAccount: DatabaseAccountGetResults,
-): Promise<CosmosDBCredential[]> {
-    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-        context.valuesToMask.push(name, resourceGroup);
-        context.telemetry.properties.attachedAccount = 'false';
+async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {
+    const id = account.id;
+    const name = account.name;
+    const isEmulator = account.isEmulator;
+    const parsedCS = parseDocDBConnectionString(account.connectionString);
+    const documentEndpoint = parsedCS.documentEndpoint;
+    const credentials = await getCosmosDBCredentials({
+        accountName: name,
+        documentEndpoint,
+        isEmulator,
+        masterKey: parsedCS.masterKey,
+        tenantId: undefined,
+    });
+    const isServerless = false;
 
+    return {
+        credentials,
+        endpoint: documentEndpoint,
+        id,
+        isEmulator,
+        isServerless,
+        name,
+    };
+}
+
+// Common credential retrieval function with source-specific parameters
+async function getCosmosDBCredentials(params: {
+    //context: IActionContext;
+    accountName: string;
+    documentEndpoint: string;
+    isEmulator: boolean;
+
+    // ARM-specific parameters
+    armClient?: CosmosDBManagementClient;
+    resourceGroup?: string;
+    databaseAccount?: DatabaseAccountGetResults;
+
+    // Connection string params
+    masterKey?: string;
+    tenantId?: string;
+}): Promise<CosmosDBCredential[]> {
+    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
+        const { accountName, documentEndpoint, isEmulator, resourceGroup, tenantId, masterKey } = params;
+        context.valuesToMask.push(accountName, documentEndpoint);
+        if (resourceGroup) {
+            context.valuesToMask.push(resourceGroup);
+        }
+        if (tenantId) {
+            context.valuesToMask.push(tenantId);
+        }
+        if (tenantId) {
+            context.valuesToMask.push(tenantId);
+        }
+        if (masterKey) {
+            context.valuesToMask.push(masterKey);
+        }
+        context.telemetry.properties.attachedAccount = 'false';
         const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
+
+        // Skip key retrieval if not preferred or not auto
+        const shouldTryKeyAuth =
+            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
+            preferredAuthenticationMethod === AuthenticationMethod.auto ||
+            isEmulator;
 
         let keyCred: CosmosDBKeyCredential | undefined = undefined;
 
-        if (
-            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
-            preferredAuthenticationMethod === AuthenticationMethod.auto
-        ) {
-            keyCred = await getAccountKeyCredentialWithArm(
-                context,
-                name,
-                resourceGroup,
-                client,
-                databaseAccount.disableLocalAuth ?? false,
-            );
+        if (shouldTryKeyAuth) {
+            // Handle emulator separately (simplest case)
+            if (isEmulator && params.masterKey) {
+                return [
+                    {
+                        type: AuthenticationMethod.accountKey,
+                        key: params.masterKey,
+                    },
+                ] as CosmosDBCredential[];
+            }
+
+            // Try to get key credential from ARM if possible
+            if (params.armClient && params.resourceGroup && params.databaseAccount) {
+                const localAuthDisabled = params.databaseAccount.disableLocalAuth ?? false;
+                keyCred = await getKeyCredentialWithARM(
+                    context,
+                    accountName,
+                    params.resourceGroup,
+                    params.armClient,
+                    localAuthDisabled,
+                );
+            }
+            // Otherwise try with masterKey if provided
+            else if (params.masterKey) {
+                keyCred = await getKeyCredentialWithoutARM(
+                    context,
+                    accountName,
+                    documentEndpoint,
+                    params.masterKey,
+                    isEmulator,
+                );
+            }
         }
 
-        // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
+        // OAuth is always enabled for Cosmos DB and used as fallback
+        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
         const authCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
+
+        // Return credentials in order of preference, filtering out undefined ones
         return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
     });
-
     return result ?? [];
 }
 
-async function getAccountKeyCredentialWithArm(
+// Helper function for ARM-based key retrieval
+async function getKeyCredentialWithARM(
     context: IActionContext,
     accountName: string,
     resourceGroup: string,
@@ -140,12 +224,13 @@ async function getAccountKeyCredentialWithArm(
         // If the account has local auth disabled, don't even try to use key auth
         if (!localAuthDisabled) {
             keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
-            keyCred = keyResult?.primaryMasterKey
-                ? {
-                      type: AuthenticationMethod.accountKey,
-                      key: keyResult.primaryMasterKey,
-                  }
-                : undefined;
+            if (keyResult?.primaryMasterKey) {
+                keyCred = {
+                    type: AuthenticationMethod.accountKey,
+                    key: keyResult.primaryMasterKey,
+                };
+                context.valuesToMask.push(keyCred.key);
+            }
             context.telemetry.properties.receivedKeyCreds = 'true';
         } else {
             throw new Error(l10n.t('Local auth is disabled'));
@@ -157,83 +242,13 @@ async function getAccountKeyCredentialWithArm(
     return keyCred;
 }
 
-async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {
-    const id = account.id;
-    const name = account.name;
-    const isEmulator = account.isEmulator;
-    const parsedCS = parseDocDBConnectionString(account.connectionString);
-    const documentEndpoint = parsedCS.documentEndpoint;
-    const credentials = await getCredentialsForAttached(account);
-    const isServerless = false;
-
-    return {
-        credentials,
-        endpoint: documentEndpoint,
-        id,
-        isEmulator,
-        isServerless,
-        name,
-    };
-}
-
-async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel): Promise<CosmosDBCredential[]> {
-    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-        context.valuesToMask.push(account.connectionString);
-        context.telemetry.properties.attachedAccount = 'true';
-        const parsedCS = parseDocDBConnectionString(account.connectionString);
-        context.valuesToMask.push(parsedCS.masterKey);
-        if (parsedCS.databaseName) {
-            context.valuesToMask.push(parsedCS.databaseName);
-        }
-        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
-        return getConfiguredCredentials(
-            context,
-            account.name,
-            parsedCS.documentEndpoint,
-            parsedCS.masterKey,
-            undefined,
-            account.isEmulator,
-        );
-    });
-
-    return result ?? [];
-}
-
-async function getConfiguredCredentials(
+// Helper function for connection string based key retrieval
+async function getKeyCredentialWithoutARM(
     context: IActionContext,
     accountName: string,
     documentEndpoint: string,
-    masterKey?: string,
-    tenantId?: string,
-    isEmulator: boolean = false,
-): Promise<CosmosDBCredential[]> {
-    const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
-
-    let keyCred: CosmosDBKeyCredential | undefined = undefined;
-
-    if (
-        preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
-        preferredAuthenticationMethod === AuthenticationMethod.auto ||
-        isEmulator
-    ) {
-        keyCred = await getAccountKeyCredentialNoArm(context, accountName, documentEndpoint, masterKey, isEmulator);
-        // If the account is the emulator, we just return the only supported key credential
-        if (isEmulator && keyCred) {
-            return [keyCred];
-        }
-    }
-
-    // OAuth is always enabled for Cosmos DB and will be used as a fall back if key auth is unavailable
-    const authCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
-    return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
-}
-
-async function getAccountKeyCredentialNoArm(
-    context: IActionContext,
-    accountName: string,
-    documentEndpoint: string,
-    masterKey?: string,
-    isEmulator: boolean = false,
+    masterKey: string,
+    isEmulator: boolean,
 ): Promise<CosmosDBKeyCredential | undefined> {
     let keyCred: CosmosDBKeyCredential | undefined = undefined;
     let localAuthDisabled = false;

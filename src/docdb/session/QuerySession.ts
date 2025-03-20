@@ -13,7 +13,7 @@ import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClientByConnection } from '../getCosmosClient';
+import { getCosmosClientByConnection, getCosmosKeyCredential } from '../getCosmosClient';
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
@@ -47,7 +47,7 @@ export class QuerySession {
         query: string,
         resultViewMetadata: ResultViewMetadata,
     ) {
-        const { databaseId, containerId, endpoint, masterKey } = connection;
+        const { databaseId, containerId, endpoint, credentials } = connection;
 
         this.id = uuid();
         this.channel = channel;
@@ -55,7 +55,7 @@ export class QuerySession {
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
-        this.masterKey = masterKey ?? '';
+        this.masterKey = getCosmosKeyCredential(credentials)?.key ?? '';
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 

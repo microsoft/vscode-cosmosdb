@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, type CosmosDBCredential } from '../getCosmosClient';
+import { getCosmosClient } from '../getCosmosClient';
 
 export async function executeNoSqlQuery(
     _context: IActionContext,
@@ -35,14 +35,8 @@ export async function executeNoSqlQuery(
             l10n.t('Unable to execute query due to missing node data. Please connect to a Cosmos DB container node.'),
         );
     } else {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const { databaseId, containerId, endpoint, masterKey, isEmulator, tenantId } =
-            connectedCollection as NoSqlQueryConnection;
-        const credentials: CosmosDBCredential[] = [];
-        if (masterKey !== undefined) {
-            credentials.push({ type: 'key', key: masterKey });
-        }
-        credentials.push({ type: 'auth', tenantId: tenantId });
+        const connection = connectedCollection as NoSqlQueryConnection;
+        const { databaseId, containerId, endpoint, credentials, isEmulator } = connection;
         const client = getCosmosClient(endpoint, credentials, isEmulator);
         const options = { populateQueryMetrics };
         const response = await client

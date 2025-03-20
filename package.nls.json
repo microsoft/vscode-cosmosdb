@@ -80,5 +80,12 @@
     "cosmosdb.configuration.mongo.shell.timeout": "The duration allowed (in seconds) for the Mongo shell to execute a command. Default value is 30 seconds.",
     "cosmosdb.configuration.oauth.enable": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
     "cosmosdb.configuration.operation.summaries": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events.",
-    "cosmosdb.configuration.save.prompt": "Show warning dialog when uploading a document to the cloud."
+    "cosmosdb.configuration.save.prompt": "Show warning dialog when uploading a document to the cloud.",
+    "cosmosdb.configuration.preferredAuthenticationMethod": "Select a preferred authentication method for Cosmos DB accounts.",
+    "cosmosdb.configuration.preferredAuthenticationMethod.auto": "Automatic",
+    "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "Selects the best authentication method based on the account configuration",
+    "cosmosdb.configuration.preferredAuthenticationMethod.accountKey": "Account Key",
+    "cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description": "[LocalAuth](https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-disable-key-based-authentication) must be enabled, this is not recommended for production environments",
+    "cosmosdb.configuration.preferredAuthenticationMethod.entraId": "VS Code Entra ID",
+    "cosmosdb.configuration.preferredAuthenticationMethod.entraId.description": "Sign in to VS Code using Entra ID"
 }

@@ -71,6 +71,7 @@ export namespace ext {
         export const batchSize = 'azureDatabases.batchSize';
         export const confirmationStyle = 'azureDatabases.confirmationStyle';
         export const showOperationSummaries = 'azureDatabases.showOperationSummaries';
+        export const cosmosDbAuthentication = 'azureDatabases.cosmosDB.preferredAuthenticationMethod';
 
         export namespace vsCode {
             export const proxyStrictSSL = 'http.proxyStrictSSL';

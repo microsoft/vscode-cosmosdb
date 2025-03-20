@@ -31,7 +31,7 @@ export { MongoCommand } from './src/mongo/MongoCommand';
 export {
     addDatabaseToAccountConnectionString,
     encodeMongoConnectionString,
-    getDatabaseNameFromConnectionString
+    getDatabaseNameFromConnectionString,
 } from './src/mongo/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbookHelpers';
 export { MongoShellScriptRunner as MongoShell } from './src/mongo/MongoShellScriptRunner';
@@ -44,7 +44,7 @@ export { getPublicIpv4, isIpInRanges } from './src/utils/getIp';
 export { improveError } from './src/utils/improveError';
 export { randomUtils } from './src/utils/randomUtils';
 export { rejectOnTimeout, valueOnTimeout } from './src/utils/timeout';
-export { getDocumentTreeItemLabel, IDisposable } from './src/utils/vscodeUtils';
+export { IDisposable, getDocumentTreeItemLabel } from './src/utils/vscodeUtils';
 export { wrapError } from './src/utils/wrapError';
 
 // NOTE: The auto-fix action "source.organizeImports" does weird things with this file, but there doesn't seem to be a way to disable it on a per-file basis so we'll just let it happen

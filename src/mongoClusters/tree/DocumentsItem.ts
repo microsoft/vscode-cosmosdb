@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createContextValue } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { ThemeIcon, type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
@@ -45,9 +46,9 @@ export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperi
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: 'Documents',
+            label: l10n.t('Documents'),
             command: {
-                title: 'Open Collection', // unused, but required by TreeItem
+                title: l10n.t('Open Collection'), // unused, but required by TreeItem
                 command: 'command.internal.mongoClusters.containerView.open',
                 arguments: [
                     {

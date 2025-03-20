@@ -40,7 +40,12 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
         result['serverInfo_platform'] = buildInfo.platform;
         result['serverInfo_storageEngines'] = (buildInfo.storageEngines as string[])?.join(';');
     } catch (error) {
-        result['serverInfo_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['serverInfo_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['serverInfo_errorFallback'] = 'Failed to process error details';
+        }
     }
 
     // Fetch server status information.
@@ -49,7 +54,12 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
         const serverStatus = await adminDb.command({ serverStatus: 1 });
         result['serverStatus_uptime'] = serverStatus.uptime.toString();
     } catch (error) {
-        result['serverStatus_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['serverStatus_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['serverStatus_errorFallback'] = 'Failed to process error details';
+        }
     }
 
     // Fetch topology information using the 'hello' command.
@@ -61,7 +71,12 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
         result['topology_minWireVersion'] = helloInfo.minWireVersion.toString();
         result['topology_maxWireVersion'] = helloInfo.maxWireVersion.toString();
     } catch (error) {
-        result['topology_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['topology_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['topology_errorFallback'] = 'Failed to process error details';
+        }
     }
 
     // Fetch host information, redacting sensitive data.
@@ -76,7 +91,12 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
         // TODO: review in April 2024 if we need to redact more of the hostInfo fields.
         result['hostInfo_json'] = JSON.stringify(hostInfo);
     } catch (error) {
-        result['hostInfo_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['hostInfo_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['hostInfo_errorFallback'] = 'Failed to process error details';
+        }
     }
 
     // Explore domain information from the hosts. This is non-sensitive and can be useful for diagnostics.
@@ -124,7 +144,47 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
                 }
             }
         } catch (error) {
-            result[`domainInfo_error${telemetrySuffix}`] = error instanceof Error ? error.message : String(error);
+            // Capture multiple aspects of the error to ensure we get something useful in telemetry
+            try {
+                // Start with basic error type identification
+                const errorType = error ? (error.constructor ? error.constructor.name : typeof error) : 'undefined';
+
+                // Create a detailed error entry
+                if (error instanceof Error) {
+                    // For standard Error objects, capture name, message and stack (trimmed)
+                    result[`domainInfo_errorType${telemetrySuffix}`] = errorType;
+                    result[`domainInfo_error${telemetrySuffix}`] = error.message || 'Empty error message';
+
+                    // Capture any custom properties on the error object
+                    const errorProps = Object.keys(error).filter((k) => k !== 'stack' && k !== 'message');
+                    if (errorProps.length > 0) {
+                        result[`domainInfo_errorProps${telemetrySuffix}`] = errorProps.join(',');
+                    }
+                } else if (error === null) {
+                    // Handle null errors
+                    result[`domainInfo_errorType${telemetrySuffix}`] = 'null';
+                    result[`domainInfo_error${telemetrySuffix}`] = 'Error was null';
+                } else if (error === undefined) {
+                    // Handle undefined errors
+                    result[`domainInfo_errorType${telemetrySuffix}`] = 'undefined';
+                    result[`domainInfo_error${telemetrySuffix}`] = 'Error was undefined';
+                } else {
+                    // For non-standard errors (like strings, objects, etc.)
+                    result[`domainInfo_errorType${telemetrySuffix}`] = errorType;
+
+                    // Try different methods to extract meaningful content
+                    const errorStr =
+                        typeof error === 'object'
+                            ? JSON.stringify(error).substring(0, 200) // Limit JSON size
+                            : String(error);
+
+                    result[`domainInfo_error${telemetrySuffix}`] =
+                        errorStr || `Non-standard error of type ${errorType}`;
+                }
+            } catch {
+                // Last resort if error processing itself fails
+                result[`domainInfo_errorFallback${telemetrySuffix}`] = 'Failed to process error details';
+            }
         }
     }
 

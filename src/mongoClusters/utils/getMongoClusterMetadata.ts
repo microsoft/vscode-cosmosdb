@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import * as crypto from 'crypto';
-import { type MongoClient } from 'mongodb';
+import { type Admin, type MongoClient } from 'mongodb';
 import { AzureDomains, extractDomainFromHost, hasAzureDomain, hasDomainSuffix } from './connectionStringHelpers';
 
 /**
@@ -29,11 +29,18 @@ export interface MongoClusterMetadata {
  */
 export async function getMongoClusterMetadata(client: MongoClient, hosts: string[]): Promise<MongoClusterMetadata> {
     const result: MongoClusterMetadata = {};
-
     const adminDb = client.db().admin();
 
-    // Fetch build info (server version, git version, etc.)
-    // This information is non-sensitive and aids in diagnostics.
+    await fetchBuildInfo(adminDb, result);
+    await fetchServerStatus(adminDb, result);
+    await fetchTopologyInfo(adminDb, result);
+    await fetchHostInfo(adminDb, result);
+    processDomainInfo(hosts, result);
+
+    return result;
+}
+
+async function fetchBuildInfo(adminDb: Admin, result: MongoClusterMetadata): Promise<void> {
     try {
         const buildInfo = await adminDb.command({ buildInfo: 1 });
         result['serverInfo_version'] = buildInfo.version;
@@ -47,9 +54,9 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
             result['serverInfo_errorFallback'] = 'Failed to process error details';
         }
     }
+}
 
-    // Fetch server status information.
-    // Includes non-sensitive data like uptime and connection metrics.
+async function fetchServerStatus(adminDb: Admin, result: MongoClusterMetadata): Promise<void> {
     try {
         const serverStatus = await adminDb.command({ serverStatus: 1 });
         result['serverStatus_uptime'] = serverStatus.uptime.toString();
@@ -61,9 +68,9 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
             result['serverStatus_errorFallback'] = 'Failed to process error details';
         }
     }
+}
 
-    // Fetch topology information using the 'hello' command.
-    // Internal server addresses are not collected to ensure privacy.
+async function fetchTopologyInfo(adminDb: Admin, result: MongoClusterMetadata): Promise<void> {
     try {
         const helloInfo = await adminDb.command({ hello: 1 });
         result['topology_type'] = helloInfo.msg || 'unknown';
@@ -78,8 +85,9 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
             result['topology_errorFallback'] = 'Failed to process error details';
         }
     }
+}
 
-    // Fetch host information, redacting sensitive data.
+async function fetchHostInfo(adminDb: Admin, result: MongoClusterMetadata): Promise<void> {
     try {
         const hostInfo = await adminDb.command({ hostInfo: 1 });
         if (hostInfo && typeof hostInfo.currentTime !== 'undefined') {
@@ -98,9 +106,9 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
             result['hostInfo_errorFallback'] = 'Failed to process error details';
         }
     }
+}
 
-    // Explore domain information from the hosts. This is non-sensitive and can be useful for diagnostics.
-    // Only information about known domains is collected to avoid any sensitive data.
+function processDomainInfo(hosts: string[], result: MongoClusterMetadata): void {
     for (const [index, host] of hosts.entries()) {
         const telemetrySuffix = index > 0 ? `_h${index}` : '';
         try {
@@ -114,13 +122,15 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
                 } else if (hasDomainSuffix(AzureDomains.vCore, hostWithoutPort)) {
                     result['domainInfo_api' + telemetrySuffix] = 'vCore';
                 } else {
-                    domainStatistics = true; // For other Azure domains, produce hash values for diagnostics.
+                    // For other Azure domains, produce hash values for diagnostics.
+                    domainStatistics = true;
                 }
             } else {
                 // For non-Azure domains, do not log the full host.
                 // Instead, capture aggregated statistics by analyzing only the most significant 3 segments.
                 result['domainInfo_isAzure' + telemetrySuffix] = 'false';
-                domainStatistics = true; // For non-Azure domains, produce hash values for diagnostics.
+                // For non-Azure domains, produce hash values for diagnostics.
+                domainStatistics = true;
             }
 
             if (domainStatistics) {
@@ -187,7 +197,4 @@ export async function getMongoClusterMetadata(client: MongoClient, hosts: string
             }
         }
     }
-
-    // Return the collected metadata.
-    return result;
 }

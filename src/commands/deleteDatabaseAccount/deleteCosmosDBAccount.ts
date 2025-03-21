@@ -10,7 +10,7 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 import { type DeleteWizardContext } from './DeleteWizardContext';

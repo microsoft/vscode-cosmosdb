@@ -14,7 +14,7 @@ import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } 
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
-import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 
 export interface AccountInfo {
     credentials: CosmosDBCredential[];

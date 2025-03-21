@@ -13,7 +13,7 @@ import * as path from 'path';
 import { isNumber } from 'util';
 import type * as vscode from 'vscode';
 import { ext, isWindows, type IDisposable } from '../extension.bundle';
-import { MongoShellScriptRunner } from '../src/mongo/MongoShellScriptRunner';
+import { MongoShellScriptRunner } from '../src/documentdb/scrapbook/MongoShellScriptRunner';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 

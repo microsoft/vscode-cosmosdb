@@ -8,7 +8,7 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type AccountInfo } from '../docdb/AccountInfo';
 import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
-import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 
 export class NoSqlAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {

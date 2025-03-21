@@ -7,10 +7,10 @@ import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { AttachedAccountSuffix } from '../../tree/AttachedAccountsTreeItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
+import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';

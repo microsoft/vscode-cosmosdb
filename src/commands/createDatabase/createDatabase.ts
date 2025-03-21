@@ -6,14 +6,13 @@
 import { AzureWizard, type IActionContext, nonNullValue } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { CredentialCache } from '../../mongoClusters/CredentialCache';
-import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
-import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { type CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CredentialCache } from '../../documentdb/CredentialCache';
+import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
 import { getAccountInfo } from '../../tree/docdb/AccountInfo';
 import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/DocumentDBAccountAttachedResourceItem';
 import { DocumentDBAccountResourceItem } from '../../tree/docdb/DocumentDBAccountResourceItem';
-import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
+import { MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
@@ -48,7 +47,7 @@ export async function createDatabase(
         await createDocDBDatabase(context, node);
     }
 
-    if (node instanceof MongoAccountResourceItem || node instanceof MongoClusterItemBase) {
+    if (node instanceof MongoClusterItemBase) {
         await createMongoDatabase(context, node);
     }
 }
@@ -79,28 +78,22 @@ async function createDocDBDatabase(
     showConfirmationAsInSettings(l10n.t('The "{name}" database has been created.', { name: newDatabaseName }));
 }
 
-async function createMongoDatabase(
-    context: IActionContext,
-    node: MongoAccountResourceItem | MongoClusterItemBase,
-): Promise<void> {
+async function createMongoDatabase(context: IActionContext, node: MongoClusterItemBase): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
-    const credentialsId = node instanceof MongoAccountResourceItem ? node.id : node.mongoCluster.id;
-    const clusterName = node instanceof MongoAccountResourceItem ? node.account.name : node.mongoCluster.name;
-
-    if (!CredentialCache.hasCredentials(credentialsId)) {
+    if (!CredentialCache.hasCredentials(node.mongoCluster.id)) {
         throw new Error(
             l10n.t(
                 'You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node "{0}") and try again.',
-                clusterName,
+                node.mongoCluster.name,
             ),
         );
     }
 
     const wizardContext: CreateMongoDatabaseWizardContext = {
         ...context,
-        credentialsId,
-        clusterName,
+        credentialsId: node.mongoCluster.id,
+        clusterName: node.mongoCluster.name,
         nodeId: node.id,
     };
 

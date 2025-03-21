@@ -23,10 +23,10 @@ import {
     sqlFilter,
 } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { type MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
-import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
+import { type MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';

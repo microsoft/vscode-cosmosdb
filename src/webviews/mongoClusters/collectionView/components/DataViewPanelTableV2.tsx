@@ -14,7 +14,7 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { type TableDataEntry } from '../../../../mongoClusters/MongoClusterSession';
+import { type TableDataEntry } from '../../../../documentdb/MongoClusterSession';
 import { type CellValue } from '../../../../utils/slickgrid/CellValue';
 import { bsonStringToDisplayString } from '../../../utils/slickgrid/typeToDisplayString';
 import { CollectionViewContext } from '../collectionViewContext';

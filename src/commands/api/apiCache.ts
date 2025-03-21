@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { ParsedMongoConnectionString } from '../../mongo/mongoConnectionStrings';
+import { ParsedMongoConnectionString } from '../../documentdb/scrapbook/mongoConnectionStrings';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import {
     ParsedPostgresConnectionString,

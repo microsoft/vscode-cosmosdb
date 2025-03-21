@@ -8,7 +8,6 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { CredentialCache } from '../../documentdb/CredentialCache';
 import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { MongoAccountResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoAccountResourceItem';
 import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
 import { getAccountInfo } from '../../tree/docdb/AccountInfo';
 import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/DocumentDBAccountAttachedResourceItem';
@@ -48,7 +47,7 @@ export async function createDatabase(
         await createDocDBDatabase(context, node);
     }
 
-    if (node instanceof MongoAccountResourceItem || node instanceof MongoClusterItemBase) {
+    if (node instanceof MongoClusterItemBase) {
         await createMongoDatabase(context, node);
     }
 }
@@ -79,28 +78,22 @@ async function createDocDBDatabase(
     showConfirmationAsInSettings(l10n.t('The "{name}" database has been created.', { name: newDatabaseName }));
 }
 
-async function createMongoDatabase(
-    context: IActionContext,
-    node: MongoAccountResourceItem | MongoClusterItemBase,
-): Promise<void> {
+async function createMongoDatabase(context: IActionContext, node: MongoClusterItemBase): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
-    const credentialsId = node instanceof MongoAccountResourceItem ? node.id : node.mongoCluster.id;
-    const clusterName = node instanceof MongoAccountResourceItem ? node.account.name : node.mongoCluster.name;
-
-    if (!CredentialCache.hasCredentials(credentialsId)) {
+    if (!CredentialCache.hasCredentials(node.mongoCluster.id)) {
         throw new Error(
             l10n.t(
                 'You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node "{0}") and try again.',
-                clusterName,
+                node.mongoCluster.name,
             ),
         );
     }
 
     const wizardContext: CreateMongoDatabaseWizardContext = {
         ...context,
-        credentialsId,
-        clusterName,
+        credentialsId: node.mongoCluster.id,
+        clusterName: node.mongoCluster.name,
         nodeId: node.id,
     };
 

@@ -8,7 +8,6 @@ import * as l10n from '@vscode/l10n';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type MongoAccountModel } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoAccountModel';
 import { type MongoClusterModel } from '../../tree/documentdb/MongoClusterModel';
 import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { CredentialCache } from '../CredentialCache';
@@ -23,7 +22,7 @@ export class MongoScrapbookServiceImpl {
     // Connection Management
     //--------------------------------------------------------------------------------
 
-    private _cluster: MongoClusterModel | MongoAccountModel | undefined;
+    private _cluster: MongoClusterModel | undefined;
     private _database: DatabaseItemModel | undefined;
     private readonly _mongoCodeLensProvider = new MongoCodeLensProvider();
 
@@ -37,7 +36,7 @@ export class MongoScrapbookServiceImpl {
     /**
      * Sets the current cluster and database, updating the CodeLens provider.
      */
-    public async setConnectedCluster(cluster: MongoClusterModel | MongoAccountModel, database: DatabaseItemModel) {
+    public async setConnectedCluster(cluster: MongoClusterModel, database: DatabaseItemModel) {
         // Update information
         this._cluster = cluster;
         this._database = database;

@@ -12,18 +12,19 @@ import {
 import { type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { API, CoreExperience, tryGetExperience } from '../../../AzureDBExperiences';
+import { API, CoreExperience, MongoExperience, tryGetExperience } from '../../../AzureDBExperiences';
 import { databaseAccountType } from '../../../constants';
 import { ext } from '../../../extensionVariables';
 import { nonNullProp } from '../../../utils/nonNull';
 import { type CosmosAccountModel, type CosmosDBResource } from '../../CosmosAccountModel';
 import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
+import { type MongoClusterModel } from '../../documentdb/MongoClusterModel';
 import { GraphAccountResourceItem } from '../../graph/GraphAccountResourceItem';
 import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from '../../table/TableAccountResourceItem';
 import { isTreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { isTreeElementWithExperience } from '../../TreeElementWithExperience';
-import { MongoAccountResourceItem } from '../documentdb/mongo-ru/MongoAccountResourceItem';
+import { MongoRUResourceItem } from '../documentdb/mongo-ru/MongoRUResourceItem';
 
 export class CosmosDBBranchDataProvider
     extends vscode.Disposable
@@ -103,7 +104,14 @@ export class CosmosDBBranchDataProvider
                     const experience = tryGetExperience(resource);
 
                     if (experience?.api === API.MongoDB) {
-                        return new MongoAccountResourceItem(accountModel, experience);
+                        // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
+                        const clusterInfo: MongoClusterModel = {
+                            ...resource,
+                            dbExperience: MongoExperience,
+                        } as MongoClusterModel;
+
+                        const clusterItem = new MongoRUResourceItem(resource.subscription, clusterInfo);
+                        return clusterItem;
                     }
 
                     if (experience?.api === API.Cassandra) {

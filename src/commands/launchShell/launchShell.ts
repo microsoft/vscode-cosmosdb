@@ -8,7 +8,6 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoAccountResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoAccountResourceItem';
 import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
@@ -16,18 +15,14 @@ import { MongoClusterWorkspaceItem } from '../../tree/workspace-view/documentdb/
 
 import { ConnectionString } from 'mongodb-connection-string-url';
 import { isWindows } from '../../constants';
+import { MongoRUResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoRUResourceItem';
 
 /**
  * Currently it only supports launching the MongoDB shell
  */
 export async function launchShell(
     context: IActionContext,
-    node?:
-        | DatabaseItem
-        | CollectionItem
-        | MongoClusterWorkspaceItem
-        | MongoClusterResourceItem
-        | MongoAccountResourceItem,
+    node?: DatabaseItem | CollectionItem | MongoClusterWorkspaceItem | MongoClusterResourceItem | MongoRUResourceItem,
 ): Promise<void> {
     if (!node) {
         throw new Error(l10n.t('No database or collection selected.'));
@@ -41,7 +36,7 @@ export async function launchShell(
     if (
         // connecting at the account level
         node instanceof MongoClusterResourceItem ||
-        node instanceof MongoAccountResourceItem ||
+        node instanceof MongoRUResourceItem ||
         node instanceof MongoClusterWorkspaceItem
     ) {
         // we need to discover the connection string
@@ -87,7 +82,7 @@ export async function launchShell(
 
     // Determine if TLS certificate validation should be disabled
     // This only applies to emulator connections with security disabled
-    const isRegularCloudAccount = node instanceof MongoAccountResourceItem;
+    const isRegularCloudAccount = node instanceof MongoClusterResourceItem || node instanceof MongoRUResourceItem;
     const isEmulatorWithSecurityDisabled =
         !isRegularCloudAccount &&
         node.mongoCluster.emulatorConfiguration &&

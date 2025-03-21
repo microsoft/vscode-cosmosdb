@@ -10,6 +10,7 @@ import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/d
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
+// TODO: A new one is needed for RU, but since we've decided not to support account deletions, we can skip it for now
 export async function deleteMongoClustersAccount(
     context: DeleteWizardContext,
     node: MongoClusterResourceItem,

@@ -12,20 +12,20 @@ import {
     type IErrorHandlerContext,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { connectMongoDatabase } from '../commands/scrapbook-commands/connectMongoDatabase';
-import { createMongoScrapbook } from '../commands/scrapbook-commands/createMongoScrapbook';
-import { executeAllMongoCommand } from '../commands/scrapbook-commands/executeAllMongoCommand';
-import { executeMongoCommand } from '../commands/scrapbook-commands/executeMongoCommand';
-import { ext } from '../extensionVariables';
-import { MongoConnectError } from './scrapbook/connectToMongoClient';
-import { MongoDBLanguageClient } from './scrapbook/languageClient';
-import { getAllErrorsFromTextDocument } from './scrapbook/MongoScrapbookHelpers';
-import { MongoScrapbookService } from './scrapbook/MongoScrapbookService';
+import { connectMongoDatabase } from '../../commands/scrapbook-commands/connectMongoDatabase';
+import { createMongoScrapbook } from '../../commands/scrapbook-commands/createMongoScrapbook';
+import { executeAllMongoCommand } from '../../commands/scrapbook-commands/executeAllMongoCommand';
+import { executeMongoCommand } from '../../commands/scrapbook-commands/executeMongoCommand';
+import { ext } from '../../extensionVariables';
+import { MongoConnectError } from './connectToMongoClient';
+import { MongoDBLanguageClient } from './languageClient';
+import { getAllErrorsFromTextDocument } from './MongoScrapbookHelpers';
+import { MongoScrapbookService } from './MongoScrapbookService';
 
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
 
-export function registerMongoCommands(): void {
+export function registerScrapbookCommands(): void {
     ext.mongoLanguageClient = new MongoDBLanguageClient();
 
     ext.context.subscriptions.push(

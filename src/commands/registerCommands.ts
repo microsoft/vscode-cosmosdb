@@ -11,7 +11,6 @@ import {
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
 import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
-import { registerMongoCommands } from '../documentdb/registerMongoCommands';
 import { ext } from '../extensionVariables';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
@@ -60,9 +59,8 @@ export function registerCommands(): void {
     registerStoredProcedureCommands();
     registerTriggerCommands();
 
-    // Scrapbooks and old commands
+    // old commands
     registerDocDBCommands();
-    registerMongoCommands();
     registerPostgresCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);

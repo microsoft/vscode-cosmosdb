@@ -24,7 +24,6 @@ export { isWindows, wellKnownEmulatorPassword } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { getCosmosClient } from './src/docdb/getCosmosClient';
 export * from './src/docdb/registerDocDBCommands';
-export * from './src/documentdb/registerMongoCommands';
 export {
     connectToMongoClient,
     isCosmosEmulatorConnectionString,
@@ -37,6 +36,7 @@ export {
 } from './src/documentdb/scrapbook/mongoConnectionStrings';
 export { findCommandAtPosition, getAllCommandsFromText } from './src/documentdb/scrapbook/MongoScrapbookHelpers';
 export { MongoShellScriptRunner as MongoShell } from './src/documentdb/scrapbook/MongoShellScriptRunner';
+export * from './src/documentdb/scrapbook/registerScrapbookCommands';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';

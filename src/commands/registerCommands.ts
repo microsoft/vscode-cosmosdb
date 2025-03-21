@@ -11,8 +11,8 @@ import {
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
 import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
+import { registerMongoCommands } from '../documentdb/registerMongoCommands';
 import { ext } from '../extensionVariables';
-import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { createDocumentDBContainer, createGraph } from './createContainer/createContainer';

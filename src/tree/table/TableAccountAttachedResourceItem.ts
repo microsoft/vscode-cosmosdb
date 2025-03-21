@@ -12,7 +12,7 @@ import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
-import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 
 export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
     constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {

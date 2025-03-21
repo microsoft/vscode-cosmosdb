@@ -9,11 +9,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { checkAuthentication } from '../../postgres/commands/checkAuthentication';
 import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function copyPostgresConnectionString(

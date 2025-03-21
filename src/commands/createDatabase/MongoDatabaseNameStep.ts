@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
+import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
 import { type CreateMongoDatabaseWizardContext } from './CreateMongoDatabaseWizardContext';
 
 export class MongoDatabaseNameStep extends AzureWizardPromptStep<CreateMongoDatabaseWizardContext> {

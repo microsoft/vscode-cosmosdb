@@ -6,13 +6,13 @@
 import * as vscode from 'vscode';
 import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
-import { MongoClustersSession } from '../../../mongoClusters/MongoClusterSession';
+import { MongoClustersSession } from '../../../documentdb/MongoClusterSession';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 import * as l10n from '@vscode/l10n';
-import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
+import { type CollectionItem } from '../../../tree/documentdb/CollectionItem';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';

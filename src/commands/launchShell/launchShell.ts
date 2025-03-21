@@ -6,13 +6,13 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
-import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
-import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { MongoClusterWorkspaceItem } from '../../mongoClusters/tree/workspace/MongoClusterWorkspaceItem';
-import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
+import { MongoAccountResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoAccountResourceItem';
+import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
+import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
+import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
+import { MongoClusterWorkspaceItem } from '../../tree/workspace-view/documentdb/MongoClusterWorkspaceItem';
 
 import { ConnectionString } from 'mongodb-connection-string-url';
 import { isWindows } from '../../constants';

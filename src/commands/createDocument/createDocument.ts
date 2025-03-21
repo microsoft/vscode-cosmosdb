@@ -7,10 +7,10 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { createNoSqlQueryConnection } from '../../docdb/utils/NoSqlQueryConnection';
-import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
+import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function createDocumentDBDocument(

@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import { type Document } from 'mongodb';
 import { z } from 'zod';
-import { MongoClustersClient } from '../../../mongoClusters/MongoClustersClient';
+import { MongoClustersClient } from '../../../documentdb/MongoClustersClient';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 import { promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';

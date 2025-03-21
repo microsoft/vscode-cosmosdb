@@ -7,8 +7,8 @@ import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscod
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
-import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
+import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';

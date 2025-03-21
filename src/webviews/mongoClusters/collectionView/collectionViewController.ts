@@ -5,7 +5,7 @@
 
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
-import { type CollectionItem } from '../../../mongoClusters/tree/CollectionItem';
+import { type CollectionItem } from '../../../tree/documentdb/CollectionItem';
 import { WebviewController } from '../../api/extension-server/WebviewController';
 import { type RouterContext } from './collectionViewRouter';
 

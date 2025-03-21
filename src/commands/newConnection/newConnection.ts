@@ -6,8 +6,8 @@
 import { AzExtTreeItem, AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
-import { MongoDBAttachAccountResourceItem } from '../../mongoClusters/tree/workspace/MongoDBAttachAccountResourceItem';
-import { CosmosDBAttachAccountResourceItem } from '../../tree/workspace/CosmosDBAttachAccountResourceItem';
+import { CosmosDBAttachAccountResourceItem } from '../../tree/workspace-view/cosmosdb/CosmosDBAttachAccountResourceItem';
+import { MongoDBAttachAccountResourceItem } from '../../tree/workspace-view/documentdb/MongoDBAttachAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { QuickPickType } from '../../utils/pickItem/pickExperience';
 import { ExperienceStep } from './ExperienceStep';

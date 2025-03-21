@@ -12,9 +12,9 @@ import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosC
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { rejectOnTimeout } from '../../utils/timeout';
-import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 
 export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAccountResourceItemBase {

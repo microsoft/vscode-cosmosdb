@@ -7,7 +7,7 @@
 import { ProgressBar, Tab, TabList } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { type JSX, useEffect, useRef, useState } from 'react';
-import { type TableDataEntry } from '../../../mongoClusters/MongoClusterSession';
+import { type TableDataEntry } from '../../../documentdb/MongoClusterSession';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './collectionView.scss';

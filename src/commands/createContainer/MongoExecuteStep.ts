@@ -5,8 +5,8 @@
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<CreateCollectionWizardContext> {

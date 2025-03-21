@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
+import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 

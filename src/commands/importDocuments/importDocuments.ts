@@ -13,10 +13,10 @@ import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../docdb/utils/validateDocument';
+import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { CollectionItem } from '../../mongoClusters/tree/CollectionItem';
 import { DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 

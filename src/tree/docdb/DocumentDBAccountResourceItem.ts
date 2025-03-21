@@ -7,7 +7,7 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { AuthenticationMethod, getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import { AuthenticationMethod, getCosmosClient, getCosmosEntraIdCredential } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
@@ -65,7 +65,7 @@ export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResou
             if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                 this.hasShownRbacNotification = true;
 
-                const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
+                const tenantId = getCosmosEntraIdCredential(accountInfo.credentials)?.tenantId;
                 const principalId =
                     (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId)) ?? '';
                 // check if the principal ID matches the one that is signed in,

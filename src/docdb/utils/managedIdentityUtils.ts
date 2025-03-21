@@ -12,39 +12,56 @@ import { AuthenticationMethod, type CosmosDBManagedIdentityCredential } from '..
 // Module-level variable to cache the result of running on Azure check
 let isRunningOnAzure: boolean | undefined = undefined;
 
+/**
+ * Determines if the current environment is running on Azure by checking for the
+ * Azure Instance Metadata Service (IMDS).
+ *
+ * @returns {Promise<boolean>} True if running on Azure, false otherwise
+ * @remarks
+ * - Caches the result in module-level variable to avoid repeated network calls
+ * - Uses a 2-second timeout to prevent hanging in non-Azure environments
+ * - The IMDS endpoint is only accessible from within Azure VMs or App Services
+ * - Learn more: https://aka.ms/azureimds
+ */
 export async function getIsRunningOnAzure(): Promise<boolean> {
-    // Return cached result if available
+    // Return cached result if available to avoid redundant checks
     if (isRunningOnAzure !== undefined) {
         return isRunningOnAzure;
     }
-    isRunningOnAzure = false;
+    isRunningOnAzure = false; // Default to false until proven otherwise
 
     try {
-        // Request with timeout
+        // Create an AbortController to implement request timeout
+        // This prevents the request from hanging indefinitely in non-Azure environments
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
 
+        // Contact the Azure Instance Metadata Service endpoint
+        // The 'Metadata: true' header is required by the IMDS protocol
+        // https://aka.ms/azureimds#versions
         const response = await fetch('http://169.254.169.254/metadata/versions', {
             headers: { Metadata: 'true' },
             signal: controller.signal,
         });
 
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutId); // Clean up timeout to prevent memory leaks
 
-        // Check if the response contains valid IMDS data
+        // Validate that the response contains the expected IMDS structure
+        // A valid response should contain an array of supported API versions
         if (response.ok) {
             const data = (await response.json()) as { apiVersions?: string[] };
             if (Array.isArray(data?.apiVersions) && data.apiVersions.length > 0) {
                 ext.outputChannel.debug('Running on Azure: Instance Metadata Service detected');
-                return (isRunningOnAzure = true);
+                return (isRunningOnAzure = true); // Cache and return result
             }
         }
     } catch (error) {
+        // This will catch network errors, timeouts, and JSON parsing failures
         ext.outputChannel.debug(`Not running on Azure: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Default case: not on Azure
-    return (isRunningOnAzure = false);
+    // Default case: not on Azure or IMDS check failed
+    return (isRunningOnAzure = false); // Cache and return result
 }
 
 async function getHasManagedIdentity(

@@ -45,7 +45,7 @@ export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): Cosmo
     )[0];
 }
 
-export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBEntraIdCredential | undefined {
+export function getCosmosEntraIdCredential(credentials: CosmosDBCredential[]): CosmosDBEntraIdCredential | undefined {
     return credentials.filter(
         (cred): cred is CosmosDBEntraIdCredential => cred.type === AuthenticationMethod.entraId,
     )[0];

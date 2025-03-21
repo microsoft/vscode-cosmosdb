@@ -29,6 +29,7 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { registerCommands } from './commands/registerCommands';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { getIsRunningOnAzure } from './docdb/utils/managedIdentityUtils';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
 import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
@@ -64,6 +65,9 @@ export async function activateInternal(
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         ext.secretStorage = context.secrets;
+
+        // Early initialization to determine whether Managed Identity is available for authentication
+        void getIsRunningOnAzure();
 
         ext.rgApi = await getResourceGroupsApi();
 

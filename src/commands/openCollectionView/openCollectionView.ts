@@ -7,7 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { MongoClustersSession } from '../../documentdb/MongoClusterSession';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
-import { CollectionViewController } from '../../webviews/mongoClusters/collectionView/collectionViewController';
+import { CollectionViewController } from '../../webviews/documentdb/collectionView/collectionViewController';
 
 export async function openCollectionView(context: IActionContext, node?: CollectionItem) {
     if (!node) {

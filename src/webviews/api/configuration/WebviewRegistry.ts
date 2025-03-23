@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Document } from '../../Document/Document';
-import { CollectionView } from '../../mongoClusters/collectionView/CollectionView';
-import { DocumentView } from '../../mongoClusters/documentView/documentView';
+import { CollectionView } from '../../documentdb/collectionView/CollectionView';
+import { DocumentView } from '../../documentdb/documentView/documentView';
 import { QueryEditor } from '../../QueryEditor/QueryEditor';
 
 export const WebviewRegistry = {

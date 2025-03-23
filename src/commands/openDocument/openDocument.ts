@@ -13,7 +13,7 @@ import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItem
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
-import { DocumentsViewController } from '../../webviews/mongoClusters/documentView/documentsViewController';
+import { DocumentsViewController } from '../../webviews/documentdb/documentView/documentsViewController';
 
 export async function openDocumentDBItem(context: IActionContext, node?: DocumentDBItemResourceItem): Promise<void> {
     if (!node) {

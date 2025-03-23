@@ -8,7 +8,7 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
-import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
@@ -99,7 +99,7 @@ export async function deleteContainer(
 }
 
 async function deleteMongoCollection(node: CollectionItem): Promise<boolean> {
-    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.mongoCluster.id);
 
     let success = false;
     await ext.state.showDeleting(node.id, async () => {

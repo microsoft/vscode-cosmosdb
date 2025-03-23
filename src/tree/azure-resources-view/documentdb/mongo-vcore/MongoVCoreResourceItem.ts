@@ -15,20 +15,20 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
+import { ClustersClient } from '../../../../documentdb/ClustersClient';
 import { CredentialCache } from '../../../../documentdb/CredentialCache';
-import { MongoClustersClient } from '../../../../documentdb/MongoClustersClient';
 import { type AuthenticateWizardContext } from '../../../../documentdb/wizards/authenticate/AuthenticateWizardContext';
 import { ProvidePasswordStep } from '../../../../documentdb/wizards/authenticate/ProvidePasswordStep';
 import { ProvideUserNameStep } from '../../../../documentdb/wizards/authenticate/ProvideUsernameStep';
 import { ext } from '../../../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../../../utils/azureClients';
-import { MongoClusterItemBase } from '../../../documentdb/MongoClusterItemBase';
-import { type MongoClusterModel } from '../../../documentdb/MongoClusterModel';
+import { ClusterItemBase } from '../../../documentdb/ClusterItemBase';
+import { type ClusterModel } from '../../../documentdb/ClusterModel';
 
-export class MongoClusterResourceItem extends MongoClusterItemBase {
+export class MongoVCoreResourceItem extends ClusterItemBase {
     constructor(
         readonly subscription: AzureSubscription,
-        mongoCluster: MongoClusterModel,
+        mongoCluster: ClusterModel,
     ) {
         super(mongoCluster);
     }
@@ -69,7 +69,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
      * @param context The action context.
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
-    protected async authenticateAndConnect(): Promise<MongoClustersClient | null> {
+    protected async authenticateAndConnect(): Promise<ClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongoClusters.connect',
             async (context: IActionContext) => {
@@ -125,9 +125,9 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                 );
 
                 // Attempt to create the client with the provided credentials
-                let mongoClustersClient: MongoClustersClient;
+                let mongoClustersClient: ClustersClient;
                 try {
-                    mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
+                    mongoClustersClient = await ClustersClient.getClient(this.id).catch((error: Error) => {
                         ext.outputChannel.appendLine(l10n.t('Error: {error}', { error: error.message }));
 
                         void vscode.window.showErrorMessage(
@@ -145,7 +145,7 @@ export class MongoClusterResourceItem extends MongoClusterItemBase {
                     });
                 } catch {
                     // If connection fails, remove cached credentials
-                    await MongoClustersClient.deleteClient(this.id);
+                    await ClustersClient.deleteClient(this.id);
                     CredentialCache.deleteCredentials(this.id);
 
                     // Return null to indicate failure

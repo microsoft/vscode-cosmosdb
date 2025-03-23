@@ -12,7 +12,7 @@ import { type WorkspaceResourceBranchDataProvider } from '@microsoft/vscode-azur
 import * as vscode from 'vscode';
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
-import { MongoDBAccountsWorkspaceItem } from './MongoDBAccountsWorkspaceItem';
+import { AccountsItem } from './AccountsItem';
 
 export class MongoClustersWorkspaceBranchDataProvider
     extends vscode.Disposable
@@ -48,7 +48,7 @@ export class MongoClustersWorkspaceBranchDataProvider
     }
 
     getResourceItem(): TreeElementBase | Thenable<TreeElementBase> {
-        const resourceItem = new MongoDBAccountsWorkspaceItem();
+        const resourceItem = new AccountsItem();
         // Workspace picker relies on this value
         ext.mongoClusterWorkspaceBranchDataResource = resourceItem;
         return ext.state.wrapItemInStateHandling(resourceItem!, () => this.refresh(resourceItem));

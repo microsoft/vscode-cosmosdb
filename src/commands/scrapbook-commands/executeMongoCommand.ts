@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { MongoScrapbookService } from '../../documentdb/scrapbook/MongoScrapbookService';
+import { ScrapbookService } from '../../documentdb/scrapbook/ScrapbookService';
 import { withProgress } from '../../utils/withProgress';
 
 export async function executeMongoCommand(context: IActionContext, position?: vscode.Position): Promise<void> {
@@ -18,7 +18,7 @@ export async function executeMongoCommand(context: IActionContext, position?: vs
     const pos = position ?? editor.selection.start;
 
     await withProgress(
-        MongoScrapbookService.executeCommandAtPosition(context, editor.document, pos),
+        ScrapbookService.executeCommandAtPosition(context, editor.document, pos),
         l10n.t('Executing Mongo command in shell…'),
     );
 }

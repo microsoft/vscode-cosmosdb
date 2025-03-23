@@ -21,7 +21,7 @@ import {
     type TextDocumentPositionParams,
 } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { connectToMongoClient } from '../connectToMongoClient';
+import { connectToClient } from '../connectToClient';
 import { type IConnectionParams } from './IConnectionParams';
 import { MongoScriptDocumentManager } from './mongoScript';
 import { SchemaService } from './schemaService';
@@ -55,7 +55,7 @@ export class LanguageService {
         });
 
         connection.onRequest('connect', (connectionParams: IConnectionParams) => {
-            void connectToMongoClient(
+            void connectToClient(
                 connectionParams.connectionString,
                 connectionParams.extensionUserAgent,
                 connectionParams.emulatorConfiguration,

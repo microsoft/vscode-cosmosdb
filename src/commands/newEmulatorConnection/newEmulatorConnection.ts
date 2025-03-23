@@ -13,7 +13,7 @@ import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../constants';
 import { NewCoreEmulatorConnectionItem } from '../../tree/workspace-view/cosmosdb/LocalEmulators/NewCoreEmulatorConnectionItem';
-import { NewMongoEmulatorConnectionItem } from '../../tree/workspace-view/documentdb/LocalEmulators/NewMongoEmulatorConnectionItem';
+import { NewEmulatorConnectionItem } from '../../tree/workspace-view/documentdb/LocalEmulators/NewEmulatorConnectionItem';
 import { ExecuteStep } from './ExecuteStep';
 import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
 import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
@@ -24,12 +24,12 @@ import { PromptEmulatorTypeStep } from './PromptEmulatorTypeStep';
 
 export async function newEmulatorConnection(
     context: IActionContext,
-    node: NewCoreEmulatorConnectionItem | NewMongoEmulatorConnectionItem,
+    node: NewCoreEmulatorConnectionItem | NewEmulatorConnectionItem,
 ) {
     if (!isEmulatorSupported) {
         context.errorHandling.suppressReportIssue = true;
         throw new Error(
-            node instanceof NewMongoEmulatorConnectionItem
+            node instanceof NewEmulatorConnectionItem
                 ? l10n.t(
                       'The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).',
                   )
@@ -46,7 +46,7 @@ export async function newEmulatorConnection(
     const steps: AzureWizardPromptStep<NewEmulatorConnectionWizardContext>[] = [];
     const executeSteps: AzureWizardExecuteStep<NewEmulatorConnectionWizardContext>[] = [];
 
-    if (node instanceof NewMongoEmulatorConnectionItem) {
+    if (node instanceof NewEmulatorConnectionItem) {
         title = l10n.t('New Emulator Connection');
         steps.push(
             new PromptEmulatorTypeStep(API.MongoDB),

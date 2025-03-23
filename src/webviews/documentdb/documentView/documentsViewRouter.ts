@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import { type Document } from 'mongodb';
 import { z } from 'zod';
-import { MongoClustersClient } from '../../../documentdb/MongoClustersClient';
+import { ClustersClient } from '../../../documentdb/ClustersClient';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 import { promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
@@ -38,7 +38,7 @@ export const documentsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             // run query
-            const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.clusterId);
+            const client: ClustersClient = await ClustersClient.getClient(myCtx.clusterId);
             const documentContent = await client.pointRead(myCtx.databaseName, myCtx.collectionName, input);
 
             /**
@@ -71,7 +71,7 @@ export const documentsViewRouter = router({
             }
 
             // run query
-            const client: MongoClustersClient = await MongoClustersClient.getClient(myCtx.clusterId);
+            const client: ClustersClient = await ClustersClient.getClient(myCtx.clusterId);
 
             // when a document is saved and is missing an _id field, the _id field is added on the server
             // or by the mongodb driver.

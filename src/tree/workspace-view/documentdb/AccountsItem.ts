@@ -7,15 +7,15 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
-import { type MongoClusterModel } from '../../documentdb/MongoClusterModel';
+import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../workspace-api/SharedWorkspaceStorage';
-import { LocalMongoEmulatorsItem } from './LocalEmulators/LocalMongoEmulatorsItem';
-import { MongoClusterWorkspaceItem } from './MongoClusterWorkspaceItem';
-import { MongoDBAttachAccountResourceItem } from './MongoDBAttachAccountResourceItem';
+import { ClusterItem } from './ClusterItem';
+import { LocalEmulatorsItem } from './LocalEmulators/LocalEmulatorsItem';
+import { NewConnectionItem } from './NewConnectionItem';
 
-export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeElementWithExperience {
+export class AccountsItem implements CosmosDBTreeElement, TreeElementWithExperience {
     public readonly id: string;
     public readonly experience: Experience;
 
@@ -28,20 +28,20 @@ export class MongoDBAccountsWorkspaceItem implements CosmosDBTreeElement, TreeEl
         const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
 
         return [
-            new LocalMongoEmulatorsItem(this.id),
+            new LocalEmulatorsItem(this.id),
             ...allItems
                 .filter((item) => !item.properties?.isEmulator) // filter out emulators
                 .map((item) => {
-                    const model: MongoClusterModel = {
+                    const model: ClusterModel = {
                         id: item.id,
                         name: item.name,
                         dbExperience: MongoClustersExperience,
                         connectionString: item?.secrets?.[0] ?? undefined,
                     };
 
-                    return new MongoClusterWorkspaceItem(model);
+                    return new ClusterItem(model);
                 }),
-            new MongoDBAttachAccountResourceItem(this.id),
+            new NewConnectionItem(this.id),
         ];
     }
 

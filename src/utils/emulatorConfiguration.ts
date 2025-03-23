@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export interface MongoEmulatorConfiguration {
+export interface EmulatorConfiguration {
     /**
      * Indicates if the connection is to an emulator.
      */
@@ -19,7 +19,7 @@ export interface MongoEmulatorConfiguration {
  * Returns the default MongoEmulatorConfiguration with isEmulator set to true
  * and disableEmulatorSecurity set to false.
  */
-export const defaultMongoEmulatorConfiguration: MongoEmulatorConfiguration = {
+export const defaultMongoEmulatorConfiguration: EmulatorConfiguration = {
     isEmulator: true,
     disableEmulatorSecurity: false,
 };

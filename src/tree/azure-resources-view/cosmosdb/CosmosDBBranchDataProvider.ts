@@ -18,7 +18,7 @@ import { ext } from '../../../extensionVariables';
 import { nonNullProp } from '../../../utils/nonNull';
 import { type CosmosAccountModel, type CosmosDBResource } from '../../CosmosAccountModel';
 import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
-import { type MongoClusterModel } from '../../documentdb/MongoClusterModel';
+import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { GraphAccountResourceItem } from '../../graph/GraphAccountResourceItem';
 import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from '../../table/TableAccountResourceItem';
@@ -105,10 +105,10 @@ export class CosmosDBBranchDataProvider
 
                     if (experience?.api === API.MongoDB) {
                         // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
-                        const clusterInfo: MongoClusterModel = {
+                        const clusterInfo: ClusterModel = {
                             ...resource,
                             dbExperience: MongoExperience,
-                        } as MongoClusterModel;
+                        } as ClusterModel;
 
                         const clusterItem = new MongoRUResourceItem(resource.subscription, clusterInfo);
                         return clusterItem;

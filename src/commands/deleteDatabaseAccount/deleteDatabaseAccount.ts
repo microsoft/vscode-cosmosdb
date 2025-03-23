@@ -25,8 +25,8 @@ import {
 import { ext } from '../../extensionVariables';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
-import { type MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
+import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
+import { type ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
@@ -62,10 +62,10 @@ export async function deleteAccount(context: IActionContext, node?: AzExtTreeIte
 
 export async function deleteAzureDatabaseAccount(
     context: IActionContext,
-    node?: CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+    node?: CosmosDBAccountResourceItemBase | ClusterItemBase,
 ) {
     if (!node) {
-        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterResourceItem>(context, {
+        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoVCoreResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
         });
     }
@@ -79,7 +79,7 @@ export async function deleteAzureDatabaseAccount(
 
 export async function deleteDatabaseAccount(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
     let subscription: ISubscriptionContext;
     let accountName: string;
@@ -92,7 +92,7 @@ export async function deleteDatabaseAccount(
     } else if (node instanceof CosmosDBAccountResourceItemBase && 'subscription' in node.account) {
         subscription = createSubscriptionContext(node.account.subscription as AzureSubscription);
         accountName = node.account.name;
-    } else if (node instanceof MongoClusterResourceItem) {
+    } else if (node instanceof MongoVCoreResourceItem) {
         subscription = createSubscriptionContext(node.subscription);
         accountName = node.mongoCluster.name;
     } else {

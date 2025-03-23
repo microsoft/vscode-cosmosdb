@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { MongoClustersClient } from './MongoClustersClient';
+import { ClustersClient } from './ClustersClient';
 
 describe('MongoClustersClient', () => {
     it('should be defined', () => {
-        expect(MongoClustersClient).toBeDefined();
+        expect(ClustersClient).toBeDefined();
     });
 });

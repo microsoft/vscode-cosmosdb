@@ -26,10 +26,10 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { Links } from '../constants';
-import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
+import { type EmulatorConfiguration } from '../utils/emulatorConfiguration';
 import { CredentialCache } from './CredentialCache';
 import { getHostsFromConnectionString, hasAzureDomain } from './utils/connectionStringHelpers';
-import { getMongoClusterMetadata, type MongoClusterMetadata } from './utils/getMongoClusterMetadata';
+import { getClusterMetadata, type ClusterMetadata } from './utils/getClusterMetadata';
 import { toFilterQueryObj } from './utils/toFilterQuery';
 
 export interface DatabaseItemModel {
@@ -61,12 +61,12 @@ export type InsertDocumentsResult = {
     insertedCount: number;
 };
 
-export class MongoClustersClient {
+export class ClustersClient {
     // cache of active/existing clients
-    static _clients: Map<string, MongoClustersClient> = new Map();
+    static _clients: Map<string, ClustersClient> = new Map();
 
     private _mongoClient: MongoClient;
-    private emulatorConfiguration?: MongoEmulatorConfiguration;
+    private emulatorConfiguration?: EmulatorConfiguration;
 
     /**
      * Use getClient instead of a constructor. Connections/Client are being cached and reused.
@@ -153,7 +153,7 @@ export class MongoClustersClient {
         }
 
         void callWithTelemetryAndErrorHandling('cosmosDB.mongoClusters.connect.getmetadata', async (context) => {
-            const metadata: MongoClusterMetadata = await getMongoClusterMetadata(this._mongoClient, hosts);
+            const metadata: ClusterMetadata = await getClusterMetadata(this._mongoClient, hosts);
 
             context.telemetry.properties = {
                 ...context.telemetry.properties,
@@ -169,28 +169,28 @@ export class MongoClustersClient {
      * It is also used as a key to reuse existing clients.
      * @returns A promise that resolves to an instance of `MongoClustersClient`.
      */
-    public static async getClient(credentialId: string): Promise<MongoClustersClient> {
-        let client: MongoClustersClient;
+    public static async getClient(credentialId: string): Promise<ClustersClient> {
+        let client: ClustersClient;
 
-        if (MongoClustersClient._clients.has(credentialId)) {
-            client = MongoClustersClient._clients.get(credentialId) as MongoClustersClient;
+        if (ClustersClient._clients.has(credentialId)) {
+            client = ClustersClient._clients.get(credentialId) as ClustersClient;
 
             // if the client is already connected, it's a NOOP.
             await client._mongoClient.connect();
         } else {
-            client = new MongoClustersClient(credentialId);
+            client = new ClustersClient(credentialId);
             await client.initClient();
-            MongoClustersClient._clients.set(credentialId, client);
+            ClustersClient._clients.set(credentialId, client);
         }
 
         return client;
     }
 
     public static async deleteClient(credentialId: string): Promise<void> {
-        if (MongoClustersClient._clients.has(credentialId)) {
-            const client = MongoClustersClient._clients.get(credentialId) as MongoClustersClient;
+        if (ClustersClient._clients.has(credentialId)) {
+            const client = ClustersClient._clients.get(credentialId) as ClustersClient;
             await client._mongoClient.close(true);
-            MongoClustersClient._clients.delete(credentialId);
+            ClustersClient._clients.delete(credentialId);
         }
     }
 

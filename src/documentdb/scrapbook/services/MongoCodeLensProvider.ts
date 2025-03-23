@@ -6,8 +6,8 @@
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { getAllCommandsFromText } from '../MongoScrapbookHelpers';
-import { MongoScrapbookService } from '../MongoScrapbookService';
+import { getAllCommandsFromText } from '../ScrapbookHelpers';
+import { ScrapbookService } from '../ScrapbookService';
 
 /**
  * Provides Code Lens functionality for the Mongo Scrapbook editor.
@@ -63,8 +63,8 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     private createConnectionStatusLens(): vscode.CodeLens {
-        const title = MongoScrapbookService.isConnected()
-            ? l10n.t('Connected to "{name}"', { name: MongoScrapbookService.getDisplayName() ?? '' })
+        const title = ScrapbookService.isConnected()
+            ? l10n.t('Connected to "{name}"', { name: ScrapbookService.getDisplayName() ?? '' })
             : l10n.t('Connect to a database');
 
         const shortenedTitle =
@@ -81,7 +81,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     private createRunAllCommandsLens(): vscode.CodeLens {
-        const title = MongoScrapbookService.isExecutingAllCommands() ? l10n.t('⏳ Running All…') : l10n.t('⏩ Run All');
+        const title = ScrapbookService.isExecutingAllCommands() ? l10n.t('⏳ Running All…') : l10n.t('⏩ Run All');
 
         return <vscode.CodeLens>{
             command: {
@@ -93,7 +93,7 @@ export class MongoCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     private createIndividualCommandLenses(commands: { range: vscode.Range }[]): vscode.CodeLens[] {
-        const currentCommandInExectution = MongoScrapbookService.getSingleCommandInExecution();
+        const currentCommandInExectution = ScrapbookService.getSingleCommandInExecution();
 
         return commands.map((cmd) => {
             const running = currentCommandInExectution && cmd.range.isEqual(currentCommandInExectution.range);

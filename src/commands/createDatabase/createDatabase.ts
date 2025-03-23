@@ -8,11 +8,11 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { CredentialCache } from '../../documentdb/CredentialCache';
 import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
+import { type MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
 import { getAccountInfo } from '../../tree/docdb/AccountInfo';
 import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/DocumentDBAccountAttachedResourceItem';
 import { DocumentDBAccountResourceItem } from '../../tree/docdb/DocumentDBAccountResourceItem';
-import { MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
+import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
@@ -24,10 +24,10 @@ import { MongoExecuteStep } from './MongoExecuteStep';
 
 export async function createAzureDatabase(
     context: IActionContext,
-    node?: CosmosDBAccountResourceItemBase | MongoClusterResourceItem,
+    node?: CosmosDBAccountResourceItemBase | MongoVCoreResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterResourceItem>(context, {
+        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoVCoreResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
         });
     }
@@ -41,13 +41,13 @@ export async function createAzureDatabase(
 
 export async function createDatabase(
     context: IActionContext,
-    node: CosmosDBAccountResourceItemBase | MongoClusterResourceItem,
+    node: CosmosDBAccountResourceItemBase | MongoVCoreResourceItem,
 ): Promise<void> {
     if (node instanceof DocumentDBAccountResourceItem || node instanceof DocumentDBAccountAttachedResourceItem) {
         await createDocDBDatabase(context, node);
     }
 
-    if (node instanceof MongoClusterItemBase) {
+    if (node instanceof ClusterItemBase) {
         await createMongoDatabase(context, node);
     }
 }
@@ -78,7 +78,7 @@ async function createDocDBDatabase(
     showConfirmationAsInSettings(l10n.t('The "{name}" database has been created.', { name: newDatabaseName }));
 }
 
-async function createMongoDatabase(context: IActionContext, node: MongoClusterItemBase): Promise<void> {
+async function createMongoDatabase(context: IActionContext, node: ClusterItemBase): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
     if (!CredentialCache.hasCredentials(node.mongoCluster.id)) {

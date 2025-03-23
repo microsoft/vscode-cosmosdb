@@ -7,18 +7,18 @@ import { createContextValue, createGenericElement } from '@microsoft/vscode-azex
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
+import { ClustersClient, type DatabaseItemModel } from '../../documentdb/ClustersClient';
 import { CredentialCache } from '../../documentdb/CredentialCache';
-import { MongoClustersClient, type DatabaseItemModel } from '../../documentdb/MongoClustersClient';
 import { ext } from '../../extensionVariables';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type ClusterModel } from './ClusterModel';
 import { DatabaseItem } from './DatabaseItem';
-import { type MongoClusterModel } from './MongoClusterModel';
 
 // This info will be available at every level in the tree for immediate access
-export abstract class MongoClusterItemBase
+export abstract class ClusterItemBase
     implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
@@ -27,7 +27,7 @@ export abstract class MongoClusterItemBase
 
     private readonly experienceContextValue: string = '';
 
-    protected constructor(public mongoCluster: MongoClusterModel) {
+    protected constructor(public mongoCluster: ClusterModel) {
         this.id = mongoCluster.id ?? '';
         this.experience = mongoCluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience.api}`;
@@ -41,7 +41,7 @@ export abstract class MongoClusterItemBase
      * @param context The action context.
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
-    protected abstract authenticateAndConnect(): Promise<MongoClustersClient | null>;
+    protected abstract authenticateAndConnect(): Promise<ClustersClient | null>;
 
     /**
      * Abstract method to get the connection string for the MongoDB cluster.
@@ -69,7 +69,7 @@ export abstract class MongoClusterItemBase
             l10n.t('MongoDB Clusters: Loading cluster details for "{cluster}"', { cluster: this.mongoCluster.name }),
         );
 
-        let mongoClustersClient: MongoClustersClient | null;
+        let mongoClustersClient: ClustersClient | null;
 
         // Check if credentials are cached, and return the cached client if available
         if (CredentialCache.hasCredentials(this.id)) {
@@ -78,7 +78,7 @@ export abstract class MongoClusterItemBase
                     cluster: this.mongoCluster.name,
                 }),
             );
-            mongoClustersClient = await MongoClustersClient.getClient(this.id);
+            mongoClustersClient = await ClustersClient.getClient(this.id);
         } else {
             // Call to the abstract method to authenticate and connect to the cluster
             mongoClustersClient = await this.authenticateAndConnect();

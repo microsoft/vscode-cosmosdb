@@ -11,8 +11,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
+import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import { InteractiveChildProcess } from '../../utils/InteractiveChildProcess';
-import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { randomUtils } from '../../utils/randomUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
 import { wrapError } from '../../utils/wrapError';
@@ -32,7 +32,7 @@ function createSentinel(): string {
     return `${sentinelBase} ${randomUtils.getRandomHexString(10)}`;
 }
 
-export class MongoShellScriptRunner extends vscode.Disposable {
+export class ShellScriptRunner extends vscode.Disposable {
     private static _previousShellPathSetting: string | undefined;
     private static _cachedShellPathOrCmd: string | undefined;
 
@@ -49,8 +49,8 @@ export class MongoShellScriptRunner extends vscode.Disposable {
         connectionString: string,
         outputChannel: vscode.OutputChannel,
         timeoutSeconds: number,
-        emulatorConfiguration?: MongoEmulatorConfiguration,
-    ): Promise<MongoShellScriptRunner> {
+        emulatorConfiguration?: EmulatorConfiguration,
+    ): Promise<ShellScriptRunner> {
         try {
             const args: string[] = execArgs.slice() || []; // Snapshot since we modify it
             args.push(connectionString);
@@ -73,7 +73,7 @@ export class MongoShellScriptRunner extends vscode.Disposable {
                 outputFilterSearch: sentinelRegex,
                 outputFilterReplace: '',
             });
-            const shell: MongoShellScriptRunner = new MongoShellScriptRunner(process, timeoutSeconds);
+            const shell: ShellScriptRunner = new ShellScriptRunner(process, timeoutSeconds);
 
             /**
              * The 'unwrapIfCursor' helper is used to safely handle MongoDB queries in the shell,
@@ -129,26 +129,26 @@ export class MongoShellScriptRunner extends vscode.Disposable {
 
     public static async createShell(
         context: IActionContext,
-        connectionInfo: { connectionString: string; emulatorConfiguration?: MongoEmulatorConfiguration },
-    ): Promise<MongoShellScriptRunner> {
+        connectionInfo: { connectionString: string; emulatorConfiguration?: EmulatorConfiguration },
+    ): Promise<ShellScriptRunner> {
         const config = vscode.workspace.getConfiguration();
         let shellPath: string | undefined = config.get(ext.settingsKeys.mongoShellPath);
         const shellArgs: string[] = config.get(ext.settingsKeys.mongoShellArgs, []);
 
         if (
             !shellPath ||
-            !MongoShellScriptRunner._cachedShellPathOrCmd ||
-            MongoShellScriptRunner._previousShellPathSetting !== shellPath
+            !ShellScriptRunner._cachedShellPathOrCmd ||
+            ShellScriptRunner._previousShellPathSetting !== shellPath
         ) {
             // Only do this if setting changed since last time
-            shellPath = await MongoShellScriptRunner._determineShellPathOrCmd(context, shellPath);
-            MongoShellScriptRunner._previousShellPathSetting = shellPath;
+            shellPath = await ShellScriptRunner._determineShellPathOrCmd(context, shellPath);
+            ShellScriptRunner._previousShellPathSetting = shellPath;
         }
-        MongoShellScriptRunner._cachedShellPathOrCmd = shellPath;
+        ShellScriptRunner._cachedShellPathOrCmd = shellPath;
 
         const timeout =
             1000 * nonNullValue(config.get<number>(ext.settingsKeys.mongoShellTimeout), 'mongoShellTimeout');
-        return MongoShellScriptRunner.createShellProcessHelper(
+        return ShellScriptRunner.createShellProcessHelper(
             shellPath,
             shellArgs,
             connectionInfo.connectionString,

@@ -6,12 +6,12 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
+import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
-import { MongoClusterWorkspaceItem } from '../../tree/workspace-view/documentdb/MongoClusterWorkspaceItem';
+import { ClusterItem } from '../../tree/workspace-view/documentdb/ClusterItem';
 
 import { ConnectionString } from 'mongodb-connection-string-url';
 import { isWindows } from '../../constants';
@@ -22,7 +22,7 @@ import { MongoRUResourceItem } from '../../tree/azure-resources-view/documentdb/
  */
 export async function launchShell(
     context: IActionContext,
-    node?: DatabaseItem | CollectionItem | MongoClusterWorkspaceItem | MongoClusterResourceItem | MongoRUResourceItem,
+    node?: DatabaseItem | CollectionItem | ClusterItem | MongoVCoreResourceItem | MongoRUResourceItem,
 ): Promise<void> {
     if (!node) {
         throw new Error(l10n.t('No database or collection selected.'));
@@ -35,9 +35,9 @@ export async function launchShell(
 
     if (
         // connecting at the account level
-        node instanceof MongoClusterResourceItem ||
+        node instanceof MongoVCoreResourceItem ||
         node instanceof MongoRUResourceItem ||
-        node instanceof MongoClusterWorkspaceItem
+        node instanceof ClusterItem
     ) {
         // we need to discover the connection string
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
@@ -45,7 +45,7 @@ export async function launchShell(
         });
     } else {
         // node is instanceof DatabaseItem or CollectionItem and we alrady have the connection string somewhere
-        const client: MongoClustersClient = await MongoClustersClient.getClient(node.mongoCluster.id);
+        const client: ClustersClient = await ClustersClient.getClient(node.mongoCluster.id);
         rawConnectionString = client.getConnectionStringWithPassword();
     }
 
@@ -82,7 +82,7 @@ export async function launchShell(
 
     // Determine if TLS certificate validation should be disabled
     // This only applies to emulator connections with security disabled
-    const isRegularCloudAccount = node instanceof MongoClusterResourceItem || node instanceof MongoRUResourceItem;
+    const isRegularCloudAccount = node instanceof MongoVCoreResourceItem || node instanceof MongoRUResourceItem;
     const isEmulatorWithSecurityDisabled =
         !isRegularCloudAccount &&
         node.mongoCluster.emulatorConfiguration &&

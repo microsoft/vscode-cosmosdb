@@ -8,17 +8,17 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
+import { ClustersClient } from '../../../../documentdb/ClustersClient';
 import { CredentialCache } from '../../../../documentdb/CredentialCache';
-import { MongoClustersClient } from '../../../../documentdb/MongoClustersClient';
 import { ext } from '../../../../extensionVariables';
 import { createCosmosDBManagementClient } from '../../../../utils/azureClients';
-import { MongoClusterItemBase } from '../../../documentdb/MongoClusterItemBase';
-import { type MongoClusterModel } from '../../../documentdb/MongoClusterModel';
+import { ClusterItemBase } from '../../../documentdb/ClusterItemBase';
+import { type ClusterModel } from '../../../documentdb/ClusterModel';
 
-export class MongoRUResourceItem extends MongoClusterItemBase {
+export class MongoRUResourceItem extends ClusterItemBase {
     constructor(
         readonly subscription: AzureSubscription,
-        mongoCluster: MongoClusterModel,
+        mongoCluster: ClusterModel,
     ) {
         super(mongoCluster);
     }
@@ -61,7 +61,7 @@ export class MongoRUResourceItem extends MongoClusterItemBase {
      * @param context The action context.
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
-    protected async authenticateAndConnect(): Promise<MongoClustersClient | null> {
+    protected async authenticateAndConnect(): Promise<ClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongoClusters.connect',
             async (context: IActionContext) => {
@@ -94,10 +94,10 @@ export class MongoRUResourceItem extends MongoClusterItemBase {
                 const password: string | undefined = cString.password;
                 CredentialCache.setCredentials(this.id, cString.toString(), username, password);
 
-                const mongoClient = await MongoClustersClient.getClient(this.id).catch(async (error) => {
+                const mongoClient = await ClustersClient.getClient(this.id).catch(async (error) => {
                     console.error(error);
                     // If connection fails, remove cached credentials, as they might be invalid
-                    await MongoClustersClient.deleteClient(this.id);
+                    await ClustersClient.deleteClient(this.id);
                     CredentialCache.deleteCredentials(this.id);
                     return null;
                 });

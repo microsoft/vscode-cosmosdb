@@ -6,10 +6,7 @@
 import { AzureWizardPromptStep, openUrl, UserCancelledError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import {
-    defaultMongoEmulatorConfiguration,
-    type MongoEmulatorConfiguration,
-} from '../../../utils/mongoEmulatorConfiguration';
+import { defaultMongoEmulatorConfiguration, type EmulatorConfiguration } from '../../../utils/emulatorConfiguration';
 import { type NewEmulatorConnectionWizardContext } from '../NewEmulatorConnectionWizardContext';
 
 export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
@@ -55,7 +52,7 @@ export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEm
                 context.mongoEmulatorConfiguration = defaultMongoEmulatorConfiguration;
             }
 
-            const config = context.mongoEmulatorConfiguration as MongoEmulatorConfiguration;
+            const config = context.mongoEmulatorConfiguration as EmulatorConfiguration;
             config.disableEmulatorSecurity = true;
             return;
         }

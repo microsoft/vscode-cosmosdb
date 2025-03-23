@@ -12,17 +12,17 @@ import { ext } from '../../../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../../../utils/azureClients';
 import { type CosmosDBResource } from '../../../CosmosAccountModel';
 import { type CosmosDBTreeElement } from '../../../CosmosDBTreeElement';
-import { type MongoClusterModel } from '../../../documentdb/MongoClusterModel';
+import { type ClusterModel } from '../../../documentdb/ClusterModel';
 import { isTreeElementWithContextValue } from '../../../TreeElementWithContextValue';
-import { MongoClusterResourceItem } from './MongoClusterResourceItem';
+import { MongoVCoreResourceItem } from './MongoVCoreResourceItem';
 
-export class MongoClustersBranchDataProvider
+export class MongoVCoreBranchDataProvider
     extends vscode.Disposable
     implements BranchDataProvider<CosmosDBResource, CosmosDBTreeElement>
 {
     private detailsCacheUpdateRequested = true;
-    private detailsCache: Map<string, MongoClusterModel> = new Map<string, MongoClusterModel>();
-    private itemsToUpdateInfo: Map<string, MongoClusterResourceItem> = new Map<string, MongoClusterResourceItem>();
+    private detailsCache: Map<string, ClusterModel> = new Map<string, ClusterModel>();
+    private itemsToUpdateInfo: Map<string, MongoVCoreResourceItem> = new Map<string, MongoVCoreResourceItem>();
 
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<CosmosDBTreeElement | undefined>();
 
@@ -75,7 +75,7 @@ export class MongoClustersBranchDataProvider
                          * so that when the cache is updated, the items can be refreshed.
                          * I had to keep all of them in the map becasuse refresh requires the actual MongoClusterItem instance.
                          */
-                        this.itemsToUpdateInfo.forEach((value: MongoClusterResourceItem) => {
+                        this.itemsToUpdateInfo.forEach((value: MongoVCoreResourceItem) => {
                             value.mongoCluster = {
                                 ...value.mongoCluster,
                                 ...this.detailsCache.get(value.mongoCluster.id),
@@ -88,10 +88,10 @@ export class MongoClustersBranchDataProvider
                 }
 
                 // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
-                let clusterInfo: MongoClusterModel = {
+                let clusterInfo: ClusterModel = {
                     ...element,
                     dbExperience: MongoClustersExperience,
-                } as MongoClusterModel;
+                } as ClusterModel;
 
                 // 2. lookup the details in the cache, on subsequent refreshes, the details will be available in the cache
                 if (this.detailsCache.has(clusterInfo.id)) {
@@ -101,7 +101,7 @@ export class MongoClustersBranchDataProvider
                     };
                 }
 
-                const clusterItem = new MongoClusterResourceItem(element.subscription, clusterInfo);
+                const clusterItem = new MongoVCoreResourceItem(element.subscription, clusterInfo);
 
                 // 3. store the item in the update queue, so that when the cache is updated, the item can be refreshed
                 this.itemsToUpdateInfo.set(clusterItem.id, clusterItem);

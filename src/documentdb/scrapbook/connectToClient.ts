@@ -6,12 +6,12 @@
 import * as l10n from '@vscode/l10n';
 import { MongoClient, type MongoClientOptions } from 'mongodb';
 import { Links, wellKnownEmulatorPassword } from '../../constants';
-import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
+import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 
-export async function connectToMongoClient(
+export async function connectToClient(
     connectionString: string,
     appName: string,
-    emulatorConfiguration?: MongoEmulatorConfiguration,
+    emulatorConfiguration?: EmulatorConfiguration,
 ): Promise<MongoClient> {
     // appname appears to be the correct equivalent to user-agent for mongo
     const options: MongoClientOptions = <MongoClientOptions>{

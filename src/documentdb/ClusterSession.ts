@@ -10,7 +10,7 @@ import { type JSONSchema } from '../utils/json/JSONSchema';
 import { getPropertyNamesAtLevel, updateSchemaWithDocument } from '../utils/json/mongo/SchemaAnalyzer';
 import { getDataAtPath } from '../utils/slickgrid/mongo/toSlickGridTable';
 import { toSlickGridTree, type TreeData } from '../utils/slickgrid/mongo/toSlickGridTree';
-import { MongoClustersClient } from './MongoClustersClient';
+import { ClustersClient } from './ClustersClient';
 
 export type TableDataEntry = {
     /**
@@ -42,11 +42,11 @@ export class MongoClustersSession {
      * Private constructor to enforce the use of `initNewSession` for creating new sessions.
      * This ensures that sessions are properly initialized and managed.
      */
-    private constructor(private _client: MongoClustersClient) {
+    private constructor(private _client: ClustersClient) {
         return;
     }
 
-    public getClient(): MongoClustersClient {
+    public getClient(): ClustersClient {
         return this._client;
     }
 
@@ -173,7 +173,7 @@ export class MongoClustersSession {
      * @throws Will throw an error if the client cannot be obtained using the provided credential ID.
      */
     public static async initNewSession(credentialId: string): Promise<string> {
-        const client = await MongoClustersClient.getClient(credentialId);
+        const client = await ClustersClient.getClient(credentialId);
 
         const sessionId = Math.random().toString(16).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 

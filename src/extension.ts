@@ -29,7 +29,7 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { registerCommands } from './commands/registerCommands';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
-import { MongoClustersExtension } from './documentdb/MongoClustersExtension';
+import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
@@ -110,7 +110,7 @@ export async function activateInternal(
         // registerCommandsCompatibility();
 
         // init and activate mongoClusters-support (branch data provider, commands, ...)
-        const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
+        const mongoClustersSupport: ClustersExtension = new ClustersExtension();
         context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
         await mongoClustersSupport.activate();
 

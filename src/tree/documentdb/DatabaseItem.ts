@@ -7,12 +7,12 @@ import { createContextValue, createGenericElement } from '@microsoft/vscode-azex
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
-import { MongoClustersClient, type DatabaseItemModel } from '../../documentdb/MongoClustersClient';
+import { ClustersClient, type DatabaseItemModel } from '../../documentdb/ClustersClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type ClusterModel } from './ClusterModel';
 import { CollectionItem } from './CollectionItem';
-import { type MongoClusterModel } from './MongoClusterModel';
 
 export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
@@ -22,7 +22,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
     private readonly experienceContextValue: string = '';
 
     constructor(
-        readonly mongoCluster: MongoClusterModel,
+        readonly mongoCluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
     ) {
         this.id = `${mongoCluster.id}/${databaseInfo.name}`;
@@ -32,7 +32,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const client: MongoClustersClient = await MongoClustersClient.getClient(this.mongoCluster.id);
+        const client: ClustersClient = await ClustersClient.getClient(this.mongoCluster.id);
         const collections = await client.listCollections(this.databaseInfo.name);
 
         if (collections.length === 0) {

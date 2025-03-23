@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { MongoScrapbookService } from '../../documentdb/scrapbook/MongoScrapbookService';
+import { ScrapbookService } from '../../documentdb/scrapbook/ScrapbookService';
 import { withProgress } from '../../utils/withProgress';
 
 export async function executeAllMongoCommand(context: IActionContext): Promise<void> {
@@ -15,7 +15,7 @@ export async function executeAllMongoCommand(context: IActionContext): Promise<v
         throw new Error(l10n.t('You must open a *.mongo file to run commands.'));
     }
     await withProgress(
-        MongoScrapbookService.executeAllCommands(context, editor.document),
+        ScrapbookService.executeAllCommands(context, editor.document),
         l10n.t('Executing all Mongo commands in shell…'),
     );
 }

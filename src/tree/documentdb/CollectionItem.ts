@@ -6,13 +6,13 @@
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/MongoClustersClient';
+import { type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/ClustersClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type ClusterModel } from './ClusterModel';
 import { DocumentsItem } from './DocumentsItem';
 import { IndexesItem } from './IndexesItem';
-import { type MongoClusterModel } from './MongoClusterModel';
 
 export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
@@ -22,7 +22,7 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
     private readonly experienceContextValue: string = '';
 
     constructor(
-        readonly mongoCluster: MongoClusterModel,
+        readonly mongoCluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
     ) {

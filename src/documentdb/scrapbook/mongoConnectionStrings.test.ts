@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { wellKnownEmulatorPassword } from '../../constants';
-import { isCosmosEmulatorConnectionString } from './connectToMongoClient';
+import { isCosmosEmulatorConnectionString } from './connectToClient';
 import {
     addDatabaseToAccountConnectionString,
     encodeMongoConnectionString,

@@ -31,13 +31,13 @@ import { launchShell } from '../commands/launchShell/launchShell';
 import { openCollectionView, openCollectionViewInternal } from '../commands/openCollectionView/openCollectionView';
 import { openMongoDocumentView } from '../commands/openDocument/openDocument';
 import { ext } from '../extensionVariables';
-import { MongoClustersBranchDataProvider } from '../tree/azure-resources-view/documentdb/mongo-vcore/MongoClustersBranchDataProvider';
+import { MongoVCoreBranchDataProvider } from '../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreBranchDataProvider';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { MongoClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/MongoClustersWorkbenchBranchDataProvider';
+import { MongoClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 import { registerScrapbookCommands } from './scrapbook/registerScrapbookCommands';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
-export class MongoClustersExtension implements vscode.Disposable {
+export class ClustersExtension implements vscode.Disposable {
     dispose(): Promise<void> {
         return Promise.resolve();
     }
@@ -65,7 +65,7 @@ export class MongoClustersExtension implements vscode.Disposable {
 
                 // // // MongoClusters / MongoDB (vCore) support is enabled // // //
 
-                ext.mongoClustersBranchDataProvider = new MongoClustersBranchDataProvider();
+                ext.mongoClustersBranchDataProvider = new MongoVCoreBranchDataProvider();
                 ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
                     AzExtResourceType.MongoClusters,
                     ext.mongoClustersBranchDataProvider,

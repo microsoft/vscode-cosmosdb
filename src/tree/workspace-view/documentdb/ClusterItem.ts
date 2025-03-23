@@ -13,19 +13,19 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { ClustersClient } from '../../../documentdb/ClustersClient';
 import { CredentialCache } from '../../../documentdb/CredentialCache';
-import { MongoClustersClient } from '../../../documentdb/MongoClustersClient';
 import { type AuthenticateWizardContext } from '../../../documentdb/wizards/authenticate/AuthenticateWizardContext';
 import { ProvidePasswordStep } from '../../../documentdb/wizards/authenticate/ProvidePasswordStep';
 import { ProvideUserNameStep } from '../../../documentdb/wizards/authenticate/ProvideUsernameStep';
 import { ext } from '../../../extensionVariables';
-import { MongoClusterItemBase } from '../../documentdb/MongoClusterItemBase';
-import { type MongoClusterModel } from '../../documentdb/MongoClusterModel';
+import { ClusterItemBase } from '../../documentdb/ClusterItemBase';
+import { type ClusterModel } from '../../documentdb/ClusterModel';
 
 import ConnectionString from 'mongodb-connection-string-url';
 
-export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
-    constructor(mongoCluster: MongoClusterModel) {
+export class ClusterItem extends ClusterItemBase {
+    constructor(mongoCluster: ClusterModel) {
         super(mongoCluster);
     }
 
@@ -38,7 +38,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
      * @param context The action context.
      * @returns An instance of MongoClustersClient if successful; otherwise, null.
      */
-    protected async authenticateAndConnect(): Promise<MongoClustersClient | null> {
+    protected async authenticateAndConnect(): Promise<ClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
             'cosmosDB.mongoClusters.connect',
             async (context: IActionContext) => {
@@ -50,7 +50,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                     }),
                 );
 
-                let mongoClustersClient: MongoClustersClient;
+                let mongoClustersClient: ClustersClient;
 
                 const connectionString = new ConnectionString(nonNullValue(this.mongoCluster.connectionString));
 
@@ -97,7 +97,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
 
                 // Attempt to create the client with the provided credentials
                 try {
-                    mongoClustersClient = await MongoClustersClient.getClient(this.id).catch((error: Error) => {
+                    mongoClustersClient = await ClustersClient.getClient(this.id).catch((error: Error) => {
                         ext.outputChannel.appendLine(l10n.t('failed.'));
                         ext.outputChannel.appendLine(l10n.t('Error: {error}', { error: error.message }));
 
@@ -117,7 +117,7 @@ export class MongoClusterWorkspaceItem extends MongoClusterItemBase {
                 } catch (error) {
                     console.error(error);
                     // If connection fails, remove cached credentials
-                    await MongoClustersClient.deleteClient(this.id);
+                    await ClustersClient.deleteClient(this.id);
                     CredentialCache.deleteCredentials(this.id);
 
                     // Return null to indicate failure

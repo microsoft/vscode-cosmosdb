@@ -7,7 +7,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext, parseError } fr
 import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import * as vscode from 'vscode';
-import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { appendToFile } from '../../utils/fs/appendToFile';
@@ -39,7 +39,7 @@ export async function mongoClustersExportQueryResults(
         return;
     }
 
-    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.mongoCluster.id);
 
     const docStreamAbortController = new AbortController();
     const docStream = client.streamDocuments(

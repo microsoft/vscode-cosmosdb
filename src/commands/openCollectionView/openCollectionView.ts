@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { MongoClustersSession } from '../../documentdb/MongoClusterSession';
+import { MongoClustersSession } from '../../documentdb/ClusterSession';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { CollectionViewController } from '../../webviews/documentdb/collectionView/collectionViewController';
 

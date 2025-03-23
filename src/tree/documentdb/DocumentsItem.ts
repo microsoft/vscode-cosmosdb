@@ -7,12 +7,12 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { ThemeIcon, type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/MongoClustersClient';
+import { type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/ClustersClient';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type ClusterModel } from './ClusterModel';
 import { type CollectionItem } from './CollectionItem';
-import { type MongoClusterModel } from './MongoClusterModel';
 
 export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
@@ -31,7 +31,7 @@ export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperi
      *                              the collection node to be passed in. This is a workaround that reduces complex changes to the commands used.
      */
     constructor(
-        readonly mongoCluster: MongoClusterModel,
+        readonly mongoCluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
         readonly parentCollectionNode: CollectionItem,

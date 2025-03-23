@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type MongoEmulatorConfiguration } from '../utils/mongoEmulatorConfiguration';
+import { type EmulatorConfiguration } from '../utils/emulatorConfiguration';
 import { addAuthenticationDataToConnectionString } from './utils/connectionStringHelpers';
 
 export interface MongoClustersCredentials {
@@ -12,7 +12,7 @@ export interface MongoClustersCredentials {
     connectionString: string;
     connectionUser: string;
     // Optional, as it's only relevant for local workspace connetions
-    emulatorConfiguration?: MongoEmulatorConfiguration;
+    emulatorConfiguration?: EmulatorConfiguration;
 }
 
 export class CredentialCache {
@@ -27,7 +27,7 @@ export class CredentialCache {
         return CredentialCache._store.has(mongoClusterId) as boolean;
     }
 
-    public static getEmulatorConfiguration(mongoClusterId: string): MongoEmulatorConfiguration | undefined {
+    public static getEmulatorConfiguration(mongoClusterId: string): EmulatorConfiguration | undefined {
         return CredentialCache._store.get(mongoClusterId)?.emulatorConfiguration;
     }
 
@@ -53,7 +53,7 @@ export class CredentialCache {
         connectionString: string,
         username: string,
         password: string,
-        emulatorConfiguration?: MongoEmulatorConfiguration,
+        emulatorConfiguration?: EmulatorConfiguration,
     ): void {
         const connectionStringWithPassword = addAuthenticationDataToConnectionString(
             connectionString,

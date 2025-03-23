@@ -5,7 +5,7 @@
 
 import { EJSON } from 'bson';
 import { type Document, type WithId } from 'mongodb';
-import { type TableDataEntry } from '../../../documentdb/MongoClusterSession';
+import { type TableDataEntry } from '../../../documentdb/ClusterSession';
 import { MongoBSONTypes } from '../../json/mongo/MongoBSONTypes';
 import { valueToDisplayString } from '../../json/mongo/MongoValueFormatters';
 

@@ -14,7 +14,7 @@ import { AzureDomains, extractDomainFromHost, hasAzureDomain, hasDomainSuffix } 
 /**
  * Interface to define the structure of MongoDB cluster metadata.
  */
-export interface MongoClusterMetadata {
+export interface ClusterMetadata {
     [key: string]: string | undefined;
 }
 
@@ -27,8 +27,8 @@ export interface MongoClusterMetadata {
  * @returns A promise that resolves to an object containing various metadata about the MongoDB cluster.
  *
  */
-export async function getMongoClusterMetadata(client: MongoClient, hosts: string[]): Promise<MongoClusterMetadata> {
-    const result: MongoClusterMetadata = {};
+export async function getClusterMetadata(client: MongoClient, hosts: string[]): Promise<ClusterMetadata> {
+    const result: ClusterMetadata = {};
 
     const adminDb = client.db().admin();
 

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { MongoScrapbookService } from '../../documentdb/scrapbook/MongoScrapbookService';
+import { ScrapbookService } from '../../documentdb/scrapbook/ScrapbookService';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import * as vscodeUtil from '../../utils/vscodeUtils';
@@ -21,7 +21,7 @@ export async function createMongoScrapbook(
     //     initialFileContents += `\n\n// You are connected to the "${node.databaseInfo.name}" database.`;
     // }
 
-    await MongoScrapbookService.setConnectedCluster(node.mongoCluster, node.databaseInfo);
+    await ScrapbookService.setConnectedCluster(node.mongoCluster, node.databaseInfo);
 
     await vscodeUtil.showNewFile(initialFileContents, 'Scrapbook', '.mongo');
 }

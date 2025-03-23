@@ -13,7 +13,7 @@ import * as path from 'path';
 import { isNumber } from 'util';
 import type * as vscode from 'vscode';
 import { ext, isWindows, type IDisposable } from '../extension.bundle';
-import { MongoShellScriptRunner } from '../src/documentdb/scrapbook/MongoShellScriptRunner';
+import { ShellScriptRunner } from '../src/documentdb/scrapbook/ShellScriptRunner';
 import { runWithSetting } from './runWithSetting';
 import { setEnvironmentVariables } from './util/setEnvironmentVariables';
 
@@ -169,12 +169,12 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             assert(mongoDErrors === '');
 
             let previousEnv: IDisposable | undefined;
-            let shell: MongoShellScriptRunner | undefined;
+            let shell: ShellScriptRunner | undefined;
             const outputChannel = new FakeOutputChannel();
 
             try {
                 previousEnv = setEnvironmentVariables(options.env || {});
-                shell = await MongoShellScriptRunner.createShellProcessHelper(
+                shell = await ShellScriptRunner.createShellProcessHelper(
                     options.mongoPath || mongoPath,
                     options.args || [],
                     '',
@@ -293,14 +293,10 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
     });
 
     await testIfSupported("More results than displayed (type 'it' for more -> (More))", async () => {
-        const shell = await MongoShellScriptRunner.createShellProcessHelper(
-            mongoPath,
-            [],
-            '',
-            new FakeOutputChannel(),
-            5,
-            { disableEmulatorSecurity: false, isEmulator: false },
-        );
+        const shell = await ShellScriptRunner.createShellProcessHelper(mongoPath, [], '', new FakeOutputChannel(), 5, {
+            disableEmulatorSecurity: false,
+            isEmulator: false,
+        });
         await shell.executeScript('db.mongoShellTest.drop()');
         await shell.executeScript('for (var i = 0; i < 50; ++i) { db.mongoShellTest.insert({a:i}); }');
 

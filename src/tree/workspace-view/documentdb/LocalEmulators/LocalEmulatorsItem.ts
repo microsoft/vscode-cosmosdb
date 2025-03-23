@@ -7,16 +7,16 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersExperience } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
-import { type MongoEmulatorConfiguration } from '../../../../utils/mongoEmulatorConfiguration';
+import { type EmulatorConfiguration } from '../../../../utils/emulatorConfiguration';
 import { type CosmosDBTreeElement } from '../../../CosmosDBTreeElement';
-import { type MongoClusterModel } from '../../../documentdb/MongoClusterModel';
+import { type ClusterModel } from '../../../documentdb/ClusterModel';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../workspace-api/SharedWorkspaceStorage';
-import { MongoClusterWorkspaceItem } from '../MongoClusterWorkspaceItem';
-import { NewMongoEmulatorConnectionItem } from './NewMongoEmulatorConnectionItem';
+import { ClusterItem } from '../ClusterItem';
+import { NewEmulatorConnectionItem } from './NewEmulatorConnectionItem';
 
-export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+export class LocalEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.newConnection';
 
@@ -32,12 +32,12 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
                 .map((item) => {
                     // we need to create the emulator configuration object from
                     // the flat properties object
-                    const emulatorConfiguration: MongoEmulatorConfiguration = {
+                    const emulatorConfiguration: EmulatorConfiguration = {
                         isEmulator: true,
                         disableEmulatorSecurity: !!item.properties?.disableEmulatorSecurity,
                     };
 
-                    const model: MongoClusterModel = {
+                    const model: ClusterModel = {
                         id: item.id,
                         name: item.name,
                         dbExperience: MongoClustersExperience,
@@ -45,9 +45,9 @@ export class LocalMongoEmulatorsItem implements CosmosDBTreeElement, TreeElement
                         emulatorConfiguration: emulatorConfiguration,
                     };
 
-                    return new MongoClusterWorkspaceItem(model);
+                    return new ClusterItem(model);
                 }),
-            new NewMongoEmulatorConnectionItem(this.id),
+            new NewEmulatorConnectionItem(this.id),
         ];
     }
 

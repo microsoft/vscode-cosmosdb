@@ -24,19 +24,16 @@ export { isWindows, wellKnownEmulatorPassword } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { getCosmosClient } from './src/docdb/getCosmosClient';
 export * from './src/docdb/registerDocDBCommands';
-export {
-    connectToMongoClient,
-    isCosmosEmulatorConnectionString,
-} from './src/documentdb/scrapbook/connectToMongoClient';
+export { connectToClient, isCosmosEmulatorConnectionString } from './src/documentdb/scrapbook/connectToClient';
 export { MongoCommand } from './src/documentdb/scrapbook/MongoCommand';
 export {
     addDatabaseToAccountConnectionString,
     encodeMongoConnectionString,
     getDatabaseNameFromConnectionString,
 } from './src/documentdb/scrapbook/mongoConnectionStrings';
-export { findCommandAtPosition, getAllCommandsFromText } from './src/documentdb/scrapbook/MongoScrapbookHelpers';
-export { MongoShellScriptRunner as MongoShell } from './src/documentdb/scrapbook/MongoShellScriptRunner';
 export * from './src/documentdb/scrapbook/registerScrapbookCommands';
+export { findCommandAtPosition, getAllCommandsFromText } from './src/documentdb/scrapbook/ScrapbookHelpers';
+export { ShellScriptRunner as MongoShell } from './src/documentdb/scrapbook/ShellScriptRunner';
 export { activateInternal, deactivateInternal } from './src/extension';
 export { ext } from './src/extensionVariables';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';

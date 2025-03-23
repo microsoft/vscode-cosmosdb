@@ -8,13 +8,13 @@ import * as l10n from '@vscode/l10n';
 import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type MongoClusterModel } from '../../tree/documentdb/MongoClusterModel';
-import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
+import { type ClusterModel } from '../../tree/documentdb/ClusterModel';
+import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
+import { type DatabaseItemModel } from '../ClustersClient';
 import { CredentialCache } from '../CredentialCache';
-import { type DatabaseItemModel } from '../MongoClustersClient';
 import { type MongoCommand } from './MongoCommand';
-import { findCommandAtPosition, getAllCommandsFromText } from './MongoScrapbookHelpers';
-import { MongoShellScriptRunner } from './MongoShellScriptRunner';
+import { findCommandAtPosition, getAllCommandsFromText } from './ScrapbookHelpers';
+import { ShellScriptRunner } from './ShellScriptRunner';
 import { MongoCodeLensProvider } from './services/MongoCodeLensProvider';
 
 export class MongoScrapbookServiceImpl {
@@ -22,7 +22,7 @@ export class MongoScrapbookServiceImpl {
     // Connection Management
     //--------------------------------------------------------------------------------
 
-    private _cluster: MongoClusterModel | undefined;
+    private _cluster: ClusterModel | undefined;
     private _database: DatabaseItemModel | undefined;
     private readonly _mongoCodeLensProvider = new MongoCodeLensProvider();
 
@@ -36,7 +36,7 @@ export class MongoScrapbookServiceImpl {
     /**
      * Sets the current cluster and database, updating the CodeLens provider.
      */
-    public async setConnectedCluster(cluster: MongoClusterModel, database: DatabaseItemModel) {
+    public async setConnectedCluster(cluster: ClusterModel, database: DatabaseItemModel) {
         // Update information
         this._cluster = cluster;
         this._database = database;
@@ -124,7 +124,7 @@ export class MongoScrapbookServiceImpl {
                 preserveFocus: true,
             });
 
-            const shellRunner = await MongoShellScriptRunner.createShell(context, {
+            const shellRunner = await ShellScriptRunner.createShell(context, {
                 connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
                 emulatorConfiguration: CredentialCache.getEmulatorConfiguration(this.getClusterId()!),
             });
@@ -132,7 +132,7 @@ export class MongoScrapbookServiceImpl {
             try {
                 // preselect the database for the user
                 // this is done for backwards compatibility with the previous behavior
-                await shellRunner.executeScript(`use(\`${MongoScrapbookService.getDatabaseName()}\`)`);
+                await shellRunner.executeScript(`use(\`${ScrapbookService.getDatabaseName()}\`)`);
 
                 for (const cmd of commands) {
                     await this.executeSingleCommand(context, cmd, readOnlyContent, shellRunner);
@@ -218,7 +218,7 @@ export class MongoScrapbookServiceImpl {
         context: IActionContext,
         command: MongoCommand,
         readOnlyContent?: { append(value: string): Promise<void> },
-        shellRunner?: MongoShellScriptRunner,
+        shellRunner?: ShellScriptRunner,
         preselectedDatabase?: string, // this will run the 'use <database>' command before the actual command.
     ): Promise<void> {
         if (!this.isConnected()) {
@@ -241,11 +241,11 @@ export class MongoScrapbookServiceImpl {
 
         try {
             if (!shellRunner) {
-                shellRunner = await MongoShellScriptRunner.createShell(context, {
+                shellRunner = await ShellScriptRunner.createShell(context, {
                     connectionString: CredentialCache.getConnectionStringWithPassword(this.getClusterId()!),
                     emulatorConfiguration: CredentialCache.getEmulatorConfiguration(
                         this.getClusterId()!,
-                    ) as MongoEmulatorConfiguration,
+                    ) as EmulatorConfiguration,
                 });
                 ephemeralShell = true;
             }
@@ -280,4 +280,4 @@ export class MongoScrapbookServiceImpl {
 }
 
 // Export a single instance that the rest of your extension can import
-export const MongoScrapbookService = new MongoScrapbookServiceImpl();
+export const ScrapbookService = new MongoScrapbookServiceImpl();

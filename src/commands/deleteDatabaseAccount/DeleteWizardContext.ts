@@ -10,9 +10,9 @@ import {
     type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
+import { type MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
 
 export interface DeleteWizardContext extends IActionContext, ExecuteActivityContext {
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterResourceItem;
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoVCoreResourceItem;
     subscription: ISubscriptionContext;
 }

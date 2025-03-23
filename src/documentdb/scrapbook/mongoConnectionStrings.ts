@@ -7,7 +7,7 @@ import { appendExtensionUserAgent, parseError, type IParsedError } from '@micros
 import { type MongoClient } from 'mongodb';
 import { ParsedConnectionString } from '../../ParsedConnectionString';
 import { nonNullValue } from '../../utils/nonNull';
-import { connectToMongoClient } from './connectToMongoClient';
+import { connectToClient } from './connectToClient';
 
 // Connection strings follow the following format (https://docs.mongodb.com/manual/reference/connection-string/):
 //   mongodb[+srv]://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]
@@ -50,13 +50,13 @@ export function addDatabaseToAccountConnectionString(connectionString: string, d
 export async function parseMongoConnectionString(connectionString: string): Promise<ParsedMongoConnectionString> {
     let mongoClient: MongoClient;
     try {
-        mongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+        mongoClient = await connectToClient(connectionString, appendExtensionUserAgent());
     } catch (error) {
         const parsedError: IParsedError = parseError(error);
         if (parsedError.message.match(/unescaped/i)) {
             // Prevents https://github.com/microsoft/vscode-cosmosdb/issues/1209
             connectionString = encodeMongoConnectionString(connectionString);
-            mongoClient = await connectToMongoClient(connectionString, appendExtensionUserAgent());
+            mongoClient = await connectToClient(connectionString, appendExtensionUserAgent());
         } else {
             throw error;
         }

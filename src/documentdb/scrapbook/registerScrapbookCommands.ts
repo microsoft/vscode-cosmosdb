@@ -17,10 +17,10 @@ import { createMongoScrapbook } from '../../commands/scrapbook-commands/createMo
 import { executeAllMongoCommand } from '../../commands/scrapbook-commands/executeAllMongoCommand';
 import { executeMongoCommand } from '../../commands/scrapbook-commands/executeMongoCommand';
 import { ext } from '../../extensionVariables';
-import { MongoConnectError } from './connectToMongoClient';
+import { MongoConnectError } from './connectToClient';
 import { MongoDBLanguageClient } from './languageClient';
-import { getAllErrorsFromTextDocument } from './MongoScrapbookHelpers';
-import { MongoScrapbookService } from './MongoScrapbookService';
+import { getAllErrorsFromTextDocument } from './ScrapbookHelpers';
+import { ScrapbookService } from './ScrapbookService';
 
 let diagnosticsCollection: vscode.DiagnosticCollection;
 const mongoLanguageId: string = 'mongo';
@@ -29,7 +29,7 @@ export function registerScrapbookCommands(): void {
     ext.mongoLanguageClient = new MongoDBLanguageClient();
 
     ext.context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider(mongoLanguageId, MongoScrapbookService.getCodeLensProvider()),
+        vscode.languages.registerCodeLensProvider(mongoLanguageId, ScrapbookService.getCodeLensProvider()),
     );
 
     diagnosticsCollection = vscode.languages.createDiagnosticCollection('cosmosDB.mongo');

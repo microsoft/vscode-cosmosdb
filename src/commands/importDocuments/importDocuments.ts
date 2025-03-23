@@ -13,7 +13,7 @@ import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../docdb/utils/validateDocument';
-import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
@@ -322,7 +322,7 @@ async function insertDocumentIntoMongoCluster(
     node: CollectionItem,
     document: Document,
 ): Promise<{ document: Document; error: string }> {
-    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.mongoCluster.id);
     const response = await client.insertDocuments(node.databaseInfo.name, node.collectionInfo.name, [document]);
 
     if (response?.acknowledged) {

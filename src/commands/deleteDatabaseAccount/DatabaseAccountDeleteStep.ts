@@ -7,7 +7,7 @@ import { AzExtTreeItem, AzureWizardExecuteStep } from '@microsoft/vscode-azext-u
 import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
 import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
+import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 import { deleteCosmosDBAccount } from './deleteCosmosDBAccount';
 import { deleteMongoClustersAccount } from './deleteMongoClustersAccount';

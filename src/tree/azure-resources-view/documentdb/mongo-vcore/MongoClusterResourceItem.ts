@@ -15,15 +15,15 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
-import { CredentialCache } from '../../../documentdb/CredentialCache';
-import { MongoClustersClient } from '../../../documentdb/MongoClustersClient';
-import { type AuthenticateWizardContext } from '../../../documentdb/wizards/authenticate/AuthenticateWizardContext';
-import { ProvidePasswordStep } from '../../../documentdb/wizards/authenticate/ProvidePasswordStep';
-import { ProvideUserNameStep } from '../../../documentdb/wizards/authenticate/ProvideUsernameStep';
-import { ext } from '../../../extensionVariables';
-import { createMongoClustersManagementClient } from '../../../utils/azureClients';
-import { MongoClusterItemBase } from '../../documentdb/MongoClusterItemBase';
-import { type MongoClusterModel } from '../../documentdb/MongoClusterModel';
+import { CredentialCache } from '../../../../documentdb/CredentialCache';
+import { MongoClustersClient } from '../../../../documentdb/MongoClustersClient';
+import { type AuthenticateWizardContext } from '../../../../documentdb/wizards/authenticate/AuthenticateWizardContext';
+import { ProvidePasswordStep } from '../../../../documentdb/wizards/authenticate/ProvidePasswordStep';
+import { ProvideUserNameStep } from '../../../../documentdb/wizards/authenticate/ProvideUsernameStep';
+import { ext } from '../../../../extensionVariables';
+import { createMongoClustersManagementClient } from '../../../../utils/azureClients';
+import { MongoClusterItemBase } from '../../../documentdb/MongoClusterItemBase';
+import { type MongoClusterModel } from '../../../documentdb/MongoClusterModel';
 
 export class MongoClusterResourceItem extends MongoClusterItemBase {
     constructor(

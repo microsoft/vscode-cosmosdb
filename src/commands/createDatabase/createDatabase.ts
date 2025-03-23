@@ -8,7 +8,7 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { CredentialCache } from '../../documentdb/CredentialCache';
 import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
+import { type MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
 import { getAccountInfo } from '../../tree/docdb/AccountInfo';
 import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/DocumentDBAccountAttachedResourceItem';
 import { DocumentDBAccountResourceItem } from '../../tree/docdb/DocumentDBAccountResourceItem';

@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersClient } from '../../documentdb/MongoClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
+import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import { MongoClusterWorkspaceItem } from '../../tree/workspace-view/documentdb/MongoClusterWorkspaceItem';

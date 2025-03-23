@@ -31,7 +31,7 @@ import { launchShell } from '../commands/launchShell/launchShell';
 import { openCollectionView, openCollectionViewInternal } from '../commands/openCollectionView/openCollectionView';
 import { openMongoDocumentView } from '../commands/openDocument/openDocument';
 import { ext } from '../extensionVariables';
-import { MongoClustersBranchDataProvider } from '../tree/azure-resources-view/documentdb/MongoClustersBranchDataProvider';
+import { MongoClustersBranchDataProvider } from '../tree/azure-resources-view/documentdb/mongo-vcore/MongoClustersBranchDataProvider';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { MongoClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/MongoClustersWorkbenchBranchDataProvider';
 import { registerScrapbookCommands } from './scrapbook/registerScrapbookCommands';

@@ -25,7 +25,7 @@ import {
 import { ext } from '../../extensionVariables';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/MongoClusterResourceItem';
+import { MongoClusterResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoClusterResourceItem';
 import { type MongoClusterItemBase } from '../../tree/documentdb/MongoClusterItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';

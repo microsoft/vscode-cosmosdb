@@ -13,7 +13,7 @@ import { type MongoDBLanguageClient } from './documentdb/scrapbook/languageClien
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
-import { type MongoClustersBranchDataProvider } from './tree/azure-resources-view/documentdb/MongoClustersBranchDataProvider';
+import { type MongoClustersBranchDataProvider } from './tree/azure-resources-view/documentdb/mongo-vcore/MongoClustersBranchDataProvider';
 import { type AttachedAccountsTreeItem } from './tree/v1-legacy-api/AttachedAccountsTreeItem';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';

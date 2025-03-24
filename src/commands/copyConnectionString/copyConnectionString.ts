@@ -83,7 +83,7 @@ export async function copyConnectionString(
             }
 
             if (node instanceof ClusterItemBase) {
-                context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
+                context.telemetry.properties.experience = node.cluster.dbExperience?.api;
                 return node.getConnectionString();
             }
 

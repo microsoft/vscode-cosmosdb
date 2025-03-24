@@ -81,19 +81,19 @@ async function createDocDBDatabase(
 async function createMongoDatabase(context: IActionContext, node: ClusterItemBase): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
-    if (!CredentialCache.hasCredentials(node.mongoCluster.id)) {
+    if (!CredentialCache.hasCredentials(node.cluster.id)) {
         throw new Error(
             l10n.t(
                 'You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node "{0}") and try again.',
-                node.mongoCluster.name,
+                node.cluster.name,
             ),
         );
     }
 
     const wizardContext: CreateMongoDatabaseWizardContext = {
         ...context,
-        credentialsId: node.mongoCluster.id,
-        clusterName: node.mongoCluster.name,
+        credentialsId: node.cluster.id,
+        clusterName: node.cluster.name,
         nodeId: node.id,
     };
 

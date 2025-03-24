@@ -14,7 +14,7 @@ import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { AccountsItem } from './AccountsItem';
 
-export class MongoClustersWorkspaceBranchDataProvider
+export class ClustersWorkspaceBranchDataProvider
     extends vscode.Disposable
     implements WorkspaceResourceBranchDataProvider<TreeElementBase>
 {

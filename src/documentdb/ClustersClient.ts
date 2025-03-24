@@ -163,11 +163,11 @@ export class ClustersClient {
     }
 
     /**
-     * Retrieves an instance of `MongoClustersClient` based on the provided `credentialId`.
+     * Retrieves an instance of `ClustersClient` based on the provided `credentialId`.
      *
      * @param credentialId - A required string used to find the cached connection string to connect.
      * It is also used as a key to reuse existing clients.
-     * @returns A promise that resolves to an instance of `MongoClustersClient`.
+     * @returns A promise that resolves to an instance of `ClustersClient`.
      */
     public static async getClient(credentialId: string): Promise<ClustersClient> {
         let client: ClustersClient;
@@ -335,7 +335,7 @@ export class ClustersClient {
     }
 
     // TODO: revisit, maybe we can work on BSON here for the documentIds, and the conversion from string etc.,
-    // will remain in the MongoClusterSession class
+    // will remain in the ClusterSession class
     async deleteDocuments(databaseName: string, collectionName: string, documentIds: string[]): Promise<boolean> {
         // Convert input data to BSON types
         const parsedDocumentIds = documentIds.map((id) => {

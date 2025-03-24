@@ -109,10 +109,10 @@ export async function activateInternal(
         // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
         // registerCommandsCompatibility();
 
-        // init and activate mongoClusters-support (branch data provider, commands, ...)
-        const mongoClustersSupport: ClustersExtension = new ClustersExtension();
-        context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
-        await mongoClustersSupport.activate();
+        // init and activate mongodb RU and vCore support (branch data provider, commands, ...)
+        const clustersSupport: ClustersExtension = new ClustersExtension();
+        context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
+        await clustersSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

@@ -30,5 +30,5 @@ export async function connectMongoDatabase(
         return;
     }
 
-    await ScrapbookService.setConnectedCluster(node.mongoCluster, node.databaseInfo);
+    await ScrapbookService.setConnectedCluster(node.cluster, node.databaseInfo);
 }

@@ -27,9 +27,9 @@ export abstract class ClusterItemBase
 
     private readonly experienceContextValue: string = '';
 
-    protected constructor(public mongoCluster: ClusterModel) {
-        this.id = mongoCluster.id ?? '';
-        this.experience = mongoCluster.dbExperience;
+    protected constructor(public cluster: ClusterModel) {
+        this.id = cluster.id ?? '';
+        this.experience = cluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
@@ -39,7 +39,7 @@ export abstract class ClusterItemBase
      * Must be implemented by subclasses.
      *
      * @param context The action context.
-     * @returns An instance of MongoClustersClient if successful; otherwise, null.
+     * @returns An instance of ClustersClient if successful; otherwise, null.
      */
     protected abstract authenticateAndConnect(): Promise<ClustersClient | null>;
 
@@ -66,27 +66,27 @@ export abstract class ClusterItemBase
      */
     async getChildren(): Promise<CosmosDBTreeElement[]> {
         ext.outputChannel.appendLine(
-            l10n.t('MongoDB Clusters: Loading cluster details for "{cluster}"', { cluster: this.mongoCluster.name }),
+            l10n.t('MongoDB Clusters: Loading cluster details for "{cluster}"', { cluster: this.cluster.name }),
         );
 
-        let mongoClustersClient: ClustersClient | null;
+        let clustersClient: ClustersClient | null;
 
         // Check if credentials are cached, and return the cached client if available
         if (CredentialCache.hasCredentials(this.id)) {
             ext.outputChannel.appendLine(
                 l10n.t('MongoDB Clusters: Reusing active connection for "{cluster}".', {
-                    cluster: this.mongoCluster.name,
+                    cluster: this.cluster.name,
                 }),
             );
-            mongoClustersClient = await ClustersClient.getClient(this.id);
+            clustersClient = await ClustersClient.getClient(this.id);
         } else {
             // Call to the abstract method to authenticate and connect to the cluster
-            mongoClustersClient = await this.authenticateAndConnect();
+            clustersClient = await this.authenticateAndConnect();
         }
 
         // If authentication failed, return the error element
-        if (!mongoClustersClient) {
-            ext.outputChannel.appendLine(`MongoDB Clusters: Failed to authenticate with "${this.mongoCluster.name}".`);
+        if (!clustersClient) {
+            ext.outputChannel.appendLine(`MongoDB Clusters: Failed to authenticate with "${this.cluster.name}".`);
             return [
                 createGenericElement({
                     contextValue: 'error',
@@ -100,7 +100,7 @@ export abstract class ClusterItemBase
         }
 
         // List the databases
-        return mongoClustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
+        return clustersClient.listDatabases().then((databases: DatabaseItemModel[]) => {
             if (databases.length === 0) {
                 return [
                     createGenericElement({
@@ -115,7 +115,7 @@ export abstract class ClusterItemBase
             }
 
             // Map the databases to DatabaseItem elements
-            return databases.map((database) => new DatabaseItem(this.mongoCluster, database));
+            return databases.map((database) => new DatabaseItem(this.cluster, database));
         });
     }
 
@@ -127,26 +127,22 @@ export abstract class ClusterItemBase
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: this.mongoCluster.name,
-            description: this.mongoCluster.sku !== undefined ? `(${this.mongoCluster.sku})` : false,
+            label: this.cluster.name,
+            description: this.cluster.sku !== undefined ? `(${this.cluster.sku})` : false,
             // iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'), // Uncomment if icon is available
             tooltip: new vscode.MarkdownString(
-                `### Cluster: ${this.mongoCluster.name}\n\n` +
+                `### Cluster: ${this.cluster.name}\n\n` +
                     `---\n` +
-                    (this.mongoCluster.location
-                        ? `- Location: **${regionToDisplayName(this.mongoCluster.location)}**\n\n`
+                    (this.cluster.location ? `- Location: **${regionToDisplayName(this.cluster.location)}**\n\n` : '') +
+                    (this.cluster.diskSize ? `- Disk Size: **${this.cluster.diskSize}GB**\n` : '') +
+                    (this.cluster.sku ? `- SKU: **${this.cluster.sku}**\n` : '') +
+                    (this.cluster.enableHa !== undefined
+                        ? `- High Availability: **${this.cluster.enableHa ? 'Enabled' : 'Disabled'}**\n`
                         : '') +
-                    (this.mongoCluster.diskSize ? `- Disk Size: **${this.mongoCluster.diskSize}GB**\n` : '') +
-                    (this.mongoCluster.sku ? `- SKU: **${this.mongoCluster.sku}**\n` : '') +
-                    (this.mongoCluster.enableHa !== undefined
-                        ? `- High Availability: **${this.mongoCluster.enableHa ? 'Enabled' : 'Disabled'}**\n`
-                        : '') +
-                    (this.mongoCluster.nodeCount ? `- Node Count: **${this.mongoCluster.nodeCount}**\n\n` : '') +
-                    (this.mongoCluster.serverVersion
-                        ? `- Server Version: **${this.mongoCluster.serverVersion}**\n`
-                        : '') +
-                    (this.mongoCluster.systemData?.createdAt
-                        ? `---\n- Created Date: **${this.mongoCluster.systemData.createdAt.toLocaleString()}**\n`
+                    (this.cluster.nodeCount ? `- Node Count: **${this.cluster.nodeCount}**\n\n` : '') +
+                    (this.cluster.serverVersion ? `- Server Version: **${this.cluster.serverVersion}**\n` : '') +
+                    (this.cluster.systemData?.createdAt
+                        ? `---\n- Created Date: **${this.cluster.systemData.createdAt.toLocaleString()}**\n`
                         : ''),
             ),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,

@@ -22,17 +22,17 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
     private readonly experienceContextValue: string = '';
 
     constructor(
-        readonly mongoCluster: ClusterModel,
+        readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
     ) {
-        this.id = `${mongoCluster.id}/${databaseInfo.name}`;
-        this.experience = mongoCluster.dbExperience;
+        this.id = `${cluster.id}/${databaseInfo.name}`;
+        this.experience = cluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience?.api ?? API.Common}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const client: ClustersClient = await ClustersClient.getClient(this.mongoCluster.id);
+        const client: ClustersClient = await ClustersClient.getClient(this.cluster.id);
         const collections = await client.listCollections(this.databaseInfo.name);
 
         if (collections.length === 0) {
@@ -50,7 +50,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
         }
 
         return collections.map((collection) => {
-            return new CollectionItem(this.mongoCluster, this.databaseInfo, collection);
+            return new CollectionItem(this.cluster, this.databaseInfo, collection);
         });
     }
 

@@ -27,7 +27,7 @@ export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWiza
             await ext.state.showDeleting(context.node.id, () =>
                 deleteMongoClustersAccount(context, context.node as MongoVCoreResourceItem),
             );
-            ext.mongoClustersBranchDataProvider.refresh();
+            ext.mongoVCoreBranchDataProvider.refresh();
         } else {
             throw new Error(l10n.t('Unexpected node type'));
         }

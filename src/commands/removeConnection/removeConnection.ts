@@ -74,7 +74,7 @@ export async function removeConnection(
 
     let connectionName: string;
     if (node instanceof ClusterItemBase) {
-        connectionName = node.mongoCluster.name;
+        connectionName = node.cluster.name;
     } else if (node instanceof CosmosDBAccountResourceItemBase) {
         connectionName = node.account.name;
     } else {

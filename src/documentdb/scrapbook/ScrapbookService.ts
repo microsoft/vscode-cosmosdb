@@ -17,7 +17,7 @@ import { findCommandAtPosition, getAllCommandsFromText } from './ScrapbookHelper
 import { ShellScriptRunner } from './ShellScriptRunner';
 import { MongoCodeLensProvider } from './services/MongoCodeLensProvider';
 
-export class MongoScrapbookServiceImpl {
+export class ScrapbookServiceImpl {
     //--------------------------------------------------------------------------------
     // Connection Management
     //--------------------------------------------------------------------------------
@@ -280,4 +280,4 @@ export class MongoScrapbookServiceImpl {
 }
 
 // Export a single instance that the rest of your extension can import
-export const ScrapbookService = new MongoScrapbookServiceImpl();
+export const ScrapbookService = new ScrapbookServiceImpl();

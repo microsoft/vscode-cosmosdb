@@ -16,8 +16,8 @@ export async function deleteMongoClustersAccount(
     node: MongoVCoreResourceItem,
 ): Promise<void> {
     const client = createMongoClustersManagementClient(context, node.subscription);
-    const resourceGroup = node.mongoCluster.resourceGroup as string;
-    const accountName = node.mongoCluster.name;
+    const resourceGroup = node.cluster.resourceGroup as string;
+    const accountName = node.cluster.name;
 
     const deletePromise = (await client).mongoClusters.beginDeleteAndWait(resourceGroup, accountName);
     if (!context.suppressNotification) {

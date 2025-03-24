@@ -19,16 +19,15 @@ import type * as vscode from 'vscode';
  *
  * ```typescript
  * // Implement your WorkspaceResourceBranchDataProvider
- * class MongoClustersWorkspaceBranchDataProvider implements WorkspaceResourceBranchDataProvider<TreeElementBase> {
+ * class ClustersWorkspaceBranchDataProvider implements WorkspaceResourceBranchDataProvider<TreeElementBase> {
  *     // Implementation details...
  * }
  *
  * // Register the provider with the type defined in the enum
  * ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
  *     WorkspaceResourceType.MongoClusters,
- *     new MongoClustersWorkspaceBranchDataProvider(),
+ *     new ClustersWorkspaceBranchDataProvider(),
  * );
- * workspace.registerResourceProvider(WorkspaceResourceType.MongoClusters, new MongoClustersDataProvider());
  * ```
  */
 export enum WorkspaceResourceType {

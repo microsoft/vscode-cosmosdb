@@ -5,7 +5,7 @@
 
 import { ClustersClient } from './ClustersClient';
 
-describe('MongoClustersClient', () => {
+describe('ClustersClient', () => {
     it('should be defined', () => {
         expect(ClustersClient).toBeDefined();
     });

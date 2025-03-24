@@ -30,13 +30,13 @@ export class ClusterItem extends ClusterItemBase {
     }
 
     public getConnectionString(): Promise<string | undefined> {
-        return Promise.resolve(this.mongoCluster.connectionString);
+        return Promise.resolve(this.cluster.connectionString);
     }
 
     /**
      * Authenticates and connects to the MongoDB cluster.
      * @param context The action context.
-     * @returns An instance of MongoClustersClient if successful; otherwise, null.
+     * @returns An instance of ClustersClient if successful; otherwise, null.
      */
     protected async authenticateAndConnect(): Promise<ClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
@@ -46,13 +46,13 @@ export class ClusterItem extends ClusterItemBase {
 
                 ext.outputChannel.appendLine(
                     l10n.t('MongoDB Clusters: Attempting to authenticate with {cluster}', {
-                        cluster: this.mongoCluster.name,
+                        cluster: this.cluster.name,
                     }),
                 );
 
-                let mongoClustersClient: ClustersClient;
+                let clustersClient: ClustersClient;
 
-                const connectionString = new ConnectionString(nonNullValue(this.mongoCluster.connectionString));
+                const connectionString = new ConnectionString(nonNullValue(this.cluster.connectionString));
 
                 let username: string | undefined = connectionString.username;
                 let password: string | undefined = connectionString.password;
@@ -61,7 +61,7 @@ export class ClusterItem extends ClusterItemBase {
                     const wizardContext: AuthenticateWizardContext = {
                         ...context,
                         adminUserName: undefined,
-                        resourceName: this.mongoCluster.name,
+                        resourceName: this.cluster.name,
 
                         // preconfigure the username in case it's provided connection string
                         selectedUserName: username,
@@ -92,17 +92,17 @@ export class ClusterItem extends ClusterItemBase {
                     connectionString.toString(),
                     username,
                     password,
-                    this.mongoCluster.emulatorConfiguration, // workspace items can potentially be connecting to an emulator, so we always pass it
+                    this.cluster.emulatorConfiguration, // workspace items can potentially be connecting to an emulator, so we always pass it
                 );
 
                 // Attempt to create the client with the provided credentials
                 try {
-                    mongoClustersClient = await ClustersClient.getClient(this.id).catch((error: Error) => {
+                    clustersClient = await ClustersClient.getClient(this.id).catch((error: Error) => {
                         ext.outputChannel.appendLine(l10n.t('failed.'));
                         ext.outputChannel.appendLine(l10n.t('Error: {error}', { error: error.message }));
 
                         void vscode.window.showErrorMessage(
-                            l10n.t('Failed to connect to "{cluster}"', { cluster: this.mongoCluster.name }),
+                            l10n.t('Failed to connect to "{cluster}"', { cluster: this.cluster.name }),
                             {
                                 modal: true,
                                 detail:
@@ -126,12 +126,12 @@ export class ClusterItem extends ClusterItemBase {
 
                 ext.outputChannel.appendLine(
                     l10n.t('MongoDB Clusters: Connected to "{cluster}" as "{username}"', {
-                        cluster: this.mongoCluster.name,
+                        cluster: this.cluster.name,
                         username,
                     }),
                 );
 
-                return mongoClustersClient;
+                return clustersClient;
             },
         );
         return result ?? null;
@@ -179,9 +179,9 @@ export class ClusterItem extends ClusterItemBase {
         let description: string | undefined = undefined;
         let tooltipMessage: string | undefined = undefined;
 
-        if (this.mongoCluster.emulatorConfiguration?.isEmulator) {
+        if (this.cluster.emulatorConfiguration?.isEmulator) {
             // For emulator clusters, show TLS/SSL status if security is disabled
-            if (this.mongoCluster.emulatorConfiguration?.disableEmulatorSecurity) {
+            if (this.cluster.emulatorConfiguration?.disableEmulatorSecurity) {
                 description = l10n.t('⚠ TLS/SSL Disabled');
                 tooltipMessage = l10n.t('⚠️ **Security:** TLS/SSL Disabled');
             } else {
@@ -189,17 +189,17 @@ export class ClusterItem extends ClusterItemBase {
             }
         } else {
             // For non-emulator clusters, show SKU if defined
-            if (this.mongoCluster.sku !== undefined) {
-                description = `(${this.mongoCluster.sku})`;
+            if (this.cluster.sku !== undefined) {
+                description = `(${this.cluster.sku})`;
             }
         }
 
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: this.mongoCluster.name,
+            label: this.cluster.name,
             description: description,
-            iconPath: this.mongoCluster.emulatorConfiguration?.isEmulator
+            iconPath: this.cluster.emulatorConfiguration?.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : new vscode.ThemeIcon('server-environment'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,

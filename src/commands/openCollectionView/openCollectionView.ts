@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { MongoClustersSession } from '../../documentdb/ClusterSession';
+import { ClusterSession } from '../../documentdb/ClusterSession';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { CollectionViewController } from '../../webviews/documentdb/collectionView/collectionViewController';
 
@@ -14,11 +14,11 @@ export async function openCollectionView(context: IActionContext, node?: Collect
         throw new Error(l10n.t('Invalid collection node'));
     }
 
-    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+    context.telemetry.properties.experience = node?.cluster.dbExperience?.api;
 
     return openCollectionViewInternal(context, {
         id: node.id,
-        clusterId: node.mongoCluster.id,
+        clusterId: node.cluster.id,
         databaseName: node.databaseInfo.name,
         collectionName: node.collectionInfo.name,
         collectionTreeItem: node,
@@ -39,7 +39,7 @@ export async function openCollectionViewInternal(
      * We're starting a new "session" using the existing connection.
      * A session can cache data, handle paging, and convert data.
      */
-    const sessionId = await MongoClustersSession.initNewSession(props.clusterId);
+    const sessionId = await ClusterSession.initNewSession(props.clusterId);
 
     const view = new CollectionViewController({
         id: props.id,

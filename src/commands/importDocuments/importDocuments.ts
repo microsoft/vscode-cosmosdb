@@ -286,7 +286,7 @@ async function insertDocument(
     try {
         if (node instanceof CollectionItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoMongoCluster(node, document as Document);
+            return await insertDocumentIntoCluster(node, document as Document);
         }
 
         if (node instanceof DocumentDBContainerResourceItem) {
@@ -318,11 +318,11 @@ async function insertDocumentIntoDocumentDB(
     }
 }
 
-async function insertDocumentIntoMongoCluster(
+async function insertDocumentIntoCluster(
     node: CollectionItem,
     document: Document,
 ): Promise<{ document: Document; error: string }> {
-    const client = await ClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.cluster.id);
     const response = await client.insertDocuments(node.databaseInfo.name, node.collectionInfo.name, [document]);
 
     if (response?.acknowledged) {

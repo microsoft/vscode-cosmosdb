@@ -33,8 +33,8 @@ export class MongoRUResourceItem extends ClusterItemBase {
                     this.subscription as AzureSubscription,
                 );
                 const connectionStringsInfo = await managementClient.databaseAccounts.listConnectionStrings(
-                    this.mongoCluster.resourceGroup as string,
-                    this.mongoCluster.name,
+                    this.cluster.resourceGroup as string,
+                    this.cluster.name,
                 );
 
                 const connectionString: URL = new URL(
@@ -59,7 +59,7 @@ export class MongoRUResourceItem extends ClusterItemBase {
     /**
      * Authenticates and connects to the MongoDB cluster.
      * @param context The action context.
-     * @returns An instance of MongoClustersClient if successful; otherwise, null.
+     * @returns An instance of ClustersClient if successful; otherwise, null.
      */
     protected async authenticateAndConnect(): Promise<ClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
@@ -67,21 +67,21 @@ export class MongoRUResourceItem extends ClusterItemBase {
             async (context: IActionContext) => {
                 ext.outputChannel.appendLine(
                     l10n.t('MongoDB Clusters: Attempting to authenticate with "{cluster}"…', {
-                        cluster: this.mongoCluster.name,
+                        cluster: this.cluster.name,
                     }),
                 );
 
                 if (this.subscription) {
-                    this.mongoCluster.connectionString = await this.getConnectionString();
+                    this.cluster.connectionString = await this.getConnectionString();
                 }
 
-                if (!this.mongoCluster.connectionString) {
+                if (!this.cluster.connectionString) {
                     throw new Error(l10n.t('Connection string not found.'));
                 }
 
-                context.valuesToMask.push(this.mongoCluster.connectionString);
+                context.valuesToMask.push(this.cluster.connectionString);
 
-                const cString = new ConnectionString(this.mongoCluster.connectionString);
+                const cString = new ConnectionString(this.cluster.connectionString);
 
                 // // Azure MongoDB accounts need to have the name passed in for private endpoints
                 // mongoClient = await connectToMongoClient(
@@ -117,7 +117,7 @@ export class MongoRUResourceItem extends ClusterItemBase {
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: this.mongoCluster.name,
+            label: this.cluster.name,
             description: `(${this.experience.shortName})`,
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };

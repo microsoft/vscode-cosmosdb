@@ -94,7 +94,7 @@ export async function deleteDatabaseAccount(
         accountName = node.account.name;
     } else if (node instanceof MongoVCoreResourceItem) {
         subscription = createSubscriptionContext(node.subscription);
-        accountName = node.mongoCluster.name;
+        accountName = node.cluster.name;
     } else {
         // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
         // so we need to create a subscription context

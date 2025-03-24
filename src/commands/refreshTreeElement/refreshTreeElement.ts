@@ -22,7 +22,7 @@ export async function refreshTreeElement(
 
     if (node && 'contextValue' in node && typeof node.contextValue === 'string') {
         if (/experience[.](mongocluster|mongodb)/i.test(node.contextValue)) {
-            return ext.mongoClustersBranchDataProvider.refresh(node);
+            return ext.mongoVCoreBranchDataProvider.refresh(node);
         }
 
         if (/experience[.](table|cassandra|core|graph)/i.test(node.contextValue)) {

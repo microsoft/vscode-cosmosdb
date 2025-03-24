@@ -76,9 +76,9 @@ export class MongoVCoreBranchDataProvider
                          * I had to keep all of them in the map becasuse refresh requires the actual MongoClusterItem instance.
                          */
                         this.itemsToUpdateInfo.forEach((value: MongoVCoreResourceItem) => {
-                            value.mongoCluster = {
-                                ...value.mongoCluster,
-                                ...this.detailsCache.get(value.mongoCluster.id),
+                            value.cluster = {
+                                ...value.cluster,
+                                ...this.detailsCache.get(value.cluster.id),
                             };
                             this.refresh(value);
                         });

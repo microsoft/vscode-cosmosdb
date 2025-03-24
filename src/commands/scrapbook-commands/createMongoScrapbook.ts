@@ -21,7 +21,7 @@ export async function createMongoScrapbook(
     //     initialFileContents += `\n\n// You are connected to the "${node.databaseInfo.name}" database.`;
     // }
 
-    await ScrapbookService.setConnectedCluster(node.mongoCluster, node.databaseInfo);
+    await ScrapbookService.setConnectedCluster(node.cluster, node.databaseInfo);
 
     await vscodeUtil.showNewFile(initialFileContents, 'Scrapbook', '.mongo');
 }

@@ -99,7 +99,7 @@ export async function createMongoCollection(context: IActionContext, node?: Data
 
     const wizardContext: CreateCollectionWizardContext = {
         ...context,
-        credentialsId: node.mongoCluster.id,
+        credentialsId: node.cluster.id,
         databaseId: node.databaseInfo.name,
         nodeId: node.id,
     };

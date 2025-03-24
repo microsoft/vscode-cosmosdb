@@ -32,7 +32,7 @@ export async function createDocumentDBDocument(
 }
 
 export async function createMongoDocument(context: IActionContext, node?: CollectionItem): Promise<void> {
-    context.telemetry.properties.experience = node?.mongoCluster.dbExperience.api;
+    context.telemetry.properties.experience = node?.cluster.dbExperience.api;
 
     if (!node) {
         node = await pickAppResource<CollectionItem>(context, {
@@ -46,7 +46,7 @@ export async function createMongoDocument(context: IActionContext, node?: Collec
     }
 
     await vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
-        clusterId: node.mongoCluster.id,
+        clusterId: node.cluster.id,
         databaseName: node.databaseInfo.name,
         collectionName: node.collectionInfo.name,
         mode: 'add',

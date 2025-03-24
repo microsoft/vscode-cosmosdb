@@ -18,7 +18,7 @@ import { type AttachedAccountsTreeItem } from './tree/v1-legacy-api/AttachedAcco
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
 import { type AccountsItem } from './tree/workspace-view/documentdb/AccountsItem';
-import { type MongoClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
+import { type ClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -57,9 +57,9 @@ export namespace ext {
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
 
     // used for the resources tree
-    export let mongoClustersBranchDataProvider: MongoVCoreBranchDataProvider;
+    export let mongoVCoreBranchDataProvider: MongoVCoreBranchDataProvider;
     // used for the workspace: these are the dedicated providers
-    export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;
+    export let mongoClustersWorkspaceBranchDataProvider: ClustersWorkspaceBranchDataProvider;
     export let mongoClusterWorkspaceBranchDataResource: AccountsItem;
 
     export namespace settingsKeys {

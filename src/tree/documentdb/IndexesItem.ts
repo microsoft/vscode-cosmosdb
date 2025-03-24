@@ -22,21 +22,21 @@ export class IndexesItem implements CosmosDBTreeElement, TreeElementWithExperien
     private readonly experienceContextValue: string = '';
 
     constructor(
-        readonly mongoCluster: ClusterModel,
+        readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
     ) {
-        this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes`;
-        this.experience = mongoCluster.dbExperience;
+        this.id = `${cluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes`;
+        this.experience = cluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
-        const client: ClustersClient = await ClustersClient.getClient(this.mongoCluster.id);
+        const client: ClustersClient = await ClustersClient.getClient(this.cluster.id);
         const indexes = await client.listIndexes(this.databaseInfo.name, this.collectionInfo.name);
         return indexes.map((index) => {
-            return new IndexItem(this.mongoCluster, this.databaseInfo, this.collectionInfo, index);
+            return new IndexItem(this.cluster, this.databaseInfo, this.collectionInfo, index);
         });
     }
 

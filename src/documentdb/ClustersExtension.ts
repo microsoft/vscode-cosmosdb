@@ -23,8 +23,8 @@ import { createMongoDocument } from '../commands/createDocument/createDocument';
 import { deleteAzureContainer } from '../commands/deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from '../commands/deleteDatabase/deleteDatabase';
 import {
-    mongoClustersExportEntireCollection,
-    mongoClustersExportQueryResults,
+    clustersExportEntireCollection,
+    clustersExportQueryResults,
 } from '../commands/exportDocuments/exportDocuments';
 import { importDocuments } from '../commands/importDocuments/importDocuments';
 import { launchShell } from '../commands/launchShell/launchShell';
@@ -33,7 +33,7 @@ import { openMongoDocumentView } from '../commands/openDocument/openDocument';
 import { ext } from '../extensionVariables';
 import { MongoVCoreBranchDataProvider } from '../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreBranchDataProvider';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { MongoClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
+import { ClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 import { registerScrapbookCommands } from './scrapbook/registerScrapbookCommands';
 import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
@@ -65,17 +65,17 @@ export class ClustersExtension implements vscode.Disposable {
 
                 // // // MongoClusters / MongoDB (vCore) support is enabled // // //
 
-                ext.mongoClustersBranchDataProvider = new MongoVCoreBranchDataProvider();
+                ext.mongoVCoreBranchDataProvider = new MongoVCoreBranchDataProvider();
                 ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
                     AzExtResourceType.MongoClusters,
-                    ext.mongoClustersBranchDataProvider,
+                    ext.mongoVCoreBranchDataProvider,
                 );
 
                 // Moved to extension.ts
                 // ext.workspaceDataProvider = new SharedWorkspaceResourceProvider();
                 // ext.rgApiV2.resources.registerWorkspaceResourceProvider(ext.workspaceDataProvider);
 
-                ext.mongoClustersWorkspaceBranchDataProvider = new MongoClustersWorkspaceBranchDataProvider();
+                ext.mongoClustersWorkspaceBranchDataProvider = new ClustersWorkspaceBranchDataProvider();
                 ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
                     WorkspaceResourceType.MongoClusters,
                     ext.mongoClustersWorkspaceBranchDataProvider,
@@ -122,10 +122,10 @@ export class ClustersExtension implements vscode.Disposable {
                  * It was possible to merge the two commands into one, but it would result in code that is
                  * harder to understand and maintain.
                  */
-                registerCommand('command.internal.mongoClusters.exportDocuments', mongoClustersExportQueryResults);
+                registerCommand('command.internal.mongoClusters.exportDocuments', clustersExportQueryResults);
                 registerCommandWithTreeNodeUnwrapping(
                     'command.mongoClusters.exportDocuments',
-                    mongoClustersExportEntireCollection,
+                    clustersExportEntireCollection,
                 );
 
                 ext.outputChannel.appendLine(l10n.t('MongoDB Clusters: activated.'));

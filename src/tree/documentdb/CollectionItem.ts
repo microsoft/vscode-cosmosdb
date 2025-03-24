@@ -22,20 +22,20 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
     private readonly experienceContextValue: string = '';
 
     constructor(
-        readonly mongoCluster: ClusterModel,
+        readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
     ) {
-        this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}`;
-        this.experience = mongoCluster.dbExperience;
+        this.id = `${cluster.id}/${databaseInfo.name}/${collectionInfo.name}`;
+        this.experience = cluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
         return [
-            new DocumentsItem(this.mongoCluster, this.databaseInfo, this.collectionInfo, this),
-            new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
+            new DocumentsItem(this.cluster, this.databaseInfo, this.collectionInfo, this),
+            new IndexesItem(this.cluster, this.databaseInfo, this.collectionInfo),
         ];
     }
 

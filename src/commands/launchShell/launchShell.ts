@@ -45,7 +45,7 @@ export async function launchShell(
         });
     } else {
         // node is instanceof DatabaseItem or CollectionItem and we alrady have the connection string somewhere
-        const client: ClustersClient = await ClustersClient.getClient(node.mongoCluster.id);
+        const client: ClustersClient = await ClustersClient.getClient(node.cluster.id);
         rawConnectionString = client.getConnectionStringWithPassword();
     }
 
@@ -85,9 +85,9 @@ export async function launchShell(
     const isRegularCloudAccount = node instanceof MongoVCoreResourceItem || node instanceof MongoRUResourceItem;
     const isEmulatorWithSecurityDisabled =
         !isRegularCloudAccount &&
-        node.mongoCluster.emulatorConfiguration &&
-        node.mongoCluster.emulatorConfiguration.isEmulator &&
-        node.mongoCluster.emulatorConfiguration.disableEmulatorSecurity;
+        node.cluster.emulatorConfiguration &&
+        node.cluster.emulatorConfiguration.isEmulator &&
+        node.cluster.emulatorConfiguration.disableEmulatorSecurity;
 
     const tlsConfiguration = isEmulatorWithSecurityDisabled ? '--tlsAllowInvalidCertificates' : '';
 

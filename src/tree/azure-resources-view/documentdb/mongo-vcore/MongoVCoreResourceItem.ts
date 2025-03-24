@@ -28,9 +28,9 @@ import { type ClusterModel } from '../../../documentdb/ClusterModel';
 export class MongoVCoreResourceItem extends ClusterItemBase {
     constructor(
         readonly subscription: AzureSubscription,
-        mongoCluster: ClusterModel,
+        cluster: ClusterModel,
     ) {
-        super(mongoCluster);
+        super(cluster);
     }
 
     public async getConnectionString(): Promise<string | undefined> {
@@ -41,8 +41,8 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
                 const managementClient = await createMongoClustersManagementClient(context, this.subscription);
 
                 const clusterInformation = await managementClient.mongoClusters.get(
-                    this.mongoCluster.resourceGroup as string,
-                    this.mongoCluster.name,
+                    this.cluster.resourceGroup as string,
+                    this.cluster.name,
                 );
 
                 if (!clusterInformation.connectionString) {
@@ -67,7 +67,7 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
     /**
      * Authenticates and connects to the MongoDB cluster.
      * @param context The action context.
-     * @returns An instance of MongoClustersClient if successful; otherwise, null.
+     * @returns An instance of ClustersClient if successful; otherwise, null.
      */
     protected async authenticateAndConnect(): Promise<ClustersClient | null> {
         const result = await callWithTelemetryAndErrorHandling(
@@ -75,15 +75,15 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
             async (context: IActionContext) => {
                 ext.outputChannel.appendLine(
                     l10n.t('MongoDB Clusters: Attempting to authenticate with "{cluster}"…', {
-                        cluster: this.mongoCluster.name,
+                        cluster: this.cluster.name,
                     }),
                 );
 
                 // Create a client to interact with the MongoDB vCore management API and read the cluster details
                 const managementClient = await createMongoClustersManagementClient(context, this.subscription);
                 const clusterInformation = await managementClient.mongoClusters.get(
-                    this.mongoCluster.resourceGroup as string,
-                    this.mongoCluster.name,
+                    this.cluster.resourceGroup as string,
+                    this.cluster.name,
                 );
 
                 const clusterConnectionString = nonNullValue(clusterInformation.connectionString);
@@ -96,7 +96,7 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
                 const wizardContext: AuthenticateWizardContext = {
                     ...context,
                     adminUserName: clusterInformation.administratorLogin,
-                    resourceName: this.mongoCluster.name,
+                    resourceName: this.cluster.name,
                 };
 
                 // Prompt the user for credentials
@@ -125,13 +125,13 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
                 );
 
                 // Attempt to create the client with the provided credentials
-                let mongoClustersClient: ClustersClient;
+                let clustersClient: ClustersClient;
                 try {
-                    mongoClustersClient = await ClustersClient.getClient(this.id).catch((error: Error) => {
+                    clustersClient = await ClustersClient.getClient(this.id).catch((error: Error) => {
                         ext.outputChannel.appendLine(l10n.t('Error: {error}', { error: error.message }));
 
                         void vscode.window.showErrorMessage(
-                            l10n.t('Failed to connect to "{cluster}"', { cluster: this.mongoCluster.name }),
+                            l10n.t('Failed to connect to "{cluster}"', { cluster: this.cluster.name }),
                             {
                                 modal: true,
                                 detail:
@@ -154,12 +154,12 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
 
                 ext.outputChannel.appendLine(
                     l10n.t('MongoDB Clusters: Connected to "{cluster}" as "{username}".', {
-                        cluster: this.mongoCluster.name,
+                        cluster: this.cluster.name,
                         username: wizardContext.selectedUserName ?? '',
                     }),
                 );
 
-                return mongoClustersClient;
+                return clustersClient;
             },
         );
 

@@ -13,18 +13,18 @@ import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { appendToFile } from '../../utils/fs/appendToFile';
 import { getRootPath } from '../../utils/workspacUtils';
 
-export async function mongoClustersExportEntireCollection(context: IActionContext, node?: CollectionItem) {
-    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+export async function clustersExportEntireCollection(context: IActionContext, node?: CollectionItem) {
+    context.telemetry.properties.experience = node?.cluster.dbExperience?.api;
 
-    return mongoClustersExportQueryResults(context, node);
+    return clustersExportQueryResults(context, node);
 }
 
-export async function mongoClustersExportQueryResults(
+export async function clustersExportQueryResults(
     context: IActionContext,
     node?: CollectionItem,
     props?: { queryText?: string; source?: string },
 ): Promise<void> {
-    context.telemetry.properties.experience = node?.mongoCluster.dbExperience?.api;
+    context.telemetry.properties.experience = node?.cluster.dbExperience?.api;
 
     // node ??= ... pick a node if not provided
     if (!node) {
@@ -39,7 +39,7 @@ export async function mongoClustersExportQueryResults(
         return;
     }
 
-    const client = await ClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.cluster.id);
 
     const docStreamAbortController = new AbortController();
     const docStream = client.streamDocuments(

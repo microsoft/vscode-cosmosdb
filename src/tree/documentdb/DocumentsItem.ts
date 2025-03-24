@@ -22,7 +22,7 @@ export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperi
     private readonly experienceContextValue: string = '';
 
     /**
-     * @param mongoCluster
+     * @param cluster
      * @param databaseInfo
      * @param collectionInfo
      * @param parentCollectionNode  Using the `parentCollectionNode` here is an exception to our approach where the parent information is not
@@ -31,13 +31,13 @@ export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperi
      *                              the collection node to be passed in. This is a workaround that reduces complex changes to the commands used.
      */
     constructor(
-        readonly mongoCluster: ClusterModel,
+        readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
         readonly parentCollectionNode: CollectionItem,
     ) {
-        this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}/documents`;
-        this.experience = mongoCluster.dbExperience;
+        this.id = `${cluster.id}/${databaseInfo.name}/${collectionInfo.name}/documents`;
+        this.experience = cluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
@@ -56,7 +56,7 @@ export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperi
                         viewTitle: `${this.collectionInfo.name}`,
                         // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
 
-                        clusterId: this.mongoCluster.id,
+                        clusterId: this.cluster.id,
                         databaseName: this.databaseInfo.name,
                         collectionName: this.collectionInfo.name,
                         collectionTreeItem: this.parentCollectionNode,

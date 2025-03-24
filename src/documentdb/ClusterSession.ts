@@ -34,9 +34,9 @@ export interface TableData {
     data: TableDataEntry[];
 }
 
-export class MongoClustersSession {
+export class ClusterSession {
     // cache of active/existing sessions
-    static _sessions: Map<string, MongoClustersSession> = new Map();
+    static _sessions: Map<string, ClusterSession> = new Map();
 
     /**
      * Private constructor to enforce the use of `initNewSession` for creating new sessions.
@@ -177,23 +177,23 @@ export class MongoClustersSession {
 
         const sessionId = Math.random().toString(16).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-        const session = new MongoClustersSession(client);
+        const session = new ClusterSession(client);
 
-        MongoClustersSession._sessions.set(sessionId, session);
+        ClusterSession._sessions.set(sessionId, session);
 
         return sessionId;
     }
 
     /**
-     * Retrieves a MongoClustersSession by its session ID.
+     * Retrieves a ClusterSession by its session ID.
      *
      * @param sessionId - The unique identifier for the session.
-     * @returns The MongoClustersSession associated with the given session ID, or undefined if no session exists.
+     * @returns The ClusterSession associated with the given session ID, or undefined if no session exists.
      *
      * @remarks
      * Sessions must be created using the `initNewSession` function before they can be retrieved with this method.
      */
-    public static getSession(sessionId: string): MongoClustersSession {
+    public static getSession(sessionId: string): ClusterSession {
         const session = this._sessions.get(sessionId);
         if (session === undefined) {
             throw new Error(l10n.t('No session found for id {sessionId}', { sessionId }));

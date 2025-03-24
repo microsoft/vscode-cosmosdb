@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import { type JSONSchema } from 'vscode-json-languageservice';
 import { z } from 'zod';
-import { MongoClustersSession } from '../../../documentdb/ClusterSession';
+import { ClusterSession } from '../../../documentdb/ClusterSession';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autocomplete/getKnownFields';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
@@ -50,7 +50,7 @@ export const collectionsViewRouter = router({
             const myCtx = ctx as RouterContext;
 
             // run query
-            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const session: ClusterSession = ClusterSession.getSession(myCtx.sessionId);
             const size = await session.runQueryWithCache(
                 myCtx.databaseName,
                 myCtx.collectionName,
@@ -69,7 +69,7 @@ export const collectionsViewRouter = router({
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const session: ClusterSession = ClusterSession.getSession(myCtx.sessionId);
 
             const _currentJsonSchema = session.getCurrentSchema();
             const autoCompletionData: FieldEntry[] = getKnownFields(_currentJsonSchema);
@@ -93,7 +93,7 @@ export const collectionsViewRouter = router({
         .query(({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const session: ClusterSession = ClusterSession.getSession(myCtx.sessionId);
             const tableData = session.getCurrentPageAsTable(input);
 
             return tableData;
@@ -104,7 +104,7 @@ export const collectionsViewRouter = router({
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const session: ClusterSession = ClusterSession.getSession(myCtx.sessionId);
             const treeData = session.getCurrentPageAsTree();
 
             return treeData;
@@ -115,7 +115,7 @@ export const collectionsViewRouter = router({
         .query(({ ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const session: ClusterSession = ClusterSession.getSession(myCtx.sessionId);
             const jsonData = session.getCurrentPageAsJson();
 
             return jsonData;
@@ -183,7 +183,7 @@ export const collectionsViewRouter = router({
                 return false;
             }
 
-            const session: MongoClustersSession = MongoClustersSession.getSession(myCtx.sessionId);
+            const session: ClusterSession = ClusterSession.getSession(myCtx.sessionId);
             const acknowledged = await session.deleteDocuments(myCtx.databaseName, myCtx.collectionName, input);
 
             if (acknowledged) {

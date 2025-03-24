@@ -20,13 +20,13 @@ export class IndexItem implements CosmosDBTreeElement, TreeElementWithExperience
     private readonly experienceContextValue: string = '';
 
     constructor(
-        readonly mongoCluster: ClusterModel,
+        readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,
         readonly indexInfo: IndexItemModel,
     ) {
-        this.id = `${mongoCluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes/${indexInfo.name}`;
-        this.experience = mongoCluster.dbExperience;
+        this.id = `${cluster.id}/${databaseInfo.name}/${collectionInfo.name}/indexes/${indexInfo.name}`;
+        this.experience = cluster.dbExperience;
         this.experienceContextValue = `experience.${this.experience.api}`;
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }

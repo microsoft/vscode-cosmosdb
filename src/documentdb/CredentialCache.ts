@@ -6,7 +6,7 @@
 import { type EmulatorConfiguration } from '../utils/emulatorConfiguration';
 import { addAuthenticationDataToConnectionString } from './utils/connectionStringHelpers';
 
-export interface MongoClustersCredentials {
+export interface ClustersCredentials {
     mongoClusterId: string;
     connectionStringWithPassword?: string;
     connectionString: string;
@@ -16,8 +16,8 @@ export interface MongoClustersCredentials {
 }
 
 export class CredentialCache {
-    // the id of the cluster === the tree item id -> mongoClusters credentials
-    private static _store: Map<string, MongoClustersCredentials> = new Map();
+    // the id of the cluster === the tree item id -> cluster credentials
+    private static _store: Map<string, ClustersCredentials> = new Map();
 
     public static getConnectionStringWithPassword(mongoClusterId: string): string {
         return CredentialCache._store.get(mongoClusterId)?.connectionStringWithPassword as string;
@@ -31,7 +31,7 @@ export class CredentialCache {
         return CredentialCache._store.get(mongoClusterId)?.emulatorConfiguration;
     }
 
-    public static getCredentials(mongoClusterId: string): MongoClustersCredentials | undefined {
+    public static getCredentials(mongoClusterId: string): ClustersCredentials | undefined {
         return CredentialCache._store.get(mongoClusterId);
     }
 
@@ -61,7 +61,7 @@ export class CredentialCache {
             password,
         );
 
-        const credentials: MongoClustersCredentials = {
+        const credentials: ClustersCredentials = {
             mongoClusterId: mongoClusterId,
             connectionStringWithPassword: connectionStringWithPassword,
             connectionString: connectionString,

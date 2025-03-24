@@ -84,7 +84,7 @@ async function deleteDocumentDBDatabase(node: DocumentDBDatabaseResourceItem): P
 }
 
 async function deleteMongoDatabase(node: DatabaseItem): Promise<boolean> {
-    const client = await ClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.cluster.id);
 
     let success = false;
     await ext.state.showDeleting(node.id, async () => {

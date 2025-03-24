@@ -34,7 +34,7 @@ export async function getIsRunningOnAzure(): Promise<boolean> {
         // Create an AbortController to implement request timeout
         // This prevents the request from hanging indefinitely in non-Azure environments
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
 
         // Contact the Azure Instance Metadata Service endpoint
         // The 'Metadata: true' header is required by the IMDS protocol

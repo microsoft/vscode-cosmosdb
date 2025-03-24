@@ -11,6 +11,7 @@ import { getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosClient, getCosmosEntraIdCredential } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
+import { ext } from '../../extensionVariables';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -92,9 +93,13 @@ export abstract class DocumentDBAccountAttachedResourceItem extends CosmosDBAcco
                 if (isRbacException(e) && !this.hasShownRbacNotification) {
                     this.hasShownRbacNotification = true;
                     const tenantId = getCosmosEntraIdCredential(accountInfo.credentials)?.tenantId;
-                    const principalId =
-                        (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId)) ?? '';
+                    const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                     void showRbacPermissionError(this.id, principalId);
+                    if (!principalId || !e.message.includes(principalId)) {
+                        // In case we're not signed in with the principal that's missing permissions, log the full errror
+                        ext.outputChannel.error(e);
+                        ext.outputChannel.show();
+                    }
                 }
                 if (this.account.isEmulator && e instanceof RestError && e.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
                     const message = l10n.t(

@@ -1,5 +1,5 @@
 {
-   "Could not find the Azure Resource Groups extension": "Nie znaleziono rozszerzenia Azure Resource Groups",
+  "Could not find the Azure Resource Groups extension": "Nie znaleziono rozszerzenia Azure Resource Groups",
   "Saving \"{path}\" will update the entity \"{name}\" to the cloud.": "Zapisanie \"{path}\" spowoduje aktualizację encji \"{name}\" w chmurze.",
   "Updated entity \"{name}\".": "Zaktualizowano encję \"{name}\".",
   "Element with id of {rootId} not found.": "Nie znaleziono elementu o identyfikatorze {rootId}.",

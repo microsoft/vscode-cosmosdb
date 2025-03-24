@@ -70,7 +70,7 @@
     "watch:views": "webpack serve --mode development --config ./webpack.config.views.js",
     "resapi.resetall": "rimraf out node_modules dist && npm install && npm run resapi.link",
     "resapi.link": "npm link @microsoft/vscode-azureresources-api",
-    "l10n": "npx @vscode/l10n-dev export --outDir ./l10n ./src",
+    "l10n": "npx @vscode/l10n-dev export --outDir ./l10n ./src && cd l10n && node ./build.l10n.mjs",
     "l10n:auto": "cross-env AZURE_TRANSLATOR_KEY= cross-env AZURE_TRANSLATOR_REGION= npx @vscode/l10n-dev generate-azure --outDir ./l10n ./l10n/bundle.l10n.json ./package.nls.json",
     "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
     "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf"

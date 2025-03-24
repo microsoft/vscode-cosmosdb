@@ -75,6 +75,33 @@ export class MongoClustersClient {
         return;
     }
 
+    // TODO: add support for single databases via connection string.
+    //
+    // const databaseInConnectionString = getDatabaseNameFromConnectionString(this.account.connectionString);
+    // if (databaseInConnectionString && !this.isEmulator) {
+    //     // emulator violates the connection string format
+    //     // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
+    //     databases = [
+    //         {
+    //             name: databaseInConnectionString,
+    //             empty: false,
+    //         },
+    //     ];
+    // }
+    //
+    // } catch (error) {
+    //     const message = parseError(error).message;
+    //     if (this.isEmulator && message.includes('ECONNREFUSED')) {
+    //         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    //         error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
+    //     }
+    //     throw error;
+    // } finally {
+    //     if (mongoClient) {
+    //         void mongoClient.close();
+    //     }
+    // }
+
     private async initClient(): Promise<void> {
         // TODO: why is this a separate function? move its contents to the constructor.
 

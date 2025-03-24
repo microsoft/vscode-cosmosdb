@@ -11,7 +11,7 @@
     "plugins": ["prettier-plugin-organize-imports"],
     "overrides": [
         {
-            "files": ["*.md"],
+            "files": ["*.md", "*.json"],
             "options": {
                 "tabWidth": 2
             }

@@ -41,7 +41,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
                 createGenericElement({
                     contextValue: createContextValue(['treeItem.no-collections', this.experienceContextValue]),
                     id: `${this.id}/no-collections`,
-                    label: l10n.t('Create collection…'),
+                    label: l10n.t('Create Collection…'),
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'command.mongoClusters.createCollection',
                     commandArgs: [this],

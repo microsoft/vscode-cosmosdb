@@ -15,8 +15,8 @@ import { isEmulatorSupported } from '../../constants';
 import { NewCoreEmulatorConnectionItem } from '../../tree/workspace-view/cosmosdb/LocalEmulators/NewCoreEmulatorConnectionItem';
 import { NewEmulatorConnectionItem } from '../../tree/workspace-view/documentdb/LocalEmulators/NewEmulatorConnectionItem';
 import { ExecuteStep } from './ExecuteStep';
-import { PromptMongoEmulatorConnectionStringStep } from './mongo/PromptMongoEmulatorConnectionStringStep';
-import { PromptMongoEmulatorSecurityStep } from './mongo/PromptMongoEmulatorSecurityStep';
+import { PromptMongoRUEmulatorConnectionStringStep } from './mongo-ru/PromptMongoRUEmulatorConnectionStringStep';
+import { PromptMongoRUEmulatorSecurityStep } from './mongo-ru/PromptMongoRUEmulatorSecurityStep';
 import { type NewEmulatorConnectionWizardContext } from './NewEmulatorConnectionWizardContext';
 import { PromptNosqlEmulatorConnectionStringStep } from './nosql/PromptNosqlEmulatorConnectionStringStep';
 import { PromptEmulatorPortStep } from './PromptEmulatorPortStep';
@@ -50,9 +50,9 @@ export async function newEmulatorConnection(
         title = l10n.t('New Emulator Connection');
         steps.push(
             new PromptEmulatorTypeStep(API.MongoDB),
-            new PromptMongoEmulatorConnectionStringStep(),
+            new PromptMongoRUEmulatorConnectionStringStep(),
             new PromptEmulatorPortStep(),
-            new PromptMongoEmulatorSecurityStep(),
+            new PromptMongoRUEmulatorSecurityStep(),
         );
         executeSteps.push(new ExecuteStep());
     }
@@ -60,7 +60,7 @@ export async function newEmulatorConnection(
     /**
      * Note to code maintainers:
      *
-     * We're not adding the *EmulatorSecurityStep* to CoreExperience becasue we can't disable TLS/SSL
+     * We're not adding the *EmulatorSecurityStep* to CoreExperience because we can't disable TLS/SSL
      * for an individual instance of CosmosClient with these features disabled.
      * https://github.com/Azure/azure-sdk-for-js/issues/12687
      */

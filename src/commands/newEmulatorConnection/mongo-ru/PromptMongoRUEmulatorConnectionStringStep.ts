@@ -12,7 +12,7 @@ import {
 } from '../NewEmulatorConnectionWizardContext';
 
 // TODO: create one that can be shared for adding an account and adding an emulator
-export class PromptMongoEmulatorConnectionStringStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
+export class PromptMongoRUEmulatorConnectionStringStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
     public hideStepCount: boolean = true;
 
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {

@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { defaultMongoEmulatorConfiguration, type EmulatorConfiguration } from '../../../utils/emulatorConfiguration';
 import { type NewEmulatorConnectionWizardContext } from '../NewEmulatorConnectionWizardContext';
 
-export class PromptMongoEmulatorSecurityStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
+export class PromptMongoRUEmulatorSecurityStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {
         const selectedItem = await context.ui.showQuickPick(
             [

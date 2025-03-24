@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { ScrapbookService } from '../../documentdb/scrapbook/ScrapbookService';
 import { withProgress } from '../../utils/withProgress';
 
-export async function executeAllMongoCommand(context: IActionContext): Promise<void> {
+export async function executeAllCommand(context: IActionContext): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         throw new Error(l10n.t('You must open a *.mongo file to run commands.'));

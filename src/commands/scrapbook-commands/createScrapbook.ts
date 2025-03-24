@@ -9,10 +9,7 @@ import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 
-export async function createMongoScrapbook(
-    _context: IActionContext,
-    node: DatabaseItem | CollectionItem,
-): Promise<void> {
+export async function createScrapbook(_context: IActionContext, node: DatabaseItem | CollectionItem): Promise<void> {
     const initialFileContents: string = '// MongoDB API Scrapbook: Use this file to run MongoDB API commands\n\n';
 
     // if (node instanceof CollectionItem) {

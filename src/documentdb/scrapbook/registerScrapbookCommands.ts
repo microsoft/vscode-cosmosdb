@@ -12,10 +12,10 @@ import {
     type IErrorHandlerContext,
 } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { connectMongoDatabase } from '../../commands/scrapbook-commands/connectMongoDatabase';
-import { createMongoScrapbook } from '../../commands/scrapbook-commands/createMongoScrapbook';
-import { executeAllMongoCommand } from '../../commands/scrapbook-commands/executeAllMongoCommand';
-import { executeMongoCommand } from '../../commands/scrapbook-commands/executeMongoCommand';
+import { connectCluster } from '../../commands/scrapbook-commands/connectCluster';
+import { createScrapbook } from '../../commands/scrapbook-commands/createScrapbook';
+import { executeAllCommand } from '../../commands/scrapbook-commands/executeAllCommand';
+import { executeCommand } from '../../commands/scrapbook-commands/executeCommand';
 import { ext } from '../../extensionVariables';
 import { MongoConnectError } from './connectToClient';
 import { MongoDBLanguageClient } from './languageClient';
@@ -37,13 +37,13 @@ export function registerScrapbookCommands(): void {
 
     setUpErrorReporting();
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createMongoScrapbook);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeMongoCommand);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', executeAllMongoCommand);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.newMongoScrapbook', createScrapbook);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeMongoCommand', executeCommand);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeAllMongoCommands', executeAllCommand);
 
     // #region Database command
 
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.connectMongoDB', connectMongoDatabase);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.connectMongoDB', connectCluster);
 
     // #endregion
 }

@@ -10,10 +10,7 @@ import { ScrapbookService } from '../../documentdb/scrapbook/ScrapbookService';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 
-export async function connectMongoDatabase(
-    _context: IActionContext,
-    node?: DatabaseItem | CollectionItem,
-): Promise<void> {
+export async function connectCluster(_context: IActionContext, node?: DatabaseItem | CollectionItem): Promise<void> {
     if (!node) {
         await vscode.window.showInformationMessage(
             l10n.t('You can connect to a different Mongo Cluster by:') +

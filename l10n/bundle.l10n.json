@@ -300,6 +300,7 @@
   "Failed to authenticate (click to retry)": "Failed to authenticate (click to retry)",
   "Create Database…": "Create Database…",
   "Indexes": "Indexes",
+  "Open Collection": "Open Collection",
   "Create Collection…": "Create Collection…",
   "MongoDB Accounts": "MongoDB Accounts",
   "MongoDB Clusters: Attempting to authenticate with {cluster}": "MongoDB Clusters: Attempting to authenticate with {cluster}",

@@ -8,7 +8,6 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { CredentialCache } from '../../documentdb/CredentialCache';
 import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { type MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
 import { getAccountInfo } from '../../tree/docdb/AccountInfo';
 import { DocumentDBAccountAttachedResourceItem } from '../../tree/docdb/DocumentDBAccountAttachedResourceItem';
 import { DocumentDBAccountResourceItem } from '../../tree/docdb/DocumentDBAccountResourceItem';
@@ -24,10 +23,10 @@ import { MongoExecuteStep } from './MongoExecuteStep';
 
 export async function createAzureDatabase(
     context: IActionContext,
-    node?: CosmosDBAccountResourceItemBase | MongoVCoreResourceItem,
+    node?: CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoVCoreResourceItem>(context, {
+        node = await pickAppResource<CosmosDBAccountResourceItemBase | ClusterItemBase>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
         });
     }
@@ -41,7 +40,7 @@ export async function createAzureDatabase(
 
 export async function createDatabase(
     context: IActionContext,
-    node: CosmosDBAccountResourceItemBase | MongoVCoreResourceItem,
+    node: CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
     if (node instanceof DocumentDBAccountResourceItem || node instanceof DocumentDBAccountAttachedResourceItem) {
         await createDocDBDatabase(context, node);

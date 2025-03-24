@@ -53,7 +53,7 @@ export async function copyAzureConnectionString(
 
 export async function copyConnectionString(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | ClusterItemBase, // Mongo Cluster (vCore), in both, the resource and in the workspace area
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
     let connectionString: string | undefined;
 

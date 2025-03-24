@@ -102,41 +102,47 @@ export function getCosmosClient(
                 // Create reusable handler for token response formatting
                 const formatToken = (accessToken: string): { token: string; expiresOnTimestamp: number } => ({
                     token: accessToken,
+                    // TODO: VS Code session tokens have no expiration time, should we limit this to 1h?
                     expiresOnTimestamp: 0,
                 });
 
                 async function tryCredential(
                     credential: CosmosDBCredential,
-                    isPreferred: boolean,
+                    forcePrompt: boolean,
                 ): Promise<{ token: string; expiresOnTimestamp: number } | null> {
                     try {
                         switch (credential.type) {
-                            case AuthenticationMethod.accountKey: {
-                                // Account key should have been handled earlier and is not suported for aad
+                            case AuthenticationMethod.accountKey:
+                                // Account key should have been handled earlier and is not supported for AAD
                                 return null;
-                            }
 
                             case AuthenticationMethod.entraId: {
-                                const cred = credential as CosmosDBEntraIdCredential;
-                                const session = await getSessionFromVSCode(scopes, cred.tenantId, {
-                                    createIfNone: isPreferred,
+                                const { tenantId } = credential as CosmosDBEntraIdCredential;
+                                const session = await getSessionFromVSCode(scopes, tenantId, {
+                                    createIfNone: forcePrompt,
                                 });
                                 return session?.accessToken ? formatToken(session.accessToken) : null;
                             }
 
                             case AuthenticationMethod.managedIdentity: {
-                                const cred = credential as CosmosDBManagedIdentityCredential;
-                                const auth = new ManagedIdentityCredential({ clientId: cred.clientId });
+                                const { clientId } = credential as CosmosDBManagedIdentityCredential;
+                                const auth = new ManagedIdentityCredential({ clientId });
                                 return await auth.getToken(scopes);
                             }
 
                             default:
-                                // Handle future credential types
-                                errors.push(`Unsupported credential type: ${credential.type}`);
+                                errors.push(
+                                    l10n.t('Unsupported credential type: {type}', {
+                                        type: (credential as CosmosDBCredential).type,
+                                    }),
+                                );
                                 return null;
                         }
                     } catch (e) {
-                        const message = `${credential.type} auth failed: ${e instanceof Error ? e.message : String(e)}`;
+                        const message = l10n.t('{type} auth failed: {error}', {
+                            type: credential.type,
+                            error: e instanceof Error ? e.message : String(e),
+                        });
                         errors.push(message);
                         return null;
                     }
@@ -144,17 +150,17 @@ export function getCosmosClient(
 
                 // THREE-STEP AUTHENTICATION STRATEGY:
 
-                let firstIsPReferred = true;
+                let firstIsPreferred = true;
                 if (
                     credentials[0].type === AuthenticationMethod.entraId &&
                     getPreferredAuthenticationMethod() !== AuthenticationMethod.entraId
                 ) {
                     // EntraID will always be first in the list, but we only want to prompt if it's the preferred method
-                    firstIsPReferred = false;
+                    firstIsPreferred = false;
                 }
 
-                // 1. Try preferred credential first (with prompting for EntraID)
-                const preferredResult = await tryCredential(credentials[0], firstIsPReferred);
+                // 1. Try preferred credential first (with prompting for EntraID if preferred)
+                const preferredResult = await tryCredential(credentials[0], firstIsPreferred);
                 if (preferredResult) return preferredResult;
 
                 // 2. Try remaining credentials without prompting
@@ -170,20 +176,15 @@ export function getCosmosClient(
 
                 if (entraIdCreds.length > 0) {
                     // Force prompt on Entra ID as last resort
-                    const session = await getSessionFromVSCode(scopes, entraIdCreds[0].tenantId, {
-                        createIfNone: true,
-                    });
-
-                    if (session?.accessToken) {
-                        return formatToken(session.accessToken);
-                    }
+                    const result = await tryCredential(entraIdCreds[0], true);
+                    if (result) return result;
 
                     errors.push(l10n.t('Last-resort interactive EntraID authentication failed'));
                 }
 
                 // All methods failed
                 ext.outputChannel.error(
-                    l10n.t('Failed to acquire token for {endpoint}: ${errors}', {
+                    l10n.t('Failed to acquire token for {endpoint}: {errors}', {
                         endpoint,
                         errors: errors.join('; '),
                     }),

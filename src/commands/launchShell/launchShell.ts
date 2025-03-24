@@ -5,24 +5,23 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { ConnectionString } from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
+import { isWindows } from '../../constants';
 import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
+import { MongoRUResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoRUResourceItem';
 import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
+import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
-import { ClusterItem } from '../../tree/workspace-view/documentdb/ClusterItem';
-
-import { ConnectionString } from 'mongodb-connection-string-url';
-import { isWindows } from '../../constants';
-import { MongoRUResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoRUResourceItem';
 
 /**
  * Currently it only supports launching the MongoDB shell
  */
 export async function launchShell(
     context: IActionContext,
-    node?: DatabaseItem | CollectionItem | ClusterItem | MongoVCoreResourceItem | MongoRUResourceItem,
+    node?: DatabaseItem | CollectionItem | ClusterItemBase,
 ): Promise<void> {
     if (!node) {
         throw new Error(l10n.t('No database or collection selected.'));
@@ -31,14 +30,11 @@ export async function launchShell(
     context.telemetry.properties.experience = node.experience.api;
 
     let rawConnectionString: string | undefined;
+
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
 
-    if (
+    if (node instanceof ClusterItemBase) {
         // connecting at the account level
-        node instanceof MongoVCoreResourceItem ||
-        node instanceof MongoRUResourceItem ||
-        node instanceof ClusterItem
-    ) {
         // we need to discover the connection string
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
             return node.getConnectionString();

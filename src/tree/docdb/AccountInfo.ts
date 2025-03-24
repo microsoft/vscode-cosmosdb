@@ -298,7 +298,7 @@ async function getKeyCredentialWithoutARM(
     return keyCred;
 }
 
-function getPreferredAuthenticationMethod(): AuthenticationMethod {
+export function getPreferredAuthenticationMethod(): AuthenticationMethod {
     const configuration = vscode.workspace.getConfiguration();
     //migrate old setting
     const deprecatedOauthSetting = configuration.get<boolean>('azureDatabases.useCosmosOAuth');

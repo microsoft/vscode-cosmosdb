@@ -13,6 +13,7 @@ import { merge } from 'lodash';
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
 import { ext } from '../extensionVariables';
+import { getPreferredAuthenticationMethod } from '../tree/docdb/AccountInfo';
 import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
 
 export enum AuthenticationMethod {
@@ -104,16 +105,17 @@ export function getCosmosClient(
                     expiresOnTimestamp: 0,
                 });
 
-                if (nonKeyCredentials.length === 0) {
-                    throw new Error(l10n.t('No valid credential found for token acquisition'));
-                }
-
                 async function tryCredential(
                     credential: CosmosDBCredential,
                     isPreferred: boolean,
                 ): Promise<{ token: string; expiresOnTimestamp: number } | null> {
                     try {
                         switch (credential.type) {
+                            case AuthenticationMethod.accountKey: {
+                                // Account key should have been handled earlier and is not suported for aad
+                                return null;
+                            }
+
                             case AuthenticationMethod.entraId: {
                                 const cred = credential as CosmosDBEntraIdCredential;
                                 const session = await getSessionFromVSCode(scopes, cred.tenantId, {
@@ -142,18 +144,27 @@ export function getCosmosClient(
 
                 // THREE-STEP AUTHENTICATION STRATEGY:
 
+                let firstIsPReferred = true;
+                if (
+                    credentials[0].type === AuthenticationMethod.entraId &&
+                    getPreferredAuthenticationMethod() !== AuthenticationMethod.entraId
+                ) {
+                    // EntraID will always be first in the list, but we only want to prompt if it's the preferred method
+                    firstIsPReferred = false;
+                }
+
                 // 1. Try preferred credential first (with prompting for EntraID)
-                const preferredResult = await tryCredential(nonKeyCredentials[0], true);
+                const preferredResult = await tryCredential(credentials[0], firstIsPReferred);
                 if (preferredResult) return preferredResult;
 
                 // 2. Try remaining credentials without prompting
-                for (let i = 1; i < nonKeyCredentials.length; i++) {
-                    const result = await tryCredential(nonKeyCredentials[i], false);
+                for (let i = 1; i < credentials.length; i++) {
+                    const result = await tryCredential(credentials[i], false);
                     if (result) return result;
                 }
 
                 // 3. Last resort - Try EntraID again with forced prompting
-                const entraIdCreds = nonKeyCredentials.filter(
+                const entraIdCreds = credentials.filter(
                     (cred) => cred.type === AuthenticationMethod.entraId,
                 ) as CosmosDBEntraIdCredential[];
 

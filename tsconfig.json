@@ -1,32 +1,32 @@
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "target": "ES2022",
-        "outDir": "out",
-        "lib": ["ES2022", "dom", "dom.iterable", "webworker"],
-        "sourceMap": true,
-        "esModuleInterop": true, // added by tnaum to help with Denque integration, happy to discuss other approaches
-        "allowSyntheticDefaultImports": true, // added by tnaum to fix SlickGrid integration, eager to discuss other approaches
-        "noImplicitThis": true,
-        "noImplicitReturns": true,
-        "noUnusedLocals": true,
-        "strictNullChecks": true,
-        "skipLibCheck": true,
-        "noUnusedParameters": true,
-        "rootDir": ".",
-        "experimentalDecorators": true,
-        "resolveJsonModule": true,
-        "baseUrl": "./",
-        "alwaysStrict": true,
-        "paths": {
-            "*": ["node_modules/@types/*", "*"]
-        },
-        "jsx": "react-jsx",
-        "types": ["jest", "mocha", "node"],
-        "typeRoots": [
-            //"typings",
-            "node_modules/@types"
-        ]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2022",
+    "outDir": "out",
+    "lib": ["ES2022", "dom", "dom.iterable", "webworker"],
+    "sourceMap": true,
+    "esModuleInterop": true, // added by tnaum to help with Denque integration, happy to discuss other approaches
+    "allowSyntheticDefaultImports": true, // added by tnaum to fix SlickGrid integration, eager to discuss other approaches
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "noUnusedParameters": true,
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "baseUrl": "./",
+    "alwaysStrict": true,
+    "paths": {
+      "*": ["node_modules/@types/*", "*"]
     },
-    "exclude": ["node_modules", ".vscode-test"]
+    "jsx": "react-jsx",
+    "types": ["jest", "mocha", "node"],
+    "typeRoots": [
+      //"typings",
+      "node_modules/@types"
+    ]
+  },
+  "exclude": ["node_modules", ".vscode-test"]
 }

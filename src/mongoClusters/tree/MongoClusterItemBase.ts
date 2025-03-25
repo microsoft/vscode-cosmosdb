@@ -106,7 +106,7 @@ export abstract class MongoClusterItemBase
                     createGenericElement({
                         contextValue: createContextValue(['treeItem.no-databases', this.experienceContextValue]),
                         id: `${this.id}/no-databases`,
-                        label: l10n.t('Create database…'),
+                        label: l10n.t('Create Database…'),
                         iconPath: new vscode.ThemeIcon('plus'),
                         commandId: 'cosmosDB.createDatabase',
                         commandArgs: [this],

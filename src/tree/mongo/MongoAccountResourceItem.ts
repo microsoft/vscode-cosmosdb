@@ -15,7 +15,6 @@ import { type DatabaseItemModel, MongoClustersClient } from '../../mongoClusters
 import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type MongoClusterModel } from '../../mongoClusters/tree/MongoClusterModel';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
-import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { type MongoAccountModel } from './MongoAccountModel';
@@ -35,7 +34,6 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
         account: MongoAccountModel,
         experience: Experience,
         readonly databaseAccount?: DatabaseAccountGetResults, // TODO: exploring during v1->v2 migration
-        readonly emulatorConfiguration?: MongoEmulatorConfiguration, // TODO: exploring during v1->v2 migration
     ) {
         super(account, experience);
     }
@@ -118,13 +116,7 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
             //TODO: simplify the api for CrednetialCache to accept full connection strings with credentials
             const username: string | undefined = cString.username;
             const password: string | undefined = cString.password;
-            CredentialCache.setCredentials(
-                this.id,
-                cString.toString(),
-                username,
-                password,
-                this.account.emulatorConfiguration,
-            );
+            CredentialCache.setCredentials(this.id, cString.toString(), username, password);
 
             mongoClient = await MongoClustersClient.getClient(this.id).catch(async (error) => {
                 console.error(error);
@@ -139,20 +131,6 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
             throw new Error(l10n.t('Failed to connect.'));
         }
 
-        // TODO: add support for single databases via connection string. move it to monogoclustersclient
-        //
-        // const databaseInConnectionString = getDatabaseNameFromConnectionString(this.account.connectionString);
-        // if (databaseInConnectionString && !this.isEmulator) {
-        //     // emulator violates the connection string format
-        //     // If the database is in the connection string, that's all we connect to (we might not even have permissions to list databases)
-        //     databases = [
-        //         {
-        //             name: databaseInConnectionString,
-        //             empty: false,
-        //         },
-        //     ];
-        // }
-
         const databases = await mongoClient.listDatabases();
 
         return databases.map((database) => {
@@ -166,18 +144,5 @@ export class MongoAccountResourceItem extends CosmosDBAccountResourceItemBase {
 
             return new DatabaseItem(clusterInfo, databaseInfo);
         });
-
-        // } catch (error) {
-        //     const message = parseError(error).message;
-        //     if (this.isEmulator && message.includes('ECONNREFUSED')) {
-        //         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        //         error.message = `Unable to reach emulator. See ${Links.LocalConnectionDebuggingTips} for debugging tips.\n${message}`;
-        //     }
-        //     throw error;
-        // } finally {
-        //     if (mongoClient) {
-        //         void mongoClient.close();
-        //     }
-        // }
     }
 }

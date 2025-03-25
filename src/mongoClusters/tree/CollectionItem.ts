@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
-import * as l10n from '@vscode/l10n';
+import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
 import { type TreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { type CollectionItemModel, type DatabaseItemModel } from '../MongoClustersClient';
+import { DocumentsItem } from './DocumentsItem';
 import { IndexesItem } from './IndexesItem';
 import { type MongoClusterModel } from './MongoClusterModel';
 
@@ -34,25 +34,7 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
 
     async getChildren(): Promise<CosmosDBTreeElement[]> {
         return [
-            createGenericElement({
-                contextValue: createContextValue(['treeItem.documents', this.experienceContextValue]),
-                id: `${this.id}/documents`,
-                label: l10n.t('Documents'),
-                commandId: 'command.internal.mongoClusters.containerView.open',
-                commandArgs: [
-                    {
-                        id: this.id,
-                        viewTitle: `${this.collectionInfo.name}`,
-                        // viewTitle: `${this.mongoCluster.name}/${this.databaseInfo.name}/${this.collectionInfo.name}`, // using '/' as a separator to use VSCode's "title compression"(?) feature
-
-                        clusterId: this.mongoCluster.id,
-                        databaseName: this.databaseInfo.name,
-                        collectionName: this.collectionInfo.name,
-                        collectionTreeItem: this,
-                    },
-                ],
-                iconPath: new vscode.ThemeIcon('explorer-view-icon'),
-            }) as CosmosDBTreeElement,
+            new DocumentsItem(this.mongoCluster, this.databaseInfo, this.collectionInfo, this),
             new IndexesItem(this.mongoCluster, this.databaseInfo, this.collectionInfo),
         ];
     }

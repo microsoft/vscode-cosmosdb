@@ -17,7 +17,6 @@ import { MongoAssessmentServiceRunner } from './assessmentService/assessmentServ
 import { DotnetRuntimeExtensionResolver } from './dotnetRuntime/dotnetRuntimeExtensionResolver';
 import { isMongoMigrationSupportEnabled } from './utils/isMongoMigrationSupportEnabled';
 
-
 export class MongoMigrationExtension implements vscode.Disposable {
     dispose(): Promise<void> {
         return Promise.resolve();
@@ -43,6 +42,7 @@ export class MongoMigrationExtension implements vscode.Disposable {
                     return;
                 }
 
+                // TODO: this takes a lot of time: how to defer it until the user actually tries to use the extension? how to handle exceptions?
                 const dotNetInfo = await new DotnetRuntimeExtensionResolver(ext.outputChannel).getDotNetHostInfo();
 
                 ext.outputChannel.appendLine(`Dotnet runtime path: ${dotNetInfo.path}`);
@@ -67,18 +67,15 @@ export class MongoMigrationExtension implements vscode.Disposable {
     }
 
     /**
- * Launches the JSON-RPC backend for this extension.
- *
- * @param dotnetPath Path to the 'dotnet' executable.
- * @param backendPath Path to the app that acts as a backend service for the extension.
- * @param context The VSCode extension context.
- */
+     * Launches the JSON-RPC backend for this extension.
+     *
+     * @param dotnetPath Path to the 'dotnet' executable.
+     * @param backendPath Path to the app that acts as a backend service for the extension.
+     * @param context The VSCode extension context.
+     */
     async launchService(): Promise<void> {
         await MongoAssessmentServiceRunner.createShell();
         //  await vscode.commands.executeCommand('dotnet.runproject', backendPath);
         console.log('MongoDB Migration backend service started.');
     }
-
-
-
 }

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import type * as vscodelc from 'vscode-languageclient';
-import { RequestType } from "vscode-languageclient";
+import { RequestType } from 'vscode-languageclient';
 import { ext } from '../../extensionVariables';
 
 export interface AssessmentMetadata {
@@ -19,39 +19,47 @@ export interface AssessmentMetadata {
 export enum EnumTargetOffering {
     None = 0,
     CosmosDBMongoRU = 1,
-    CosmosDBMongovCore = 2
+    CosmosDBMongovCore = 2,
 }
 
 export interface RPCResponseEntity<T> {
-    body: T,
-    error: ErrorEntity,
-    Warnings: WarningEntity[]
+    body: T;
+    error: ErrorEntity;
+    Warnings: WarningEntity[];
 }
 
 export interface ErrorEntity {
-    errorCode: string,
-    errorMessage: string,
-    errorParameters: string[],
+    errorCode: string;
+    errorMessage: string;
+    errorParameters: string[];
 }
 
 export interface WarningEntity {
-    warningCode: string,
-    warningParameters: string[]
+    warningCode: string;
+    warningParameters: string[];
 }
 
 export const GetAllAssessmentsApi = 'assessments/getAllAssessments';
 
-export const getAllAssessmentsrequestType =
-    new RequestType<AssessmentListRequestParameter, RPCResponseEntity<AssessmentMetadata[]>, void, void>(GetAllAssessmentsApi);
+export const getAllAssessmentsrequestType = new RequestType<
+    AssessmentListRequestParameter,
+    RPCResponseEntity<AssessmentMetadata[]>,
+    void,
+    void
+>(GetAllAssessmentsApi);
 
 export interface AssessmentListRequestParameter {
-    AssessmentFolderPath: string,
-    InstanceId: string,
+    AssessmentFolderPath: string;
+    InstanceId: string;
 }
 
 export class AssessmentServiceClient {
-
-    protected get getAllAssessmentsRequestType(): vscodelc.RequestType<AssessmentListRequestParameter, RPCResponseEntity<AssessmentMetadata[]>, void, void> {
+    protected get getAllAssessmentsRequestType(): vscodelc.RequestType<
+        AssessmentListRequestParameter,
+        RPCResponseEntity<AssessmentMetadata[]>,
+        void,
+        void
+    > {
         return getAllAssessmentsrequestType;
     }
 
@@ -63,7 +71,6 @@ export class AssessmentServiceClient {
             //     InstanceId: instanceIdHash,
             //     AssessmentFolderPath: "C:/Users/bhpalaks/.dmamongo",
             // });
-
             // // TODO: refactor code to a cleaner one.
             // if (response1.error === null) {
             //     response = response1.body;
@@ -71,7 +78,6 @@ export class AssessmentServiceClient {
             // else {
             //     ext.outputChannel.appendLine(response1.error.errorMessage);
             // }
-
         } catch (e) {
             // log exception
             ext.outputChannel.appendLine(`Error in getAllAssessments: ${e}`);

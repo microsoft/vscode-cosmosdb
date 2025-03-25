@@ -102,10 +102,8 @@ export const MigrationPanel = (): JSX.Element => {
         setSelectedTab(data.value as string);
     };
 
-
     return (
         <div className="documentView">
-
             <section className={styles.root}>
                 <ActionBar>
                     <div className={styles.tabs}>
@@ -121,19 +119,13 @@ export const MigrationPanel = (): JSX.Element => {
                             </Tab>
                         </TabList>
                     </div>
-                    <div className={styles.tabToolbar}>
-                    </div>
-                    <div className={styles.panelToolbar}>
-                    </div>
+                    <div className={styles.tabToolbar}></div>
+                    <div className={styles.panelToolbar}></div>
                 </ActionBar>
                 <div className={styles.tabContainer}>
                     {selectedTab === 'dashboard__tab' && <MigrationDashboardTab />}
                 </div>
             </section>
-
-
-
         </div>
     );
-
 };

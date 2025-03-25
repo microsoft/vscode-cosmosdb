@@ -14,72 +14,46 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
 
+export enum AuthenticationMethod {
+    auto = 'auto',
+    accountKey = 'accountKey',
+    entraId = 'entraId',
+}
+
 export type CosmosDBKeyCredential = {
-    type: 'key';
+    type: AuthenticationMethod.accountKey;
     key: string;
 };
 
 export type CosmosDBAuthCredential = {
-    type: 'auth';
+    type: AuthenticationMethod.entraId;
     tenantId: string | undefined;
 };
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBAuthCredential;
 
 export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
-    return credentials.filter((cred): cred is CosmosDBKeyCredential => cred.type === 'key')[0];
+    return credentials.filter(
+        (cred): cred is CosmosDBKeyCredential => cred.type === AuthenticationMethod.accountKey,
+    )[0];
 }
 
 export function getCosmosAuthCredential(credentials: CosmosDBCredential[]): CosmosDBAuthCredential | undefined {
-    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === 'auth')[0];
+    return credentials.filter((cred): cred is CosmosDBAuthCredential => cred.type === AuthenticationMethod.entraId)[0];
 }
 
 export function getCosmosClientByConnection(
     connection: NoSqlQueryConnection,
     options?: Partial<CosmosClientOptions>,
 ): CosmosClient {
-    const { endpoint, masterKey, isEmulator, tenantId } = connection;
-
-    const vscodeStrictSSL: boolean | undefined = vscode.workspace
-        .getConfiguration()
-        .get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
-    const enableEndpointDiscovery: boolean | undefined = vscode.workspace
-        .getConfiguration()
-        .get<boolean>(ext.settingsKeys.enableEndpointDiscovery);
-    const connectionPolicy = {
-        enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
-    };
-    const agent = endpoint.startsWith('https:')
-        ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })
-        : undefined;
-    const commonProperties: CosmosClientOptions = {
-        endpoint,
-        userAgentSuffix: appendExtensionUserAgent(),
-        agent: agent,
-        connectionPolicy,
-    };
-
-    if (masterKey !== undefined) {
-        commonProperties.key = masterKey;
-    } else {
-        commonProperties.aadCredentials = {
-            getToken: async (scopes, _options) => {
-                const session = await getSessionFromVSCode(scopes, tenantId, { createIfNone: true });
-                return {
-                    token: session?.accessToken ?? '',
-                    expiresOnTimestamp: 0,
-                };
-            },
-        };
-    }
-
-    return new CosmosClient(merge(options ?? {}, commonProperties));
+    return getCosmosClient(connection.endpoint, connection.credentials, connection.isEmulator, options);
 }
 
 export function getCosmosClient(
     endpoint: string,
     credentials: CosmosDBCredential[],
     isEmulator: boolean,
+    options?: Partial<CosmosClientOptions>,
 ): CosmosClient {
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
         .getConfiguration()
@@ -97,7 +71,7 @@ export function getCosmosClient(
     const agent = endpoint.startsWith('https:')
         ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })
         : undefined;
-    const commonProperties = {
+    const commonProperties: CosmosClientOptions = {
         endpoint,
         userAgentSuffix: appendExtensionUserAgent(),
         agent: agent,
@@ -105,24 +79,20 @@ export function getCosmosClient(
     };
     // @todo: Add telemetry to monitor usage of each credential type
     if (keyCred) {
-        return new CosmosClient({
-            ...commonProperties,
-            key: keyCred.key,
-        });
+        commonProperties.key = keyCred?.key;
     } else if (authCred) {
-        return new CosmosClient({
-            ...commonProperties,
-            aadCredentials: {
-                getToken: async (scopes, _options) => {
-                    const session = await getSessionFromVSCode(scopes, authCred.tenantId, { createIfNone: true });
-                    return {
-                        token: session?.accessToken ?? '',
-                        expiresOnTimestamp: 0,
-                    };
-                },
+        commonProperties.aadCredentials = {
+            getToken: async (scopes, _options) => {
+                const session = await getSessionFromVSCode(scopes, authCred.tenantId, { createIfNone: true });
+                return {
+                    token: session?.accessToken ?? '',
+                    expiresOnTimestamp: 0,
+                };
             },
-        });
+        };
     } else {
         throw Error(l10n.t('No credential available to create CosmosClient.'));
     }
+
+    return new CosmosClient(merge(options ?? {}, commonProperties));
 }

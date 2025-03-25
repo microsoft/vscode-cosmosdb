@@ -7,6 +7,7 @@ import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { getCosmosKeyCredential } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
@@ -41,8 +42,11 @@ export class DocumentTab extends BaseTab {
         this.documentId = documentId ?? undefined;
         this._mode = mode;
 
-        if (connection.masterKey) {
-            this.telemetryContext.addMaskedValue(connection.masterKey);
+        if (connection.credentials) {
+            const masterKey = getCosmosKeyCredential(connection.credentials)?.key;
+            if (masterKey) {
+                this.telemetryContext.addMaskedValue(masterKey);
+            }
         }
 
         this.telemetryContext.addMaskedValue(connection.databaseId);

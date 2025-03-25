@@ -7,7 +7,7 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import { AuthenticationMethod, getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
@@ -39,7 +39,7 @@ export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResou
 
     public async getConnectionString(): Promise<string | undefined> {
         const accountInfo = await getAccountInfo(this.account);
-        const keyCred = accountInfo.credentials.find((cred) => cred.type === 'key');
+        const keyCred = accountInfo.credentials.find((cred) => cred.type === AuthenticationMethod.accountKey);
 
         // supporting only one known success path
         if (keyCred) {

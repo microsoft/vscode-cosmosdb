@@ -9,8 +9,8 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { AuthenticationMethod, type CosmosDBManagedIdentityCredential } from '../getCosmosClient';
 
-// Module-level variable to cache the result of running on Azure check
-let isRunningOnAzure: boolean | undefined = undefined;
+let isRunningOnAzurePromise: Promise<boolean> | undefined = undefined;
+let isRunningOnAzureResult: boolean | undefined = undefined;
 
 /**
  * Determines if the current environment is running on Azure by checking for the
@@ -18,50 +18,57 @@ let isRunningOnAzure: boolean | undefined = undefined;
  *
  * @returns {Promise<boolean>} True if running on Azure, false otherwise
  * @remarks
- * - Caches the result in module-level variable to avoid repeated network calls
- * - Uses a 2-second timeout to prevent hanging in non-Azure environments
+ * - Caches the result to avoid redundant network calls
+ * - If called while a check is already in progress, waits for and returns that result
+ * - Uses a 10-second timeout to prevent hanging in non-Azure environments
  * - The IMDS endpoint is only accessible from within Azure VMs or App Services
- * - Learn more: https://aka.ms/azureimds
  */
 export async function getIsRunningOnAzure(): Promise<boolean> {
-    // Return cached result if available to avoid redundant checks
-    if (isRunningOnAzure !== undefined) {
-        return isRunningOnAzure;
+    // Return cached result if available
+    if (isRunningOnAzureResult !== undefined) {
+        return isRunningOnAzureResult;
     }
-    isRunningOnAzure = false; // Default to false until proven otherwise
 
-    try {
-        // Create an AbortController to implement request timeout
-        // This prevents the request from hanging indefinitely in non-Azure environments
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+    // If a check is already in progress, return that promise to avoid duplicate calls
+    if (isRunningOnAzurePromise) {
+        return isRunningOnAzurePromise;
+    }
 
-        // Contact the Azure Instance Metadata Service endpoint
-        // The 'Metadata: true' header is required by the IMDS protocol
-        // https://aka.ms/azureimds#versions
-        const response = await fetch('http://169.254.169.254/metadata/versions', {
-            headers: { Metadata: 'true' },
-            signal: controller.signal,
-        });
+    // Create and cache the promise for concurrent callers
+    isRunningOnAzurePromise = (async () => {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        clearTimeout(timeoutId); // Clean up timeout to prevent memory leaks
+            const response = await fetch('http://169.254.169.254/metadata/versions', {
+                headers: { Metadata: 'true' },
+                signal: controller.signal,
+            });
 
-        // Validate that the response contains the expected IMDS structure
-        // A valid response should contain an array of supported API versions
-        if (response.ok) {
-            const data = (await response.json()) as { apiVersions?: string[] };
-            if (Array.isArray(data?.apiVersions) && data.apiVersions.length > 0) {
-                ext.outputChannel.debug('Running on Azure: Instance Metadata Service detected');
-                return (isRunningOnAzure = true); // Cache and return result
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = (await response.json()) as { apiVersions?: string[] };
+                if (Array.isArray(data?.apiVersions) && data.apiVersions.length > 0) {
+                    ext.outputChannel.debug('Running on Azure: Instance Metadata Service detected');
+                    return (isRunningOnAzureResult = true);
+                }
             }
+        } catch (error) {
+            ext.outputChannel.debug(`Not running on Azure: ${error instanceof Error ? error.message : String(error)}`);
         }
-    } catch (error) {
-        // This will catch network errors, timeouts, and JSON parsing failures
-        ext.outputChannel.debug(`Not running on Azure: ${error instanceof Error ? error.message : String(error)}`);
-    }
 
-    // Default case: not on Azure or IMDS check failed
-    return (isRunningOnAzure = false); // Cache and return result
+        // Default to false
+        return (isRunningOnAzureResult = false);
+    })();
+
+    // Wait for and return the result
+    const result = await isRunningOnAzurePromise;
+
+    // Clear the promise reference after completion (only result is needed for future calls)
+    isRunningOnAzurePromise = undefined;
+
+    return result;
 }
 
 async function getHasManagedIdentity(

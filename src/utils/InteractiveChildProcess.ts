@@ -86,6 +86,9 @@ export class InteractiveChildProcess {
 
         this._childProc.stdout?.on('data', (data: string | Buffer) => {
             const text = data.toString();
+            if (this._options.outputChannel) {
+                this._options.outputChannel?.append(`From the executable -->  ${text}`);
+            }
             this._onStdOutEmitter.fire(text);
         });
 

@@ -140,6 +140,7 @@
     "@azure/arm-postgresql-flexible": "^8.0.0",
     "@azure/arm-resources": "^6.0.0",
     "@azure/cosmos": "^4.2.0",
+    "@azure/identity": "^4.6.0",
     "@fluentui/react-components": "^9.60.0",
     "@fluentui/react-icons": "^2.0.279",
     "@microsoft/vscode-azext-azureauth": "^4.1.1",
@@ -1144,103 +1145,141 @@
         "when": "editorLangId == 'mongo' && editorTextFocus"
       }
     ],
-    "configuration": {
-      "title": "Azure Databases",
-      "properties": {
-        "mongo.shell.path": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "%cosmosdb.configuration.mongo.shell.path%",
-          "default": null
-        },
-        "mongo.shell.args": {
-          "type": "array",
-          "items": {
-            "type": "string"
+    "configuration": [
+      {
+        "title": "Authentication",
+        "properties": {
+          "azureDatabases.cosmosDB.preferredAuthenticationMethod": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "accountKey",
+              "entraId",
+              "managedIdentity"
+            ],
+            "enumItemLabels": [
+              "%cosmosdb.configuration.preferredAuthenticationMethod.auto%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity%"
+            ],
+            "markdownEnumDescriptions": [
+              "%cosmosdb.configuration.preferredAuthenticationMethod.auto.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description%"
+            ],
+            "markdownDescription": "%cosmosdb.configuration.preferredAuthenticationMethod%",
+            "default": "auto",
+            "order": 0
           },
-          "description": "%cosmosdb.configuration.mongo.shell.args%",
-          "default": [
-            "--quiet"
-          ]
-        },
-        "mongo.shell.timeout": {
-          "type": "number",
-          "description": "%cosmosdb.configuration.mongo.shell.timeout%",
-          "default": 30
-        },
-        "azureDatabases.batchSize": {
-          "type": "number",
-          "description": "%cosmosdb.configuration.batch.size%",
-          "default": 50
-        },
-        "azureDatabases.useCosmosOAuth": {
-          "type": "boolean",
-          "markdownDescription": "%cosmosdb.configuration.oauth.enable%",
-          "default": false
-        },
-        "azureDatabases.confirmationStyle": {
-          "type": "string",
-          "description": "%cosmosdb.configuration.confirmation.style%",
-          "enum": [
-            "wordConfirmation",
-            "challengeConfirmation",
-            "buttonConfirmation"
-          ],
-          "enumItemLabels": [
-            "%cosmosdb.configuration.confirmation.style.word%",
-            "%cosmosdb.configuration.confirmation.style.challenge%",
-            "%cosmosdb.configuration.confirmation.style.button%"
-          ],
-          "enumDescriptions": [
-            "%cosmosdb.configuration.confirmation.style.word.description%",
-            "%cosmosdb.configuration.confirmation.style.challenge.description%",
-            "%cosmosdb.configuration.confirmation.style.button.description%"
-          ],
-          "default": "wordConfirmation"
-        },
-        "azureDatabases.showOperationSummaries": {
-          "type": "boolean",
-          "default": true,
-          "description": "%cosmosdb.configuration.operation.summaries%"
-        },
-        "cosmosDB.documentLabelFields": {
-          "type": "array",
-          "default": [
-            "name",
-            "Name",
-            "NAME",
-            "ID",
-            "UUID",
-            "Id",
-            "id",
-            "_id",
-            "uuid"
-          ],
-          "description": "%cosmosdb.configuration.document.label.fields%"
-        },
-        "cosmosDB.emulator.mongoPort": {
-          "type": "integer",
-          "default": 10255,
-          "description": "%cosmosdb.configuration.emulator.mongo.port%"
-        },
-        "cosmosDB.emulator.port": {
-          "type": "integer",
-          "default": 8081,
-          "description": "%cosmosdb.configuration.emulator.port%"
-        },
-        "cosmosDB.enableEndpointDiscovery": {
-          "type": "boolean",
-          "default": true,
-          "description": "%cosmosdb.configuration.endpoint.discovery%"
-        },
-        "cosmosDB.showSavePrompt": {
-          "type": "boolean",
-          "default": true,
-          "description": "%cosmosdb.configuration.save.prompt%"
+          "azureDatabases.authentication.managedIdentity.clientID": {
+            "type": "string",
+            "markdownDescription": "%cosmosdb.configuration.authentication.managedIdentity.clientID%",
+            "default": null,
+            "order": 1
+          }
+        }
+      },
+      {
+        "title": "Azure Databases",
+        "properties": {
+          "mongo.shell.path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "%cosmosdb.configuration.mongo.shell.path%",
+            "default": null
+          },
+          "mongo.shell.args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "%cosmosdb.configuration.mongo.shell.args%",
+            "default": [
+              "--quiet"
+            ]
+          },
+          "mongo.shell.timeout": {
+            "type": "number",
+            "description": "%cosmosdb.configuration.mongo.shell.timeout%",
+            "default": 30
+          },
+          "azureDatabases.batchSize": {
+            "type": "number",
+            "description": "%cosmosdb.configuration.batch.size%",
+            "default": 50
+          },
+          "azureDatabases.useCosmosOAuth": {
+            "type": "boolean",
+            "markdownDescription": "%cosmosdb.configuration.oauth.enable%",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#azureDatabases.cosmosDB.preferredAuthenticationMethod#` instead.",
+            "deprecationMessage": "Deprecated: Please use azureDatabases.cosmosDB.preferredAuthenticationMethod instead."
+          },
+          "azureDatabases.confirmationStyle": {
+            "type": "string",
+            "description": "%cosmosdb.configuration.confirmation.style%",
+            "enum": [
+              "wordConfirmation",
+              "challengeConfirmation",
+              "buttonConfirmation"
+            ],
+            "enumItemLabels": [
+              "%cosmosdb.configuration.confirmation.style.word%",
+              "%cosmosdb.configuration.confirmation.style.challenge%",
+              "%cosmosdb.configuration.confirmation.style.button%"
+            ],
+            "enumDescriptions": [
+              "%cosmosdb.configuration.confirmation.style.word.description%",
+              "%cosmosdb.configuration.confirmation.style.challenge.description%",
+              "%cosmosdb.configuration.confirmation.style.button.description%"
+            ],
+            "default": "wordConfirmation"
+          },
+          "azureDatabases.showOperationSummaries": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.operation.summaries%"
+          },
+          "cosmosDB.documentLabelFields": {
+            "type": "array",
+            "default": [
+              "name",
+              "Name",
+              "NAME",
+              "ID",
+              "UUID",
+              "Id",
+              "id",
+              "_id",
+              "uuid"
+            ],
+            "description": "%cosmosdb.configuration.document.label.fields%"
+          },
+          "cosmosDB.emulator.mongoPort": {
+            "type": "integer",
+            "default": 10255,
+            "description": "%cosmosdb.configuration.emulator.mongo.port%"
+          },
+          "cosmosDB.emulator.port": {
+            "type": "integer",
+            "default": 8081,
+            "description": "%cosmosdb.configuration.emulator.port%"
+          },
+          "cosmosDB.enableEndpointDiscovery": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.endpoint.discovery%"
+          },
+          "cosmosDB.showSavePrompt": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.save.prompt%"
+          }
         }
       }
-    }
+    ]
   }
 }

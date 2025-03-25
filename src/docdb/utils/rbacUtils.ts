@@ -58,14 +58,17 @@ export function isRbacException(error: Error): boolean {
     );
 }
 
-export async function showRbacPermissionError(accountName: string, principalId: string): Promise<void> {
-    const message =
-        l10n.t(
-            'You do not have the required permissions to access [{accountName}] with your principal Id [{principalId}].',
-            { accountName, principalId },
-        ) +
-        '\n' +
-        l10n.t('Please contact the account owner to get the required permissions.');
+export async function showRbacPermissionError(accountName: string, principalId?: string): Promise<void> {
+    const message = principalId
+        ? l10n.t(
+              'You do not have the required permissions to access [{accountName}] with your principal Id [{principalId}].',
+              { accountName, principalId },
+          ) +
+          '\n' +
+          l10n.t('Please contact the account owner to get the required permissions.')
+        : l10n.t('You do not have the required permissions to access [{accountName}].', { accountName }) +
+          '\n' +
+          l10n.t('Please contact the account owner to get the required permissions.');
     const readMoreItem = l10n.t('Learn more');
     await vscode.window.showErrorMessage(message, { modal: false }, ...[readMoreItem]).then((item) => {
         if (item === readMoreItem) {

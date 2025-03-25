@@ -5,12 +5,19 @@
 
 import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
-import { type CosmosDBCredential, type CosmosDBKeyCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import {
+    AuthenticationMethod,
+    getCosmosClient,
+    type CosmosDBCredential,
+    type CosmosDBKeyCredential,
+} from '../../docdb/getCosmosClient';
+import { getManagedIdentityAuth } from '../../docdb/utils/managedIdentityUtils';
+import { ext } from '../../extensionVariables';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { nonNullProp } from '../../utils/nonNull';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
@@ -54,6 +61,9 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
     const client = await callWithTelemetryAndErrorHandling(
         'createCosmosDBManagementClient',
         async (context: IActionContext) => {
+            context.telemetry.suppressIfSuccessful = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
+            context.valuesToMask.push(account.subscription.subscriptionId);
             return createCosmosDBManagementClient(context, account.subscription);
         },
     );
@@ -64,7 +74,15 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
 
     const databaseAccount = await client.databaseAccounts.get(resourceGroup, name);
     const tenantId = account?.subscription?.tenantId;
-    const credentials = await getCredentialsForGeneric(name, resourceGroup, tenantId, client, databaseAccount);
+    const credentials = await getCosmosDBCredentials({
+        accountName: name,
+        documentEndpoint: nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`),
+        isEmulator: false,
+        armClient: client,
+        resourceGroup,
+        databaseAccount,
+        tenantId,
+    });
     const documentEndpoint = nonNullProp(databaseAccount, 'documentEndpoint', `of the database account ${id}`);
     const isServerless = databaseAccount?.capabilities
         ? databaseAccount.capabilities.some((cap) => cap.name === SERVERLESS_CAPABILITY_NAME)
@@ -80,79 +98,19 @@ async function getAccountInfoForGeneric(account: CosmosAccountModel): Promise<Ac
     };
 }
 
-async function getCredentialsForGeneric(
-    name: string,
-    resourceGroup: string,
-    tenantId: string,
-    client: CosmosDBManagementClient,
-    databaseAccount: DatabaseAccountGetResults,
-): Promise<CosmosDBCredential[]> {
-    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-        context.valuesToMask.push(name, resourceGroup);
-        context.telemetry.properties.attachedAccount = 'false';
-
-        const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
-        context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
-
-        let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        // disable key auth if the user has opted in to OAuth (AAD/Entra ID)
-        if (!forceOAuth) {
-            try {
-                const localAuthDisabled = databaseAccount.disableLocalAuth === true;
-                context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-
-                let keyResult: DatabaseAccountListKeysResult | undefined;
-                // If the account has local auth disabled, don't even try to use key auth
-                if (!localAuthDisabled) {
-                    keyResult = await client.databaseAccounts.listKeys(resourceGroup, name);
-                    keyCred = keyResult?.primaryMasterKey
-                        ? {
-                              type: 'key',
-                              key: keyResult.primaryMasterKey,
-                          }
-                        : undefined;
-                    context.telemetry.properties.receivedKeyCreds = 'true';
-                } else {
-                    throw new Error(l10n.t('Local auth is disabled'));
-                }
-            } catch {
-                context.telemetry.properties.receivedKeyCreds = 'false';
-
-                const message =
-                    l10n.t('You do not have the required permissions to list auth keys for {account}.', {
-                        account: name,
-                    }) +
-                    '\n' +
-                    l10n.t('Falling back to using Entra ID.') +
-                    '\n' +
-                    l10n.t('You can change the default authentication in the settings.');
-                const openSettingsItem = l10n.t('Open Settings');
-                void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                    if (item === openSettingsItem) {
-                        void vscode.commands.executeCommand(
-                            'workbench.action.openSettings',
-                            'azureDatabases.useCosmosOAuth',
-                        );
-                    }
-                });
-            }
-        }
-
-        // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-        const authCred = { type: 'auth', tenantId: tenantId };
-        return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
-    });
-
-    return result ?? [];
-}
-
 async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel): Promise<AccountInfo> | never {
     const id = account.id;
     const name = account.name;
     const isEmulator = account.isEmulator;
     const parsedCS = parseDocDBConnectionString(account.connectionString);
     const documentEndpoint = parsedCS.documentEndpoint;
-    const credentials = await getCredentialsForAttached(account);
+    const credentials = await getCosmosDBCredentials({
+        accountName: name,
+        documentEndpoint,
+        isEmulator,
+        masterKey: parsedCS.masterKey,
+        tenantId: undefined,
+    });
     const isServerless = false;
 
     return {
@@ -165,75 +123,209 @@ async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel):
     };
 }
 
-async function getCredentialsForAttached(account: CosmosDBAttachedAccountModel): Promise<CosmosDBCredential[]> {
-    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-        context.valuesToMask.push(account.connectionString);
-        context.telemetry.properties.attachedAccount = 'true';
+// Common credential retrieval function with source-specific parameters
+async function getCosmosDBCredentials(params: {
+    //context: IActionContext;
+    accountName: string;
+    documentEndpoint: string;
+    isEmulator: boolean;
 
-        const forceOAuth = vscode.workspace.getConfiguration().get<boolean>('azureDatabases.useCosmosOAuth');
-        context.telemetry.properties.useCosmosOAuth = (forceOAuth ?? false).toString();
+    // ARM-specific parameters
+    armClient?: CosmosDBManagementClient;
+    resourceGroup?: string;
+    databaseAccount?: DatabaseAccountGetResults;
+
+    // Connection string params
+    masterKey?: string;
+    tenantId?: string;
+}): Promise<CosmosDBCredential[]> {
+    const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
+        const { accountName, documentEndpoint, isEmulator, resourceGroup, tenantId, masterKey } = params;
+        context.valuesToMask.push(accountName, documentEndpoint);
+        if (resourceGroup) {
+            context.valuesToMask.push(resourceGroup);
+        }
+        if (tenantId) {
+            context.valuesToMask.push(tenantId);
+        }
+        if (masterKey) {
+            context.valuesToMask.push(masterKey);
+        }
+        context.telemetry.properties.attachedAccount = 'false';
+        const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
+
+        // Skip key retrieval if not preferred or not auto
+        const shouldTryKeyAuth =
+            preferredAuthenticationMethod === AuthenticationMethod.accountKey ||
+            preferredAuthenticationMethod === AuthenticationMethod.auto ||
+            isEmulator;
 
         let keyCred: CosmosDBKeyCredential | undefined = undefined;
-        // disable key auth if the user has opted in to OAuth (AAD/Entra ID), or if the account is the emulator
-        if (!forceOAuth || account.isEmulator) {
-            let localAuthDisabled = false;
 
-            const parsedCS = parseDocDBConnectionString(account.connectionString);
-            if (parsedCS.masterKey) {
-                context.telemetry.properties.receivedKeyCreds = 'true';
-
-                keyCred = {
-                    type: 'key',
-                    key: parsedCS.masterKey,
-                };
-
-                // If the account is the emulator, we just return the only supported key credential
-                if (account.isEmulator) {
-                    return [keyCred];
-                }
-
-                try {
-                    // Since here we don't have subscription,
-                    // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
-                    // Will try to connect to the account and if it fails, we will assume local auth is disabled
-                    const cosmosClient = getCosmosClient(parsedCS.documentEndpoint, [keyCred], account.isEmulator);
-                    await cosmosClient.getDatabaseAccount();
-                } catch {
-                    context.telemetry.properties.receivedKeyCreds = 'false';
-                    localAuthDisabled = true;
-                }
+        if (shouldTryKeyAuth) {
+            // Handle emulator separately (simplest case)
+            if (isEmulator && params.masterKey) {
+                return [
+                    {
+                        type: AuthenticationMethod.accountKey,
+                        key: params.masterKey,
+                    },
+                ] as CosmosDBCredential[];
             }
 
-            context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
-            if (localAuthDisabled && !account.isEmulator) {
-                // Clean up keyCred if local auth is disabled
-                keyCred = undefined;
-
-                const message =
-                    l10n.t('You do not have the required permissions to list auth keys for {account}.', {
-                        account: account.name,
-                    }) +
-                    '\n' +
-                    l10n.t('Falling back to using Entra ID.') +
-                    '\n' +
-                    l10n.t('You can change the default authentication in the settings.');
-                const openSettingsItem = l10n.t('Open Settings');
-                void vscode.window.showWarningMessage(message, ...[openSettingsItem]).then((item) => {
-                    if (item === openSettingsItem) {
-                        void vscode.commands.executeCommand(
-                            'workbench.action.openSettings',
-                            'azureDatabases.useCosmosOAuth',
-                        );
-                    }
-                });
+            // Try to get key credential from ARM if possible
+            if (params.armClient && params.resourceGroup && params.databaseAccount) {
+                const localAuthDisabled = params.databaseAccount.disableLocalAuth ?? false;
+                keyCred = await getKeyCredentialWithARM(
+                    context,
+                    accountName,
+                    params.resourceGroup,
+                    params.armClient,
+                    localAuthDisabled,
+                );
+            }
+            // Otherwise try with masterKey if provided
+            else if (params.masterKey) {
+                keyCred = await getKeyCredentialWithoutARM(
+                    context,
+                    accountName,
+                    documentEndpoint,
+                    params.masterKey,
+                    isEmulator,
+                );
             }
         }
 
-        // OAuth is always enabled for Cosmos DB and will be used as a fallback if key auth is unavailable
-        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use OAuth for foreign tenants
-        const authCred = { type: 'auth', tenantId: undefined };
-        return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
-    });
+        const managedIdentityCred = await getManagedIdentityAuth(
+            documentEndpoint,
+            preferredAuthenticationMethod === AuthenticationMethod.managedIdentity,
+        );
 
+        // OAuth is always enabled for Cosmos DB and used as fallback
+        // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
+        const entraIdCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
+        const creds = [keyCred, entraIdCred, managedIdentityCred].filter(
+            (cred) => cred !== undefined, // remove unavailable creds
+        ) as CosmosDBCredential[];
+        // Sort the creds so that the preferred method is first
+        const preferredCreds = creds.filter((cred) => cred.type === preferredAuthenticationMethod);
+        const otherCreds = creds.filter((cred) => cred.type !== preferredAuthenticationMethod);
+        return [...preferredCreds, ...otherCreds];
+    });
     return result ?? [];
+}
+
+// Helper function for ARM-based key retrieval
+async function getKeyCredentialWithARM(
+    context: IActionContext,
+    accountName: string,
+    resourceGroup: string,
+    client: CosmosDBManagementClient,
+    localAuthDisabled: boolean,
+): Promise<CosmosDBKeyCredential | undefined> {
+    let keyCred: CosmosDBKeyCredential | undefined = undefined;
+    try {
+        context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+
+        let keyResult: DatabaseAccountListKeysResult | undefined;
+        // If the account has local auth disabled, don't even try to use key auth
+        if (!localAuthDisabled) {
+            keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
+            if (keyResult?.primaryMasterKey) {
+                keyCred = {
+                    type: AuthenticationMethod.accountKey,
+                    key: keyResult.primaryMasterKey,
+                };
+                context.valuesToMask.push(keyCred.key);
+            }
+            context.telemetry.properties.receivedKeyCreds = 'true';
+        } else {
+            throw new Error(l10n.t('Local auth is disabled'));
+        }
+    } catch {
+        context.telemetry.properties.receivedKeyCreds = 'false';
+        logLocalAuthDisabledWarning(accountName);
+    }
+    return keyCred;
+}
+
+// Helper function for connection string based key retrieval
+async function getKeyCredentialWithoutARM(
+    context: IActionContext,
+    accountName: string,
+    documentEndpoint: string,
+    masterKey: string,
+    isEmulator: boolean,
+): Promise<CosmosDBKeyCredential | undefined> {
+    let keyCred: CosmosDBKeyCredential | undefined = undefined;
+    let localAuthDisabled = false;
+
+    if (masterKey) {
+        context.telemetry.properties.receivedKeyCreds = 'true';
+
+        keyCred = {
+            type: AuthenticationMethod.accountKey,
+            key: masterKey,
+        };
+
+        // If the account is the emulator, we just return the only supported key credential
+        if (isEmulator) {
+            return keyCred;
+        }
+
+        try {
+            // Since here we don't have subscription,
+            // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
+            // Will try to connect to the account and catch if it fails due to local auth being disabled.
+            const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator);
+            await cosmosClient.getDatabaseAccount();
+        } catch (e) {
+            const error = parseError(e);
+            // handle errors caused by local auth being disabled only, all other errors will be thrown
+            if (error.message.includes('Local Authorization is disabled.')) {
+                context.telemetry.properties.receivedKeyCreds = 'false';
+                localAuthDisabled = true;
+            }
+        }
+    }
+
+    context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
+    if (localAuthDisabled && !isEmulator) {
+        // Clean up keyCred if local auth is disabled
+        keyCred = undefined;
+        logLocalAuthDisabledWarning(accountName);
+    }
+    return keyCred;
+}
+
+export function getPreferredAuthenticationMethod(): AuthenticationMethod {
+    const configuration = vscode.workspace.getConfiguration();
+    //migrate old setting
+    const deprecatedOauthSetting = configuration.get<boolean>('azureDatabases.useCosmosOAuth');
+    let preferredAuthMethod = configuration.get<AuthenticationMethod>(
+        ext.settingsKeys.cosmosDbAuthentication,
+        AuthenticationMethod.auto,
+    );
+
+    if (deprecatedOauthSetting) {
+        if (preferredAuthMethod === AuthenticationMethod.auto) {
+            preferredAuthMethod = AuthenticationMethod.entraId;
+            configuration.update(ext.settingsKeys.cosmosDbAuthentication, preferredAuthMethod, true);
+        }
+        configuration.update('azureDatabases.useCosmosOAuth', undefined, true);
+    }
+
+    return preferredAuthMethod;
+}
+
+function logLocalAuthDisabledWarning(name: string): void {
+    const message = l10n.t(
+        'You do not have the required permissions to list auth keys for "{account}", falling back to using Entra ID. You can change the preferred authentication method with the {settingId} setting.',
+        {
+            account: name,
+            settingId: ext.settingsKeys.cosmosDbAuthentication,
+        },
+    );
+    ext.outputChannel.warn(message);
+    ext.outputChannel.show();
 }

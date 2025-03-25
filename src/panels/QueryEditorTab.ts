@@ -9,7 +9,7 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 
 import * as l10n from '@vscode/l10n';
-import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
+import { getCosmosClientByConnection, getCosmosKeyCredential } from '../docdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../docdb/session/DocumentSession';
 import { QuerySession } from '../docdb/session/QuerySession';
@@ -40,8 +40,11 @@ export class QueryEditorTab extends BaseTab {
         this.query = query;
 
         if (connection) {
-            if (connection.masterKey) {
-                this.telemetryContext.addMaskedValue(connection.masterKey);
+            if (connection.credentials) {
+                const masterKey = getCosmosKeyCredential(connection.credentials)?.key;
+                if (masterKey) {
+                    this.telemetryContext.addMaskedValue(masterKey);
+                }
             }
 
             this.telemetryContext.addMaskedValue(connection.databaseId);
@@ -149,7 +152,8 @@ export class QueryEditorTab extends BaseTab {
         this.connection = connection;
 
         if (this.connection) {
-            const { databaseId, containerId, endpoint, masterKey } = this.connection;
+            const { databaseId, containerId, endpoint, credentials } = this.connection;
+            const masterKey = getCosmosKeyCredential(credentials)?.key;
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 

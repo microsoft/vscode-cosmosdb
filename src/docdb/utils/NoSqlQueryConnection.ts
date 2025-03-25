@@ -8,7 +8,6 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
 import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
-import { getCosmosAuthCredential, getCosmosKeyCredential } from '../getCosmosClient';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 
 export function createNoSqlQueryConnection(
@@ -17,16 +16,13 @@ export function createNoSqlQueryConnection(
     const accountInfo = node.model.accountInfo;
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;
-    const keyCred = getCosmosKeyCredential(accountInfo.credentials);
-    const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
 
     return {
         databaseId: databaseId,
         containerId: containerId,
         endpoint: accountInfo.endpoint,
-        masterKey: keyCred?.key,
+        credentials: accountInfo.credentials,
         isEmulator: accountInfo.isEmulator,
-        tenantId: tenantId,
     };
 }
 

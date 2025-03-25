@@ -29,6 +29,7 @@ import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
 import { registerCommands } from './commands/registerCommands';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { getIsRunningOnAzure } from './docdb/utils/managedIdentityUtils';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
@@ -64,6 +65,9 @@ export async function activateInternal(
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         ext.secretStorage = context.secrets;
+
+        // Early initialization to determine whether Managed Identity is available for authentication
+        void getIsRunningOnAzure();
 
         // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
         // and is used to work with the tree view structure, as an improved alternative to the

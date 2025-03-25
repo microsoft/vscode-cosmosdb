@@ -40,6 +40,9 @@ export async function getIsRunningOnAzure(): Promise<boolean> {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+            // Contact the Azure Instance Metadata Service endpoint
+            // The 'Metadata: true' header is required by the IMDS protocol
+            // https://aka.ms/azureimds#versions
             const response = await fetch('http://169.254.169.254/metadata/versions', {
                 headers: { Metadata: 'true' },
                 signal: controller.signal,
@@ -47,6 +50,8 @@ export async function getIsRunningOnAzure(): Promise<boolean> {
 
             clearTimeout(timeoutId);
 
+            // Validate that the response contains the expected IMDS structure
+            // A valid response should contain an array of supported API versions
             if (response.ok) {
                 const data = (await response.json()) as { apiVersions?: string[] };
                 if (Array.isArray(data?.apiVersions) && data.apiVersions.length > 0) {

@@ -7,9 +7,10 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { AuthenticationMethod, getCosmosAuthCredential, getCosmosClient } from '../../docdb/getCosmosClient';
+import { AuthenticationMethod, getCosmosClient, getCosmosEntraIdCredential } from '../../docdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
+import { ext } from '../../extensionVariables';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
 import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
@@ -65,18 +66,20 @@ export abstract class DocumentDBAccountResourceItem extends CosmosDBAccountResou
             if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                 this.hasShownRbacNotification = true;
 
-                const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
-                const principalId =
-                    (await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId)) ?? '';
+                const tenantId = getCosmosEntraIdCredential(accountInfo.credentials)?.tenantId;
+                const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                 // check if the principal ID matches the one that is signed in,
                 // otherwise this might be a security problem, hence show the error message
                 if (
+                    principalId &&
                     e.message.includes(`[${principalId}]`) &&
                     (await ensureRbacPermissionV2(this.id, this.account.subscription, principalId))
                 ) {
                     return getResources();
                 } else {
                     void showRbacPermissionError(this.id, principalId);
+                    ext.outputChannel.error(e);
+                    ext.outputChannel.show();
                 }
             }
             throw e; // rethrowing tells the resources extension to show the exception message in the tree

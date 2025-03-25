@@ -140,6 +140,7 @@
     "@azure/arm-postgresql-flexible": "^8.0.0",
     "@azure/arm-resources": "^6.0.0",
     "@azure/cosmos": "^4.2.0",
+    "@azure/identity": "^4.6.0",
     "@fluentui/react-components": "^9.60.0",
     "@fluentui/react-icons": "^2.0.279",
     "@microsoft/vscode-azext-azureauth": "^4.1.1",
@@ -1153,21 +1154,30 @@
             "enum": [
               "auto",
               "accountKey",
-              "entraId"
+              "entraId",
+              "managedIdentity"
             ],
             "enumItemLabels": [
               "%cosmosdb.configuration.preferredAuthenticationMethod.auto%",
               "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId%"
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity%"
             ],
             "markdownEnumDescriptions": [
               "%cosmosdb.configuration.preferredAuthenticationMethod.auto.description%",
               "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId.description%"
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description%"
             ],
-            "description": "%cosmosdb.configuration.preferredAuthenticationMethod%",
+            "markdownDescription": "%cosmosdb.configuration.preferredAuthenticationMethod%",
             "default": "auto",
             "order": 0
+          },
+          "azureDatabases.authentication.managedIdentity.clientID": {
+            "type": "string",
+            "markdownDescription": "%cosmosdb.configuration.authentication.managedIdentity.clientID%",
+            "default": null,
+            "order": 1
           }
         }
       },

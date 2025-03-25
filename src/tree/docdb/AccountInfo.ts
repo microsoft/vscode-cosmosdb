@@ -16,6 +16,7 @@ import {
     type CosmosDBCredential,
     type CosmosDBKeyCredential,
 } from '../../docdb/getCosmosClient';
+import { getManagedIdentityAuth } from '../../docdb/utils/managedIdentityUtils';
 import { ext } from '../../extensionVariables';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { nonNullProp } from '../../utils/nonNull';
@@ -195,12 +196,21 @@ async function getCosmosDBCredentials(params: {
             }
         }
 
+        const managedIdentityCred = await getManagedIdentityAuth(
+            documentEndpoint,
+            preferredAuthenticationMethod === AuthenticationMethod.managedIdentity,
+        );
+
         // OAuth is always enabled for Cosmos DB and used as fallback
         // TODO: we need to preserve the tenantId in the connection string, otherwise we can't use EntraId for foreign tenants
-        const authCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
-
-        // Return credentials in order of preference, filtering out undefined ones
-        return [keyCred, authCred].filter((cred) => cred !== undefined) as CosmosDBCredential[];
+        const entraIdCred = { type: AuthenticationMethod.entraId, tenantId: tenantId };
+        const creds = [keyCred, entraIdCred, managedIdentityCred].filter(
+            (cred) => cred !== undefined, // remove unavailable creds
+        ) as CosmosDBCredential[];
+        // Sort the creds so that the preferred method is first
+        const preferredCreds = creds.filter((cred) => cred.type === preferredAuthenticationMethod);
+        const otherCreds = creds.filter((cred) => cred.type !== preferredAuthenticationMethod);
+        return [...preferredCreds, ...otherCreds];
     });
     return result ?? [];
 }
@@ -288,7 +298,7 @@ async function getKeyCredentialWithoutARM(
     return keyCred;
 }
 
-function getPreferredAuthenticationMethod(): AuthenticationMethod {
+export function getPreferredAuthenticationMethod(): AuthenticationMethod {
     const configuration = vscode.workspace.getConfiguration();
     //migrate old setting
     const deprecatedOauthSetting = configuration.get<boolean>('azureDatabases.useCosmosOAuth');

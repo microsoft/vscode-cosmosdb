@@ -12,7 +12,7 @@ const DotNetMinorVersion = '0';
 const DotNetPatchVersion = '0';
 export const DotNetRuntimeVersion = `${DotNetMajorVersion}.${DotNetMinorVersion}.${DotNetPatchVersion}`;
 
-const extensionId = "vscode-cosmosdb";
+const extensionId = 'vscode-cosmosdb';
 
 interface DotNetHostInformation {
     version: string;
@@ -24,9 +24,7 @@ interface DotNetHostInformation {
  * Resolves the dotnet runtime for a server executable from given options and the dotnet runtime VSCode extension.
  */
 export class DotnetRuntimeExtensionResolver {
-    constructor(
-        private channel: vscode.OutputChannel,
-    ) { }
+    constructor(private channel: vscode.OutputChannel) {}
 
     private hostInfo: DotNetHostInformation | undefined;
 
@@ -48,11 +46,11 @@ export class DotnetRuntimeExtensionResolver {
         };
         let acquireResult = await vscode.commands.executeCommand<IDotnetAcquireResult | undefined>(
             'dotnet.findPath',
-            findPathRequest
+            findPathRequest,
         );
         if (acquireResult === undefined) {
             this.channel.appendLine(
-                `Did not find .NET ${DotNetRuntimeVersion} on path, falling back to acquire runtime via ms-dotnettools.vscode-dotnet-runtime`
+                `Did not find .NET ${DotNetRuntimeVersion} on path, falling back to acquire runtime via ms-dotnettools.vscode-dotnet-runtime`,
             );
             acquireResult = await this.acquireDotNetProcessDependencies();
         }
@@ -84,7 +82,7 @@ export class DotnetRuntimeExtensionResolver {
         // Collect crashreport.json with additional thread and stack frame information.
         env.DOTNET_EnableCrashReport = '1';
         // The dump file name format is <executable>.<pid>.dmp
-        env.DOTNET_DbgMiniDumpName = "";// path.join(languageServerOptions.crashDumpPath, '%e.%p.dmp');
+        env.DOTNET_DbgMiniDumpName = ''; // path.join(languageServerOptions.crashDumpPath, '%e.%p.dmp');
 
         return env;
     }
@@ -124,5 +122,4 @@ export class DotnetRuntimeExtensionResolver {
         const acquireResult = await this.acquireRuntime();
         return acquireResult;
     }
-
 }

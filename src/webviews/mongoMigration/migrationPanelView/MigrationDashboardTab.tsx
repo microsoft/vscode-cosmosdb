@@ -12,7 +12,6 @@ import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 // import { ResultTabViewTable } from './ResultTabViewTable';
 // import { ResultTabViewTree } from './ResultTabViewTree';
 
-
 const useClasses = makeStyles({
     container: {
         marginTop: '10px',
@@ -38,14 +37,14 @@ export const MigrationDashboardTab = () => {
     //     [currentQueryResult, partitionKey],
     // );
 
-
     const [currentAssessmentData, setCurrentAssessmentData] = useState<string>();
 
     return (
         <div className={classes.container}>
             <h1>Azure Cosmos DB Migration for MongoDB</h1>
-            <p>This extension helps you run an end-to-end assessment on your MongoDB workload
-                and seamlessly migrate your workload to Azure Cosmos DB for MongoDB
+            <p>
+                This extension helps you run an end-to-end assessment on your MongoDB workload and seamlessly migrate
+                your workload to Azure Cosmos DB for MongoDB
             </p>
             <Button
                 appearance="primary"
@@ -54,7 +53,8 @@ export const MigrationDashboardTab = () => {
                      * a simple call with no parameters, but with error handling.
                      * telemetry is "added " in the router for the function call
                      */
-                    trpcClient.mongoMigration.getAllAssessments.query()
+                    trpcClient.mongoMigration.getAllAssessments
+                        .query()
                         .then((assessmentData) => {
                             setCurrentAssessmentData(JSON.stringify(assessmentData));
                         })
@@ -64,11 +64,12 @@ export const MigrationDashboardTab = () => {
                                 modal: false,
                                 cause: error instanceof Error ? error.message : String(error),
                             });
-                        })
-
-                }}> </Button>
+                        });
+                }}
+            >
+                {' '}
+            </Button>
             <p>{currentAssessmentData}</p>
-
         </div>
     );
 };

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 // eslint-disable-next-line import/no-internal-modules
-import { AzureCliCredential, ManagedIdentityCredential } from '@azure/identity';
+import { ManagedIdentityCredential } from '@azure/identity';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { AuthenticationMethod, type CosmosDBManagedIdentityCredential } from '../getCosmosClient';
@@ -120,18 +120,4 @@ export async function getManagedIdentityAuth(
     }
 
     return undefined;
-}
-
-export async function getHasAzureCliCredential(accountEndpoint: string, tenantId?: string): Promise<boolean> {
-    const cred = new AzureCliCredential({ tenantId: tenantId, processTimeoutInMs: 10000 });
-    try {
-        const endpointUrl = new URL(accountEndpoint);
-        // Strip port from endpoint - just use protocol and hostname
-        const endpointWithoutPort = `${endpointUrl.protocol}//${endpointUrl.hostname}`;
-        await cred.getToken(`${endpointWithoutPort}/.default`);
-        return true;
-    } catch (error) {
-        ext.outputChannel.appendLine(`Managed Identity token acquisition failed: ${error}`);
-        return false;
-    }
 }

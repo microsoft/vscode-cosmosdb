@@ -4,26 +4,26 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBContainerResourceItem } from '../docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBContainerModel } from '../docdb/models/DocumentDBContainerModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBContainerResourceItem } from '../cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBContainerModel } from '../cosmosdb/models/CosmosDBContainerModel';
 import { GraphItemsResourceItem } from './GraphItemsResourceItem';
 import { GraphStoredProceduresResourceItem } from './GraphStoredProceduresResourceItem';
 
-export class GraphContainerResourceItem extends DocumentDBContainerResourceItem {
-    constructor(model: DocumentDBContainerModel, experience: Experience) {
+export class GraphContainerResourceItem extends CosmosDBContainerResourceItem {
+    constructor(model: CosmosDBContainerModel, experience: Experience) {
         super(model, experience);
     }
 
-    protected getChildrenTriggersImpl(): Promise<CosmosDBTreeElement | undefined> {
+    protected getChildrenTriggersImpl(): Promise<TreeElement | undefined> {
         return Promise.resolve(undefined);
     }
 
-    protected getChildrenStoredProceduresImpl(): Promise<CosmosDBTreeElement | undefined> {
+    protected getChildrenStoredProceduresImpl(): Promise<TreeElement | undefined> {
         return Promise.resolve(new GraphStoredProceduresResourceItem({ ...this.model }, this.experience));
     }
 
-    protected getChildrenItemsImpl(): Promise<CosmosDBTreeElement | undefined> {
+    protected getChildrenItemsImpl(): Promise<TreeElement | undefined> {
         return Promise.resolve(new GraphItemsResourceItem({ ...this.model }, this.experience));
     }
 }

@@ -7,18 +7,21 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function deleteGraph(context: IActionContext, node?: DocumentDBContainerResourceItem): Promise<void> {
+export async function cosmosDBDeleteGraph(
+    context: IActionContext,
+    node?: CosmosDBContainerResourceItem,
+): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBContainerResourceItem>(context, {
+        node = await pickAppResource<CosmosDBContainerResourceItem>(context, {
             type: AzExtResourceType.AzureCosmosDb,
             expectedChildContextValue: ['treeItem.container'],
             unexpectedContextValue: [/experience[.](table|cassandra|core)/i],
@@ -34,10 +37,10 @@ export async function deleteGraph(context: IActionContext, node?: DocumentDBCont
 
 export async function deleteAzureContainer(
     context: IActionContext,
-    node?: DocumentDBContainerResourceItem | CollectionItem,
+    node?: CosmosDBContainerResourceItem | CollectionItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBContainerResourceItem | CollectionItem>(context, {
+        node = await pickAppResource<CosmosDBContainerResourceItem | CollectionItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
             expectedChildContextValue: ['treeItem.container', 'treeItem.collection'],
         });
@@ -52,7 +55,7 @@ export async function deleteAzureContainer(
 
 export async function deleteContainer(
     context: IActionContext,
-    node: DocumentDBContainerResourceItem | CollectionItem,
+    node: CosmosDBContainerResourceItem | CollectionItem,
 ): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
@@ -83,7 +86,7 @@ export async function deleteContainer(
 
     try {
         const success =
-            node instanceof CollectionItem ? await deleteMongoCollection(node) : await deleteDocumentDBContainer(node);
+            node instanceof CollectionItem ? await deleteMongoCollection(node) : await deleteCosmosDBContainer(node);
 
         if (success) {
             showConfirmationAsInSettings(successMessage);
@@ -109,7 +112,7 @@ async function deleteMongoCollection(node: CollectionItem): Promise<boolean> {
     return success;
 }
 
-async function deleteDocumentDBContainer(node: DocumentDBContainerResourceItem): Promise<boolean> {
+async function deleteCosmosDBContainer(node: CosmosDBContainerResourceItem): Promise<boolean> {
     const accountInfo = node.model.accountInfo;
     const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
 

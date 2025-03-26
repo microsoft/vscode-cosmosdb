@@ -11,16 +11,14 @@ import { ClustersClient, type DatabaseItemModel } from '../../documentdb/Cluster
 import { CredentialCache } from '../../documentdb/CredentialCache';
 import { ext } from '../../extensionVariables';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
 import { DatabaseItem } from './DatabaseItem';
 
 // This info will be available at every level in the tree for immediate access
-export abstract class ClusterItemBase
-    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
-{
+export abstract class ClusterItemBase implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.mongoCluster';
@@ -64,7 +62,7 @@ export abstract class ClusterItemBase
      *
      * @returns A list of databases in the cluster or a single element to create a new database.
      */
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         ext.outputChannel.appendLine(
             l10n.t('MongoDB Clusters: Loading cluster details for "{cluster}"', { cluster: this.cluster.name }),
         );
@@ -95,7 +93,7 @@ export abstract class ClusterItemBase
                     iconPath: new vscode.ThemeIcon('error'),
                     commandId: 'azureDatabases.refresh',
                     commandArgs: [this],
-                }) as CosmosDBTreeElement,
+                }) as TreeElement,
             ];
         }
 
@@ -110,7 +108,7 @@ export abstract class ClusterItemBase
                         iconPath: new vscode.ThemeIcon('plus'),
                         commandId: 'cosmosDB.createDatabase',
                         commandArgs: [this],
-                    }) as CosmosDBTreeElement,
+                    }) as TreeElement,
                 ];
             }
 

@@ -5,17 +5,17 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { StoredProcedureFileDescriptor } from '../../docdb/fs/StoredProcedureFileDescriptor';
+import { StoredProcedureFileDescriptor } from '../../cosmosdb/fs/StoredProcedureFileDescriptor';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBStoredProcedureResourceItem } from '../../tree/docdb/DocumentDBStoredProcedureResourceItem';
+import { type CosmosDBStoredProcedureResourceItem } from '../../tree/cosmosdb/CosmosDBStoredProcedureResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function openDocumentDBStoredProcedure(
+export async function cosmosDBOpenStoredProcedure(
     context: IActionContext,
-    node?: DocumentDBStoredProcedureResourceItem,
+    node?: CosmosDBStoredProcedureResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBStoredProcedureResourceItem>(context, {
+        node = await pickAppResource<CosmosDBStoredProcedureResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.storedProcedure'],
         });

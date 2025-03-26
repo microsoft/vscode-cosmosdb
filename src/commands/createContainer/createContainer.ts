@@ -7,22 +7,22 @@ import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscod
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
-import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
+import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
+import { CosmosDBContainerNameStep } from './CosmosDBContainerNameStep';
+import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
+import { CosmosDBPartitionKeyStep, HierarchyStep } from './CosmosDBPartitionKeyStep';
+import { CosmosDBThroughputStep } from './CosmosDBThroughputStep';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
-import { DocumentDBContainerNameStep } from './DocumentDBContainerNameStep';
-import { DocumentDBExecuteStep } from './DocumentDBExecuteStep';
-import { DocumentDBPartitionKeyStep, HierarchyStep } from './DocumentDBPartitionKeyStep';
-import { DocumentDBThroughputStep } from './DocumentDBThroughputStep';
 import { CollectionNameStep } from './MongoCollectionNameStep';
 import { MongoExecuteStep } from './MongoExecuteStep';
 
-export async function createGraph(context: IActionContext, node?: DocumentDBDatabaseResourceItem): Promise<void> {
+export async function cosmosDBCreateGraph(context: IActionContext, node?: CosmosDBDatabaseResourceItem): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBDatabaseResourceItem>(context, {
+        node = await pickAppResource<CosmosDBDatabaseResourceItem>(context, {
             type: AzExtResourceType.AzureCosmosDb,
             expectedChildContextValue: ['treeItem.database'],
             unexpectedContextValue: [/experience[.](table|cassandra|core)/i],
@@ -33,15 +33,15 @@ export async function createGraph(context: IActionContext, node?: DocumentDBData
         return undefined;
     }
 
-    return createDocumentDBContainer(context, node);
+    return cosmosDBCreateContainer(context, node);
 }
 
-export async function createDocumentDBContainer(
+export async function cosmosDBCreateContainer(
     context: IActionContext,
-    node?: DocumentDBDatabaseResourceItem,
+    node?: CosmosDBDatabaseResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBDatabaseResourceItem>(context, {
+        node = await pickAppResource<CosmosDBDatabaseResourceItem>(context, {
             type: AzExtResourceType.AzureCosmosDb,
             expectedChildContextValue: 'treeItem.database',
         });
@@ -66,13 +66,13 @@ export async function createDocumentDBContainer(
     const wizard = new AzureWizard(wizardContext, {
         title: isCore ? l10n.t('Create container') : l10n.t('Create graph'),
         promptSteps: [
-            new DocumentDBContainerNameStep(),
-            new DocumentDBPartitionKeyStep(HierarchyStep.First),
-            isCore ? new DocumentDBPartitionKeyStep(HierarchyStep.Second) : undefined,
-            isCore ? new DocumentDBPartitionKeyStep(HierarchyStep.Third) : undefined,
-            new DocumentDBThroughputStep(),
+            new CosmosDBContainerNameStep(),
+            new CosmosDBPartitionKeyStep(HierarchyStep.First),
+            isCore ? new CosmosDBPartitionKeyStep(HierarchyStep.Second) : undefined,
+            isCore ? new CosmosDBPartitionKeyStep(HierarchyStep.Third) : undefined,
+            new CosmosDBThroughputStep(),
         ].filter((s) => !!s),
-        executeSteps: [new DocumentDBExecuteStep()],
+        executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,
     });
 

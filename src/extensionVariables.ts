@@ -8,7 +8,7 @@ import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-a
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
-import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
+import { type NoSqlCodeLensProvider } from './cosmosdb/NoSqlCodeLensProvider';
 import { type MongoDBLanguageClient } from './documentdb/scrapbook/languageClient';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';

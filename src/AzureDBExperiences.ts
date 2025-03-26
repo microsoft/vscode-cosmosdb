@@ -5,7 +5,7 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
-import { type CosmosDBResource } from './tree/CosmosAccountModel';
+import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 
 export enum API {
     MongoDB = 'MongoDB',
@@ -48,7 +48,7 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function tryGetExperience(resource: CosmosDBResource | DatabaseAccountGetResults): Experience | undefined {
+export function tryGetExperience(resource: CosmosDBAccountModel | DatabaseAccountGetResults): Experience | undefined {
     if (resource.kind === DBAccountKind.MongoDB) {
         return MongoExperience;
     }

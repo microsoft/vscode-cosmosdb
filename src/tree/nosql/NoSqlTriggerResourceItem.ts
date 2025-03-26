@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { DocumentDBTriggerResourceItem } from '../docdb/DocumentDBTriggerResourceItem';
-import { type DocumentDBTriggerModel } from '../docdb/models/DocumentDBTriggerModel';
+import { CosmosDBTriggerResourceItem } from '../cosmosdb/CosmosDBTriggerResourceItem';
+import { type CosmosDBTriggerModel } from '../cosmosdb/models/CosmosDBTriggerModel';
 
-export class NoSqlTriggerResourceItem extends DocumentDBTriggerResourceItem {
-    constructor(model: DocumentDBTriggerModel, experience: Experience) {
+export class NoSqlTriggerResourceItem extends CosmosDBTriggerResourceItem {
+    constructor(model: CosmosDBTriggerModel, experience: Experience) {
         super(model, experience);
     }
 }

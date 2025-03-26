@@ -6,8 +6,8 @@
 import { type AzureWizardExecuteStep, AzureWizardPromptStep, type IWizardOptions } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
 import { pickExperience } from '../../utils/pickItem/pickExperience';
-import { DocumentDBConnectionStringStep } from './DocumentDBConnectionStringStep';
-import { DocumentDBExecuteStep } from './DocumentDBExecuteStep';
+import { CosmosDBConnectionStringStep } from './CosmosDBConnectionStringStep';
+import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
 import { MongoConnectionStringStep } from './MongoConnectionStringStep';
 import { MongoExecuteStep } from './MongoExecuteStep';
 import { MongoPasswordStep } from './MongoPasswordStep';
@@ -41,8 +41,8 @@ export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardCon
             promptSteps.push(new MongoConnectionStringStep(), new MongoUsernameStep(), new MongoPasswordStep());
             executeSteps.push(new MongoExecuteStep());
         } else if (api === API.Core || api === API.Table || api === API.Graph || api === API.Cassandra) {
-            promptSteps.push(new DocumentDBConnectionStringStep());
-            executeSteps.push(new DocumentDBExecuteStep());
+            promptSteps.push(new CosmosDBConnectionStringStep());
+            executeSteps.push(new CosmosDBExecuteStep());
         }
         return { promptSteps, executeSteps };
     }

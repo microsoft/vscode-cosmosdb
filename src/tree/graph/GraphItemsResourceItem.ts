@@ -6,16 +6,16 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBItemsResourceItem } from '../docdb/DocumentDBItemsResourceItem';
-import { type DocumentDBItemsModel } from '../docdb/models/DocumentDBItemsModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBItemsResourceItem } from '../cosmosdb/CosmosDBItemsResourceItem';
+import { type CosmosDBItemsModel } from '../cosmosdb/models/CosmosDBItemsModel';
 
-export class GraphItemsResourceItem extends DocumentDBItemsResourceItem {
-    constructor(model: DocumentDBItemsModel, experience: Experience) {
+export class GraphItemsResourceItem extends CosmosDBItemsResourceItem {
+    constructor(model: CosmosDBItemsModel, experience: Experience) {
         super(model, experience);
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         return [];
     }
 
@@ -33,7 +33,7 @@ export class GraphItemsResourceItem extends DocumentDBItemsResourceItem {
         };
     }
 
-    protected getChildrenImpl(): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(): Promise<TreeElement[]> {
         throw new Error(l10n.t('Method not implemented.'));
     }
 }

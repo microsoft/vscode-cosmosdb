@@ -8,13 +8,13 @@ import * as l10n from '@vscode/l10n';
 import { ThemeIcon, type TreeItem } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/ClustersClient';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
 import { type CollectionItem } from './CollectionItem';
 
-export class DocumentsItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+export class DocumentsItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.documents';

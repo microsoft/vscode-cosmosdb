@@ -16,34 +16,34 @@ import { API, CoreExperience, MongoExperience, tryGetExperience } from '../../..
 import { databaseAccountType } from '../../../constants';
 import { ext } from '../../../extensionVariables';
 import { nonNullProp } from '../../../utils/nonNull';
-import { type CosmosAccountModel, type CosmosDBResource } from '../../CosmosAccountModel';
-import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
+import { type CosmosDBAccountModel } from '../../cosmosdb/models/CosmosDBAccountModel';
 import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { GraphAccountResourceItem } from '../../graph/GraphAccountResourceItem';
 import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from '../../table/TableAccountResourceItem';
+import { type TreeElement } from '../../TreeElement';
 import { isTreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { isTreeElementWithExperience } from '../../TreeElementWithExperience';
 import { MongoRUResourceItem } from '../documentdb/mongo-ru/MongoRUResourceItem';
 
 export class CosmosDBBranchDataProvider
     extends vscode.Disposable
-    implements BranchDataProvider<CosmosDBResource, CosmosDBTreeElement>
+    implements BranchDataProvider<CosmosDBAccountModel, TreeElement>
 {
-    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<CosmosDBTreeElement | undefined>();
+    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
 
     constructor() {
         super(() => this.onDidChangeTreeDataEmitter.dispose());
     }
 
-    get onDidChangeTreeData(): vscode.Event<CosmosDBTreeElement | undefined> {
+    get onDidChangeTreeData(): vscode.Event<TreeElement | undefined> {
         return this.onDidChangeTreeDataEmitter.event;
     }
 
     /**
      * This function is called for every element in the tree when expanding, the element being expanded is being passed as an argument
      */
-    async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
+    async getChildren(element: TreeElement): Promise<TreeElement[]> {
         try {
             const result = await callWithTelemetryAndErrorHandling(
                 'CosmosDBBranchDataProvider.getChildren',
@@ -66,9 +66,9 @@ export class CosmosDBBranchDataProvider
 
                     const children = (await element.getChildren?.()) ?? [];
                     return children.map((child) => {
-                        return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                        return ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
                             this.refresh(child),
-                        ) as CosmosDBTreeElement;
+                        ) as TreeElement;
                     });
                 },
             );
@@ -79,7 +79,7 @@ export class CosmosDBBranchDataProvider
                 createGenericElement({
                     contextValue: 'cosmosDB.item.error',
                     label: l10n.t('Error: {0}', parseError(error).message),
-                }) as CosmosDBTreeElement,
+                }) as TreeElement,
             ];
         }
     }
@@ -88,7 +88,7 @@ export class CosmosDBBranchDataProvider
      * This function is being called when the resource tree is being built, it is called for every top level of resources.
      * @param resource
      */
-    async getResourceItem(resource: CosmosDBResource): Promise<CosmosDBTreeElement> {
+    async getResourceItem(resource: CosmosDBAccountModel): Promise<TreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'CosmosDBBranchDataProvider.getResourceItem',
             (context: IActionContext) => {
@@ -100,7 +100,7 @@ export class CosmosDBBranchDataProvider
                 context.valuesToMask.push(name);
 
                 if (type.toLocaleLowerCase() === databaseAccountType.toLocaleLowerCase()) {
-                    const accountModel = resource as CosmosAccountModel;
+                    const accountModel = resource;
                     const experience = tryGetExperience(resource);
 
                     if (experience?.api === API.MongoDB) {
@@ -136,24 +136,24 @@ export class CosmosDBBranchDataProvider
                     // Unknown resource type
                 }
 
-                return null as unknown as CosmosDBTreeElement;
+                return null as unknown as TreeElement;
             },
         );
 
         if (resourceItem) {
-            return ext.state.wrapItemInStateHandling(resourceItem, (item: CosmosDBTreeElement) =>
+            return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
                 this.refresh(item),
-            ) as CosmosDBTreeElement;
+            ) as TreeElement;
         }
 
-        return null as unknown as CosmosDBTreeElement;
+        return null as unknown as TreeElement;
     }
 
-    async getTreeItem(element: CosmosDBTreeElement): Promise<vscode.TreeItem> {
+    async getTreeItem(element: TreeElement): Promise<vscode.TreeItem> {
         return element.getTreeItem();
     }
 
-    refresh(element?: CosmosDBTreeElement): void {
+    refresh(element?: TreeElement): void {
         this.onDidChangeTreeDataEmitter.fire(element);
     }
 }

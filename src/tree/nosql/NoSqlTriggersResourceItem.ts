@@ -5,17 +5,17 @@
 
 import { type Resource, type TriggerDefinition } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBTriggersResourceItem } from '../docdb/DocumentDBTriggersResourceItem';
-import { type DocumentDBTriggersModel } from '../docdb/models/DocumentDBTriggersModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBTriggersResourceItem } from '../cosmosdb/CosmosDBTriggersResourceItem';
+import { type CosmosDBTriggersModel } from '../cosmosdb/models/CosmosDBTriggersModel';
 import { NoSqlTriggerResourceItem } from './NoSqlTriggerResourceItem';
 
-export class NoSqlTriggersResourceItem extends DocumentDBTriggersResourceItem {
-    constructor(model: DocumentDBTriggersModel, experience: Experience) {
+export class NoSqlTriggersResourceItem extends CosmosDBTriggersResourceItem {
+    constructor(model: CosmosDBTriggersModel, experience: Experience) {
         super(model, experience);
     }
 
-    protected getChildrenImpl(triggers: (TriggerDefinition & Resource)[]): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(triggers: (TriggerDefinition & Resource)[]): Promise<TreeElement[]> {
         return Promise.resolve(
             triggers.map((trigger) => new NoSqlTriggerResourceItem({ ...this.model, trigger }, this.experience)),
         );

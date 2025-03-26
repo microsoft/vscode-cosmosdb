@@ -5,12 +5,9 @@
 
 import { AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
-import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
+import { type TreeElement } from '../../tree/TreeElement';
 
-export async function refreshTreeElement(
-    context: IActionContext,
-    node: AzExtTreeItem | CosmosDBTreeElement,
-): Promise<void> {
+export async function refreshTreeElement(context: IActionContext, node: AzExtTreeItem | TreeElement): Promise<void> {
     if (node instanceof AzExtTreeItem) {
         return node.refresh(context);
     }

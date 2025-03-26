@@ -10,16 +10,16 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBAccountResourceItem } from '../docdb/DocumentDBAccountResourceItem';
-import { type DocumentDBAccountModel } from '../docdb/models/DocumentDBAccountModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBAccountResourceItem } from '../cosmosdb/CosmosDBAccountResourceItem';
+import { type CosmosDBAccountModel } from '../cosmosdb/models/CosmosDBAccountModel';
 
-export class TableAccountResourceItem extends DocumentDBAccountResourceItem {
-    constructor(account: DocumentDBAccountModel, experience: Experience) {
+export class TableAccountResourceItem extends CosmosDBAccountResourceItem {
+    constructor(account: CosmosDBAccountModel, experience: Experience) {
         super(account, experience);
     }
 
-    public async getChildren(): Promise<CosmosDBTreeElement[]> {
+    public async getChildren(): Promise<TreeElement[]> {
         const result = await callWithTelemetryAndErrorHandling('getChildren', (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
@@ -29,14 +29,14 @@ export class TableAccountResourceItem extends DocumentDBAccountResourceItem {
                     contextValue: `${this.contextValue}/notSupported`,
                     label: l10n.t('Table Accounts are not supported yet.'),
                     id: `${this.id}/notSupported`,
-                }) as CosmosDBTreeElement,
+                }) as TreeElement,
             ]);
         });
 
         return result ?? [];
     }
 
-    protected getChildrenImpl(): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(): Promise<TreeElement[]> {
         throw new Error(l10n.t('Method not implemented.'));
     }
 }

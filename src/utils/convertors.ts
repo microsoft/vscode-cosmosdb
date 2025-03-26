@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey } from './document';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
+import { SettingsService } from '../services/SettingsService';
 
 export type StatsItem = {
     metric: string;
@@ -500,6 +501,10 @@ export const escapeCsvValue = (value: string): string => {
     return `"${value.replace(/"/g, '""')}"`;
 };
 
+function getCsvSeperator():string {
+    return SettingsService.getSetting<string>('cosmosDB.csvSeparator') ?? ';';
+}
+
 export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): string => {
     if (!queryResult) {
         return '';
@@ -509,9 +514,9 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
 
     stats.push(indexMetricsToTableItem(queryResult));
 
-    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(',');
-    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(',');
-    return `sep=,\n${titles}\n${values}`;
+    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(getCsvSeperator());
+    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(getCsvSeperator());
+    return `${titles}\n${values}`;
 };
 
 export const queryResultToCsv = (
@@ -524,7 +529,7 @@ export const queryResultToCsv = (
     }
 
     const tableView = queryResultToTable(queryResult, partitionKey);
-    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(',');
+    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(getCsvSeperator());
 
     if (selection) {
         tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
@@ -543,8 +548,8 @@ export const queryResultToCsv = (
                 rowValues.push(escapeCsvValue(value));
             });
 
-            return rowValues.join(',');
+            return rowValues.join(getCsvSeperator());
         })
         .join('\n');
-    return `sep=,\n${headers}\n${rows}`;
+    return `\n${headers}\n${rows}`;
 };

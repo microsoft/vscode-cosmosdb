@@ -10,7 +10,7 @@ import {
     type PartitionKeyDefinition,
     type PrimitivePartitionKeyValue,
 } from '@azure/cosmos';
-import { type CosmosRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
+import { type CosmosDBRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
 
 export const extractPartitionKey = (document: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
     return partitionKey.paths.map((path): PrimitivePartitionKeyValue => {
@@ -46,7 +46,7 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
 export const getDocumentId = (
     document: QueryResultRecord,
     partitionKey: PartitionKeyDefinition | undefined,
-): CosmosRecordIdentifier | undefined => {
+): CosmosDBRecordIdentifier | undefined => {
     const documentId = {
         _rid: typeof document['_rid'] === 'string' ? document['_rid'] : undefined,
         id: document['id'],

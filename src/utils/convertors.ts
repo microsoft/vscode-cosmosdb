@@ -24,8 +24,8 @@ export type TableData = {
 };
 
 /**
- * We can retrieve the document id to open it in a separate tab only if record contains CosmosRecordIdentifier
- * We can be 100% sure that all required fields for CosmosRecordIdentifier are present in the record
+ * We can retrieve the document id to open it in a separate tab only if record contains CosmosDBRecordIdentifier
+ * We can be 100% sure that all required fields for CosmosDBRecordIdentifier are present in the record
  * if query has `SELECT *` clause. So we can enable editing only in this case.
  * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
  * '*" is allowed only if the query doesn't have any subset or joins

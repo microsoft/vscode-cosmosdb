@@ -14,7 +14,7 @@ import { NoSqlCodeLensProvider } from './NoSqlCodeLensProvider';
 
 const nosqlLanguageId = 'nosql';
 
-export function registerCosmosCommands(): void {
+export function registerCosmosDBCommands(): void {
     ext.noSqlCodeLensProvider = new NoSqlCodeLensProvider();
     ext.context.subscriptions.push(
         vscode.languages.registerCodeLensProvider(nosqlLanguageId, ext.noSqlCodeLensProvider),

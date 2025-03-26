@@ -17,7 +17,7 @@ export async function deleteCosmosDBAccount(
     context: DeleteWizardContext,
     node: CosmosDBAccountResourceItemBase,
 ): Promise<void> {
-    // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
+    // Not all CosmosDBAccountResourceItemBase instances have a subscription property (attached account does not),
     // so we need to create a subscription context
     if (!('subscription' in node.account)) {
         throw new Error(l10n.t('Subscription is required to delete an account.'));

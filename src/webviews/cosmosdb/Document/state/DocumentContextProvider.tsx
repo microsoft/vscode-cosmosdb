@@ -6,7 +6,7 @@
 import { type JSONObject, type JSONValue, type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import type * as React from 'react';
-import { type CosmosDbRecord } from '../../../../cosmosdb/types/queryResult';
+import { type CosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
@@ -77,7 +77,7 @@ export class DocumentContextProvider extends BaseContextProvider {
 
         this.channel.on(
             'setDocument',
-            (_sessionId: string, documentContent: CosmosDbRecord, partitionKey: PartitionKeyDefinition) => {
+            (_sessionId: string, documentContent: CosmosDBRecord, partitionKey: PartitionKeyDefinition) => {
                 this.dispatch({ type: 'setRefreshing', isRefreshing: false });
                 this.dispatch({ type: 'setSaving', isSaving: false });
 

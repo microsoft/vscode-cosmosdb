@@ -17,7 +17,7 @@ export interface QueryResultRecord extends ItemDefinition {
 }
 
 // Record with fields which exactly match the Cosmos DB record with service fields starting with "_".
-export interface CosmosDbRecord {
+export interface CosmosDBRecord {
     id: string; // This is the unique name that identifies the document, i.e. no two documents can share the same id in partition. The id must not exceed 255 characters.
 
     _rid: string; // This is a system generated property. The resource ID (_rid) is a unique identifier that is also hierarchical per the resource stack on the resource model. It is used internally for placement and navigation of the document resource.
@@ -35,7 +35,7 @@ export interface CosmosDbRecord {
  * If _rid is not available, use id and partitionKey to identify a document.
  * If partitionKey is not available, use only id.
  */
-export type CosmosRecordIdentifier = {
+export type CosmosDBRecordIdentifier = {
     id?: string;
     partitionKey?: PartitionKey;
     _rid?: string;

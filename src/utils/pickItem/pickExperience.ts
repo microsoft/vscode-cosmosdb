@@ -6,7 +6,7 @@
 import { type IActionContext, type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import {
-    getCosmosExperienceQuickPicks,
+    getCosmosDBExperienceQuickPicks,
     getExperienceQuickPicks,
     getMongoCoreExperienceQuickPicks,
     getPostgresExperienceQuickPicks,
@@ -27,7 +27,7 @@ export async function pickExperience(context: IActionContext, type: QuickPickTyp
             quickPicks.push(...getPostgresExperienceQuickPicks());
             break;
         case QuickPickType.Cosmos:
-            quickPicks.push(...getCosmosExperienceQuickPicks());
+            quickPicks.push(...getCosmosDBExperienceQuickPicks());
             break;
         case QuickPickType.Mongo:
             quickPicks.push(...getMongoCoreExperienceQuickPicks());

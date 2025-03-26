@@ -13,7 +13,7 @@ import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClientByConnection, getCosmosKeyCredential } from '../getCosmosClient';
+import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../getCosmosClient';
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
@@ -55,7 +55,7 @@ export class QuerySession {
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
-        this.masterKey = getCosmosKeyCredential(credentials)?.key ?? '';
+        this.masterKey = getCosmosDBKeyCredential(credentials)?.key ?? '';
         this.resultViewMetadata = resultViewMetadata;
         this.query = query;
 
@@ -79,7 +79,7 @@ export class QuerySession {
             try {
                 this.abortController = new AbortController();
 
-                const client = getCosmosClientByConnection(this.connection, {
+                const client = getCosmosDBClientByConnection(this.connection, {
                     connectionPolicy: {
                         requestTimeout: this.resultViewMetadata.timeout ?? DEFAULT_EXECUTION_TIMEOUT,
                     },

@@ -10,7 +10,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
-import { registerCosmosCommands } from '../cosmosdb/registerCosmosCommands';
+import { registerCosmosDBCommands } from '../cosmosdb/registerCosmosDBCommands';
 import { ext } from '../extensionVariables';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
@@ -60,7 +60,7 @@ export function registerCommands(): void {
     registerTriggerCommands();
 
     // old commands
-    registerCosmosCommands();
+    registerCosmosDBCommands();
     registerPostgresCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);

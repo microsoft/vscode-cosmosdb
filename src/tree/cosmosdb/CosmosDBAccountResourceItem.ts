@@ -7,7 +7,7 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { AuthenticationMethod, getCosmosClient, getCosmosEntraIdCredential } from '../../cosmosdb/getCosmosClient';
+import { AuthenticationMethod, getCosmosClient, getCosmosDBEntraIdCredential } from '../../cosmosdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../extensionVariables';
@@ -66,7 +66,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
             if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                 this.hasShownRbacNotification = true;
 
-                const tenantId = getCosmosEntraIdCredential(accountInfo.credentials)?.tenantId;
+                const tenantId = getCosmosDBEntraIdCredential(accountInfo.credentials)?.tenantId;
                 const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                 // check if the principal ID matches the one that is signed in,
                 // otherwise this might be a security problem, hence show the error message

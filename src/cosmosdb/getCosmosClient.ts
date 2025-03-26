@@ -13,7 +13,7 @@ import { merge } from 'lodash';
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
 import { ext } from '../extensionVariables';
-import { getPreferredAuthenticationMethod } from '../tree/docdb/AccountInfo';
+import { getPreferredAuthenticationMethod } from '../tree/cosmosdb/AccountInfo';
 import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
 
 export enum AuthenticationMethod {
@@ -40,19 +40,19 @@ export type CosmosDBManagedIdentityCredential = {
 
 export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBEntraIdCredential | CosmosDBManagedIdentityCredential;
 
-export function getCosmosKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
+export function getCosmosDBKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
     return credentials.filter(
         (cred): cred is CosmosDBKeyCredential => cred.type === AuthenticationMethod.accountKey,
     )[0];
 }
 
-export function getCosmosEntraIdCredential(credentials: CosmosDBCredential[]): CosmosDBEntraIdCredential | undefined {
+export function getCosmosDBEntraIdCredential(credentials: CosmosDBCredential[]): CosmosDBEntraIdCredential | undefined {
     return credentials.filter(
         (cred): cred is CosmosDBEntraIdCredential => cred.type === AuthenticationMethod.entraId,
     )[0];
 }
 
-export function getCosmosClientByConnection(
+export function getCosmosDBClientByConnection(
     connection: NoSqlQueryConnection,
     options?: Partial<CosmosClientOptions>,
 ): CosmosClient {
@@ -75,7 +75,7 @@ export function getCosmosClient(
         enableEndpointDiscovery: enableEndpointDiscovery === undefined ? true : enableEndpointDiscovery,
     };
 
-    const keyCred = getCosmosKeyCredential(credentials);
+    const keyCred = getCosmosDBKeyCredential(credentials);
 
     const agent = endpoint.startsWith('https:')
         ? new https.Agent({ rejectUnauthorized: isEmulator ? !isEmulator : vscodeStrictSSL })

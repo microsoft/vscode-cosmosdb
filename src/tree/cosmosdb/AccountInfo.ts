@@ -9,7 +9,7 @@ import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } fr
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
-import { parseCosmosConnectionString } from '../../cosmosdb/cosmosConnectionStrings';
+import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
 import {
     AuthenticationMethod,
     getCosmosClient,
@@ -102,7 +102,7 @@ async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel):
     const id = account.id;
     const name = account.name;
     const isEmulator = account.isEmulator;
-    const parsedCS = parseCosmosConnectionString(account.connectionString);
+    const parsedCS = parseCosmosDBConnectionString(account.connectionString);
     const documentEndpoint = parsedCS.documentEndpoint;
     const credentials = await getCosmosDBCredentials({
         accountName: name,

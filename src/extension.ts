@@ -25,8 +25,8 @@ import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vsc
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
+import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
-import { getIsRunningOnAzure } from './docdb/utils/managedIdentityUtils';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';

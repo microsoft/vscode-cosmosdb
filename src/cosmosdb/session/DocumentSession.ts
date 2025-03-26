@@ -22,8 +22,8 @@ import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, getCosmosKeyCredential } from '../getCosmosClient';
-import { type CosmosDbRecord, type CosmosRecordIdentifier } from '../types/queryResult';
+import { getCosmosClient, getCosmosDBKeyCredential } from '../getCosmosClient';
+import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
 
 export class DocumentSession {
     public readonly id: string;
@@ -48,11 +48,11 @@ export class DocumentSession {
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
-        this.masterKey = getCosmosKeyCredential(credentials)?.key ?? '';
+        this.masterKey = getCosmosDBKeyCredential(credentials)?.key ?? '';
         this.abortController = new AbortController();
     }
 
-    public async create(document: ItemDefinition): Promise<CosmosRecordIdentifier | undefined> {
+    public async create(document: ItemDefinition): Promise<CosmosDBRecordIdentifier | undefined> {
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.create', async (context) => {
             this.setTelemetryProperties(context);
 
@@ -71,7 +71,7 @@ export class DocumentSession {
                     });
 
                 if (response?.resource) {
-                    const record = response.resource as CosmosDbRecord;
+                    const record = response.resource as CosmosDBRecord;
 
                     await this.channel.postMessage({
                         type: 'event',
@@ -99,7 +99,7 @@ export class DocumentSession {
         });
     }
 
-    public async read(documentId: CosmosRecordIdentifier): Promise<void> {
+    public async read(documentId: CosmosDBRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.read', async (context) => {
             this.setTelemetryProperties(context);
 
@@ -112,12 +112,12 @@ export class DocumentSession {
             }
 
             try {
-                let result: CosmosDbRecord | null = null;
+                let result: CosmosDBRecord | null = null;
                 const response = await this.client
                     .database(this.databaseId)
                     .container(this.containerId)
                     .item(documentId.id, documentId.partitionKey)
-                    .read<CosmosDbRecord>({
+                    .read<CosmosDBRecord>({
                         abortSignal: this.abortController.signal,
                     });
 
@@ -130,7 +130,7 @@ export class DocumentSession {
                     const queryResult = await this.client
                         .database(this.databaseId)
                         .container(this.containerId)
-                        .items.query<CosmosDbRecord>(`SELECT * FROM c WHERE c._rid = "${documentId._rid}"`, {
+                        .items.query<CosmosDBRecord>(`SELECT *FROM c WHERE c._rid = "${documentId._rid}"`, {
                             abortSignal: this.abortController.signal,
                             bufferItems: true,
                         })
@@ -164,8 +164,8 @@ export class DocumentSession {
 
     public async update(
         document: ItemDefinition,
-        documentId: CosmosRecordIdentifier,
-    ): Promise<CosmosRecordIdentifier | undefined> {
+        documentId: CosmosDBRecordIdentifier,
+    ): Promise<CosmosDBRecordIdentifier | undefined> {
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.update', async (context) => {
             this.setTelemetryProperties(context);
 
@@ -187,7 +187,7 @@ export class DocumentSession {
                     });
 
                 if (response?.resource) {
-                    const record = response.resource as CosmosDbRecord;
+                    const record = response.resource as CosmosDBRecord;
                     const partitionKey = await this.getPartitionKey();
 
                     await this.channel.postMessage({
@@ -216,7 +216,7 @@ export class DocumentSession {
         });
     }
 
-    public async delete(documentId: CosmosRecordIdentifier): Promise<void> {
+    public async delete(documentId: CosmosDBRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.delete', async (context) => {
             this.setTelemetryProperties(context);
 

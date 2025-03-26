@@ -14,7 +14,7 @@
     "e954c2aff836ade49660932396fc01d8090169ef61cc22ce7fa63a919073491c": {
       "signature": "e954c2aff836ade49660932396fc01d8090169ef61cc22ce7fa63a919073491c",
       "alternativeSignatures": [],
-      "target": "src/cosmosdb/cosmosConnectionStrings.test.ts",
+      "target": "src/cosmosdb/cosmosDBConnectionStrings.test.ts",
       "line": 140,
       "memberOf": [
         "default"

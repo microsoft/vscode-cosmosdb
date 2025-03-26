@@ -8,7 +8,7 @@ import * as url from 'url';
 import { ParsedConnectionString } from '../ParsedConnectionString';
 import { nonNullProp } from '../utils/nonNull';
 
-export function parseCosmosConnectionString(connectionString: string): ParsedCosmosConnectionString {
+export function parseCosmosDBConnectionString(connectionString: string): ParsedCosmosDBConnectionString {
     const endpoint = getPropertyFromConnectionString(connectionString, 'AccountEndpoint');
     const masterKey = getPropertyFromConnectionString(connectionString, 'AccountKey');
     const databaseName = getPropertyFromConnectionString(connectionString, 'Database');
@@ -17,7 +17,7 @@ export function parseCosmosConnectionString(connectionString: string): ParsedCos
         throw new Error(l10n.t('Invalid Cosmos DB connection string.'));
     }
 
-    return new ParsedCosmosConnectionString(connectionString, endpoint, masterKey, databaseName);
+    return new ParsedCosmosDBConnectionString(connectionString, endpoint, masterKey, databaseName);
 }
 
 function getPropertyFromConnectionString(connectionString: string, property: string): string | undefined {
@@ -26,7 +26,7 @@ function getPropertyFromConnectionString(connectionString: string, property: str
     return match ? match[1] : undefined;
 }
 
-export class ParsedCosmosConnectionString extends ParsedConnectionString {
+export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
     public readonly hostName: string;
     public readonly port: string;
 

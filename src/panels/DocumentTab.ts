@@ -7,10 +7,10 @@ import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { getCosmosKeyCredential } from '../cosmosdb/getCosmosClient';
+import { getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
-import { type CosmosRecordIdentifier } from '../cosmosdb/types/queryResult';
+import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
 import { promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import { BaseTab, type CommandPayload } from './BaseTab';
@@ -24,7 +24,7 @@ export class DocumentTab extends BaseTab {
     private readonly session: DocumentSession;
 
     private connection: NoSqlQueryConnection;
-    private documentId: CosmosRecordIdentifier | undefined;
+    private documentId: CosmosDBRecordIdentifier | undefined;
     private _mode: DocumentTabMode = 'view';
     private isDirty = false;
 
@@ -32,7 +32,7 @@ export class DocumentTab extends BaseTab {
         panel: vscode.WebviewPanel,
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: CosmosRecordIdentifier,
+        documentId?: CosmosDBRecordIdentifier,
     ) {
         super(panel, DocumentTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
@@ -43,7 +43,7 @@ export class DocumentTab extends BaseTab {
         this._mode = mode;
 
         if (connection.credentials) {
-            const masterKey = getCosmosKeyCredential(connection.credentials)?.key;
+            const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key;
             if (masterKey) {
                 this.telemetryContext.addMaskedValue(masterKey);
             }
@@ -58,7 +58,7 @@ export class DocumentTab extends BaseTab {
     public static render(
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: CosmosRecordIdentifier,
+        documentId?: CosmosDBRecordIdentifier,
         viewColumn?: vscode.ViewColumn,
     ): DocumentTab {
         const column = viewColumn ?? vscode.ViewColumn.Active;
@@ -180,7 +180,7 @@ export class DocumentTab extends BaseTab {
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
 
-            if (!this.isCosmosDbItemDefinition(documentContent)) {
+            if (!this.isCosmosDBItemDefinition(documentContent)) {
                 throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
             }
 
@@ -201,7 +201,7 @@ export class DocumentTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
 
-    private isCosmosDbItemDefinition(documentContent: unknown): documentContent is ItemDefinition {
+    private isCosmosDBItemDefinition(documentContent: unknown): documentContent is ItemDefinition {
         if (documentContent && typeof documentContent === 'object' && !Array.isArray(documentContent)) {
             if ('id' in documentContent) {
                 return typeof documentContent.id === 'string';

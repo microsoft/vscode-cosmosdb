@@ -104,8 +104,8 @@ export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
     return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
 }
 
-export function getCosmosExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return cosmosExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
+export function getCosmosDBExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return cosmosDBExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
 }
 
 export function getPostgresExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
@@ -181,11 +181,11 @@ export const PostgresFlexibleExperience: Experience = {
     shortName: 'PostgreSQLFlexible',
 };
 
-const cosmosExperiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience];
+const cosmosDBExperiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience];
 const postgresExperiencesArray: Experience[] = [PostgresSingleExperience, PostgresFlexibleExperience];
 const mongoCoreExperienceArray: Experience[] = [MongoClustersExperience];
 const experiencesArray: Experience[] = [
-    ...cosmosExperiencesArray,
+    ...cosmosDBExperiencesArray,
     ...postgresExperiencesArray,
     ...mongoCoreExperienceArray,
 ];

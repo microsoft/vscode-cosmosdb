@@ -58,7 +58,7 @@ export async function deleteDatabaseAccount(
         subscription = createSubscriptionContext(node.subscription);
         accountName = node.cluster.name;
     } else {
-        // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
+        // Not all CosmosDBAccountResourceItemBase instances have a subscription property (attached account does not),
         // so we need to create a subscription context
         throw new Error(l10n.t('Subscription is required to delete an account.'));
     }

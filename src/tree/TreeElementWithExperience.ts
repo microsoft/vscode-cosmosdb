@@ -6,7 +6,7 @@
 import { type Experience } from '../AzureDBExperiences';
 
 /**
- * It's currently being kept separately from the CosmosDbTreeElement as we need to discuss it with the team,
+ * It's currently being kept separately from the TreeElement as we need to discuss it with the team,
  * as we're working on an overlapping feature in parallel, keeping the 'experience' property in a separate
  * interface simplifies parallel development and can still be easily merged once ready for it.
  */

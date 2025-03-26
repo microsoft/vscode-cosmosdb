@@ -6,7 +6,7 @@
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
-import { parseCosmosConnectionString } from '../../cosmosdb/cosmosConnectionStrings';
+import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import {
@@ -24,7 +24,7 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
         const parentId = context.parentId;
 
         if (api === API.Core || api === API.Table || api === API.Graph || api === API.Cassandra) {
-            const parsedCS = parseCosmosConnectionString(connectionString);
+            const parsedCS = parseCosmosDBConnectionString(connectionString);
             const label = `${parsedCS.accountId} (${getExperienceFromApi(api).shortName})`;
 
             return ext.state.showCreatingChild(

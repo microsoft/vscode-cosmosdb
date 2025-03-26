@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { wellKnownEmulatorPassword } from '../constants';
-import { parseCosmosConnectionString } from './cosmosConnectionStrings';
+import { parseCosmosDBConnectionString } from './cosmosDBConnectionStrings';
 
 describe('cosmosDBConnectionStrings', () => {
     // Testing different ordering, different use of ';', different casing, etc.
     describe('Without database name', () => {
         it('Connection string with empty database', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -19,7 +19,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with leading empty string in AccountEndpoint', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 '    AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -28,7 +28,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with leading empty string in AccountKey', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;    AccountKey=abcdef==',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -37,7 +37,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with trailing semicolon', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -46,7 +46,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with AccountKey first', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountKey=abcdef==;AccountEndpoint=https://abcdef.documents.azure.com:443/',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -55,7 +55,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with AccountKey first and trailing semicolon', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountKey=abcdef==;AccountEndpoint=https://abcdef.documents.azure.com:443/;',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -64,7 +64,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with lowercase', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'accountendpoint=https://abcdef.documents.azure.com:443/;accountkey=abcdef==',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -73,7 +73,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with empty Database key', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountKey=abcdef==;AccountEndpoint=https://abcdef.documents.azure.com:443/;Database=',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -82,7 +82,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with empty Database key and trailing semicolon', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountKey=abcdef==;AccountEndpoint=https://abcdef.documents.azure.com:443/;Database=;',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -91,7 +91,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with emulator', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 `AccountEndpoint=https://localhost:10255/;AccountKey=${wellKnownEmulatorPassword};`,
             );
             expect(parsedCS.documentEndpoint).toEqual('https://localhost:10255/');
@@ -100,7 +100,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with other properties', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;',
             );
             expect(parsedCS.hostName).toEqual('abcdef.documents.azure.com');
@@ -113,7 +113,7 @@ describe('cosmosDBConnectionStrings', () => {
     // Testing different ordering, different use of ';', different casing, etc.
     describe('With database name', () => {
         it('Connection string with database', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;Database=abcd',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -122,7 +122,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with trailing semicolon', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;Database=abcd;',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -131,7 +131,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with Database in the middle', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;Database=abcd;AccountKey=abcdef==',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -140,7 +140,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with Database first and trailing semicolon', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'Database=abcd;AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;',
             );
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
@@ -149,7 +149,7 @@ describe('cosmosDBConnectionStrings', () => {
         });
 
         it('Connection string with other properties', () => {
-            const parsedCS = parseCosmosConnectionString(
+            const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==;Database=abcd',
             );
             expect(parsedCS.hostName).toEqual('abcdef.documents.azure.com');
@@ -160,13 +160,13 @@ describe('cosmosDBConnectionStrings', () => {
     });
 
     it('Invalid connection strings', () => {
-        expect(() => parseCosmosConnectionString('')).toThrow(Error);
-        expect(() => parseCosmosConnectionString('AccountKey=abcdef==')).toThrow(Error);
-        expect(() => parseCosmosConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/')).toThrow(
+        expect(() => parseCosmosDBConnectionString('')).toThrow(Error);
+        expect(() => parseCosmosDBConnectionString('AccountKey=abcdef==')).toThrow(Error);
+        expect(() => parseCosmosDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/')).toThrow(
             Error,
         );
         expect(() =>
-            parseCosmosConnectionString(
+            parseCosmosDBConnectionString(
                 'mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==' +
                     '@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb',
             ),

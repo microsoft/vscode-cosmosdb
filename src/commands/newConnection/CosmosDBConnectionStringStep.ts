@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { parseCosmosConnectionString } from '../../cosmosdb/cosmosConnectionStrings';
+import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
@@ -40,7 +40,7 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
     //eslint-disable-next-line @typescript-eslint/require-await
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
-            parseCosmosConnectionString(connectionString);
+            parseCosmosDBConnectionString(connectionString);
         } catch (error) {
             if (error instanceof Error) {
                 return error.message;

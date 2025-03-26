@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { getCosmosClient, getCosmosEntraIdCredential } from '../../cosmosdb/getCosmosClient';
+import { getCosmosClient, getCosmosDBEntraIdCredential } from '../../cosmosdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../extensionVariables';
@@ -92,7 +92,7 @@ export abstract class CosmosDBAccountAttachedResourceItem extends CosmosDBAccoun
             if (e instanceof Error) {
                 if (isRbacException(e) && !this.hasShownRbacNotification) {
                     this.hasShownRbacNotification = true;
-                    const tenantId = getCosmosEntraIdCredential(accountInfo.credentials)?.tenantId;
+                    const tenantId = getCosmosDBEntraIdCredential(accountInfo.credentials)?.tenantId;
                     const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                     void showRbacPermissionError(this.id, principalId);
                     if (!principalId || !e.message.includes(principalId)) {

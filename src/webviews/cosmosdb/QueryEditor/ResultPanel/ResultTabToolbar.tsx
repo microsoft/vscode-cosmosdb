@@ -8,7 +8,7 @@ import { Dropdown, Option, Toolbar, ToolbarButton, Tooltip, useRestoreFocusTarge
 import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
-import { type CosmosRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
+import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
 import { getDocumentId, isSelectStar } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { type TableViewMode } from '../state/QueryEditorState';
@@ -35,7 +35,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
 
     const getSelectedDocuments = () => {
         return state.selectedRows
-            .map((rowIndex): CosmosRecordIdentifier | undefined => {
+            .map((rowIndex): CosmosDBRecordIdentifier | undefined => {
                 const document = state.currentQueryResult?.documents[rowIndex];
                 return document ? getDocumentId(document, state.partitionKey) : undefined;
             })

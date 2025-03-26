@@ -12,7 +12,7 @@ import {
     SharedWorkspaceStorage,
     type SharedWorkspaceStorageItem,
 } from '../../tree/workspace-api/SharedWorkspaceStorage';
-import { type MongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
+import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -61,7 +61,7 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                 switch (experience.api) {
                     case API.MongoDB:
                     case API.MongoClusters: {
-                        const mongoConfig = context.mongoEmulatorConfiguration as MongoEmulatorConfiguration;
+                        const mongoConfig = context.mongoEmulatorConfiguration as EmulatorConfiguration;
                         isEmulator = mongoConfig?.isEmulator ?? true;
                         disableEmulatorSecurity = mongoConfig?.disableEmulatorSecurity;
                         break;

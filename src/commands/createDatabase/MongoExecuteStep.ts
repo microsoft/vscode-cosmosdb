@@ -5,8 +5,8 @@
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
 import { type CreateMongoDatabaseWizardContext } from './CreateMongoDatabaseWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<CreateMongoDatabaseWizardContext> {
@@ -16,7 +16,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<CreateMongoDatabase
         const credentialsId = context.credentialsId;
         const databaseName = context.databaseName!;
         const nodeId = context.nodeId;
-        const client = await MongoClustersClient.getClient(credentialsId);
+        const client = await ClustersClient.getClient(credentialsId);
 
         return ext.state.showCreatingChild(
             nodeId,

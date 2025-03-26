@@ -1,0 +1,87 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+@import '../../theme/slickgrid.scss';
+
+@import '../sharedStyles';
+
+//@import '@fluentui/react/dist/sass/_References';
+
+.row-separator {
+    padding: 10px;
+}
+
+.collectionView {
+    @extend .selectionDisabled;
+
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+
+    height: 100vh;
+
+    .toolbarMainView {
+        padding-top: 10px;
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+
+        text-wrap: nowrap;
+
+        // Push all elements after the first one to the right
+        > :first-child {
+            margin-right: auto; // This ensures space is created between the first and remaining elements.
+        }
+    }
+
+    .resultsActionBar {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .resultsDisplayArea {
+        @extend .selectionDisabled;
+
+        flex-grow: 1;
+
+        //background-color: aqua; // used to invstigate layout issues
+
+        .loadingAnimationTable {
+            .headerRow {
+                align-items: center;
+                padding-bottom: 10px;
+            }
+
+            .dataGrid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr 1fr;
+                gap: 10px;
+            }
+        }
+    }
+
+    .toolbarTableNavigation {
+        margin-top: -10px;
+    }
+}
+
+.progressBar {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+}
+
+.toolbarDividerTransparent {
+    padding: 4px;
+}
+
+.lblPageNumber {
+    text-wrap: nowrap;
+}

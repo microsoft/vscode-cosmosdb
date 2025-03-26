@@ -7,10 +7,10 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
 import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
+import { DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
@@ -84,7 +84,7 @@ async function deleteDocumentDBDatabase(node: DocumentDBDatabaseResourceItem): P
 }
 
 async function deleteMongoDatabase(node: DatabaseItem): Promise<boolean> {
-    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.cluster.id);
 
     let success = false;
     await ext.state.showDeleting(node.id, async () => {

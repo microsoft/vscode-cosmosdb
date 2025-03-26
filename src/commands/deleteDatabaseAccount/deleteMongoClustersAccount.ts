@@ -6,17 +6,18 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
+import { type MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
 import { createMongoClustersManagementClient } from '../../utils/azureClients';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
+// TODO: A new one is needed for RU, but since we've decided not to support account deletions, we can skip it for now
 export async function deleteMongoClustersAccount(
     context: DeleteWizardContext,
-    node: MongoClusterResourceItem,
+    node: MongoVCoreResourceItem,
 ): Promise<void> {
     const client = createMongoClustersManagementClient(context, node.subscription);
-    const resourceGroup = node.mongoCluster.resourceGroup as string;
-    const accountName = node.mongoCluster.name;
+    const resourceGroup = node.cluster.resourceGroup as string;
+    const accountName = node.cluster.name;
 
     const deletePromise = (await client).mongoClusters.beginDeleteAndWait(resourceGroup, accountName);
     if (!context.suppressNotification) {

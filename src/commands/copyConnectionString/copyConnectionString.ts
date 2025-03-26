@@ -9,11 +9,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
 import { checkAuthentication } from '../../postgres/commands/checkAuthentication';
 import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function copyPostgresConnectionString(
@@ -36,10 +36,10 @@ export async function copyPostgresConnectionString(
 
 export async function copyAzureConnectionString(
     context: IActionContext,
-    node?: CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+    node?: CosmosDBAccountResourceItemBase | ClusterItemBase,
 ) {
     if (!node) {
-        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterItemBase>(context, {
+        node = await pickAppResource<CosmosDBAccountResourceItemBase | ClusterItemBase>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
         });
     }
@@ -53,7 +53,7 @@ export async function copyAzureConnectionString(
 
 export async function copyConnectionString(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterItemBase, // Mongo Cluster (vCore), in both, the resource and in the workspace area
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
     let connectionString: string | undefined;
 
@@ -75,15 +75,15 @@ export async function copyConnectionString(
                 node.databaseName,
             );
         }
-    } else if (node instanceof CosmosDBAccountResourceItemBase || node instanceof MongoClusterItemBase) {
+    } else if (node instanceof CosmosDBAccountResourceItemBase || node instanceof ClusterItemBase) {
         connectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
             if (node instanceof CosmosDBAccountResourceItemBase) {
                 context.telemetry.properties.experience = node.experience.api;
                 return await node.getConnectionString();
             }
 
-            if (node instanceof MongoClusterItemBase) {
-                context.telemetry.properties.experience = node.mongoCluster.dbExperience?.api;
+            if (node instanceof ClusterItemBase) {
+                context.telemetry.properties.experience = node.cluster.dbExperience?.api;
                 return node.getConnectionString();
             }
 

@@ -9,16 +9,16 @@ import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostap
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
-import { type MongoDBLanguageClient } from './mongo/languageClient';
-import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
-import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
-import { type MongoDBAccountsWorkspaceItem } from './mongoClusters/tree/workspace/MongoDBAccountsWorkspaceItem';
+import { type MongoDBLanguageClient } from './documentdb/scrapbook/languageClient';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
-import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
-import { type CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
-import { type CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
-import { type CosmosDBWorkspaceItem } from './tree/workspace/CosmosDBWorkspaceItem';
+import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { type MongoVCoreBranchDataProvider } from './tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreBranchDataProvider';
+import { type AttachedAccountsTreeItem } from './tree/v1-legacy-api/AttachedAccountsTreeItem';
+import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
+import { type AccountsItem } from './tree/workspace-view/documentdb/AccountsItem';
+import { type ClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -57,10 +57,10 @@ export namespace ext {
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
 
     // used for the resources tree
-    export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
+    export let mongoVCoreBranchDataProvider: MongoVCoreBranchDataProvider;
     // used for the workspace: these are the dedicated providers
-    export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;
-    export let mongoClusterWorkspaceBranchDataResource: MongoDBAccountsWorkspaceItem;
+    export let mongoClustersWorkspaceBranchDataProvider: ClustersWorkspaceBranchDataProvider;
+    export let mongoClusterWorkspaceBranchDataResource: AccountsItem;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';

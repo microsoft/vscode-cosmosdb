@@ -11,8 +11,8 @@ import { AuthenticationMethod, getCosmosClient, getCosmosEntraIdCredential } fro
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../docdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../docdb/utils/rbacUtils';
 import { ext } from '../../extensionVariables';
+import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type CosmosAccountModel } from '../CosmosAccountModel';
-import { CosmosDBAccountResourceItemBase } from '../CosmosDBAccountResourceItemBase';
 import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 

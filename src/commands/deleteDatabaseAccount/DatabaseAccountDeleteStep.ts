@@ -6,8 +6,8 @@
 import { AzExtTreeItem, AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
-import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 import { deleteCosmosDBAccount } from './deleteCosmosDBAccount';
 import { deleteMongoClustersAccount } from './deleteMongoClustersAccount';
@@ -23,11 +23,11 @@ export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWiza
                 deleteCosmosDBAccount(context, context.node as CosmosDBAccountResourceItemBase),
             );
             ext.cosmosDBBranchDataProvider.refresh();
-        } else if (context.node instanceof MongoClusterResourceItem) {
+        } else if (context.node instanceof MongoVCoreResourceItem) {
             await ext.state.showDeleting(context.node.id, () =>
-                deleteMongoClustersAccount(context, context.node as MongoClusterResourceItem),
+                deleteMongoClustersAccount(context, context.node as MongoVCoreResourceItem),
             );
-            ext.mongoClustersBranchDataProvider.refresh();
+            ext.mongoVCoreBranchDataProvider.refresh();
         } else {
             throw new Error(l10n.t('Unexpected node type'));
         }

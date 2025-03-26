@@ -24,21 +24,21 @@ export { isWindows, wellKnownEmulatorPassword } from './src/constants';
 export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
 export { getCosmosClient } from './src/docdb/getCosmosClient';
 export * from './src/docdb/registerDocDBCommands';
-export { activateInternal, deactivateInternal } from './src/extension';
-export { ext } from './src/extensionVariables';
-export { connectToMongoClient, isCosmosEmulatorConnectionString } from './src/mongo/connectToMongoClient';
-export { MongoCommand } from './src/mongo/MongoCommand';
+export { connectToClient, isCosmosEmulatorConnectionString } from './src/documentdb/scrapbook/connectToClient';
+export { MongoCommand } from './src/documentdb/scrapbook/MongoCommand';
 export {
     addDatabaseToAccountConnectionString,
     encodeMongoConnectionString,
     getDatabaseNameFromConnectionString,
-} from './src/mongo/mongoConnectionStrings';
-export { findCommandAtPosition, getAllCommandsFromText } from './src/mongo/MongoScrapbookHelpers';
-export { MongoShellScriptRunner as MongoShell } from './src/mongo/MongoShellScriptRunner';
-export * from './src/mongo/registerMongoCommands';
+} from './src/documentdb/scrapbook/mongoConnectionStrings';
+export * from './src/documentdb/scrapbook/registerScrapbookCommands';
+export { findCommandAtPosition, getAllCommandsFromText } from './src/documentdb/scrapbook/ScrapbookHelpers';
+export { ShellScriptRunner as MongoShell } from './src/documentdb/scrapbook/ShellScriptRunner';
+export { activateInternal, deactivateInternal } from './src/extension';
+export { ext } from './src/extensionVariables';
 export { addDatabaseToConnectionString } from './src/postgres/postgresConnectionStrings';
 export { SettingUtils } from './src/services/SettingsService';
-export { AttachedAccountsTreeItem } from './src/tree/AttachedAccountsTreeItem';
+export { AttachedAccountsTreeItem } from './src/tree/v1-legacy-api/AttachedAccountsTreeItem';
 export * from './src/utils/azureClients';
 export { getPublicIpv4, isIpInRanges } from './src/utils/getIp';
 export { improveError } from './src/utils/improveError';

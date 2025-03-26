@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 
 export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWizardContext> {
@@ -70,7 +70,7 @@ export class CollectionNameStep extends AzureWizardPromptStep<CreateCollectionWi
         }
 
         try {
-            const client = await MongoClustersClient.getClient(context.credentialsId);
+            const client = await ClustersClient.getClient(context.credentialsId);
             const collections = await client.listCollections(context.databaseId);
 
             if (collections.filter((c) => c.name === name).length > 0) {

@@ -9,8 +9,8 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { parseDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
+import { parseMongoConnectionString } from '../../documentdb/scrapbook/mongoConnectionStrings';
 import { ext } from '../../extensionVariables';
-import { parseMongoConnectionString } from '../../mongo/mongoConnectionStrings';
 import { type ParsedConnectionString } from '../../ParsedConnectionString';
 import {
     createPostgresConnectionString,

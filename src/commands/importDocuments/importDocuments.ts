@@ -13,10 +13,10 @@ import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../docdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../docdb/utils/validateDocument';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { CollectionItem } from '../../mongoClusters/tree/CollectionItem';
 import { DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 
@@ -286,7 +286,7 @@ async function insertDocument(
     try {
         if (node instanceof CollectionItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoMongoCluster(node, document as Document);
+            return await insertDocumentIntoCluster(node, document as Document);
         }
 
         if (node instanceof DocumentDBContainerResourceItem) {
@@ -318,11 +318,11 @@ async function insertDocumentIntoDocumentDB(
     }
 }
 
-async function insertDocumentIntoMongoCluster(
+async function insertDocumentIntoCluster(
     node: CollectionItem,
     document: Document,
 ): Promise<{ document: Document; error: string }> {
-    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.cluster.id);
     const response = await client.insertDocuments(node.databaseInfo.name, node.collectionInfo.name, [document]);
 
     if (response?.acknowledged) {

@@ -5,19 +5,17 @@
 
 import { type Resource, type StoredProcedureDefinition } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBStoredProceduresResourceItem } from '../docdb/DocumentDBStoredProceduresResourceItem';
-import { type DocumentDBStoredProceduresModel } from '../docdb/models/DocumentDBStoredProceduresModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBStoredProceduresResourceItem } from '../cosmosdb/CosmosDBStoredProceduresResourceItem';
+import { type CosmosDBStoredProceduresModel } from '../cosmosdb/models/CosmosDBStoredProceduresModel';
 import { NoSqlStoredProcedureResourceItem } from './NoSqlStoredProcedureResourceItem';
 
-export class NoSqlStoredProceduresResourceItem extends DocumentDBStoredProceduresResourceItem {
-    constructor(model: DocumentDBStoredProceduresModel, experience: Experience) {
+export class NoSqlStoredProceduresResourceItem extends CosmosDBStoredProceduresResourceItem {
+    constructor(model: CosmosDBStoredProceduresModel, experience: Experience) {
         super(model, experience);
     }
 
-    protected getChildrenImpl(
-        storedProcedures: (StoredProcedureDefinition & Resource)[],
-    ): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(storedProcedures: (StoredProcedureDefinition & Resource)[]): Promise<TreeElement[]> {
         return Promise.resolve(
             storedProcedures.map(
                 (procedure) => new NoSqlStoredProcedureResourceItem({ ...this.model, procedure }, this.experience),

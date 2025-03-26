@@ -7,9 +7,9 @@ import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { DocumentSession } from '../docdb/session/DocumentSession';
-import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { DocumentSession } from '../cosmosdb/session/DocumentSession';
+import { type CosmosRecordIdentifier } from '../cosmosdb/types/queryResult';
 import { promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import { BaseTab, type CommandPayload } from './BaseTab';
@@ -23,7 +23,7 @@ export class DocumentTab extends BaseTab {
     private readonly session: DocumentSession;
 
     private connection: NoSqlQueryConnection;
-    private documentId: CosmosDbRecordIdentifier | undefined;
+    private documentId: CosmosRecordIdentifier | undefined;
     private _mode: DocumentTabMode = 'view';
     private isDirty = false;
 
@@ -31,7 +31,7 @@ export class DocumentTab extends BaseTab {
         panel: vscode.WebviewPanel,
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: CosmosDbRecordIdentifier,
+        documentId?: CosmosRecordIdentifier,
     ) {
         super(panel, DocumentTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
@@ -54,7 +54,7 @@ export class DocumentTab extends BaseTab {
     public static render(
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: CosmosDbRecordIdentifier,
+        documentId?: CosmosRecordIdentifier,
         viewColumn?: vscode.ViewColumn,
     ): DocumentTab {
         const column = viewColumn ?? vscode.ViewColumn.Active;

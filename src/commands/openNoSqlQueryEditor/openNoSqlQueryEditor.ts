@@ -5,19 +5,19 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { getCosmosAuthCredential, getCosmosKeyCredential } from '../../docdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../../docdb/NoSqlCodeLensProvider';
+import { getCosmosAuthCredential, getCosmosKeyCredential } from '../../cosmosdb/getCosmosClient';
+import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlCodeLensProvider';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
-import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
+import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function openNoSqlQueryEditor(
     context: IActionContext,
-    node?: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
+    node?: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBContainerResourceItem | DocumentDBItemsResourceItem>(context, {
+        node = await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
             type: AzExtResourceType.AzureCosmosDb,
             expectedChildContextValue: ['treeItem.container', 'treeItem.items'],
         });

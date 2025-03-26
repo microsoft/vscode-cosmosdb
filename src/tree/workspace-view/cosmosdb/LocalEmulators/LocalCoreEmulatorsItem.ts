@@ -8,15 +8,15 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
-import { type CosmosDBTreeElement } from '../../../CosmosDBTreeElement';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
+import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../../workspace-api/SharedWorkspaceStorage';
 import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountModel';
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 
-export class LocalCoreEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.newConnection';
 
@@ -24,7 +24,7 @@ export class LocalCoreEmulatorsItem implements CosmosDBTreeElement, TreeElementW
         this.id = `${parentId}/localEmulators`;
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.AttachedAccounts);
 
         const children = await this.getChildrenEmulatorOnlyImpl(allItems);
@@ -42,7 +42,7 @@ export class LocalCoreEmulatorsItem implements CosmosDBTreeElement, TreeElementW
         };
     }
 
-    protected async getChildrenEmulatorOnlyImpl(items: SharedWorkspaceStorageItem[]): Promise<CosmosDBTreeElement[]> {
+    protected async getChildrenEmulatorOnlyImpl(items: SharedWorkspaceStorageItem[]): Promise<TreeElement[]> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return Promise.resolve(
             items

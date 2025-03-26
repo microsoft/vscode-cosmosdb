@@ -5,17 +5,14 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { TriggerFileDescriptor } from '../../docdb/fs/TriggerFileDescriptor';
+import { TriggerFileDescriptor } from '../../cosmosdb/fs/TriggerFileDescriptor';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBTriggerResourceItem } from '../../tree/docdb/DocumentDBTriggerResourceItem';
+import { type CosmosDBTriggerResourceItem } from '../../tree/cosmosdb/CosmosDBTriggerResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function openDocumentDBTrigger(
-    context: IActionContext,
-    node?: DocumentDBTriggerResourceItem,
-): Promise<void> {
+export async function cosmosDBOpenTrigger(context: IActionContext, node?: CosmosDBTriggerResourceItem): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBTriggerResourceItem>(context, {
+        node = await pickAppResource<CosmosDBTriggerResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.trigger'],
         });

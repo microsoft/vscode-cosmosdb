@@ -60,7 +60,7 @@ export class ShellScriptRunner extends vscode.Disposable {
                 emulatorConfiguration.isEmulator &&
                 emulatorConfiguration.disableEmulatorSecurity
             ) {
-                // Without these the connection will fail due to the self-signed DocDB certificate
+                // Without these the connection will fail due to the self-signed Document DB certificate
                 if (args.indexOf('--tlsAllowInvalidCertificates') < 0) {
                     args.push('--tlsAllowInvalidCertificates');
                 }

@@ -6,7 +6,7 @@
 import { Link, makeStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import React, { useCallback } from 'react';
-import { useQueryEditorDispatcher } from '../QueryEditor/state/QueryEditorContext';
+import { useQueryEditorDispatcher } from '../cosmosdb/QueryEditor/state/QueryEditorContext';
 import { type BaseContextProvider } from './context/BaseContextProvider';
 
 // Error boundary component must be a class component in order to catch errors (with componentDidCatch and

@@ -3,36 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { checkAuthentication } from '../../postgres/commands/checkAuthentication';
-import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../../postgres/postgresConnectionStrings';
-import { PostgresDatabaseTreeItem } from '../../postgres/tree/PostgresDatabaseTreeItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
-import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
+import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { type ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
-
-export async function copyPostgresConnectionString(
-    context: IActionContext,
-    node?: PostgresDatabaseTreeItem,
-): Promise<void> {
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter],
-            expectedChildContextValue: PostgresDatabaseTreeItem.contextValue,
-        });
-    }
-
-    if (!node) {
-        return;
-    }
-
-    await copyConnectionString(context, node);
-}
 
 export async function copyAzureConnectionString(
     context: IActionContext,
@@ -53,43 +31,13 @@ export async function copyAzureConnectionString(
 
 export async function copyConnectionString(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | ClusterItemBase,
+    node: CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
-    let connectionString: string | undefined;
+    const connectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
+        context.telemetry.properties.experience = node.experience.api;
 
-    if (node instanceof PostgresDatabaseTreeItem) {
-        await checkAuthentication(context, node);
-        const parsedConnectionString = await node.parent.getFullConnectionString();
-        if (node.parent.azureName) {
-            const parsedCS = await node.parent.getFullConnectionString();
-            connectionString = buildPostgresConnectionString(
-                parsedCS.hostName,
-                parsedCS.port,
-                parsedCS.username,
-                parsedCS.password,
-                node.databaseName,
-            );
-        } else {
-            connectionString = addDatabaseToConnectionString(
-                parsedConnectionString.connectionString,
-                node.databaseName,
-            );
-        }
-    } else if (node instanceof CosmosDBAccountResourceItemBase || node instanceof ClusterItemBase) {
-        connectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
-            if (node instanceof CosmosDBAccountResourceItemBase) {
-                context.telemetry.properties.experience = node.experience.api;
-                return await node.getConnectionString();
-            }
-
-            if (node instanceof ClusterItemBase) {
-                context.telemetry.properties.experience = node.cluster.dbExperience?.api;
-                return node.getConnectionString();
-            }
-
-            return undefined;
-        });
-    }
+        return node.getConnectionString();
+    });
 
     if (!connectionString) {
         void vscode.window.showErrorMessage(

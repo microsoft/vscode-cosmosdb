@@ -9,12 +9,12 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 
 import * as l10n from '@vscode/l10n';
-import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { DocumentSession } from '../docdb/session/DocumentSession';
-import { QuerySession } from '../docdb/session/QuerySession';
-import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
-import { getNoSqlQueryConnection } from '../docdb/utils/NoSqlQueryConnection';
+import { getCosmosClientByConnection } from '../cosmosdb/getCosmosClient';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { DocumentSession } from '../cosmosdb/session/DocumentSession';
+import { QuerySession } from '../cosmosdb/session/QuerySession';
+import { type CosmosRecordIdentifier, type ResultViewMetadata } from '../cosmosdb/types/queryResult';
+import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -135,9 +135,9 @@ export class QueryEditorTab extends BaseTab {
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
             case 'openDocument':
-                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
+                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosRecordIdentifier);
             case 'deleteDocument':
-                return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
+                return this.deleteDocument(payload.params[0] as CosmosRecordIdentifier);
             case 'provideFeedback':
                 return this.provideFeedback();
         }
@@ -356,7 +356,7 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async openDocument(mode: string, documentId?: CosmosDbRecordIdentifier): Promise<void> {
+    private async openDocument(mode: string, documentId?: CosmosRecordIdentifier): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
         await callWithTelemetryAndErrorHandling(callbackId, () => {
             if (!this.connection) {
@@ -376,7 +376,7 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async deleteDocument(documentId: CosmosDbRecordIdentifier): Promise<void> {
+    private async deleteDocument(documentId: CosmosRecordIdentifier): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {

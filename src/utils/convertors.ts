@@ -6,7 +6,7 @@
 import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
-import { type QueryResultRecord, type SerializedQueryResult } from '../docdb/types/queryResult';
+import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey } from './document';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
 
@@ -24,8 +24,8 @@ export type TableData = {
 };
 
 /**
- * We can retrieve the document id to open it in a separate tab only if record contains CosmosDbRecordIdentifier
- * We can be 100% sure that all required fields for CosmosDbRecordIdentifier are present in the record
+ * We can retrieve the document id to open it in a separate tab only if record contains CosmosRecordIdentifier
+ * We can be 100% sure that all required fields for CosmosRecordIdentifier are present in the record
  * if query has `SELECT *` clause. So we can enable editing only in this case.
  * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
  * '*" is allowed only if the query doesn't have any subset or joins

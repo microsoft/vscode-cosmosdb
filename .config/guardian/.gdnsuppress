@@ -16,7 +16,7 @@
     "2466e7539feafb4cdaeb6d916cbb667238b67191164c1fd16d02ccf2c972dafd": {
       "signature": "2466e7539feafb4cdaeb6d916cbb667238b67191164c1fd16d02ccf2c972dafd",
       "alternativeSignatures": [],
-      "target": "src/docdb/docDBConnectionStrings.test.ts",
+      "target": "src/cosmosdb/cosmosConnectionStrings.test.ts",
       "line": 170,
       "memberOf": [
         "default"
@@ -28,7 +28,7 @@
     "16e07900fc1b08b946920c21eb65e52f681a03db1c763cac81836fe95b9e0337": {
       "signature": "16e07900fc1b08b946920c21eb65e52f681a03db1c763cac81836fe95b9e0337",
       "alternativeSignatures": [],
-      "target": "src/mongo/mongoConnectionStrings.test.ts",
+      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
       "line": 26,
       "memberOf": [
         "default"
@@ -40,7 +40,7 @@
     "cac69ae26c988f1432ead678d0948a9f500dff7799f9c9c1ce9122fefc49feea": {
       "signature": "cac69ae26c988f1432ead678d0948a9f500dff7799f9c9c1ce9122fefc49feea",
       "alternativeSignatures": [],
-      "target": "src/mongo/mongoConnectionStrings.test.ts",
+      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
       "line": 130,
       "memberOf": [
         "default"
@@ -52,7 +52,7 @@
     "f17befc53e58ad1f48c76e026a195e61550ce19abc32f0948c090bd6c212b83a": {
       "signature": "f17befc53e58ad1f48c76e026a195e61550ce19abc32f0948c090bd6c212b83a",
       "alternativeSignatures": [],
-      "target": "src/mongo/mongoConnectionStrings.test.ts",
+      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
       "line": 135,
       "memberOf": [
         "default"
@@ -64,7 +64,7 @@
     "b6b3d8e58d3b4311933b40307c4d89ff010f7505a35f02384edcb23b392db684": {
       "signature": "b6b3d8e58d3b4311933b40307c4d89ff010f7505a35f02384edcb23b392db684",
       "alternativeSignatures": [],
-      "target": "src/mongo/mongoConnectionStrings.test.ts",
+      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
       "line": 282,
       "memberOf": [
         "default"
@@ -76,7 +76,7 @@
     "eaca0c37c9c751c0da9dd09cb77a4528574f5772e311aec395dd0aeb43949c4c": {
       "signature": "eaca0c37c9c751c0da9dd09cb77a4528574f5772e311aec395dd0aeb43949c4c",
       "alternativeSignatures": [],
-      "target": "src/mongo/mongoConnectionStrings.test.ts",
+      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
       "line": 371,
       "memberOf": [
         "default"

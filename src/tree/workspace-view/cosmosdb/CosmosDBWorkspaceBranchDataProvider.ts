@@ -14,30 +14,30 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
-import { type CosmosDBResource } from '../../CosmosAccountModel';
-import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
+import { type CosmosDBAccountModel } from '../../cosmosdb/models/CosmosDBAccountModel';
+import { type TreeElement } from '../../TreeElement';
 import { isTreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { isTreeElementWithExperience } from '../../TreeElementWithExperience';
 import { CosmosDBWorkspaceItem } from './CosmosDBWorkspaceItem';
 
 export class CosmosDBWorkspaceBranchDataProvider
     extends vscode.Disposable
-    implements BranchDataProvider<CosmosDBResource, CosmosDBTreeElement>
+    implements BranchDataProvider<CosmosDBAccountModel, TreeElement>
 {
-    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<CosmosDBTreeElement | undefined>();
+    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
 
     constructor() {
         super(() => this.onDidChangeTreeDataEmitter.dispose());
     }
 
-    get onDidChangeTreeData(): vscode.Event<CosmosDBTreeElement | undefined> {
+    get onDidChangeTreeData(): vscode.Event<TreeElement | undefined> {
         return this.onDidChangeTreeDataEmitter.event;
     }
 
     /**
      * This function is called for every element in the tree when expanding, the element being expanded is being passed as an argument
      */
-    async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
+    async getChildren(element: TreeElement): Promise<TreeElement[]> {
         try {
             const result = await callWithTelemetryAndErrorHandling(
                 'CosmosDBWorkspaceBranchDataProvider.getChildren',
@@ -61,9 +61,9 @@ export class CosmosDBWorkspaceBranchDataProvider
 
                     const children = (await element.getChildren?.()) ?? [];
                     return children.map((child) => {
-                        return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                        return ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
                             this.refresh(child),
-                        ) as CosmosDBTreeElement;
+                        ) as TreeElement;
                     });
                 },
             );
@@ -74,7 +74,7 @@ export class CosmosDBWorkspaceBranchDataProvider
                 createGenericElement({
                     contextValue: 'cosmosDB.workspace.item.error',
                     label: l10n.t('Error: {0}', parseError(error).message),
-                }) as CosmosDBTreeElement,
+                }) as TreeElement,
             ];
         }
     }
@@ -82,7 +82,7 @@ export class CosmosDBWorkspaceBranchDataProvider
     /**
      * This function is being called when the resource tree is being built, it is called for every top level of resources.
      */
-    async getResourceItem(): Promise<CosmosDBTreeElement> {
+    async getResourceItem(): Promise<TreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'CosmosDBWorkspaceBranchDataProvider.getResourceItem',
             () => new CosmosDBWorkspaceItem(),
@@ -92,19 +92,19 @@ export class CosmosDBWorkspaceBranchDataProvider
             // Workspace picker relies on this value
             ext.cosmosDBWorkspaceBranchDataResource = resourceItem;
 
-            return ext.state.wrapItemInStateHandling(resourceItem, (item: CosmosDBTreeElement) =>
+            return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
                 this.refresh(item),
-            ) as CosmosDBTreeElement;
+            ) as TreeElement;
         }
 
-        return null as unknown as CosmosDBTreeElement;
+        return null as unknown as TreeElement;
     }
 
-    async getTreeItem(element: CosmosDBTreeElement): Promise<vscode.TreeItem> {
+    async getTreeItem(element: TreeElement): Promise<vscode.TreeItem> {
         return element.getTreeItem();
     }
 
-    refresh(element?: CosmosDBTreeElement): void {
+    refresh(element?: TreeElement): void {
         this.onDidChangeTreeDataEmitter.fire(element);
     }
 }

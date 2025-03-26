@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { DocumentDBItemResourceItem } from '../docdb/DocumentDBItemResourceItem';
-import { type DocumentDBItemModel } from '../docdb/models/DocumentDBItemModel';
+import { CosmosDBItemResourceItem } from '../cosmosdb/CosmosDBItemResourceItem';
+import { type CosmosDBItemModel } from '../cosmosdb/models/CosmosDBItemModel';
 
-export class NoSqlItemResourceItem extends DocumentDBItemResourceItem {
-    constructor(model: DocumentDBItemModel, experience: Experience) {
+export class NoSqlItemResourceItem extends CosmosDBItemResourceItem {
+    constructor(model: CosmosDBItemModel, experience: Experience) {
         super(model, experience);
     }
 }

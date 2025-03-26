@@ -5,7 +5,7 @@
 
 import { type Resource, type TriggerDefinition, type TriggerOperation, type TriggerType } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type AccountInfo } from '../../tree/docdb/AccountInfo';
+import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 
 export interface CreateTriggerWizardContext extends IActionContext {
     accountInfo: AccountInfo;

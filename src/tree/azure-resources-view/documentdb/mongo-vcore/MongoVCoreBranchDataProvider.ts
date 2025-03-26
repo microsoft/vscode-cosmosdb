@@ -3,38 +3,47 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type GenericResource } from '@azure/arm-resources';
 import { getResourceGroupFromId, uiUtils } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, nonNullProp, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription, type BranchDataProvider } from '@microsoft/vscode-azureresources-api';
+import {
+    type AzureResource,
+    type AzureSubscription,
+    type BranchDataProvider,
+} from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { API, MongoClustersExperience } from '../../../../AzureDBExperiences';
 import { ext } from '../../../../extensionVariables';
 import { createMongoClustersManagementClient } from '../../../../utils/azureClients';
-import { type CosmosDBResource } from '../../../CosmosAccountModel';
-import { type CosmosDBTreeElement } from '../../../CosmosDBTreeElement';
 import { type ClusterModel } from '../../../documentdb/ClusterModel';
+import { type TreeElement } from '../../../TreeElement';
 import { isTreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { MongoVCoreResourceItem } from './MongoVCoreResourceItem';
 
+export type MongoVCoreResource = AzureResource &
+    GenericResource & {
+        readonly raw: GenericResource; // Resource object from Azure SDK
+    };
+
 export class MongoVCoreBranchDataProvider
     extends vscode.Disposable
-    implements BranchDataProvider<CosmosDBResource, CosmosDBTreeElement>
+    implements BranchDataProvider<MongoVCoreResource, TreeElement>
 {
     private detailsCacheUpdateRequested = true;
     private detailsCache: Map<string, ClusterModel> = new Map<string, ClusterModel>();
     private itemsToUpdateInfo: Map<string, MongoVCoreResourceItem> = new Map<string, MongoVCoreResourceItem>();
 
-    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<CosmosDBTreeElement | undefined>();
+    private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
 
     constructor() {
         super(() => this.onDidChangeTreeDataEmitter.dispose());
     }
 
-    get onDidChangeTreeData(): vscode.Event<CosmosDBTreeElement | undefined> {
+    get onDidChangeTreeData(): vscode.Event<TreeElement | undefined> {
         return this.onDidChangeTreeDataEmitter.event;
     }
 
-    async getChildren(element: CosmosDBTreeElement): Promise<CosmosDBTreeElement[]> {
+    async getChildren(element: TreeElement): Promise<TreeElement[]> {
         /**
          * getChildren is called for every element in the tree when expanding, the element being expanded is being passed as an argument
          */
@@ -47,16 +56,16 @@ export class MongoVCoreBranchDataProvider
 
             const children = (await element.getChildren?.()) ?? [];
             return children.map((child) => {
-                return ext.state.wrapItemInStateHandling(child, (child: CosmosDBTreeElement) =>
+                return ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
                     this.refresh(child),
-                ) as CosmosDBTreeElement;
+                ) as TreeElement;
             });
         });
 
         return result ?? [];
     }
 
-    async getResourceItem(element: CosmosDBResource): Promise<CosmosDBTreeElement> {
+    async getResourceItem(element: MongoVCoreResource): Promise<TreeElement> {
         /**
          * This function is being called when the resource tree is being built, it is called for every resource element in the tree.
          */
@@ -111,12 +120,12 @@ export class MongoVCoreBranchDataProvider
         );
 
         if (resourceItem) {
-            return ext.state.wrapItemInStateHandling(resourceItem, (item: CosmosDBTreeElement) =>
+            return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
                 this.refresh(item),
-            ) as CosmosDBTreeElement;
+            ) as TreeElement;
         }
 
-        return null as unknown as CosmosDBTreeElement;
+        return null as unknown as TreeElement;
     }
 
     async updateResourceCache(
@@ -183,11 +192,11 @@ export class MongoVCoreBranchDataProvider
 
     // onDidChangeTreeData?: vscode.Event<void | TreeElementBase | TreeElementBase[] | null | undefined> | undefined;
 
-    async getTreeItem(element: CosmosDBTreeElement): Promise<vscode.TreeItem> {
+    async getTreeItem(element: TreeElement): Promise<vscode.TreeItem> {
         return element.getTreeItem();
     }
 
-    refresh(element?: CosmosDBTreeElement): void {
+    refresh(element?: TreeElement): void {
         this.onDidChangeTreeDataEmitter.fire(element);
     }
 }

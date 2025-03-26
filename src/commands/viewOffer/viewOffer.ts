@@ -5,15 +5,15 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
-import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBDatabaseResourceItem } from '../../tree/docdb/DocumentDBDatabaseResourceItem';
+import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import * as vscodeUtil from '../../utils/vscodeUtils';
 
-export async function viewDocumentDBDatabaseOffer(context: IActionContext, node?: DocumentDBDatabaseResourceItem) {
+export async function cosmosDBViewDatabaseOffer(context: IActionContext, node?: CosmosDBDatabaseResourceItem) {
     if (!node) {
-        node = await pickAppResource<DocumentDBDatabaseResourceItem>(context, {
+        node = await pickAppResource<CosmosDBDatabaseResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: 'treeItem.database',
         });
@@ -34,9 +34,9 @@ export async function viewDocumentDBDatabaseOffer(context: IActionContext, node?
     await vscodeUtil.showNewFile(JSON.stringify(offer.resource, undefined, 2), `offer of ${databaseId}`, '.json');
 }
 
-export async function viewDocumentDBContainerOffer(context: IActionContext, node?: DocumentDBContainerResourceItem) {
+export async function cosmosDBViewContainerOffer(context: IActionContext, node?: CosmosDBContainerResourceItem) {
     if (!node) {
-        node = await pickAppResource<DocumentDBContainerResourceItem>(context, {
+        node = await pickAppResource<CosmosDBContainerResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: 'treeItem.container',
         });

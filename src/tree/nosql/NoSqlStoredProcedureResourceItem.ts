@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { DocumentDBStoredProcedureResourceItem } from '../docdb/DocumentDBStoredProcedureResourceItem';
-import { type DocumentDBStoredProcedureModel } from '../docdb/models/DocumentDBStoredProcedureModel';
+import { CosmosDBStoredProcedureResourceItem } from '../cosmosdb/CosmosDBStoredProcedureResourceItem';
+import { type CosmosDBStoredProcedureModel } from '../cosmosdb/models/CosmosDBStoredProcedureModel';
 
-export class NoSqlStoredProcedureResourceItem extends DocumentDBStoredProcedureResourceItem {
-    constructor(model: DocumentDBStoredProcedureModel, experience: Experience) {
+export class NoSqlStoredProcedureResourceItem extends CosmosDBStoredProcedureResourceItem {
+    constructor(model: CosmosDBStoredProcedureModel, experience: Experience) {
         super(model, experience);
     }
 }

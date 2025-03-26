@@ -8,12 +8,12 @@ import { type ResourceBase } from '@microsoft/vscode-azureresources-api';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
+import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 
 export abstract class CosmosDBAccountResourceItemBase
-    implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue
+    implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.account';
@@ -30,7 +30,7 @@ export abstract class CosmosDBAccountResourceItemBase
      * Returns the children of the cluster.
      * @returns The children of the cluster.
      */
-    getChildren(): Promise<CosmosDBTreeElement[]> {
+    getChildren(): Promise<TreeElement[]> {
         return Promise.resolve([]);
     }
 

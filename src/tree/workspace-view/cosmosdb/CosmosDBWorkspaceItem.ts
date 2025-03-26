@@ -9,10 +9,10 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { ext } from '../../../extensionVariables';
-import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
 import { GraphAccountAttachedResourceItem } from '../../graph/GraphAccountAttachedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../../nosql/NoSqlAccountAttachedResourceItem';
 import { TableAccountAttachedResourceItem } from '../../table/TableAccountAttachedResourceItem';
+import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { type PersistedAccount } from '../../v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
@@ -21,7 +21,7 @@ import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResour
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';
 
-export class CosmosDBWorkspaceItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string = WorkspaceResourceType.AttachedAccounts;
     public readonly contextValue: string = 'treeItem.accounts';
 
@@ -29,7 +29,7 @@ export class CosmosDBWorkspaceItem implements CosmosDBTreeElement, TreeElementWi
         this.contextValue = createContextValue([this.contextValue, `attachedAccounts`]);
     }
 
-    public async getChildren(): Promise<CosmosDBTreeElement[]> {
+    public async getChildren(): Promise<TreeElement[]> {
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
@@ -53,7 +53,7 @@ export class CosmosDBWorkspaceItem implements CosmosDBTreeElement, TreeElementWi
         };
     }
 
-    protected async getChildrenNoEmulatorsImpl(items: SharedWorkspaceStorageItem[]): Promise<CosmosDBTreeElement[]> {
+    protected async getChildrenNoEmulatorsImpl(items: SharedWorkspaceStorageItem[]): Promise<TreeElement[]> {
         return Promise.resolve(
             items
                 .filter((item) => item.properties?.isEmulator !== true)

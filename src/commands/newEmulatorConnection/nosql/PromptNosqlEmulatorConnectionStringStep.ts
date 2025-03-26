@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { parseDocDBConnectionString } from '../../../docdb/docDBConnectionStrings';
+import { parseCosmosConnectionString } from '../../../cosmosdb/cosmosConnectionStrings';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -32,7 +32,7 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
     //eslint-disable-next-line @typescript-eslint/require-await
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
-            parseDocDBConnectionString(connectionString);
+            parseCosmosConnectionString(connectionString);
         } catch (error) {
             if (error instanceof Error) {
                 return error.message;
@@ -62,7 +62,7 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
 
 function extractPortFromConnectionString(connectionString: string): number | undefined {
     try {
-        const parsedConnectionString = parseDocDBConnectionString(connectionString);
+        const parsedConnectionString = parseCosmosConnectionString(connectionString);
         if (!parsedConnectionString.port) {
             return undefined;
         }

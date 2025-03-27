@@ -117,11 +117,11 @@ function processDomainInfo(hosts: string[], result: ClusterMetadata): void {
             const hostWithoutPort = extractDomainFromHost(host);
             if (hasAzureDomain(hostWithoutPort)) {
                 // For Azure domains, record that fact and identify the API when applicable.
-                result['domainInfo_isAzure' + telemetrySuffix] = 'true';
+                result[`domainInfo_isAzure${telemetrySuffix}`] = 'true';
                 if (hasDomainSuffix(AzureDomains.RU, hostWithoutPort)) {
-                    result['domainInfo_api' + telemetrySuffix] = 'RU';
+                    result[`domainInfo_api${telemetrySuffix}`] = 'RU';
                 } else if (hasDomainSuffix(AzureDomains.vCore, hostWithoutPort)) {
-                    result['domainInfo_api' + telemetrySuffix] = 'vCore';
+                    result[`domainInfo_api${telemetrySuffix}`] = 'vCore';
                 } else {
                     // For other Azure domains, produce hash values for diagnostics.
                     domainStatistics = true;
@@ -129,14 +129,14 @@ function processDomainInfo(hosts: string[], result: ClusterMetadata): void {
             } else {
                 // For non-Azure domains, do not log the full host.
                 // Instead, capture aggregated statistics by analyzing only the most significant 3 segments.
-                result['domainInfo_isAzure' + telemetrySuffix] = 'false';
+                result[`domainInfo_isAzure${telemetrySuffix}`] = 'false';
                 // For non-Azure domains, produce hash values for diagnostics.
                 domainStatistics = true;
             }
 
             if (domainStatistics) {
                 const domainParts = hostWithoutPort.split('.'); // e.g., ['private', 'acluster', 'server', 'tld']
-                result['domainInfo_levels' + telemetrySuffix] = domainParts.length.toString(); // Store the full domain for reference
+                result[`domainInfo_levels${telemetrySuffix}`] = domainParts.length.toString(); // Store the full domain for reference
 
                 // Only consider the last three segments.
                 const levelsToProcess = Math.min(3, domainParts.length);

@@ -82,7 +82,7 @@ export class DocumentContextProvider extends BaseContextProvider {
                 this.dispatch({ type: 'setSaving', isSaving: false });
 
                 if (documentContent === undefined) {
-                    this.dispatch({ type: 'setError', error: l10n.t('Document content is undefined') });
+                    this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
                     return;
                 }
 

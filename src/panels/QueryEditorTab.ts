@@ -368,7 +368,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             if (!documentId && mode !== 'add') {
-                throw new Error(l10n.t('Impossible to open a document without an id'));
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
             if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
@@ -388,7 +388,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             if (!documentId) {
-                throw new Error(l10n.t('Impossible to open a document without an id'));
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
             const session = new DocumentSession(this.connection, this.channel);

@@ -433,7 +433,7 @@ const CopyToClipboardButton = forwardRef(
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipClipboardContent = hasSelection
-            ? l10n.t('Copy selected documents to clipboard')
+            ? l10n.t('Copy selected items to clipboard')
             : l10n.t('Copy all results from the current page to clipboard');
 
         async function onSaveToClipboardAsCSV() {
@@ -504,7 +504,7 @@ const ExportButton = forwardRef(
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipExportContent = hasSelection
-            ? l10n.t('Export selected documents')
+            ? l10n.t('Export selected items')
             : l10n.t('Export all results from the current page');
 
         async function onSaveAsCSV() {

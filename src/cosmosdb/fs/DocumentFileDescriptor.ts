@@ -49,7 +49,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
         }
 
         if (!newData['id'] || typeof newData['id'] !== 'string') {
-            throw new Error(l10n.t('The "id" field is required to update a item'));
+            throw new Error(l10n.t('The "id" field is required to update an item'));
         }
 
         // TODO: Does it matter to keep the same fields in the document? Why user can't change them?
@@ -60,7 +60,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
 
         // TODO: Does it make sense now? This check was created 4 years ago
         if (!newData['_etag'] || typeof newData['_etag'] !== 'string') {
-            throw new Error(l10n.t('The "_etag" field is required to update a document'));
+            throw new Error(l10n.t('The "_etag" field is required to update an item'));
         }
 
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;

@@ -24,22 +24,20 @@ import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-a
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { findTreeItem } from './commands/api/findTreeItem';
-import { pickTreeItem } from './commands/api/pickTreeItem';
-import { revealTreeItem } from './commands/api/revealTreeItem';
 import { registerCommands } from './commands/registerCommands';
+import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
+import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
-import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
-import { DatabaseResolver } from './resolver/AppResolver';
-import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
-import { CosmosDBBranchDataProvider } from './tree/CosmosDBBranchDataProvider';
-import { CosmosDBWorkspaceBranchDataProvider } from './tree/CosmosDBWorkspaceBranchDataProvider';
+import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { DatabaseResolver } from './tree/v1-legacy-api/resolver/AppResolver';
+import { DatabaseWorkspaceProvider } from './tree/v1-legacy-api/resolver/DatabaseWorkspaceProvider';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
+import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 
 export async function activateInternal(
     context: vscode.ExtensionContext,
@@ -65,7 +63,8 @@ export async function activateInternal(
 
         ext.secretStorage = context.secrets;
 
-        ext.rgApi = await getResourceGroupsApi();
+        // Early initialization to determine whether Managed Identity is available for authentication
+        void getIsRunningOnAzure();
 
         // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
         // and is used to work with the tree view structure, as an improved alternative to the
@@ -86,6 +85,9 @@ export async function activateInternal(
             ext.cosmosDBWorkspaceBranchDataProvider,
         );
 
+        // V1 Legacy API for Postgres support: begin
+        ext.rgApi = await getResourceGroupsApi();
+
         ext.rgApi.registerApplicationResourceResolver(
             AzExtResourceType.PostgresqlServersStandard,
             new DatabaseResolver(),
@@ -100,6 +102,7 @@ export async function activateInternal(
         )._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
         ext.rgApi.registerWorkspaceResourceProvider('AttachedDatabaseAccount', databaseWorkspaceProvider);
+        // V1 Legacy API for Postgres support: end
 
         ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
 
@@ -107,10 +110,10 @@ export async function activateInternal(
         // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
         // registerCommandsCompatibility();
 
-        // init and activate mongoClusters-support (branch data provider, commands, ...)
-        const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
-        context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
-        await mongoClustersSupport.activate();
+        // init and activate mongodb RU and vCore support (branch data provider, commands, ...)
+        const clustersSupport: ClustersExtension = new ClustersExtension();
+        context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
+        await clustersSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -133,11 +136,13 @@ export async function activateInternal(
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
 
+    // TODO: we still don't know for sure if this is needed
+    //  If it is, we need to implement the logic to get the correct API version
     return createApiProvider([
         <AzureExtensionApi>{
-            findTreeItem,
-            pickTreeItem,
-            revealTreeItem,
+            findTreeItem: () => undefined,
+            pickTreeItem: () => undefined,
+            revealTreeItem: () => undefined,
             apiVersion: '1.2.0',
         },
     ]);

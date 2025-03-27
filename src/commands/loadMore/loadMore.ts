@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
 
-export async function documentDBLoadMore(
+export async function cosmosDBLoadMore(
     context: IActionContext,
     nodeId: string,
     loadMoreFn: (context: IActionContext) => Promise<void> | undefined,

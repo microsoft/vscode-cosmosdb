@@ -7,19 +7,19 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItemResourceItem';
+import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { extractPartitionKey } from '../../utils/document';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function deleteDocumentDBItem(context: IActionContext, node: DocumentDBItemResourceItem): Promise<void> {
+export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDBItemResourceItem): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
     if (!node) {
-        node = await pickAppResource<DocumentDBItemResourceItem>(context, {
+        node = await pickAppResource<CosmosDBItemResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.item'],
         });

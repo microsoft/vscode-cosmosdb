@@ -5,17 +5,17 @@
 
 import { type ItemDefinition } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBItemsResourceItem } from '../docdb/DocumentDBItemsResourceItem';
-import { type DocumentDBItemsModel } from '../docdb/models/DocumentDBItemsModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBItemsResourceItem } from '../cosmosdb/CosmosDBItemsResourceItem';
+import { type CosmosDBItemsModel } from '../cosmosdb/models/CosmosDBItemsModel';
 import { NoSqlItemResourceItem } from './NoSqlItemResourceItem';
 
-export class NoSqlItemsResourceItem extends DocumentDBItemsResourceItem {
-    constructor(model: DocumentDBItemsModel, experience: Experience) {
+export class NoSqlItemsResourceItem extends CosmosDBItemsResourceItem {
+    constructor(model: CosmosDBItemsModel, experience: Experience) {
         super(model, experience);
     }
 
-    protected getChildrenImpl(items: ItemDefinition[]): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(items: ItemDefinition[]): Promise<TreeElement[]> {
         return Promise.resolve(
             items.map((item) => new NoSqlItemResourceItem({ ...this.model, item }, this.experience)),
         );

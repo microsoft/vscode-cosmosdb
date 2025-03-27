@@ -10,62 +10,24 @@ import {
     DeleteConfirmationStep,
     type IActionContext,
     type ISubscriptionContext,
-    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import {
-    cosmosGremlinFilter,
-    cosmosMongoFilter,
-    cosmosTableFilter,
-    postgresFlexibleFilter,
-    postgresSingleFilter,
-    sqlFilter,
-} from '../../constants';
-import { ext } from '../../extensionVariables';
-import { type MongoClusterItemBase } from '../../mongoClusters/tree/MongoClusterItemBase';
-import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { CosmosDBAccountResourceItemBase } from '../../tree/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
+import { type ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { createActivityContextV2 } from '../../utils/activityUtils';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { DatabaseAccountDeleteStep } from './DatabaseAccountDeleteStep';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 
-export async function deletePostgresServer(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
-    const suppressCreateContext: ITreeItemPickerContext = context;
-    suppressCreateContext.suppressCreatePick = true;
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter],
-        });
-    }
-
-    if (!node) {
-        return undefined;
-    }
-
-    await deleteDatabaseAccount(context, node);
-}
-
-export async function deleteAccount(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
-    const suppressCreateContext: ITreeItemPickerContext = context;
-    suppressCreateContext.suppressCreatePick = true;
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
-            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
-        });
-    }
-
-    await deleteDatabaseAccount(context, node);
-}
-
 export async function deleteAzureDatabaseAccount(
     context: IActionContext,
-    node?: CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+    node?: CosmosDBAccountResourceItemBase | ClusterItemBase,
 ) {
     if (!node) {
-        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoClusterResourceItem>(context, {
+        node = await pickAppResource<CosmosDBAccountResourceItemBase | MongoVCoreResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
         });
     }
@@ -79,7 +41,7 @@ export async function deleteAzureDatabaseAccount(
 
 export async function deleteDatabaseAccount(
     context: IActionContext,
-    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | MongoClusterItemBase,
+    node: AzExtTreeItem | CosmosDBAccountResourceItemBase | ClusterItemBase,
 ): Promise<void> {
     let subscription: ISubscriptionContext;
     let accountName: string;
@@ -92,11 +54,11 @@ export async function deleteDatabaseAccount(
     } else if (node instanceof CosmosDBAccountResourceItemBase && 'subscription' in node.account) {
         subscription = createSubscriptionContext(node.account.subscription as AzureSubscription);
         accountName = node.account.name;
-    } else if (node instanceof MongoClusterResourceItem) {
+    } else if (node instanceof MongoVCoreResourceItem) {
         subscription = createSubscriptionContext(node.subscription);
-        accountName = node.mongoCluster.name;
+        accountName = node.cluster.name;
     } else {
-        // Not all CosmosAccountResourceItemBase instances have a subscription property (attached account does not),
+        // Not all CosmosDBAccountResourceItemBase instances have a subscription property (attached account does not),
         // so we need to create a subscription context
         throw new Error(l10n.t('Subscription is required to delete an account.'));
     }

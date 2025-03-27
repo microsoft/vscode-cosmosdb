@@ -5,12 +5,9 @@
 
 import { AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
-import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
+import { type TreeElement } from '../../tree/TreeElement';
 
-export async function refreshTreeElement(
-    context: IActionContext,
-    node: AzExtTreeItem | CosmosDBTreeElement,
-): Promise<void> {
+export async function refreshTreeElement(context: IActionContext, node: AzExtTreeItem | TreeElement): Promise<void> {
     if (node instanceof AzExtTreeItem) {
         return node.refresh(context);
     }
@@ -21,11 +18,11 @@ export async function refreshTreeElement(
     }
 
     if (node && 'contextValue' in node && typeof node.contextValue === 'string') {
-        if (/experience[.](mongocluster|mongodb)/i.test(node.contextValue)) {
-            return ext.mongoClustersBranchDataProvider.refresh(node);
+        if (/experience[.](mongocluster)/i.test(node.contextValue)) {
+            return ext.mongoVCoreBranchDataProvider.refresh(node);
         }
 
-        if (/experience[.](table|cassandra|core|graph)/i.test(node.contextValue)) {
+        if (/experience[.](table|cassandra|core|graph|mongodb)/i.test(node.contextValue)) {
             return ext.cosmosDBBranchDataProvider.refresh(node);
         }
     }

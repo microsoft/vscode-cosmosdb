@@ -5,7 +5,6 @@
 
 import {
     AzExtTreeFileSystem,
-    AzExtTreeItem,
     DialogResponses,
     UserCancelledError,
     type AzExtTreeFileSystemItem,
@@ -18,15 +17,6 @@ import { ext } from './extensionVariables';
 import { SettingsService } from './services/SettingsService';
 import { getNodeEditorLabel } from './utils/vscodeUtils';
 
-export interface IEditableTreeItem extends AzExtTreeItem {
-    id: string;
-    filePath: string;
-    cTime: number;
-    mTime: number;
-    getFileContent(context: IActionContext): Promise<string>;
-    writeFileContent(context: IActionContext, data: string): Promise<void>;
-}
-
 export interface EditableFileSystemItem extends AzExtTreeFileSystemItem {
     id: string;
     filePath: string;
@@ -36,26 +26,23 @@ export interface EditableFileSystemItem extends AzExtTreeFileSystemItem {
     writeFileContent(context: IActionContext, data: string): Promise<void>;
 }
 
-export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem | EditableFileSystemItem> {
+export class DatabasesFileSystem extends AzExtTreeFileSystem<EditableFileSystemItem> {
     public static scheme: string = 'azureDatabases';
     public scheme: string = DatabasesFileSystem.scheme;
     private _showSaveConfirmation: boolean = true;
 
-    public async statImpl(
-        context: IActionContext,
-        node: IEditableTreeItem | EditableFileSystemItem,
-    ): Promise<vscode.FileStat> {
+    public async statImpl(context: IActionContext, node: EditableFileSystemItem): Promise<vscode.FileStat> {
         const size: number = Buffer.byteLength(await node.getFileContent(context));
         return { type: vscode.FileType.File, ctime: node.cTime, mtime: node.mTime, size };
     }
 
-    public async readFileImpl(context: IActionContext, node: IEditableTreeItem): Promise<Uint8Array> {
+    public async readFileImpl(context: IActionContext, node: EditableFileSystemItem): Promise<Uint8Array> {
         return Buffer.from(await node.getFileContent(context));
     }
 
     public async writeFileImpl(
         context: IActionContext,
-        node: IEditableTreeItem | EditableFileSystemItem,
+        node: EditableFileSystemItem,
         content: Uint8Array,
         _originalUri: vscode.Uri,
     ): Promise<void> {
@@ -83,18 +70,15 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
         }
 
         await node.writeFileContent(context, content.toString());
-        if (node instanceof AzExtTreeItem) {
-            await node.refresh(context);
-        } else {
-            this.fireChangedEvent(node);
-            await vscode.commands.executeCommand('azureDatabases.refresh', node);
-        }
+
+        this.fireChangedEvent(node);
+        await vscode.commands.executeCommand('azureDatabases.refresh', node);
 
         const updatedMessage: string = l10n.t('Updated entity "{name}".', { name: nodeEditorLabel });
         ext.outputChannel.appendLog(updatedMessage);
     }
 
-    public getFilePath(node: IEditableTreeItem | EditableFileSystemItem): string {
+    public getFilePath(node: EditableFileSystemItem): string {
         return node.filePath;
     }
 
@@ -108,7 +92,7 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<IEditableTreeItem |
         }
     }
 
-    public fireChangedEvent(node: IEditableTreeItem | EditableFileSystemItem): void {
+    public fireChangedEvent(node: EditableFileSystemItem): void {
         node.mTime = Date.now();
         this.fireSoon({ type: FileChangeType.Changed, item: node });
     }

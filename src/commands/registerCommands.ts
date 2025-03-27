@@ -10,36 +10,35 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
-import { registerDocDBCommands } from '../docdb/registerDocDBCommands';
+import { registerCosmosDBCommands } from '../cosmosdb/registerCosmosDBCommands';
 import { ext } from '../extensionVariables';
-import { registerMongoCommands } from '../mongo/registerMongoCommands';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
-import { createDocumentDBContainer, createGraph } from './createContainer/createContainer';
+import { cosmosDBCreateContainer, cosmosDBCreateGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
-import { createDocumentDBDocument } from './createDocument/createDocument';
+import { cosmosDBCreateDocument } from './createDocument/createDocument';
 import { createServer } from './createServer/createServer';
-import { createDocumentDBStoredProcedure } from './createStoredProcedure/createStoredProcedure';
-import { createDocumentDBTrigger } from './createTrigger/createTrigger';
-import { deleteAzureContainer, deleteGraph } from './deleteContainer/deleteContainer';
+import { cosmosDBCreateStoredProcedure } from './createStoredProcedure/createStoredProcedure';
+import { cosmosDBCreateTrigger } from './createTrigger/createTrigger';
+import { cosmosDBDeleteGraph, deleteAzureContainer } from './deleteContainer/deleteContainer';
 import { deleteAzureDatabase } from './deleteDatabase/deleteDatabase';
 import { deleteAzureDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
-import { deleteDocumentDBItem } from './deleteItems/deleteItems';
-import { deleteDocumentDBStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
-import { deleteDocumentDBTrigger } from './deleteTrigger/deleteTrigger';
-import { executeDocumentDBStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
+import { cosmosDBDeleteItem } from './deleteItems/deleteItems';
+import { cosmosDBDeleteStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
+import { cosmosDBDeleteTrigger } from './deleteTrigger/deleteTrigger';
+import { cosmosDBExecuteStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
 import { importDocuments } from './importDocuments/importDocuments';
-import { documentDBLoadMore } from './loadMore/loadMore';
+import { cosmosDBLoadMore } from './loadMore/loadMore';
 import { newConnection } from './newConnection/newConnection';
 import { newEmulatorConnection } from './newEmulatorConnection/newEmulatorConnection';
-import { openDocumentDBItem } from './openDocument/openDocument';
-import { openGraphExplorer } from './openGraphExplorer/openGraphExplorer';
+import { cosmosDBOpenItem } from './openDocument/openDocument';
+import { cosmosDBOpenGraphExplorer } from './openGraphExplorer/cosmosDBOpenGraphExplorer';
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
-import { openDocumentDBStoredProcedure } from './openStoredProcedure/openStoredProcedure';
-import { openDocumentDBTrigger } from './openTrigger/openTrigger';
+import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredProcedure';
+import { cosmosDBOpenTrigger } from './openTrigger/openTrigger';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { removeConnection } from './removeConnection/removeConnection';
-import { viewDocumentDBContainerOffer, viewDocumentDBDatabaseOffer } from './viewOffer/viewOffer';
+import { cosmosDBViewContainerOffer, cosmosDBViewDatabaseOffer } from './viewOffer/viewOffer';
 
 /**
  * DISCLAIMER:
@@ -60,14 +59,13 @@ export function registerCommands(): void {
     registerStoredProcedureCommands();
     registerTriggerCommands();
 
-    // Scrapbooks and old commands
-    registerDocDBCommands();
-    registerMongoCommands();
+    // old commands
+    registerCosmosDBCommands();
     registerPostgresCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 
-    // For DocumentDB FileSystem (Scrapbook)
+    // For Cosmos DB FileSystem (Scrapbook)
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
         async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
@@ -84,41 +82,41 @@ export function registerAccountCommands() {
 }
 
 export function registerDatabaseCommands() {
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', createGraph);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBContainer', createDocumentDBContainer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createGraph', cosmosDBCreateGraph);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createContainer', cosmosDBCreateContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDatabase', deleteAzureDatabase);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBDatabaseOffer', viewDocumentDBDatabaseOffer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDatabaseOffer', cosmosDBViewDatabaseOffer);
 }
 
 export function registerContainerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', importDocuments);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', deleteGraph);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBContainer', deleteAzureContainer);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewDocDBContainerOffer', viewDocumentDBContainerOffer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', cosmosDBDeleteGraph);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteContainer', deleteAzureContainer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.viewContainerOffer', cosmosDBViewContainerOffer);
 }
 
 export function registerDocumentCommands() {
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBDocument', createDocumentDBDocument);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', openGraphExplorer);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', openDocumentDBItem, doubleClickDebounceDelay);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBDocument', deleteDocumentDBItem);
-    registerCommand('cosmosDB.loadMore', documentDBLoadMore);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocument', cosmosDBCreateDocument);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', cosmosDBOpenGraphExplorer);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', cosmosDBOpenItem, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocument', cosmosDBDeleteItem);
+    registerCommand('cosmosDB.loadMore', cosmosDBLoadMore);
 }
 
 export function registerStoredProcedureCommands() {
     registerCommandWithTreeNodeUnwrapping(
         'cosmosDB.openStoredProcedure',
-        openDocumentDBStoredProcedure,
+        cosmosDBOpenStoredProcedure,
         doubleClickDebounceDelay,
     );
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBStoredProcedure', createDocumentDBStoredProcedure);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeDocDBStoredProcedure', executeDocumentDBStoredProcedure);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBStoredProcedure', deleteDocumentDBStoredProcedure);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createStoredProcedure', cosmosDBCreateStoredProcedure);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.executeStoredProcedure', cosmosDBExecuteStoredProcedure);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteStoredProcedure', cosmosDBDeleteStoredProcedure);
 }
 
 export function registerTriggerCommands() {
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocDBTrigger', createDocumentDBTrigger);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', openDocumentDBTrigger, doubleClickDebounceDelay);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocDBTrigger', deleteDocumentDBTrigger);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createTrigger', cosmosDBCreateTrigger);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', cosmosDBOpenTrigger, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
 }

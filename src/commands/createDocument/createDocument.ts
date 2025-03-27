@@ -6,19 +6,19 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { createNoSqlQueryConnection } from '../../docdb/utils/NoSqlQueryConnection';
-import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
+import { createNoSqlQueryConnection } from '../../cosmosdb/utils/NoSqlQueryConnection';
 import { DocumentTab } from '../../panels/DocumentTab';
-import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
+import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
+import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function createDocumentDBDocument(
+export async function cosmosDBCreateDocument(
     context: IActionContext,
-    node?: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
+    node?: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBContainerResourceItem>(context, {
+        node = await pickAppResource<CosmosDBContainerResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.container'],
         });
@@ -32,7 +32,7 @@ export async function createDocumentDBDocument(
 }
 
 export async function createMongoDocument(context: IActionContext, node?: CollectionItem): Promise<void> {
-    context.telemetry.properties.experience = node?.mongoCluster.dbExperience.api;
+    context.telemetry.properties.experience = node?.experience.api;
 
     if (!node) {
         node = await pickAppResource<CollectionItem>(context, {
@@ -46,7 +46,7 @@ export async function createMongoDocument(context: IActionContext, node?: Collec
     }
 
     await vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
-        clusterId: node.mongoCluster.id,
+        clusterId: node.cluster.id,
         databaseName: node.databaseInfo.name,
         collectionName: node.collectionInfo.name,
         mode: 'add',

@@ -10,16 +10,16 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
-import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
+import { type TreeElement } from '../TreeElement';
+import { CosmosDBAccountAttachedResourceItem } from '../cosmosdb/CosmosDBAccountAttachedResourceItem';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 
-export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
+export class TableAccountAttachedResourceItem extends CosmosDBAccountAttachedResourceItem {
     constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
     }
 
-    public async getChildren(): Promise<CosmosDBTreeElement[]> {
+    public async getChildren(): Promise<TreeElement[]> {
         const result = await callWithTelemetryAndErrorHandling('getChildren', (context: IActionContext) => {
             context.telemetry.properties.experience = this.experience.api;
             context.telemetry.properties.parentContext = this.contextValue;
@@ -29,14 +29,14 @@ export class TableAccountAttachedResourceItem extends DocumentDBAccountAttachedR
                     contextValue: `${this.contextValue}/notSupported`,
                     label: l10n.t('Table Accounts are not supported yet.'),
                     id: `${this.id}/notSupported`,
-                }) as CosmosDBTreeElement,
+                }) as TreeElement,
             ]);
         });
 
         return result ?? [];
     }
 
-    protected getChildrenImpl(): Promise<CosmosDBTreeElement[]> {
+    protected getChildrenImpl(): Promise<TreeElement[]> {
         throw new Error(l10n.t('Method not implemented.'));
     }
 }

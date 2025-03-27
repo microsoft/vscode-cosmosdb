@@ -56,7 +56,7 @@
     "pretest": "npm run build",
     "test": "vscode-test",
     "jesttest": "jest",
-    "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o ./src/mongo/grammar",
+    "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o src/documentdb/grammar",
     "webpack-dev": "rimraf ./dist && npm run webpack-dev-ext && npm run webpack-dev-wv",
     "webpack-prod": "rimraf ./dist && npm run webpack-prod-ext && npm run webpack-prod-wv",
     "webpack-dev-ext": "webpack --mode development --config ./webpack.config.ext.js",
@@ -140,6 +140,7 @@
     "@azure/arm-postgresql-flexible": "^8.0.0",
     "@azure/arm-resources": "^6.0.0",
     "@azure/cosmos": "^4.2.0",
+    "@azure/identity": "^4.6.0",
     "@fluentui/react-components": "^9.60.0",
     "@fluentui/react-icons": "^2.0.279",
     "@microsoft/vscode-azext-azureauth": "^4.1.1",
@@ -338,12 +339,12 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.createDocDBContainer",
+        "command": "cosmosDB.createContainer",
         "title": "%cosmosdb.command.container.create%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.deleteDocDBContainer",
+        "command": "cosmosDB.deleteContainer",
         "title": "%cosmosdb.command.container.delete%"
       },
       {
@@ -353,7 +354,7 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.createDocDBDocument",
+        "command": "cosmosDB.createDocument",
         "title": "%cosmosdb.command.item.create%"
       },
       {
@@ -363,12 +364,12 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.deleteDocDBDocument",
+        "command": "cosmosDB.deleteDocument",
         "title": "%cosmosdb.command.item.delete%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.createDocDBStoredProcedure",
+        "command": "cosmosDB.createStoredProcedure",
         "title": "%cosmosdb.command.stored_procedure.create%"
       },
       {
@@ -378,17 +379,17 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.executeDocDBStoredProcedure",
+        "command": "cosmosDB.executeStoredProcedure",
         "title": "%cosmosdb.command.stored_procedure.execute%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.deleteDocDBStoredProcedure",
+        "command": "cosmosDB.deleteStoredProcedure",
         "title": "%cosmosdb.command.stored_procedure.delete%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.createDocDBTrigger",
+        "command": "cosmosDB.createTrigger",
         "title": "%cosmosdb.command.trigger.create%"
       },
       {
@@ -398,17 +399,17 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.deleteDocDBTrigger",
+        "command": "cosmosDB.deleteTrigger",
         "title": "%cosmosdb.command.trigger.delete%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.viewDocDBContainerOffer",
+        "command": "cosmosDB.viewContainerOffer",
         "title": "%cosmosdb.command.offer.container.view%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.viewDocDBDatabaseOffer",
+        "command": "cosmosDB.viewDatabaseOffer",
         "title": "%cosmosdb.command.offer.database.view%"
       },
       {
@@ -868,7 +869,7 @@
         },
         {
           "//": "[Database] Create NoSql container",
-          "command": "cosmosDB.createDocDBContainer",
+          "command": "cosmosDB.createContainer",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
           "group": "1@1"
         },
@@ -892,7 +893,7 @@
         },
         {
           "//": "[Database] View NoSql database offer",
-          "command": "cosmosDB.viewDocDBDatabaseOffer",
+          "command": "cosmosDB.viewDatabaseOffer",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
           "group": "1@3"
         },
@@ -934,13 +935,13 @@
         },
         {
           "//": "[Container] Delete NoSql container",
-          "command": "cosmosDB.deleteDocDBContainer",
+          "command": "cosmosDB.deleteContainer",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
           "group": "1@3"
         },
         {
           "//": "[Container] View NoSql container offer",
-          "command": "cosmosDB.viewDocDBContainerOffer",
+          "command": "cosmosDB.viewContainerOffer",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
           "group": "1@4"
         },
@@ -1006,7 +1007,7 @@
         },
         {
           "//": "[Stored Procedures] Create Stored Procedure",
-          "command": "cosmosDB.createDocDBStoredProcedure",
+          "command": "cosmosDB.createStoredProcedure",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
@@ -1018,19 +1019,19 @@
         },
         {
           "//": "[Stored Procedure] Execute",
-          "command": "cosmosDB.executeDocDBStoredProcedure",
+          "command": "cosmosDB.executeStoredProcedure",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
         {
           "//": "[Stored Procedure] Delete",
-          "command": "cosmosDB.deleteDocDBStoredProcedure",
+          "command": "cosmosDB.deleteStoredProcedure",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@2"
         },
         {
           "//": "[Triggers] Create Trigger",
-          "command": "cosmosDB.createDocDBTrigger",
+          "command": "cosmosDB.createTrigger",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
@@ -1042,7 +1043,7 @@
         },
         {
           "//": "[Trigger] Delete",
-          "command": "cosmosDB.deleteDocDBTrigger",
+          "command": "cosmosDB.deleteTrigger",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]trigger(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
@@ -1054,7 +1055,7 @@
         },
         {
           "//": "[Documents] Create NoSql Document",
-          "command": "cosmosDB.createDocDBDocument",
+          "command": "cosmosDB.createDocument",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@2"
         },
@@ -1066,7 +1067,7 @@
         },
         {
           "//": "[Document] Delete",
-          "command": "cosmosDB.deleteDocDBDocument",
+          "command": "cosmosDB.deleteDocument",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
@@ -1144,103 +1145,141 @@
         "when": "editorLangId == 'mongo' && editorTextFocus"
       }
     ],
-    "configuration": {
-      "title": "Azure Databases",
-      "properties": {
-        "mongo.shell.path": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "%cosmosdb.configuration.mongo.shell.path%",
-          "default": null
-        },
-        "mongo.shell.args": {
-          "type": "array",
-          "items": {
-            "type": "string"
+    "configuration": [
+      {
+        "title": "Authentication",
+        "properties": {
+          "azureDatabases.cosmosDB.preferredAuthenticationMethod": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "accountKey",
+              "entraId",
+              "managedIdentity"
+            ],
+            "enumItemLabels": [
+              "%cosmosdb.configuration.preferredAuthenticationMethod.auto%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity%"
+            ],
+            "markdownEnumDescriptions": [
+              "%cosmosdb.configuration.preferredAuthenticationMethod.auto.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description%"
+            ],
+            "markdownDescription": "%cosmosdb.configuration.preferredAuthenticationMethod%",
+            "default": "auto",
+            "order": 0
           },
-          "description": "%cosmosdb.configuration.mongo.shell.args%",
-          "default": [
-            "--quiet"
-          ]
-        },
-        "mongo.shell.timeout": {
-          "type": "number",
-          "description": "%cosmosdb.configuration.mongo.shell.timeout%",
-          "default": 30
-        },
-        "azureDatabases.batchSize": {
-          "type": "number",
-          "description": "%cosmosdb.configuration.batch.size%",
-          "default": 50
-        },
-        "azureDatabases.useCosmosOAuth": {
-          "type": "boolean",
-          "markdownDescription": "%cosmosdb.configuration.oauth.enable%",
-          "default": false
-        },
-        "azureDatabases.confirmationStyle": {
-          "type": "string",
-          "description": "%cosmosdb.configuration.confirmation.style%",
-          "enum": [
-            "wordConfirmation",
-            "challengeConfirmation",
-            "buttonConfirmation"
-          ],
-          "enumItemLabels": [
-            "%cosmosdb.configuration.confirmation.style.word%",
-            "%cosmosdb.configuration.confirmation.style.challenge%",
-            "%cosmosdb.configuration.confirmation.style.button%"
-          ],
-          "enumDescriptions": [
-            "%cosmosdb.configuration.confirmation.style.word.description%",
-            "%cosmosdb.configuration.confirmation.style.challenge.description%",
-            "%cosmosdb.configuration.confirmation.style.button.description%"
-          ],
-          "default": "wordConfirmation"
-        },
-        "azureDatabases.showOperationSummaries": {
-          "type": "boolean",
-          "default": true,
-          "description": "%cosmosdb.configuration.operation.summaries%"
-        },
-        "cosmosDB.documentLabelFields": {
-          "type": "array",
-          "default": [
-            "name",
-            "Name",
-            "NAME",
-            "ID",
-            "UUID",
-            "Id",
-            "id",
-            "_id",
-            "uuid"
-          ],
-          "description": "%cosmosdb.configuration.document.label.fields%"
-        },
-        "cosmosDB.emulator.mongoPort": {
-          "type": "integer",
-          "default": 10255,
-          "description": "%cosmosdb.configuration.emulator.mongo.port%"
-        },
-        "cosmosDB.emulator.port": {
-          "type": "integer",
-          "default": 8081,
-          "description": "%cosmosdb.configuration.emulator.port%"
-        },
-        "cosmosDB.enableEndpointDiscovery": {
-          "type": "boolean",
-          "default": true,
-          "description": "%cosmosdb.configuration.endpoint.discovery%"
-        },
-        "cosmosDB.showSavePrompt": {
-          "type": "boolean",
-          "default": true,
-          "description": "%cosmosdb.configuration.save.prompt%"
+          "azureDatabases.authentication.managedIdentity.clientID": {
+            "type": "string",
+            "markdownDescription": "%cosmosdb.configuration.authentication.managedIdentity.clientID%",
+            "default": null,
+            "order": 1
+          }
+        }
+      },
+      {
+        "title": "Azure Databases",
+        "properties": {
+          "mongo.shell.path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "%cosmosdb.configuration.mongo.shell.path%",
+            "default": null
+          },
+          "mongo.shell.args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "%cosmosdb.configuration.mongo.shell.args%",
+            "default": [
+              "--quiet"
+            ]
+          },
+          "mongo.shell.timeout": {
+            "type": "number",
+            "description": "%cosmosdb.configuration.mongo.shell.timeout%",
+            "default": 30
+          },
+          "azureDatabases.batchSize": {
+            "type": "number",
+            "description": "%cosmosdb.configuration.batch.size%",
+            "default": 50
+          },
+          "azureDatabases.useCosmosOAuth": {
+            "type": "boolean",
+            "markdownDescription": "%cosmosdb.configuration.oauth.enable%",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#azureDatabases.cosmosDB.preferredAuthenticationMethod#` instead.",
+            "deprecationMessage": "Deprecated: Please use azureDatabases.cosmosDB.preferredAuthenticationMethod instead."
+          },
+          "azureDatabases.confirmationStyle": {
+            "type": "string",
+            "description": "%cosmosdb.configuration.confirmation.style%",
+            "enum": [
+              "wordConfirmation",
+              "challengeConfirmation",
+              "buttonConfirmation"
+            ],
+            "enumItemLabels": [
+              "%cosmosdb.configuration.confirmation.style.word%",
+              "%cosmosdb.configuration.confirmation.style.challenge%",
+              "%cosmosdb.configuration.confirmation.style.button%"
+            ],
+            "enumDescriptions": [
+              "%cosmosdb.configuration.confirmation.style.word.description%",
+              "%cosmosdb.configuration.confirmation.style.challenge.description%",
+              "%cosmosdb.configuration.confirmation.style.button.description%"
+            ],
+            "default": "wordConfirmation"
+          },
+          "azureDatabases.showOperationSummaries": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.operation.summaries%"
+          },
+          "cosmosDB.documentLabelFields": {
+            "type": "array",
+            "default": [
+              "name",
+              "Name",
+              "NAME",
+              "ID",
+              "UUID",
+              "Id",
+              "id",
+              "_id",
+              "uuid"
+            ],
+            "description": "%cosmosdb.configuration.document.label.fields%"
+          },
+          "cosmosDB.emulator.mongoPort": {
+            "type": "integer",
+            "default": 10255,
+            "description": "%cosmosdb.configuration.emulator.mongo.port%"
+          },
+          "cosmosDB.emulator.port": {
+            "type": "integer",
+            "default": 8081,
+            "description": "%cosmosdb.configuration.emulator.port%"
+          },
+          "cosmosDB.enableEndpointDiscovery": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.endpoint.discovery%"
+          },
+          "cosmosDB.showSavePrompt": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.save.prompt%"
+          }
         }
       }
-    }
+    ]
   }
 }

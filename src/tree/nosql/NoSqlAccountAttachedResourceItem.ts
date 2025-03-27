@@ -5,13 +5,13 @@
 
 import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
-import { type AccountInfo } from '../docdb/AccountInfo';
-import { DocumentDBAccountAttachedResourceItem } from '../docdb/DocumentDBAccountAttachedResourceItem';
-import { type CosmosDBAttachedAccountModel } from '../workspace/CosmosDBAttachedAccountModel';
+import { type TreeElement } from '../TreeElement';
+import { type AccountInfo } from '../cosmosdb/AccountInfo';
+import { CosmosDBAccountAttachedResourceItem } from '../cosmosdb/CosmosDBAccountAttachedResourceItem';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 
-export class NoSqlAccountAttachedResourceItem extends DocumentDBAccountAttachedResourceItem {
+export class NoSqlAccountAttachedResourceItem extends CosmosDBAccountAttachedResourceItem {
     constructor(account: CosmosDBAttachedAccountModel, experience: Experience) {
         super(account, experience);
     }
@@ -19,7 +19,7 @@ export class NoSqlAccountAttachedResourceItem extends DocumentDBAccountAttachedR
     protected getChildrenImpl(
         accountInfo: AccountInfo,
         databases: (DatabaseDefinition & Resource)[],
-    ): Promise<CosmosDBTreeElement[]> {
+    ): Promise<TreeElement[]> {
         return Promise.resolve(
             databases.map((db) => {
                 return new NoSqlDatabaseResourceItem(

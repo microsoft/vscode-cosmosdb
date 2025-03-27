@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import type ConnectionString from 'mongodb-connection-string-url';
 import { type Experience } from '../../AzureDBExperiences';
-import { type ParsedDocDBConnectionString } from '../../docdb/docDBConnectionStrings';
+import { type ParsedCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { type QuickPickType } from '../../utils/pickItem/pickExperience';
 
 export interface NewConnectionWizardContext extends IActionContext {
@@ -15,7 +15,7 @@ export interface NewConnectionWizardContext extends IActionContext {
 
     experience?: Experience;
     connectionString?: string;
-    parsedConnectionString?: URL | ConnectionString | ParsedDocDBConnectionString;
+    parsedConnectionString?: URL | ConnectionString | ParsedCosmosDBConnectionString;
 
     username?: string;
     password?: string;

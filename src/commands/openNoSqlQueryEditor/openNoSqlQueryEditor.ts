@@ -5,19 +5,18 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { getCosmosAuthCredential, getCosmosKeyCredential } from '../../docdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../../docdb/NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlCodeLensProvider';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
-import { type DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
-import { type DocumentDBItemsResourceItem } from '../../tree/docdb/DocumentDBItemsResourceItem';
+import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function openNoSqlQueryEditor(
     context: IActionContext,
-    node?: DocumentDBContainerResourceItem | DocumentDBItemsResourceItem,
+    node?: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBContainerResourceItem | DocumentDBItemsResourceItem>(context, {
+        node = await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
             type: AzExtResourceType.AzureCosmosDb,
             expectedChildContextValue: ['treeItem.container', 'treeItem.items'],
         });
@@ -30,15 +29,12 @@ export async function openNoSqlQueryEditor(
     context.telemetry.properties.experience = node.experience.api;
 
     const accountInfo = node.model.accountInfo;
-    const keyCred = getCosmosKeyCredential(accountInfo.credentials);
-    const tenantId = getCosmosAuthCredential(accountInfo.credentials)?.tenantId;
     const connection: NoSqlQueryConnection = {
         databaseId: node.model.database.id,
         containerId: node.model.container.id,
         endpoint: accountInfo.endpoint,
-        masterKey: keyCred?.key,
+        credentials: accountInfo.credentials,
         isEmulator: accountInfo.isEmulator,
-        tenantId: tenantId,
     };
 
     QueryEditorTab.render(connection);

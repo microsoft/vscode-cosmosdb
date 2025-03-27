@@ -12,8 +12,8 @@ import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
 import { openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
-import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
-import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
+import { collectionsViewRouter as collectionViewRouter } from '../../documentdb/collectionView/collectionViewRouter';
+import { documentsViewRouter as documentViewRouter } from '../../documentdb/documentView/documentsViewRouter';
 import { publicProcedure, router } from '../extension-server/trpc';
 
 /**

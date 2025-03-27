@@ -11,7 +11,6 @@ import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
 import { Utils, type URI } from 'vscode-uri';
-import { CoreExperience, GremlinExperience, MongoExperience, TableExperience } from './AzureDBExperiences';
 import { ext } from './extensionVariables';
 
 export namespace Links {
@@ -110,46 +109,6 @@ export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
 
 export const databaseAccountType = 'Microsoft.DocumentDB/databaseAccounts';
 
-export const mongoDefaultExperienceTag = 'Azure Cosmos DB for MongoDB API';
-
-export const cosmosMongoFilter = {
-    type: databaseAccountType,
-    kind: MongoExperience.kind,
-    tags: {
-        defaultExperience: mongoDefaultExperienceTag,
-    },
-};
-
-export const gremlinDefaultExperienceTag = 'Gremlin (graph)';
-
-export const cosmosGremlinFilter = {
-    type: databaseAccountType,
-    kind: GremlinExperience.kind,
-    tags: {
-        defaultExperience: gremlinDefaultExperienceTag,
-    },
-};
-
-export const tableDefaultExperienceTag = 'Azure Table';
-
-export const cosmosTableFilter = {
-    type: databaseAccountType,
-    kind: TableExperience.kind,
-    tags: {
-        defaultExperience: tableDefaultExperienceTag,
-    },
-};
-
-export const sqlDefaultExperienceTag = 'NoSQL';
-
-export const sqlFilter = {
-    type: databaseAccountType,
-    kind: CoreExperience.kind,
-    tags: {
-        defaultExperience: sqlDefaultExperienceTag,
-    },
-};
-
 export const postgresFlexibleFilter = {
     type: 'Microsoft.DBforPostgreSQL/flexibleServers',
 };
@@ -158,4 +117,4 @@ export const postgresSingleFilter = {
     type: 'Microsoft.DBForPostgreSQL/servers',
 };
 
-export const DocumentDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
+export const CosmosDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];

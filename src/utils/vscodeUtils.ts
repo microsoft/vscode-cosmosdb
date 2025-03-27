@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import { AzExtTreeItem } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { type EditableFileSystemItem } from '../DatabasesFileSystem';
 import { ext } from '../extensionVariables';
-import { type CosmosDBTreeElement } from '../tree/CosmosDBTreeElement';
+import { type TreeElement } from '../tree/TreeElement';
 import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {
@@ -82,17 +81,7 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
     throw new Error(l10n.t('Could not find unique name for new file.'));
 }
 
-export function getNodeEditorLabel(node: AzExtTreeItem | CosmosDBTreeElement | EditableFileSystemItem): string {
-    if (node instanceof AzExtTreeItem) {
-        const labels = [node.label];
-        const azExtNode = node as AzExtTreeItem;
-        while (azExtNode.parent) {
-            node = azExtNode.parent;
-            labels.unshift(azExtNode.label);
-        }
-        return labels.join('/');
-    }
-
+export function getNodeEditorLabel(node: TreeElement | EditableFileSystemItem): string {
     return node.id;
 }
 

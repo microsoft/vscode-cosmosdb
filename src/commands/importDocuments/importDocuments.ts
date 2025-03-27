@@ -11,18 +11,18 @@ import * as l10n from '@vscode/l10n';
 import { EJSON, type Document } from 'bson';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
-import { validateDocumentId, validatePartitionKey } from '../../docdb/utils/validateDocument';
+import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
+import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { CollectionItem } from '../../mongoClusters/tree/CollectionItem';
-import { DocumentDBContainerResourceItem } from '../../tree/docdb/DocumentDBContainerResourceItem';
+import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 
 export async function importDocuments(
     context: IActionContext,
-    selectedItem: vscode.Uri | DocumentDBContainerResourceItem | CollectionItem | undefined,
+    selectedItem: vscode.Uri | CosmosDBContainerResourceItem | CollectionItem | undefined,
     uris: vscode.Uri[] | undefined,
 ): Promise<void> {
     if (selectedItem instanceof vscode.Uri) {
@@ -55,7 +55,7 @@ export async function importDocuments(
     }
 
     if (!selectedItem) {
-        selectedItem = await pickAppResource<DocumentDBContainerResourceItem | CollectionItem>(context, {
+        selectedItem = await pickAppResource<CosmosDBContainerResourceItem | CollectionItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
             expectedChildContextValue: ['treeItem.container', 'treeItem.collection'],
         });
@@ -75,7 +75,7 @@ export async function importDocuments(
 }
 
 export async function importDocumentsWithProgress(
-    selectedItem: DocumentDBContainerResourceItem | CollectionItem,
+    selectedItem: CosmosDBContainerResourceItem | CollectionItem,
     uris: vscode.Uri[],
 ): Promise<void> {
     const result = await vscode.window.withProgress(
@@ -172,7 +172,7 @@ async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
 }
 
 async function parseAndValidateFile(
-    node: DocumentDBContainerResourceItem | CollectionItem,
+    node: CosmosDBContainerResourceItem | CollectionItem,
     uri: vscode.Uri,
 ): Promise<{ documents: unknown[]; errors: string[] }> {
     try {
@@ -181,9 +181,9 @@ async function parseAndValidateFile(
             return await parseAndValidateFileForMongo(uri);
         }
 
-        if (node instanceof DocumentDBContainerResourceItem) {
+        if (node instanceof CosmosDBContainerResourceItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await parseAndValidateFileForDocumentDB(uri, node.model.container.partitionKey);
+            return await parseAndValidateFileForCosmosDB(uri, node.model.container.partitionKey);
         }
     } catch (e) {
         return { documents: [], errors: [parseError(e).message] };
@@ -227,7 +227,7 @@ async function parseAndValidateFileForMongo(uri: vscode.Uri): Promise<{ document
     return { documents, errors };
 }
 
-async function parseAndValidateFileForDocumentDB(
+async function parseAndValidateFileForCosmosDB(
     uri: vscode.Uri,
     partitionKey?: PartitionKeyDefinition,
 ): Promise<{ documents: unknown[]; errors: string[] }> {
@@ -280,18 +280,18 @@ async function parseAndValidateFileForDocumentDB(
 }
 
 async function insertDocument(
-    node: DocumentDBContainerResourceItem | CollectionItem,
+    node: CosmosDBContainerResourceItem | CollectionItem,
     document: unknown,
 ): Promise<{ document: unknown; error: string }> {
     try {
         if (node instanceof CollectionItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoMongoCluster(node, document as Document);
+            return await insertDocumentIntoCluster(node, document as Document);
         }
 
-        if (node instanceof DocumentDBContainerResourceItem) {
+        if (node instanceof CosmosDBContainerResourceItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoDocumentDB(node, document as ItemDefinition);
+            return await insertDocumentIntoCosmosDB(node, document as ItemDefinition);
         }
     } catch (e) {
         return { document, error: parseError(e).message };
@@ -300,8 +300,8 @@ async function insertDocument(
     return { document, error: l10n.t('Unknown error') };
 }
 
-async function insertDocumentIntoDocumentDB(
-    node: DocumentDBContainerResourceItem,
+async function insertDocumentIntoCosmosDB(
+    node: CosmosDBContainerResourceItem,
     document: ItemDefinition,
 ): Promise<{ document: ItemDefinition; error: string }> {
     const { endpoint, credentials, isEmulator } = node.model.accountInfo;
@@ -318,11 +318,11 @@ async function insertDocumentIntoDocumentDB(
     }
 }
 
-async function insertDocumentIntoMongoCluster(
+async function insertDocumentIntoCluster(
     node: CollectionItem,
     document: Document,
 ): Promise<{ document: Document; error: string }> {
-    const client = await MongoClustersClient.getClient(node.mongoCluster.id);
+    const client = await ClustersClient.getClient(node.cluster.id);
     const response = await client.insertDocuments(node.databaseInfo.name, node.collectionInfo.name, [document]);
 
     if (response?.acknowledged) {

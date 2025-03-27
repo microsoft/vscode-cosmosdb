@@ -5,29 +5,23 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as vscode from 'vscode';
-import { ext } from '../../extensionVariables';
-import { MongoClustersClient } from '../../mongoClusters/MongoClustersClient';
-import { type CollectionItem } from '../../mongoClusters/tree/CollectionItem';
-import { type DatabaseItem } from '../../mongoClusters/tree/DatabaseItem';
-import { MongoClusterResourceItem } from '../../mongoClusters/tree/MongoClusterResourceItem';
-import { MongoClusterWorkspaceItem } from '../../mongoClusters/tree/workspace/MongoClusterWorkspaceItem';
-import { MongoAccountResourceItem } from '../../tree/mongo/MongoAccountResourceItem';
-
 import { ConnectionString } from 'mongodb-connection-string-url';
+import * as vscode from 'vscode';
 import { isWindows } from '../../constants';
+import { ClustersClient } from '../../documentdb/ClustersClient';
+import { ext } from '../../extensionVariables';
+import { MongoRUResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-ru/MongoRUResourceItem';
+import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
+import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
+import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
+import { type DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 
 /**
  * Currently it only supports launching the MongoDB shell
  */
 export async function launchShell(
     context: IActionContext,
-    node?:
-        | DatabaseItem
-        | CollectionItem
-        | MongoClusterWorkspaceItem
-        | MongoClusterResourceItem
-        | MongoAccountResourceItem,
+    node?: DatabaseItem | CollectionItem | ClusterItemBase,
 ): Promise<void> {
     if (!node) {
         throw new Error(l10n.t('No database or collection selected.'));
@@ -36,21 +30,18 @@ export async function launchShell(
     context.telemetry.properties.experience = node.experience.api;
 
     let rawConnectionString: string | undefined;
+
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
 
-    if (
+    if (node instanceof ClusterItemBase) {
         // connecting at the account level
-        node instanceof MongoClusterResourceItem ||
-        node instanceof MongoAccountResourceItem ||
-        node instanceof MongoClusterWorkspaceItem
-    ) {
         // we need to discover the connection string
         rawConnectionString = await ext.state.runWithTemporaryDescription(node.id, l10n.t('Working…'), async () => {
             return node.getConnectionString();
         });
     } else {
         // node is instanceof DatabaseItem or CollectionItem and we alrady have the connection string somewhere
-        const client: MongoClustersClient = await MongoClustersClient.getClient(node.mongoCluster.id);
+        const client: ClustersClient = await ClustersClient.getClient(node.cluster.id);
         rawConnectionString = client.getConnectionStringWithPassword();
     }
 
@@ -87,12 +78,12 @@ export async function launchShell(
 
     // Determine if TLS certificate validation should be disabled
     // This only applies to emulator connections with security disabled
-    const isRegularCloudAccount = node instanceof MongoAccountResourceItem;
+    const isRegularCloudAccount = node instanceof MongoVCoreResourceItem || node instanceof MongoRUResourceItem;
     const isEmulatorWithSecurityDisabled =
         !isRegularCloudAccount &&
-        node.mongoCluster.emulatorConfiguration &&
-        node.mongoCluster.emulatorConfiguration.isEmulator &&
-        node.mongoCluster.emulatorConfiguration.disableEmulatorSecurity;
+        node.cluster.emulatorConfiguration &&
+        node.cluster.emulatorConfiguration.isEmulator &&
+        node.cluster.emulatorConfiguration.disableEmulatorSecurity;
 
     const tlsConfiguration = isEmulatorWithSecurityDisabled ? '--tlsAllowInvalidCertificates' : '';
 

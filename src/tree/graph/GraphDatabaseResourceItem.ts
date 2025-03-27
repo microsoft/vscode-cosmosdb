@@ -5,12 +5,12 @@
 
 import { type ContainerDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
-import { DocumentDBDatabaseResourceItem } from '../docdb/DocumentDBDatabaseResourceItem';
-import { type DocumentDBDatabaseModel } from '../docdb/models/DocumentDBDatabaseModel';
+import { CosmosDBDatabaseResourceItem } from '../cosmosdb/CosmosDBDatabaseResourceItem';
+import { type CosmosDBDatabaseModel } from '../cosmosdb/models/CosmosDBDatabaseModel';
 import { GraphContainerResourceItem } from './GraphContainerResourceItem';
 
-export class GraphDatabaseResourceItem extends DocumentDBDatabaseResourceItem {
-    constructor(model: DocumentDBDatabaseModel, experience: Experience) {
+export class GraphDatabaseResourceItem extends CosmosDBDatabaseResourceItem {
+    constructor(model: CosmosDBDatabaseModel, experience: Experience) {
         super(model, experience);
     }
 

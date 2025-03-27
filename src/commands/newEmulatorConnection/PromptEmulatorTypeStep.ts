@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, CoreExperience, MongoExperience } from '../../AzureDBExperiences';
 import { SettingsService } from '../../services/SettingsService';
-import { defaultMongoEmulatorConfiguration } from '../../utils/mongoEmulatorConfiguration';
+import { defaultMongoEmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,

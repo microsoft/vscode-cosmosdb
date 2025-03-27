@@ -7,17 +7,17 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
-import { DocumentFileDescriptor } from '../../docdb/fs/DocumentFileDescriptor';
+import { DocumentFileDescriptor } from '../../cosmosdb/fs/DocumentFileDescriptor';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBItemResourceItem } from '../../tree/docdb/DocumentDBItemResourceItem';
+import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
-import { DocumentsViewController } from '../../webviews/mongoClusters/documentView/documentsViewController';
+import { DocumentsViewController } from '../../webviews/documentdb/documentView/documentsViewController';
 
-export async function openDocumentDBItem(context: IActionContext, node?: DocumentDBItemResourceItem): Promise<void> {
+export async function cosmosDBOpenItem(context: IActionContext, node?: CosmosDBItemResourceItem): Promise<void> {
     if (!node) {
-        node = await pickAppResource<DocumentDBItemResourceItem>(context, {
+        node = await pickAppResource<CosmosDBItemResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.document'],
         });

@@ -5,7 +5,7 @@
 
 import { type Resource, type StoredProcedureDefinition } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type AccountInfo } from '../../tree/docdb/AccountInfo';
+import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 
 export interface CreateStoredProcedureWizardContext extends IActionContext {
     accountInfo: AccountInfo;

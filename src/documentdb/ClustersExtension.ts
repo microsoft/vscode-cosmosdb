@@ -16,8 +16,7 @@ import {
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import * as l10n from '@vscode/l10n';
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { createMongoCollection } from '../commands/createContainer/createContainer';
 import { createMongoDocument } from '../commands/createDocument/createDocument';
 import { deleteAzureContainer } from '../commands/deleteContainer/deleteContainer';
@@ -35,7 +34,6 @@ import { MongoVCoreBranchDataProvider } from '../tree/azure-resources-view/docum
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { ClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 import { registerScrapbookCommands } from './scrapbook/registerScrapbookCommands';
-import { isMongoClustersSupportenabled } from './utils/isMongoClustersSupportenabled';
 
 export class ClustersExtension implements vscode.Disposable {
     dispose(): Promise<void> {
@@ -47,23 +45,6 @@ export class ClustersExtension implements vscode.Disposable {
             'cosmosDB.mongoClusters.activate',
             async (activateContext: IActionContext) => {
                 activateContext.telemetry.properties.isActivationEvent = 'true';
-
-                const isMongoClustersEnabled: boolean = isMongoClustersSupportenabled() ?? false;
-
-                activateContext.telemetry.properties.mongoClustersEnabled = isMongoClustersEnabled.toString();
-
-                // allows to show/hide commands in the package.json file
-                vscode.commands.executeCommand(
-                    'setContext',
-                    'vscodeDatabases.mongoClustersSupportEnabled',
-                    isMongoClustersEnabled,
-                );
-
-                if (!isMongoClustersEnabled) {
-                    return;
-                }
-
-                // // // MongoClusters / MongoDB (vCore) support is enabled // // //
 
                 ext.mongoVCoreBranchDataProvider = new MongoVCoreBranchDataProvider();
                 ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
@@ -127,8 +108,6 @@ export class ClustersExtension implements vscode.Disposable {
                     'command.mongoClusters.exportDocuments',
                     clustersExportEntireCollection,
                 );
-
-                ext.outputChannel.appendLine(l10n.t('MongoDB Clusters: activated.'));
             },
         );
     }

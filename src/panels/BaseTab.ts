@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
-import path from 'path';
+import * as path from 'path';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';

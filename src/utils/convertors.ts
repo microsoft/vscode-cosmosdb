@@ -9,7 +9,6 @@ import { v4 as uuid } from 'uuid';
 import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey } from './document';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
-import { SettingsService } from '../services/SettingsService';
 
 export type StatsItem = {
     metric: string;
@@ -501,8 +500,14 @@ export const escapeCsvValue = (value: string): string => {
     return `"${value.replace(/"/g, '""')}"`;
 };
 
-function getCsvSeperator():string {
-    return SettingsService.getSetting<string>('cosmosDB.csvSeparator') ?? ';';
+let csvSeparator: string = ';';
+
+export function setCsvSeperator(seperator: string): void {
+    csvSeparator = seperator;
+}
+
+function getCsvSeperator(): string {
+    return csvSeparator;
 }
 
 export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): string => {
@@ -551,5 +556,5 @@ export const queryResultToCsv = (
             return rowValues.join(getCsvSeperator());
         })
         .join('\n');
-    return `\n${headers}\n${rows}`;
+    return `${headers}\n${rows}`;
 };

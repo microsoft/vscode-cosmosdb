@@ -354,17 +354,17 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.createDocument",
+        "command": "cosmosDB.createItem",
         "title": "%cosmosdb.command.item.create%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.openDocument",
+        "command": "cosmosDB.openItem",
         "title": "%cosmosdb.command.item.open%"
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.deleteDocument",
+        "command": "cosmosDB.deleteItem",
         "title": "%cosmosdb.command.item.delete%"
       },
       {
@@ -446,8 +446,8 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.importDocument",
-        "title": "%cosmosdb.command.document.import%"
+        "command": "cosmosDB.importItem",
+        "title": "%cosmosdb.command.item.import%"
       },
       {
         "category": "PostgreSQL",
@@ -668,7 +668,7 @@
         },
         {
           "command": "azureDatabases.update",
-          "when": "resourceFilename=~/(.*cosmos-document[.]json)/"
+          "when": "resourceFilename=~/(.*cosmos-item[.]json)/"
         },
         {
           "command": "azureDatabases.update",
@@ -687,7 +687,7 @@
           "when": "resourceLangId==mongo"
         },
         {
-          "command": "cosmosDB.importDocument",
+          "command": "cosmosDB.importItem",
           "when": "resourceLangId==json"
         },
         {
@@ -703,7 +703,7 @@
         },
         {
           "command": "azureDatabases.update",
-          "when": "resourceFilename=~/(.*cosmos-document[.]json)(?![a-z])/i",
+          "when": "resourceFilename=~/(.*cosmos-item[.]json)(?![a-z])/i",
           "group": "navigation"
         },
         {
@@ -922,8 +922,8 @@
           "group": "1@1"
         },
         {
-          "//": "[Container] Import NoSql documents",
-          "command": "cosmosDB.importDocument",
+          "//": "[Container] Import NoSql items",
+          "command": "cosmosDB.importItem",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
           "group": "1@2"
         },
@@ -1048,31 +1048,31 @@
           "group": "1@1"
         },
         {
-          "//": "[Documents] Open NoSql query editor",
+          "//": "[Items] Open NoSql query editor",
           "command": "cosmosDB.openNoSqlQueryEditor",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
         {
-          "//": "[Documents] Create NoSql Document",
-          "command": "cosmosDB.createDocument",
+          "//": "[Items] Create NoSql Item",
+          "command": "cosmosDB.createItem",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@2"
         },
         {
-          "//": "[Documents] Refresh",
+          "//": "[Items] Refresh",
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "2@1"
         },
         {
-          "//": "[Document] Delete",
-          "command": "cosmosDB.deleteDocument",
+          "//": "[Item] Delete",
+          "command": "cosmosDB.deleteItem",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "1@1"
         },
         {
-          "//": "[Document] Refresh",
+          "//": "[Item] Refresh",
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
           "group": "2@1"
@@ -1092,7 +1092,7 @@
       ],
       "explorer/context": [
         {
-          "command": "cosmosDB.importDocument",
+          "command": "cosmosDB.importItem",
           "when": "resourceLangId == json"
         },
         {

@@ -42,7 +42,7 @@ export const documentsViewRouter = router({
             const documentContent = await client.pointRead(myCtx.databaseName, myCtx.collectionName, input);
 
             /**
-             * Please note, the document is a 'Document' object, which is a BSON object.
+             * Please note, the document is a 'Item' object, which is a BSON object.
              * Not all BSON objects can be serialized to JSON. Therefore, we're using
              * EJSON to serialize the document to an object that can be serialized to JSON.
              */
@@ -86,7 +86,7 @@ export const documentsViewRouter = router({
             const newDocumentId = EJSON.stringify(upsertResult.documentId);
 
             /**
-             * Please note, the document is a 'Document' object, which is a BSON object.
+             * Please note, the document is a 'Item' object, which is a BSON object.
              * Not all BSON objects can be serialized to JSON. Therefore, we're using
              * EJSON to serialize the document to an object that can be serialized to JSON.
              */

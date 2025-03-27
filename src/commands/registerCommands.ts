@@ -16,7 +16,7 @@ import { registerPostgresCommands } from '../postgres/commands/registerPostgresC
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { cosmosDBCreateContainer, cosmosDBCreateGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
-import { cosmosDBCreateDocument } from './createDocument/createDocument';
+import { cosmosDBCreateItem } from './createDocument/createDocument';
 import { createServer } from './createServer/createServer';
 import { cosmosDBCreateStoredProcedure } from './createStoredProcedure/createStoredProcedure';
 import { cosmosDBCreateTrigger } from './createTrigger/createTrigger';
@@ -55,7 +55,7 @@ export function registerCommands(): void {
     registerAccountCommands();
     registerDatabaseCommands();
     registerContainerCommands();
-    registerDocumentCommands();
+    registerItemCommands();
     registerStoredProcedureCommands();
     registerTriggerCommands();
 
@@ -90,17 +90,17 @@ export function registerDatabaseCommands() {
 
 export function registerContainerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openNoSqlQueryEditor', openNoSqlQueryEditor);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', importDocuments);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.importItem', importDocuments);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteGraph', cosmosDBDeleteGraph);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteContainer', deleteAzureContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewContainerOffer', cosmosDBViewContainerOffer);
 }
 
-export function registerDocumentCommands() {
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.createDocument', cosmosDBCreateDocument);
+export function registerItemCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.createItem', cosmosDBCreateItem);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openGraphExplorer', cosmosDBOpenGraphExplorer);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.openDocument', cosmosDBOpenItem, doubleClickDebounceDelay);
-    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteDocument', cosmosDBDeleteItem);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openItem', cosmosDBOpenItem, doubleClickDebounceDelay);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteItem', cosmosDBDeleteItem);
     registerCommand('cosmosDB.loadMore', cosmosDBLoadMore);
 }
 

@@ -74,7 +74,7 @@ export abstract class CosmosDBItemsResourceItem
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('files'),
-            label: l10n.t('Documents'),
+            label: l10n.t('Items'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

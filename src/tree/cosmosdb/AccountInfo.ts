@@ -303,14 +303,14 @@ export function getPreferredAuthenticationMethod(): AuthenticationMethod {
     //migrate old setting
     const deprecatedOauthSetting = configuration.get<boolean>('azureDatabases.useCosmosOAuth');
     let preferredAuthMethod = configuration.get<AuthenticationMethod>(
-        ext.settingsKeys.cosmosDbAuthentication,
+        ext.settingsKeys.cosmosDBAuthentication,
         AuthenticationMethod.auto,
     );
 
     if (deprecatedOauthSetting) {
         if (preferredAuthMethod === AuthenticationMethod.auto) {
             preferredAuthMethod = AuthenticationMethod.entraId;
-            configuration.update(ext.settingsKeys.cosmosDbAuthentication, preferredAuthMethod, true);
+            configuration.update(ext.settingsKeys.cosmosDBAuthentication, preferredAuthMethod, true);
         }
         configuration.update('azureDatabases.useCosmosOAuth', undefined, true);
     }
@@ -323,7 +323,7 @@ function logLocalAuthDisabledWarning(name: string): void {
         'You do not have the required permissions to list auth keys for "{account}", falling back to using Entra ID. You can change the preferred authentication method with the {settingId} setting.',
         {
             account: name,
-            settingId: ext.settingsKeys.cosmosDbAuthentication,
+            settingId: ext.settingsKeys.cosmosDBAuthentication,
         },
     );
     ext.outputChannel.warn(message);

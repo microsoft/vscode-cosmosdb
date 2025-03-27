@@ -3,5 +3,5 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+export * from '../../cosmosdb/utils/cosmosDBItem';
 export * from '../../utils/convertors';
-export * from '../../utils/document';

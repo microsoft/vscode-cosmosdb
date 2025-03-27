@@ -9,9 +9,9 @@ import type * as React from 'react';
 import { type CosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
-import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
+import { type DispatchAction, type OpenItemMode } from './ItemState';
 
-export class DocumentContextProvider extends BaseContextProvider {
+export class ItemContextProvider extends BaseContextProvider {
     constructor(
         channel: Channel,
         private readonly dispatch: (action: DispatchAction) => void,
@@ -20,21 +20,21 @@ export class DocumentContextProvider extends BaseContextProvider {
         super(channel, dispatchToast);
     }
 
-    public async saveDocument(documentText: string): Promise<void> {
+    public async saveItem(itemText: string): Promise<void> {
         this.dispatch({ type: 'setSaving', isSaving: true });
 
-        await this.sendCommand('saveDocument', documentText);
+        await this.sendCommand('saveItem', itemText);
     }
-    public async refreshDocument(): Promise<void> {
+    public async refreshItem(): Promise<void> {
         this.dispatch({ type: 'setError', error: undefined });
         this.dispatch({ type: 'setRefreshing', isRefreshing: true });
 
-        await this.sendCommand('refreshDocument');
+        await this.sendCommand('refreshItem');
     }
 
-    public setCurrentDocumentContent(content: string): void {
+    public setCurrentItemContent(content: string): void {
         this.dispatch({ type: 'setValid', isValid: this.validateJson(content) });
-        this.dispatch({ type: 'setCurrentDocument', documentContent: content });
+        this.dispatch({ type: 'setCurrentItem', itemContent: content });
     }
     public setValid(isValid: boolean, errors?: string[]): void {
         this.dispatch({ type: 'setValid', isValid });
@@ -43,7 +43,7 @@ export class DocumentContextProvider extends BaseContextProvider {
         }
     }
 
-    public setMode(mode: OpenDocumentMode): Promise<void> {
+    public setMode(mode: OpenItemMode): Promise<void> {
         return this.sendCommand('setMode', mode);
     }
     public async notifyDirty(isDirty: boolean): Promise<void> {
@@ -56,49 +56,49 @@ export class DocumentContextProvider extends BaseContextProvider {
         this.channel.on(
             'initState',
             (
-                mode: OpenDocumentMode,
+                mode: OpenItemMode,
                 databaseId: string,
                 containerId: string,
-                documentId: string,
+                itemId: string,
                 partitionKey?: PartitionKey,
             ) => {
                 if (partitionKey === null) {
                     partitionKey = undefined;
                 }
 
-                this.dispatch({ type: 'initState', mode, databaseId, containerId, documentId, partitionKey });
+                this.dispatch({ type: 'initState', mode, databaseId, containerId, itemId, partitionKey });
                 this.dispatch({ type: 'setRefreshing', isRefreshing: true });
             },
         );
 
-        this.channel.on('modeChanged', (mode: OpenDocumentMode) => {
+        this.channel.on('modeChanged', (mode: OpenItemMode) => {
             this.dispatch({ type: 'setMode', mode });
         });
 
         this.channel.on(
-            'setDocument',
-            (_sessionId: string, documentContent: CosmosDBRecord, partitionKey: PartitionKeyDefinition) => {
+            'setItem',
+            (_sessionId: string, itemContent: CosmosDBRecord, partitionKey: PartitionKeyDefinition) => {
                 this.dispatch({ type: 'setRefreshing', isRefreshing: false });
                 this.dispatch({ type: 'setSaving', isSaving: false });
 
-                if (documentContent === undefined) {
-                    this.dispatch({ type: 'setError', error: l10n.t('Document content is undefined') });
+                if (itemContent === undefined) {
+                    this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
                     return;
                 }
 
                 this.dispatch({
-                    type: 'setDocument',
-                    documentContent: JSON.stringify(documentContent, null, 4),
+                    type: 'setItem',
+                    itemContent: JSON.stringify(itemContent, null, 4),
                     partitionKey,
                 });
             },
         );
 
-        this.channel.on('documentSaved', () => {
+        this.channel.on('itemSaved', () => {
             this.dispatch({ type: 'setSaving', isSaving: false });
         });
 
-        this.channel.on('documentError', (_sessionId: string, error: string) => {
+        this.channel.on('itemError', (_sessionId: string, error: string) => {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
             this.dispatch({ type: 'setSaving', isSaving: false });
             this.dispatch({ type: 'setError', error: this.parseError(error) });

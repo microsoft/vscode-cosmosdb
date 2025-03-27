@@ -188,7 +188,7 @@ export const DocumentView = (): JSX.Element => {
 
         trpcClient.common.reportEvent
             .mutate({
-                eventName: 'refreshDocument',
+                eventName: 'refreshItem',
                 properties: {
                     ui: 'button',
                 },

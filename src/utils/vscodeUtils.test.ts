@@ -5,9 +5,9 @@
 
 import * as vscode from 'vscode';
 
-import { getDocumentTreeItemLabel } from './vscodeUtils';
+import { getItemTreeItemLabel } from './vscodeUtils';
 
-describe('Document Label Tests', () => {
+describe('Item Label Tests', () => {
     beforeAll(() => {
         jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
             get: jest.fn().mockReturnValue(['name']),
@@ -19,21 +19,21 @@ describe('Document Label Tests', () => {
 
     it('Non-zero number', () => {
         const doc = { name: 4, _id: '12345678901234567890123456789012' };
-        expect(getDocumentTreeItemLabel(doc)).toEqual('4');
+        expect(getItemTreeItemLabel(doc)).toEqual('4');
     });
 
     it('zero (number)', () => {
         const doc = { name: 0, _id: '12345678901234567890123456789012' };
-        expect(getDocumentTreeItemLabel(doc)).toEqual('0');
+        expect(getItemTreeItemLabel(doc)).toEqual('0');
     });
 
     it('Empty string', () => {
         const doc = { name: '', _id: '' };
-        expect(getDocumentTreeItemLabel(doc)).toEqual('');
+        expect(getItemTreeItemLabel(doc)).toEqual('');
     });
 
     it('Null', () => {
         const doc = { name: null, _id: '12345678901234567890123456789012' };
-        expect(getDocumentTreeItemLabel(doc)).toEqual(doc._id);
+        expect(getItemTreeItemLabel(doc)).toEqual(doc._id);
     });
 });

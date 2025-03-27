@@ -38,8 +38,8 @@ export class QuerySessionResult {
         return this.queryResults.get(pageNumber)?.queryMetrics;
     }
 
-    public getDocuments(pageNumber: number): QueryResultRecord[] {
-        return this.queryResults.get(pageNumber)?.documents ?? [];
+    public getRecords(pageNumber: number): QueryResultRecord[] {
+        return this.queryResults.get(pageNumber)?.records ?? [];
     }
 
     public push(response: FeedResponse<QueryResultRecord>): void {
@@ -55,7 +55,7 @@ export class QuerySessionResult {
 
         this.queryResults.set(pageNumber, {
             activityId: response.activityId,
-            documents: response.resources,
+            records: response.resources,
             iteration: pageNumber,
             metadata: this.metadata,
             indexMetrics: response.indexMetrics,
@@ -78,7 +78,7 @@ export class QuerySessionResult {
         if (result) {
             const serializedResult: SerializedQueryResult = {
                 activityId: result.activityId,
-                documents: result.documents ?? [],
+                records: result.records ?? [],
                 iteration: result.iteration,
                 metadata: this.metadata,
                 indexMetrics: result.indexMetrics,

@@ -7,13 +7,13 @@ import { type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import { isEqual } from 'lodash';
 
-export type OpenDocumentMode = 'add' | 'edit' | 'view';
+export type OpenItemMode = 'add' | 'edit' | 'view';
 
 export type DispatchAction =
     | {
           type: 'initState';
-          mode: OpenDocumentMode;
-          documentId: string;
+          mode: OpenItemMode;
+          itemId: string;
           partitionKey: PartitionKey | undefined;
           databaseId: string;
           containerId: string;
@@ -23,17 +23,17 @@ export type DispatchAction =
           isDirty: boolean;
       }
     | {
-          type: 'setDocument';
-          documentContent: string;
+          type: 'setItem';
+          itemContent: string;
           partitionKey: PartitionKeyDefinition;
       }
     | {
-          type: 'setCurrentDocument';
-          documentContent: string;
+          type: 'setCurrentItem';
+          itemContent: string;
       }
     | {
           type: 'setMode';
-          mode: OpenDocumentMode;
+          mode: OpenItemMode;
       }
     | {
           type: 'setValid';
@@ -52,31 +52,31 @@ export type DispatchAction =
           error: string | undefined;
       };
 
-export type DocumentState = {
+export type ItemState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
 
-    documentId: string; // Id of the document (Readonly, only server can change it)
-    documentContent: string; // Content of the document (Readonly, only server can change it)
-    partitionKey: PartitionKeyDefinition; // Partition key of the document (Readonly, only server can change it)
+    itemId: string; // Id of the item (Readonly, only server can change it)
+    itemContent: string; // Content of the item (Readonly, only server can change it)
+    partitionKey: PartitionKeyDefinition; // Partition key of the item (Readonly, only server can change it)
 
-    mode: OpenDocumentMode; // Mode of the document (add, edit, view) (Readonly, only server can change it)
+    mode: OpenItemMode; // Mode of the item (add, edit, view) (Readonly, only server can change it)
 
-    isValid: boolean; // Document is valid
-    isDirty: boolean; // Document has been modified
-    isSaving: boolean; // Document is being saved
-    isRefreshing: boolean; // Document is being refreshed
-    isReady: boolean; // Document is being initialized
+    isValid: boolean; // Item is valid
+    isDirty: boolean; // Item has been modified
+    isSaving: boolean; // Item is being saved
+    isRefreshing: boolean; // Item is being refreshed
+    isReady: boolean; // Item is being initialized
 
-    currentDocumentContent: string; // Current content of the document
+    currentItemContent: string; // Current content of the item
     error: string | undefined; // Error message
 };
 
-export const defaultState: DocumentState = {
+export const defaultState: ItemState = {
     dbName: '',
     collectionName: '',
-    documentId: '',
-    documentContent: '',
+    itemId: '',
+    itemContent: '',
     partitionKey: { paths: [] },
     mode: 'view',
     isValid: true,
@@ -84,7 +84,7 @@ export const defaultState: DocumentState = {
     isSaving: false,
     isRefreshing: false,
     isReady: false,
-    currentDocumentContent: '',
+    currentItemContent: '',
     error: undefined,
 };
 
@@ -99,22 +99,22 @@ const isDirty = (content1: string, content2: string): boolean => {
     }
 };
 
-export function dispatch(state: DocumentState, action: DispatchAction): DocumentState {
+export function dispatch(state: ItemState, action: DispatchAction): ItemState {
     switch (action.type) {
         case 'initState':
             return {
                 ...state,
                 mode: action.mode,
-                documentId: action.documentId,
+                itemId: action.itemId,
                 dbName: action.databaseId,
                 collectionName: action.containerId,
                 isReady: true,
             };
-        case 'setDocument':
+        case 'setItem':
             return {
                 ...state,
-                documentContent: action.documentContent,
-                currentDocumentContent: action.documentContent,
+                itemContent: action.itemContent,
+                currentItemContent: action.itemContent,
                 partitionKey: action.partitionKey,
                 isDirty: false,
             };
@@ -130,11 +130,11 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
             return { ...state, isRefreshing: action.isRefreshing };
         case 'setError':
             return { ...state, error: action.error };
-        case 'setCurrentDocument':
+        case 'setCurrentItem':
             return {
                 ...state,
-                currentDocumentContent: action.documentContent,
-                isDirty: isDirty(state.documentContent, action.documentContent),
+                currentItemContent: action.itemContent,
+                isDirty: isDirty(state.itemContent, action.itemContent),
             };
         default:
             return state;

@@ -8,11 +8,11 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { extractPartitionKey } from '../../cosmosdb/utils/cosmosDBItem';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { extractPartitionKey } from '../../utils/document';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDBItemResourceItem): Promise<void> {

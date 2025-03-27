@@ -133,8 +133,8 @@ export namespace MongoBSONTypes {
     }
 
     /**
-     * Accepts a value from a MongoDB 'Document' object and returns the inferred type.
-     * @param value The value of a field in a MongoDB 'Document' object
+     * Accepts a value from a MongoDB 'Item' object and returns the inferred type.
+     * @param value The value of a field in a MongoDB 'Item' object
      * @returns
      */
     export function inferType(value: unknown): MongoBSONTypes {

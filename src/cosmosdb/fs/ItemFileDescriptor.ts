@@ -10,13 +10,13 @@ import { type Experience } from '../../AzureDBExperiences';
 import { CosmosDBHiddenFields } from '../../constants';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBItemModel } from '../../tree/cosmosdb/models/CosmosDBItemModel';
-import { extractPartitionKey } from '../../utils/document';
 import { promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
-import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { getItemTreeItemLabel } from '../../utils/vscodeUtils';
 import { getCosmosClient } from '../getCosmosClient';
+import { extractPartitionKey } from '../utils/cosmosDBItem';
 
-export class DocumentFileDescriptor implements EditableFileSystemItem {
+export class ItemFileDescriptor implements EditableFileSystemItem {
     public readonly cTime: number = Date.now();
     public mTime: number = Date.now();
 
@@ -27,7 +27,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
     ) {}
 
     public get filePath(): string {
-        return getDocumentTreeItemLabel(this.model.item) + '-cosmos-document.json';
+        return getItemTreeItemLabel(this.model.item) + '-cosmos-item.json';
     }
 
     public getFileContent(): Promise<string> {
@@ -49,10 +49,10 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
         }
 
         if (!newData['id'] || typeof newData['id'] !== 'string') {
-            throw new Error(l10n.t('The "id" field is required to update a item'));
+            throw new Error(l10n.t('The "id" field is required to update an item'));
         }
 
-        // TODO: Does it matter to keep the same fields in the document? Why user can't change them?
+        // TODO: Does it matter to keep the same fields in the item? Why user can't change them?
         for (const field of CosmosDBHiddenFields) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             newData[field] = this.model.item[field];
@@ -60,7 +60,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
 
         // TODO: Does it make sense now? This check was created 4 years ago
         if (!newData['_etag'] || typeof newData['_etag'] !== 'string') {
-            throw new Error(l10n.t('The "_etag" field is required to update a document'));
+            throw new Error(l10n.t('The "_etag" field is required to update an item'));
         }
 
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;

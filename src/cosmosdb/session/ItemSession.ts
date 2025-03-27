@@ -20,12 +20,12 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
-import { extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, getCosmosDBKeyCredential } from '../getCosmosClient';
-import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
+import { type CosmosDBItemIdentifier, type CosmosDBRecord } from '../types/queryResult';
+import { extractPartitionKey } from '../utils/cosmosDBItem';
 
-export class DocumentSession {
+export class ItemSession {
     public readonly id: string;
     private readonly channel: Channel;
     private readonly client: CosmosClient;
@@ -52,8 +52,8 @@ export class DocumentSession {
         this.abortController = new AbortController();
     }
 
-    public async create(document: ItemDefinition): Promise<CosmosDBRecordIdentifier | undefined> {
-        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.create', async (context) => {
+    public async create(itemDefinition: ItemDefinition): Promise<CosmosDBItemIdentifier | undefined> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.item.session.create', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -66,7 +66,7 @@ export class DocumentSession {
                 const response = await this.client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .items.create<ItemDefinition>(document, {
+                    .items.create<ItemDefinition>(itemDefinition, {
                         abortSignal: this.abortController.signal,
                     });
 
@@ -75,7 +75,7 @@ export class DocumentSession {
 
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'setDocument',
+                        name: 'setItem',
                         params: [this.id, record, partitionKey],
                     });
 
@@ -87,8 +87,8 @@ export class DocumentSession {
                 } else {
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Document creation failed'],
+                        name: 'itemError',
+                        params: [this.id, 'Item creation failed'],
                     });
                 }
             } catch (error) {
@@ -99,15 +99,15 @@ export class DocumentSession {
         });
     }
 
-    public async read(documentId: CosmosDBRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.read', async (context) => {
+    public async read(itemId: CosmosDBItemIdentifier): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.item.session.read', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
                 throw new Error(l10n.t('Session is disposed'));
             }
 
-            if (documentId.id === undefined || documentId._rid === undefined) {
+            if (itemId.id === undefined || itemId._rid === undefined) {
                 throw new Error(l10n.t('Item id or _rid is required'));
             }
 
@@ -116,7 +116,7 @@ export class DocumentSession {
                 const response = await this.client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
+                    .item(itemId.id, itemId.partitionKey)
                     .read<CosmosDBRecord>({
                         abortSignal: this.abortController.signal,
                     });
@@ -125,12 +125,12 @@ export class DocumentSession {
                     result = response.resource;
                 }
 
-                // TODO: Should we try to read the document by _rid if the above fails?
-                if (!result && documentId._rid) {
+                // TODO: Should we try to read the item by _rid if the above fails?
+                if (!result && itemId._rid) {
                     const queryResult = await this.client
                         .database(this.databaseId)
                         .container(this.containerId)
-                        .items.query<CosmosDBRecord>(`SELECT *FROM c WHERE c._rid = "${documentId._rid}"`, {
+                        .items.query<CosmosDBRecord>(`SELECT *FROM c WHERE c._rid = "${itemId._rid}"`, {
                             abortSignal: this.abortController.signal,
                             bufferItems: true,
                         })
@@ -146,14 +146,14 @@ export class DocumentSession {
 
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'setDocument',
+                        name: 'setItem',
                         params: [this.id, result, partitionKey],
                     });
                 } else {
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Document not found'],
+                        name: 'itemError',
+                        params: [this.id, 'Item not found'],
                     });
                 }
             } catch (error) {
@@ -163,17 +163,17 @@ export class DocumentSession {
     }
 
     public async update(
-        document: ItemDefinition,
-        documentId: CosmosDBRecordIdentifier,
-    ): Promise<CosmosDBRecordIdentifier | undefined> {
-        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.update', async (context) => {
+        itemDefinition: ItemDefinition,
+        itemId: CosmosDBItemIdentifier,
+    ): Promise<CosmosDBItemIdentifier | undefined> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.item.session.update', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
                 throw new Error(l10n.t('Session is disposed'));
             }
 
-            if (documentId.id === undefined) {
+            if (itemId.id === undefined) {
                 throw new Error(l10n.t('Item id is required'));
             }
 
@@ -181,8 +181,8 @@ export class DocumentSession {
                 const response = await this.client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
-                    .replace(document, {
+                    .item(itemId.id, itemId.partitionKey)
+                    .replace(itemDefinition, {
                         abortSignal: this.abortController.signal,
                     });
 
@@ -192,7 +192,7 @@ export class DocumentSession {
 
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'setDocument',
+                        name: 'setItem',
                         params: [this.id, record, partitionKey],
                     });
 
@@ -204,8 +204,8 @@ export class DocumentSession {
                 } else {
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Document update failed'],
+                        name: 'itemError',
+                        params: [this.id, 'Item update failed'],
                     });
                 }
             } catch (error) {
@@ -216,15 +216,15 @@ export class DocumentSession {
         });
     }
 
-    public async delete(documentId: CosmosDBRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.delete', async (context) => {
+    public async delete(itemId: CosmosDBItemIdentifier): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.item.session.delete', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
                 throw new Error(l10n.t('Session is disposed'));
             }
 
-            if (documentId.id === undefined) {
+            if (itemId.id === undefined) {
                 throw new Error(l10n.t('Item id is required'));
             }
 
@@ -232,7 +232,7 @@ export class DocumentSession {
                 const result = await this.client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
+                    .item(itemId.id, itemId.partitionKey)
                     .delete({
                         abortSignal: this.abortController.signal,
                     });
@@ -240,14 +240,14 @@ export class DocumentSession {
                 if (result?.statusCode === 204) {
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'documentDeleted',
-                        params: [this.id, documentId],
+                        name: 'itemDeleted',
+                        params: [this.id, itemId],
                     });
                 } else {
                     await this.channel.postMessage({
                         type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Document deletion failed'],
+                        name: 'itemError',
+                        params: [this.id, 'Item deletion failed'],
                     });
                 }
             } catch (error) {
@@ -256,46 +256,43 @@ export class DocumentSession {
         });
     }
 
-    public async setNewDocumentTemplate(): Promise<void> {
-        await callWithTelemetryAndErrorHandling(
-            'cosmosDB.nosql.document.session.setNewDocumentTemplate',
-            async (context) => {
-                this.setTelemetryProperties(context);
+    public async setNewItemTemplate(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.item.session.setNewItemTemplate', async (context) => {
+            this.setTelemetryProperties(context);
 
-                if (this.isDisposed) {
-                    throw new Error(l10n.t('Session is disposed'));
+            if (this.isDisposed) {
+                throw new Error(l10n.t('Session is disposed'));
+            }
+
+            const partitionKey = await this.getPartitionKey();
+
+            const newItem: JSONObject = {
+                id: 'replace_with_new_item_id',
+            };
+            partitionKey?.paths.forEach((partitionKeyProperty) => {
+                let target = newItem;
+                const keySegments = partitionKeyProperty.split('/').filter((segment) => segment.length > 0);
+                const finalSegment = keySegments.pop();
+
+                if (!finalSegment) {
+                    return;
                 }
 
-                const partitionKey = await this.getPartitionKey();
-
-                const newDocument: JSONObject = {
-                    id: 'replace_with_new_document_id',
-                };
-                partitionKey?.paths.forEach((partitionKeyProperty) => {
-                    let target = newDocument;
-                    const keySegments = partitionKeyProperty.split('/').filter((segment) => segment.length > 0);
-                    const finalSegment = keySegments.pop();
-
-                    if (!finalSegment) {
-                        return;
-                    }
-
-                    // Initialize nested objects as needed
-                    keySegments.forEach((segment) => {
-                        target[segment] ??= {};
-                        target = target[segment] as JSONObject;
-                    });
-
-                    target[finalSegment] = 'replace_with_new_partition_key_value';
+                // Initialize nested objects as needed
+                keySegments.forEach((segment) => {
+                    target[segment] ??= {};
+                    target = target[segment] as JSONObject;
                 });
 
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'setDocument',
-                    params: [this.id, newDocument, partitionKey],
-                });
-            },
-        );
+                target[finalSegment] = 'replace_with_new_partition_key_value';
+            });
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'setItem',
+                params: [this.id, newItem, partitionKey],
+            });
+        });
     }
 
     public dispose(): void {
@@ -358,7 +355,7 @@ export class DocumentSession {
             return this.partitionKey;
         }
 
-        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.getPartitionKey', async () => {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.item.session.getPartitionKey', async () => {
             const container = await this.client.database(this.databaseId).container(this.containerId).read();
 
             if (container.resource === undefined) {

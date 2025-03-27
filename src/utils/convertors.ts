@@ -7,7 +7,7 @@ import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos'
 import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
 import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
-import { extractPartitionKey } from './document';
+import { extractPartitionKey } from '../cosmosdb/utils/cosmosDBItem';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
 
 export type StatsItem = {
@@ -17,15 +17,15 @@ export type StatsItem = {
     tooltip: string;
 };
 
-export type TableRecord = Record<string, string> & { __id: string };
+export type TableRecord = Record<string, string> & { __id: string; id?: string };
 export type TableData = {
     headers: string[];
     dataset: TableRecord[];
 };
 
 /**
- * We can retrieve the document id to open it in a separate tab only if record contains CosmosDBRecordIdentifier
- * We can be 100% sure that all required fields for CosmosDBRecordIdentifier are present in the record
+ * We can retrieve the item id to open it in a separate tab only if record contains {@link CosmosDBItemIdentifier}
+ * We can be 100% sure that all required fields for {@link CosmosDBItemIdentifier} are present in the record
  * if query has `SELECT *` clause. So we can enable editing only in this case.
  * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
  * '*" is allowed only if the query doesn't have any subset or joins
@@ -47,19 +47,19 @@ export const queryResultToJSON = (queryResult: SerializedQueryResult | null, sel
     }
 
     if (selection) {
-        const selectedDocs = queryResult.documents
-            .map((doc, index) => {
+        const selectedRecords = queryResult.records
+            .map((record, index) => {
                 if (!selection.includes(index)) {
                     return null;
                 }
-                return doc;
+                return record;
             })
             .filter((doc) => doc !== null);
 
-        return JSON.stringify(selectedDocs, null, 4);
+        return JSON.stringify(selectedRecords, null, 4);
     }
 
-    return JSON.stringify(queryResult.documents, null, 4);
+    return JSON.stringify(queryResult.records, null, 4);
 };
 
 export const queryResultToTree = (
@@ -72,23 +72,23 @@ export const queryResultToTree = (
         return tree;
     }
 
-    queryResult.documents.forEach((doc, index) => {
-        const documentTree = documentToSlickGridTree(doc, partitionKey, index, `${index}-`);
-        tree.push(...documentTree);
+    queryResult.records.forEach((record, index) => {
+        const recordTree = recordToSlickGridTree(record, partitionKey, index, `${index}-`);
+        tree.push(...recordTree);
     });
 
     return tree;
 };
 
-const documentToSlickGridTree = (
-    document: QueryResultRecord,
+const recordToSlickGridTree = (
+    record: QueryResultRecord,
     _partitionKey: PartitionKeyDefinition | undefined, // TODO: To show id and partition key fields upper than the other fields
     index: number,
     idPrefix?: string,
 ): TreeData[] => {
     const tree: TreeData[] = [];
 
-    let localEntryId = 0; // starts with 0 on each document
+    let localEntryId = 0; // starts with 0 on each record
     if (idPrefix === undefined || idPrefix === null) {
         idPrefix = uuid();
     }
@@ -96,17 +96,16 @@ const documentToSlickGridTree = (
     const rootId = `${idPrefix}-${localEntryId}`; // localEntryId is always a 0 here
     tree.push({
         id: rootId,
-        field: document['id'] ? `${document['id']}` : `${index + 1} (Index number, id is missing)`,
+        field: record['id'] ? `${record['id']}` : `${index + 1} (Index number, id is missing)`,
         value: '',
         type: 'Document',
         parentId: null,
     });
 
-    const stack: { key: string; value: unknown; parentId: string | null }[] = Object.entries(document).map(
+    const stack: { key: string; value: unknown; parentId: string | null }[] = Object.entries(record).map(
         ([key, value]) => ({
             parentId: rootId,
             key: key,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- the value can be anything here as it comes from a MongoDB document
             value: value,
         }),
     );
@@ -190,17 +189,17 @@ const documentToSlickGridTree = (
  * then the partition key, when each column has / prefix,
  * then the user columns without _ prefix,
  * then the service columns with _ prefix
- * @param documents
+ * @param itemDefinitions
  * @param partitionKey
  */
 export const getTableHeadersWithRecordIdentifyColumns = (
-    documents: ItemDefinition[],
+    itemDefinitions: ItemDefinition[],
     partitionKey: PartitionKeyDefinition | undefined,
 ): string[] => {
     const keys = new Set<string>();
     const serviceKeys = new Set<string>();
 
-    documents.forEach((doc) => {
+    itemDefinitions.forEach((doc) => {
         Object.keys(doc).forEach((key) => {
             if (key.startsWith('_')) {
                 serviceKeys.add(key);
@@ -234,19 +233,19 @@ export const getTableHeadersWithRecordIdentifyColumns = (
 
 /**
  * Get the dataset for the table (don't take into account the nested objects)
- * Uses __id as the unique id of the document
+ * Uses __id as the unique id of the record
  * Includes the nested partition key values as columns
- * @param documents
+ * @param records
  * @param partitionKey
  */
 export const getTableDatasetWithRecordIdentifyColumns = (
-    documents: QueryResultRecord[],
+    records: QueryResultRecord[],
     partitionKey: PartitionKeyDefinition | undefined,
 ): TableRecord[] => {
     const result = new Array<TableRecord>();
 
-    documents.forEach((doc) => {
-        // Emulate the unique id of the document
+    records.forEach((doc) => {
+        // Emulate the unique id of the record
         const row: TableRecord = { __id: uuid() };
 
         if (partitionKey) {
@@ -275,10 +274,10 @@ export const getTableDatasetWithRecordIdentifyColumns = (
     return result;
 };
 
-export const getTableHeaders = (documents: QueryResultRecord[]): string[] => {
+export const getTableHeaders = (records: QueryResultRecord[]): string[] => {
     const keys = new Set<string>();
 
-    documents.forEach((doc) => {
+    records.forEach((doc) => {
         Object.keys(doc).forEach((key) => {
             keys.add(key);
         });
@@ -287,19 +286,19 @@ export const getTableHeaders = (documents: QueryResultRecord[]): string[] => {
     return Array.from(keys);
 };
 
-export const getTableDataset = (documents: QueryResultRecord[]): TableRecord[] => {
+export const getTableDataset = (records: QueryResultRecord[]): TableRecord[] => {
     const result = new Array<TableRecord>();
 
-    documents.forEach((doc) => {
+    records.forEach((record) => {
         const row: TableRecord = { __id: uuid() };
 
-        Object.entries(doc).forEach(([key, value]) => {
+        Object.entries(record).forEach(([key, value]) => {
             if (value !== null && typeof value === 'object') {
                 row[key] = JSON.stringify(value);
-            } else if (doc[key] instanceof Array) {
-                row[key] = `(elements: ${doc[key].length})`;
+            } else if (record[key] instanceof Array) {
+                row[key] = `(elements: ${record[key].length})`;
             } else {
-                row[key] = `${doc[key]}`;
+                row[key] = `${record[key]}`;
             }
         });
 
@@ -336,13 +335,13 @@ export const queryResultToTable = (
 
     if (reorderColumns) {
         result = {
-            headers: getTableHeadersWithRecordIdentifyColumns(queryResult.documents, partitionKey),
-            dataset: getTableDatasetWithRecordIdentifyColumns(queryResult.documents, partitionKey),
+            headers: getTableHeadersWithRecordIdentifyColumns(queryResult.records, partitionKey),
+            dataset: getTableDatasetWithRecordIdentifyColumns(queryResult.records, partitionKey),
         };
     } else {
         result = {
-            headers: getTableHeaders(queryResult.documents),
-            dataset: getTableDataset(queryResult.documents),
+            headers: getTableHeaders(queryResult.records),
+            dataset: getTableDataset(queryResult.records),
         };
     }
 
@@ -359,13 +358,13 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
     }
 
     const { queryMetrics, iteration, metadata } = queryResult;
-    const documentsCount = queryResult.documents?.length ?? 0;
+    const itemsCount = queryResult.records?.length ?? 0;
     const countPerPage = metadata.countPerPage ?? 100;
 
     const recordsCount =
         countPerPage === -1
-            ? documentsCount
-                ? `0 - ${documentsCount}`
+            ? itemsCount
+                ? `0 - ${itemsCount}`
                 : l10n.t('All')
             : `${(iteration - 1) * countPerPage} - ${iteration * countPerPage}`;
 
@@ -383,34 +382,34 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
             tooltip: l10n.t('Showing Results', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Retrieved document count', { comment: 'Cosmos DB metrics' }),
-            value: queryResult.documents?.length ?? 0,
-            formattedValue: `${queryResult.documents?.length ?? 0}`,
-            tooltip: l10n.t('Total number of retrieved documents', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Retrieved item count', { comment: 'Cosmos DB metrics' }),
+            value: queryResult.records?.length ?? 0,
+            formattedValue: `${queryResult.records?.length ?? 0}`,
+            tooltip: l10n.t('Total number of retrieved items', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Retrieved document size', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Retrieved item size', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.retrievedDocumentSize ?? 0,
             formattedValue: `${queryMetrics.retrievedDocumentSize ?? 0} bytes`,
-            tooltip: l10n.t('Total size of retrieved documents in bytes', { comment: 'Cosmos DB metrics' }),
+            tooltip: l10n.t('Total size of retrieved items in bytes', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Output document count', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Output item count', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.outputDocumentCount ?? 0,
             formattedValue: `${queryMetrics.outputDocumentCount ?? ''}`,
-            tooltip: l10n.t('Number of output documents', { comment: 'Cosmos DB metrics' }),
+            tooltip: l10n.t('Number of output items', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Output document size', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Output item size', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.outputDocumentSize ?? 0,
             formattedValue: `${queryMetrics.outputDocumentSize ?? 0} bytes`,
-            tooltip: l10n.t('Total size of output documents in bytes', { comment: 'Cosmos DB metrics' }),
+            tooltip: l10n.t('Total size of output items in bytes', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Index hit document count', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Index hit item count', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.indexHitDocumentCount ?? 0,
             formattedValue: `${queryMetrics.indexHitDocumentCount ?? ''}`,
-            tooltip: l10n.t('Total number of documents matched by the filter', { comment: 'Cosmos DB metrics' }),
+            tooltip: l10n.t('Total number of items matched by the filter', { comment: 'Cosmos DB metrics' }),
         },
         {
             metric: l10n.t('Index lookup time', { comment: 'Cosmos DB metrics' }),
@@ -419,17 +418,17 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
             tooltip: l10n.t('Time spent in physical index layer', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Document load time', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Item load time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.documentLoadTime ?? 0,
             formattedValue: `${queryMetrics.documentLoadTime ?? 0} ms`,
-            tooltip: l10n.t('Time spent in loading documents', { comment: 'Cosmos DB metrics' }),
+            tooltip: l10n.t('Time spent in loading items', { comment: 'Cosmos DB metrics' }),
         },
         {
             metric: l10n.t('Query engine execution time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.runtimeExecutionTimes.queryEngineExecutionTime ?? 0,
             formattedValue: `${queryMetrics.runtimeExecutionTimes.queryEngineExecutionTime ?? 0} ms`,
             tooltip: l10n.t(
-                'Time spent by the query engine to execute the query expression (excludes other execution times like load documents or write results)',
+                'Time spent by the query engine to execute the query expression (excludes other execution times like load items or write results)',
                 { comment: 'Cosmos DB metrics' },
             ),
         },
@@ -446,7 +445,7 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
             tooltip: l10n.t('Total time spent executing user-defined functions', { comment: 'Cosmos DB metrics' }),
         },
         {
-            metric: l10n.t('Document write time', { comment: 'Cosmos DB metrics' }),
+            metric: l10n.t('Item write time', { comment: 'Cosmos DB metrics' }),
             value: queryMetrics.documentWriteTime ?? 0,
             formattedValue: `${queryMetrics.documentWriteTime ?? 0} ms`,
             tooltip: l10n.t('Time spent to write query result set to response buffer', {

@@ -5,7 +5,7 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import {
-    type CosmosDBRecordIdentifier,
+    type CosmosDBItemIdentifier,
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
     type ResultViewMetadata,
@@ -13,7 +13,7 @@ import {
 } from '../../../../cosmosdb/types/queryResult';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
-import { type OpenDocumentMode } from '../../Document/state/DocumentState';
+import { type OpenItemMode } from '../../Item/state/ItemState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
 const DEFAULT_RESULT_VIEW_METADATA: ResultViewMetadata = {
@@ -83,24 +83,24 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         this.dispatch({ type: 'setTableViewMode', mode });
     }
     public setSelectedRows(selectedRows: number[]) {
-        void this.reportWebviewEvent('setSelectedDocumentIds', { count: selectedRows.length.toString() });
+        void this.reportWebviewEvent('setSelectedRows', { count: selectedRows.length.toString() });
         this.dispatch({ type: 'setSelectedRows', selectedRows });
     }
 
-    public async openDocument(mode: OpenDocumentMode, document?: CosmosDBRecordIdentifier): Promise<void> {
-        await this.sendCommand('openDocument', mode, document);
+    public async openItem(mode: OpenItemMode, itemId?: CosmosDBItemIdentifier): Promise<void> {
+        await this.sendCommand('openItem', mode, itemId);
     }
-    public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        for (const document of documents) {
-            await this.openDocument(mode, document);
+    public async openItems(mode: OpenItemMode, itemIds: CosmosDBItemIdentifier[]): Promise<void> {
+        for (const itemId of itemIds) {
+            await this.openItem(mode, itemId);
         }
     }
-    public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
-        await this.sendCommand('deleteDocument', document);
+    public async deleteItem(itemId: CosmosDBItemIdentifier): Promise<void> {
+        await this.sendCommand('deleteItem', itemId);
     }
-    public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        for (const document of documents) {
-            await this.deleteDocument(document);
+    public async deleteItems(itemIds: CosmosDBItemIdentifier[]): Promise<void> {
+        for (const itemId of itemIds) {
+            await this.deleteItem(itemId);
         }
     }
     public async provideFeedback(): Promise<void> {

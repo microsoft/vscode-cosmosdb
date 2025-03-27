@@ -12,7 +12,7 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { getDocumentId, isSelectStar, type TableData } from '../../../utils';
+import { getCosmosDBItemIdentifier, isSelectStar, type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 type ResultTabViewTableProps = TableData & {};
@@ -58,11 +58,11 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         // If not in edit mode, do nothing
         if (!isEditMode) return;
 
-        // Open document in view mode
-        const activeDocument = dataset[args.row];
-        const documentId = activeDocument ? getDocumentId(activeDocument, state.partitionKey) : undefined;
-        if (documentId) {
-            void dispatcher.openDocument('view', documentId);
+        // Open record in view mode
+        const activeRecord = dataset[args.row];
+        const itemId = activeRecord ? getCosmosDBItemIdentifier(activeRecord, state.partitionKey) : undefined;
+        if (itemId) {
+            void dispatcher.openItem('view', itemId);
         }
     };
 

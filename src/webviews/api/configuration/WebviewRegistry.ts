@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Document } from '../../cosmosdb/Document/Document';
+import { Item } from '../../cosmosdb/Item/Item';
 import { QueryEditor } from '../../cosmosdb/QueryEditor/QueryEditor';
 import { CollectionView } from '../../documentdb/collectionView/CollectionView';
 import { DocumentView } from '../../documentdb/documentView/documentView';
 
 export const WebviewRegistry = {
-    cosmosDbDocument: Document,
-    cosmosDbQuery: QueryEditor,
+    cosmosDBItem: Item,
+    cosmosDBQuery: QueryEditor,
     mongoClustersCollectionView: CollectionView,
     mongoClustersDocumentView: DocumentView,
 } as const;

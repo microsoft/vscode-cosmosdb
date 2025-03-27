@@ -6,9 +6,9 @@
 import { type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import * as l10n from '@vscode/l10n';
-import { extractPartitionKey } from '../../utils/document';
+import { extractPartitionKey } from './cosmosDBItem';
 
-export function validateDocument(content: string, partitionKey?: PartitionKeyDefinition) {
+export function validateCosmosDBItem(content: string, partitionKey?: PartitionKeyDefinition) {
     const errors: string[] = [];
 
     try {
@@ -25,7 +25,7 @@ export function validateDocument(content: string, partitionKey?: PartitionKeyDef
             errors.push(...partitionKeyError);
         }
 
-        const idError = validateDocumentId(resource);
+        const idError = validateCosmosDBItemId(resource);
         if (idError) {
             errors.push(...idError);
         }
@@ -73,7 +73,7 @@ export function validatePartitionKey(
     return errors.length ? errors : undefined;
 }
 
-export function validateDocumentId(resource: JSONObject): string[] | undefined {
+export function validateCosmosDBItemId(resource: JSONObject): string[] | undefined {
     const errors: string[] = [];
 
     if ('id' in resource && resource.id) {

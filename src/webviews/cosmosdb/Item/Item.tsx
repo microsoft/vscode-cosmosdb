@@ -6,8 +6,8 @@
 import { makeStyles } from '@fluentui/react-components';
 import { useContext } from 'react';
 import { WebviewContext } from '../../WebviewContext';
-import { DocumentPanel } from './DocumentPanel';
-import { WithDocumentContext } from './state/DocumentContext';
+import { ItemPanel } from './ItemPanel';
+import { WithItemContext } from './state/ItemContext';
 
 const useStyles = makeStyles({
     root: {
@@ -16,15 +16,15 @@ const useStyles = makeStyles({
     },
 });
 
-export const Document = () => {
+export const Item = () => {
     const styles = useStyles();
     const { channel, vscodeApi } = useContext(WebviewContext);
 
     return (
         <div className={styles.root}>
-            <WithDocumentContext channel={channel} vscodeApi={vscodeApi}>
-                <DocumentPanel />
-            </WithDocumentContext>
+            <WithItemContext channel={channel} vscodeApi={vscodeApi}>
+                <ItemPanel />
+            </WithItemContext>
         </div>
     );
 };

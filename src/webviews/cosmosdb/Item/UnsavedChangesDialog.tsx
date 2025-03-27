@@ -29,7 +29,7 @@ export const UnsavedChangesDialog = ({ open, setOpen, doAction }: AlertDialogPro
                     <DialogTitle>Attention</DialogTitle>
                     <DialogContent>
                         <div>
-                            {l10n.t('Your document has unsaved changes. If you continue, these changes will be lost.')}
+                            {l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.')}
                         </div>
                         <div>{l10n.t('Are you sure you want to continue?')}</div>
                     </DialogContent>

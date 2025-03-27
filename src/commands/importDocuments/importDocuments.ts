@@ -12,7 +12,7 @@ import { EJSON, type Document } from 'bson';
 import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
-import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
+import { validateCosmosDBItemId, validatePartitionKey } from '../../cosmosdb/utils/validateCosmosDBItem';
 import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
@@ -205,14 +205,14 @@ async function parseAndValidateFileForMongo(uri: vscode.Uri): Promise<{ document
     const documents: unknown[] = [];
 
     if (!parsed || typeof parsed !== 'object') {
-        errors.push(l10n.t('Document must be an object.'));
+        errors.push(l10n.t('Item must be an object.'));
     } else if (Array.isArray(parsed)) {
         documents.push(
             ...parsed
                 .map((document: unknown) => {
                     // Only top-level array is supported
                     if (!document || typeof document !== 'object' || Array.isArray(document)) {
-                        errors.push(l10n.t('Document must be an object. Skipping…') + '\n' + EJSON.stringify(document));
+                        errors.push(l10n.t('Item must be an object. Skipping…') + '\n' + EJSON.stringify(document));
                         return undefined;
                     }
 
@@ -242,7 +242,7 @@ async function parseAndValidateFileForCosmosDB(
             hasErrors = true;
         }
 
-        const idError = validateDocumentId(document);
+        const idError = validateCosmosDBItemId(document);
         if (idError) {
             errors.push(...idError);
             hasErrors = true;
@@ -255,14 +255,14 @@ async function parseAndValidateFileForCosmosDB(
     const parsed = parseJson(fileContent) as JSONValue;
 
     if (!parsed || typeof parsed !== 'object') {
-        errors.push(l10n.t('Document must be an object.'));
+        errors.push(l10n.t('Item must be an object.'));
     } else if (Array.isArray(parsed)) {
         documents.push(
             ...parsed
                 .map((document: unknown) => {
                     // Only top-level array is supported
                     if (!document || typeof document !== 'object' || Array.isArray(document)) {
-                        errors.push(l10n.t('Document must be an object. Skipping…') + '\n' + EJSON.stringify(document));
+                        errors.push(l10n.t('Item must be an object. Skipping…') + '\n' + EJSON.stringify(document));
                         return undefined;
                     }
 

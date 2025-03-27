@@ -11,19 +11,19 @@ import * as vscode from 'vscode';
 import * as l10n from '@vscode/l10n';
 import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
-import { DocumentSession } from '../cosmosdb/session/DocumentSession';
+import { ItemSession } from '../cosmosdb/session/ItemSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
-import { type CosmosDBRecordIdentifier, type ResultViewMetadata } from '../cosmosdb/types/queryResult';
+import { type CosmosDBItemIdentifier, type ResultViewMetadata } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
-import { DocumentTab } from './DocumentTab';
+import { ItemTab } from './ItemTab';
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
-    public static readonly viewType = 'cosmosDbQuery';
+    public static readonly viewType = 'cosmosDBQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
     private readonly sessions = new Map<string, QuerySession>();
@@ -137,10 +137,10 @@ export class QueryEditorTab extends BaseTab {
                 return this.prevPage(payload.params[0] as string);
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
-            case 'openDocument':
-                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDBRecordIdentifier);
-            case 'deleteDocument':
-                return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
+            case 'openItem':
+                return this.openItem(payload.params[0] as string, payload.params[1] as CosmosDBItemIdentifier);
+            case 'deleteItem':
+                return this.deleteItem(payload.params[0] as CosmosDBItemIdentifier);
             case 'provideFeedback':
                 return this.provideFeedback();
         }
@@ -360,39 +360,39 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async openDocument(mode: string, documentId?: CosmosDBRecordIdentifier): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
+    private async openItem(mode: string, itemId?: CosmosDBItemIdentifier): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.openItem';
         await callWithTelemetryAndErrorHandling(callbackId, () => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }
 
-            if (!documentId && mode !== 'add') {
-                throw new Error(l10n.t('Impossible to open a document without an id'));
+            if (!itemId && mode !== 'add') {
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
             if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
                 throw new Error(l10n.t('Invalid mode: {0}', mode));
             }
 
-            DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
+            ItemTab.render(this.connection, mode, itemId, this.getNextViewColumn());
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async deleteDocument(documentId: CosmosDBRecordIdentifier): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
+    private async deleteItem(itemId: CosmosDBItemIdentifier): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.deleteItem';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }
 
-            if (!documentId) {
-                throw new Error(l10n.t('Impossible to open a document without an id'));
+            if (!itemId) {
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
-            const session = new DocumentSession(this.connection, this.channel);
-            await session.delete(documentId);
+            const session = new ItemSession(this.connection, this.channel);
+            await session.delete(itemId);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }

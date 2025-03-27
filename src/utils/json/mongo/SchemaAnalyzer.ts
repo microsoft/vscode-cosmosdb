@@ -22,7 +22,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://example.com/sample.schema.json",
-  "title": "Sample Document Schema",
+  "title": "Sample Item Schema",
   "type": "object",
   "properties": {
     "a-propert-root-level": {

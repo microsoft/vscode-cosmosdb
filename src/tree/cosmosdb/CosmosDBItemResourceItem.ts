@@ -7,8 +7,8 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { extractPartitionKey, getDocumentId } from '../../utils/document';
-import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { extractPartitionKey, getCosmosDBItemIdentifier } from '../../cosmosdb/utils/cosmosDBItem';
+import { getItemTreeItemLabel } from '../../utils/vscodeUtils';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -44,22 +44,20 @@ export abstract class CosmosDBItemResourceItem
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('file'),
-            label: getDocumentTreeItemLabel(this.model.item),
-            tooltip: new vscode.MarkdownString(
-                `${this.generateDocumentTooltip()}\n${this.generatePartitionKeyTooltip()}`,
-            ),
+            label: getItemTreeItemLabel(this.model.item),
+            tooltip: new vscode.MarkdownString(`${this.generateItemTooltip()}\n${this.generatePartitionKeyTooltip()}`),
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
-                title: l10n.t('Open Document'),
-                command: 'cosmosDB.openDocument',
+                title: l10n.t('Open Item'),
+                command: 'cosmosDB.openItem',
                 arguments: [this],
             },
         };
     }
 
-    protected generateDocumentTooltip(): string {
+    protected generateItemTooltip(): string {
         return (
-            '### Document\n' +
+            '### Item\n' +
             '---\n' +
             `${this.model.item.id ? `- ID: **${this.model.item.id}**\n` : ''}` +
             `${this.model.item._id ? `- ID (_id): **${this.model.item._id}**\n` : ''}` +
@@ -87,20 +85,20 @@ export abstract class CosmosDBItemResourceItem
     }
 
     /**
-     * Warning: This method is used to generate a unique ID for the document tree item.
-     * It is not used to generate the actual document ID.
+     * Warning: This method is used to generate a unique ID for the item tree item.
+     * It is not used to generate the actual item ID.
      */
     protected generateUniqueId(model: CosmosDBItemModel): string {
-        const documentId = getDocumentId(model.item, model.container.partitionKey);
-        const id = documentId?.id;
-        const rid = documentId?._rid;
+        const itemId = getCosmosDBItemIdentifier(model.item, model.container.partitionKey);
+        const id = itemId?.id;
+        const rid = itemId?._rid;
         const partitionKeyValues = this.generatePartitionKeyValue(model);
 
         return `${id || '<empty id>'}|${partitionKeyValues || '<empty partition key>'}|${rid || '<empty rid>'}`;
     }
 
     /**
-     * Warning: This method is used to generate a partition key value for the document tree item.
+     * Warning: This method is used to generate a partition key value for the item tree item.
      * It is not used to generate the actual partition key value.
      */
     protected generatePartitionKeyValue(model: CosmosDBItemModel): string {

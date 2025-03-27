@@ -10,7 +10,7 @@
   "cosmosdb.command.container.delete": "Delete Container…",
   "cosmosdb.command.database.create": "Create Database…",
   "cosmosdb.command.database.delete": "Delete Database…",
-  "cosmosdb.command.document.import": "Import Document into a Container…",
+  "cosmosdb.command.item.import": "Import Item into a Container…",
   "cosmosdb.command.graph.create": "Create Graph…",
   "cosmosdb.command.graph.delete": "Delete Graph…",
   "cosmosdb.command.graph.explorer": "Open Graph Explorer",

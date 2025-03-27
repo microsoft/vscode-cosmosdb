@@ -71,7 +71,7 @@ export namespace ext {
         export const batchSize = 'azureDatabases.batchSize';
         export const confirmationStyle = 'azureDatabases.confirmationStyle';
         export const showOperationSummaries = 'azureDatabases.showOperationSummaries';
-        export const cosmosDbAuthentication = 'azureDatabases.cosmosDB.preferredAuthenticationMethod';
+        export const cosmosDBAuthentication = 'azureDatabases.cosmosDB.preferredAuthenticationMethod';
         export const authManagedIdentityClientId = 'azureDatabases.authentication.managedIdentity.clientID';
 
         export namespace vsCode {

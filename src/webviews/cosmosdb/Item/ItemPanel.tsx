@@ -4,12 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles, MessageBar, ProgressBar } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import { useEffect, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { validateDocument } from '../../../cosmosdb/utils/validateDocument';
+import { validateCosmosDBItem } from '../../../cosmosdb/utils/validateCosmosDBItem';
 import { MonacoEditor } from '../../MonacoEditor';
-import { DocumentToolbar } from './DocumentToolbar';
-import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
+import { ItemToolbar } from './ItemToolbar';
+import { useItemDispatcher, useItemState } from './state/ItemContext';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 
 const useClasses = makeStyles({
@@ -29,36 +30,36 @@ const useClasses = makeStyles({
     },
 });
 
-export const DocumentPanel = () => {
+export const ItemPanel = () => {
     const classes = useClasses();
-    const state = useDocumentState();
-    const dispatcher = useDocumentDispatcher();
+    const state = useItemState();
+    const dispatcher = useItemDispatcher();
 
     const isReady = state.isReady;
     const isReadOnly = state.mode === 'view';
     const inProgress = state.isSaving || state.isRefreshing;
-    const hasDocumentInDB = state.documentId !== '';
+    const hasItemInDB = state.itemId !== '';
 
     const onSave = async () => {
-        // Save document to the database
-        await dispatcher.saveDocument(state.currentDocumentContent);
+        // Save item to the database
+        await dispatcher.saveItem(state.currentItemContent);
     };
 
     const onEdit = async () => {
-        // Open document for editing
+        // Open item for editing
         await dispatcher.setMode('edit');
     };
 
     const onRefresh = async () => {
-        // Reload original document from the database
+        // Reload original item from the database
         if (state.isDirty) {
             setOpen(true);
             setDoAction(() => async () => {
                 setOpen(false);
-                await dispatcher.refreshDocument();
+                await dispatcher.refreshItem();
             });
         } else {
-            await dispatcher.refreshDocument();
+            await dispatcher.refreshItem();
         }
     };
 
@@ -100,25 +101,25 @@ export const DocumentPanel = () => {
             void onRefresh();
         },
         {
-            enabled: () => !inProgress && hasDocumentInDB, // The same check is done in the toolbar
+            enabled: () => !inProgress && hasItemInDB, // The same check is done in the toolbar
             enableOnFormTags: ['textarea'], // Allow refreshing when the focus is in the editor
         },
     );
 
     const onChange = (newValue: string) => {
-        dispatcher.setCurrentDocumentContent(newValue);
+        dispatcher.setCurrentItemContent(newValue);
 
-        const errors = validateDocument(newValue, state.partitionKey);
+        const errors = validateCosmosDBItem(newValue, state.partitionKey);
 
         dispatcher.setValid(errors.length === 0, errors);
     };
 
-    // TODO: Hack, remove this when DocumentPanel will be moved to CustomTextEditor.
+    // TODO: Hack, remove this when ItemPanel will be moved to CustomTextEditor.
     useEffect(() => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
 
-    if (!isReady || !state.currentDocumentContent) {
+    if (!isReady || !state.currentItemContent) {
         return (
             <section className={classes.container}>
                 <ProgressBar />
@@ -129,20 +130,20 @@ export const DocumentPanel = () => {
     return (
         <section className={classes.container}>
             <UnsavedChangesDialog open={open} setOpen={setOpen} doAction={doAction} />
-            <DocumentToolbar onSave={onSave} onEdit={onEdit} onRefresh={onRefresh} />
+            <ItemToolbar onSave={onSave} onEdit={onEdit} onRefresh={onRefresh} />
             {inProgress && <ProgressBar />}
             {state.error && (
                 <MessageBar key={'error'} intent={'error'} layout={'multiline'}>
                     {state.error}
                 </MessageBar>
             )}
-            {isReadOnly && <MessageBar intent={'info'}>This document is read-only.</MessageBar>}
+            {isReadOnly && <MessageBar intent={'info'}>{l10n.t('This item is read-only.')}</MessageBar>}
             <section className={classes.resultDisplay}>
                 <MonacoEditor
                     height={'100%'}
                     width={'100%'}
                     defaultLanguage={'json'}
-                    value={state.currentDocumentContent ?? 'No result'}
+                    value={state.currentItemContent ?? l10n.t('No result')}
                     options={{ domReadOnly: isReadOnly, readOnly: isReadOnly, scrollBeyondLastLine: false }}
                     onChange={onChange}
                 />

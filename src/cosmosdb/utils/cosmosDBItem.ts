@@ -10,11 +10,11 @@ import {
     type PartitionKeyDefinition,
     type PrimitivePartitionKeyValue,
 } from '@azure/cosmos';
-import { type CosmosDBRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
+import { type CosmosDBItemIdentifier, type QueryResultRecord } from '../types/queryResult';
 
-export const extractPartitionKey = (document: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
+export const extractPartitionKey = (item: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
     return partitionKey.paths.map((path): PrimitivePartitionKeyValue => {
-        let interim: JSONValue = document;
+        let interim: JSONValue = item;
         const partitionKeyPath = path.split('/').filter((key) => key !== '');
 
         for (const prop of partitionKeyPath) {
@@ -39,38 +39,38 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
 };
 
 /**
- * Get the unique id of a document only as a key for the UI (loops, tables, etc.)
- * @param document
+ * Get the unique id of an item only as a key for the UI (loops, tables, etc.)
+ * @param record
  * @param partitionKey
  */
-export const getDocumentId = (
-    document: QueryResultRecord,
+export const getCosmosDBItemIdentifier = (
+    record: QueryResultRecord,
     partitionKey: PartitionKeyDefinition | undefined,
-): CosmosDBRecordIdentifier | undefined => {
-    const documentId = {
-        _rid: typeof document['_rid'] === 'string' ? document['_rid'] : undefined,
-        id: document['id'],
-        partitionKey: partitionKey ? extractPartitionKey(document, partitionKey) : undefined,
+): CosmosDBItemIdentifier | undefined => {
+    const itemId = {
+        _rid: typeof record['_rid'] === 'string' ? record['_rid'] : undefined,
+        id: record['id'],
+        partitionKey: partitionKey ? extractPartitionKey(record, partitionKey) : undefined,
     };
 
-    // The real unique id of the document is stored in the '_rid' field
-    if (documentId._rid && typeof documentId._rid === 'string' && documentId._rid.length > 0) {
-        return documentId;
+    // The real unique id of the item is stored in the '_rid' field
+    if (itemId._rid && typeof itemId._rid === 'string' && itemId._rid.length > 0) {
+        return itemId;
     }
 
     // Next unique id is the partition key + id
     if (partitionKey) {
-        if (Array.isArray(documentId.partitionKey) && documentId.partitionKey.some((key) => key === undefined)) {
+        if (Array.isArray(itemId.partitionKey) && itemId.partitionKey.some((key) => key === undefined)) {
             return undefined;
         }
 
-        if (documentId.partitionKey === undefined) {
+        if (itemId.partitionKey === undefined) {
             return undefined;
         }
     }
 
-    if (documentId.id && documentId.id.length > 0) {
-        return documentId;
+    if (itemId.id && itemId.id.length > 0) {
+        return itemId;
     }
 
     return undefined;

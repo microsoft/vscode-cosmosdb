@@ -8,8 +8,8 @@ import { Dropdown, Option, Toolbar, ToolbarButton, Tooltip, useRestoreFocusTarge
 import { AddFilled, DeleteRegular, EditRegular, EyeRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
-import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
-import { getDocumentId, isSelectStar } from '../../../utils';
+import { type CosmosDBItemIdentifier } from '../../../../cosmosdb/types/queryResult';
+import { getCosmosDBItemIdentifier, isSelectStar } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { type TableViewMode } from '../state/QueryEditorState';
 
@@ -33,13 +33,13 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
     const visibility = state.isExecuting ? 'hidden' : 'visible';
     const hasSelectedRows = state.selectedRows.length > 0;
 
-    const getSelectedDocuments = () => {
+    const getSelectedRecords = () => {
         return state.selectedRows
-            .map((rowIndex): CosmosDBRecordIdentifier | undefined => {
-                const document = state.currentQueryResult?.documents[rowIndex];
-                return document ? getDocumentId(document, state.partitionKey) : undefined;
+            .map((rowIndex): CosmosDBItemIdentifier | undefined => {
+                const record = state.currentQueryResult?.records[rowIndex];
+                return record ? getCosmosDBItemIdentifier(record, state.partitionKey) : undefined;
             })
-            .filter((document) => document !== undefined);
+            .filter((itemId) => itemId !== undefined);
     };
 
     const onOptionSelect = (data: OptionOnSelectData) => {
@@ -54,45 +54,45 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
         <Toolbar aria-label={l10n.t('Result view toolbar')} size="small">
             {isEditMode && (
                 <>
-                    <Tooltip content={l10n.t('Add new document in separate tab')} relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Add new item in separate tab')} relationship="description" withArrow>
                         <ToolbarButton
-                            aria-label={l10n.t('Add new document')}
+                            aria-label={l10n.t('Add new item')}
                             icon={<AddFilled />}
-                            onClick={() => void dispatcher.openDocument('add')}
+                            onClick={() => void dispatcher.openItem('add')}
                             style={{ visibility }}
                         />
                     </Tooltip>
                     <Tooltip
-                        content={l10n.t('View selected document in separate tab')}
+                        content={l10n.t('View selected item in separate tab')}
                         relationship="description"
                         withArrow
                     >
                         <ToolbarButton
-                            aria-label={l10n.t('View selected document')}
+                            aria-label={l10n.t('View selected item')}
                             icon={<EyeRegular />}
-                            onClick={() => void dispatcher.openDocuments('view', getSelectedDocuments())}
+                            onClick={() => void dispatcher.openItems('view', getSelectedRecords())}
                             disabled={!hasSelectedRows}
                             style={{ visibility }}
                         />
                     </Tooltip>
                     <Tooltip
-                        content={l10n.t('Edit selected document in separate tab')}
+                        content={l10n.t('Edit selected item in separate tab')}
                         relationship="description"
                         withArrow
                     >
                         <ToolbarButton
-                            aria-label={l10n.t('Edit selected document')}
+                            aria-label={l10n.t('Edit selected item')}
                             icon={<EditRegular />}
-                            onClick={() => void dispatcher.openDocuments('edit', getSelectedDocuments())}
+                            onClick={() => void dispatcher.openItems('edit', getSelectedRecords())}
                             disabled={!hasSelectedRows}
                             style={{ visibility }}
                         />
                     </Tooltip>
-                    <Tooltip content={l10n.t('Delete selected document')} relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Delete selected item')} relationship="description" withArrow>
                         <ToolbarButton
-                            aria-label={l10n.t('Delete selected document')}
+                            aria-label={l10n.t('Delete selected item')}
                             icon={<DeleteRegular />}
-                            onClick={() => void dispatcher.deleteDocuments(getSelectedDocuments())}
+                            onClick={() => void dispatcher.deleteItems(getSelectedRecords())}
                             disabled={!hasSelectedRows}
                             style={{ visibility }}
                         />

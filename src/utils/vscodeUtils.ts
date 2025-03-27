@@ -85,18 +85,18 @@ export function getNodeEditorLabel(node: TreeElement | EditableFileSystemItem): 
     return node.id;
 }
 
-export function getDocumentTreeItemLabel(document: ItemDefinition): string {
+export function getItemTreeItemLabel(itemDefinition: ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
         // eslint-disable-next-line no-prototype-builtins
-        if (document.hasOwnProperty(field)) {
+        if (itemDefinition.hasOwnProperty(field)) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const value = document[field];
+            const value = itemDefinition[field];
             if (value !== undefined && typeof value !== 'object') {
                 return String(value);
             }
         }
     }
-    return String(document._id ?? document.id);
+    return String(itemDefinition._id ?? itemDefinition.id);
 }
 
 function getDocumentLabelFields(): string[] {

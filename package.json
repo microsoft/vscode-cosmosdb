@@ -5,7 +5,10 @@
   "publisher": "ms-azuretools",
   "displayName": "Azure Databases",
   "description": "Connect to MongoDB, Mongo Clusters, CosmosDB and other databases in and outside of Azure, inspect and edit your data and run powerful queries with the visual query editor.",
+  "//enableMongoClusters": "Notifies Azure Resources extension to enable Azure Cosmos DB for MongoDB (vCore) in the tree view.",
   "enableMongoClusters": true,
+  "//enableDocumentDBExtensionIntegration": "Notifies Azure Databases extension to enable DocumentDB extension integration.",
+  "enableDocumentDBExtensionIntegration": false,
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=20.0.0"

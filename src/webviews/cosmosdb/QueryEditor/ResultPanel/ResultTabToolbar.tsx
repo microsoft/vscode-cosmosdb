@@ -54,21 +54,21 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
         <Toolbar aria-label={l10n.t('Result view toolbar')} size="small">
             {isEditMode && (
                 <>
-                    <Tooltip content={l10n.t('Add new document in separate tab')} relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Add new item in separate tab')} relationship="description" withArrow>
                         <ToolbarButton
-                            aria-label={l10n.t('Add new document')}
+                            aria-label={l10n.t('Add new item')}
                             icon={<AddFilled />}
                             onClick={() => void dispatcher.openDocument('add')}
                             style={{ visibility }}
                         />
                     </Tooltip>
                     <Tooltip
-                        content={l10n.t('View selected document in separate tab')}
+                        content={l10n.t('View selected item in separate tab')}
                         relationship="description"
                         withArrow
                     >
                         <ToolbarButton
-                            aria-label={l10n.t('View selected document')}
+                            aria-label={l10n.t('View selected item')}
                             icon={<EyeRegular />}
                             onClick={() => void dispatcher.openDocuments('view', getSelectedDocuments())}
                             disabled={!hasSelectedRows}
@@ -76,21 +76,21 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
                         />
                     </Tooltip>
                     <Tooltip
-                        content={l10n.t('Edit selected document in separate tab')}
+                        content={l10n.t('Edit selected item in separate tab')}
                         relationship="description"
                         withArrow
                     >
                         <ToolbarButton
-                            aria-label={l10n.t('Edit selected document')}
+                            aria-label={l10n.t('Edit selected item')}
                             icon={<EditRegular />}
                             onClick={() => void dispatcher.openDocuments('edit', getSelectedDocuments())}
                             disabled={!hasSelectedRows}
                             style={{ visibility }}
                         />
                     </Tooltip>
-                    <Tooltip content={l10n.t('Delete selected document')} relationship="description" withArrow>
+                    <Tooltip content={l10n.t('Delete selected item')} relationship="description" withArrow>
                         <ToolbarButton
-                            aria-label={l10n.t('Delete selected document')}
+                            aria-label={l10n.t('Delete selected item')}
                             icon={<DeleteRegular />}
                             onClick={() => void dispatcher.deleteDocuments(getSelectedDocuments())}
                             disabled={!hasSelectedRows}

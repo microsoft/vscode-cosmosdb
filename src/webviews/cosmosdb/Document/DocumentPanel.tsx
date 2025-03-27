@@ -136,7 +136,7 @@ export const DocumentPanel = () => {
                     {state.error}
                 </MessageBar>
             )}
-            {isReadOnly && <MessageBar intent={'info'}>This document is read-only.</MessageBar>}
+            {isReadOnly && <MessageBar intent={'info'}>This item is read-only.</MessageBar>}
             <section className={classes.resultDisplay}>
                 <MonacoEditor
                     height={'100%'}

@@ -93,7 +93,7 @@ export class DocumentTab extends BaseTab {
             }
         }
 
-        const title = `${documentId?.id ? documentId.id : l10n.t('New Document')}.json`;
+        const title = `${documentId?.id ? documentId.id : l10n.t('New Item')}.json`;
         const panel = vscode.window.createWebviewPanel(DocumentTab.viewType, title, column, {
             enableScripts: true,
             retainContextWhenHidden: true,
@@ -191,7 +191,7 @@ export class DocumentTab extends BaseTab {
             if (!result) {
                 // TODO: should we show an error message notification?
                 context.errorHandling.suppressDisplay = true;
-                throw new Error(l10n.t('Failed to create document'));
+                throw new Error(l10n.t('Failed to create item'));
             }
 
             this.documentId = result;

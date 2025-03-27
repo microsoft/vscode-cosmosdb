@@ -355,17 +355,17 @@
       {
         "category": "NoSQL",
         "command": "cosmosDB.createDocument",
-        "title": "%cosmosdb.command.item.create%"
+        "title": "%cosmosdb.command.document.create%"
       },
       {
         "category": "NoSQL",
         "command": "cosmosDB.openDocument",
-        "title": "%cosmosdb.command.item.open%"
+        "title": "%cosmosdb.command.document.open%"
       },
       {
         "category": "NoSQL",
         "command": "cosmosDB.deleteDocument",
-        "title": "%cosmosdb.command.item.delete%"
+        "title": "%cosmosdb.command.document.delete%"
       },
       {
         "category": "NoSQL",

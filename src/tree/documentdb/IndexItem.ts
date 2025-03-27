@@ -7,12 +7,12 @@ import { createContextValue, createGenericElement } from '@microsoft/vscode-azex
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CollectionItemModel, type DatabaseItemModel, type IndexItemModel } from '../../documentdb/ClustersClient';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
 
-export class IndexItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+export class IndexItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.index';
@@ -31,7 +31,7 @@ export class IndexItem implements CosmosDBTreeElement, TreeElementWithExperience
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         return Object.keys(this.indexInfo.key).map((key) => {
             const value = this.indexInfo.key[key];
 
@@ -42,7 +42,7 @@ export class IndexItem implements CosmosDBTreeElement, TreeElementWithExperience
                 // TODO: add a custom icons, and more options here
                 description: value === -1 ? 'desc' : value === 1 ? 'asc' : value.toString(),
                 iconPath: new vscode.ThemeIcon('combine'),
-            }) as CosmosDBTreeElement;
+            }) as TreeElement;
         });
     }
 

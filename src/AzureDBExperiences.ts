@@ -5,7 +5,7 @@
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
 import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
-import { type CosmosDBResource } from './tree/CosmosAccountModel';
+import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 
 export enum API {
     MongoDB = 'MongoDB',
@@ -48,7 +48,7 @@ export function getExperienceFromApi(api: API): Experience {
     return info;
 }
 
-export function tryGetExperience(resource: CosmosDBResource | DatabaseAccountGetResults): Experience | undefined {
+export function tryGetExperience(resource: CosmosDBAccountModel | DatabaseAccountGetResults): Experience | undefined {
     if (resource.kind === DBAccountKind.MongoDB) {
         return MongoExperience;
     }
@@ -104,8 +104,8 @@ export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
     return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
 }
 
-export function getCosmosExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return cosmosExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
+export function getCosmosDBExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
+    return cosmosDBExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
 }
 
 export function getPostgresExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
@@ -181,11 +181,11 @@ export const PostgresFlexibleExperience: Experience = {
     shortName: 'PostgreSQLFlexible',
 };
 
-const cosmosExperiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience];
+const cosmosDBExperiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience];
 const postgresExperiencesArray: Experience[] = [PostgresSingleExperience, PostgresFlexibleExperience];
 const mongoCoreExperienceArray: Experience[] = [MongoClustersExperience];
 const experiencesArray: Experience[] = [
-    ...cosmosExperiencesArray,
+    ...cosmosDBExperiencesArray,
     ...postgresExperiencesArray,
     ...mongoCoreExperienceArray,
 ];

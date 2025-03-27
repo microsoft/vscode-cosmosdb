@@ -7,14 +7,14 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/ClustersClient';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
 import { DocumentsItem } from './DocumentsItem';
 import { IndexesItem } from './IndexesItem';
 
-export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+export class CollectionItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.collection';
@@ -32,7 +32,7 @@ export class CollectionItem implements CosmosDBTreeElement, TreeElementWithExper
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         return [
             new DocumentsItem(this.cluster, this.databaseInfo, this.collectionInfo, this),
             new IndexesItem(this.cluster, this.databaseInfo, this.collectionInfo),

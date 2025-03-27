@@ -8,13 +8,13 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, type Experience } from '../../AzureDBExperiences';
 import { ClustersClient, type DatabaseItemModel } from '../../documentdb/ClustersClient';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
 import { CollectionItem } from './CollectionItem';
 
-export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+export class DatabaseItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.database';
@@ -31,7 +31,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         const client: ClustersClient = await ClustersClient.getClient(this.cluster.id);
         const collections = await client.listCollections(this.databaseInfo.name);
 
@@ -45,7 +45,7 @@ export class DatabaseItem implements CosmosDBTreeElement, TreeElementWithExperie
                     iconPath: new vscode.ThemeIcon('plus'),
                     commandId: 'command.mongoClusters.createCollection',
                     commandArgs: [this],
-                }) as CosmosDBTreeElement,
+                }) as TreeElement,
             ];
         }
 

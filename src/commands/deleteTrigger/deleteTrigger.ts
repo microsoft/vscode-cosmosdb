@@ -6,21 +6,18 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBTriggerResourceItem } from '../../tree/docdb/DocumentDBTriggerResourceItem';
+import { type CosmosDBTriggerResourceItem } from '../../tree/cosmosdb/CosmosDBTriggerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function deleteDocumentDBTrigger(
-    context: IActionContext,
-    node: DocumentDBTriggerResourceItem,
-): Promise<void> {
+export async function cosmosDBDeleteTrigger(context: IActionContext, node: CosmosDBTriggerResourceItem): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
     if (!node) {
-        node = await pickAppResource<DocumentDBTriggerResourceItem>(context, {
+        node = await pickAppResource<CosmosDBTriggerResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.item'],
         });

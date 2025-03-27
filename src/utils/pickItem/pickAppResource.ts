@@ -11,7 +11,7 @@ import {
 import { type AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import type * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type CosmosDBTreeElement } from '../../tree/CosmosDBTreeElement';
+import { type TreeElement } from '../../tree/TreeElement';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 
 export interface PickAppResourceOptions {
@@ -25,7 +25,7 @@ export interface PickWorkspaceResourceOptions {
     expectedChildContextValue?: string | RegExp | (string | RegExp)[];
 }
 
-export async function pickAppResource<T extends CosmosDBTreeElement>(
+export async function pickAppResource<T extends TreeElement>(
     context: ITreeItemPickerContext,
     options?: PickAppResourceOptions,
 ): Promise<T> {
@@ -80,7 +80,7 @@ const isPick = (node: vscode.TreeItem, contextValueFilter?: ContextValueFilter):
     );
 };
 
-export async function pickWorkspaceResource<T extends CosmosDBTreeElement>(
+export async function pickWorkspaceResource<T extends TreeElement>(
     context: ITreeItemPickerContext,
     options?: PickWorkspaceResourceOptions,
 ): Promise<T> {

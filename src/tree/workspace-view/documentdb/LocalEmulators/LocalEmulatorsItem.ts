@@ -8,15 +8,15 @@ import * as vscode from 'vscode';
 import { MongoClustersExperience } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
 import { type EmulatorConfiguration } from '../../../../utils/emulatorConfiguration';
-import { type CosmosDBTreeElement } from '../../../CosmosDBTreeElement';
 import { type ClusterModel } from '../../../documentdb/ClusterModel';
+import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../../workspace-api/SharedWorkspaceStorage';
 import { ClusterItem } from '../ClusterItem';
 import { NewEmulatorConnectionItem } from './NewEmulatorConnectionItem';
 
-export class LocalEmulatorsItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+export class LocalEmulatorsItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.newConnection';
 
@@ -24,7 +24,7 @@ export class LocalEmulatorsItem implements CosmosDBTreeElement, TreeElementWithC
         this.id = `${parentId}/localEmulators`;
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
         return [
             ...allItems

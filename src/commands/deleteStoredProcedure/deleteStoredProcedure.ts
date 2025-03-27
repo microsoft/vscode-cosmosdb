@@ -6,21 +6,21 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../docdb/getCosmosClient';
+import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { ext } from '../../extensionVariables';
-import { type DocumentDBStoredProcedureResourceItem } from '../../tree/docdb/DocumentDBStoredProcedureResourceItem';
+import { type CosmosDBStoredProcedureResourceItem } from '../../tree/cosmosdb/CosmosDBStoredProcedureResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function deleteDocumentDBStoredProcedure(
+export async function cosmosDBDeleteStoredProcedure(
     context: IActionContext,
-    node: DocumentDBStoredProcedureResourceItem,
+    node: CosmosDBStoredProcedureResourceItem,
 ): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
     if (!node) {
-        node = await pickAppResource<DocumentDBStoredProcedureResourceItem>(context, {
+        node = await pickAppResource<CosmosDBStoredProcedureResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.storedProcedure'],
         });

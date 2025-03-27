@@ -9,12 +9,12 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 
 import * as l10n from '@vscode/l10n';
-import { getCosmosClientByConnection, getCosmosKeyCredential } from '../docdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { DocumentSession } from '../docdb/session/DocumentSession';
-import { QuerySession } from '../docdb/session/QuerySession';
-import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
-import { getNoSqlQueryConnection } from '../docdb/utils/NoSqlQueryConnection';
+import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { DocumentSession } from '../cosmosdb/session/DocumentSession';
+import { QuerySession } from '../cosmosdb/session/QuerySession';
+import { type CosmosDBRecordIdentifier, type ResultViewMetadata } from '../cosmosdb/types/queryResult';
+import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -41,7 +41,7 @@ export class QueryEditorTab extends BaseTab {
 
         if (connection) {
             if (connection.credentials) {
-                const masterKey = getCosmosKeyCredential(connection.credentials)?.key;
+                const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key;
                 if (masterKey) {
                     this.telemetryContext.addMaskedValue(masterKey);
                 }
@@ -138,9 +138,9 @@ export class QueryEditorTab extends BaseTab {
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
             case 'openDocument':
-                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
+                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDBRecordIdentifier);
             case 'deleteDocument':
-                return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
+                return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
             case 'provideFeedback':
                 return this.provideFeedback();
         }
@@ -153,11 +153,11 @@ export class QueryEditorTab extends BaseTab {
 
         if (this.connection) {
             const { databaseId, containerId, endpoint, credentials } = this.connection;
-            const masterKey = getCosmosKeyCredential(credentials)?.key;
+            const masterKey = getCosmosDBKeyCredential(credentials)?.key;
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
-            const client = getCosmosClientByConnection(this.connection);
+            const client = getCosmosDBClientByConnection(this.connection);
             const container = await client.database(databaseId).container(containerId).read();
 
             if (container.resource === undefined) {
@@ -360,7 +360,7 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async openDocument(mode: string, documentId?: CosmosDbRecordIdentifier): Promise<void> {
+    private async openDocument(mode: string, documentId?: CosmosDBRecordIdentifier): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
         await callWithTelemetryAndErrorHandling(callbackId, () => {
             if (!this.connection) {
@@ -380,7 +380,7 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async deleteDocument(documentId: CosmosDbRecordIdentifier): Promise<void> {
+    private async deleteDocument(documentId: CosmosDBRecordIdentifier): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {

@@ -14,7 +14,7 @@ export async function openCollectionView(context: IActionContext, node?: Collect
         throw new Error(l10n.t('Invalid collection node'));
     }
 
-    context.telemetry.properties.experience = node?.cluster.dbExperience?.api;
+    context.telemetry.properties.experience = node?.experience.api;
 
     return openCollectionViewInternal(context, {
         id: node.id,

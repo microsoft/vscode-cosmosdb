@@ -17,7 +17,7 @@ Dedicated data providers need to be implemented for both views. This is why ther
 
 The following folders contain shared tree item implementations that are used by both view data providers:
 
-- `docdb/`: Tree items for Document DB resources
+- `cosmosdb/`: Tree items for Cosmos DB resources
 - `documentdb/`: Tree items for Document DB resources (MongoDB RU and MongoDB vCore)
 - `graph/`: Tree items for Graph DB resources
 - `nosql/`: Tree items for NoSQL resources

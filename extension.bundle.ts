@@ -21,9 +21,12 @@ export { ObjectId } from 'bson';
 export { AzureAccountTreeItemBase, createAzureClient } from '@microsoft/vscode-azext-azureutils';
 export * from '@microsoft/vscode-azext-utils';
 export { isWindows, wellKnownEmulatorPassword } from './src/constants';
-export { ParsedDocDBConnectionString, parseDocDBConnectionString } from './src/docdb/docDBConnectionStrings';
-export { getCosmosClient } from './src/docdb/getCosmosClient';
-export * from './src/docdb/registerDocDBCommands';
+export {
+    ParsedCosmosDBConnectionString,
+    parseCosmosDBConnectionString,
+} from './src/cosmosdb/cosmosDBConnectionStrings';
+export { getCosmosClient } from './src/cosmosdb/getCosmosClient';
+export * from './src/cosmosdb/registerCosmosDBCommands';
 export { connectToClient, isCosmosEmulatorConnectionString } from './src/documentdb/scrapbook/connectToClient';
 export { MongoCommand } from './src/documentdb/scrapbook/MongoCommand';
 export {

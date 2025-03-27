@@ -6,8 +6,8 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
-import { type CosmosDBTreeElement } from '../../CosmosDBTreeElement';
 import { type ClusterModel } from '../../documentdb/ClusterModel';
+import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../workspace-api/SharedWorkspaceStorage';
@@ -15,7 +15,7 @@ import { ClusterItem } from './ClusterItem';
 import { LocalEmulatorsItem } from './LocalEmulators/LocalEmulatorsItem';
 import { NewConnectionItem } from './NewConnectionItem';
 
-export class AccountsItem implements CosmosDBTreeElement, TreeElementWithExperience {
+export class AccountsItem implements TreeElement, TreeElementWithExperience {
     public readonly id: string;
     public readonly experience: Experience;
 
@@ -24,7 +24,7 @@ export class AccountsItem implements CosmosDBTreeElement, TreeElementWithExperie
         this.experience = MongoClustersExperience;
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
 
         return [

@@ -24,12 +24,9 @@ import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-a
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { findTreeItem } from './commands/api/findTreeItem';
-import { pickTreeItem } from './commands/api/pickTreeItem';
-import { revealTreeItem } from './commands/api/revealTreeItem';
 import { registerCommands } from './commands/registerCommands';
+import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
-import { getIsRunningOnAzure } from './docdb/utils/managedIdentityUtils';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
@@ -139,11 +136,13 @@ export async function activateInternal(
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
 
+    // TODO: we still don't know for sure if this is needed
+    //  If it is, we need to implement the logic to get the correct API version
     return createApiProvider([
         <AzureExtensionApi>{
-            findTreeItem,
-            pickTreeItem,
-            revealTreeItem,
+            findTreeItem: () => undefined,
+            pickTreeItem: () => undefined,
+            revealTreeItem: () => undefined,
             apiVersion: '1.2.0',
         },
     ]);

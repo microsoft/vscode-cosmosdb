@@ -5,10 +5,10 @@
 
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { type CosmosDBTreeElement } from '../../../CosmosDBTreeElement';
+import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 
-export class NewCoreEmulatorConnectionItem implements CosmosDBTreeElement, TreeElementWithContextValue {
+export class NewCoreEmulatorConnectionItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.attachEmulator';
 

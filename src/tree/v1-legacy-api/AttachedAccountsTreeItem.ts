@@ -14,7 +14,6 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
-import { removeTreeItemFromCache } from '../../commands/api/apiCache';
 import { isEmulatorSupported } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { parsePostgresConnectionString } from '../../postgres/postgresConnectionStrings';
@@ -181,11 +180,6 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
                 getSecretStorageKey(AttachedAccountsTreeItem.serviceName, nonNullProp(node, 'id')),
             ); // intentionally using 'id' instead of 'fullId' for the sake of backwards compatibility
             await this.persistIds(attachedAccounts);
-
-            if (node instanceof PostgresServerTreeItem) {
-                const parsedCS = node.partialConnectionString;
-                removeTreeItemFromCache(parsedCS);
-            }
         }
     }
 

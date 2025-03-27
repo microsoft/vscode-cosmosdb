@@ -8,13 +8,13 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { ClustersClient, type CollectionItemModel, type DatabaseItemModel } from '../../documentdb/ClustersClient';
-import { type CosmosDBTreeElement } from '../CosmosDBTreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
 import { IndexItem } from './IndexItem';
 
-export class IndexesItem implements CosmosDBTreeElement, TreeElementWithExperience, TreeElementWithContextValue {
+export class IndexesItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
     public readonly contextValue: string = 'treeItem.indexes';
@@ -32,7 +32,7 @@ export class IndexesItem implements CosmosDBTreeElement, TreeElementWithExperien
         this.contextValue = createContextValue([this.contextValue, this.experienceContextValue]);
     }
 
-    async getChildren(): Promise<CosmosDBTreeElement[]> {
+    async getChildren(): Promise<TreeElement[]> {
         const client: ClustersClient = await ClustersClient.getClient(this.cluster.id);
         const indexes = await client.listIndexes(this.databaseInfo.name, this.collectionInfo.name);
         return indexes.map((index) => {

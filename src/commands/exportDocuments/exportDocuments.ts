@@ -14,7 +14,7 @@ import { appendToFile } from '../../utils/fs/appendToFile';
 import { getRootPath } from '../../utils/workspacUtils';
 
 export async function clustersExportEntireCollection(context: IActionContext, node?: CollectionItem) {
-    context.telemetry.properties.experience = node?.cluster.dbExperience?.api;
+    context.telemetry.properties.experience = node?.experience.api;
 
     return clustersExportQueryResults(context, node);
 }
@@ -24,7 +24,7 @@ export async function clustersExportQueryResults(
     node?: CollectionItem,
     props?: { queryText?: string; source?: string },
 ): Promise<void> {
-    context.telemetry.properties.experience = node?.cluster.dbExperience?.api;
+    context.telemetry.properties.experience = node?.experience.api;
 
     // node ??= ... pick a node if not provided
     if (!node) {

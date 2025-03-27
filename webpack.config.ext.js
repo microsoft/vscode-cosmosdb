@@ -111,6 +111,10 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'l10n',
                         to: 'l10n',
+                        filter: (filepath) => {
+                            // Only supported languages
+                            return /bundle.l10n.().json/.test(filepath);
+                        },
                     },
                     {
                         from: 'resources',
@@ -128,6 +132,10 @@ module.exports = (env, { mode }) => {
                         from: 'package.nls.*.json',
                         to: '[name][ext]',
                         noErrorOnMissing: true,
+                        filter: (filepath) => {
+                            // Only supported languages
+                            return /package.nls.().json/.test(filepath);
+                        },
                     },
                     {
                         from: 'CHANGELOG.md',

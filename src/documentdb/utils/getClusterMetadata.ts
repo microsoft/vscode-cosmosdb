@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import * as crypto from 'crypto';
-import { type MongoClient } from 'mongodb';
+import { type Admin, type MongoClient } from 'mongodb';
 import { AzureDomains, extractDomainFromHost, hasAzureDomain, hasDomainSuffix } from './connectionStringHelpers';
 
 /**
@@ -32,28 +32,46 @@ export async function getClusterMetadata(client: MongoClient, hosts: string[]): 
 
     const adminDb = client.db().admin();
 
-    // Fetch build info (server version, git version, etc.)
-    // This information is non-sensitive and aids in diagnostics.
+    await fetchBuildInfo(adminDb, result);
+    await fetchServerStatus(adminDb, result);
+    await fetchTopologyInfo(adminDb, result);
+    await fetchHostInfo(adminDb, result);
+    processDomainInfo(hosts, result);
+
+    return result;
+}
+
+async function fetchBuildInfo(adminDb: Admin, result: ClusterMetadata): Promise<void> {
     try {
         const buildInfo = await adminDb.command({ buildInfo: 1 });
         result['serverInfo_version'] = buildInfo.version;
         result['serverInfo_platform'] = buildInfo.platform;
         result['serverInfo_storageEngines'] = (buildInfo.storageEngines as string[])?.join(';');
     } catch (error) {
-        result['serverInfo_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['serverInfo_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['serverInfo_errorFallback'] = 'Failed to process error details';
+        }
     }
+}
 
-    // Fetch server status information.
-    // Includes non-sensitive data like uptime and connection metrics.
+async function fetchServerStatus(adminDb: Admin, result: ClusterMetadata): Promise<void> {
     try {
         const serverStatus = await adminDb.command({ serverStatus: 1 });
         result['serverStatus_uptime'] = serverStatus.uptime.toString();
     } catch (error) {
-        result['serverStatus_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['serverStatus_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['serverStatus_errorFallback'] = 'Failed to process error details';
+        }
     }
+}
 
-    // Fetch topology information using the 'hello' command.
-    // Internal server addresses are not collected to ensure privacy.
+async function fetchTopologyInfo(adminDb: Admin, result: ClusterMetadata): Promise<void> {
     try {
         const helloInfo = await adminDb.command({ hello: 1 });
         result['topology_type'] = helloInfo.msg || 'unknown';
@@ -61,43 +79,64 @@ export async function getClusterMetadata(client: MongoClient, hosts: string[]): 
         result['topology_minWireVersion'] = helloInfo.minWireVersion.toString();
         result['topology_maxWireVersion'] = helloInfo.maxWireVersion.toString();
     } catch (error) {
-        result['topology_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['topology_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['topology_errorFallback'] = 'Failed to process error details';
+        }
     }
+}
 
-    // Fetch host information, redacting sensitive data.
+async function fetchHostInfo(adminDb: Admin, result: ClusterMetadata): Promise<void> {
     try {
         const hostInfo = await adminDb.command({ hostInfo: 1 });
         if (hostInfo && typeof hostInfo.currentTime !== 'undefined') {
             hostInfo.currentTime = 'redacted'; // Redact current time
         }
+        if (hostInfo && hostInfo.system && typeof hostInfo.system.currentTime !== 'undefined') {
+            hostInfo.system.currentTime = 'redacted'; // Redact system current time
+        }
         // TODO: review in April 2024 if we need to redact more of the hostInfo fields.
         result['hostInfo_json'] = JSON.stringify(hostInfo);
     } catch (error) {
-        result['hostInfo_error'] = error instanceof Error ? error.message : String(error);
+        try {
+            result['hostInfo_error'] = error instanceof Error ? error.message : String(error);
+        } catch {
+            // Last resort if error processing itself fails
+            result['hostInfo_errorFallback'] = 'Failed to process error details';
+        }
     }
+}
 
-    // Explore domain information from the hosts. This is non-sensitive and can be useful for diagnostics.
-    // Only information about known domains is collected to avoid any sensitive data.
-    try {
-        for (const [index, host] of hosts.entries()) {
-            const telemetrySuffix = index > 0 ? `_h${index}` : '';
-
+function processDomainInfo(hosts: string[], result: ClusterMetadata): void {
+    for (const [index, host] of hosts.entries()) {
+        const telemetrySuffix = index > 0 ? `_h${index}` : '';
+        try {
+            let domainStatistics = false;
             const hostWithoutPort = extractDomainFromHost(host);
             if (hasAzureDomain(hostWithoutPort)) {
                 // For Azure domains, record that fact and identify the API when applicable.
-                result['domainInfo_isAzure' + telemetrySuffix] = 'true';
+                result[`domainInfo_isAzure${telemetrySuffix}`] = 'true';
                 if (hasDomainSuffix(AzureDomains.RU, hostWithoutPort)) {
-                    result['domainInfo_api' + telemetrySuffix] = 'RU';
+                    result[`domainInfo_api${telemetrySuffix}`] = 'RU';
                 } else if (hasDomainSuffix(AzureDomains.vCore, hostWithoutPort)) {
-                    result['domainInfo_api' + telemetrySuffix] = 'vCore';
+                    result[`domainInfo_api${telemetrySuffix}`] = 'vCore';
+                } else {
+                    // For other Azure domains, produce hash values for diagnostics.
+                    domainStatistics = true;
                 }
             } else {
                 // For non-Azure domains, do not log the full host.
                 // Instead, capture aggregated statistics by analyzing only the most significant 3 segments.
-                result['domainInfo_isAzure' + telemetrySuffix] = 'false';
+                result[`domainInfo_isAzure${telemetrySuffix}`] = 'false';
+                // For non-Azure domains, produce hash values for diagnostics.
+                domainStatistics = true;
+            }
 
+            if (domainStatistics) {
                 const domainParts = hostWithoutPort.split('.'); // e.g., ['private', 'acluster', 'server', 'tld']
-                result['domainInfo_levels' + telemetrySuffix] = domainParts.length.toString(); // Store the full domain for reference
+                result[`domainInfo_levels${telemetrySuffix}`] = domainParts.length.toString(); // Store the full domain for reference
 
                 // Only consider the last three segments.
                 const levelsToProcess = Math.min(3, domainParts.length);
@@ -115,11 +154,48 @@ export async function getClusterMetadata(client: MongoClient, hosts: string[]): 
                     result[`domainInfo_domain_l${level}${telemetrySuffix}`] = hashedDomain;
                 }
             }
-        }
-    } catch (error) {
-        result['domainInfo_error'] = error instanceof Error ? error.message : String(error);
-    }
+        } catch (error) {
+            // Capture multiple aspects of the error to ensure we get something useful in telemetry
+            try {
+                // Start with basic error type identification
+                const errorType = error ? (error.constructor ? error.constructor.name : typeof error) : 'undefined';
 
-    // Return the collected metadata.
-    return result;
+                // Create a detailed error entry
+                if (error instanceof Error) {
+                    // For standard Error objects, capture name, message and stack (trimmed)
+                    result[`domainInfo_errorType${telemetrySuffix}`] = errorType;
+                    result[`domainInfo_error${telemetrySuffix}`] = error.message || 'Empty error message';
+
+                    // Capture any custom properties on the error object
+                    const errorProps = Object.keys(error).filter((k) => k !== 'stack' && k !== 'message');
+                    if (errorProps.length > 0) {
+                        result[`domainInfo_errorProps${telemetrySuffix}`] = errorProps.join(',');
+                    }
+                } else if (error === null) {
+                    // Handle null errors
+                    result[`domainInfo_errorType${telemetrySuffix}`] = 'null';
+                    result[`domainInfo_error${telemetrySuffix}`] = 'Error was null';
+                } else if (error === undefined) {
+                    // Handle undefined errors
+                    result[`domainInfo_errorType${telemetrySuffix}`] = 'undefined';
+                    result[`domainInfo_error${telemetrySuffix}`] = 'Error was undefined';
+                } else {
+                    // For non-standard errors (like strings, objects, etc.)
+                    result[`domainInfo_errorType${telemetrySuffix}`] = errorType;
+
+                    // Try different methods to extract meaningful content
+                    const errorStr =
+                        typeof error === 'object'
+                            ? JSON.stringify(error).substring(0, 200) // Limit JSON size
+                            : String(error);
+
+                    result[`domainInfo_error${telemetrySuffix}`] =
+                        errorStr || `Non-standard error of type ${errorType}`;
+                }
+            } catch {
+                // Last resort if error processing itself fails
+                result[`domainInfo_errorFallback${telemetrySuffix}`] = 'Failed to process error details';
+            }
+        }
+    }
 }

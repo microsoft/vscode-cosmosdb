@@ -1,89 +1,88 @@
 {
-  "hydrated": true,
-  "properties": {
-    "helpUri": "https://eng.ms/docs/microsoft-security/security/azure-security/cloudai-security-fundamentals-engineering/security-integration/guardian-wiki/microsoft-guardian/general/suppressions",
-    "hydrationStatus": "This file contains identifying data. It is **NOT** safe to check into your repo. To dehydrate this file, run `guardian dehydrate --help` and follow the guidance."
-  },
-  "version": "1.0.0",
-  "suppressionSets": {
-    "default": {
-      "name": "default",
-      "createdDate": "2024-11-12 13:23:45Z",
-      "lastUpdatedDate": "2024-11-12 13:23:45Z"
-    }
-  },
-  "results": {
-    "2466e7539feafb4cdaeb6d916cbb667238b67191164c1fd16d02ccf2c972dafd": {
-      "signature": "2466e7539feafb4cdaeb6d916cbb667238b67191164c1fd16d02ccf2c972dafd",
-      "alternativeSignatures": [],
-      "target": "src/cosmosdb/cosmosDBConnectionStrings.test.ts",
-      "line": 170,
-      "memberOf": [
-        "default"
-      ],
-      "tool": "credscan",
-      "ruleId": "CSCAN-AZURE0080",
-      "createdDate": "2024-11-12 13:23:45Z"
+    "hydrated": true,
+    "properties": {
+      "helpUri": "https://eng.ms/docs/microsoft-security/security/azure-security/cloudai-security-fundamentals-engineering/security-integration/guardian-wiki/microsoft-guardian/general/suppressions"
     },
-    "16e07900fc1b08b946920c21eb65e52f681a03db1c763cac81836fe95b9e0337": {
-      "signature": "16e07900fc1b08b946920c21eb65e52f681a03db1c763cac81836fe95b9e0337",
-      "alternativeSignatures": [],
-      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
-      "line": 26,
-      "memberOf": [
-        "default"
-      ],
-      "tool": "credscan",
-      "ruleId": "CSCAN-GENERAL0030",
-      "createdDate": "2024-11-12 13:23:45Z"
+    "version": "1.0.0",
+    "suppressionSets": {
+      "default": {
+        "name": "default",
+        "createdDate": "2025-03-27 17:54:16Z",
+        "lastUpdatedDate": "2025-03-27 17:54:16Z"
+      }
     },
-    "cac69ae26c988f1432ead678d0948a9f500dff7799f9c9c1ce9122fefc49feea": {
-      "signature": "cac69ae26c988f1432ead678d0948a9f500dff7799f9c9c1ce9122fefc49feea",
-      "alternativeSignatures": [],
-      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
-      "line": 130,
-      "memberOf": [
-        "default"
-      ],
-      "tool": "credscan",
-      "ruleId": "CSCAN-GENERAL0030",
-      "createdDate": "2024-11-12 13:23:45Z"
-    },
-    "f17befc53e58ad1f48c76e026a195e61550ce19abc32f0948c090bd6c212b83a": {
-      "signature": "f17befc53e58ad1f48c76e026a195e61550ce19abc32f0948c090bd6c212b83a",
-      "alternativeSignatures": [],
-      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
-      "line": 135,
-      "memberOf": [
-        "default"
-      ],
-      "tool": "credscan",
-      "ruleId": "CSCAN-GENERAL0030",
-      "createdDate": "2024-11-12 13:23:45Z"
-    },
-    "b6b3d8e58d3b4311933b40307c4d89ff010f7505a35f02384edcb23b392db684": {
-      "signature": "b6b3d8e58d3b4311933b40307c4d89ff010f7505a35f02384edcb23b392db684",
-      "alternativeSignatures": [],
-      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
-      "line": 282,
-      "memberOf": [
-        "default"
-      ],
-      "tool": "credscan",
-      "ruleId": "CSCAN-GENERAL0030",
-      "createdDate": "2024-11-12 13:23:45Z"
-    },
-    "eaca0c37c9c751c0da9dd09cb77a4528574f5772e311aec395dd0aeb43949c4c": {
-      "signature": "eaca0c37c9c751c0da9dd09cb77a4528574f5772e311aec395dd0aeb43949c4c",
-      "alternativeSignatures": [],
-      "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
-      "line": 371,
-      "memberOf": [
-        "default"
-      ],
-      "tool": "credscan",
-      "ruleId": "CSCAN-GENERAL0030",
-      "createdDate": "2024-11-12 13:23:45Z"
+    "results": {
+      "4a44b074103b8de844f2a3dd0aa0e87a955f55e92d09e49315808e33427f1e5c": {
+        "signature": "4a44b074103b8de844f2a3dd0aa0e87a955f55e92d09e49315808e33427f1e5c",
+        "alternativeSignatures": [],
+        "target": "src/cosmosdb/cosmosDBConnectionStrings.test.ts",
+        "line": 170,
+        "memberOf": [
+          "default"
+        ],
+        "tool": "credscan",
+        "ruleId": "CSCAN-AZURE0080",
+        "createdDate": "2025-03-27 17:54:16Z"
+      },
+      "b08417e3ba882d36901ca4c3a9804181c65c3291cc08387fe055e5301707efd9": {
+        "signature": "b08417e3ba882d36901ca4c3a9804181c65c3291cc08387fe055e5301707efd9",
+        "alternativeSignatures": [],
+        "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
+        "line": 26,
+        "memberOf": [
+          "default"
+        ],
+        "tool": "credscan",
+        "ruleId": "CSCAN-GENERAL0030",
+        "createdDate": "2025-03-27 17:54:16Z"
+      },
+      "bd651964b55980da9eb4edd52139f1de56d3ec5602dd57a9aed15d1efec2cff0": {
+        "signature": "bd651964b55980da9eb4edd52139f1de56d3ec5602dd57a9aed15d1efec2cff0",
+        "alternativeSignatures": [],
+        "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
+        "line": 130,
+        "memberOf": [
+          "default"
+        ],
+        "tool": "credscan",
+        "ruleId": "CSCAN-GENERAL0030",
+        "createdDate": "2025-03-27 17:54:16Z"
+      },
+      "8044154d9fe49ad985951fdf7997f9b5be92b944e3a76684bc3f9488ac5a1205": {
+        "signature": "8044154d9fe49ad985951fdf7997f9b5be92b944e3a76684bc3f9488ac5a1205",
+        "alternativeSignatures": [],
+        "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
+        "line": 135,
+        "memberOf": [
+          "default"
+        ],
+        "tool": "credscan",
+        "ruleId": "CSCAN-GENERAL0030",
+        "createdDate": "2025-03-27 17:54:16Z"
+      },
+      "13421dd8faedf41977bbb08957f6442c12cf60ab4469a8fefaec09391bd16f4c": {
+        "signature": "13421dd8faedf41977bbb08957f6442c12cf60ab4469a8fefaec09391bd16f4c",
+        "alternativeSignatures": [],
+        "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
+        "line": 282,
+        "memberOf": [
+          "default"
+        ],
+        "tool": "credscan",
+        "ruleId": "CSCAN-GENERAL0030",
+        "createdDate": "2025-03-27 17:54:16Z"
+      },
+      "8b7bf7c20cf69f69b2012006cc05f90ac987edd53ee324800c4964f5deb51d88": {
+        "signature": "8b7bf7c20cf69f69b2012006cc05f90ac987edd53ee324800c4964f5deb51d88",
+        "alternativeSignatures": [],
+        "target": "src/documentdb/scrapbook/mongoConnectionStrings.test.ts",
+        "line": 371,
+        "memberOf": [
+          "default"
+        ],
+        "tool": "credscan",
+        "ruleId": "CSCAN-GENERAL0030",
+        "createdDate": "2025-03-27 17:54:16Z"
+      }
     }
   }
-}

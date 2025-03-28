@@ -8,8 +8,11 @@ import { type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/mode
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { SERVERLESS_CAPABILITY_NAME } from '../../constants';
-import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
+import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../constants';
+import {
+    parseCosmosDBConnectionString,
+    type ParsedCosmosDBConnectionString,
+} from '../../cosmosdb/cosmosDBConnectionStrings';
 import {
     AuthenticationMethod,
     getCosmosClient,
@@ -43,17 +46,46 @@ function isCosmosDBAttachedAccountModel(account: unknown): account is CosmosDBAt
     );
 }
 
+function isCosmosDBConnectionString(connectionString: unknown): connectionString is ParsedCosmosDBConnectionString {
+    return !!connectionString && typeof connectionString === 'object' && 'documentEndpoint' in connectionString;
+}
+
 export async function getAccountInfo(
-    account: CosmosDBAccountModel | CosmosDBAttachedAccountModel,
+    accountOrConnectionString: CosmosDBAccountModel | CosmosDBAttachedAccountModel | ParsedCosmosDBConnectionString,
 ): Promise<AccountInfo> | never {
-    if (isCosmosDBAttachedAccountModel(account)) {
-        return getAccountInfoForAttached(account);
+    if (isCosmosDBAttachedAccountModel(accountOrConnectionString)) {
+        return getAccountInfoForAttached(accountOrConnectionString);
+    } else if (isCosmosDBConnectionString(accountOrConnectionString)) {
+        return getAccountInfoForConnectionString(accountOrConnectionString);
     } else {
-        return getAccountInfoForGeneric(account);
+        return getAccountInfoForResource(accountOrConnectionString as CosmosDBAccountModel);
     }
 }
 
-async function getAccountInfoForGeneric(account: CosmosDBAccountModel): Promise<AccountInfo> | never {
+async function getAccountInfoForConnectionString(
+    connectionString: ParsedCosmosDBConnectionString,
+): Promise<AccountInfo> | never {
+    const isEmulator = connectionString.masterKey === wellKnownEmulatorPassword;
+    const credentials = await getCosmosDBCredentials({
+        accountName: connectionString.accountName,
+        documentEndpoint: connectionString.documentEndpoint,
+        isEmulator,
+        masterKey: connectionString.masterKey,
+        tenantId: undefined,
+    });
+    const isServerless = false;
+
+    return {
+        credentials,
+        endpoint: connectionString.documentEndpoint,
+        id: connectionString.accountName,
+        isEmulator,
+        isServerless,
+        name: connectionString.accountName,
+    };
+}
+
+async function getAccountInfoForResource(account: CosmosDBAccountModel): Promise<AccountInfo> | never {
     const id = nonNullProp(account, 'id');
     const name = nonNullProp(account, 'name');
     const resourceGroup = nonNullProp(account, 'resourceGroup');

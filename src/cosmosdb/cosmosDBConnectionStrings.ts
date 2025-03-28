@@ -4,9 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import * as url from 'url';
 import { ParsedConnectionString } from '../ParsedConnectionString';
-import { nonNullProp } from '../utils/nonNull';
 
 export function parseCosmosDBConnectionString(connectionString: string): ParsedCosmosDBConnectionString {
     const endpoint = getPropertyFromConnectionString(connectionString, 'AccountEndpoint');
@@ -43,8 +41,8 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
         this.documentEndpoint = endpoint;
         this.masterKey = masterKey;
 
-        const parsedEndpoint = url.parse(endpoint);
-        this.hostName = nonNullProp(parsedEndpoint, 'hostname', 'hostname');
-        this.port = nonNullProp(parsedEndpoint, 'port', 'port');
+        const parsedEndpoint = new URL(endpoint);
+        this.hostName = parsedEndpoint.hostname;
+        this.port = parsedEndpoint.port || '443';
     }
 }

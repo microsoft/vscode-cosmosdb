@@ -45,4 +45,8 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
         this.hostName = parsedEndpoint.hostname;
         this.port = parsedEndpoint.port || '443';
     }
+
+    public get accountName(): string {
+        return this.hostName.replace('.documents.azure.com', '');
+    }
 }

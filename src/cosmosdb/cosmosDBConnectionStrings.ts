@@ -13,7 +13,7 @@ export function parseCosmosDBConnectionString(connectionString: string): ParsedC
     const masterKey = getPropertyFromConnectionString(connectionString, 'AccountKey');
     const databaseName = getPropertyFromConnectionString(connectionString, 'Database');
 
-    if (!endpoint || !masterKey) {
+    if (!endpoint) {
         throw new Error(l10n.t('Invalid Cosmos DB connection string.'));
     }
 
@@ -31,9 +31,14 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
     public readonly port: string;
 
     public readonly documentEndpoint: string;
-    public readonly masterKey: string;
+    public readonly masterKey: string | undefined;
 
-    constructor(connectionString: string, endpoint: string, masterKey: string, databaseName: string | undefined) {
+    constructor(
+        connectionString: string,
+        endpoint: string,
+        masterKey: string | undefined,
+        databaseName: string | undefined,
+    ) {
         super(connectionString, databaseName);
         this.documentEndpoint = endpoint;
         this.masterKey = masterKey;

@@ -19,6 +19,11 @@ import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from './tree/workspace-api/SharedWorkspaceStorage';
 
+const supportedProviders = [
+    'Microsoft.DocumentDB/databaseAccounts',
+    'Microsoft.DocumentDB/mongoClusters',
+    //'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
+];
 /**
  * Handles external URIs directed to the extension
  * @param uri The URI to handle
@@ -39,6 +44,16 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
             const resourceId = parseAzureResourceId(params.resourceId);
             context.telemetry.properties.subscriptionId = resourceId.subscriptionId;
             context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
+            // Check if the provider is supported, even if revealing works for any resource,
+            // we don't want to handle resources unsupported by this extension
+            if (!supportedProviders.includes(resourceId.provider)) {
+                throw new Error(
+                    l10n.t(
+                        'Unsupported resource provider: {0}. This extension only supports Cosmos DB resources.',
+                        resourceId.provider,
+                    ),
+                );
+            }
             await revealAzureResourceInExplorer(resourceId.rawId);
 
             // TODO: Currently we can't reveal the database and container in the Azure Explorer

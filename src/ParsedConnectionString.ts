@@ -22,6 +22,10 @@ export abstract class ParsedConnectionString {
         return `${this.hostName}:${this.port}`;
     }
 
+    public get accountName(): string {
+        return this.accountId;
+    }
+
     public get fullId(): string {
         return `${this.accountId}${this.databaseName ? '/' + this.databaseName : ''}`;
     }

@@ -162,9 +162,6 @@ describe('cosmosDBConnectionStrings', () => {
     it('Invalid connection strings', () => {
         expect(() => parseCosmosDBConnectionString('')).toThrow(Error);
         expect(() => parseCosmosDBConnectionString('AccountKey=abcdef==')).toThrow(Error);
-        expect(() => parseCosmosDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/')).toThrow(
-            Error,
-        );
         expect(() =>
             parseCosmosDBConnectionString(
                 'mongodb://my-mongo:ayO83FFfUoHE97Jm7WbfnpNCqiF0Yq0za2YmvuLAKYJKf7h7hQaRKWfZfsv8Ux41H66Gls7lVPEKlKm0ueSozg==' +

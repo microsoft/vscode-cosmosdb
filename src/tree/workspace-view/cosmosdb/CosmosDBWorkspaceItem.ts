@@ -22,7 +22,7 @@ import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountMode
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';
 
 export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContextValue {
-    public readonly id: string = WorkspaceResourceType.AttachedAccounts;
+    public readonly id: string = `${WorkspaceResourceType.AttachedAccounts}/accounts`;
     public readonly contextValue: string = 'treeItem.accounts';
 
     constructor() {
@@ -33,7 +33,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
-        const items = await SharedWorkspaceStorage.getItems(this.id);
+        const items = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.AttachedAccounts);
         const children = await this.getChildrenNoEmulatorsImpl(items);
 
         if (isEmulatorSupported) {
@@ -97,6 +97,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         return callWithTelemetryAndErrorHandling(
             'CosmosDBAttachedAccountsResourceItem.pickSupportedAccounts',
             async () => {
+                //TODO: migrate to new schema!
                 const serviceName = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
                 const value: string | undefined = ext.context.globalState.get(serviceName);
 

@@ -30,121 +30,144 @@ const supportedProviders = [
  * @param uri The URI to handle
  */
 export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
-    return await callWithTelemetryAndErrorHandling('handleExternalUri', async (context: IActionContext) => {
-        const queryParams = new URLSearchParams(uri.query);
-        const params = {
-            resourceId: queryParams.get('resourceId') ?? undefined,
-            subscriptionId: queryParams.get('subscriptionId') ?? undefined,
-            resourceGroup: queryParams.get('resourceGroup') ?? undefined,
-            connectionString: queryParams.get('cs') ?? undefined,
-            database: queryParams.get('database') ?? undefined,
-            container: queryParams.get('container') ?? undefined,
-        };
+    await callWithTelemetryAndErrorHandling('handleExternalUri', async (context: IActionContext) => {
+        try {
+            // Extract and validate parameters
+            const params = extractAndValidateParams(context, uri.query);
 
-        if (params.resourceId) {
-            const resourceId = parseAzureResourceId(params.resourceId);
-            context.telemetry.properties.subscriptionId = resourceId.subscriptionId;
-            context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
-            // Check if the provider is supported, even if revealing works for any resource,
-            // we don't want to handle resources unsupported by this extension
-            if (!supportedProviders.includes(resourceId.provider)) {
-                throw new Error(
-                    l10n.t(
-                        'Unsupported resource provider: {0}. This extension only supports Cosmos DB resources.',
-                        resourceId.provider,
-                    ),
-                );
-            }
-            // reveal the account first, this will open the Azure Resource Groups view,
-            // select the resource in the tree and expand it, forcing it to load the children
-            await revealAzureResourceInExplorer(resourceId.rawId, params.database, params.container);
-            await openAppropriateEditorForAzure(context, resourceId.rawId, params.database, params.container);
-        } else if (params.connectionString) {
-            const parsedConnection = parseConnectionString(params.connectionString);
-            context.telemetry.properties.experience = parsedConnection.api;
-
-            if (params.subscriptionId && params.resourceGroup) {
-                // If subscriptionId and resourceGroup are provided, we need to extract the account name from the connection string
-                context.telemetry.properties.subscriptionId = params.subscriptionId;
-                let accountName: string | undefined;
-                switch (parsedConnection.api) {
-                    case API.Core:
-                        accountName = parsedConnection.connectionString.accountName;
-                        break;
-                    case API.MongoDB:
-                        accountName = parsedConnection.connectionString.username;
-                        break;
-                    case API.MongoClusters:
-                        accountName =
-                            parsedConnection.connectionString.hosts?.length > 0
-                                ? // The hostname is in the format of "accountname.mongocluster.cosmos.azure.com"
-                                  // Extract the first subdomain component by splitting the hostname on dots
-                                  parsedConnection.connectionString.hosts[0]?.split('.')[0]
-                                : undefined;
-                        break;
-                    default:
-                        accountName = undefined;
-                        break;
-                }
-                if (!accountName || accountName.length === 0) {
-                    throw new Error(l10n.t('Unable to extract account name from connection string'));
-                }
-                const resourceId = createAzureResourceId(
-                    parsedConnection.api,
-                    params.subscriptionId,
-                    params.resourceGroup,
-                    accountName,
-                );
-                context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId);
-                await revealAzureResourceInExplorer(resourceId, params.database, params.container);
-            } else {
-                // Create storage item for the connection
-                if (parsedConnection.api === API.Core) {
-                    await createAttachedForConnection(
-                        parsedConnection.connectionString.accountId,
-                        parsedConnection.connectionString.accountName,
-                        parsedConnection.api,
-                        params.connectionString,
-                    );
-                    ext.cosmosDBWorkspaceBranchDataProvider.refresh();
-                    await revealAttachedInWorkspaceExplorer(
-                        parsedConnection.connectionString.accountId,
-                        parsedConnection.api,
-                        params.database,
-                        params.container,
-                    );
-                } else {
-                    // Handle MongoDB and MongoClusters
-                    const accountId =
-                        parsedConnection.connectionString.username +
-                        '@' +
-                        parsedConnection.connectionString.redact().toString();
-                    await createAttachedForConnection(
-                        accountId,
-                        parsedConnection.connectionString.username +
-                            '@' +
-                            parsedConnection.connectionString.hosts.join(','),
-                        parsedConnection.api,
-                        params.connectionString,
-                    );
-                    ext.cosmosDBWorkspaceBranchDataProvider.refresh();
-                    await revealAttachedInWorkspaceExplorer(
-                        accountId,
-                        parsedConnection.api,
-                        params.database,
-                        params.container,
-                    );
-                }
-            }
-
-            if (!params.container) {
-                throw new Error(l10n.t("Can't open the Query Editor, Container name is required"));
-            }
-
-            // Open appropriate editor based on API type
-            await openAppropriateEditorForConnection(context, parsedConnection, params.container, params.database);
+            // Process the URI
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: l10n.t('Opening Azure Databases resource…'),
+                    cancellable: false,
+                },
+                async () => {
+                    if (params.resourceId) {
+                        await handleResourceIdRequest(context, params);
+                    } else {
+                        await handleConnectionStringRequest(context, params);
+                    }
+                },
+            );
+        } catch (error) {
+            const errMsg = error instanceof Error ? error.message : String(error);
+            throw new Error(l10n.t('Failed to process URI: {0}', errMsg));
         }
     });
+}
+
+async function handleResourceIdRequest(
+    context: IActionContext,
+    params: ReturnType<typeof extractParams>,
+): Promise<void> {
+    if (!params.resourceId) {
+        throw new Error('Resource ID is required');
+    }
+
+    const resourceId = parseAzureResourceId(params.resourceId);
+    context.telemetry.properties.subscriptionId = resourceId.subscriptionId;
+    context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
+    // Check if the provider is supported, even if revealing works for any resource,
+    // we don't want to handle resources unsupported by this extension
+    if (!supportedProviders.includes(resourceId.provider)) {
+        throw new Error(
+            l10n.t(
+                'Unsupported resource provider: {0}. This extension only supports Cosmos DB resources.',
+                resourceId.provider,
+            ),
+        );
+    }
+    // reveal the account first, this will open the Azure Resource Groups view,
+    // select the resource in the tree and expand it, forcing it to load the children
+    await revealAzureResourceInExplorer(resourceId.rawId, params.database, params.container);
+    await openAppropriateEditorForAzure(context, resourceId.rawId, params.database, params.container);
+}
+
+async function handleConnectionStringRequest(
+    context: IActionContext,
+    params: ReturnType<typeof extractParams>,
+): Promise<void> {
+    if (!params.connectionString) {
+        throw new Error('Connection string is required');
+    }
+
+    const parsedConnection = parseConnectionString(params.connectionString);
+    context.telemetry.properties.experience = parsedConnection.api;
+
+    if (params.subscriptionId && params.resourceGroup) {
+        // If subscriptionId and resourceGroup are provided, we need to extract the account name from the connection string
+        context.telemetry.properties.subscriptionId = params.subscriptionId;
+        let accountName: string | undefined;
+        switch (parsedConnection.api) {
+            case API.Core:
+                accountName = parsedConnection.connectionString.accountName;
+                break;
+            case API.MongoDB:
+                accountName = parsedConnection.connectionString.username;
+                break;
+            case API.MongoClusters:
+                accountName =
+                    parsedConnection.connectionString.hosts?.length > 0
+                        ? // The hostname is in the format of "accountname.mongocluster.cosmos.azure.com"
+                          // Extract the first subdomain component by splitting the hostname on dots
+                          parsedConnection.connectionString.hosts[0]?.split('.')[0]
+                        : undefined;
+                break;
+            default:
+                accountName = undefined;
+                break;
+        }
+        if (!accountName || accountName.length === 0) {
+            throw new Error(l10n.t('Unable to extract account name from connection string'));
+        }
+        const resourceId = createAzureResourceId(
+            parsedConnection.api,
+            params.subscriptionId,
+            params.resourceGroup,
+            accountName,
+        );
+        context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId);
+        await revealAzureResourceInExplorer(resourceId, params.database, params.container);
+    } else {
+        // Create storage item for the connection
+        if (parsedConnection.api === API.Core) {
+            await createAttachedForConnection(
+                parsedConnection.connectionString.accountId,
+                parsedConnection.connectionString.accountName,
+                parsedConnection.api,
+                params.connectionString,
+            );
+            ext.cosmosDBWorkspaceBranchDataProvider.refresh();
+            await revealAttachedInWorkspaceExplorer(
+                parsedConnection.connectionString.accountId,
+                parsedConnection.api,
+                params.database,
+                params.container,
+            );
+        } else {
+            // Handle MongoDB and MongoClusters
+            const accountId =
+                parsedConnection.connectionString.username +
+                '@' +
+                parsedConnection.connectionString.redact().toString();
+            await createAttachedForConnection(
+                accountId,
+                parsedConnection.connectionString.username + '@' + parsedConnection.connectionString.hosts.join(','),
+                parsedConnection.api,
+                params.connectionString,
+            );
+            ext.cosmosDBWorkspaceBranchDataProvider.refresh();
+            await revealAttachedInWorkspaceExplorer(accountId, parsedConnection.api, params.database, params.container);
+        }
+    }
+
+    if (!params.container) {
+        throw new Error(l10n.t("Can't open the Query Editor, Container name is required"));
+    }
+
+    // Open appropriate editor based on API type
+    await openAppropriateEditorForConnection(context, parsedConnection, params.container, params.database);
 }
 
 function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: string, accountName: string): string {
@@ -337,4 +360,59 @@ function parseConnectionString(
         api: API.Core,
         connectionString: parsedCS,
     };
+}
+
+function extractParams(query: string): {
+    resourceId?: string;
+    subscriptionId?: string;
+    resourceGroup?: string;
+    connectionString?: string;
+    database?: string;
+    container?: string;
+} {
+    const queryParams = new URLSearchParams(query);
+    return {
+        resourceId: queryParams.get('resourceId') ?? undefined,
+        subscriptionId: queryParams.get('subscriptionId') ?? undefined,
+        resourceGroup: queryParams.get('resourceGroup') ?? undefined,
+        connectionString: queryParams.get('cs') ?? undefined,
+        database: queryParams.get('database') ?? undefined,
+        container: queryParams.get('container') ?? undefined,
+    };
+}
+
+// Define a proper interface for parameters
+interface UriParams {
+    resourceId?: string | undefined;
+    subscriptionId?: string | undefined;
+    resourceGroup?: string | undefined;
+    connectionString?: string | undefined;
+    database?: string | undefined;
+    container?: string | undefined;
+}
+
+// Improved parameter extraction with validation
+function extractAndValidateParams(context: IActionContext, query: string): UriParams {
+    const params = extractParams(query);
+
+    // Validate that we have at least one of the required identifiers
+    if (!params.resourceId && !params.connectionString) {
+        throw new Error(l10n.t('Either resource ID or connection string is required'));
+    }
+
+    // Track which path we're taking
+    const isResourceId = query.includes('resourceId=');
+    const isConnectionString = query.includes('cs=');
+
+    context.telemetry.properties.uriType = isResourceId
+        ? 'resourceId'
+        : isConnectionString
+          ? 'connectionString'
+          : 'unknown';
+
+    // Track database and container presence with explicit true/false values
+    context.telemetry.properties.hasDatabase = params.database ? 'true' : 'false';
+    context.telemetry.properties.hasContainer = params.container ? 'true' : 'false';
+
+    return params;
 }

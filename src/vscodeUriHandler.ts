@@ -107,7 +107,12 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                         params.connectionString,
                     );
                     ext.cosmosDBWorkspaceBranchDataProvider.refresh();
-                    await revealAttachedInWorkspaceExplorer(parsedConnection.connectionString.accountId);
+                    await revealAttachedInWorkspaceExplorer(
+                        parsedConnection.connectionString.accountId,
+                        parsedConnection.api,
+                        params.database,
+                        params.container,
+                    );
                 } else {
                     // Handle MongoDB and MongoClusters
                     const accountId =
@@ -123,7 +128,12 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                         params.connectionString,
                     );
                     ext.cosmosDBWorkspaceBranchDataProvider.refresh();
-                    await revealAttachedInWorkspaceExplorer(accountId);
+                    await revealAttachedInWorkspaceExplorer(
+                        accountId,
+                        parsedConnection.api,
+                        params.database,
+                        params.container,
+                    );
                 }
             }
 
@@ -132,7 +142,7 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
             }
 
             // Open appropriate editor based on API type
-            await openAppropriateEditor(context, parsedConnection, params.container, params.database);
+            await openAppropriateEditorForConnection(context, parsedConnection, params.container, params.database);
         }
     });
 }
@@ -177,10 +187,10 @@ async function createAttachedForConnection(
     api: API,
     connectionString: string,
 ): Promise<void> {
-    const parentId = '';
+    const parentId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts`;
     await ext.state.showCreatingChild(parentId, l10n.t('Creating "{nodeName}"…', { nodeName: accountId }), async () => {
         const storageItem: SharedWorkspaceStorageItem = {
-            id: accountId,
+            id: `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts/${accountId}`,
             name: accountName,
             properties: { isEmulator: false, api },
             secrets: [connectionString],
@@ -193,23 +203,28 @@ async function createAttachedForConnection(
 /**
  * Reveals the resource in Azure Explorer
  */
-async function revealAttachedInWorkspaceExplorer(_accountId: string): Promise<void> {
+async function revealAttachedInWorkspaceExplorer(
+    accountId: string,
+    api: API,
+    database?: string,
+    container?: string,
+): Promise<void> {
     // Open the Azure Workspace view
     await vscode.commands.executeCommand('azureWorkspace.focus');
-
-    //TODO: we need to implement a refresh and revealTreeItem methods for attached accounts
-    // await ext.rgApiV2.resources.revealWorkspaceItem(
-    //     WorkspaceResourceType.AttachedAccounts,
-    //     accountId,
-    //     { select: true, focus: true, expand: true }
-    // );
-    return Promise.resolve();
+    const fullId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts/${accountId}`;
+    const fullResourceId = `${fullId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
+    // TODO: use revealWorkspaceResource!
+    await ext.rgApiV2.resources.revealAzureResource(fullResourceId, {
+        select: true,
+        focus: true,
+        expand: true,
+    });
 }
 
 /**
  * Opens the appropriate editor based on the API type
  */
-async function openAppropriateEditor(
+async function openAppropriateEditorForConnection(
     context: IActionContext,
     parsedConnection:
         | { api: API.Core; connectionString: ParsedCosmosDBConnectionString }

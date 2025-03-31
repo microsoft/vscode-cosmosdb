@@ -88,10 +88,9 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                     case API.MongoClusters:
                         accountName =
                             parsedConnection.connectionString.hosts?.length > 0
-                                ? parsedConnection.connectionString.hosts[0].replace(
-                                      '.mongocluster.cosmos.azure.com',
-                                      '',
-                                  )
+                                ? // The hostname is in the format of "accountname.mongocluster.cosmos.azure.com"
+                                  // Extract the first subdomain component by splitting the hostname on dots
+                                  parsedConnection.connectionString.hosts[0]?.split('.')[0]
                                 : undefined;
                         break;
                     default:

@@ -47,6 +47,8 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
     }
 
     public get accountName(): string {
-        return this.hostName.replace('.documents.azure.com', '');
+        // The hostname is in the format of "accountname.documents.azure.com"
+        // Extract the first subdomain component by splitting the hostname on dots
+        return this.hostName.split('.')[0];
     }
 }

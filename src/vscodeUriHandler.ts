@@ -16,6 +16,7 @@ import {
 } from './cosmosdb/cosmosDBConnectionStrings';
 import { ext } from './extensionVariables';
 import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
+import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from './tree/workspace-api/SharedWorkspaceStorage';
 
@@ -32,12 +33,12 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
     return await callWithTelemetryAndErrorHandling('handleExternalUri', async (context: IActionContext) => {
         const queryParams = new URLSearchParams(uri.query);
         const params = {
-            resourceId: queryParams.get('resourceId'),
-            subscriptionId: queryParams.get('subscriptionId'),
-            resourceGroup: queryParams.get('resourceGroup'),
-            connectionString: queryParams.get('cs'),
-            database: queryParams.get('database'),
-            container: queryParams.get('container'),
+            resourceId: queryParams.get('resourceId') ?? undefined,
+            subscriptionId: queryParams.get('subscriptionId') ?? undefined,
+            resourceGroup: queryParams.get('resourceGroup') ?? undefined,
+            connectionString: queryParams.get('cs') ?? undefined,
+            database: queryParams.get('database') ?? undefined,
+            container: queryParams.get('container') ?? undefined,
         };
 
         if (params.resourceId) {
@@ -54,22 +55,10 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                     ),
                 );
             }
-            await revealAzureResourceInExplorer(resourceId.rawId);
-
-            // TODO: Currently we can't reveal the database and container in the Azure Explorer
-            // We need to either implement this functionality in the BranchDataProvider impls
-            // and run the appropriate command on the revelad collection node,
-            // or provide the connection string in addition to the resource ID (currently supported for NoSQL only)
-            /**
-            // Open appropriate editor based on API type
-            if (!params.database) {
-                throw new Error(l10n.t('Database name is required'));
-            }
-            if (!params.container) {
-                throw new Error(l10n.t('Container name is required'));
-            }
-            await openAppropriateEditor(context, parsedConnection, params.container);
-            */
+            // reveal the account first, this will open the Azure Resource Groups view,
+            // select the resource in the tree and expand it, forcing it to load the children
+            await revealAzureResourceInExplorer(resourceId.rawId, params.database, params.container);
+            await openAppropriateEditorForAzure(context, resourceId.rawId, params.database, params.container);
         } else if (params.connectionString) {
             const parsedConnection = parseConnectionString(params.connectionString);
             context.telemetry.properties.experience = parsedConnection.api;
@@ -107,7 +96,7 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                     accountName,
                 );
                 context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId);
-                await revealAzureResourceInExplorer(resourceId);
+                await revealAzureResourceInExplorer(resourceId, params.database, params.container);
             } else {
                 // Create storage item for the connection
                 if (parsedConnection.api === API.Core) {
@@ -168,10 +157,11 @@ function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: 
 /**
  * Reveals the resource in Azure Explorer
  */
-async function revealAzureResourceInExplorer(resourceId: string): Promise<void> {
+async function revealAzureResourceInExplorer(resourceId: string, database?: string, container?: string): Promise<void> {
     // will open the Azure Resource Groups view
+    const fullResourceId = `${resourceId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
     await vscode.commands.executeCommand('azureResourceGroups.focus');
-    await ext.rgApiV2.resources.revealAzureResource(resourceId, {
+    await ext.rgApiV2.resources.revealAzureResource(fullResourceId, {
         select: true,
         focus: true,
         expand: true,
@@ -224,8 +214,8 @@ async function openAppropriateEditor(
     parsedConnection:
         | { api: API.Core; connectionString: ParsedCosmosDBConnectionString }
         | { api: API.MongoDB | API.MongoClusters; connectionString: ConnectionString },
-    database: string | null,
-    container: string | null,
+    database: string | undefined,
+    container: string | undefined,
 ): Promise<void> {
     if (!container) {
         throw new Error(l10n.t("Can't open the Query Editor, Container name is required"));
@@ -263,6 +253,41 @@ async function openAppropriateEditor(
             collectionTreeItem: node,
         });
         */
+    }
+}
+
+async function openAppropriateEditorForAzure(
+    context: IActionContext,
+    resourceId: string,
+    database?: string,
+    container?: string,
+): Promise<void> {
+    if (!database) {
+        throw new Error(l10n.t("Can't open the Query Editor, Database name is required"));
+    }
+    if (!container) {
+        throw new Error(l10n.t("Can't open the Query Editor, Container name is required"));
+    }
+
+    const resource = await ext.cosmosDBBranchDataProvider.findNodeById(`${resourceId}/${database}/${container}`);
+    if (!resource) {
+        throw new Error(
+            l10n.t(
+                'Unable to find database "{0}" and collection "{1}" in resource "{2}". Please ensure the resource exists and try again.',
+                database,
+                container,
+                resourceId,
+            ),
+        );
+    }
+    if (isTreeElementWithExperience(resource)) {
+        context.telemetry.properties.experience = resource.experience.api;
+        await vscode.commands.executeCommand(
+            resource.experience.api === API.Core ? 'cosmosDB.openNoSqlQueryEditor' : 'documentdb.openCollectionView',
+            resource,
+        );
+    } else {
+        throw new Error(l10n.t('Unable to determine the experience for the resource'));
     }
 }
 

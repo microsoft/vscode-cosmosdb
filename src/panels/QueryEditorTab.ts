@@ -20,7 +20,7 @@ import {
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
 import { SettingsService } from '../services/SettingsService';
-import { queryMetricsToCsv, queryResultToCsv, setCsvSeperator } from '../utils/convertors';
+import { queryMetricsToCsv, queryResultToCsv, setCsvSeparator } from '../utils/convertors';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -440,7 +440,7 @@ export class QueryEditorTab extends BaseTab {
 
     private updateCsvSeparator() {
         const s = SettingsService.getSetting<string>('cosmosDB.csvSeparator') ?? ';';
-        setCsvSeperator(s);
+        setCsvSeparator(s);
     }
 
     private async saveCSV(
@@ -450,13 +450,13 @@ export class QueryEditorTab extends BaseTab {
     ): Promise<void> {
         this.updateCsvSeparator();
         const text = queryResultToCsv(currentQueryResult, partitionKey);
-        await vscodeUtil.showNewFile(text, name, 'csv');
+        await vscodeUtil.showNewFile(text, name, '.csv');
     }
 
     private async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
         this.updateCsvSeparator();
         const text = queryMetricsToCsv(currentQueryResult);
-        await vscodeUtil.showNewFile(text, name, 'csv');
+        await vscodeUtil.showNewFile(text, name, '.csv');
     }
 
     private async copyCSVToClipboard(

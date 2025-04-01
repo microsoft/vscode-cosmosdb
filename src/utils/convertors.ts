@@ -502,11 +502,11 @@ export const escapeCsvValue = (value: string): string => {
 
 let csvSeparator: string = ';';
 
-export function setCsvSeperator(seperator: string): void {
+export function setCsvSeparator(seperator: string): void {
     csvSeparator = seperator;
 }
 
-function getCsvSeperator(): string {
+function getCsvSeparator(): string {
     return csvSeparator;
 }
 
@@ -519,8 +519,8 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
 
     stats.push(indexMetricsToTableItem(queryResult));
 
-    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(getCsvSeperator());
-    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(getCsvSeperator());
+    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(getCsvSeparator());
+    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(getCsvSeparator());
     return `${titles}\n${values}`;
 };
 
@@ -534,7 +534,7 @@ export const queryResultToCsv = (
     }
 
     const tableView = queryResultToTable(queryResult, partitionKey);
-    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(getCsvSeperator());
+    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(getCsvSeparator());
 
     if (selection) {
         tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
@@ -553,7 +553,7 @@ export const queryResultToCsv = (
                 rowValues.push(escapeCsvValue(value));
             });
 
-            return rowValues.join(getCsvSeperator());
+            return rowValues.join(getCsvSeparator());
         })
         .join('\n');
     return `${headers}\n${rows}`;

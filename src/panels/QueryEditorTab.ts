@@ -19,8 +19,7 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
-import { SettingsService } from '../services/SettingsService';
-import { queryMetricsToCsv, queryResultToCsv, setCsvSeparator } from '../utils/convertors';
+import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -438,23 +437,16 @@ export class QueryEditorTab extends BaseTab {
         return Promise.resolve();
     }
 
-    private updateCsvSeparator() {
-        const s = SettingsService.getSetting<string>('cosmosDB.csvSeparator') ?? ';';
-        setCsvSeparator(s);
-    }
-
     private async saveCSV(
         name: string,
         currentQueryResult: SerializedQueryResult | null,
         partitionKey?: PartitionKeyDefinition,
     ): Promise<void> {
-        this.updateCsvSeparator();
         const text = queryResultToCsv(currentQueryResult, partitionKey);
         await vscodeUtil.showNewFile(text, name, '.csv');
     }
 
     private async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        this.updateCsvSeparator();
         const text = queryMetricsToCsv(currentQueryResult);
         await vscodeUtil.showNewFile(text, name, '.csv');
     }
@@ -464,13 +456,11 @@ export class QueryEditorTab extends BaseTab {
         partitionKey?: PartitionKeyDefinition,
         selection?: number[],
     ): Promise<void> {
-        this.updateCsvSeparator();
         const text = queryResultToCsv(currentQueryResult, partitionKey, selection);
         await vscode.env.clipboard.writeText(text);
     }
 
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        this.updateCsvSeparator();
         const text = queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
     }

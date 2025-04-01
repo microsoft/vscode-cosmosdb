@@ -475,7 +475,7 @@ export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): 
     return stats;
 };
 
-const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {
+export const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {
     return {
         metric: l10n.t('Index Metrics'),
         value: queryResult.indexMetrics.trim(),
@@ -494,67 +494,4 @@ export const queryMetricsToJSON = (queryResult: SerializedQueryResult | null): s
     stats.push(indexMetricsToTableItem(queryResult));
 
     return JSON.stringify(stats, null, 4);
-};
-
-export const escapeCsvValue = (value: string): string => {
-    return `"${value.replace(/"/g, '""')}"`;
-};
-
-let csvSeparator: string = ';';
-
-export function setCsvSeparator(seperator: string): void {
-    csvSeparator = seperator;
-}
-
-function getCsvSeparator(): string {
-    return csvSeparator;
-}
-
-export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): string => {
-    if (!queryResult) {
-        return '';
-    }
-
-    const stats = queryMetricsToTable(queryResult);
-
-    stats.push(indexMetricsToTableItem(queryResult));
-
-    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(getCsvSeparator());
-    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(getCsvSeparator());
-    return `${titles}\n${values}`;
-};
-
-export const queryResultToCsv = (
-    queryResult: SerializedQueryResult | null,
-    partitionKey?: PartitionKeyDefinition,
-    selection?: number[],
-): string => {
-    if (!queryResult) {
-        return '';
-    }
-
-    const tableView = queryResultToTable(queryResult, partitionKey);
-    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(getCsvSeparator());
-
-    if (selection) {
-        tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
-    }
-
-    const rows = tableView.dataset
-        .map((row) => {
-            const rowValues: string[] = [];
-
-            tableView.headers.forEach((header) => {
-                if (header.startsWith('/')) {
-                    header = header.slice(1);
-                }
-
-                const value = row[header] ?? '';
-                rowValues.push(escapeCsvValue(value));
-            });
-
-            return rowValues.join(getCsvSeparator());
-        })
-        .join('\n');
-    return `${headers}\n${rows}`;
 };

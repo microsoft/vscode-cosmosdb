@@ -25,9 +25,20 @@ const supportedProviders = [
     'Microsoft.DocumentDB/mongoClusters',
     //'Microsoft.DBforPostgreSQL/serverGroupsv2', // uncomment once we support Cosmos DB for PostgreSQL
 ];
+
 /**
- * Handles external URIs directed to the extension
- * @param uri The URI to handle
+ * Global URI handler for processing external URIs related to Azure Databases.
+ * This function handles URIs that contain either resource IDs or connection strings.
+ *
+ * @param uri - The VS Code URI to handle, typically from an external source
+ * @returns {Promise<void>} A Promise that resolves when the URI has been handled
+ * @throws {Error} Will throw an error if URI processing fails, wrapped with appropriate error message
+ *
+ * The handler shows a progress notification while:
+ * 1. Extracting and validating parameters from the URI query
+ * 2. Processing either resource ID based requests or connection string requests
+ *
+ * All operations are tracked with telemetry and error handling.
  */
 export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
     await callWithTelemetryAndErrorHandling('handleExternalUri', async (context: IActionContext) => {
@@ -57,6 +68,17 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
     });
 }
 
+/**
+ * Handles a request to process an Azure resource identified by a resource ID.
+ *
+ * This function verifies that the resource ID is valid and belongs to a supported provider,
+ * then reveals the resource in the Azure explorer and opens the appropriate editor.
+ *
+ * @param context - The action context containing telemetry and other contextual information
+ * @param params - Parameters extracted from the request containing resourceId and optional database/container info
+ * @throws {Error} When resource ID is missing or when the provider is not supported
+ * @returns {Promise<void>} A promise that resolves when the resource handling is complete
+ */
 async function handleResourceIdRequest(
     context: IActionContext,
     params: ReturnType<typeof extractParams>,
@@ -84,6 +106,23 @@ async function handleResourceIdRequest(
     await openAppropriateEditorForAzure(context, resourceId.rawId, params.database, params.container);
 }
 
+/**
+ * Handles connection string requests by connecting to Azure Cosmos DB resources.
+ *
+ * This function processes a connection string and optional parameters to either:
+ * 1. Connect to an Azure Cosmos DB resource identified by subscription ID and resource group, or
+ * 2. Create an attached account from the connection string in the workspace explorer
+ *
+ * After establishing the connection, it will reveal the resource in the appropriate explorer
+ * and open the query editor if a container is specified.
+ *
+ * @param context - The action context for telemetry and other VS Code operations
+ * @param params - The parameters extracted from the request, including connection string,
+ *                 subscription ID, resource group, database name, and container name
+ * @throws {Error} when connection string is missing, account name can't be extracted,
+ *        or container name is missing when trying to open the query editor
+ * @returns {Promise<void>} A promise that resolves when the connection handling is complete
+ */
 async function handleConnectionStringRequest(
     context: IActionContext,
     params: ReturnType<typeof extractParams>,
@@ -170,6 +209,21 @@ async function handleConnectionStringRequest(
     await openAppropriateEditorForConnection(context, parsedConnection, params.container, params.database);
 }
 
+/**
+ * Generates an Azure resource ID for the specified Cosmos DB resource.
+ *
+ * @param api - The API type of the Cosmos DB resource
+ * @param subscriptionId - The Azure subscription ID
+ * @param resourceGroup - The resource group name
+ * @param accountName - The account name of the Cosmos DB resource
+ * @returns A formatted Azure resource ID string
+ *
+ * @remarks
+ * Different API types require different resource ID formats:
+ * - For MongoDB Clusters, it uses the Microsoft.DocumentDB/mongoClusters format
+ * - For other APIs, it uses the Microsoft.DocumentDb/databaseAccounts format
+ * - PostgreSQL Clusters support is not implemented yet
+ */
 function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: string, accountName: string): string {
     switch (api) {
         case API.MongoClusters:
@@ -188,10 +242,20 @@ function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: 
 }
 
 /**
- * Reveals the resource in Azure Explorer
+ * Reveals an Azure resource in the Azure Resource Groups explorer.
+ *
+ * @param resourceId - The ID of the Azure resource to reveal.
+ * @param database - Optional. The name of the database associated with the resource.
+ * @param container - Optional. The name of the container associated with the database.
+ * @returns A promise that resolves when the resource is revealed in the explorer.
+ *
+ * @remarks
+ * This function:
+ * 1. Constructs a full resource ID that may include database and container paths.
+ * 2. Focuses the Azure Resource Groups view in the explorer.
+ * 3. Reveals the specified Azure resource in the explorer with selection, focus, and expansion.
  */
 async function revealAzureResourceInExplorer(resourceId: string, database?: string, container?: string): Promise<void> {
-    // will open the Azure Resource Groups view
     const fullResourceId = `${resourceId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
     await vscode.commands.executeCommand('azureResourceGroups.focus');
     await ext.rgApiV2.resources.revealAzureResource(fullResourceId, {
@@ -202,7 +266,13 @@ async function revealAzureResourceInExplorer(resourceId: string, database?: stri
 }
 
 /**
- * Creates storage for the connection
+ * Creates and attaches a database connection to the workspace.
+ *
+ * @param accountId - Unique identifier for the account.
+ * @param accountName - Display name for the account.
+ * @param api - The API type of the account (Core or Mongo).
+ * @param connectionString - The connection string for the database account.
+ * @returns A promise that resolves when the connection has been created and attached.
  */
 async function createAttachedForConnection(
     accountId: string,
@@ -224,7 +294,14 @@ async function createAttachedForConnection(
 }
 
 /**
- * Reveals the resource in Azure Explorer
+ * Reveals an attached account in the Azure Workspace Explorer.
+ * First focuses on the Azure Workspace view, then reveals the specified resource in the tree.
+ *
+ * @param accountId - The ID of the account to reveal
+ * @param api - Specifies whether this is a Core or MongoDB API account
+ * @param database - Optional database name to reveal within the account
+ * @param container - Optional container name to reveal within the database
+ * @returns A Promise that resolves when the resource has been revealed in the workspace explorer
  */
 async function revealAttachedInWorkspaceExplorer(
     accountId: string,
@@ -245,7 +322,14 @@ async function revealAttachedInWorkspaceExplorer(
 }
 
 /**
- * Opens the appropriate editor based on the API type
+ * Opens an appropriate editor for a Cosmos DB connection.
+ *
+ * @param context The action context.
+ * @param parsedConnection The parsed connection information, containing either a Core API connection string or a MongoDB API connection string.
+ * @param database The name of the database to connect to. If not provided, it will attempt to use the database name from the connection string.
+ * @param container The name of the container (collection) to open.
+ * @throws Error if container name is not provided, or if database name is not provided for Core API connections.
+ * @returns A promise that resolves when the editor is opened.
  */
 async function openAppropriateEditorForConnection(
     context: IActionContext,
@@ -294,6 +378,18 @@ async function openAppropriateEditorForConnection(
     }
 }
 
+/**
+ * Opens the appropriate editor for a Cosmos DB resource in Azure.
+ *
+ * @param context - The action context for the operation.
+ * @param resourceId - The Azure resource ID of the Cosmos DB account.
+ * @param database - The name of the database to open. Required for query editor.
+ * @param container - The name of the container to open. Required for query editor.
+ * @throws Error if database or container names are not provided.
+ * @throws Error if the specified database and container combination cannot be found.
+ * @throws Error if the experience type for the resource cannot be determined.
+ * @returns Promise that resolves when the appropriate editor has been opened.
+ */
 async function openAppropriateEditorForAzure(
     context: IActionContext,
     resourceId: string,
@@ -330,9 +426,13 @@ async function openAppropriateEditorForAzure(
 }
 
 /**
- * Parses a connection string to determine the API type and structure
- * @returns An object with the appropriate API type that always corresponds to the connection string type
- * TODO: we could reuse this to infer API from conection string when attaching new accounts and skip API selection where possible
+ * Parses a connection string to determine the API type and return the appropriate connection object.
+ *
+ * @param connectionString - The connection string to parse. Cannot be empty.
+ * @returns An object containing:
+ *   - api: The API type (Core, MongoDB, or MongoClusters)
+ *   - connectionString: The parsed connection string object, either a ParsedCosmosDBConnectionString or ConnectionString
+ * @throws Error if the connection string is empty
  */
 function parseConnectionString(
     connectionString: string,
@@ -362,6 +462,17 @@ function parseConnectionString(
     };
 }
 
+/**
+ * Extracts query parameters from a URL query string.
+ * @param query - The URL query string to extract parameters from.
+ * @returns An object containing the extracted parameters:
+ *   - resourceId - The Azure resource ID (if present).
+ *   - subscriptionId - The Azure subscription ID (if present).
+ *   - resourceGroup - The Azure resource group name (if present).
+ *   - connectionString - The connection string for the Cosmos DB account (if present). Extracted from 'cs' parameter.
+ *   - database - The name of the database (if present).
+ *   - container - The name of the container (if present).
+ */
 function extractParams(query: string): {
     resourceId?: string;
     subscriptionId?: string;
@@ -381,7 +492,15 @@ function extractParams(query: string): {
     };
 }
 
-// Define a proper interface for parameters
+/**
+ * Interface for URI parameters used for connecting to Azure Cosmos DB resources.
+ * @property resourceId - The Azure resource ID of the Cosmos DB account.
+ * @property subscriptionId - The Azure subscription ID.
+ * @property resourceGroup - The Azure resource group name containing the Cosmos DB account.
+ * @property connectionString - The connection string to the Cosmos DB account.
+ * @property database - The name of the database in the Cosmos DB account.
+ * @property container - The name of the container/collection within the database.
+ */
 interface UriParams {
     resourceId?: string | undefined;
     subscriptionId?: string | undefined;
@@ -391,11 +510,22 @@ interface UriParams {
     container?: string | undefined;
 }
 
-// Improved parameter extraction with validation
+/**
+ * Extracts and validates URI parameters from a query string.
+ *
+ * @param context - The action context used for telemetry tracking
+ * @param query - The query string to extract parameters from
+ * @returns The extracted URI parameters
+ * @throws Error when neither resource ID nor connection string is provided
+ *
+ * @remarks
+ * This function validates that either a resource ID or connection string is present in the query parameters.
+ * It also tracks telemetry information about the URI type (resourceId/connectionString) and the presence
+ * of database and container parameters.
+ */
 function extractAndValidateParams(context: IActionContext, query: string): UriParams {
     const params = extractParams(query);
 
-    // Validate that we have at least one of the required identifiers
     if (!params.resourceId && !params.connectionString) {
         throw new Error(l10n.t('Either resource ID or connection string is required'));
     }
@@ -410,7 +540,6 @@ function extractAndValidateParams(context: IActionContext, query: string): UriPa
           ? 'connectionString'
           : 'unknown';
 
-    // Track database and container presence with explicit true/false values
     context.telemetry.properties.hasDatabase = params.database ? 'true' : 'false';
     context.telemetry.properties.hasContainer = params.container ? 'true' : 'false';
 

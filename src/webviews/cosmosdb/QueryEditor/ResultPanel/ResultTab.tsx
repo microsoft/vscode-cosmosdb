@@ -86,12 +86,12 @@ export const ResultTab = () => {
         }, 100);
 
         return () => clearTimeout(timer);
-    }, [tableViewMode, currentQueryResult, partitionKey, viewData]);
+    }, [tableViewMode, currentQueryResult, partitionKey]);
 
     // Clear cached data when query result changes
     useEffect(() => {
         setViewData({});
-    }, [currentQueryResult]);
+    }, [currentQueryResult, partitionKey]);
 
     return (
         <div className={[classes.container, 'resultsDisplayArea'].join(' ')}>

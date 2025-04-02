@@ -39,6 +39,46 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
 };
 
 /**
+ * Extract the partition key as key/value object from a document
+ * @param document
+ * @param partitionKey
+ */
+export const extractPartitionKeyValues = (
+    document: ItemDefinition,
+    partitionKey?: PartitionKeyDefinition,
+): Record<string, PartitionKey> => {
+    const partitionKeyValue: Record<string, PartitionKey> = {};
+
+    if (!partitionKey) {
+        return partitionKeyValue;
+    }
+
+    partitionKey.paths.forEach((path) => {
+        const partitionKeyPath = path.split('/').filter((key) => key !== '');
+        let interim: JSONValue = document;
+
+        for (const prop of partitionKeyPath) {
+            if (interim && typeof interim === 'object' && interim[prop]) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                interim = interim[prop];
+            } else {
+                return; // It is not correct to return null, in other cases it should be an exception
+            }
+        }
+        if (
+            interim === null ||
+            typeof interim === 'string' ||
+            typeof interim === 'number' ||
+            typeof interim === 'boolean'
+        ) {
+            partitionKeyValue[path] = interim;
+        }
+    });
+
+    return partitionKeyValue;
+};
+
+/**
  * Get the unique id of a document only as a key for the UI (loops, tables, etc.)
  * @param document
  * @param partitionKey

@@ -438,29 +438,27 @@ const CopyToClipboardButton = forwardRef(
 
         async function onSaveToClipboardAsCSV() {
             if (selectedTab === 'result__tab') {
-                await dispatcher.copyToClipboard(
-                    queryResultToCsv(
-                        state.currentQueryResult,
-                        state.partitionKey,
-                        hasSelection ? state.selectedRows : undefined,
-                    ),
-                );
+                const selectedRows = hasSelection ? state.selectedRows : undefined;
+                const csv = await queryResultToCsv(state.currentQueryResult, state.partitionKey, selectedRows);
+                await dispatcher.copyToClipboard(csv);
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.copyToClipboard(queryMetricsToCsv(state.currentQueryResult));
+                const csv = await queryMetricsToCsv(state.currentQueryResult);
+                await dispatcher.copyToClipboard(csv);
             }
         }
 
         async function onSaveToClipboardAsJSON() {
             if (selectedTab === 'result__tab') {
-                await dispatcher.copyToClipboard(
-                    queryResultToJSON(state.currentQueryResult, hasSelection ? state.selectedRows : undefined),
-                );
+                const selectedRows = hasSelection ? state.selectedRows : undefined;
+                const json = await queryResultToJSON(state.currentQueryResult, selectedRows);
+                await dispatcher.copyToClipboard(json);
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.copyToClipboard(queryMetricsToJSON(state.currentQueryResult));
+                const json = await queryMetricsToJSON(state.currentQueryResult);
+                await dispatcher.copyToClipboard(json);
             }
         }
 
@@ -510,26 +508,26 @@ const ExportButton = forwardRef(
         async function onSaveAsCSV() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                await dispatcher.saveToFile(
-                    queryResultToCsv(state.currentQueryResult, state.partitionKey),
-                    `${filename}_result`,
-                    'csv',
-                );
+                const csv = await queryResultToCsv(state.currentQueryResult, state.partitionKey);
+                await dispatcher.saveToFile(csv, `${filename}_result`, 'csv');
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.saveToFile(queryMetricsToCsv(state.currentQueryResult), `${filename}_stats`, 'csv');
+                const csv = await queryMetricsToCsv(state.currentQueryResult);
+                await dispatcher.saveToFile(csv, `${filename}_stats`, 'csv');
             }
         }
 
         async function onSaveAsJSON() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                await dispatcher.saveToFile(queryResultToJSON(state.currentQueryResult), `${filename}_result`, 'json');
+                const json = await queryResultToJSON(state.currentQueryResult);
+                await dispatcher.saveToFile(json, `${filename}_result`, 'json');
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.saveToFile(queryMetricsToJSON(state.currentQueryResult), `${filename}_stats`, 'json');
+                const json = await queryMetricsToJSON(state.currentQueryResult);
+                await dispatcher.saveToFile(json, `${filename}_stats`, 'json');
             }
         }
 

@@ -3,11 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/**
+ * NOTE: Mostly of these functions are async to be able to move them to backend in the future
+ */
+
 import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
 import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
-import { extractPartitionKey } from './document';
+import { extractPartitionKey, extractPartitionKeyValues } from './document';
 import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
 
 export type StatsItem = {
@@ -22,6 +26,59 @@ export type TableData = {
     headers: string[];
     dataset: TableRecord[];
 };
+
+export type ColumnOptions = {
+    ShowPartitionKey: 'first' | 'none'; // 'first' = show id + partition key first, 'none' = the nested partition key values are hidden + partition key are shown as is (without / prefix)
+    ShowServiceColumns: 'last' | 'none'; // 'last' = show service columns last, 'none' = hide service columns
+    Sorting: 'ascending' | 'descending' | 'none'; // 'ascending' = sort columns in ascending order, 'descending' = sort columns in descending order, 'none' = no sorting
+    TruncateValues: number; // truncate values to this length, 0 = no truncation
+};
+
+type StackEntry = {
+    id: string;
+    key: string;
+    value: unknown;
+    parentId: string | null;
+};
+
+const MAX_TREE_LEVEL_LENGTH = 100;
+
+/**
+ * Truncates a string if it exceeds the specified maximum length.
+ * @param value The string to truncate
+ * @param maxLength Maximum length of the string (default: MAX_TREE_LEVEL_LENGTH)
+ * @param suffix Suffix to append to truncated strings (default: "…")
+ * @returns The truncated string with suffix if truncated, or original string
+ */
+export const truncateString = (value: string, maxLength = MAX_TREE_LEVEL_LENGTH, suffix = '…'): string => {
+    if (!value) {
+        return '';
+    }
+
+    if (value.length <= maxLength) {
+        return value;
+    }
+
+    return value.substring(0, maxLength - suffix.length) + suffix;
+};
+
+/**
+ * Creates a left-padded string representation of an index based on array length
+ * @param {number} index - The index to pad
+ * @param {Array|number} array - The array or its length to determine padding width
+ * @param {string} [padChar='0'] - Character to use for padding
+ * @returns {string} - Padded index string
+ */
+function leftPadIndex(index: number, array: unknown[] | number, padChar: string = '0'): string {
+    // Get array length or use the number directly
+    const arrayLength = Array.isArray(array) ? array.length : array;
+
+    // Calculate the number of digits needed
+    const maxDigits = Math.floor(Math.log10(arrayLength - 1) + 1);
+
+    // Convert index to string and add padding
+    return String(index).padStart(maxDigits, padChar);
+}
 
 /**
  * We can retrieve the document id to open it in a separate tab only if record contains {@link CosmosDBRecordIdentifier}
@@ -41,7 +98,10 @@ export const isSelectStar = (query: string): boolean => {
     return false;
 };
 
-export const queryResultToJSON = (queryResult: SerializedQueryResult | null, selection?: number[]) => {
+export const queryResultToJSON = async (
+    queryResult: SerializedQueryResult | null,
+    selection?: number[],
+): Promise<string> => {
     if (!queryResult) {
         return '';
     }
@@ -62,122 +122,153 @@ export const queryResultToJSON = (queryResult: SerializedQueryResult | null, sel
     return JSON.stringify(queryResult.documents, null, 4);
 };
 
-export const queryResultToTree = (
+export const queryResultToTree = async (
     queryResult: SerializedQueryResult | null,
     partitionKey: PartitionKeyDefinition | undefined,
-): TreeData[] => {
+): Promise<TreeData[]> => {
     const tree: TreeData[] = [];
 
     if (!queryResult) {
         return tree;
     }
 
-    queryResult.documents.forEach((doc, index) => {
-        const documentTree = documentToSlickGridTree(doc, partitionKey, index, `${index}-`);
-        tree.push(...documentTree);
-    });
+    const docsLength = queryResult.documents.length;
+    for (let i = 0; i < docsLength; i++) {
+        const doc = queryResult.documents[i];
+        const documentTree = await documentToSlickGridTree(doc, partitionKey, leftPadIndex(i, docsLength));
+        documentTree.forEach((doc) => tree.push(doc));
+    }
 
     return tree;
 };
 
-const documentToSlickGridTree = (
+const stackEntryToSlickGridTree = (entry: StackEntry): TreeData => {
+    const entryType = typeof entry.value;
+    const type =
+        entryType === null
+            ? 'Null'
+            : entryType === 'string'
+              ? 'String'
+              : entryType === 'number'
+                ? 'Number'
+                : entryType === 'boolean'
+                  ? 'Boolean'
+                  : Array.isArray(entry.value)
+                    ? 'Array'
+                    : entryType === 'object'
+                      ? 'Object'
+                      : entryType.charAt(0).toUpperCase() + entryType.slice(1);
+
+    const value = Array.isArray(entry.value)
+        ? `(elements: ${entry.value.length})`
+        : entry.value === null
+          ? 'null'
+          : typeof entry.value === 'object'
+            ? '{...}'
+            : `${entry.value}`;
+
+    return {
+        id: entry.id,
+        field: `${entry.key}`,
+        value,
+        type,
+        parentId: entry.parentId,
+    };
+};
+
+const documentToSlickGridTree = async (
     document: QueryResultRecord,
-    _partitionKey: PartitionKeyDefinition | undefined, // TODO: To show id and partition key fields upper than the other fields
-    index: number,
-    idPrefix?: string,
-): TreeData[] => {
+    partitionKey: PartitionKeyDefinition | undefined,
+    rootId: string,
+): Promise<TreeData[]> => {
     const tree: TreeData[] = [];
 
-    let localEntryId = 0; // starts with 0 on each document
-    if (idPrefix === undefined || idPrefix === null) {
-        idPrefix = uuid();
-    }
+    const headers = getTableHeaders([document], partitionKey, {
+        ShowPartitionKey: 'first',
+        ShowServiceColumns: 'last',
+        Sorting: 'ascending',
+        TruncateValues: MAX_TREE_LEVEL_LENGTH,
+    });
+    const partitionKeyValues = extractPartitionKeyValues(document, partitionKey);
+    const stack: { id: string; key: string; value: unknown; parentId: string | null }[] = [];
 
-    const rootId = `${idPrefix}-${localEntryId}`; // localEntryId is always a 0 here
+    // Add the document as the root element for the tree
     tree.push({
         id: rootId,
-        field: document['id'] ? `${document['id']}` : `${index + 1} (Index number, id is missing)`,
+        field: document['id'] ? `${document['id']}` : `${rootId} (Index number, id is missing)`,
         value: '',
         type: 'Document',
         parentId: null,
     });
 
-    const stack: { key: string; value: unknown; parentId: string | null }[] = Object.entries(document).map(
-        ([key, value]) => ({
+    headers.forEach((header, index) => {
+        stack.push({
+            id: `${rootId}-${leftPadIndex(index, headers.length)}`,
             parentId: rootId,
-            key: key,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- the value can be anything here as it comes from a MongoDB document
-            value: value,
-        }),
-    );
+            key: header,
+            value: header.startsWith('/') ? partitionKeyValues[header] : document[header],
+        });
+    });
 
+    const chunkSize = 1000; // Process 1000 stack entries per chunk
     while (stack.length > 0) {
-        localEntryId++;
-        const globalEntryId = `${idPrefix}-${localEntryId}`; // combines the global prefix with the local id
+        const chunk = stack.splice(0, Math.min(chunkSize, stack.length));
 
-        const stackEntry = stack.pop();
-        if (!stackEntry) {
-            continue;
+        for (const stackEntry of chunk) {
+            const treeElement = stackEntryToSlickGridTree(stackEntry);
+            tree.push(treeElement);
+
+            if (Array.isArray(stackEntry.value)) {
+                const arrayLength = Math.min(stackEntry.value.length, MAX_TREE_LEVEL_LENGTH);
+
+                // Add the elements of the array to the stack
+                for (let i = 0; i < arrayLength; i++) {
+                    stack.push({
+                        id: `${stackEntry.id}-${leftPadIndex(i, arrayLength + 1)}`,
+                        key: `${i}`,
+                        value: stackEntry.value[i],
+                        parentId: stackEntry.id,
+                    });
+                }
+
+                // If the array is too large, add a placeholder
+                if (stackEntry.value.length > MAX_TREE_LEVEL_LENGTH) {
+                    stack.push({
+                        id: `${stackEntry.id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, arrayLength + 1)}`,
+                        key: '',
+                        value: 'Array is too large to be shown',
+                        parentId: stackEntry.id,
+                    });
+                }
+            } else if (stackEntry.value && typeof stackEntry.value === 'object') {
+                const sortedKeys = Object.keys(stackEntry.value).sort((a, b) => a.localeCompare(b));
+                const objectLength = Math.min(sortedKeys.length, MAX_TREE_LEVEL_LENGTH);
+
+                // Add the properties of the object to the stack
+                for (let i = 0; i < objectLength; i++) {
+                    stack.push({
+                        id: `${stackEntry.id}-${leftPadIndex(i, objectLength + 1)}`,
+                        key: sortedKeys[i],
+                        value: stackEntry.value[sortedKeys[i]],
+                        parentId: stackEntry.id,
+                    });
+                }
+
+                // If the object is too large, add a placeholder
+                if (sortedKeys.length > MAX_TREE_LEVEL_LENGTH) {
+                    stack.push({
+                        id: `${stackEntry.id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, objectLength + 1)}`,
+                        key: '',
+                        value: 'Object is too large to be shown',
+                        parentId: stackEntry.id,
+                    });
+                }
+            }
         }
 
-        if (typeof stackEntry.value === 'string') {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `${stackEntry.value}`,
-                type: 'String',
-                parentId: stackEntry.parentId,
-            });
-        } else if (typeof stackEntry.value === 'number') {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `${stackEntry.value}`,
-                type: 'Number',
-                parentId: stackEntry.parentId,
-            });
-        } else if (typeof stackEntry.value === 'boolean') {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `${stackEntry.value}`,
-                type: 'Boolean',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value === null) {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: 'null',
-                type: 'Null',
-                parentId: stackEntry.parentId,
-            });
-        } else if (stackEntry.value && typeof stackEntry.value === 'object') {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `{...}`,
-                type: 'Object',
-                parentId: stackEntry.parentId,
-            });
-
-            // Add the properties of the object to the stack
-            Object.entries(stackEntry.value).map(([key, value]) => {
-                stack.push({ key: `${key}`, value: value, parentId: globalEntryId });
-            });
-        } else if (stackEntry.value instanceof Array) {
-            tree.push({
-                id: globalEntryId,
-                field: `${stackEntry.key}`,
-                value: `(elements: ${stackEntry.value.length})`,
-                type: 'Array',
-                parentId: stackEntry.parentId,
-            });
-
-            // Add the elements of the array to the stack
-            stackEntry.value.forEach((element, i) => {
-                stack.push({ key: `${i}`, value: element, parentId: globalEntryId });
-            });
+        // Yield to the event loop after processing each chunk
+        if (stack.length > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
         }
     }
 
@@ -186,16 +277,14 @@ const documentToSlickGridTree = (
 
 /**
  * Get the headers for the table (don't take into account the nested objects)
- * The id is always the first column (if it does not exist in partition key),
- * then the partition key, when each column has / prefix,
- * then the user columns without _ prefix,
- * then the service columns with _ prefix
  * @param documents
  * @param partitionKey
+ * @param options
  */
-export const getTableHeadersWithRecordIdentifyColumns = (
+export const getTableHeaders = (
     documents: ItemDefinition[],
     partitionKey: PartitionKeyDefinition | undefined,
+    options: ColumnOptions,
 ): string[] => {
     const keys = new Set<string>();
     const serviceKeys = new Set<string>();
@@ -213,22 +302,52 @@ export const getTableHeadersWithRecordIdentifyColumns = (
     const columns = Array.from(keys);
     const serviceColumns = Array.from(serviceKeys);
     const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) => (path.startsWith('/') ? path : `/${path}`));
+    const resultColumns: string[] = [];
 
-    // Remove partition key paths from columns, since partition key paths are always shown first
-    partitionKeyPaths.forEach((path) => {
-        const index = columns.indexOf(path.slice(1));
-        if (index !== -1) {
-            columns.splice(index, 1);
+    if (options.ShowPartitionKey === 'first') {
+        // Remove partition key paths from columns, since partition key paths are always shown first
+        partitionKeyPaths.forEach((path) => {
+            const index = columns.indexOf(path.slice(1));
+            if (index !== -1) {
+                columns.splice(index, 1);
+            }
+        });
+
+        // If id is not in the partition key, add it as the first column
+        if (!partitionKeyPaths.includes('/id')) {
+            partitionKeyPaths.unshift('id');
         }
-    });
 
-    // If id is not in the partition key, add it as the first column
-    if (!partitionKeyPaths.includes('/id')) {
-        partitionKeyPaths.unshift('id');
+        partitionKeyPaths.forEach((path) => resultColumns.push(path));
+    }
+
+    if (options.Sorting === 'ascending') {
+        columns.sort((a, b) => a.localeCompare(b)).forEach((column) => resultColumns.push(column));
+    }
+
+    if (options.Sorting === 'descending') {
+        columns.sort((a, b) => b.localeCompare(a)).forEach((column) => resultColumns.push(column));
+    }
+
+    if (options.Sorting === 'none') {
+        columns.forEach((column) => resultColumns.push(column));
+    }
+
+    if (options.ShowServiceColumns === 'last') {
+        if (options.Sorting === 'ascending') {
+            serviceColumns.sort((a, b) => a.localeCompare(b)).forEach((column) => resultColumns.push(column));
+        }
+        if (options.Sorting === 'descending') {
+            serviceColumns.sort((a, b) => b.localeCompare(a)).forEach((column) => resultColumns.push(column));
+        }
+        if (options.Sorting === 'none') {
+            serviceColumns.forEach((column) => resultColumns.push(column));
+        }
     }
 
     // Remove duplicates while keeping order
-    const uniqueHeaders = new Set<string>([...partitionKeyPaths, ...columns, ...serviceColumns]);
+    const uniqueHeaders = new Set<string>(resultColumns);
+
     return Array.from(uniqueHeaders);
 };
 
@@ -238,73 +357,57 @@ export const getTableHeadersWithRecordIdentifyColumns = (
  * Includes the nested partition key values as columns
  * @param documents
  * @param partitionKey
+ * @param options
  */
-export const getTableDatasetWithRecordIdentifyColumns = (
+export const getTableDataset = async (
     documents: QueryResultRecord[],
     partitionKey: PartitionKeyDefinition | undefined,
-): TableRecord[] => {
+    options: ColumnOptions,
+): Promise<TableRecord[]> => {
     const result = new Array<TableRecord>();
+    const truncateValues = options.TruncateValues > 0;
 
-    documents.forEach((doc) => {
-        // Emulate the unique id of the document
-        const row: TableRecord = { __id: uuid() };
+    // Process documents in chunks to avoid UI freezes
+    const chunkSize = 1000; // Process 1000 documents per chunk
+    for (let i = 0; i < documents.length; i += chunkSize) {
+        // Create a slice of documents to process in this batch
+        const chunk = documents.slice(i, i + chunkSize);
 
-        if (partitionKey) {
-            const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) =>
-                path.startsWith('/') ? path.slice(1) : path,
-            );
-            const partitionKeyValues = extractPartitionKey(doc, partitionKey) ?? [];
-            partitionKeyPaths.forEach((path, index) => {
-                row[path] = `${partitionKeyValues[index] ?? ''}`;
+        // Process each document in the chunk
+        chunk.forEach((doc) => {
+            // Emulate the unique id of the document
+            const row: TableRecord = { __id: uuid() };
+
+            if (partitionKey) {
+                const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) =>
+                    path.startsWith('/') ? path.slice(1) : path,
+                );
+                const partitionKeyValues = extractPartitionKey(doc, partitionKey) ?? [];
+                partitionKeyPaths.forEach((path, index) => {
+                    row[path] = `${partitionKeyValues[index] ?? ''}`;
+                });
+            }
+
+            Object.entries(doc).forEach(([key, value]) => {
+                if (value instanceof Array) {
+                    row[key] = truncateValues ? `(elements: ${value.length})` : JSON.stringify(value);
+                } else if (value !== null && typeof value === 'object') {
+                    row[key] = truncateValues
+                        ? truncateString(JSON.stringify(value), options.TruncateValues)
+                        : JSON.stringify(value);
+                } else {
+                    row[key] = truncateValues ? truncateString(`${value}`, options.TruncateValues) : `${value}`;
+                }
             });
+
+            result.push(row);
+        });
+
+        // Yield to the event loop after each chunk by using setTimeout with 0ms
+        if (i + chunkSize < documents.length) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
         }
-
-        Object.entries(doc).forEach(([key, value]) => {
-            if (value !== null && typeof value === 'object') {
-                row[key] = JSON.stringify(value);
-            } else if (doc[key] instanceof Array) {
-                row[key] = `(elements: ${doc[key].length})`;
-            } else {
-                row[key] = `${doc[key]}`;
-            }
-        });
-
-        result.push(row);
-    });
-
-    return result;
-};
-
-export const getTableHeaders = (documents: QueryResultRecord[]): string[] => {
-    const keys = new Set<string>();
-
-    documents.forEach((doc) => {
-        Object.keys(doc).forEach((key) => {
-            keys.add(key);
-        });
-    });
-
-    return Array.from(keys);
-};
-
-export const getTableDataset = (documents: QueryResultRecord[]): TableRecord[] => {
-    const result = new Array<TableRecord>();
-
-    documents.forEach((doc) => {
-        const row: TableRecord = { __id: uuid() };
-
-        Object.entries(doc).forEach(([key, value]) => {
-            if (value !== null && typeof value === 'object') {
-                row[key] = JSON.stringify(value);
-            } else if (doc[key] instanceof Array) {
-                row[key] = `(elements: ${doc[key].length})`;
-            } else {
-                row[key] = `${doc[key]}`;
-            }
-        });
-
-        result.push(row);
-    });
+    }
 
     return result;
 };
@@ -313,47 +416,43 @@ export const getTableDataset = (documents: QueryResultRecord[]): TableRecord[] =
  * Prepare the table data from the query result
  * @param queryResult
  * @param partitionKey
- * @param reorderColumns If true, the columns will be reordered as the id + partitionKey + user columns + service columns
- *                       If false, the columns will be in the order they are in the query result
- * @param showServiceColumns If true, the service columns will be shown
+ * @param options
+ * Default options are:
+ * The id is always the first column (if it does not exist in partition key),
+ * then the partition key, when each column has / prefix,
+ * then the user columns without _ prefix,
+ * then the service columns with _ prefix
+ * then values will be truncated to MAX_TREE_LEVEL_LENGTH characters, arrays will be truncated to (elements: n)
+ *
+ * !Warning! If query has `SELECT *` clause, the id and partition key fields will be shown first despite the options
  */
-export const queryResultToTable = (
+export const queryResultToTable = async (
     queryResult: SerializedQueryResult | null,
     partitionKey: PartitionKeyDefinition | undefined,
-    reorderColumns?: boolean,
-    showServiceColumns?: boolean,
-): TableData => {
-    let result: TableData = { headers: [], dataset: [] };
-
-    if (!queryResult) {
-        return result;
+    options: ColumnOptions = {
+        ShowPartitionKey: 'first',
+        ShowServiceColumns: 'last',
+        Sorting: 'none',
+        TruncateValues: MAX_TREE_LEVEL_LENGTH,
+    },
+): Promise<TableData> => {
+    if (!queryResult || !queryResult.documents) {
+        return { headers: [], dataset: [] };
     }
 
     if (isSelectStar(queryResult.query ?? '')) {
-        reorderColumns = true;
-        showServiceColumns = showServiceColumns ?? true;
+        // If the query is a SELECT *, we can show the id and partition key fields
+        // and reorder the columns
+        options.ShowPartitionKey = 'first';
     }
 
-    if (reorderColumns) {
-        result = {
-            headers: getTableHeadersWithRecordIdentifyColumns(queryResult.documents, partitionKey),
-            dataset: getTableDatasetWithRecordIdentifyColumns(queryResult.documents, partitionKey),
-        };
-    } else {
-        result = {
-            headers: getTableHeaders(queryResult.documents),
-            dataset: getTableDataset(queryResult.documents),
-        };
-    }
+    const headers = getTableHeaders(queryResult.documents, partitionKey, options);
+    const dataset = await getTableDataset(queryResult.documents, partitionKey, options);
 
-    if (!showServiceColumns) {
-        result.headers = result.headers.filter((header) => !header.startsWith('_'));
-    }
-
-    return result;
+    return { headers, dataset };
 };
 
-export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): StatsItem[] => {
+export const queryMetricsToTable = async (queryResult: SerializedQueryResult | null): Promise<StatsItem[]> => {
     if (!queryResult || queryResult?.queryMetrics === undefined) {
         return [];
     }
@@ -484,12 +583,12 @@ const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem 
     };
 };
 
-export const queryMetricsToJSON = (queryResult: SerializedQueryResult | null): string => {
+export const queryMetricsToJSON = async (queryResult: SerializedQueryResult | null): Promise<string> => {
     if (!queryResult) {
         return '';
     }
 
-    const stats = queryMetricsToTable(queryResult);
+    const stats = await queryMetricsToTable(queryResult);
 
     stats.push(indexMetricsToTableItem(queryResult));
 
@@ -500,12 +599,12 @@ export const escapeCsvValue = (value: string): string => {
     return `"${value.replace(/"/g, '""')}"`;
 };
 
-export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): string => {
+export const queryMetricsToCsv = async (queryResult: SerializedQueryResult | null): Promise<string> => {
     if (!queryResult) {
         return '';
     }
 
-    const stats = queryMetricsToTable(queryResult);
+    const stats = await queryMetricsToTable(queryResult);
 
     stats.push(indexMetricsToTableItem(queryResult));
 
@@ -514,16 +613,21 @@ export const queryMetricsToCsv = (queryResult: SerializedQueryResult | null): st
     return `sep=,\n${titles}\n${values}`;
 };
 
-export const queryResultToCsv = (
+export const queryResultToCsv = async (
     queryResult: SerializedQueryResult | null,
     partitionKey?: PartitionKeyDefinition,
     selection?: number[],
-): string => {
+): Promise<string> => {
     if (!queryResult) {
         return '';
     }
 
-    const tableView = queryResultToTable(queryResult, partitionKey);
+    const tableView = await queryResultToTable(queryResult, partitionKey, {
+        ShowPartitionKey: 'none',
+        ShowServiceColumns: 'last',
+        Sorting: 'none',
+        TruncateValues: 0,
+    });
     const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(',');
 
     if (selection) {

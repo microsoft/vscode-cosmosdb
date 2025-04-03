@@ -6,11 +6,11 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
+import { StorageService } from '../../../services/storageService';
 import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
-import { StorageImpl } from '../../../services/StorageService';
 import { ClusterItem } from './ClusterItem';
 import { LocalEmulatorsItem } from './LocalEmulators/LocalEmulatorsItem';
 import { NewConnectionItem } from './NewConnectionItem';
@@ -25,7 +25,7 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const allItems = await StorageImpl.getItems(WorkspaceResourceType.MongoClusters);
+        const allItems = await StorageService.get().getItems(WorkspaceResourceType.MongoClusters);
 
         return [
             new LocalEmulatorsItem(this.id),

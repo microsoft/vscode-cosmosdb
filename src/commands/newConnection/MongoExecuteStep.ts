@@ -8,11 +8,8 @@ import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type StorageItem, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import {
-    StorageImpl,
-    type StorageItem,
-} from '../../services/StorageService';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -41,7 +38,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
                         secrets: [connectionString],
                     };
 
-                    await StorageImpl.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                    await StorageService.get().push(WorkspaceResourceType.MongoClusters, storageItem, true);
                 },
             );
         }

@@ -13,6 +13,7 @@ import {
     type SharedWorkspaceStorageItem,
 } from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
+import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,
@@ -42,12 +43,7 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                 throw new Error(l10n.t('Internal error: mode must be defined.'));
         }
 
-        const portSuffix = typeof port !== 'undefined' ? ` : ${port}` : '';
-        let label = `${experience.shortName} Emulator${portSuffix}`;
-
-        if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
-            label = `MongoDB Emulator${portSuffix}`;
-        }
+        const label = getEmulatorItemLabelForApi(experience.api, port);
 
         return ext.state.showCreatingChild(
             parentId,
@@ -74,14 +70,14 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                 }
 
                 const storageItem: SharedWorkspaceStorageItem = {
-                    id: connectionString,
+                    id: getEmulatorItemUniqueId(connectionString), // Use hash instead of raw connection string
                     name: label,
                     properties: {
                         api: experience.api,
                         isEmulator,
                         ...(disableEmulatorSecurity && { disableEmulatorSecurity }),
                     },
-                    secrets: [connectionString],
+                    secrets: [connectionString], // Connection string still stored in secrets
                 };
 
                 if (experience.api === API.MongoDB) {

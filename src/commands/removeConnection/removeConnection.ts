@@ -11,7 +11,10 @@ import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeIt
 import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
-import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import {
+    getWorkspaceResourceIdFromTreeItem,
+    WorkspaceResourceType,
+} from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage } from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
@@ -103,7 +106,8 @@ export async function removeConnection(
 
     if (node instanceof CosmosDBAccountResourceItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            await SharedWorkspaceStorage.delete(WorkspaceResourceType.AttachedAccounts, node.id);
+            const workspaceId = getWorkspaceResourceIdFromTreeItem(node);
+            await SharedWorkspaceStorage.delete(WorkspaceResourceType.AttachedAccounts, workspaceId);
         });
 
         ext.cosmosDBWorkspaceBranchDataProvider.refresh();

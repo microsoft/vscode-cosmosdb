@@ -20,7 +20,7 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
     public readonly experience: Experience;
 
     constructor() {
-        this.id = 'vscode.cosmosdb.workspace.mongoclusters.accounts';
+        this.id = `${WorkspaceResourceType.MongoClusters}/accounts`;
         this.experience = MongoClustersExperience;
     }
 
@@ -33,7 +33,7 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
                 .filter((item) => !item.properties?.isEmulator) // filter out emulators
                 .map((item) => {
                     const model: ClusterModel = {
-                        id: item.id,
+                        id: `${this.id}/${item.id}`, // To enable TreeView.reveal, we need to have a unique nested id
                         name: item.name,
                         dbExperience: MongoClustersExperience,
                         connectionString: item?.secrets?.[0] ?? undefined,

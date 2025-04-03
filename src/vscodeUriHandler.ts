@@ -19,6 +19,7 @@ import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
 import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from './tree/workspace-api/SharedWorkspaceStorage';
+import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from './utils/emulatorUtils';
 
 const supportedProviders = [
     'Microsoft.DocumentDB/databaseAccounts',
@@ -176,6 +177,8 @@ async function handleConnectionStringRequest(
                 parsedConnection.connectionString.accountName,
                 parsedConnection.api,
                 params.connectionString,
+                parsedConnection.connectionString.hostName === 'localhost',
+                parsedConnection.connectionString.port,
             );
             ext.cosmosDBWorkspaceBranchDataProvider.refresh();
             await revealAttachedInWorkspaceExplorer(
@@ -195,6 +198,9 @@ async function handleConnectionStringRequest(
                 parsedConnection.connectionString.username + '@' + parsedConnection.connectionString.hosts.join(','),
                 parsedConnection.api,
                 params.connectionString,
+                parsedConnection.connectionString.hosts?.length > 0 &&
+                    parsedConnection.connectionString.hosts[0].includes('localhost'),
+                parsedConnection.connectionString.port,
             );
             ext.cosmosDBWorkspaceBranchDataProvider.refresh();
             await revealAttachedInWorkspaceExplorer(accountId, parsedConnection.api, params.database, params.container);
@@ -272,6 +278,8 @@ async function revealAzureResourceInExplorer(resourceId: string, database?: stri
  * @param accountName - Display name for the account.
  * @param api - The API type of the account (Core or Mongo).
  * @param connectionString - The connection string for the database account.
+ * @param isEmulator - Indicates if the connection is for an emulator.
+ * @param emulatorPort - Optional. The port number for the emulator connection.
  * @returns A promise that resolves when the connection has been created and attached.
  */
 async function createAttachedForConnection(
@@ -279,13 +287,18 @@ async function createAttachedForConnection(
     accountName: string,
     api: API,
     connectionString: string,
+    isEmulator: boolean,
+    emulatorPort?: string,
 ): Promise<void> {
+    // TODO: for Emulators we should use the according Emulator parent node
     const parentId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts`;
+    const name = !isEmulator ? accountName : getEmulatorItemLabelForApi(api, emulatorPort);
+    const id = !isEmulator ? accountId : getEmulatorItemUniqueId(connectionString);
     await ext.state.showCreatingChild(parentId, l10n.t('Creating "{nodeName}"…', { nodeName: accountId }), async () => {
         const storageItem: SharedWorkspaceStorageItem = {
-            id: `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts/${accountId}`,
-            name: accountName,
-            properties: { isEmulator: false, api },
+            id,
+            name,
+            properties: { isEmulator, api },
             secrets: [connectionString],
         };
 

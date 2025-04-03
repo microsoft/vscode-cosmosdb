@@ -64,7 +64,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                     const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
                     const experience = getExperienceFromApi(api);
                     const accountModel: CosmosDBAttachedAccountModel = {
-                        id,
+                        id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
                         name,
                         connectionString,
                         isEmulator,
@@ -97,7 +97,6 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         return callWithTelemetryAndErrorHandling(
             'CosmosDBAttachedAccountsResourceItem.pickSupportedAccounts',
             async () => {
-                //TODO: migrate to new schema!
                 const serviceName = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
                 const value: string | undefined = ext.context.globalState.get(serviceName);
 

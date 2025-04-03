@@ -15,7 +15,9 @@ export function parseCosmosDBConnectionString(connectionString: string): ParsedC
         throw new Error(l10n.t('Invalid Cosmos DB connection string.'));
     }
 
-    return new ParsedCosmosDBConnectionString(connectionString, endpoint, masterKey, databaseName);
+    const endpointUrl = new URL(endpoint);
+
+    return new ParsedCosmosDBConnectionString(connectionString, endpointUrl, masterKey, databaseName);
 }
 
 function getPropertyFromConnectionString(connectionString: string, property: string): string | undefined {
@@ -33,17 +35,19 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
 
     constructor(
         connectionString: string,
-        endpoint: string,
+        endpoint: URL,
         masterKey: string | undefined,
         databaseName: string | undefined,
     ) {
         super(connectionString, databaseName);
-        this.documentEndpoint = endpoint;
-        this.masterKey = masterKey;
 
-        const parsedEndpoint = new URL(endpoint);
-        this.hostName = parsedEndpoint.hostname;
-        this.port = parsedEndpoint.port || '443';
+        this.hostName = endpoint.hostname;
+        this.port = endpoint.port || '443';
+
+        // Construct the endpoint URL with the port explicitly included
+        // since URL.toString() does not include the port if it is the default (80 or 443)
+        this.documentEndpoint = `${endpoint.protocol}//${this.hostName}:${this.port}${endpoint.pathname}${endpoint.search}`;
+        this.masterKey = masterKey;
     }
 
     public get accountName(): string {

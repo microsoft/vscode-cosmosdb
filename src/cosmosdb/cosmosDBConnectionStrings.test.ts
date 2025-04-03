@@ -168,5 +168,8 @@ describe('cosmosDBConnectionStrings', () => {
                     '@your-mongo.documents.azure.com:10255/?ssl=true&replicaSet=globaldb',
             ),
         ).toThrow(Error);
+        expect(() => parseCosmosDBConnectionString('AccountEndpoint=abcd;AccountKey=abcdef==;Database=abcd')).toThrow(
+            /Invalid URL/,
+        );
     });
 });

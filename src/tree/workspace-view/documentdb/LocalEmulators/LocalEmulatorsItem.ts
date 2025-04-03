@@ -12,7 +12,7 @@ import { type ClusterModel } from '../../../documentdb/ClusterModel';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../../workspace-api/SharedWorkspaceStorage';
+import { SharedWorkspaceStorage } from '../../../../services/SharedWorkspaceStorage';
 import { ClusterItem } from '../ClusterItem';
 import { NewEmulatorConnectionItem } from './NewEmulatorConnectionItem';
 

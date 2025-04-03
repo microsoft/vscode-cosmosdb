@@ -12,7 +12,7 @@ import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAtt
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../../workspace-api/SharedWorkspaceStorage';
+import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../../../services/SharedWorkspaceStorage';
 import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountModel';
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 

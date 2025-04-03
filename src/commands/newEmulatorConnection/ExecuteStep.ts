@@ -11,7 +11,7 @@ import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceR
 import {
     SharedWorkspaceStorage,
     type SharedWorkspaceStorageItem,
-} from '../../tree/workspace-api/SharedWorkspaceStorage';
+} from '../../services/SharedWorkspaceStorage';
 import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import {
     NewEmulatorConnectionMode,

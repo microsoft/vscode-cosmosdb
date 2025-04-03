@@ -16,7 +16,7 @@ import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { type PersistedAccount } from '../../v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../workspace-api/SharedWorkspaceStorage';
+import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../../services/SharedWorkspaceStorage';
 import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';

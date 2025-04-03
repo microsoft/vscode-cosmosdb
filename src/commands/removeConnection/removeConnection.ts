@@ -12,7 +12,7 @@ import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view
 import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../tree/workspace-api/SharedWorkspaceStorage';
+import { SharedWorkspaceStorage } from '../../services/SharedWorkspaceStorage';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';

@@ -5,7 +5,7 @@
 
 import { type WorkspaceResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { ext } from '../../extensionVariables';
+import { ext } from '../extensionVariables';
 
 /**
  * Represents an item stored in the shared workspace storage.

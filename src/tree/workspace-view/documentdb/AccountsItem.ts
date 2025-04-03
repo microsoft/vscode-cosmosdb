@@ -10,7 +10,7 @@ import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../workspace-api/SharedWorkspaceStorage';
+import { SharedWorkspaceStorage } from '../../../services/SharedWorkspaceStorage';
 import { ClusterItem } from './ClusterItem';
 import { LocalEmulatorsItem } from './LocalEmulators/LocalEmulatorsItem';
 import { NewConnectionItem } from './NewConnectionItem';

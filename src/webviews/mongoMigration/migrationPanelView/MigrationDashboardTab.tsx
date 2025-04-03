@@ -53,10 +53,10 @@ export const MigrationDashboardTab = () => {
                      * a simple call with no parameters, but with error handling.
                      * telemetry is "added " in the router for the function call
                      */
-                    trpcClient.mongoMigration.getAllAssessments
+                    trpcClient.mongoMigration.getAssessmentDetails
                         .query()
-                        .then((assessmentData) => {
-                            setCurrentAssessmentData(JSON.stringify(assessmentData));
+                        .then((response) => {
+                            setCurrentAssessmentData(JSON.stringify(response));
                         })
                         .catch((error) => {
                             void trpcClient.common.displayErrorMessage.mutate({
@@ -67,7 +67,7 @@ export const MigrationDashboardTab = () => {
                         });
                 }}
             >
-                {' '}
+                Check Prerequisite
             </Button>
             <p>{currentAssessmentData}</p>
         </div>

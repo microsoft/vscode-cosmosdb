@@ -6,7 +6,6 @@
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 // eslint-disable-next-line import/no-internal-modules
-import { z } from 'zod';
 import { getThemeAgnosticIconPath } from '../../../constants';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
@@ -19,36 +18,18 @@ export type RouterContext = BaseRouterContext & {
 };
 
 export const migrationPanelViewRouter = router({
-    getAllAssessments: publicProcedure.use(trpcToTelemetry).query(() => {
-        const assessmentServiceClient = new AssessmentServiceClient();
-        const assessments = assessmentServiceClient.getAllAssessments();
-        return 'Assessment data returned ' + JSON.stringify(assessments);
-    }),
+    getAssessmentDetails: publicProcedure
+        .use(trpcToTelemetry)
+        .query(async () => {
+            const response = await AssessmentServiceClient.getAssessmentDetails({
+                "assessmentId": "1a1263a9-e76a-407b-97bd-a5f7086c28d9",
+                "instanceId": "9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c",
+                "assessmentName": "kjsd",
+                "assessmentFolderPath": ""
+            });
+            return 'Assessment data returned ' + JSON.stringify(response.Body);
+        }),
     getWaterMarkIconPath: publicProcedure.use(trpcToTelemetry).query(() => {
         return getThemeAgnosticIconPath('mongoMigrationWatermark.svg').light;
-    }),
-    hello: publicProcedure
-        .use(trpcToTelemetry)
-        // This is the input schema of your procedure, no parameters
-        .query(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-
-            // This is what you're returning to your client
-            return { text: 'Hello World!' };
-        }),
-    sayMyName: publicProcedure
-        .use(trpcToTelemetry)
-        // This is the input schema of your procedure, one parameter, a string
-        .input(z.string())
-        // Here the procedure (query or mutation)
-        .query(async ({ input, ctx }) => {
-            const myCtx = ctx as RouterContext;
-
-            if (input === 'error') {
-                throw new Error('An error occurred, but you have asked for it :)');
-            }
-
-            // This is what you're returning to your client
-            return { text: `Hello ${input}! (webview name: ${myCtx.webviewName})` };
-        }),
+    })
 });

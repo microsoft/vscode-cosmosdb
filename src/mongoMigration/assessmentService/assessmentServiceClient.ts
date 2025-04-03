@@ -3,85 +3,167 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type * as vscodelc from 'vscode-languageclient';
-import { RequestType } from 'vscode-languageclient';
+import * as net from 'net';
+import * as os from 'os';
+import * as path from 'path';
+import { type Duplex } from 'stream';
+// eslint-disable-next-line import/no-internal-modules
+import * as rpc from 'vscode-jsonrpc/node';
 import { ext } from '../../extensionVariables';
-
-export interface AssessmentMetadata {
-    assessmentId: string;
-    assessmentName: string;
-    assessmentStatus: string;
-    startTime: Date;
-    endTime: Date;
-    TargetPlatform: EnumTargetOffering;
-}
-
-export enum EnumTargetOffering {
-    None = 0,
-    CosmosDBMongoRU = 1,
-    CosmosDBMongovCore = 2,
-}
-
-export interface RPCResponseEntity<T> {
-    body: T;
-    error: ErrorEntity;
-    Warnings: WarningEntity[];
-}
-
-export interface ErrorEntity {
-    errorCode: string;
-    errorMessage: string;
-    errorParameters: string[];
-}
-
-export interface WarningEntity {
-    warningCode: string;
-    warningParameters: string[];
-}
-
-export const GetAllAssessmentsApi = 'assessments/getAllAssessments';
-
-export const getAllAssessmentsrequestType = new RequestType<
-    AssessmentListRequestParameter,
-    RPCResponseEntity<AssessmentMetadata[]>,
-    void,
-    void
->(GetAllAssessmentsApi);
-
-export interface AssessmentListRequestParameter {
-    AssessmentFolderPath: string;
-    InstanceId: string;
-}
+import type * as AssessmentTypes from './assessmentServiceInterfaces';
 
 export class AssessmentServiceClient {
-    protected get getAllAssessmentsRequestType(): vscodelc.RequestType<
-        AssessmentListRequestParameter,
-        RPCResponseEntity<AssessmentMetadata[]>,
-        void,
-        void
-    > {
-        return getAllAssessmentsrequestType;
+    private static connection: rpc.MessageConnection | null = null;
+    static default_folder = '.dmamongo';
+
+    /**
+     * Ensures the connection to the RPC server is established.
+     */
+    public static async establishConnection(): Promise<void> {
+        if (!this.connection) {
+            ext.outputChannel.appendLine('Connection not initialized. Establishing connection...');
+            await this.connectToRpcServerAsync();
+        }
     }
 
-    public async getAllAssessments(): Promise<AssessmentMetadata[]> {
-        const response: AssessmentMetadata[] = [];
+    /**
+     * Connects to the RPC server and initializes the connection.
+     */
+    private static async connectToRpcServerAsync(): Promise<void> {
+        const pipeName = '\\\\.\\pipe\\MongoAssessmentServerJsonRpcStream';
+        const client = net.createConnection(pipeName);
+
+        client.on('connect', () => {
+            ext.outputChannel.appendLine('Connected to pipe...');
+            this.initializeConnection(client);
+        });
+
+        client.on('error', (error) => {
+            ext.outputChannel.appendLine('Error connecting to RPC server: ' + error.message);
+        });
+
+        client.on('close', () => {
+            ext.outputChannel.appendLine('Connection to RPC server closed.');
+            this.connection = null;
+        });
+
+        // Wait for the connection to be established
+        await new Promise<void>((resolve, reject) => {
+            client.once('connect', resolve);
+            client.once('error', reject);
+        });
+    }
+
+    /**
+     * Initializes the RPC connection using the provided stream.
+     * @param stream The duplex stream for communication.
+     */
+    private static initializeConnection(stream: Duplex): void {
+        const messageReader = new rpc.StreamMessageReader(stream);
+        const messageWriter = new rpc.StreamMessageWriter(stream);
+        this.connection = rpc.createMessageConnection(messageReader, messageWriter);
+        this.connection.listen();
+        ext.outputChannel.appendLine('RPC connection initialized.');
+    }
+
+    /**
+     * Sends a request to the RPC server.
+     * @param method The name of the RPC method to call.
+     * @param params The parameters to send with the request (can be variable).
+     * @returns The response from the server.
+     */
+    private static async sendRequest<T>(method: string, ...params: unknown[]): Promise<T> {
         try {
-            //  const instanceIdHash = "9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c";
-            // const response1 = await backendService.sendRequest<RPCResponseEntity<AssessmentMetadata[]>>(this.getAllAssessmentsRequestType.method, <AssessmentListRequestParameter>{
-            //     InstanceId: instanceIdHash,
-            //     AssessmentFolderPath: "C:/Users/bhpalaks/.dmamongo",
-            // });
-            // // TODO: refactor code to a cleaner one.
-            // if (response1.error === null) {
-            //     response = response1.body;
-            // }
-            // else {
-            //     ext.outputChannel.appendLine(response1.error.errorMessage);
-            // }
-        } catch (e) {
-            // log exception
-            ext.outputChannel.appendLine(`Error in getAllAssessments: ${e}`);
+            ext.outputChannel.appendLine(`Sending request to method: ${method} with params: ${JSON.stringify(params)}`);
+            const response = await this.connection!.sendRequest<T>(method, ...params);
+            return response;
+        } catch (error) {
+            ext.outputChannel.appendLine(`Error in RPC call to ${method}: ${error}`);
+            throw error;
         }
-        return response;
+    }
+
+    private static getDefaultAssessmentPath(): string {
+        return path.join(os.homedir(), this.default_folder);
+    }
+
+    /**
+     * Calls the `CheckPrerequisiteAsync` RPC method.
+     * @param input The input parameters for the method.
+     * @returns The response from the server.
+     */
+    public static async checkPrerequisite(input: AssessmentTypes.CheckPrerequisiteInput): Promise<{ Body: { IsPreReqSatisfied: boolean } }> {
+        return this.sendRequest<{ Body: { IsPreReqSatisfied: boolean } }>('CheckPrerequisiteAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `GetAllAssessments` RPC method.
+     * @returns A list of assessment metadata.
+     */
+    public static async getAllAssessments(input: AssessmentTypes.AssessmentListRequestParameter): Promise<AssessmentTypes.AssessmentMetadata[]> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<AssessmentTypes.AssessmentMetadata[]>('GetAllAssessmentsAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `GetAssessmentDetails` RPC method.
+     * @returns Details of one Assessment.
+     */
+    public static async getAssessmentDetails(input: AssessmentTypes.AssessmentRequestParameters): Promise<AssessmentTypes.AssessmentDetails> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<AssessmentTypes.AssessmentDetails>('GetAssessmentDetailsAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `GetInstanceSummaryReportAsync` RPC method.
+     * @returns Returns Instance summary from assessment report.
+     */
+    public static async getInstanceSummary(input: AssessmentTypes.AssessmentRequestParameters): Promise<AssessmentTypes.InstanceSummaryResponse> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<AssessmentTypes.InstanceSummaryResponse>('GetInstanceSummaryReportAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `StartAssessmentAsync` RPC method.
+     * @returns Starts an Assessment.
+     */
+    public static async startAssessment(input: AssessmentTypes.AssessmentWorkflowParameters): Promise<AssessmentTypes.StartAssessmentResponse> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<AssessmentTypes.StartAssessmentResponse>('StartAssessmentAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `DeleteAssessmentAsync` RPC method.
+     * @returns Deletes an Assessment.
+     */
+    public static async deleteAssessment(input: AssessmentTypes.AssessmentRequestParameters): Promise<boolean> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<boolean>('DeleteAssessmentAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `CancelAssessmentAsync` RPC method.
+     * @returns Cancels an Assessment.
+     */
+    public static async cancelAssessment(assessmentId: string): Promise<boolean> {
+        return this.sendRequest<boolean>('CancelAssessmentAsync', assessmentId, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `GetAssessmentReportAsync` RPC method.
+     * @returns Returns an Assessment Report for particular assessment type.
+     */
+    public static async getAssessmentReport(input: AssessmentTypes.AssessmentReportRequestParameters): Promise<AssessmentTypes.GetAssessmentReportResponse> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<AssessmentTypes.GetAssessmentReportResponse>('GetAssessmentReportAsync', input, /*Assessment client for telemetry*/null);
+    }
+
+    /**
+     * Calls the `GetCombinedAssessmentReportAsync` RPC method.
+     * @returns Returns a combined Assessment Report.
+     */
+    public static async getCombinedAssessmentReport(input: AssessmentTypes.AssessmentReportRequestParameters): Promise<AssessmentTypes.GetAssessmentReportResponse> {
+        input.assessmentFolderPath = this.getDefaultAssessmentPath();
+        return this.sendRequest<AssessmentTypes.GetAssessmentReportResponse>('GetCombinedAssessmentReportAsync', input, /*Assessment client for telemetry*/null);
     }
 }

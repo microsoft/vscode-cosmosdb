@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { ext } from '../../../extensionVariables';
-import { type StorageItem, StorageService } from '../../../services/storageService';
+import { type StorageItem, StorageNames, StorageService } from '../../../services/storageService';
 import { GraphAccountAttachedResourceItem } from '../../graph/GraphAccountAttachedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../../nosql/NoSqlAccountAttachedResourceItem';
 import { TableAccountAttachedResourceItem } from '../../table/TableAccountAttachedResourceItem';
@@ -33,7 +33,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
-        const items = await StorageService.get().getItems(this.id);
+        const items = await StorageService.get(StorageNames.Workspace).getItems(this.id);
         const children = await this.getChildrenNoEmulatorsImpl(items);
 
         if (isEmulatorSupported) {
@@ -143,7 +143,11 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                         secrets: [connectionString],
                     };
 
-                    await StorageService.get().push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.AttachedAccounts,
+                        storageItem,
+                        true,
+                    );
                 }
             },
         );
@@ -201,7 +205,10 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                             secrets: [connectionString],
                         };
 
-                        await StorageService.get().push(WorkspaceResourceType.AttachedAccounts, storageItem);
+                        await StorageService.get(StorageNames.Workspace).push(
+                            WorkspaceResourceType.AttachedAccounts,
+                            storageItem,
+                        );
                         await ext.secretStorage.delete(`${serviceName}.${id}`);
 
                         return storageItem;

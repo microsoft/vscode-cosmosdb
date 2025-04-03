@@ -197,6 +197,20 @@ class StorageImpl implements Storage {
 }
 
 /**
+ * A helper enum for common storage names used in StorageService.get().
+ *
+ * This enum provides a set of predefined constants that you can use instead of literal strings.
+ * Using these constants helps prevent typos and saves time when specifying storage names.
+ * For example, you can call StorageService.get(StorageNames.Workspace) to retrieve the workspace-specific storage.
+ */
+export enum StorageNames {
+    Connections = 'connections',
+    Default = 'default',
+    Global = 'global',
+    Workspace = 'workspace',
+}
+
+/**
  * Service for accessing and managing storage instances with different storage names.
  * Maintains a singleton pattern for each unique storage name to prevent duplication.
  *
@@ -204,11 +218,11 @@ class StorageImpl implements Storage {
  */
 export class StorageService {
     private static instances: Map<string, Storage> = new Map();
-    private static readonly defaultStorageName = 'ms-azuretools.vscode-cosmosdb.workspace';
 
     /**
      * Gets or creates a storage instance for the specified storage name.
-     * If no name is provided, returns the default storage instance.
+     * If no name is provided, defaults to the default storage for the extension.
+     * The name will be derived from the extension ID and the provided storage name.
      *
      * Storage instances are cached for reuse to maintain consistency.
      *
@@ -216,7 +230,7 @@ export class StorageService {
      * @returns A Storage instance configured for the given storage name.
      */
     public static get(storageName?: string): Storage {
-        const name = storageName || this.defaultStorageName;
+        const name = [ext.context.extension.id, storageName ?? 'default'].join('.');
 
         if (!this.instances.has(name)) {
             this.instances.set(name, new StorageImpl(name));

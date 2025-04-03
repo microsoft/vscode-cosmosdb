@@ -7,7 +7,7 @@ import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
-import { type StorageItem, StorageService } from '../../services/storageService';
+import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import {
@@ -82,9 +82,17 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                 };
 
                 if (experience.api === API.MongoDB) {
-                    await StorageService.get().push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.MongoClusters,
+                        storageItem,
+                        true,
+                    );
                 } else {
-                    await StorageService.get().push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.AttachedAccounts,
+                        storageItem,
+                        true,
+                    );
                 }
             },
         );

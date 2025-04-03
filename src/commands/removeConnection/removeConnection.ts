@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
-import { StorageService } from '../../services/storageService';
+import { StorageNames, StorageService } from '../../services/storageService';
 import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
@@ -95,7 +95,7 @@ export async function removeConnection(
 
     if (node instanceof ClusterItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            await StorageService.get().delete(WorkspaceResourceType.MongoClusters, node.id);
+            await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.MongoClusters, node.id);
         });
 
         ext.mongoClustersWorkspaceBranchDataProvider.refresh();
@@ -103,7 +103,7 @@ export async function removeConnection(
 
     if (node instanceof CosmosDBAccountResourceItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            await StorageService.get().delete(WorkspaceResourceType.AttachedAccounts, node.id);
+            await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.AttachedAccounts, node.id);
         });
 
         ext.cosmosDBWorkspaceBranchDataProvider.refresh();

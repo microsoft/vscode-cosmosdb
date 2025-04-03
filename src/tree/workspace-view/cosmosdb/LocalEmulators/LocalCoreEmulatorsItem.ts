@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
-import { type StorageItem, StorageService } from '../../../../services/storageService';
+import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
@@ -25,7 +25,9 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const allItems = await StorageService.get().getItems(WorkspaceResourceType.AttachedAccounts);
+        const allItems = await StorageService.get(StorageNames.Workspace).getItems(
+            WorkspaceResourceType.AttachedAccounts,
+        );
 
         const children = await this.getChildrenEmulatorOnlyImpl(allItems);
 

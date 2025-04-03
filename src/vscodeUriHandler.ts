@@ -8,7 +8,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
-import { API } from './AzureDBExperiences';
+import { API, getExperienceFromApi } from './AzureDBExperiences';
 import { openNoSqlQueryEditor } from './commands/openNoSqlQueryEditor/openNoSqlQueryEditor';
 import {
     parseCosmosDBConnectionString,
@@ -19,6 +19,7 @@ import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
 import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from './tree/workspace-api/SharedWorkspaceStorage';
+import { getConfirmationAsInSettings } from './utils/dialogs/getConfirmation';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from './utils/emulatorUtils';
 
 const supportedProviders = [
@@ -302,7 +303,27 @@ async function createAttachedForConnection(
             secrets: [connectionString],
         };
 
-        await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+        try {
+            await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, false);
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('already exists')) {
+                const confirmed = await getConfirmationAsInSettings(
+                    l10n.t('Update existing {accountType} connection?', {
+                        accountType: getExperienceFromApi(api).longName,
+                    }),
+                    l10n.t('The connection "{connectionName}" already exists. Do you want to update it?', {
+                        connectionName: name,
+                    }),
+                    'update',
+                );
+
+                if (confirmed) {
+                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                }
+            } else {
+                throw error;
+            }
+        }
     });
 }
 

@@ -12,7 +12,7 @@ import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAtt
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../../../services/SharedWorkspaceStorage';
+import { StorageImpl, type StorageItem } from '../../../../services/StorageService';
 import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountModel';
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 
@@ -25,7 +25,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.AttachedAccounts);
+        const allItems = await StorageImpl.getItems(WorkspaceResourceType.AttachedAccounts);
 
         const children = await this.getChildrenEmulatorOnlyImpl(allItems);
 
@@ -42,7 +42,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
         };
     }
 
-    protected async getChildrenEmulatorOnlyImpl(items: SharedWorkspaceStorageItem[]): Promise<TreeElement[]> {
+    protected async getChildrenEmulatorOnlyImpl(items: StorageItem[]): Promise<TreeElement[]> {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return Promise.resolve(
             items

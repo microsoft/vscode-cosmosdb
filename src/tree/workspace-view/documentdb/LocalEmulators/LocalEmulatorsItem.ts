@@ -12,7 +12,7 @@ import { type ClusterModel } from '../../../documentdb/ClusterModel';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../../../services/SharedWorkspaceStorage';
+import { StorageImpl } from '../../../../services/StorageService';
 import { ClusterItem } from '../ClusterItem';
 import { NewEmulatorConnectionItem } from './NewEmulatorConnectionItem';
 
@@ -25,7 +25,7 @@ export class LocalEmulatorsItem implements TreeElement, TreeElementWithContextVa
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.MongoClusters);
+        const allItems = await StorageImpl.getItems(WorkspaceResourceType.MongoClusters);
         return [
             ...allItems
                 .filter((item) => item.properties?.isEmulator) // only show emulators

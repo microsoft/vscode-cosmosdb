@@ -12,7 +12,7 @@ import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view
 import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage } from '../../services/SharedWorkspaceStorage';
+import { StorageImpl } from '../../services/StorageService';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';
@@ -95,7 +95,7 @@ export async function removeConnection(
 
     if (node instanceof ClusterItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            await SharedWorkspaceStorage.delete(WorkspaceResourceType.MongoClusters, node.id);
+            await StorageImpl.delete(WorkspaceResourceType.MongoClusters, node.id);
         });
 
         ext.mongoClustersWorkspaceBranchDataProvider.refresh();
@@ -103,7 +103,7 @@ export async function removeConnection(
 
     if (node instanceof CosmosDBAccountResourceItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            await SharedWorkspaceStorage.delete(WorkspaceResourceType.AttachedAccounts, node.id);
+            await StorageImpl.delete(WorkspaceResourceType.AttachedAccounts, node.id);
         });
 
         ext.cosmosDBWorkspaceBranchDataProvider.refresh();

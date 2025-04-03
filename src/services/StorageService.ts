@@ -6,13 +6,14 @@
 import { type WorkspaceResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { ext } from '../extensionVariables';
+import { SettingUtils } from './SettingsService';
 
 /**
- * Represents an item stored in the shared workspace storage.
+ * Represents an item stored in the storage.
  * Each item has a unique `id`, a `name`, optional `properties`, and optional `secrets`.
- * The `id` of the item is used as the key in storage and must be unique per `workspaceType`.
+ * The `id` of the item is used as the key in storage and must be unique per storage location.
  */
-export type SharedWorkspaceStorageItem = {
+export type StorageItem = {
     /**
      * Unique identifier for the item.
      */
@@ -36,13 +37,13 @@ export type SharedWorkspaceStorageItem = {
 };
 
 /**
- * Manages the storage of items and their associated secrets in a shared workspace.
+ * Manages the storage of items and their associated secrets in a shared storage.
  * Items are stored in VSCode's globalState, and secrets are stored using SecretStorage.
  * Each item is uniquely identified by its `id` within a given `workspaceType`.
  *
  * The `id` of the item is used as the key in storage and must be unique per `workspaceType`.
  */
-export class SharedWorkspaceStorage {
+export class StorageImpl {
     private static readonly storageName: string = 'ms-azuretools.vscode-cosmosdb.workspace';
 
     /**
@@ -52,13 +53,13 @@ export class SharedWorkspaceStorage {
      * @param workspaceType - The type of the workspace resource.
      * @returns An array of items.
      */
-    public static async getItems(workspaceType: WorkspaceResourceType): Promise<SharedWorkspaceStorageItem[]> {
-        const storageKeyPrefix = `${SharedWorkspaceStorage.storageName}/${workspaceType}/`;
+    public static async getItems(workspaceType: WorkspaceResourceType): Promise<StorageItem[]> {
+        const storageKeyPrefix = `${StorageImpl.storageName}/${workspaceType}/`;
         const keys = ext.context.globalState.keys().filter((key) => key.startsWith(storageKeyPrefix));
-        const items: SharedWorkspaceStorageItem[] = [];
+        const items: StorageItem[] = [];
 
         for (const key of keys) {
-            const item = ext.context.globalState.get<SharedWorkspaceStorageItem>(key);
+            const item = ext.context.globalState.get<StorageItem>(key);
             if (item) {
                 // Read secrets associated with the item
                 const secretKey = `${key}/secrets`;
@@ -94,13 +95,13 @@ export class SharedWorkspaceStorage {
      */
     public static async push(
         workspaceType: WorkspaceResourceType,
-        item: SharedWorkspaceStorageItem,
+        item: StorageItem,
         overwrite: boolean = true,
     ): Promise<void> {
-        const storageKey = `${SharedWorkspaceStorage.storageName}/${workspaceType}/${item.id}`;
+        const storageKey = `${StorageImpl.storageName}/${workspaceType}/${item.id}`;
 
         // Check for existing item
-        const existingItem = ext.context.globalState.get<SharedWorkspaceStorageItem>(storageKey);
+        const existingItem = ext.context.globalState.get<StorageItem>(storageKey);
         if (existingItem && !overwrite) {
             throw new Error(
                 l10n.t('An item with id "{0}" already exists for workspaceType "{1}".', item.id, workspaceType),
@@ -135,7 +136,7 @@ export class SharedWorkspaceStorage {
      * @param itemId - The `id` of the item to delete.
      */
     public static async delete(workspaceType: WorkspaceResourceType, itemId: string): Promise<void> {
-        const storageKey = `${SharedWorkspaceStorage.storageName}/${workspaceType}/${itemId}`;
+        const storageKey = `${StorageImpl.storageName}/${workspaceType}/${itemId}`;
 
         // Delete the item from globalState
         await ext.context.globalState.update(storageKey, undefined);
@@ -152,7 +153,7 @@ export class SharedWorkspaceStorage {
      * @returns An array of item `id`s.
      */
     keys(workspaceType: WorkspaceResourceType): string[] {
-        const storageKeyPrefix = `${SharedWorkspaceStorage.storageName}/${workspaceType}/`;
+        const storageKeyPrefix = `${StorageImpl.storageName}/${workspaceType}/`;
         const keys = ext.context.globalState
             .keys()
             .filter((key) => key.startsWith(storageKeyPrefix))

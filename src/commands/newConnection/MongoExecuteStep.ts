@@ -10,9 +10,9 @@ import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import {
-    SharedWorkspaceStorage,
-    type SharedWorkspaceStorageItem,
-} from '../../services/SharedWorkspaceStorage';
+    StorageImpl,
+    type StorageItem,
+} from '../../services/StorageService';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -34,14 +34,14 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
                 async () => {
                     await new Promise((resolve) => setTimeout(resolve, 250));
 
-                    const storageItem: SharedWorkspaceStorageItem = {
+                    const storageItem: StorageItem = {
                         id: parsedCS.username + '@' + parsedCS.redact().toString(),
                         name: label,
                         properties: { isEmulator: false, api },
                         secrets: [connectionString],
                     };
 
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                    await StorageImpl.push(WorkspaceResourceType.MongoClusters, storageItem, true);
                 },
             );
         }

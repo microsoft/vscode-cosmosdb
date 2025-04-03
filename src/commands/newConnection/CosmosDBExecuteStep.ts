@@ -10,9 +10,9 @@ import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnection
 import { ext } from '../../extensionVariables';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import {
-    SharedWorkspaceStorage,
-    type SharedWorkspaceStorageItem,
-} from '../../services/SharedWorkspaceStorage';
+    StorageImpl,
+    type StorageItem,
+} from '../../services/StorageService';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -33,14 +33,14 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
                 async () => {
                     await new Promise((resolve) => setTimeout(resolve, 250));
 
-                    const storageItem: SharedWorkspaceStorageItem = {
+                    const storageItem: StorageItem = {
                         id: parsedCS.accountId,
                         name: label,
                         properties: { isEmulator: false, api },
                         secrets: [connectionString],
                     };
 
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageImpl.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
                 },
             );
         }

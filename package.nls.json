@@ -81,6 +81,7 @@
   "cosmosdb.configuration.oauth.enable": "Always authenticate using Entra ID RBAC when connecting to Cosmos DB NoSQL Accounts. [Enable RBAC and assign Roles](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Show detailed operation summaries, displaying messages for actions such as database drops, document additions, deletions, or similar events.",
   "cosmosdb.configuration.save.prompt": "Show warning dialog when uploading a document to the cloud.",
+  "cosmosdb.configuration.csv.separator": "The separator to use when exporting data to a CSV file (i.e. `;`, | or `,`).",
   "cosmosdb.configuration.preferredAuthenticationMethod": "Select a preferred authentication method for Cosmos DB accounts.",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "Automatic",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "Selects the best authentication method based on the account configuration",

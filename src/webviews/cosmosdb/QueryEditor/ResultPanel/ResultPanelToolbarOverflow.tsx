@@ -47,12 +47,7 @@ import {
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, type PropsWithChildren, useEffect, useState } from 'react';
-import {
-    queryMetricsToCsv,
-    queryMetricsToJSON,
-    queryResultToCsv,
-    queryResultToJSON,
-} from '../../../../utils/convertors';
+import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
 import { Timer } from '../../../Timer';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -438,14 +433,15 @@ const CopyToClipboardButton = forwardRef(
 
         async function onSaveToClipboardAsCSV() {
             if (selectedTab === 'result__tab') {
-                const selectedRows = hasSelection ? state.selectedRows : undefined;
-                const csv = await queryResultToCsv(state.currentQueryResult, state.partitionKey, selectedRows);
-                await dispatcher.copyToClipboard(csv);
+                await dispatcher.copyCSVToClipboard(
+                    state.currentQueryResult,
+                    state.partitionKey,
+                    hasSelection ? state.selectedRows : undefined,
+                );
             }
 
             if (selectedTab === 'stats__tab') {
-                const csv = await queryMetricsToCsv(state.currentQueryResult);
-                await dispatcher.copyToClipboard(csv);
+                await dispatcher.copyMetricsCSVToClipboard(state.currentQueryResult);
             }
         }
 
@@ -508,13 +504,11 @@ const ExportButton = forwardRef(
         async function onSaveAsCSV() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                const csv = await queryResultToCsv(state.currentQueryResult, state.partitionKey);
-                await dispatcher.saveToFile(csv, `${filename}_result`, 'csv');
+                await dispatcher.saveCSV(`${filename}_result`, state.currentQueryResult, state.partitionKey);
             }
 
             if (selectedTab === 'stats__tab') {
-                const csv = await queryMetricsToCsv(state.currentQueryResult);
-                await dispatcher.saveToFile(csv, `${filename}_stats`, 'csv');
+                await dispatcher.saveMetricsCSV(`${filename}_stats`, state.currentQueryResult);
             }
         }
 

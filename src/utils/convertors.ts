@@ -574,7 +574,7 @@ export const queryMetricsToTable = async (queryResult: SerializedQueryResult | n
     return stats;
 };
 
-const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {
+export const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {
     return {
         metric: l10n.t('Index Metrics'),
         value: queryResult.indexMetrics.trim(),
@@ -593,62 +593,4 @@ export const queryMetricsToJSON = async (queryResult: SerializedQueryResult | nu
     stats.push(indexMetricsToTableItem(queryResult));
 
     return JSON.stringify(stats, null, 4);
-};
-
-export const escapeCsvValue = (value: string): string => {
-    return `"${value.replace(/"/g, '""')}"`;
-};
-
-export const queryMetricsToCsv = async (queryResult: SerializedQueryResult | null): Promise<string> => {
-    if (!queryResult) {
-        return '';
-    }
-
-    const stats = await queryMetricsToTable(queryResult);
-
-    stats.push(indexMetricsToTableItem(queryResult));
-
-    const titles = stats.map((item) => escapeCsvValue(item.metric)).join(',');
-    const values = stats.map((item) => escapeCsvValue(item.value.toString())).join(',');
-    return `sep=,\n${titles}\n${values}`;
-};
-
-export const queryResultToCsv = async (
-    queryResult: SerializedQueryResult | null,
-    partitionKey?: PartitionKeyDefinition,
-    selection?: number[],
-): Promise<string> => {
-    if (!queryResult) {
-        return '';
-    }
-
-    const tableView = await queryResultToTable(queryResult, partitionKey, {
-        ShowPartitionKey: 'none',
-        ShowServiceColumns: 'last',
-        Sorting: 'none',
-        TruncateValues: 0,
-    });
-    const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(',');
-
-    if (selection) {
-        tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
-    }
-
-    const rows = tableView.dataset
-        .map((row) => {
-            const rowValues: string[] = [];
-
-            tableView.headers.forEach((header) => {
-                if (header.startsWith('/')) {
-                    header = header.slice(1);
-                }
-
-                const value = row[header] ?? '';
-                rowValues.push(escapeCsvValue(value));
-            });
-
-            return rowValues.join(',');
-        })
-        .join('\n');
-    return `sep=,\n${headers}\n${rows}`;
 };

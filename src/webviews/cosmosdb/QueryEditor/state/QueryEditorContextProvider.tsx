@@ -107,6 +107,30 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('provideFeedback');
     }
 
+    public async saveCSV(
+        name: string,
+        currentQueryResult: SerializedQueryResult | null,
+        partitionKey?: PartitionKeyDefinition,
+    ): Promise<void> {
+        await this.sendCommand('saveCSV', name, currentQueryResult, partitionKey);
+    }
+
+    public async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
+        await this.sendCommand('saveMetricsCSV', name, currentQueryResult);
+    }
+
+    public async copyCSVToClipboard(
+        currentQueryResult: SerializedQueryResult | null,
+        partitionKey?: PartitionKeyDefinition,
+        selection?: number[],
+    ): Promise<void> {
+        await this.sendCommand('copyCSVToClipboard', currentQueryResult, partitionKey, selection);
+    }
+
+    public async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
+        await this.sendCommand('copyMetricsCSVToClipboard', currentQueryResult);
+    }
+
     protected initEventListeners() {
         super.initEventListeners();
 

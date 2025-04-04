@@ -1280,6 +1280,11 @@
             "type": "boolean",
             "default": true,
             "description": "%cosmosdb.configuration.save.prompt%"
+          },
+          "cosmosDB.csvSeparator": {
+            "type": "string",
+            "default": ";",
+            "markdownDescription": "%cosmosdb.configuration.csv.separator%"
           }
         }
       }

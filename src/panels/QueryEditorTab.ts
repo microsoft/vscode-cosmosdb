@@ -13,8 +13,13 @@ import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosm
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
-import { type CosmosDBRecordIdentifier, type ResultViewMetadata } from '../cosmosdb/types/queryResult';
+import {
+    type CosmosDBRecordIdentifier,
+    type ResultViewMetadata,
+    type SerializedQueryResult,
+} from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -143,6 +148,25 @@ export class QueryEditorTab extends BaseTab {
                 return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
             case 'provideFeedback':
                 return this.provideFeedback();
+            case 'saveCSV':
+                return this.saveCSV(
+                    payload.params[0] as string,
+                    payload.params[1] as SerializedQueryResult | null,
+                    payload.params[2] as PartitionKeyDefinition,
+                );
+            case 'saveMetricsCSV':
+                return this.saveMetricsCSV(
+                    payload.params[0] as string,
+                    payload.params[1] as SerializedQueryResult | null,
+                );
+            case 'copyCSVToClipboard':
+                return this.copyCSVToClipboard(
+                    payload.params[0] as SerializedQueryResult | null,
+                    payload.params[1] as PartitionKeyDefinition,
+                    payload.params[2] as number[],
+                );
+            case 'copyMetricsCSVToClipboard':
+                return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
         }
 
         return super.getCommand(payload);
@@ -411,5 +435,33 @@ export class QueryEditorTab extends BaseTab {
     private async provideFeedback(): Promise<void> {
         openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
         return Promise.resolve();
+    }
+
+    private async saveCSV(
+        name: string,
+        currentQueryResult: SerializedQueryResult | null,
+        partitionKey?: PartitionKeyDefinition,
+    ): Promise<void> {
+        const text = await queryResultToCsv(currentQueryResult, partitionKey);
+        await vscodeUtil.showNewFile(text, name, '.csv');
+    }
+
+    private async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
+        const text = await queryMetricsToCsv(currentQueryResult);
+        await vscodeUtil.showNewFile(text, name, '.csv');
+    }
+
+    private async copyCSVToClipboard(
+        currentQueryResult: SerializedQueryResult | null,
+        partitionKey?: PartitionKeyDefinition,
+        selection?: number[],
+    ): Promise<void> {
+        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
+        await vscode.env.clipboard.writeText(text);
+    }
+
+    private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
+        const text = await queryMetricsToCsv(currentQueryResult);
+        await vscode.env.clipboard.writeText(text);
     }
 }

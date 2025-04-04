@@ -123,6 +123,8 @@ describe('Survey Initialization', () => {
 
     // Helper to mock the crypto hash to always pass or fail A/B test
     function mockABTest(shouldPass: boolean) {
+        // Set A_B_TEST_SELECTION to 0.5 for consistent testing
+        SurveyConfig.settings.A_B_TEST_SELECTION = 0.5;
         const hashInt = shouldPass ? HASH_LOW_VALUE : HASH_HIGH_VALUE;
         const randomValue = shouldPass ? 0.1 : 0.9; // Low value for pass, high value for fail
 

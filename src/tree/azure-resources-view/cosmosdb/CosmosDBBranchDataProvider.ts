@@ -32,6 +32,9 @@ export class CosmosDBBranchDataProvider
 {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
 
+    private readonly childrenCache = new Map<string, TreeElement>();
+    private readonly resourcesCache = new Map<string, TreeElement>();
+
     constructor() {
         super(() => this.onDidChangeTreeDataEmitter.dispose());
     }
@@ -65,11 +68,29 @@ export class CosmosDBBranchDataProvider
                     // And these values should be masked in the context
 
                     const children = (await element.getChildren?.()) ?? [];
-                    return children.map((child) => {
-                        return ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
+                    const wrappedChildren = children.map((child) => {
+                        if (!this.isAncestorOf(element, child.id)) {
+                            //TODO: improve error handling, right now we throw and the whole tree is not being built
+                            // we should use createGenericElement with error for each failed child
+                            throw new Error(
+                                l10n.t(
+                                    'Child element "{0}" is not a child of parent element "{1}".',
+                                    child.id,
+                                    element.id,
+                                ),
+                            );
+                        }
+                        if (this.childrenCache.has(child.id)) {
+                            return this.childrenCache.get(child.id)!;
+                        }
+                        const wrapped = ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
                             this.refresh(child),
                         ) as TreeElement;
+                        this.childrenCache.set(child.id, wrapped);
+                        return wrapped;
                     });
+
+                    return wrappedChildren;
                 },
             );
 
@@ -99,9 +120,17 @@ export class CosmosDBBranchDataProvider
                 context.valuesToMask.push(id);
                 context.valuesToMask.push(name);
 
+                const cachedResourceItem = this.resourcesCache.get(id);
+                if (cachedResourceItem) {
+                    context.telemetry.properties.cached = 'true';
+                    return cachedResourceItem;
+                }
+
                 if (type.toLocaleLowerCase() === databaseAccountType.toLocaleLowerCase()) {
                     const accountModel = resource;
                     const experience = tryGetExperience(resource);
+
+                    let resourceItem: TreeElement | null = null;
 
                     if (experience?.api === API.MongoDB) {
                         // 1. extract the basic info from the element (subscription, resource group, etc., provided by Azure Resources)
@@ -110,28 +139,33 @@ export class CosmosDBBranchDataProvider
                             dbExperience: MongoExperience,
                         } as ClusterModel;
 
-                        const clusterItem = new MongoRUResourceItem(resource.subscription, clusterInfo);
-                        return clusterItem;
+                        resourceItem = new MongoRUResourceItem(resource.subscription, clusterInfo);
                     }
 
                     if (experience?.api === API.Cassandra) {
-                        return new NoSqlAccountResourceItem(accountModel, experience);
+                        resourceItem = new NoSqlAccountResourceItem(accountModel, experience);
                     }
 
                     if (experience?.api === API.Core) {
-                        return new NoSqlAccountResourceItem(accountModel, experience);
+                        resourceItem = new NoSqlAccountResourceItem(accountModel, experience);
                     }
 
                     if (experience?.api === API.Graph) {
-                        return new GraphAccountResourceItem(accountModel, experience);
+                        resourceItem = new GraphAccountResourceItem(accountModel, experience);
                     }
 
                     if (experience?.api === API.Table) {
-                        return new TableAccountResourceItem(accountModel, experience);
+                        resourceItem = new TableAccountResourceItem(accountModel, experience);
                     }
 
-                    // Unknown experience fallback
-                    return new NoSqlAccountResourceItem(accountModel, CoreExperience);
+                    if (!resourceItem) {
+                        // Unknown experience fallback
+                        resourceItem = new NoSqlAccountResourceItem(accountModel, CoreExperience);
+                    }
+                    this.resourcesCache.set(id, resourceItem);
+                    return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
+                        this.refresh(item),
+                    ) as TreeElement;
                 } else {
                     // Unknown resource type
                 }
@@ -141,9 +175,7 @@ export class CosmosDBBranchDataProvider
         );
 
         if (resourceItem) {
-            return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
-                this.refresh(item),
-            ) as TreeElement;
+            return resourceItem;
         }
 
         return null as unknown as TreeElement;
@@ -153,7 +185,92 @@ export class CosmosDBBranchDataProvider
         return element.getTreeItem();
     }
 
+    getParent(element: TreeElement): TreeElement | null | undefined {
+        const parentId = element.id.substring(0, element.id.lastIndexOf('/'));
+        if (parentId) {
+            const parent = this.childrenCache.get(parentId);
+            if (parent) {
+                return parent;
+            }
+            const resourceItem = this.resourcesCache.get(parentId);
+            if (resourceItem) {
+                return resourceItem;
+            }
+        }
+        return undefined;
+    }
+
+    async findNodeById(id: string): Promise<TreeElement | undefined> {
+        const item = this.resourcesCache.get(id) ?? this.childrenCache.get(id);
+        // If the resource item is found in the cache, return it
+        if (item) {
+            return item;
+        }
+        // If the resource item is not found in the cache, search through all children
+        for (const [key, value] of this.childrenCache.entries()) {
+            if (key.startsWith(id)) {
+                const child = await this.findChildById(value, id);
+                if (child) {
+                    return child;
+                }
+            }
+        }
+        // If the element is not found in the cache, return undefined
+        return undefined;
+    }
+
+    async findChildById(element: TreeElement, id: string): Promise<TreeElement | undefined> {
+        if (!id.startsWith(element.id)) {
+            return undefined;
+        }
+        let node = element;
+        // eslint-disable-next-line no-constant-condition
+        outerLoop: while (true) {
+            const children: TreeElement[] | null | undefined = await this.getChildren(node);
+
+            if (!children) {
+                return;
+            }
+
+            for (const child of children) {
+                if (child.id.toLowerCase() === id.toLowerCase()) {
+                    return child;
+                } else if (this.isAncestorOf(child, id)) {
+                    node = child;
+                    continue outerLoop;
+                }
+            }
+
+            return undefined;
+        }
+    }
+
+    protected isAncestorOf(element: TreeElement, id: string): boolean {
+        const elementId = element.id + '/';
+        return id.toLowerCase().startsWith(elementId.toLowerCase());
+    }
+
     refresh(element?: TreeElement): void {
+        if (element) {
+            // Get the cache key for this element
+            const cacheKey = element.id;
+
+            // Clear this element's children from cache
+            this.childrenCache.delete(cacheKey);
+
+            // Also clear any potential child caches using prefix
+            const elementId = element.id;
+            for (const key of this.childrenCache.keys()) {
+                if (key.startsWith(`${elementId}/`)) {
+                    this.childrenCache.delete(key);
+                }
+            }
+        } else {
+            // If no element specified, clear the entire cache
+            this.childrenCache.clear();
+        }
+
+        // Notify the tree view to refresh
         this.onDidChangeTreeDataEmitter.fire(element);
     }
 }

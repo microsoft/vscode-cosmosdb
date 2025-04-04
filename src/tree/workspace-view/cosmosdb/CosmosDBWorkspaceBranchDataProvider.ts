@@ -26,6 +26,11 @@ export class CosmosDBWorkspaceBranchDataProvider
 {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
 
+    private readonly childrenCache = new Map<string, TreeElement>();
+    private resourcesCache = ext.state.wrapItemInStateHandling(new CosmosDBWorkspaceItem(), (item: TreeElement) =>
+        this.refresh(item),
+    ) as TreeElement;
+
     constructor() {
         super(() => this.onDidChangeTreeDataEmitter.dispose());
     }
@@ -61,9 +66,29 @@ export class CosmosDBWorkspaceBranchDataProvider
 
                     const children = (await element.getChildren?.()) ?? [];
                     return children.map((child) => {
-                        return ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
+                        if (!this.isAncestorOf(element, child.id)) {
+                            child = createGenericElement({
+                                contextValue: 'cosmosDB.workspace.item.error',
+                                label: l10n.t(
+                                    'Child element "{0}" is not a child of parent element "{1}".',
+                                    child.id,
+                                    element.id,
+                                ),
+                            }) as TreeElement;
+                        }
+                        if (this.childrenCache.has(child.id)) {
+                            return this.childrenCache.get(child.id)!;
+                        }
+                        const wrapped = ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
                             this.refresh(child),
                         ) as TreeElement;
+                        if (
+                            !isTreeElementWithContextValue(child) ||
+                            child.contextValue !== 'cosmosDB.workspace.item.error'
+                        ) {
+                            this.childrenCache.set(child.id, wrapped);
+                        }
+                        return wrapped;
                     });
                 },
             );
@@ -85,19 +110,33 @@ export class CosmosDBWorkspaceBranchDataProvider
     async getResourceItem(): Promise<TreeElement> {
         const resourceItem = await callWithTelemetryAndErrorHandling(
             'CosmosDBWorkspaceBranchDataProvider.getResourceItem',
-            () => new CosmosDBWorkspaceItem(),
+            () => {
+                ext.cosmosDBWorkspaceBranchDataResource = this.resourcesCache as CosmosDBWorkspaceItem;
+                return this.resourcesCache;
+            },
         );
 
         if (resourceItem) {
             // Workspace picker relies on this value
-            ext.cosmosDBWorkspaceBranchDataResource = resourceItem;
-
-            return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
-                this.refresh(item),
-            ) as TreeElement;
+            ext.cosmosDBWorkspaceBranchDataResource = this.resourcesCache as CosmosDBWorkspaceItem;
+            return resourceItem;
         }
 
         return null as unknown as TreeElement;
+    }
+
+    getParent(element: TreeElement): TreeElement | null | undefined {
+        const parentId = element.id.substring(0, element.id.lastIndexOf('/'));
+        if (this.resourcesCache.id === parentId) {
+            return this.resourcesCache;
+        }
+        if (parentId) {
+            const parent = this.childrenCache.get(parentId);
+            if (parent) {
+                return parent;
+            }
+        }
+        return undefined;
     }
 
     async getTreeItem(element: TreeElement): Promise<vscode.TreeItem> {
@@ -105,6 +144,29 @@ export class CosmosDBWorkspaceBranchDataProvider
     }
 
     refresh(element?: TreeElement): void {
+        if (element) {
+            // Get the cache key for this element
+            const cacheKey = element.id;
+
+            // Clear this element's children from cache
+            this.childrenCache.delete(cacheKey);
+
+            // Also clear any potential child caches using prefix
+            const elementId = element.id;
+            for (const key of this.childrenCache.keys()) {
+                if (key.startsWith(`${elementId}/`)) {
+                    this.childrenCache.delete(key);
+                }
+            }
+        } else {
+            // If no element specified, clear the entire cache
+            this.childrenCache.clear();
+        }
         this.onDidChangeTreeDataEmitter.fire(element);
+    }
+
+    protected isAncestorOf(element: TreeElement, id: string): boolean {
+        const elementId = element.id + '/';
+        return id.toLowerCase().startsWith(elementId.toLowerCase());
     }
 }

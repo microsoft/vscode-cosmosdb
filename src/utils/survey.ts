@@ -285,35 +285,36 @@ async function initSurvey(): Promise<void> {
          * Falls back to random selection if the hashing process fails.
          */
 
-        try {
-            // Deterministic machine ID selection using MD5 (faster than SHA-256)
-            // MD5 is sufficient for non-security random distribution needs
-            const buffer = crypto.createHash('md5').update(env.machineId).digest();
+        if (SurveyConfig.settings.A_B_TEST_SELECTION < 1) {
+            try {
+                // Deterministic machine ID selection using MD5 (faster than SHA-256)
+                // MD5 is sufficient for non-security random distribution needs
+                const buffer = crypto.createHash('md5').update(env.machineId).digest();
 
-            // Read a 32-bit unsigned integer from the buffer directly
-            // (Using the first 4 bytes gives a full 32-bit range)
-            const hashInt = buffer.readUInt32BE(0);
+                // Read a 32-bit unsigned integer from the buffer directly
+                // (Using the first 4 bytes gives a full 32-bit range)
+                const hashInt = buffer.readUInt32BE(0);
 
-            // Normalize to a value between 0 and 1
-            // 0xffffffff = 4294967295 (max value of a 32-bit unsigned integer)
-            const normalized = hashInt / 0xffffffff;
+                // Normalize to a value between 0 and 1
+                // 0xffffffff = 4294967295 (max value of a 32-bit unsigned integer)
+                const normalized = hashInt / 0xffffffff;
 
-            // Determine if this machine is selected for the survey
-            // Lower normalized values = selected
-            const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
+                // Determine if this machine is selected for the survey
+                // Lower normalized values = selected
+                const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
 
-            return setCandidateStatus(acceptedForABTest, 'abTestSelection', {
-                acceptedForABTest: acceptedForABTest.toString(),
-                normalizedValue: normalized.toFixed(6),
-            });
-        } catch (error) {
-            // Record error message from hashing in telemetry if available
-            const fallbackSelection = Math.random() < SurveyConfig.settings.PROBABILITY;
-            return setCandidateStatus(fallbackSelection, 'abTestSelection', {
-                usedFallbackSelection: 'true',
-                abTestError: error instanceof Error ? error.message : String(error),
-            });
+                return setCandidateStatus(acceptedForABTest, 'abTestSelection', {
+                    acceptedForABTest: acceptedForABTest.toString(),
+                    normalizedValue: normalized.toFixed(6),
+                });
+            } catch (error) {
+                context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
+            }
         }
+        const fallbackSelection = Math.random() < SurveyConfig.settings.PROBABILITY;
+        return setCandidateStatus(fallbackSelection, 'randomSelection', {
+            usedFallbackSelection: context.telemetry.properties.abTestError ? 'true' : 'false',
+        });
     });
 }
 

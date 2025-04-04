@@ -392,7 +392,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             if (!documentId && mode !== 'add') {
-                throw new Error(l10n.t('Impossible to open a document without an id'));
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
             if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
@@ -412,7 +412,7 @@ export class QueryEditorTab extends BaseTab {
             }
 
             if (!documentId) {
-                throw new Error(l10n.t('Impossible to open a document without an id'));
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
             const session = new DocumentSession(this.connection, this.channel);
@@ -442,12 +442,12 @@ export class QueryEditorTab extends BaseTab {
         currentQueryResult: SerializedQueryResult | null,
         partitionKey?: PartitionKeyDefinition,
     ): Promise<void> {
-        const text = queryResultToCsv(currentQueryResult, partitionKey);
+        const text = await queryResultToCsv(currentQueryResult, partitionKey);
         await vscodeUtil.showNewFile(text, name, '.csv');
     }
 
     private async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        const text = queryMetricsToCsv(currentQueryResult);
+        const text = await queryMetricsToCsv(currentQueryResult);
         await vscodeUtil.showNewFile(text, name, '.csv');
     }
 
@@ -456,12 +456,12 @@ export class QueryEditorTab extends BaseTab {
         partitionKey?: PartitionKeyDefinition,
         selection?: number[],
     ): Promise<void> {
-        const text = queryResultToCsv(currentQueryResult, partitionKey, selection);
+        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
         await vscode.env.clipboard.writeText(text);
     }
 
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        const text = queryMetricsToCsv(currentQueryResult);
+        const text = await queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
     }
 }

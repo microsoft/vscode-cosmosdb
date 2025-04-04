@@ -17,7 +17,8 @@ import {
     Tooltip,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { queryMetricsToTable } from '../../../utils';
+import { useEffect, useState } from 'react';
+import { queryMetricsToTable, type StatsItem } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { IndexMetricsView } from './IndexMetricsView';
 
@@ -53,10 +54,24 @@ const useStyles = makeStyles({
 
 export const StatsTab = () => {
     const styles = useStyles();
-    const state = useQueryEditorState();
-    const items = queryMetricsToTable(state.currentQueryResult);
-    const indexMetrics = state.currentQueryResult?.indexMetrics?.trim();
+    const { currentQueryResult } = useQueryEditorState();
+    const [items, setItems] = useState<StatsItem[]>([]);
+    const indexMetrics = currentQueryResult?.indexMetrics?.trim();
     const QUERY_METRICS_DOC_URL = 'https://learn.microsoft.com/azure/cosmos-db/nosql/query-metrics';
+
+    // Load query metrics asynchronously
+    useEffect(() => {
+        async function loadQueryMetrics() {
+            if (currentQueryResult) {
+                const metricsItems = await queryMetricsToTable(currentQueryResult);
+                setItems(metricsItems);
+            } else {
+                setItems([]);
+            }
+        }
+
+        void loadQueryMetrics();
+    }, [currentQueryResult]);
 
     return (
         <>

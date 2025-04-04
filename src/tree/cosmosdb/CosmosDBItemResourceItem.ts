@@ -50,7 +50,7 @@ export abstract class CosmosDBItemResourceItem
             ),
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
-                title: l10n.t('Open Document'),
+                title: l10n.t('Open Item'),
                 command: 'cosmosDB.openDocument',
                 arguments: [this],
             },
@@ -59,7 +59,7 @@ export abstract class CosmosDBItemResourceItem
 
     protected generateDocumentTooltip(): string {
         return (
-            '### Document\n' +
+            '### Item\n' +
             '---\n' +
             `${this.model.item.id ? `- ID: **${this.model.item.id}**\n` : ''}` +
             `${this.model.item._id ? `- ID (_id): **${this.model.item._id}**\n` : ''}` +

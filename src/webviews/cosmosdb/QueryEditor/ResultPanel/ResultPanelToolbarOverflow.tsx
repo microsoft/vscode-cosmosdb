@@ -428,7 +428,7 @@ const CopyToClipboardButton = forwardRef(
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipClipboardContent = hasSelection
-            ? l10n.t('Copy selected documents to clipboard')
+            ? l10n.t('Copy selected items to clipboard')
             : l10n.t('Copy all results from the current page to clipboard');
 
         async function onSaveToClipboardAsCSV() {
@@ -447,13 +447,14 @@ const CopyToClipboardButton = forwardRef(
 
         async function onSaveToClipboardAsJSON() {
             if (selectedTab === 'result__tab') {
-                await dispatcher.copyToClipboard(
-                    queryResultToJSON(state.currentQueryResult, hasSelection ? state.selectedRows : undefined),
-                );
+                const selectedRows = hasSelection ? state.selectedRows : undefined;
+                const json = await queryResultToJSON(state.currentQueryResult, selectedRows);
+                await dispatcher.copyToClipboard(json);
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.copyToClipboard(queryMetricsToJSON(state.currentQueryResult));
+                const json = await queryMetricsToJSON(state.currentQueryResult);
+                await dispatcher.copyToClipboard(json);
             }
         }
 
@@ -497,7 +498,7 @@ const ExportButton = forwardRef(
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipExportContent = hasSelection
-            ? l10n.t('Export selected documents')
+            ? l10n.t('Export selected items')
             : l10n.t('Export all results from the current page');
 
         async function onSaveAsCSV() {
@@ -514,11 +515,13 @@ const ExportButton = forwardRef(
         async function onSaveAsJSON() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                await dispatcher.saveToFile(queryResultToJSON(state.currentQueryResult), `${filename}_result`, 'json');
+                const json = await queryResultToJSON(state.currentQueryResult);
+                await dispatcher.saveToFile(json, `${filename}_result`, 'json');
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.saveToFile(queryMetricsToJSON(state.currentQueryResult), `${filename}_stats`, 'json');
+                const json = await queryMetricsToJSON(state.currentQueryResult);
+                await dispatcher.saveToFile(json, `${filename}_stats`, 'json');
             }
         }
 

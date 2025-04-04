@@ -88,7 +88,7 @@ export class DocumentSession {
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentError',
-                        params: [this.id, 'Document creation failed'],
+                        params: [this.id, 'Item creation failed'],
                     });
                 }
             } catch (error) {
@@ -153,7 +153,7 @@ export class DocumentSession {
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentError',
-                        params: [this.id, 'Document not found'],
+                        params: [this.id, 'Item not found'],
                     });
                 }
             } catch (error) {
@@ -205,7 +205,7 @@ export class DocumentSession {
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentError',
-                        params: [this.id, 'Document update failed'],
+                        params: [this.id, 'Item update failed'],
                     });
                 }
             } catch (error) {
@@ -247,7 +247,7 @@ export class DocumentSession {
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentError',
-                        params: [this.id, 'Document deletion failed'],
+                        params: [this.id, 'Item deletion failed'],
                     });
                 }
             } catch (error) {

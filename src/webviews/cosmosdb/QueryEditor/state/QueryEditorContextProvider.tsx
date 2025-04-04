@@ -111,8 +111,9 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         name: string,
         currentQueryResult: SerializedQueryResult | null,
         partitionKey?: PartitionKeyDefinition,
+        selection?: number[]
     ): Promise<void> {
-        await this.sendCommand('saveCSV', name, currentQueryResult, partitionKey);
+        await this.sendCommand('saveCSV', name, currentQueryResult, partitionKey, selection);
     }
 
     public async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {

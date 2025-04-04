@@ -98,10 +98,10 @@ export const isSelectStar = (query: string): boolean => {
     return false;
 };
 
-export const queryResultToJSON = async (
+export const queryResultToJSON = (
     queryResult: SerializedQueryResult | null,
-    selection?: number[],
-): Promise<string> => {
+    selection?: number[]
+): string => {
     if (!queryResult) {
         return '';
     }

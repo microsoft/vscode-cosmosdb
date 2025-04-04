@@ -448,7 +448,7 @@ const CopyToClipboardButton = forwardRef(
         async function onSaveToClipboardAsJSON() {
             if (selectedTab === 'result__tab') {
                 const selectedRows = hasSelection ? state.selectedRows : undefined;
-                const json = await queryResultToJSON(state.currentQueryResult, selectedRows);
+                const json = queryResultToJSON(state.currentQueryResult, selectedRows);
                 await dispatcher.copyToClipboard(json);
             }
 
@@ -504,7 +504,8 @@ const ExportButton = forwardRef(
         async function onSaveAsCSV() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                await dispatcher.saveCSV(`${filename}_result`, state.currentQueryResult, state.partitionKey);
+                const selectedRows = hasSelection ? state.selectedRows : undefined;
+                await dispatcher.saveCSV(`${filename}_result`, state.currentQueryResult, state.partitionKey, selectedRows);
             }
 
             if (selectedTab === 'stats__tab') {
@@ -515,7 +516,8 @@ const ExportButton = forwardRef(
         async function onSaveAsJSON() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                const json = await queryResultToJSON(state.currentQueryResult);
+                const selectedRows = hasSelection ? state.selectedRows : undefined;
+                const json = queryResultToJSON(state.currentQueryResult, selectedRows);
                 await dispatcher.saveToFile(json, `${filename}_result`, 'json');
             }
 

@@ -129,17 +129,34 @@ export async function promptAfterActionEventually(
     score: UsageImpact | number,
     triggerAction?: string,
 ): Promise<void> {
-    if (getIsSurveyDisabledGlobally() || surveyState.wasPromptedInSession) {
-        return;
-    }
+    await callWithTelemetryAndErrorHandling('survey.measure-score', async (context: IActionContext) => {
+        context.telemetry.properties.experience = experience;
+        context.telemetry.properties.triggerActionScore = score.toString();
+        context.telemetry.properties.triggerAction = triggerAction;
 
-    countExperienceUsageForSurvey(experience, score);
+        const globalOptOut = getIsSurveyDisabledGlobally();
+        context.telemetry.properties.isSurveyDisabledGlobally = globalOptOut.toString();
+        context.telemetry.properties.wasPromptedInSession = surveyState.wasPromptedInSession.toString();
 
-    const { fullScore, highestExperience } = calculateScoreMetrics();
+        if (globalOptOut || surveyState.wasPromptedInSession) {
+            return;
+        }
 
-    if (fullScore >= SurveyConfig.scoring.REQUIRED_SCORE) {
-        await surveyPromptIfCandidate(highestExperience[0], triggerAction);
-    }
+        countExperienceUsageForSurvey(experience, score);
+
+        const { fullScore, highestExperience } = calculateScoreMetrics();
+        context.telemetry.properties.experienceScore = surveyState.usageScoreByExperience[experience].toString();
+        context.telemetry.properties.fullScore = fullScore.toString();
+
+        const scoreTargetReached = fullScore >= SurveyConfig.scoring.REQUIRED_SCORE;
+        context.telemetry.properties.scoreTargetReached = scoreTargetReached.toString();
+
+        if (scoreTargetReached) {
+            const isCandidate = await getIsSurveyCandidate();
+            context.telemetry.properties.isCandidate = isCandidate.toString();
+            await surveyPromptIfCandidate(highestExperience[0], triggerAction);
+        }
+    });
 }
 
 function calculateScoreMetrics(): {

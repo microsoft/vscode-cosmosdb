@@ -36,8 +36,8 @@ export type DispatchAction =
           endExecutionTime: number;
       }
     | {
-          type: 'appendQueryHistory';
-          queryValue: string;
+          type: 'updateHistory';
+          queryHistory: string[];
       }
     | {
           type: 'setPageSize';
@@ -146,15 +146,8 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             }
             return { ...state, isExecuting: false, endExecutionTime: action.endExecutionTime };
         }
-        case 'appendQueryHistory': {
-            const queryHistory = [...state.queryHistory, action.queryValue].filter(
-                (value, index, self) => self.indexOf(value) === index,
-            );
-            if (queryHistory.length > QUERY_HISTORY_SIZE) {
-                queryHistory.shift();
-            }
-            return { ...state, queryHistory };
-        }
+        case 'updateHistory':
+            return { ...state, queryHistory: action.queryHistory };
         case 'setPageSize':
             return { ...state, pageSize: action.pageSize };
         case 'updateQueryResult':

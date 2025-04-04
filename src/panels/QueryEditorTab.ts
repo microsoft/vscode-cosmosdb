@@ -5,10 +5,9 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-
-import * as l10n from '@vscode/l10n';
 import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
@@ -19,12 +18,20 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { ext } from '../extensionVariables';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
+
+const QUERY_HISTORY_SIZE = 10;
+const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.queryEditorHistory';
+
+type HistoryData = {
+    history: string[];
+};
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
@@ -98,6 +105,7 @@ export class QueryEditorTab extends BaseTab {
 
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
+            await this.updateQueryHistory();
             if (this.query) {
                 await this.channel.postMessage({
                     type: 'event',
@@ -167,6 +175,8 @@ export class QueryEditorTab extends BaseTab {
                 );
             case 'copyMetricsCSVToClipboard':
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
+            case 'updateQueryHistory':
+                return this.updateQueryHistory(payload.params[0] as string);
         }
 
         return super.getCommand(payload);
@@ -253,6 +263,37 @@ export class QueryEditorTab extends BaseTab {
                 ext = `.${ext}`;
             }
             await vscodeUtil.showNewFile(text, filename, ext);
+        });
+    }
+
+    private async updateQueryHistory(query?: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.updateQueryHistory', async (context) => {
+            context.telemetry.suppressIfSuccessful = true;
+
+            const historyData = ext.context.globalState.get<HistoryData>(HISTORY_STORAGE_KEY) ?? { history: [] };
+
+            // First remove any existing occurrences of this query
+            const queryHistory = historyData.history.filter((item) => item !== query);
+
+            // Add the new query to the beginning (most recent first)
+            if (query) {
+                queryHistory.unshift(query);
+            }
+
+            // Trim to max size if needed
+            if (queryHistory.length > QUERY_HISTORY_SIZE) {
+                queryHistory.length = QUERY_HISTORY_SIZE;
+            }
+
+            historyData.history = queryHistory;
+            await ext.context.globalState.update(HISTORY_STORAGE_KEY, historyData);
+
+            // Update the webview with the new history
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'updateQueryHistory',
+                params: [historyData.history],
+            });
         });
     }
 

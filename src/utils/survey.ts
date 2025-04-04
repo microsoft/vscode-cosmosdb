@@ -222,10 +222,15 @@ async function initSurvey(): Promise<void> {
 
         // Skip if Survey has been taken within the last REARM_AFTER_DAYS days
         const surveyTakenDate = new Date(
-            ext.context.globalState.get(StateKeys.SURVEY_TAKEN_DATE, new Date(0).toDateString()),
+            ext.context.globalState.get(StateKeys.SURVEY_TAKEN_DATE, new Date(0).toISOString()),
         );
         if (surveyTakenDate.getTime() >= rearmAfterDate.getTime()) {
-            return setCandidateStatus(false, 'surveyTaken', { surveyTakenDate: surveyTakenDate.toDateString() });
+            return setCandidateStatus(false, 'surveyTaken', {
+                surveyTakenDate: surveyTakenDate.toISOString(),
+                daysSinceTaken: Math.floor(
+                    (today.getTime() - surveyTakenDate.getTime()) / (1000 * 60 * 60 * 24),
+                ).toString(),
+            });
         }
 
         // Check if the user has opted out
@@ -234,7 +239,7 @@ async function initSurvey(): Promise<void> {
             // Skip if opted out within the last REARM_AFTER_DAYS days
             const optOutDate = new Date(optOutDateString);
             if (!SurveyConfig.settings.REARM_OPT_OUT || optOutDate.getTime() >= rearmAfterDate.getTime()) {
-                return setCandidateStatus(false, 'optOut', { optOutDate: optOutDate.toDateString() });
+                return setCandidateStatus(false, 'optOut', { optOutDate: optOutDate.toISOString() });
             }
         }
 
@@ -244,12 +249,13 @@ async function initSurvey(): Promise<void> {
             ext.context.globalState.get(StateKeys.LAST_SESSION_DATE, new Date(0).toISOString()),
         );
         if (SurveyConfig.settings.PROMPT_DATE_ONLY_ONCE && today.toDateString() === lastSessionDate.toDateString()) {
-            return setCandidateStatus(false, 'promptDateOnlyOnce', { lastSessionDate: lastSessionDate.toDateString() });
+            return setCandidateStatus(false, 'promptDateOnlyOnce', { lastSessionDate: lastSessionDate.toISOString() });
         }
 
         // Count sessions and decide if the user is a candidate
         const sessionCount = ext.context.globalState.get(StateKeys.SESSION_COUNT, 0) + 1;
-        await ext.context.globalState.update(StateKeys.LAST_SESSION_DATE, today);
+        // Always update session data even if we don't prompt
+        await ext.context.globalState.update(StateKeys.LAST_SESSION_DATE, today.toDateString());
         await ext.context.globalState.update(StateKeys.SESSION_COUNT, sessionCount);
         if (sessionCount < SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT) {
             return setCandidateStatus(false, 'minSessionsBeforePrompt', { sessionCount: sessionCount.toString() });

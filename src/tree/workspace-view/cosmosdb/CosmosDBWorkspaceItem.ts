@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { ext } from '../../../extensionVariables';
+import { type StorageItem, StorageNames, StorageService } from '../../../services/storageService';
 import { GraphAccountAttachedResourceItem } from '../../graph/GraphAccountAttachedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../../nosql/NoSqlAccountAttachedResourceItem';
 import { TableAccountAttachedResourceItem } from '../../table/TableAccountAttachedResourceItem';
@@ -16,7 +17,6 @@ import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { type PersistedAccount } from '../../v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../workspace-api/SharedWorkspaceStorage';
 import { CosmosDBAttachAccountResourceItem } from './CosmosDBAttachAccountResourceItem';
 import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountModel';
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';
@@ -33,7 +33,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
-        const items = await SharedWorkspaceStorage.getItems(this.id);
+        const items = await StorageService.get(StorageNames.Workspace).getItems(this.id);
         const children = await this.getChildrenNoEmulatorsImpl(items);
 
         if (isEmulatorSupported) {
@@ -53,7 +53,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         };
     }
 
-    protected async getChildrenNoEmulatorsImpl(items: SharedWorkspaceStorageItem[]): Promise<TreeElement[]> {
+    protected async getChildrenNoEmulatorsImpl(items: StorageItem[]): Promise<TreeElement[]> {
         return Promise.resolve(
             items
                 .filter((item) => item.properties?.isEmulator !== true)
@@ -136,14 +136,18 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                         'connectionString',
                     );
 
-                    const storageItem: SharedWorkspaceStorageItem = {
+                    const storageItem: StorageItem = {
                         id,
                         name,
                         properties: { isEmulator, api },
                         secrets: [connectionString],
                     };
 
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.AttachedAccounts,
+                        storageItem,
+                        true,
+                    );
                 }
             },
         );
@@ -191,7 +195,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                             'connectionString',
                         );
 
-                        const storageItem: SharedWorkspaceStorageItem = {
+                        const storageItem: StorageItem = {
                             id,
                             name,
                             properties: {
@@ -201,7 +205,10 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                             secrets: [connectionString],
                         };
 
-                        await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem);
+                        await StorageService.get(StorageNames.Workspace).push(
+                            WorkspaceResourceType.AttachedAccounts,
+                            storageItem,
+                        );
                         await ext.secretStorage.delete(`${serviceName}.${id}`);
 
                         return storageItem;

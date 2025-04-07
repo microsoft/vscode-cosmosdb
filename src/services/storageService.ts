@@ -171,15 +171,44 @@ class StorageImpl implements Storage {
 
     /**
      * Implementation of Storage.delete that removes an item and its associated secrets.
+     * Attempts to maintain atomicity by ensuring both the item and its secrets are deleted.
+     *
+     * @param workspace - The workspace identifier acting as a directory for the items.
+     * @param itemId - The `id` of the item to delete.
+     * @throws Error if deletion of the item or its secrets fails.
      */
     public async delete(workspace: string, itemId: string): Promise<void> {
         const storageKey = `${this.storageName}/${workspace}/${itemId}`;
+        const secretKey = `${storageKey}/secrets`;
 
-        // Delete the item from globalState
-        await ext.context.globalState.update(storageKey, undefined);
+        // First check if the item exists
+        const existingItem = ext.context.globalState.get<StorageItem>(storageKey);
+        if (!existingItem) {
+            return; // Item doesn't exist, nothing to delete
+        }
 
-        // Delete its secrets
-        await ext.secretStorage.delete(`${storageKey}/secrets`);
+        try {
+            // First delete the item from globalState
+            await ext.context.globalState.update(storageKey, undefined);
+
+            try {
+                // Then delete its secrets
+                await ext.secretStorage.delete(secretKey);
+            } catch (secretError) {
+                // Try to restore the item since secret deletion failed
+                try {
+                    await ext.context.globalState.update(storageKey, existingItem);
+                } catch {
+                    // If restoration fails, we're in an inconsistent state, but we can't do much now. Throw the original error.
+                }
+                throw new Error(l10n.t('Failed to delete secrets for item "{0}".', itemId), { cause: secretError });
+            }
+        } catch (itemError) {
+            if (itemError instanceof Error) {
+                throw itemError; // Rethrow errors
+            }
+            throw new Error(l10n.t('Failed to delete item "{0}".', itemId));
+        }
     }
 
     /**

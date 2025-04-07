@@ -213,12 +213,12 @@ async function initSurvey(): Promise<void> {
 
         // Short-circuit for debug mode
         if (SurveyConfig.settings.DEBUG_ALWAYS_PROMPT) {
-            return setCandidateStatus(true, 'debugAlwaysPrompt');
+            return setCandidateStatus(true, '00_debug_always_prompt');
         }
 
         // Prompt only for English locales
         if (SurveyConfig.settings.PROMPT_ENGLISH_ONLY && env.language !== 'en' && !env.language.startsWith('en-')) {
-            return setCandidateStatus(false, 'promptEnglishOnly');
+            return setCandidateStatus(false, '01_prompt_english_only');
         }
 
         // Prompt only once per major/minor version,
@@ -229,7 +229,7 @@ async function initSurvey(): Promise<void> {
         if (SurveyConfig.settings.PROMPT_VERSION_ONLY_ONCE && skipVersion && extensionSemVer) {
             // don't prompt for the same version, major/minor - ignoring patch versions (don't rearm for patch versions)
             if (extensionSemVer.major === skipVersion.major && extensionSemVer.minor === skipVersion.minor) {
-                return setCandidateStatus(false, 'promptVersionOnlyOnce', { skipVersion: skipVersion.version });
+                return setCandidateStatus(false, '02_prompt_version_only_once', { skipVersion: skipVersion.version });
             }
         }
 
@@ -242,7 +242,7 @@ async function initSurvey(): Promise<void> {
             ext.context.globalState.get(StateKeys.SURVEY_TAKEN_DATE, new Date(0).toISOString()),
         );
         if (surveyTakenDate.getTime() >= rearmAfterDate.getTime()) {
-            return setCandidateStatus(false, 'surveyTaken', {
+            return setCandidateStatus(false, '03_survey_taken_recently', {
                 surveyTakenDate: surveyTakenDate.toISOString(),
                 daysSinceTaken: Math.floor(
                     (today.getTime() - surveyTakenDate.getTime()) / (1000 * 60 * 60 * 24),
@@ -256,7 +256,7 @@ async function initSurvey(): Promise<void> {
             // Skip if opted out within the last REARM_AFTER_DAYS days
             const optOutDate = new Date(optOutDateString);
             if (!SurveyConfig.settings.REARM_OPT_OUT || optOutDate.getTime() >= rearmAfterDate.getTime()) {
-                return setCandidateStatus(false, 'optOut', { optOutDate: optOutDate.toISOString() });
+                return setCandidateStatus(false, '04_opted_out_recently', { optOutDate: optOutDate.toISOString() });
             }
         }
 
@@ -266,7 +266,7 @@ async function initSurvey(): Promise<void> {
             ext.context.globalState.get(StateKeys.LAST_SESSION_DATE, new Date(0).toISOString()),
         );
         if (SurveyConfig.settings.PROMPT_DATE_ONLY_ONCE && today.toDateString() === lastSessionDate.toDateString()) {
-            return setCandidateStatus(false, 'promptDateOnlyOnce', { lastSessionDate: lastSessionDate.toISOString() });
+            return setCandidateStatus(false, '05_prompted_today', { lastSessionDate: lastSessionDate.toISOString() });
         }
 
         // Count sessions and decide if the user is a candidate
@@ -275,7 +275,7 @@ async function initSurvey(): Promise<void> {
         await ext.context.globalState.update(StateKeys.LAST_SESSION_DATE, today.toDateString());
         await ext.context.globalState.update(StateKeys.SESSION_COUNT, sessionCount);
         if (sessionCount < SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT) {
-            return setCandidateStatus(false, 'minSessionsBeforePrompt', { sessionCount: sessionCount.toString() });
+            return setCandidateStatus(false, '06_insufficient_sessions', { sessionCount: sessionCount.toString() });
         }
         /**
          * At this point, the user is a candidate for the survey, all checks above abourt/return on 'false'.
@@ -303,7 +303,7 @@ async function initSurvey(): Promise<void> {
                 // Lower normalized values = selected
                 const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
 
-                return setCandidateStatus(acceptedForABTest, 'abTestSelection', {
+                return setCandidateStatus(acceptedForABTest, '07_not_in_ab_test_group', {
                     acceptedForABTest: acceptedForABTest.toString(),
                     normalizedValue: normalized.toFixed(6),
                 });
@@ -312,7 +312,7 @@ async function initSurvey(): Promise<void> {
             }
         }
         const fallbackSelection = Math.random() < SurveyConfig.settings.PROBABILITY;
-        return setCandidateStatus(fallbackSelection, 'randomSelection', {
+        return setCandidateStatus(fallbackSelection, '08_random', {
             usedFallbackSelection: context.telemetry.properties.abTestError ? 'true' : 'false',
         });
     });

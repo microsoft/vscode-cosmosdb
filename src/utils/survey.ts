@@ -184,6 +184,7 @@ async function initSurvey(): Promise<void> {
 
         // Prompt only for English locales
         if (SurveyConfig.settings.PROMPT_ENGLISH_ONLY && env.language !== 'en' && !env.language.startsWith('en-')) {
+            context.telemetry.properties.rejectionReason = '01-non-english-locale';
             context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
             return;
         }
@@ -196,6 +197,7 @@ async function initSurvey(): Promise<void> {
         if (SurveyConfig.settings.PROMPT_VERSION_ONLY_ONCE && skipVersion && extensionSemVer) {
             // don't prompt for the same version, major/minor - ignoring patch versions (don't rearm for patch versions)
             if (extensionSemVer.major === skipVersion.major && extensionSemVer.minor === skipVersion.minor) {
+                context.telemetry.properties.rejectionReason = '02-version-already-prompted';
                 context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
                 return;
             }
@@ -210,6 +212,7 @@ async function initSurvey(): Promise<void> {
             ext.context.globalState.get(StateKeys.SURVEY_TAKEN_DATE, new Date(0).toDateString()),
         );
         if (surveyTakenDate.getTime() >= rearmAfterDate.getTime()) {
+            context.telemetry.properties.rejectionReason = '03-survey-taken-recently';
             context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
             return;
         }
@@ -220,6 +223,7 @@ async function initSurvey(): Promise<void> {
             // Skip if opted out within the last REARM_AFTER_DAYS days
             const optOutDate = new Date(optOutDateString);
             if (!SurveyConfig.settings.REARM_OPT_OUT || optOutDate.getTime() >= rearmAfterDate.getTime()) {
+                context.telemetry.properties.rejectionReason = '04-opted-out-recently';
                 context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
                 return;
             }
@@ -231,6 +235,7 @@ async function initSurvey(): Promise<void> {
             ext.context.globalState.get(StateKeys.LAST_SESSION_DATE, new Date(0).toISOString()),
         );
         if (SurveyConfig.settings.PROMPT_DATE_ONLY_ONCE && today.toDateString() === lastSessionDate.toDateString()) {
+            context.telemetry.properties.rejectionReason = '05-prompted-today';
             context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
             return;
         }
@@ -240,6 +245,8 @@ async function initSurvey(): Promise<void> {
         await ext.context.globalState.update(StateKeys.LAST_SESSION_DATE, today);
         await ext.context.globalState.update(StateKeys.SESSION_COUNT, sessionCount);
         if (sessionCount < SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT) {
+            context.telemetry.properties.rejectionReason = '05-insufficient-sessions';
+            context.telemetry.properties.sessionCount = sessionCount.toString();
             context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
             return;
         }
@@ -273,6 +280,11 @@ async function initSurvey(): Promise<void> {
             context.telemetry.properties.acceptedForABTest = acceptedForABTest.toString();
             context.telemetry.properties.normalizedValue = normalized.toFixed(6);
 
+            // If not accepted for A/B test, record rejection reason
+            if (!acceptedForABTest) {
+                context.telemetry.properties.rejectionReason = '06-not-in-ab-test-group';
+            }
+
             // Update surveyState.isCandidate based on selection result
             surveyState.isCandidate = acceptedForABTest;
         } catch (error) {
@@ -281,6 +293,11 @@ async function initSurvey(): Promise<void> {
 
             // Record that fallback selection was used in telemetry
             context.telemetry.properties.usedFallbackSelection = 'true';
+
+            // In fallback random selection path, record rejection reason if not selected
+            if (Math.random() >= SurveyConfig.settings.PROBABILITY) {
+                context.telemetry.properties.rejectionReason = '07-random-selection-rejected';
+            }
 
             surveyState.isCandidate = Math.random() < SurveyConfig.settings.PROBABILITY;
         }

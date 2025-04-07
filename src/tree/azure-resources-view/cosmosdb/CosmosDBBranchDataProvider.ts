@@ -186,6 +186,14 @@ export class CosmosDBBranchDataProvider
     }
 
     getParent(element: TreeElement): TreeElement | null | undefined {
+        if (element.getParent && typeof element.getParent === 'function') {
+            // some tree elements keep track of their parents (documentdb clusters).
+            // we rely on this to get the parent element.
+            return element.getParent();
+        }
+
+        // use local caches otherwise
+
         const parentId = element.id.substring(0, element.id.lastIndexOf('/'));
         if (parentId) {
             const parent = this.childrenCache.get(parentId);

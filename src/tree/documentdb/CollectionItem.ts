@@ -21,7 +21,12 @@ export class CollectionItem implements TreeElement, TreeElementWithExperience, T
 
     private readonly experienceContextValue: string = '';
 
+    getParent(): TreeElement | undefined | null {
+        return this.parent;
+    }
+
     constructor(
+        readonly parent: TreeElement,
         readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
         readonly collectionInfo: CollectionItemModel,

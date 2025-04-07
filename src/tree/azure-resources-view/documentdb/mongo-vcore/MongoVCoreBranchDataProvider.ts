@@ -196,6 +196,19 @@ export class MongoVCoreBranchDataProvider
         return element.getTreeItem();
     }
 
+    /**
+     * Optional method to return the parent of `element`.
+     * Return `null` or `undefined` if `element` is a child of root.
+     *
+     * **NOTE:** This method should be implemented in order to access {@link TreeView.reveal reveal} API.
+     *
+     * @param element The element for which the parent has to be returned.
+     * @returns Parent of `element`.
+     */
+    getParent(element: TreeElement): vscode.ProviderResult<TreeElement> {
+        return element.getParent?.() ?? null;
+    }
+
     refresh(element?: TreeElement): void {
         this.onDidChangeTreeDataEmitter.fire(element);
     }

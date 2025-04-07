@@ -23,11 +23,13 @@ import {
     ToolbarButton,
     ToolbarDivider,
     type ToolbarProps,
+    Tooltip,
     useIsOverflowGroupVisible,
     useIsOverflowItemVisible,
     useOverflowMenu,
 } from '@fluentui/react-components';
 import {
+    CommentCheckmarkRegular,
     DatabasePlugConnectedRegular,
     EmojiSmileSlightRegular,
     FolderOpenRegular,
@@ -256,15 +258,17 @@ const ProvideFeedbackButton = forwardRef((props: OverflowToolbarItemProps, ref: 
         return (
             <Menu>
                 <MenuTrigger>
-                    <ToolbarButton
-                        ref={ref}
-                        aria-label={l10n.t('Provide Feedback')}
-                        icon={<EmojiSmileSlightRegular />}
-                    ></ToolbarButton>
+                    <Tooltip content={l10n.t('Provide Feedback')} relationship="label">
+                        <ToolbarButton
+                            ref={ref}
+                            aria-label={l10n.t('Provide Feedback')}
+                            icon={<EmojiSmileSlightRegular />}
+                        ></ToolbarButton>
+                    </Tooltip>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
-                        <MenuItem onClick={() => void dispatcher.provideFeedback()}>
+                        <MenuItem icon={<CommentCheckmarkRegular />} onClick={() => void dispatcher.provideFeedback()}>
                             {l10n.t('Provide Feedback')}
                         </MenuItem>
                     </MenuList>

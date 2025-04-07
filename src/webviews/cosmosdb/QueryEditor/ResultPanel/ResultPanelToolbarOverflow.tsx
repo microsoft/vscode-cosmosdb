@@ -505,7 +505,12 @@ const ExportButton = forwardRef(
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
                 const selectedRows = hasSelection ? state.selectedRows : undefined;
-                await dispatcher.saveCSV(`${filename}_result`, state.currentQueryResult, state.partitionKey, selectedRows);
+                await dispatcher.saveCSV(
+                    `${filename}_result`,
+                    state.currentQueryResult,
+                    state.partitionKey,
+                    selectedRows,
+                );
             }
 
             if (selectedTab === 'stats__tab') {

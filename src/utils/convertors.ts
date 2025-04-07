@@ -98,10 +98,7 @@ export const isSelectStar = (query: string): boolean => {
     return false;
 };
 
-export const queryResultToJSON = (
-    queryResult: SerializedQueryResult | null,
-    selection?: number[]
-): string => {
+export const queryResultToJSON = (queryResult: SerializedQueryResult | null, selection?: number[]): string => {
     if (!queryResult) {
         return '';
     }

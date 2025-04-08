@@ -26,7 +26,7 @@ export type StorageItem = {
     /**
      * Optional properties associated with the item.
      */
-    properties?: Record<string, string | boolean>;
+    properties?: Record<string, string[] | string | boolean>;
 
     /**
      * Optional array of secrets associated with the item.

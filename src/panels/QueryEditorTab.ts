@@ -18,7 +18,7 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
-import { ext } from '../extensionVariables';
+import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
@@ -27,10 +27,12 @@ import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
-const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.queryEditorHistory';
+const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 
-type HistoryData = {
-    history: string[];
+type HistoryItem = StorageItem & {
+    properties: {
+        history: string[];
+    };
 };
 
 export class QueryEditorTab extends BaseTab {
@@ -270,10 +272,23 @@ export class QueryEditorTab extends BaseTab {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.updateQueryHistory', async (context) => {
             context.telemetry.suppressIfSuccessful = true;
 
-            const historyData = ext.context.globalState.get<HistoryData>(HISTORY_STORAGE_KEY) ?? { history: [] };
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const storage = StorageService.get(StorageNames.Default);
+            const containerId = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const historyItems = (await storage.getItems(HISTORY_STORAGE_KEY)) as HistoryItem[];
+            const historyData = historyItems.find((item) => item.id === containerId) ?? {
+                id: containerId,
+                name: containerId,
+                properties: {
+                    history: [] as string[],
+                },
+            };
 
             // First remove any existing occurrences of this query
-            const queryHistory = historyData.history.filter((item) => item !== query);
+            const queryHistory = historyData.properties.history.filter((item) => item !== query);
 
             // Add the new query to the beginning (most recent first)
             if (query) {
@@ -285,14 +300,14 @@ export class QueryEditorTab extends BaseTab {
                 queryHistory.length = QUERY_HISTORY_SIZE;
             }
 
-            historyData.history = queryHistory;
-            await ext.context.globalState.update(HISTORY_STORAGE_KEY, historyData);
+            historyData.properties.history = queryHistory;
+            await storage.push(HISTORY_STORAGE_KEY, historyData);
 
             // Update the webview with the new history
             await this.channel.postMessage({
                 type: 'event',
                 name: 'updateQueryHistory',
-                params: [historyData.history],
+                params: [historyData.properties.history],
             });
         });
     }

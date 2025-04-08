@@ -12,11 +12,13 @@ import {
     Toolbar,
     ToolbarButton,
     ToolbarDivider,
+    Tooltip,
 } from '@fluentui/react-components';
 import {
     ArrowClockwiseRegular,
     ArrowExportRegular,
     ArrowImportRegular,
+    CommentCheckmarkRegular,
     EmojiSmileSlightRegular,
     PlayRegular,
 } from '@fluentui/react-icons';
@@ -37,14 +39,17 @@ export const ToolbarMainView = (): JSX.Element => {
             <ToolbarDivider />
             <Menu>
                 <MenuTrigger>
-                    <ToolbarButton
-                        aria-label={l10n.t('Provide Feedback')}
-                        icon={<EmojiSmileSlightRegular />}
-                    ></ToolbarButton>
+                    <Tooltip content={l10n.t('Provide Feedback')} relationship="label">
+                        <ToolbarButton
+                            aria-label={l10n.t('Provide Feedback')}
+                            icon={<EmojiSmileSlightRegular />}
+                        ></ToolbarButton>
+                    </Tooltip>
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
                         <MenuItem
+                            icon={<CommentCheckmarkRegular />}
                             onClick={() => {
                                 trpcClient.common.surveyOpen
                                     .mutate({

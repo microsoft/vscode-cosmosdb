@@ -133,6 +133,7 @@
         "@azure/arm-postgresql-flexible": "^7.1.0",
         "@azure/arm-resources": "^5.2.0",
         "@azure/cosmos": "^4.1.1",
+        "@fluentui/react": "^8.122.10",
         "@fluentui/react-components": "^9.56.2",
         "@fluentui/react-icons": "^2.0.265",
         "@microsoft/vscode-azext-azureauth": "^2.5.0",

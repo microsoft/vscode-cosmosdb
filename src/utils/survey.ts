@@ -21,7 +21,7 @@ const SurveyConfig = {
         DEBUG_ALWAYS_PROMPT: false, // Forces survey prompt regardless of conditions
         DISABLE_SURVEY: false, // Completely disables survey functionality
         PROBABILITY: 1, // Probability to become candidate (0-1), Azure Tools uses 0.15
-        A_B_TEST_SELECTION: 0.25, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
+        A_B_TEST_SELECTION: 0.5, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
         PROMPT_ENGLISH_ONLY: false, // Whether to limit survey to English locales
         PROMPT_VERSION_ONLY_ONCE: true, // Only prompt once per major/minor version
         PROMPT_DATE_ONLY_ONCE: true, // Only prompt once per day
@@ -129,17 +129,34 @@ export async function promptAfterActionEventually(
     score: UsageImpact | number,
     triggerAction?: string,
 ): Promise<void> {
-    if (getIsSurveyDisabledGlobally() || surveyState.wasPromptedInSession) {
-        return;
-    }
+    await callWithTelemetryAndErrorHandling('survey.measure-score', async (context: IActionContext) => {
+        context.telemetry.properties.experience = experience;
+        context.telemetry.properties.triggerActionScore = score.toString();
+        context.telemetry.properties.triggerAction = triggerAction;
 
-    countExperienceUsageForSurvey(experience, score);
+        const globalOptOut = getIsSurveyDisabledGlobally();
+        context.telemetry.properties.isSurveyDisabledGlobally = globalOptOut.toString();
+        context.telemetry.properties.wasPromptedInSession = surveyState.wasPromptedInSession.toString();
 
-    const { fullScore, highestExperience } = calculateScoreMetrics();
+        if (globalOptOut || surveyState.wasPromptedInSession) {
+            return;
+        }
 
-    if (fullScore >= SurveyConfig.scoring.REQUIRED_SCORE) {
-        await surveyPromptIfCandidate(highestExperience[0], triggerAction);
-    }
+        countExperienceUsageForSurvey(experience, score);
+
+        const { fullScore, highestExperience } = calculateScoreMetrics();
+        context.telemetry.properties.experienceScore = surveyState.usageScoreByExperience[experience].toString();
+        context.telemetry.properties.fullScore = fullScore.toString();
+
+        const scoreTargetReached = fullScore >= SurveyConfig.scoring.REQUIRED_SCORE;
+        context.telemetry.properties.scoreTargetReached = scoreTargetReached.toString();
+
+        if (scoreTargetReached) {
+            const isCandidate = await getIsSurveyCandidate();
+            context.telemetry.properties.isCandidate = isCandidate.toString();
+            await surveyPromptIfCandidate(highestExperience[0], triggerAction);
+        }
+    });
 }
 
 function calculateScoreMetrics(): {
@@ -177,15 +194,31 @@ export async function getIsSurveyCandidate(): Promise<boolean> {
 
 async function initSurvey(): Promise<void> {
     await callWithTelemetryAndErrorHandling('survey.init', async (context: IActionContext) => {
+        const setCandidateStatus = (
+            isCandidate: boolean,
+            reason: string,
+            extraProps: Record<string, string> = {},
+        ): boolean => {
+            surveyState.isCandidate = isCandidate;
+            context.telemetry.properties.reason = reason;
+            context.telemetry.properties.isCandidate = isCandidate.toString();
+
+            // Add any additional properties
+            Object.entries(extraProps).forEach(([key, value]) => {
+                context.telemetry.properties[key] = value;
+            });
+
+            return isCandidate;
+        };
+
+        // Short-circuit for debug mode
         if (SurveyConfig.settings.DEBUG_ALWAYS_PROMPT) {
-            context.telemetry.properties.isCandidate = (surveyState.isCandidate = true).toString();
-            return;
+            return setCandidateStatus(true, '00_debug_always_prompt');
         }
 
         // Prompt only for English locales
         if (SurveyConfig.settings.PROMPT_ENGLISH_ONLY && env.language !== 'en' && !env.language.startsWith('en-')) {
-            context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
-            return;
+            return setCandidateStatus(false, '01_prompt_english_only');
         }
 
         // Prompt only once per major/minor version,
@@ -196,8 +229,7 @@ async function initSurvey(): Promise<void> {
         if (SurveyConfig.settings.PROMPT_VERSION_ONLY_ONCE && skipVersion && extensionSemVer) {
             // don't prompt for the same version, major/minor - ignoring patch versions (don't rearm for patch versions)
             if (extensionSemVer.major === skipVersion.major && extensionSemVer.minor === skipVersion.minor) {
-                context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
-                return;
+                return setCandidateStatus(false, '02_prompt_version_only_once', { skipVersion: skipVersion.version });
             }
         }
 
@@ -207,11 +239,15 @@ async function initSurvey(): Promise<void> {
 
         // Skip if Survey has been taken within the last REARM_AFTER_DAYS days
         const surveyTakenDate = new Date(
-            ext.context.globalState.get(StateKeys.SURVEY_TAKEN_DATE, new Date(0).toDateString()),
+            ext.context.globalState.get(StateKeys.SURVEY_TAKEN_DATE, new Date(0).toISOString()),
         );
         if (surveyTakenDate.getTime() >= rearmAfterDate.getTime()) {
-            context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
-            return;
+            return setCandidateStatus(false, '03_survey_taken_recently', {
+                surveyTakenDate: surveyTakenDate.toISOString(),
+                daysSinceTaken: Math.floor(
+                    (today.getTime() - surveyTakenDate.getTime()) / (1000 * 60 * 60 * 24),
+                ).toString(),
+            });
         }
 
         // Check if the user has opted out
@@ -220,8 +256,7 @@ async function initSurvey(): Promise<void> {
             // Skip if opted out within the last REARM_AFTER_DAYS days
             const optOutDate = new Date(optOutDateString);
             if (!SurveyConfig.settings.REARM_OPT_OUT || optOutDate.getTime() >= rearmAfterDate.getTime()) {
-                context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
-                return;
+                return setCandidateStatus(false, '04_opted_out_recently', { optOutDate: optOutDate.toISOString() });
             }
         }
 
@@ -231,19 +266,17 @@ async function initSurvey(): Promise<void> {
             ext.context.globalState.get(StateKeys.LAST_SESSION_DATE, new Date(0).toISOString()),
         );
         if (SurveyConfig.settings.PROMPT_DATE_ONLY_ONCE && today.toDateString() === lastSessionDate.toDateString()) {
-            context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
-            return;
+            return setCandidateStatus(false, '05_prompted_today', { lastSessionDate: lastSessionDate.toISOString() });
         }
 
         // Count sessions and decide if the user is a candidate
         const sessionCount = ext.context.globalState.get(StateKeys.SESSION_COUNT, 0) + 1;
-        await ext.context.globalState.update(StateKeys.LAST_SESSION_DATE, today);
+        // Always update session data even if we don't prompt
+        await ext.context.globalState.update(StateKeys.LAST_SESSION_DATE, today.toDateString());
         await ext.context.globalState.update(StateKeys.SESSION_COUNT, sessionCount);
         if (sessionCount < SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT) {
-            context.telemetry.properties.isCandidate = (surveyState.isCandidate = false).toString();
-            return;
+            return setCandidateStatus(false, '06_insufficient_sessions', { sessionCount: sessionCount.toString() });
         }
-
         /**
          * At this point, the user is a candidate for the survey, all checks above abourt/return on 'false'.
          * We need to determine if they are part of the A/B test group or not.
@@ -252,40 +285,36 @@ async function initSurvey(): Promise<void> {
          * Falls back to random selection if the hashing process fails.
          */
 
-        try {
-            // Deterministic machine ID selection using MD5 (faster than SHA-256)
-            // MD5 is sufficient for non-security random distribution needs
-            const buffer = crypto.createHash('md5').update(env.machineId).digest();
+        if (SurveyConfig.settings.A_B_TEST_SELECTION < 1) {
+            try {
+                // Deterministic machine ID selection using MD5 (faster than SHA-256)
+                // MD5 is sufficient for non-security random distribution needs
+                const buffer = crypto.createHash('md5').update(env.machineId).digest();
 
-            // Read a 32-bit unsigned integer from the buffer directly
-            // (Using the first 4 bytes gives a full 32-bit range)
-            const hashInt = buffer.readUInt32BE(0);
+                // Read a 32-bit unsigned integer from the buffer directly
+                // (Using the first 4 bytes gives a full 32-bit range)
+                const hashInt = buffer.readUInt32BE(0);
 
-            // Normalize to a value between 0 and 1
-            // 0xffffffff = 4294967295 (max value of a 32-bit unsigned integer)
-            const normalized = hashInt / 0xffffffff;
+                // Normalize to a value between 0 and 1
+                // 0xffffffff = 4294967295 (max value of a 32-bit unsigned integer)
+                const normalized = hashInt / 0xffffffff;
 
-            // Determine if this machine is selected for the survey
-            // Lower normalized values = selected
-            const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
+                // Determine if this machine is selected for the survey
+                // Lower normalized values = selected
+                const acceptedForABTest = normalized < SurveyConfig.settings.A_B_TEST_SELECTION;
 
-            // Record selection result in telemetry
-            context.telemetry.properties.acceptedForABTest = acceptedForABTest.toString();
-            context.telemetry.properties.normalizedValue = normalized.toFixed(6);
-
-            // Update surveyState.isCandidate based on selection result
-            surveyState.isCandidate = acceptedForABTest;
-        } catch (error) {
-            // Record error message from hashing in telemetry if available
-            context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
-
-            // Record that fallback selection was used in telemetry
-            context.telemetry.properties.usedFallbackSelection = 'true';
-
-            surveyState.isCandidate = Math.random() < SurveyConfig.settings.PROBABILITY;
+                return setCandidateStatus(acceptedForABTest, '07_not_in_ab_test_group', {
+                    acceptedForABTest: acceptedForABTest.toString(),
+                    normalizedValue: normalized.toFixed(6),
+                });
+            } catch (error) {
+                context.telemetry.properties.abTestError = error instanceof Error ? error.message : String(error);
+            }
         }
-
-        context.telemetry.properties.isCandidate = surveyState.isCandidate.toString();
+        const fallbackSelection = Math.random() < SurveyConfig.settings.PROBABILITY;
+        return setCandidateStatus(fallbackSelection, '08_random', {
+            usedFallbackSelection: context.telemetry.properties.abTestError ? 'true' : 'false',
+        });
     });
 }
 

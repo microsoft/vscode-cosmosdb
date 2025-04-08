@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
 import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
 import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
-import { demoViewRouter } from '../../mongoMigration/demoView/demoViewRouter';
+import { assessmentWizardViewRouter } from '../../mongoMigration/assessmentWizardView/assessmentWizardViewRouter';
 import { publicProcedure, router } from '../extension-server/trpc';
 
 /**
@@ -134,7 +134,7 @@ export const appRouter = router({
         documentView: documentViewRouter,
         collectionView: collectionViewRouter,
     },
-    mongoMigration: demoViewRouter,
+    mongoMigration: assessmentWizardViewRouter,
 });
 
 // Export type router type signature, this is used by the client.

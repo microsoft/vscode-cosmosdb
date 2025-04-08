@@ -6,15 +6,15 @@
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
 import { WebviewController } from '../../api/extension-server/WebviewController';
-import { type RouterContext } from './demoViewRouter';
+import { type RouterContext } from './assessmentWizardViewRouter';
 
-export type DemoViewWebviewConfigurationType = {
+export type AssessmentWizardViewWebviewConfigurationType = {
     databaserName: string;
     moreSettings?: boolean;
 };
 
-export class DemoViewController extends WebviewController<DemoViewWebviewConfigurationType> {
-    constructor(initialData: DemoViewWebviewConfigurationType) {
+export class AssessmentWizardViewController extends WebviewController<AssessmentWizardViewWebviewConfigurationType> {
+    constructor(initialData: AssessmentWizardViewWebviewConfigurationType) {
         // ext.context here is the vscode.ExtensionContext required by the ReactWebviewPanelController's original implementation
         // we're not modifying it here in order to be ready for future updates of the webview API.
 
@@ -29,11 +29,11 @@ export class DemoViewController extends WebviewController<DemoViewWebviewConfigu
          * Note, the 'mongoMigrationDemoView' has to be defined here as well: WebviewRegistry in src/webviews/api/configuration/WebviewRegistry.ts
          * (we'll simplifiy this in the future)
          */
-        super(ext.context, API.Common, title, 'mongoMigrationDemoView', initialData);
+        super(ext.context, API.Common, title, 'assessmentWizard', initialData);
 
         const trpcContext: RouterContext = {
             dbExperience: API.Common,
-            webviewName: 'demoView',
+            webviewName: 'assessmentWizardView',
             databaseName: initialData.databaserName,
         };
 

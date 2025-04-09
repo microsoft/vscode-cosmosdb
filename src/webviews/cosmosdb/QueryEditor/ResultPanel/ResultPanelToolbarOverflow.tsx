@@ -47,12 +47,7 @@ import {
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, type PropsWithChildren, useEffect, useState } from 'react';
-import {
-    queryMetricsToCsv,
-    queryMetricsToJSON,
-    queryResultToCsv,
-    queryResultToJSON,
-} from '../../../../utils/convertors';
+import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
 import { Timer } from '../../../Timer';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -438,29 +433,28 @@ const CopyToClipboardButton = forwardRef(
 
         async function onSaveToClipboardAsCSV() {
             if (selectedTab === 'result__tab') {
-                await dispatcher.copyToClipboard(
-                    queryResultToCsv(
-                        state.currentQueryResult,
-                        state.partitionKey,
-                        hasSelection ? state.selectedRows : undefined,
-                    ),
+                await dispatcher.copyCSVToClipboard(
+                    state.currentQueryResult,
+                    state.partitionKey,
+                    hasSelection ? state.selectedRows : undefined,
                 );
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.copyToClipboard(queryMetricsToCsv(state.currentQueryResult));
+                await dispatcher.copyMetricsCSVToClipboard(state.currentQueryResult);
             }
         }
 
         async function onSaveToClipboardAsJSON() {
             if (selectedTab === 'result__tab') {
-                await dispatcher.copyToClipboard(
-                    queryResultToJSON(state.currentQueryResult, hasSelection ? state.selectedRows : undefined),
-                );
+                const selectedRows = hasSelection ? state.selectedRows : undefined;
+                const json = await queryResultToJSON(state.currentQueryResult, selectedRows);
+                await dispatcher.copyToClipboard(json);
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.copyToClipboard(queryMetricsToJSON(state.currentQueryResult));
+                const json = await queryMetricsToJSON(state.currentQueryResult);
+                await dispatcher.copyToClipboard(json);
             }
         }
 
@@ -510,26 +504,24 @@ const ExportButton = forwardRef(
         async function onSaveAsCSV() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                await dispatcher.saveToFile(
-                    queryResultToCsv(state.currentQueryResult, state.partitionKey),
-                    `${filename}_result`,
-                    'csv',
-                );
+                await dispatcher.saveCSV(`${filename}_result`, state.currentQueryResult, state.partitionKey);
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.saveToFile(queryMetricsToCsv(state.currentQueryResult), `${filename}_stats`, 'csv');
+                await dispatcher.saveMetricsCSV(`${filename}_stats`, state.currentQueryResult);
             }
         }
 
         async function onSaveAsJSON() {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
-                await dispatcher.saveToFile(queryResultToJSON(state.currentQueryResult), `${filename}_result`, 'json');
+                const json = await queryResultToJSON(state.currentQueryResult);
+                await dispatcher.saveToFile(json, `${filename}_result`, 'json');
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.saveToFile(queryMetricsToJSON(state.currentQueryResult), `${filename}_stats`, 'json');
+                const json = await queryMetricsToJSON(state.currentQueryResult);
+                await dispatcher.saveToFile(json, `${filename}_stats`, 'json');
             }
         }
 

@@ -8,11 +8,8 @@ import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import {
-    SharedWorkspaceStorage,
-    type SharedWorkspaceStorageItem,
-} from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -34,14 +31,18 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
                 async () => {
                     await new Promise((resolve) => setTimeout(resolve, 250));
 
-                    const storageItem: SharedWorkspaceStorageItem = {
+                    const storageItem: StorageItem = {
                         id: parsedCS.username + '@' + parsedCS.redact().toString(),
                         name: label,
                         properties: { isEmulator: false, api },
                         secrets: [connectionString],
                     };
 
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.MongoClusters,
+                        storageItem,
+                        true,
+                    );
                 },
             );
         }

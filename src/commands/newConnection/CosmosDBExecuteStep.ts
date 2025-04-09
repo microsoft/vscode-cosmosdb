@@ -8,11 +8,8 @@ import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { ext } from '../../extensionVariables';
+import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import {
-    SharedWorkspaceStorage,
-    type SharedWorkspaceStorageItem,
-} from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -33,14 +30,18 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
                 async () => {
                     await new Promise((resolve) => setTimeout(resolve, 250));
 
-                    const storageItem: SharedWorkspaceStorageItem = {
+                    const storageItem: StorageItem = {
                         id: parsedCS.accountId,
                         name: label,
                         properties: { isEmulator: false, api },
                         secrets: [connectionString],
                     };
 
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.AttachedAccounts,
+                        storageItem,
+                        true,
+                    );
                 },
             );
         }

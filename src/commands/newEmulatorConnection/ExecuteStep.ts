@@ -7,11 +7,8 @@ import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
+import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import {
-    SharedWorkspaceStorage,
-    type SharedWorkspaceStorageItem,
-} from '../../tree/workspace-api/SharedWorkspaceStorage';
 import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
 import {
@@ -69,7 +66,7 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                     }
                 }
 
-                const storageItem: SharedWorkspaceStorageItem = {
+                const storageItem: StorageItem = {
                     id: getEmulatorItemUniqueId(connectionString), // Use hash instead of raw connection string
                     name: label,
                     properties: {
@@ -81,9 +78,17 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
                 };
 
                 if (experience.api === API.MongoDB) {
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.MongoClusters, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.MongoClusters,
+                        storageItem,
+                        true,
+                    );
                 } else {
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.AttachedAccounts,
+                        storageItem,
+                        true,
+                    );
                 }
             },
         );

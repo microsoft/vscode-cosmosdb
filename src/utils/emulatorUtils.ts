@@ -6,8 +6,8 @@
 import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
 import { l10n } from 'vscode';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
+import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { type SharedWorkspaceStorageItem, SharedWorkspaceStorage } from '../tree/workspace-api/SharedWorkspaceStorage';
 import { randomUtils } from './randomUtils';
 
 /**
@@ -34,9 +34,7 @@ import { randomUtils } from './randomUtils';
  * @param item - The emulator item to migrate
  * @returns A Promise that resolves to the migrated item, or the original item if migration fails
  */
-export async function migrateRawEmulatorItemToHashed(
-    item: SharedWorkspaceStorageItem,
-): Promise<SharedWorkspaceStorageItem> {
+export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise<StorageItem> {
     try {
         // Check if the item is already in the new format
         if (item.id.startsWith('emulator-')) {
@@ -63,7 +61,7 @@ export async function migrateRawEmulatorItemToHashed(
 
                 const newName = getEmulatorItemLabelForApi(api, port);
                 const newId = getEmulatorItemUniqueId(connectionString);
-                const newItem: SharedWorkspaceStorageItem = {
+                const newItem: StorageItem = {
                     ...item,
                     id: newId,
                     name: newName,
@@ -75,16 +73,16 @@ export async function migrateRawEmulatorItemToHashed(
 
                 try {
                     // Store the new item, or abort if it already exists which would be unexpected at this point
-                    await SharedWorkspaceStorage.push(workspaceType, newItem, false);
+                    await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
                 } catch (error) {
                     throw new Error(`Failed to migrate emulator item "${item.id}": ${error}`);
                 }
                 // Delete old item after successful migration
-                await SharedWorkspaceStorage.delete(workspaceType, item.id);
+                await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);
 
                 return newItem;
             },
-        )) as SharedWorkspaceStorageItem;
+        )) as StorageItem;
     } catch {
         // the error has already been logged by callWithTelemetryAndErrorHandling
         // If migration fails, keep the original item

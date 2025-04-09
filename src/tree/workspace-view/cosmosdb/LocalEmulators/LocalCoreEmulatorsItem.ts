@@ -8,12 +8,12 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
+import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from '../../../workspace-api/SharedWorkspaceStorage';
 import { type CosmosDBAttachedAccountModel } from '../CosmosDBAttachedAccountModel';
 import { NewCoreEmulatorConnectionItem } from './NewCoreEmulatorConnectionItem';
 
@@ -26,7 +26,9 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const allItems = await SharedWorkspaceStorage.getItems(WorkspaceResourceType.AttachedAccounts);
+        const allItems = await StorageService.get(StorageNames.Workspace).getItems(
+            WorkspaceResourceType.AttachedAccounts,
+        );
 
         const children = await this.getChildrenEmulatorOnlyImpl(allItems);
 
@@ -43,7 +45,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
         };
     }
 
-    protected async getChildrenEmulatorOnlyImpl(items: SharedWorkspaceStorageItem[]): Promise<TreeElement[]> {
+    protected async getChildrenEmulatorOnlyImpl(items: StorageItem[]): Promise<TreeElement[]> {
         return (
             await Promise.all(
                 items

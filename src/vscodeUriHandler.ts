@@ -15,10 +15,10 @@ import {
     type ParsedCosmosDBConnectionString,
 } from './cosmosdb/cosmosDBConnectionStrings';
 import { ext } from './extensionVariables';
+import { StorageNames, StorageService, type StorageItem } from './services/storageService';
 import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
 import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
-import { SharedWorkspaceStorage, type SharedWorkspaceStorageItem } from './tree/workspace-api/SharedWorkspaceStorage';
 import { getConfirmationAsInSettings } from './utils/dialogs/getConfirmation';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from './utils/emulatorUtils';
 
@@ -296,7 +296,7 @@ async function createAttachedForConnection(
     const name = !isEmulator ? accountName : getEmulatorItemLabelForApi(api, emulatorPort);
     const id = !isEmulator ? accountId : getEmulatorItemUniqueId(connectionString);
     await ext.state.showCreatingChild(parentId, l10n.t('Creating "{nodeName}"…', { nodeName: accountId }), async () => {
-        const storageItem: SharedWorkspaceStorageItem = {
+        const storageItem: StorageItem = {
             id,
             name,
             properties: { isEmulator, api },
@@ -304,7 +304,11 @@ async function createAttachedForConnection(
         };
 
         try {
-            await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, false);
+            await StorageService.get(StorageNames.Workspace).push(
+                WorkspaceResourceType.AttachedAccounts,
+                storageItem,
+                false,
+            );
         } catch (error) {
             if (error instanceof Error && error.message.includes('already exists')) {
                 const confirmed = await getConfirmationAsInSettings(
@@ -318,7 +322,11 @@ async function createAttachedForConnection(
                 );
 
                 if (confirmed) {
-                    await SharedWorkspaceStorage.push(WorkspaceResourceType.AttachedAccounts, storageItem, true);
+                    await StorageService.get(StorageNames.Workspace).push(
+                        WorkspaceResourceType.AttachedAccounts,
+                        storageItem,
+                        true,
+                    );
                 }
             } else {
                 throw error;

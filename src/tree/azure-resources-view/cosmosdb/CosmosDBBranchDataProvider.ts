@@ -70,15 +70,15 @@ export class CosmosDBBranchDataProvider
                     const children = (await element.getChildren?.()) ?? [];
                     const wrappedChildren = children.map((child) => {
                         if (!this.isAncestorOf(element, child.id)) {
-                            //TODO: improve error handling, right now we throw and the whole tree is not being built
-                            // we should use createGenericElement with error for each failed child
-                            throw new Error(
+                            // Create an error element instead of throwing
+                            return this.createErrorElement(
                                 l10n.t(
                                     'Child element "{0}" is not a child of parent element "{1}".',
                                     child.id,
                                     element.id,
                                 ),
-                            );
+                                `${element.id}/error-${Date.now()}`,
+                            ) as TreeElement;
                         }
                         if (this.childrenCache.has(child.id)) {
                             return this.childrenCache.get(child.id)!;
@@ -97,10 +97,10 @@ export class CosmosDBBranchDataProvider
             return result ?? [];
         } catch (error) {
             return [
-                createGenericElement({
-                    contextValue: 'cosmosDB.item.error',
-                    label: l10n.t('Error: {0}', parseError(error).message),
-                }) as TreeElement,
+                this.createErrorElement(
+                    l10n.t('Error: {0}', parseError(error).message),
+                    `${element.id}/error-${Date.now()}`,
+                ),
             ];
         }
     }
@@ -170,7 +170,7 @@ export class CosmosDBBranchDataProvider
                     // Unknown resource type
                 }
 
-                return null as unknown as TreeElement;
+                return this.createErrorElement(l10n.t('Unknown resource type'), `${resource.id}/error-${Date.now()}`);
             },
         );
 
@@ -280,5 +280,13 @@ export class CosmosDBBranchDataProvider
 
         // Notify the tree view to refresh
         this.onDidChangeTreeDataEmitter.fire(element);
+    }
+
+    private createErrorElement(message: string, id: string): TreeElement {
+        return createGenericElement({
+            contextValue: 'cosmosDB.item.error',
+            label: message,
+            id: id,
+        }) as TreeElement;
     }
 }

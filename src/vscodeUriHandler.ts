@@ -568,6 +568,19 @@ interface UriParams {
 function extractAndValidateParams(context: IActionContext, query: string): UriParams {
     const params = extractParams(query);
 
+    // Add sensitive values to valuesToMask to prevent sensitive data in logs
+    Object.entries(params).forEach(([key, value]) => {
+        switch (key) {
+            case 'connectionString':
+            case 'database':
+            case 'container':
+                if (value !== undefined) {
+                    context.valuesToMask.push(value);
+                }
+                break;
+        }
+    });
+
     if (!params.resourceId && !params.connectionString) {
         throw new Error(l10n.t('Either resource ID or connection string is required'));
     }

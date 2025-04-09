@@ -5,7 +5,7 @@
 
 import path from 'node:path';
 
-export const localizationPath = './l10n';
+export const localizationPath = path.join(process.cwd(), 'l10n');
 export const bundleName = 'bundle.l10n.json';
 export const bundlePath = path.join(localizationPath, bundleName);
 export const utilsBundlePaths = [

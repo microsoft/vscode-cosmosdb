@@ -5,12 +5,17 @@
 
 import fs from 'node:fs';
 import { bundlePath } from './constants.mjs';
-import { l10nExportStrings, sortObjectByKeys } from './utils.mjs';
+import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
 
 // Function to build the localization bundle
 const buildLocalisationBundle = async () => {
     // Extract localization strings from the source files
-    const output = await l10nExportStrings(['./src']);
+    const output = await l10nExportAllStrings(['./src']);
+
+    if (!output) {
+        console.log('No localization strings found.');
+        return;
+    }
 
     // Log the path of the merged localization file being written
     console.log(`Writing merged localization file: ${bundlePath}`);

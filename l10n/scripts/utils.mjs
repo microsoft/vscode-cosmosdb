@@ -22,6 +22,7 @@ const GLOB_DEFAULTS = {
 /**
  * Export strings from TypeScript/JavaScript files.
  * @param {Array} paths - The paths to search for files.
+ * @returns {Promise<Object.<string, string>|undefined>} - The extracted strings as a JSON object.
  */
 export async function l10nExportStrings(paths) {
     console.log('Searching for TypeScript/JavaScript files...');
@@ -58,10 +59,10 @@ export async function l10nExportStrings(paths) {
 
 /**
  * Extract localization strings from the specified paths and merge them with utility bundle paths.
- * @param {String|Array<String>} paths
- * @returns {Promise<void>}
+ * @param {string|string[]} paths
+ * @returns {Promise<Object.<string, string>|undefined>}
  */
-export const extractL10nStrings = async (paths) => {
+export const l10nExportAllStrings = async (paths) => {
     // Extract localization strings from the source files
     const output = await l10nExportStrings(Array.isArray(paths) ? paths : [paths]);
 
@@ -97,12 +98,14 @@ export const extractL10nStrings = async (paths) => {
 
     // Log the total count of unique localization keys
     console.log(`Count of localization keys: ${Object.keys(output).length}`);
+
+    return output;
 };
 
 /**
  * Sort an object by its keys.
- * @param {{}} obj
- * @returns {{}}
+ * @param {Object.<string, string>} obj
+ * @returns {Object.<string, string>}
  */
 export const sortObjectByKeys = (obj) => {
     return Object.keys(obj)

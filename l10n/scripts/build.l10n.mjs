@@ -21,7 +21,7 @@ const buildLocalisationBundle = async () => {
     console.log(`Writing merged localization file: ${bundlePath}`);
 
     // Write the merged localization data to the output file in a formatted JSON structure
-    fs.writeFileSync(bundlePath, JSON.stringify(sortObjectByKeys(output), null, 2));
+    fs.writeFileSync(bundlePath, JSON.stringify(sortObjectByKeys(output), null, 2) + '\n', 'utf8');
 };
 
 // Execute the function to build the localization bundle

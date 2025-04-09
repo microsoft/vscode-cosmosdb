@@ -26,6 +26,8 @@ const checkLocalisationBundle = async () => {
     if (bundleOld !== bundleNew) {
         console.log('Localization file has changed. Please run "npm run l10n" to update it.');
         process.exit(1); // Exit with an error code if changes are detected
+    } else {
+        console.log('Localization file is up to date.');
     }
 };
 

@@ -32,8 +32,8 @@ export class CosmosDBBranchDataProvider
 {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
 
-    private readonly childrenCache = new Map<string, TreeElement>();
-    private readonly resourcesCache = new Map<string, TreeElement>();
+    private readonly nodeCache = new Map<string, TreeElement>();
+    private readonly childToParentMap = new Map<string, string>();
 
     constructor() {
         super(() => this.onDidChangeTreeDataEmitter.dispose());
@@ -67,30 +67,41 @@ export class CosmosDBBranchDataProvider
                     // I assume this array should be filled after element.getChildren() call
                     // And these values should be masked in the context
 
+                    // TODO: return cached children instead of always calling getChildren? or we should invalidate the cache here.
                     const children = (await element.getChildren?.()) ?? [];
-                    const wrappedChildren = children.map((child) => {
+                    return children.map((child) => {
+                        // If the child doesn't have an ID or is not part of the tree, return it as is
+                        // This is for temporary elements created by TreeElementStateManager like "Createing XYZ"
                         if (!this.isAncestorOf(element, child.id)) {
-                            // Create an error element instead of throwing
-                            return this.createErrorElement(
-                                l10n.t(
-                                    'Child element "{0}" is not a child of parent element "{1}".',
-                                    child.id,
-                                    element.id,
-                                ),
-                                `${element.id}/error-${Date.now()}`,
+                            return ext.state.wrapItemInStateHandling(child, (item: TreeElement) =>
+                                this.refresh(item),
                             ) as TreeElement;
                         }
-                        if (this.childrenCache.has(child.id)) {
-                            return this.childrenCache.get(child.id)!;
-                        }
-                        const wrapped = ext.state.wrapItemInStateHandling(child, (child: TreeElement) =>
-                            this.refresh(child),
-                        ) as TreeElement;
-                        this.childrenCache.set(child.id, wrapped);
-                        return wrapped;
-                    });
 
-                    return wrappedChildren;
+                        // Check cache first
+                        const cached = this.nodeCache.get(child.id);
+                        if (cached) {
+                            context.telemetry.properties.cached = 'true';
+                            return cached;
+                        }
+
+                        try {
+                            // If not in cache, wrap and store
+                            const wrapped = ext.state.wrapItemInStateHandling(child, (item: TreeElement) =>
+                                this.refresh(item),
+                            ) as TreeElement;
+
+                            this.nodeCache.set(child.id, wrapped);
+                            if (element.id) {
+                                this.childToParentMap.set(child.id, element.id);
+                            }
+
+                            return wrapped;
+                        } catch (wrapError) {
+                            context.telemetry.properties.wrapError = parseError(wrapError).message;
+                            return child; // Return unwrapped if wrapping fails
+                        }
+                    });
                 },
             );
 
@@ -120,7 +131,8 @@ export class CosmosDBBranchDataProvider
                 context.valuesToMask.push(id);
                 context.valuesToMask.push(name);
 
-                const cachedResourceItem = this.resourcesCache.get(id);
+                // Check unified cache first
+                const cachedResourceItem = this.nodeCache.get(id);
                 if (cachedResourceItem) {
                     context.telemetry.properties.cached = 'true';
                     return cachedResourceItem;
@@ -162,12 +174,14 @@ export class CosmosDBBranchDataProvider
                         // Unknown experience fallback
                         resourceItem = new NoSqlAccountResourceItem(accountModel, CoreExperience);
                     }
-                    this.resourcesCache.set(id, resourceItem);
-                    return ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
-                        this.refresh(item),
-                    ) as TreeElement;
-                } else {
-                    // Unknown resource type
+
+                    if (resourceItem) {
+                        const wrapped = ext.state.wrapItemInStateHandling(resourceItem, (item: TreeElement) =>
+                            this.refresh(item),
+                        ) as TreeElement;
+                        this.nodeCache.set(id, wrapped);
+                        return wrapped;
+                    }
                 }
 
                 return this.createErrorElement(l10n.t('Unknown resource type'), `${resource.id}/error-${Date.now()}`);
@@ -186,36 +200,36 @@ export class CosmosDBBranchDataProvider
     }
 
     getParent(element: TreeElement): TreeElement | null | undefined {
+        // First check if we have the parent-child relationship cached
+        if (element?.id && this.childToParentMap.has(element.id)) {
+            const parentId = this.childToParentMap.get(element.id);
+            if (parentId) {
+                return this.nodeCache.get(parentId);
+            }
+        }
+
+        // Fall back if relationship not cached
         if (element.getParent && typeof element.getParent === 'function') {
             // some tree elements keep track of their parents (documentdb clusters).
             // we rely on this to get the parent element.
             return element.getParent();
         }
 
-        // use local caches otherwise
-
         const parentId = element.id.substring(0, element.id.lastIndexOf('/'));
         if (parentId) {
-            const parent = this.childrenCache.get(parentId);
-            if (parent) {
-                return parent;
-            }
-            const resourceItem = this.resourcesCache.get(parentId);
-            if (resourceItem) {
-                return resourceItem;
-            }
+            return this.nodeCache.get(parentId);
         }
+
         return undefined;
     }
 
     async findNodeById(id: string): Promise<TreeElement | undefined> {
-        const item = this.resourcesCache.get(id) ?? this.childrenCache.get(id);
-        // If the resource item is found in the cache, return it
+        const item = this.nodeCache.get(id);
         if (item) {
             return item;
         }
         // If the resource item is not found in the cache, search through all children
-        for (const [key, value] of this.childrenCache.entries()) {
+        for (const [key, value] of this.nodeCache.entries()) {
             if (key.startsWith(id)) {
                 const child = await this.findChildById(value, id);
                 if (child) {
@@ -253,33 +267,46 @@ export class CosmosDBBranchDataProvider
         }
     }
 
-    protected isAncestorOf(element: TreeElement, id: string): boolean {
+    protected isAncestorOf(element: TreeElement, id: string | undefined): boolean {
+        if (element.id === undefined || id === undefined) {
+            return false;
+        }
         const elementId = element.id + '/';
         return id.toLowerCase().startsWith(elementId.toLowerCase());
     }
 
     refresh(element?: TreeElement): void {
-        if (element) {
-            // Get the cache key for this element
-            const cacheKey = element.id;
-
-            // Clear this element's children from cache
-            this.childrenCache.delete(cacheKey);
-
-            // Also clear any potential child caches using prefix
-            const elementId = element.id;
-            for (const key of this.childrenCache.keys()) {
-                if (key.startsWith(`${elementId}/`)) {
-                    this.childrenCache.delete(key);
-                }
-            }
+        if (element?.id) {
+            this.pruneElementCache(element.id);
         } else {
-            // If no element specified, clear the entire cache
-            this.childrenCache.clear();
+            this.nodeCache.clear();
+            this.childToParentMap.clear();
         }
 
         // Notify the tree view to refresh
         this.onDidChangeTreeDataEmitter.fire(element);
+    }
+
+    private pruneElementCache(elementId: string): void {
+        // Remove the element itself
+        this.nodeCache.delete(elementId);
+
+        // Remove all descendants
+        const prefix = `${elementId}/`;
+        const keysToDelete: string[] = [];
+
+        this.nodeCache.forEach((_, key) => {
+            if (key.startsWith(prefix)) {
+                keysToDelete.push(key);
+            }
+        });
+
+        keysToDelete.forEach((key) => {
+            this.nodeCache.delete(key);
+            this.childToParentMap.delete(key);
+        });
+        // Clean up parent reference
+        this.childToParentMap.delete(elementId);
     }
 
     private createErrorElement(message: string, id: string): TreeElement {

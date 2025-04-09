@@ -146,7 +146,7 @@ module.exports = (env, { mode }) => {
                         to: 'README.md',
                         transform: isDev
                             ? undefined
-                            : function transform(content, absoluteFrom) {
+                            : function transform(content) {
                                   let data = content.toString();
                                   return data.replace(
                                       /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis,

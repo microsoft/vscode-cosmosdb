@@ -77,7 +77,7 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
  *
  * @remarks We store the workspace resources by their initial Id based on their endpoint,
  * however when building the Tree branch we nest the Ids with their parents resulting
- * in node.id being like `${WorkspaceResourceType.AttachedAccounts}/accounts/${resourceId}`
+ * in node.id being like `${WorkspaceResourceType.AttachedAccounts}/${resourceId}`
  *
  * When mapping back to Ids being used in the storage, always use this function to validate the node
  * and get the right storage Id for a node.

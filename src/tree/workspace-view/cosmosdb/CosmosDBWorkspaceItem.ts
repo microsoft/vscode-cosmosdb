@@ -22,7 +22,7 @@ import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountMode
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';
 
 export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContextValue {
-    public readonly id: string = `${WorkspaceResourceType.AttachedAccounts}/accounts`;
+    public readonly id: string = `${WorkspaceResourceType.AttachedAccounts}`;
     public readonly contextValue: string = 'treeItem.accounts';
 
     constructor() {

@@ -20,7 +20,7 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
     public readonly experience: Experience;
 
     constructor() {
-        this.id = `${WorkspaceResourceType.MongoClusters}/accounts`;
+        this.id = `${WorkspaceResourceType.MongoClusters}`;
         this.experience = MongoClustersExperience;
     }
 

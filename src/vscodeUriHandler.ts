@@ -353,7 +353,7 @@ async function revealAttachedInWorkspaceExplorer(
 ): Promise<void> {
     // Open the Azure Workspace view
     await vscode.commands.executeCommand('azureWorkspace.focus');
-    const fullId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts/${accountId}`;
+    const fullId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/${accountId}`;
     const fullResourceId = `${fullId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
     // TODO: use revealWorkspaceResource!
     await ext.rgApiV2.resources.revealAzureResource(fullResourceId, {

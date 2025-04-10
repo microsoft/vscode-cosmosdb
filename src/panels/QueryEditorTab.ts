@@ -153,6 +153,7 @@ export class QueryEditorTab extends BaseTab {
                     payload.params[0] as string,
                     payload.params[1] as SerializedQueryResult | null,
                     payload.params[2] as PartitionKeyDefinition,
+                    payload.params[3] as number[],
                 );
             case 'saveMetricsCSV':
                 return this.saveMetricsCSV(
@@ -441,8 +442,9 @@ export class QueryEditorTab extends BaseTab {
         name: string,
         currentQueryResult: SerializedQueryResult | null,
         partitionKey?: PartitionKeyDefinition,
+        selection?: number[],
     ): Promise<void> {
-        const text = await queryResultToCsv(currentQueryResult, partitionKey);
+        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
         await vscodeUtil.showNewFile(text, name, '.csv');
     }
 

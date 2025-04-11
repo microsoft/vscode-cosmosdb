@@ -72,7 +72,7 @@ export const ResultTab = () => {
                         break;
                     case 'JSON':
                         if (!viewData.json) {
-                            const jsonData = await queryResultToJSON(currentQueryResult);
+                            const jsonData = queryResultToJSON(currentQueryResult);
                             setViewData((prev) => ({
                                 ...prev,
                                 json: jsonData,

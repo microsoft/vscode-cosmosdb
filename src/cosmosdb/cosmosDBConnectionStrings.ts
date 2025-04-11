@@ -4,20 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import * as url from 'url';
 import { ParsedConnectionString } from '../ParsedConnectionString';
-import { nonNullProp } from '../utils/nonNull';
 
 export function parseCosmosDBConnectionString(connectionString: string): ParsedCosmosDBConnectionString {
     const endpoint = getPropertyFromConnectionString(connectionString, 'AccountEndpoint');
     const masterKey = getPropertyFromConnectionString(connectionString, 'AccountKey');
     const databaseName = getPropertyFromConnectionString(connectionString, 'Database');
 
-    if (!endpoint || !masterKey) {
+    if (!endpoint) {
         throw new Error(l10n.t('Invalid Cosmos DB connection string.'));
     }
 
-    return new ParsedCosmosDBConnectionString(connectionString, endpoint, masterKey, databaseName);
+    const endpointUrl = new URL(endpoint);
+
+    return new ParsedCosmosDBConnectionString(connectionString, endpointUrl, masterKey, databaseName);
 }
 
 function getPropertyFromConnectionString(connectionString: string, property: string): string | undefined {
@@ -31,15 +31,28 @@ export class ParsedCosmosDBConnectionString extends ParsedConnectionString {
     public readonly port: string;
 
     public readonly documentEndpoint: string;
-    public readonly masterKey: string;
+    public readonly masterKey: string | undefined;
 
-    constructor(connectionString: string, endpoint: string, masterKey: string, databaseName: string | undefined) {
+    constructor(
+        connectionString: string,
+        endpoint: URL,
+        masterKey: string | undefined,
+        databaseName: string | undefined,
+    ) {
         super(connectionString, databaseName);
-        this.documentEndpoint = endpoint;
-        this.masterKey = masterKey;
 
-        const parsedEndpoint = url.parse(endpoint);
-        this.hostName = nonNullProp(parsedEndpoint, 'hostname', 'hostname');
-        this.port = nonNullProp(parsedEndpoint, 'port', 'port');
+        this.hostName = endpoint.hostname;
+        this.port = endpoint.port || '443';
+
+        // Construct the endpoint URL with the port explicitly included
+        // since URL.toString() does not include the port if it is the default (80 or 443)
+        this.documentEndpoint = `${endpoint.protocol}//${this.hostName}:${this.port}${endpoint.pathname}${endpoint.search}`;
+        this.masterKey = masterKey;
+    }
+
+    public get accountName(): string {
+        // The hostname is in the format of "accountname.documents.azure.com"
+        // Extract the first subdomain component by splitting the hostname on dots
+        return this.hostName.split('.')[0];
     }
 }

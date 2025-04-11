@@ -5,10 +5,9 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-
-import * as l10n from '@vscode/l10n';
 import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
@@ -19,12 +18,22 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
+
+const QUERY_HISTORY_SIZE = 10;
+const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
+
+type HistoryItem = StorageItem & {
+    properties: {
+        history: string[];
+    };
+};
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
@@ -98,6 +107,7 @@ export class QueryEditorTab extends BaseTab {
 
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
+            await this.updateQueryHistory();
             if (this.query) {
                 await this.channel.postMessage({
                     type: 'event',
@@ -168,6 +178,8 @@ export class QueryEditorTab extends BaseTab {
                 );
             case 'copyMetricsCSVToClipboard':
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
+            case 'updateQueryHistory':
+                return this.updateQueryHistory(payload.params[0] as string);
         }
 
         return super.getCommand(payload);
@@ -254,6 +266,50 @@ export class QueryEditorTab extends BaseTab {
                 ext = `.${ext}`;
             }
             await vscodeUtil.showNewFile(text, filename, ext);
+        });
+    }
+
+    private async updateQueryHistory(query?: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.updateQueryHistory', async (context) => {
+            context.telemetry.suppressIfSuccessful = true;
+
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const storage = StorageService.get(StorageNames.Default);
+            const containerId = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const historyItems = (await storage.getItems(HISTORY_STORAGE_KEY)) as HistoryItem[];
+            const historyData = historyItems.find((item) => item.id === containerId) ?? {
+                id: containerId,
+                name: containerId,
+                properties: {
+                    history: [] as string[],
+                },
+            };
+
+            // First remove any existing occurrences of this query
+            const queryHistory = historyData.properties.history.filter((item) => item !== query);
+
+            // Add the new query to the beginning (most recent first)
+            if (query) {
+                queryHistory.unshift(query);
+            }
+
+            // Trim to max size if needed
+            if (queryHistory.length > QUERY_HISTORY_SIZE) {
+                queryHistory.length = QUERY_HISTORY_SIZE;
+            }
+
+            historyData.properties.history = queryHistory;
+            await storage.push(HISTORY_STORAGE_KEY, historyData);
+
+            // Update the webview with the new history
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'updateQueryHistory',
+                params: [historyData.properties.history],
+            });
         });
     }
 

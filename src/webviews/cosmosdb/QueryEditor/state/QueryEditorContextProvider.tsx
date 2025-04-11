@@ -31,7 +31,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
-        this.dispatch({ type: 'appendQueryHistory', queryValue: query });
+        await this.sendCommand('updateQueryHistory', query);
         await this.sendCommand('runQuery', query, { ...DEFAULT_RESULT_VIEW_METADATA, ...options });
     }
     public async stopQuery(executionId: string): Promise<void> {
@@ -164,6 +164,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('isSurveyCandidateChanged', (isSurveyCandidate: boolean) => {
             this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: isSurveyCandidate });
+        });
+
+        this.channel.on('updateQueryHistory', (queryHistory: string[]) => {
+            this.dispatch({ type: 'updateHistory', queryHistory });
         });
 
         //TODO: there should be no queryError event that needs to show a toast,

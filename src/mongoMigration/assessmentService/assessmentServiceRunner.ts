@@ -47,7 +47,7 @@ export class MongoAssessmentServiceRunner extends vscode.Disposable {
     public static async createShell(): Promise<MongoAssessmentServiceRunner> {
         //const config = vscode.workspace.getConfiguration();
         const mongoAssessmentServerPath: string | undefined = 'dotnet'; //C:\\code\\ads-extension-mongo-migration\\Product\\AdsMongoMigration\\bin\\service\\MongoAssessmentExtensionService.dll';
-        const shellArgs: string[] = ['C:\\code\\ads-extension-mongo-migration\\Product\\AdsMongoMigration\\bin\\service\\MongoAssessmentExtensionService.dll']; // config.get(ext.settingsKeys.mongoShellArgs, []);
+        const shellArgs: string[] = ['D:\\ads-extension-mongo-migration\\Product\\AdsMongoMigration\\bin\\service\\MongoAssessmentExtensionService.dll']; // config.get(ext.settingsKeys.mongoShellArgs, []);
 
         return MongoAssessmentServiceRunner.createShellProcessHelper(
             mongoAssessmentServerPath,

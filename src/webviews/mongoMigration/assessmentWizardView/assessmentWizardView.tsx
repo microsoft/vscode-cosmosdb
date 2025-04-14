@@ -26,7 +26,7 @@ import { type AssessmentWizardViewWebviewConfigurationType } from './assessmentW
 
 export const AssessmentWizardView = (): JSX.Element => {
     useConfiguration<AssessmentWizardViewWebviewConfigurationType>();
-    const [migrationLog, setMigrationLog] = useState<string>('');
+    // Removed unused migrationLog state variable
 
     // Define wizard steps
     const steps = [
@@ -50,7 +50,7 @@ export const AssessmentWizardView = (): JSX.Element => {
                     <>
                         <Button appearance="primary"
                             onClick={() => {
-                                setMigrationLog('Assessment started successfully.');
+                                console.log('Assessment started successfully.');
                                 setCurrentStepIndex(1);
                             }}>
                             Start assessment
@@ -69,7 +69,7 @@ export const AssessmentWizardView = (): JSX.Element => {
                         <Button
                             appearance="primary"
                             onClick={() => {
-                                setMigrationLog('Assessment results viewed successfully.');
+                                console.log('Assessment results viewed successfully.');
                                 setCurrentStepIndex(2);
                             }}
                         >Next

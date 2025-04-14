@@ -53,9 +53,7 @@ export class MongoMigrationExtension implements vscode.Disposable {
                 // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
 
                 registerCommand('command.migration.startView', () => {
-
                     const view = new MigrationPanelViewController({
-                        //         const view = new AssessmentWizardViewController({
                         databaserName: 'aDatabaseName',
                         moreSettings: false,
                     });

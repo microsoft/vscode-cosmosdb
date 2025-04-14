@@ -5,7 +5,7 @@
 
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import * as path from 'path';
-import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient';
+import { LanguageClient, TransportKind, type LanguageClientOptions, type ServerOptions } from 'vscode-languageclient/node';
 import { ext } from '../extensionVariables';
 import { localize } from '../utils/localize';
 import { type IConnectionParams } from './services/IConnectionParams';
@@ -45,7 +45,14 @@ export class MongoDBLanguageClient {
             serverOptions,
             clientOptions,
         );
-        const disposable = this.client.start();
+        const startPromise = this.client.start();
+
+        // Wrap the promise in a disposable object
+        const disposable = {
+            dispose: () => {
+                void startPromise.then(() => this.client.stop());
+            },
+        };
 
         // Push the disposable to the context's subscriptions so that the
         // client can be deactivated on extension deactivation

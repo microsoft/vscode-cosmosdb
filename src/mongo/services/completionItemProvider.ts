@@ -174,12 +174,14 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
             .doComplete(document, position, this.jsonLanguageService.parseJSONDocument(document))
             .then((list) => {
                 return list!.items.map((item: CompletionItem) => {
-                    const startPositionOffset = document.offsetAt(item.textEdit!.range.start);
-                    const endPositionOffset = document.offsetAt(item.textEdit!.range.end);
-                    item.textEdit!.range = Range.create(
-                        this.textDocument.positionAt(startPositionOffset + contextOffset),
-                        this.textDocument.positionAt(contextOffset + endPositionOffset),
-                    );
+                    if (item.textEdit && 'range' in item.textEdit) {
+                        const startPositionOffset = document.offsetAt(item.textEdit.range.start);
+                        const endPositionOffset = document.offsetAt(item.textEdit.range.end);
+                        item.textEdit.range = Range.create(
+                            this.textDocument.positionAt(startPositionOffset + contextOffset),
+                            this.textDocument.positionAt(contextOffset + endPositionOffset),
+                        );
+                    }
                     return item;
                 });
             });
@@ -262,14 +264,14 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
 
     private getLastTerminalNode(ctx: ParserRuleContext): TerminalNode {
         return ctx.children ? <TerminalNode>ctx.children
-                  .slice()
-                  .reverse()
-                  .filter(
-                      (node) =>
-                          node instanceof TerminalNode &&
-                          node.symbol.stopIndex > -1 &&
-                          node.symbol.stopIndex < this.offset,
-                  )[0] : null!;
+            .slice()
+            .reverse()
+            .filter(
+                (node) =>
+                    node instanceof TerminalNode &&
+                    node.symbol.stopIndex > -1 &&
+                    node.symbol.stopIndex < this.offset,
+            )[0] : null!;
     }
 
     private getPreviousNode(node: ParseTree): ParseTree {

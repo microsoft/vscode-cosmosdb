@@ -27,7 +27,7 @@ export const migrationPanelViewRouter = router({
                 "assessmentName": "kjsd",
                 "assessmentFolderPath": ""
             });
-            return 'Assessment data returned ' + JSON.stringify(response.Body);
+            return 'Assessment data returned ' + JSON.stringify(response);
         }),
     getWaterMarkIconPath: publicProcedure.use(trpcToTelemetry).query(() => {
         return getThemeAgnosticIconPath('mongoMigrationWatermark.svg').light;

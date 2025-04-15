@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { InteractiveChildProcess } from '../../utils/InteractiveChildProcess';
 import { wrapError } from '../../utils/wrapError';
-import { AssessmentServiceClient } from './assessmentServiceClient';
 
 // const mongoExecutableFileName = 'MongoAssessmentExtensionService.dll';
 
@@ -35,9 +34,7 @@ export class MongoAssessmentServiceRunner extends vscode.Disposable {
                 outputFilterReplace: '',
             });
             const shell: MongoAssessmentServiceRunner = new MongoAssessmentServiceRunner(process);
-
             ext.outputChannel.appendLine('Migration Assessment Server started.');
-            await AssessmentServiceClient.establishConnection();
             return shell;
         } catch (error) {
             throw wrapCheckOutputWindow(error);
@@ -47,7 +44,7 @@ export class MongoAssessmentServiceRunner extends vscode.Disposable {
     public static async createShell(): Promise<MongoAssessmentServiceRunner> {
         //const config = vscode.workspace.getConfiguration();
         const mongoAssessmentServerPath: string | undefined = 'dotnet'; //C:\\code\\ads-extension-mongo-migration\\Product\\AdsMongoMigration\\bin\\service\\MongoAssessmentExtensionService.dll';
-        const shellArgs: string[] = ['D:\\ads-extension-mongo-migration\\Product\\AdsMongoMigration\\bin\\service\\MongoAssessmentExtensionService.dll']; // config.get(ext.settingsKeys.mongoShellArgs, []);
+        const shellArgs: string[] = ['C:\\code\\ads-extension-mongo-migration\\Product\\AdsMongoMigration\\bin\\service\\MongoAssessmentExtensionService.dll']; // config.get(ext.settingsKeys.mongoShellArgs, []);
 
         return MongoAssessmentServiceRunner.createShellProcessHelper(
             mongoAssessmentServerPath,

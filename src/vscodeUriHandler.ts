@@ -357,8 +357,7 @@ async function revealAttachedInWorkspaceExplorer(
     await vscode.commands.executeCommand('azureWorkspace.focus');
     const fullId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/${accountId}`;
     const fullResourceId = `${fullId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
-    // TODO: use revealWorkspaceResource!
-    await ext.rgApiV2.resources.revealAzureResource(fullResourceId, {
+    await ext.rgApiV2.resources.revealWorkspaceResource(fullResourceId, {
         select: true,
         focus: true,
         expand: true,

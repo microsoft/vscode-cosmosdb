@@ -9,10 +9,6 @@ import { ext } from '../../extensionVariables';
 import { InteractiveChildProcess } from '../../utils/InteractiveChildProcess';
 import { wrapError } from '../../utils/wrapError';
 
-// const mongoExecutableFileName = 'MongoAssessmentExtensionService.dll';
-
-const sentinelRegex = /"?EXECUTION COMPLETED [0-9a-fA-F]{10}"?/;
-
 export class MongoAssessmentServiceRunner extends vscode.Disposable {
     private constructor(private _process: InteractiveChildProcess) {
         super(() => this.dispose());
@@ -30,7 +26,7 @@ export class MongoAssessmentServiceRunner extends vscode.Disposable {
                 outputChannel: outputChannel,
                 command: execPath,
                 args,
-                outputFilterSearch: sentinelRegex,
+                outputFilterSearch: /""/,
                 outputFilterReplace: '',
             });
             const shell: MongoAssessmentServiceRunner = new MongoAssessmentServiceRunner(process);

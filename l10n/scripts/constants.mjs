@@ -5,11 +5,13 @@
 
 import path from 'node:path';
 
-export const localizationPath = path.join(process.cwd(), 'l10n');
+export const currentDir = process.cwd();
+export const localizationPath = path.join(currentDir, 'l10n');
+export const nodeModulesPath = path.join(currentDir, 'node_modules');
 export const bundleName = 'bundle.l10n.json';
 export const bundlePath = path.join(localizationPath, bundleName);
 export const utilsBundlePaths = [
-    path.join(localizationPath, '@microsoft/vscode-azext-utils/', bundleName),
-    path.join(localizationPath, '@microsoft/vscode-azext-azureutils/', bundleName),
+    path.join(nodeModulesPath, '@microsoft/vscode-azext-utils/', 'l10n', bundleName),
+    path.join(nodeModulesPath, '@microsoft/vscode-azext-azureutils/', 'l10n', bundleName),
     path.join(localizationPath, '@microsoft/vscode-azext-azureauth/', bundleName),
 ];

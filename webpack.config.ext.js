@@ -10,6 +10,9 @@ const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 
+const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
+const supportedLanguages = [];
+
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
 
@@ -111,6 +114,9 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'l10n',
                         to: 'l10n',
+                        noErrorOnMissing: true,
+                        filter: (filepath) =>
+                            new RegExp(`bundle.l10n.(${supportedLanguages.join('|')}).json`).test(filepath), // Only supported languages
                     },
                     {
                         from: 'resources',
@@ -128,6 +134,8 @@ module.exports = (env, { mode }) => {
                         from: 'package.nls.*.json',
                         to: '[name][ext]',
                         noErrorOnMissing: true,
+                        filter: (filepath) =>
+                            new RegExp(`package.nls.(${supportedLanguages.join('|')}).json`).test(filepath), // Only supported languages
                     },
                     {
                         from: 'CHANGELOG.md',
@@ -144,15 +152,7 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'README.md',
                         to: 'README.md',
-                        transform: isDev
-                            ? undefined
-                            : function transform(content) {
-                                  let data = content.toString();
-                                  return data.replace(
-                                      /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis,
-                                      '',
-                                  );
-                              },
+                        transform: isDev ? undefined : (content) => content.toString().replace(excludeRegion, ''),
                     },
                     {
                         from: 'SECURITY.md',

@@ -34,6 +34,9 @@ jobs:
           node-version-file: .nvmrc
       - run: npm ci
 
+      - name: Localize
+        run: npm run l10n:check
+
       - name: Lint
         run: npm run lint
 

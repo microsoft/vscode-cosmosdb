@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createTestActionContext } from '@microsoft/vscode-azext-dev';
-import { IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import { isIPv4 } from 'net';
 import { getPublicIpv4, isIpInRanges } from '../../extension.bundle';

@@ -69,7 +69,7 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
                 };
 
                 const workspaceType =
-                    api === API.MongoDB ? WorkspaceResourceType.MongoClusters : WorkspaceResourceType.AttachedAccounts;
+                    api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters;
 
                 try {
                     // Store the new item, or abort if it already exists which would be unexpected at this point

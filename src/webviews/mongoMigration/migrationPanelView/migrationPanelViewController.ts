@@ -5,12 +5,10 @@
 
 import { API } from '../../../AzureDBExperiences';
 import { ext } from '../../../extensionVariables';
-import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { WebviewController } from '../../api/extension-server/WebviewController';
 import { type RouterContext } from './migrationPanelViewRouter';
 
 export type MigrationPanelWebviewConfigurationType = {
-    databaserName: string;
     moreSettings?: boolean;
 };
 
@@ -35,16 +33,8 @@ export class MigrationPanelViewController extends WebviewController<MigrationPan
         const trpcContext: RouterContext = {
             dbExperience: API.Common,
             webviewName: 'MigrationPanel',
-            databaseName: initialData.databaserName,
         };
 
         this.setupTrpc(trpcContext);
-        AssessmentServiceClient.establishConnection()
-            .then(() => {
-                ext.outputChannel.appendLine('Mongo Migration service connection established');
-            })
-            .catch((error) => {
-                ext.outputChannel.appendLine(`Failed to establish Mongo Migration service connection: ${error}`);
-            });
     }
 }

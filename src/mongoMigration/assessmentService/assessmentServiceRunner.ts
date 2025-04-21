@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { InteractiveChildProcess } from '../../utils/InteractiveChildProcess';
 import { wrapError } from '../../utils/wrapError';
+import { AssessmentServiceClient } from './assessmentServiceClient';
 
 export class MongoAssessmentServiceRunner extends vscode.Disposable {
     private constructor(private _process: InteractiveChildProcess) {
@@ -30,7 +31,14 @@ export class MongoAssessmentServiceRunner extends vscode.Disposable {
                 outputFilterReplace: '',
             });
             const shell: MongoAssessmentServiceRunner = new MongoAssessmentServiceRunner(process);
-            ext.outputChannel.appendLine('Migration Assessment Server started.');
+
+            process.onStdOut(async (data: string) => {
+                if (data) {
+                    ext.outputChannel.appendLine(data);
+                    await AssessmentServiceClient.establishConnection();
+                }
+            });
+            //  ext.outputChannel.appendLine('Migration Assessment Server started.');
             return shell;
         } catch (error) {
             throw wrapCheckOutputWindow(error);

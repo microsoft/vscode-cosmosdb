@@ -54,7 +54,6 @@ export class MongoMigrationExtension implements vscode.Disposable {
 
                 registerCommand('command.migration.startView', () => {
                     const view = new MigrationPanelViewController({
-                        databaserName: 'aDatabaseName',
                         moreSettings: false,
                     });
 

@@ -14,7 +14,6 @@ import { type BaseRouterContext } from '../../api/configuration/appRouter';
  * Information shared during the life time of the webview
  */
 export type RouterContext = BaseRouterContext & {
-    databaseName: string;
 };
 
 export const migrationPanelViewRouter = router({

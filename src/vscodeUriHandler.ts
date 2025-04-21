@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseAzureResourceId } from '@microsoft/vscode-azext-azureutils';
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from './AzureDBExperiences';
+import { openCollectionViewInternal } from './commands/openCollectionView/openCollectionView';
 import { openNoSqlQueryEditor } from './commands/openNoSqlQueryEditor/openNoSqlQueryEditor';
 import {
     parseCosmosDBConnectionString,
@@ -203,7 +204,7 @@ async function handleConnectionStringRequest(
                     parsedConnection.connectionString.hosts[0].includes('localhost'),
                 parsedConnection.connectionString.port,
             );
-            ext.cosmosDBWorkspaceBranchDataProvider.refresh();
+            ext.mongoClustersWorkspaceBranchDataProvider.refresh();
             await revealAttachedInWorkspaceExplorer(accountId, parsedConnection.api, params.database, params.container);
         }
     }
@@ -292,7 +293,8 @@ async function createAttachedForConnection(
     emulatorPort?: string,
 ): Promise<void> {
     // TODO: for Emulators we should use the according Emulator parent node
-    const parentId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/accounts`;
+    const parentId: string =
+        api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters;
     const name = !isEmulator ? accountName : getEmulatorItemLabelForApi(api, emulatorPort);
     const id = !isEmulator ? accountId : getEmulatorItemUniqueId(connectionString);
     await ext.state.showCreatingChild(parentId, l10n.t('Creating "{nodeName}"…', { nodeName: accountId }), async () => {
@@ -305,7 +307,7 @@ async function createAttachedForConnection(
 
         try {
             await StorageService.get(StorageNames.Workspace).push(
-                WorkspaceResourceType.AttachedAccounts,
+                api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters,
                 storageItem,
                 false,
             );
@@ -402,21 +404,15 @@ async function openAppropriateEditorForConnection(
         });
     } else {
         // Open MongoDB editor
-        // TODO: openCollectionViewInternal requires a valid Collection node that we don't have here
-        // There are several options:
-        // 1. Implement a new openCollectionView that opens the MongoDB editor with a connection string and a given database and collection
-        // 2. revealAzureResourceInExplorer will reveal the MongoDB account in the Azure Explorer, but currently not the database and collection
-        //    once that is supported (TODO above), we can use that to reveal the collection first then pass the selected
-        //    CollectionItem node to openCollectionViewInternal
-        /** meanwhile commended out:
+        const accountId =
+            parsedConnection.connectionString.username + '@' + parsedConnection.connectionString.redact().toString();
+        const expectedClusterId = `${WorkspaceResourceType.MongoClusters}/${accountId}`;
+
         return openCollectionViewInternal(context, {
-            id: node.id,
-            clusterId: node.cluster.id,
-            databaseName: node.databaseInfo.name,
-            collectionName: node.collectionInfo.name,
-            collectionTreeItem: node,
+            clusterId: expectedClusterId,
+            databaseName: nonNullValue(database),
+            collectionName: nonNullValue(container),
         });
-        */
     }
 }
 

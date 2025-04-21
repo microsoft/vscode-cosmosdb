@@ -30,8 +30,9 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
     }
 
     public async getChildren(): Promise<TreeElement[]> {
-        // TODO: remove after a few releases
+        // TODO: remove `pickSupportedAccounts` and `postPickSupportedAccountsCleanUp` after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
+        await this.postPickSupportedAccountsCleanUp(); // Fixes https://github.com/microsoft/vscode-cosmosdb/issues/2649
 
         const items = await StorageService.get(StorageNames.Workspace).getItems(this.id);
         const children = await this.getChildrenNoEmulatorsImpl(items);
@@ -151,6 +152,32 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                 }
             },
         );
+    }
+
+    /**
+     * This function is needed to correct a migration issue with the old storage format.
+     *
+     * All attached accounts were migrated to WorkspaceResourceType.AttachedAccounts,
+     * however, MongoDB and MongoClusters accounts were supposed to be stored as WorkspaceResourceType.MongoClusters.
+     *
+     * This function will correct this error.
+     */
+    protected async postPickSupportedAccountsCleanUp(): Promise<void> {
+        const items = await StorageService.get(StorageNames.Workspace).getItems(WorkspaceResourceType.AttachedAccounts);
+        const documentDbAccounts = items.filter((item) => {
+            const api: API = nonNullValue(item.properties?.api, API.Common) as API;
+            return api === API.MongoDB || api === API.MongoClusters;
+        });
+
+        for (const item of documentDbAccounts) {
+            if (!item.properties) {
+                item.properties = {};
+            }
+            item.properties.api = API.MongoClusters; // Update the API to MongoClusters
+
+            await StorageService.get(StorageNames.Workspace).push(WorkspaceResourceType.MongoClusters, item, true);
+            await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.AttachedAccounts, item.id);
+        }
     }
 
     protected async migrateV1AccountsToV2(): Promise<void> {

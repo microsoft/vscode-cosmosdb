@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext, nonNullValue } from '@microsoft/vscode-azext-utils';
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
@@ -79,21 +79,79 @@ export async function pickSupportedAccounts(): Promise<void> {
  * This function moves those accounts to the correct storage location and updates their API property.
  */
 export async function postPickSupportedAccountsCleanUp(): Promise<void> {
-    const items = await StorageService.get(StorageNames.Workspace).getItems(WorkspaceResourceType.AttachedAccounts);
-    const documentDbAccounts = items.filter((item) => {
-        const api: API = nonNullValue(item.properties?.api, API.Common) as API;
-        return api === API.MongoDB || api === API.MongoClusters;
-    });
+    return callWithTelemetryAndErrorHandling(
+        'accountMigration.postPickSupportedAccountsCleanUp',
+        async (context: IActionContext) => {
+            let migratedAccounts = 0;
+            let totalAccounts = 0;
+            try {
+                const items = await StorageService.get(StorageNames.Workspace).getItems(
+                    WorkspaceResourceType.AttachedAccounts,
+                );
+                const documentDbAccounts = items.filter((item) => {
+                    const api: API = nonNullValue(item.properties?.api, API.Common) as API;
+                    return api === API.MongoDB || api === API.MongoClusters;
+                });
 
-    for (const item of documentDbAccounts) {
-        if (!item.properties) {
-            item.properties = {};
-        }
-        item.properties.api = API.MongoClusters; // Update the API to MongoClusters
+                for (const item of documentDbAccounts) {
+                    totalAccounts++;
+                    try {
+                        if (!item.properties) {
+                            item.properties = {};
+                        }
+                        item.properties.api = API.MongoClusters; // Update the API to MongoClusters
 
-        await StorageService.get(StorageNames.Workspace).push(WorkspaceResourceType.MongoClusters, item, true);
-        await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.AttachedAccounts, item.id);
-    }
+                        // First, try to push the item to the new location
+                        await StorageService.get(StorageNames.Workspace).push(
+                            WorkspaceResourceType.MongoClusters,
+                            item,
+                            true,
+                        );
+
+                        // Verify that the item has been stored in the new location before deleting
+                        const migratedItems = await StorageService.get(StorageNames.Workspace).getItems(
+                            WorkspaceResourceType.MongoClusters,
+                        );
+                        const isMigrated = migratedItems.some((migratedItem) => migratedItem.id === item.id);
+
+                        if (isMigrated) {
+                            try {
+                                // Then delete from the old location
+                                await StorageService.get(StorageNames.Workspace).delete(
+                                    WorkspaceResourceType.AttachedAccounts,
+                                    item.id,
+                                );
+
+                                migratedAccounts++;
+                            } catch (deleteError) {
+                                // If deletion fails, log it but don't throw - the item will be deleted on next run
+                                // In worst case, we'll have duplicates until next clean-up run
+                                console.log(
+                                    `Failed to delete item ${item.id} from AttachedAccounts, will retry on next run: ${deleteError}`,
+                                );
+                            }
+                        } else {
+                            // Item wasn't successfully migrated, log the issue
+                            console.warn(
+                                `Failed to verify migration of item ${item.id} to MongoClusters, skipping deletion`,
+                            );
+                        }
+                    } catch (itemError) {
+                        // If processing a single item fails, log it and continue with other items
+                        console.error(`Error processing item ${item.id}: ${itemError}`);
+                        // Continue with other items rather than failing the entire migration
+                    }
+                }
+            } catch (error) {
+                // Log the error but don't throw - this is a cleanup function
+                // The next run of the function will attempt the cleanup again
+                console.error(`Error in postPickSupportedAccountsCleanUp: ${error}`);
+            } finally {
+                context.telemetry.measurements.migratedAccounts = migratedAccounts;
+                context.telemetry.measurements.totalAccounts = totalAccounts;
+            }
+        },
+    );
 }
 
 export async function migrateV1AccountsToV2(): Promise<void> {

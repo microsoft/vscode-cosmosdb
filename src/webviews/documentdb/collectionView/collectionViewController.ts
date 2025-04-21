@@ -9,8 +9,6 @@ import { WebviewController } from '../../api/extension-server/WebviewController'
 import { type RouterContext } from './collectionViewRouter';
 
 export type CollectionViewWebviewConfigurationType = {
-    id: string; // move to base type
-
     sessionId: string;
     clusterId: string;
     databaseName: string;

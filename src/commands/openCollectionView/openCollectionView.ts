@@ -17,7 +17,6 @@ export async function openCollectionView(context: IActionContext, node?: Collect
     context.telemetry.properties.experience = node?.experience.api;
 
     return openCollectionViewInternal(context, {
-        id: node.id,
         clusterId: node.cluster.id,
         databaseName: node.databaseInfo.name,
         collectionName: node.collectionInfo.name,
@@ -27,7 +26,6 @@ export async function openCollectionView(context: IActionContext, node?: Collect
 export async function openCollectionViewInternal(
     _context: IActionContext,
     props: {
-        id: string;
         clusterId: string;
         databaseName: string;
         collectionName: string;
@@ -40,8 +38,6 @@ export async function openCollectionViewInternal(
     const sessionId = await ClusterSession.initNewSession(props.clusterId);
 
     const view = new CollectionViewController({
-        id: props.id,
-
         sessionId: sessionId,
         clusterId: props.clusterId,
         databaseName: props.databaseName,

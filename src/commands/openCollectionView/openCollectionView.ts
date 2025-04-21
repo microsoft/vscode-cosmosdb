@@ -21,7 +21,6 @@ export async function openCollectionView(context: IActionContext, node?: Collect
         clusterId: node.cluster.id,
         databaseName: node.databaseInfo.name,
         collectionName: node.collectionInfo.name,
-        collectionTreeItem: node,
     });
 }
 
@@ -32,7 +31,6 @@ export async function openCollectionViewInternal(
         clusterId: string;
         databaseName: string;
         collectionName: string;
-        collectionTreeItem: CollectionItem;
     },
 ): Promise<void> {
     /**
@@ -48,7 +46,6 @@ export async function openCollectionViewInternal(
         clusterId: props.clusterId,
         databaseName: props.databaseName,
         collectionName: props.collectionName,
-        collectionTreeItem: props.collectionTreeItem,
     });
 
     view.revealToForeground();

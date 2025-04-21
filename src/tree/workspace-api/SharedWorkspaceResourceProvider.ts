@@ -96,6 +96,35 @@ export function getWorkspaceResourceIdFromTreeItem(node: TreeElementWithId): str
     return trimmedId.substring(lastIndex + 1);
 }
 
+/**
+ * Extracts the workspace resource ID from a MongoDB tree item.
+ *
+ * Unlike standard tree items, MongoDB items contain '/' characters in their IDs,
+ * requiring special handling to correctly extract the resource identifier.
+ *
+ * This function removes the expected prefix structure to isolate the actual resource ID.
+ *
+ * @param node - The MongoDB tree item node containing an ID property
+ * @returns The extracted MongoDB resource ID
+ * @throws Error if the ID is not a valid workspace resource ID
+ *
+ * @remarks Long-term solution would be to avoid '/' characters within individual ID segments.
+ */
+export function getWorkspaceResourceIdFromMongoTreeItem(node: TreeElementWithId): string {
+    if (getWorkspaceResourceTypeFromFullId(node.id) === undefined) {
+        throw new Error(l10n.t('Invalid workspace resource ID: {0}', node.id));
+    }
+
+    const trimmedId = node.id.endsWith('/') ? node.id.slice(0, -1) : node.id;
+
+    const prefix = `${WorkspaceResourceType.MongoClusters}/`;
+    const cleanId = trimmedId.startsWith(prefix + 'localEmulators/')
+        ? trimmedId.substring(prefix.length + 'localEmulators/'.length)
+        : trimmedId.substring(prefix.length);
+
+    return cleanId;
+}
+
 function getWorkspaceResourceTypeFromFullId(fullId: string): WorkspaceResourceType | undefined {
     if (fullId.startsWith(WorkspaceResourceType.AttachedAccounts)) {
         return WorkspaceResourceType.AttachedAccounts;

@@ -13,6 +13,7 @@ import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view
 import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
 import {
+    getWorkspaceResourceIdFromMongoTreeItem,
     getWorkspaceResourceIdFromTreeItem,
     WorkspaceResourceType,
 } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -98,7 +99,8 @@ export async function removeConnection(
 
     if (node instanceof ClusterItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.MongoClusters, node.id);
+            const resourceId = getWorkspaceResourceIdFromMongoTreeItem(node);
+            await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.MongoClusters, resourceId);
         });
 
         ext.mongoClustersWorkspaceBranchDataProvider.refresh();

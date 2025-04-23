@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import { ParserRuleContext } from 'antlr4ts/ParserRuleContext';
 import { ErrorNode } from 'antlr4ts/tree/ErrorNode';
 import { type ParseTree } from 'antlr4ts/tree/ParseTree';

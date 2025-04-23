@@ -150,7 +150,6 @@ export class MongoVCoreBranchDataProvider
                     const accounts = await uiUtils.listAllIterator(client.mongoClusters.list());
 
                     accounts.map((MongoClustersAccount) => {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                         this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
                             dbExperience: MongoClustersExperience,
                             id: MongoClustersAccount.id as string,

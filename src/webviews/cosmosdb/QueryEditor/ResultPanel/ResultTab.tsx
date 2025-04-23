@@ -6,8 +6,13 @@
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { Suspense, useEffect, useState } from 'react';
-import { type TreeData } from '../../../../utils/slickgrid/mongo/toSlickGridTree';
-import { queryResultToJSON, queryResultToTable, queryResultToTree, type TableData } from '../../../utils';
+import {
+    queryResultToJSON,
+    queryResultToTable,
+    queryResultToTree,
+    type TableData,
+    type TreeData,
+} from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { ResultTabViewJson } from './ResultTabViewJson';
 import { ResultTabViewTable } from './ResultTabViewTable';

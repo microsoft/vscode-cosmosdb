@@ -3,14 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line import/no-internal-modules
 import { ProgressBar } from '@fluentui/react-components';
 import { loader } from '@monaco-editor/react';
 import * as l10n from '@vscode/l10n';
 import debounce from 'lodash.debounce';
-import { type JSX, useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
+import { type JSX, useEffect, useRef, useState } from 'react';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';

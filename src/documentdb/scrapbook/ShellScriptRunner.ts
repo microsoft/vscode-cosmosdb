@@ -347,7 +347,6 @@ export class ShellScriptRunner extends vscode.Disposable {
                     openFile,
                 );
                 if (response === openFile) {
-                    // eslint-disable-next-line no-constant-condition
                     while (true) {
                         const newPath: vscode.Uri[] = await context.ui.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },

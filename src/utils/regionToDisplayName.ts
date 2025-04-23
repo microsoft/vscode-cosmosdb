@@ -109,5 +109,5 @@ export function regionToDisplayName(region: string): string {
      * az rest --method get --url https://management.azure.com/subscriptions/{subscriptionId}/locations?api-version=2021-01-01
      */
 
-    return `${regionDisplayNames[region]} (${region})` || region;
+    return regionDisplayNames[region] ? `${regionDisplayNames[region]} (${region})` : region;
 }

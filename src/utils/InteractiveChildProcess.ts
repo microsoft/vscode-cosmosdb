@@ -112,7 +112,6 @@ export class InteractiveChildProcess {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises, no-async-promise-executor
         await new Promise<void>(async (resolve, reject) => {
             const started = Date.now();
-            // eslint-disable-next-line no-constant-condition
             while (true) {
                 if (!!this._error || this._isKilling) {
                     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors

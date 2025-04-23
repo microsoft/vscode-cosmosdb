@@ -79,7 +79,6 @@ export const collectionsViewRouter = router({
             if (autoCompletionData.length > 0) {
                 querySchema = generateMongoFindJsonSchema(autoCompletionData);
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 querySchema = basicFindQuerySchema;
             }
 

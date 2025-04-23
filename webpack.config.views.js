@@ -50,7 +50,7 @@ module.exports = (env, { mode }) => {
                             sourceMaps: isDev,
                             jsc: {
                                 keepClassNames: true,
-                                target: 'es2022',
+                                target: 'es2023',
                                 parser: {
                                     syntax: 'typescript',
                                     tsx: true,

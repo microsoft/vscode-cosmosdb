@@ -9,7 +9,7 @@ import { ParsedConnectionString } from '../ParsedConnectionString';
 import { nonNullProp } from '../utils/nonNull';
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
-    const config: ConnectionOptions = parse(connectionString.trim());
+    const config: ConnectionOptions = parse(connectionString.trim(), {});
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 

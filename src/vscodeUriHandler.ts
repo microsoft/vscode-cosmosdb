@@ -497,7 +497,9 @@ async function openAppropriateEditorForAzure(
     if (isTreeElementWithExperience(resource)) {
         context.telemetry.properties.experience = resource.experience.api;
         await vscode.commands.executeCommand(
-            resource.experience.api === API.Core ? 'cosmosDB.openNoSqlQueryEditor' : 'documentdb.openCollectionView',
+            resource.experience.api === API.Core
+                ? 'cosmosDB.openNoSqlQueryEditor'
+                : 'command.mongoClusters.containerView.open',
             resource,
         );
     } else {

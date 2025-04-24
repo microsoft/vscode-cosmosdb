@@ -214,7 +214,7 @@ async function handleConnectionStringRequest(
     }
 
     // Open appropriate editor based on API type
-    await openAppropriateEditorForConnection(context, parsedConnection, params.container, params.database);
+    await openAppropriateEditorForConnection(context, parsedConnection, params.database, params.container);
 }
 
 /**

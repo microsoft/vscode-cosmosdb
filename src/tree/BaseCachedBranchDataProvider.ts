@@ -131,12 +131,22 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         // I assume this array should be filled after element.getChildren() call
                         // And these values should be masked in the context
 
-                        // TODO: return cached children instead of always calling getChildrenFromElement?
-                        // or we should invalidate the cache here.
-                        // Get children (subclass can override)
+                        // TODO: we should return cached children instead of always calling getChildrenFromElement
+                        // however this can only work if we can also cache the root resource elements, which is
+                        // currently not possible because Refresh is not being called for them.
+                        /*
+                        // Cache lookup
+                        const cached = this.getDirectChildNodesFromCache(element);
+                        if (cached) {
+                            context.telemetry.properties.cached = 'true';
+                            return cached;
+                        }
+                        */
+                        // Invalidate cache instead, to ensure getParent lookups work
+                        this.pruneCache(element.id, false);
                         const children = await this.getChildrenFromElement(element);
 
-                        return children.map((child) => this.processChild(child, element, context));
+                        return children.map((child) => this.processChild(child, element));
                     },
                 )) ?? []
             );
@@ -157,12 +167,19 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 (context: IActionContext) => {
                     try {
                         if (resource) {
+                            // TODO: refresh won't be called for root level resource elements,
+                            // hence we don't know if we should refresh them. For now we'll use caching for lookups only
+                            // and always invalidate the cache for root level elements when they are requested.
+                            // This also applies to the getChildren method, since we don't know if children need to be refreshed.
+                            /*
                             const cachedItem = this.nodeCache.get(resource.id);
                             if (cachedItem) {
                                 context.telemetry.properties.cached = 'true';
                                 this.onResourceItemRetrieved(cachedItem, resource, context, true);
                                 return cachedItem;
                             }
+                            */
+                            this.pruneCache(resource.id);
                         }
 
                         // Let derived class create the appropriate resource item
@@ -247,8 +264,11 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         return (await element.getChildren?.()) ?? [];
     }
 
-    private pruneCache(elementId: string): void {
-        this.nodeCache.delete(elementId);
+    private pruneCache(elementId: string, includeElement: boolean = true): void {
+        if (includeElement) {
+            this.nodeCache.delete(elementId);
+            this.childToParentMap.delete(elementId);
+        }
 
         const prefix = `${elementId}/`;
         const keysToDelete: string[] = [];
@@ -263,8 +283,6 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             this.nodeCache.delete(key);
             this.childToParentMap.delete(key);
         });
-
-        this.childToParentMap.delete(elementId);
     }
 
     private isAncestorOf(element: TreeElement, id: string | undefined): boolean {
@@ -275,18 +293,11 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         return id.toLowerCase().startsWith(elementId.toLowerCase());
     }
 
-    private processChild(child: TreeElement, parent: TreeElement, context: IActionContext): TreeElement {
+    private processChild(child: TreeElement, parent: TreeElement): TreeElement {
         // If the child doesn't have an ID or is not part of the tree, return it as is
         // for temporary elements created by TreeElementStateManager like "Createing XYZ"
         if (!this.isAncestorOf(parent, child.id)) {
             return this.wrapElement(child);
-        }
-
-        // Cache lookup
-        const cached = this.nodeCache.get(child.id);
-        if (cached) {
-            context.telemetry.properties.cached = 'true';
-            return cached;
         }
 
         // Cache and wrap new element
@@ -401,4 +412,32 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     ): void {
         // Default implementation is a no-op
     }
+
+    /**
+     * Gets direct child nodes from the nodeCache.
+     * @param element - The parent element
+     * @returns An array of direct child elements from the cache
+     */
+    /*
+    private getDirectChildNodesFromCache(element: TreeElement): TreeElement[] | undefined {
+        if (!element.id) {
+            return undefined;
+        }
+
+        const prefix = `${element.id}/`;
+        const children: TreeElement[] = [];
+
+        this.nodeCache.forEach((node, key) => {
+            if (key.startsWith(prefix)) {
+                // Check if this is a direct child (no additional slashes after prefix)
+                const remaining = key.substring(prefix.length);
+                if (!remaining.includes('/')) {
+                    children.push(node);
+                }
+            }
+        });
+
+        return children.length > 0 ? children : undefined;
+    }
+    */
 }

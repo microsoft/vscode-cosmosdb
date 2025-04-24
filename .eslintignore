@@ -1,6 +1,8 @@
-gulpfile.ts
-.eslintrc.js
+/dist
+/out
+/node_modules
+**/__mocks__/**
 **/*.d.ts
-test/
-webpack.config.js
-webpack.config.*.js
+.eslintrc.js
+jest.config.js
+main.js

@@ -21,12 +21,12 @@ const SurveyConfig = {
         DEBUG_ALWAYS_PROMPT: false, // Forces survey prompt regardless of conditions
         DISABLE_SURVEY: false, // Completely disables survey functionality
         PROBABILITY: 1, // Probability to become candidate (0-1), Azure Tools uses 0.15
-        A_B_TEST_SELECTION: 0.5, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
+        A_B_TEST_SELECTION: 1, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
         PROMPT_ENGLISH_ONLY: false, // Whether to limit survey to English locales
         PROMPT_VERSION_ONLY_ONCE: true, // Only prompt once per major/minor version
         PROMPT_DATE_ONLY_ONCE: true, // Only prompt once per day
-        MIN_SESSIONS_BEFORE_PROMPT: 9, // Sessions required before eligible for prompting
-        SNOOZE_SESSIONS: 3, // Sessions to skip after "remind me later"
+        MIN_SESSIONS_BEFORE_PROMPT: 3, // Sessions required before eligible for prompting
+        SNOOZE_SESSIONS: 2, // Sessions to skip after "remind me later"
         REARM_AFTER_DAYS: 90, // Days before re-prompting after taking survey
         REARM_OPT_OUT: true, // Whether to re-prompt after opt-out period
     },

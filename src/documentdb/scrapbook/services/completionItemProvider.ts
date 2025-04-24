@@ -153,11 +153,11 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
         return ctx.parent!.accept(this);
     }
 
-    private getArgumentCompletionItems(
+    private async getArgumentCompletionItems(
         documentUri: string,
         _collectionName: string,
         ctx: ParserRuleContext,
-    ): Thenable<CompletionItem[]> {
+    ): Promise<CompletionItem[]> {
         const text = this.textDocument.getText();
         const document = TextDocument.create(
             documentUri,
@@ -168,19 +168,35 @@ export class CompletionItemsVisitor extends MongoVisitor<Promise<CompletionItem[
         const positionOffset = this.textDocument.offsetAt(this.at);
         const contextOffset = ctx.start.startIndex;
         const position = document.positionAt(positionOffset - contextOffset);
-        return this.jsonLanguageService
-            .doComplete(document, position, this.jsonLanguageService.parseJSONDocument(document))
-            .then((list) => {
-                return list!.items.map((item: CompletionItem) => {
-                    const startPositionOffset = document.offsetAt(item.textEdit!.range.start);
-                    const endPositionOffset = document.offsetAt(item.textEdit!.range.end);
-                    item.textEdit!.range = Range.create(
-                        this.textDocument.positionAt(startPositionOffset + contextOffset),
-                        this.textDocument.positionAt(contextOffset + endPositionOffset),
-                    );
-                    return item;
-                });
-            });
+        const list = await this.jsonLanguageService.doComplete(
+            document,
+            position,
+            this.jsonLanguageService.parseJSONDocument(document),
+        );
+
+        if (!list) {
+            return [];
+        }
+
+        return list.items.map((item: CompletionItem) => {
+            if (!item.textEdit) return item;
+
+            const range = 'range' in item.textEdit ? item.textEdit.range : item.textEdit.replace;
+            const startPositionOffset = document.offsetAt(range.start);
+            const endPositionOffset = document.offsetAt(range.end);
+            const newRange = Range.create(
+                this.textDocument.positionAt(startPositionOffset + contextOffset),
+                this.textDocument.positionAt(contextOffset + endPositionOffset),
+            );
+
+            if ('range' in item.textEdit) {
+                item.textEdit.range = newRange;
+            } else {
+                item.textEdit.replace = newRange;
+            }
+
+            return item;
+        });
     }
 
     private getFunctionName(ctx: ParseTree): string {

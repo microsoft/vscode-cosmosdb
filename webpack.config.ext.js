@@ -62,7 +62,15 @@ module.exports = (env, { mode }) => {
         },
         resolve: {
             roots: [__dirname],
+            // conditionNames: ['import', 'require', 'node'], // Uncomment when we will use VSCode what supports modules
+            mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
+            alias: {
+                'vscode-languageserver-types': path.resolve(
+                    __dirname,
+                    'node_modules/vscode-languageserver-types/lib/esm/main.js',
+                ),
+            },
         },
         module: {
             rules: [

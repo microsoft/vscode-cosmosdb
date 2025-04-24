@@ -58,6 +58,7 @@ module.exports = (env, { mode }) => {
             'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
             /* PG optional dependencies */
             'pg-native': 'commonjs pg-native',
+            'pg-cloudflare': 'commonjs pg-cloudflare',
         },
         resolve: {
             roots: [__dirname],

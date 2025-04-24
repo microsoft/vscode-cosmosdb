@@ -12,7 +12,6 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { FileChangeType } from 'vscode-languageclient';
 import { ext } from './extensionVariables';
 import { SettingsService } from './services/SettingsService';
 import { getNodeEditorLabel } from './utils/vscodeUtils';
@@ -94,6 +93,6 @@ export class DatabasesFileSystem extends AzExtTreeFileSystem<EditableFileSystemI
 
     public fireChangedEvent(node: EditableFileSystemItem): void {
         node.mTime = Date.now();
-        this.fireSoon({ type: FileChangeType.Changed, item: node });
+        this.fireSoon({ type: vscode.FileChangeType.Changed, item: node });
     }
 }

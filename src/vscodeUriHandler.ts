@@ -140,7 +140,7 @@ async function handleConnectionStringRequest(
         throw new Error('Connection string is required');
     }
 
-    const parsedConnection = parseConnectionString(params.connectionString);
+    const parsedConnection = parseConnectionString(context, params.connectionString);
     context.telemetry.properties.experience = parsedConnection.api;
 
     if (params.subscriptionId && params.resourceGroup) {
@@ -534,6 +534,7 @@ function removeAzureTenantPrefix(id?: string): string {
  * @throws Error if the connection string is empty
  */
 function parseConnectionString(
+    context: IActionContext,
     connectionString: string,
 ):
     | { api: API.Core; connectionString: ParsedCosmosDBConnectionString }
@@ -547,6 +548,9 @@ function parseConnectionString(
     // MongoDB API connection strings always start with "mongodb"
     if (connectionString.startsWith(MONGODB_PREFIX)) {
         const parsedCS = new ConnectionString(connectionString);
+        [parsedCS.username, parsedCS.password, parsedCS.port, ...(parsedCS.hosts || [])]
+            .filter(Boolean)
+            .forEach((value) => context.valuesToMask.push(value));
         return {
             api: parsedCS.isSRV ? API.MongoClusters : API.MongoDB,
             connectionString: parsedCS,
@@ -555,6 +559,9 @@ function parseConnectionString(
 
     // All other connection strings are treated as Core API
     const parsedCS = parseCosmosDBConnectionString(connectionString);
+    [parsedCS.masterKey, parsedCS.databaseName]
+        .filter((value): value is string => Boolean(value))
+        .forEach((value) => context.valuesToMask.push(value));
     return {
         api: API.Core,
         connectionString: parsedCS,

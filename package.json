@@ -180,7 +180,8 @@
   },
   "//overrides": "remove after jest bumps to 30",
   "overrides": {
-    "glob": "^11.0.2"
+    "glob": "^11.0.2",
+    "vscode-languageserver-protocol": "~3.15.3"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

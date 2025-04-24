@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseAzureResourceId } from '@microsoft/vscode-azext-azureutils';
+import { parseAzureResourceId, type ParsedAzureResourceId } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
     nonNullValue,
@@ -112,7 +112,7 @@ async function handleResourceIdRequest(
     }
     // reveal the account first, this will open the Azure Resource Groups view,
     // select the resource in the tree and expand it, forcing it to load the children
-    const resource = await revealAzureResourceInExplorer(context, resourceId.rawId, params.database, params.container);
+    const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container);
     if (params.database && params.container) {
         await openAppropriateEditorForAzure(resource);
     }
@@ -178,7 +178,7 @@ async function handleConnectionStringRequest(
             params.resourceGroup,
             accountName,
         );
-        context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId);
+        context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
         const resource = await revealAzureResourceInExplorer(context, resourceId, params.database, params.container);
         if (params.database && params.container) {
             await openAppropriateEditorForAzure(resource);
@@ -239,11 +239,18 @@ async function handleConnectionStringRequest(
  * - For other APIs, it uses the Microsoft.DocumentDb/databaseAccounts format
  * - PostgreSQL Clusters support is not implemented yet
  */
-function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: string, accountName: string): string {
+function createAzureResourceId(
+    api: API,
+    subscriptionId: string,
+    resourceGroup: string,
+    accountName: string,
+): ParsedAzureResourceId {
     switch (api) {
         case API.MongoClusters:
             // Document DB Clusters API resource ID format
-            return `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/mongoClusters/${accountName}`;
+            return parseAzureResourceId(
+                `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/mongoClusters/${accountName}`,
+            );
 
         /** We don't support PG Clusters yet
         case API.PostgresSingle:
@@ -252,7 +259,9 @@ function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: 
 
         default:
             // Cosmos DB Core resource ID format
-            return `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDb/databaseAccounts/${accountName}`;
+            return parseAzureResourceId(
+                `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDb/databaseAccounts/${accountName}`,
+            );
     }
 }
 
@@ -272,20 +281,20 @@ function createAzureResourceId(api: API, subscriptionId: string, resourceGroup: 
  */
 async function revealAzureResourceInExplorer(
     context: IActionContext,
-    resourceId: string,
+    resourceId: ParsedAzureResourceId,
     database?: string,
     container?: string,
 ): Promise<TreeElement> {
     await vscode.commands.executeCommand('azureResourceGroups.focus');
-    await ext.rgApiV2.resources.revealAzureResource(resourceId, {
+    await ext.rgApiV2.resources.revealAzureResource(resourceId.rawId, {
         select: true,
         focus: true,
         expand: true,
     });
 
-    let fulId = resourceId;
+    let fulId = resourceId.rawId;
     if (database && container) {
-        fulId = `${resourceId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
+        fulId = `${resourceId.rawId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
         await ext.rgApiV2.resources.revealAzureResource(fulId, {
             select: true,
             focus: true,
@@ -294,17 +303,21 @@ async function revealAzureResourceInExplorer(
     }
 
     let resource: TreeElement | undefined;
+    const branchDataProvider =
+        resourceId.provider === 'Microsoft.DocumentDB/mongoClusters'
+            ? ext.mongoVCoreBranchDataProvider
+            : ext.cosmosDBBranchDataProvider;
     const revealedId = await ext.rgApiV2.resources.getSelectedAzureNode();
     if (revealedId) {
         const strippedId = removeAzureTenantPrefix(revealedId);
-        resource = await ext.cosmosDBBranchDataProvider.findNodeById(strippedId);
+        resource = await branchDataProvider.findNodeById(strippedId);
     } else {
-        resource = await ext.cosmosDBBranchDataProvider.findNodeById(fulId);
+        resource = await branchDataProvider.findNodeById(fulId);
     }
 
     if (!resource) {
         throw new Error(
-            l10n.t('Unable to find resource "{0}". Please ensure the resource exists and try again.', resourceId),
+            l10n.t('Unable to find resource "{0}". Please ensure the resource exists and try again.', resourceId.rawId),
         );
     }
 
@@ -319,7 +332,7 @@ async function revealAzureResourceInExplorer(
                 'Unable to find database "{0}" and collection "{1}" in resource "{2}". Please ensure the resource exists and try again.',
                 database,
                 container,
-                resourceId,
+                resourceId.rawId,
             ),
         );
     }

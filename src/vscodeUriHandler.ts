@@ -4,7 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseAzureResourceId } from '@microsoft/vscode-azext-azureutils';
-import { callWithTelemetryAndErrorHandling, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
+import {
+    callWithTelemetryAndErrorHandling,
+    nonNullValue,
+    UserCancelledError,
+    type IActionContext,
+} from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import ConnectionString from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
@@ -18,10 +23,11 @@ import {
 import { ext } from './extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from './services/storageService';
 import { getAccountInfo } from './tree/cosmosdb/AccountInfo';
+import { type TreeElement } from './tree/TreeElement';
 import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { getConfirmationAsInSettings } from './utils/dialogs/getConfirmation';
-import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from './utils/emulatorUtils';
+import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId, getIsEmulatorConnection } from './utils/emulatorUtils';
 
 const supportedProviders = [
     'Microsoft.DocumentDB/databaseAccounts',
@@ -174,38 +180,36 @@ async function handleConnectionStringRequest(
     } else {
         // Create storage item for the connection
         if (parsedConnection.api === API.Core) {
-            await createAttachedForConnection(
+            const isEmulator = getIsEmulatorConnection(parsedConnection.connectionString);
+            const fullId = await createAttachedForConnection(
                 parsedConnection.connectionString.accountId,
                 parsedConnection.connectionString.accountName,
                 parsedConnection.api,
                 params.connectionString,
-                parsedConnection.connectionString.hostName === 'localhost',
+                isEmulator,
                 parsedConnection.connectionString.port,
             );
             ext.cosmosDBWorkspaceBranchDataProvider.refresh();
-            await revealAttachedInWorkspaceExplorer(
-                parsedConnection.connectionString.accountId,
-                parsedConnection.api,
-                params.database,
-                params.container,
-            );
+            await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
         } else {
             // Handle MongoDB and MongoClusters
             const accountId =
                 parsedConnection.connectionString.username +
                 '@' +
                 parsedConnection.connectionString.redact().toString();
-            await createAttachedForConnection(
+            const isEmulator =
+                parsedConnection.connectionString.hosts?.length > 0 &&
+                parsedConnection.connectionString.hosts[0].includes('localhost');
+            const fullId = await createAttachedForConnection(
                 accountId,
                 parsedConnection.connectionString.username + '@' + parsedConnection.connectionString.hosts.join(','),
                 parsedConnection.api,
                 params.connectionString,
-                parsedConnection.connectionString.hosts?.length > 0 &&
-                    parsedConnection.connectionString.hosts[0].includes('localhost'),
+                isEmulator,
                 parsedConnection.connectionString.port,
             );
             ext.mongoClustersWorkspaceBranchDataProvider.refresh();
-            await revealAttachedInWorkspaceExplorer(accountId, parsedConnection.api, params.database, params.container);
+            await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
         }
     }
 
@@ -276,13 +280,19 @@ async function revealAzureResourceInExplorer(resourceId: string, database?: stri
 /**
  * Creates and attaches a database connection to the workspace.
  *
- * @param accountId - Unique identifier for the account.
- * @param accountName - Display name for the account.
- * @param api - The API type of the account (Core or Mongo).
- * @param connectionString - The connection string for the database account.
- * @param isEmulator - Indicates if the connection is for an emulator.
- * @param emulatorPort - Optional. The port number for the emulator connection.
- * @returns A promise that resolves when the connection has been created and attached.
+ * @param accountId - The ID of the account to attach
+ * @param accountName - The display name of the account
+ * @param api - The API type (Core, MongoDB, etc.) of the account
+ * @param connectionString - The connection string used to connect to the account
+ * @param isEmulator - Whether this connection is to a local emulator
+ * @param emulatorPort - Optional port number for the emulator connection
+ * @returns A Promise that resolves to the ID of the created/updated connection
+ *
+ * @remarks
+ * This function will:
+ * 1. Focus the Azure Workspace view
+ * 2. Create the connection with the specified parameters
+ * 3. If a connection with the same ID already exists, prompt the user to update it
  */
 async function createAttachedForConnection(
     accountId: string,
@@ -291,12 +301,30 @@ async function createAttachedForConnection(
     connectionString: string,
     isEmulator: boolean,
     emulatorPort?: string,
-): Promise<void> {
-    // TODO: for Emulators we should use the according Emulator parent node
-    const parentId: string =
-        api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters;
+): Promise<string> {
+    const rootId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}`;
+    const parentId = `${rootId}${isEmulator ? '/localEmulators' : ''}`;
     const name = !isEmulator ? accountName : getEmulatorItemLabelForApi(api, emulatorPort);
     const id = !isEmulator ? accountId : getEmulatorItemUniqueId(connectionString);
+    const fulId = `${parentId}/${id}`;
+    // Open the Azure Workspace view
+    await vscode.commands.executeCommand('azureWorkspace.focus');
+    if (rootId !== parentId) {
+        // TODO: this seems to be a bug in revealWorkspaceResource
+        // If the parentId is not the root it will fail to drill down into the hierarchy,
+        // we need to reveal the root first
+        await ext.rgApiV2.resources.revealWorkspaceResource(rootId, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+    }
+    // Reveal the parent node to show progress in the tree
+    await ext.rgApiV2.resources.revealWorkspaceResource(parentId, {
+        select: true,
+        focus: true,
+        expand: true,
+    });
     await ext.state.showCreatingChild(parentId, l10n.t('Creating "{nodeName}"…', { nodeName: accountId }), async () => {
         const storageItem: StorageItem = {
             id,
@@ -313,15 +341,24 @@ async function createAttachedForConnection(
             );
         } catch (error) {
             if (error instanceof Error && error.message.includes('already exists')) {
-                const confirmed = await getConfirmationAsInSettings(
-                    l10n.t('Update existing {accountType} connection?', {
-                        accountType: getExperienceFromApi(api).longName,
-                    }),
-                    l10n.t('The connection "{connectionName}" already exists. Do you want to update it?', {
-                        connectionName: name,
-                    }),
-                    'update',
-                );
+                let confirmed: boolean = false;
+                try {
+                    confirmed = await getConfirmationAsInSettings(
+                        l10n.t('Update existing {accountType} connection?', {
+                            accountType: getExperienceFromApi(api).longName,
+                        }),
+                        l10n.t('The connection "{connectionName}" already exists. Do you want to update it?', {
+                            connectionName: name,
+                        }),
+                        'update',
+                    );
+                } catch (error) {
+                    if (error instanceof UserCancelledError) {
+                        confirmed = false;
+                    } else {
+                        throw error;
+                    }
+                }
 
                 if (confirmed) {
                     await StorageService.get(StorageNames.Workspace).push(
@@ -335,6 +372,7 @@ async function createAttachedForConnection(
             }
         }
     });
+    return fulId;
 }
 
 /**
@@ -349,14 +387,10 @@ async function createAttachedForConnection(
  */
 async function revealAttachedInWorkspaceExplorer(
     accountId: string,
-    api: API,
     database?: string,
     container?: string,
 ): Promise<void> {
-    // Open the Azure Workspace view
-    await vscode.commands.executeCommand('azureWorkspace.focus');
-    const fullId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}/${accountId}`;
-    const fullResourceId = `${fullId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
+    const fullResourceId = `${accountId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
     await ext.rgApiV2.resources.revealWorkspaceResource(fullResourceId, {
         select: true,
         focus: true,
@@ -439,8 +473,17 @@ async function openAppropriateEditorForAzure(
     if (!container) {
         throw new Error(l10n.t("Can't open the Query Editor, Container name is required"));
     }
+    const fulId = `${resourceId}/${database}/${container}`;
 
-    const resource = await ext.cosmosDBBranchDataProvider.findNodeById(`${resourceId}/${database}/${container}`);
+    let resource: TreeElement | undefined;
+    const revealedId = await ext.rgApiV2.resources.getSelectedAzureNode();
+    if (revealedId) {
+        const strippedId = removeAzureTenantPrefix(revealedId);
+        resource = await ext.cosmosDBBranchDataProvider.findNodeById(strippedId);
+    } else {
+        resource = await ext.cosmosDBBranchDataProvider.findNodeById(fulId);
+    }
+
     if (!resource) {
         throw new Error(
             l10n.t(
@@ -460,6 +503,23 @@ async function openAppropriateEditorForAzure(
     } else {
         throw new Error(l10n.t('Unable to determine the experience for the resource'));
     }
+}
+
+/**
+ * Removes the Azure tenant prefix from an ID string.
+ *
+ * @param id - The ID string to process. If not provided, an empty string is returned.
+ * @returns The processed ID string without the Azure tenant prefix.
+ *
+ * @remarks
+ * Azure Resourcegroups maintains the whole ID hierarchy including accounts and tenants.
+ * Since we contribute and maintain just a subtree, we need to remove the prefix:
+ * https://github.com/microsoft/vscode-azureresourcegroups/blob/71a0b12ad4b8f9cafef497e673abfb79c9ad208d/src/tree/ResourceTreeDataProviderBase.ts#L168
+ * This function uses a regular expression to remove the "/accounts/{accountName}/tenants/{tenantId}/" prefix
+ * from the given ID string. If the input is undefined or empty, it returns an empty string.
+ */
+function removeAzureTenantPrefix(id?: string): string {
+    return id?.replace(/\/accounts\/.+\/tenants\/[^/]+\//i, '/') || '';
 }
 
 /**

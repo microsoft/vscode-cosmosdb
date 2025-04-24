@@ -6,6 +6,8 @@
 import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
 import { l10n } from 'vscode';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
+import { wellKnownEmulatorPassword } from '../constants';
+import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { randomUtils } from './randomUtils';
@@ -120,4 +122,15 @@ export function getEmulatorItemLabelForApi(api: API, port: string | number | und
 
     const portSuffix = typeof port !== 'undefined' ? ` : ${port}` : '';
     return `${label}${portSuffix}`;
+}
+
+/**
+ * Checks if the given connection string is for an emulator.
+ * An emulator connection string is identified by a well-known password or a localhost hostname.
+ *
+ * @param connectionString - The parsed connection string to check
+ * @returns True if the connection string is for an emulator, false otherwise
+ */
+export function getIsEmulatorConnection(connectionString: ParsedCosmosDBConnectionString): boolean {
+    return connectionString.masterKey === wellKnownEmulatorPassword || connectionString.hostName === 'localhost';
 }

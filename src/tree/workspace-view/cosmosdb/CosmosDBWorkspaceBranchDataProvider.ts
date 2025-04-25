@@ -14,7 +14,7 @@ export class CosmosDBWorkspaceBranchDataProvider
     extends BaseCachedBranchDataProvider<WorkspaceResource>
     implements WorkspaceResourceBranchDataProvider<TreeElement>
 {
-    protected get contexValuePrefix(): string {
+    protected get contextValuePrefix(): string {
         return 'cosmosDB.workspace';
     }
 

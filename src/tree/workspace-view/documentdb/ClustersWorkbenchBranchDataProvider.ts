@@ -14,7 +14,7 @@ export class ClustersWorkspaceBranchDataProvider
     extends BaseCachedBranchDataProvider<WorkspaceResource>
     implements WorkspaceResourceBranchDataProvider<TreeElement>
 {
-    protected get contexValuePrefix(): string {
+    protected get contextValuePrefix(): string {
         return 'mongoVCore.workspace';
     }
 

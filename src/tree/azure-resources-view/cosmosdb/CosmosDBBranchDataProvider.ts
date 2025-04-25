@@ -18,7 +18,7 @@ import { type TreeElement } from '../../TreeElement';
 import { MongoRUResourceItem } from '../documentdb/mongo-ru/MongoRUResourceItem';
 
 export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<CosmosDBAccountModel> {
-    protected get contexValuePrefix(): string {
+    protected get contextValuePrefix(): string {
         return 'cosmosDB.azure';
     }
 

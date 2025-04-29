@@ -29,7 +29,7 @@ testWorkspace/**
 .prettierrc
 .swcrc
 .travis.yml
-eslintrc.config.js
+eslint.config.mjs
 prettier.config.mjs
 gulp*
 stats.json

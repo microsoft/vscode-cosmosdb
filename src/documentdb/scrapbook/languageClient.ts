@@ -57,6 +57,7 @@ export class MongoDBLanguageClient {
                 } catch (error) {
                     console.error('Failed to stop the language client:', error);
                 }
+            },
         });
 
         // Start the client. This will also launch the server

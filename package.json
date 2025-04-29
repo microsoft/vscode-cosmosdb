@@ -174,7 +174,7 @@
     "vscode-uri": "~3.1.0",
     "zod": "~3.24.3"
   },
-  "//overrides": "jest 30 depends on glob 11, pg-pool and pg-protocol struggle with ESM",
+  "//overrides": "jest 30 depends on glob 11",
   "overrides": {
     "glob": "~11.0.2"
   },

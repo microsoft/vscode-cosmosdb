@@ -176,7 +176,8 @@
   },
   "//overrides": "only jest 30 depends on glob 11",
   "overrides": {
-    "glob": "~11.0.2"
+    "glob": "~11.0.2",
+    "test-exclude": "~7.0.1"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

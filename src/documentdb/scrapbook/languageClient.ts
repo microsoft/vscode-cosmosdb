@@ -51,9 +51,12 @@ export class MongoDBLanguageClient {
         // Push the disposable to the context's subscriptions so that the
         // client can be deactivated on extension deactivation
         ext.context.subscriptions.push({
-            dispose: () => {
-                return this.client?.stop();
-            },
+            dispose: async () => {
+                try {
+                    await this.client?.stop();
+                } catch (error) {
+                    console.error('Failed to stop the language client:', error);
+                }
         });
 
         // Start the client. This will also launch the server

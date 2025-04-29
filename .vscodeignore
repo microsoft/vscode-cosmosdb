@@ -30,7 +30,7 @@ testWorkspace/**
 .swcrc
 .travis.yml
 eslintrc.config.js
-prettier.config.js
+prettier.config.mjs
 gulp*
 stats.json
 test-results.xml

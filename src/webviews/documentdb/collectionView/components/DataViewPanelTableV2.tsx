@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit';
 import * as React from 'react';
 import { useContext, useRef } from 'react';
 import {

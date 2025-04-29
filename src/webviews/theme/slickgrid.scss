@@ -3,9 +3,110 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-@import '@slickgrid-universal/common/dist/styles/sass/variables';
+$base-background-color: var(--vscode-editor-background);
+$base-text-color: var(--vscode-editor-foreground);
+$primary-color: #006DCC; // Can't replace here since the adjust function fails on variables
+$slick-icon-color: inherit; // var(--vscode-icon-foreground);
+$slick-header-resizable-hover: 1px solid var(--vscode-editor-selectionBackground);
 
-@import 'vscode-to-slickgrid2.scss';
+@use '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-default.scss' with (
+    $slick-highlight-color:                                     $base-text-color,
+    $slick-primary-color:                                       $primary-color,
 
-/* make sure to add the @import the SlickGrid Bootstrap Theme AFTER the variables changes */
-@import '@slickgrid-universal/common/dist/styles/sass/slickgrid-theme-salesforce.scss';
+    $slick-border-color:                                        $base-text-color,
+    $slick-font-color:                                          $base-text-color,
+
+    /* Slickgrid container, including headers but excluding pagination */
+    $slick-container-border-top:                                0 none,
+    $slick-container-border-right:                              0 none,
+    $slick-container-border-bottom:                             0 none,
+    $slick-container-border-left:                               0 none,
+    $slick-canvas-bg-color:                                     $base-background-color,
+
+    /* grid */
+    $slick-grid-border-color:                                   none,
+    $slick-grid-header-background:                              $base-background-color,
+    $slick-grid-header-unorderable-bg-color:                    $base-background-color,
+    $slick-grid-cell-color:                                     $base-text-color,
+    $slick-gray-dark:                                           $base-text-color,
+    $slick-link-color:                                          var(--vscode-textLink-foreground),
+    $slick-link-color-hover:                                    var(--vscode-textLink-activeForeground),
+    $slick-navbar-default-link-hover-color:                     $base-text-color,
+    $slick-text-color:                                          $base-text-color,
+    $slick-table-background:                                    transparent,
+    $slick-scrollbar-color:                                     var(--vscode-scrollbarSlider-activeBackground) var(--vscode-scrollbarSlider-background),
+    $slick-hover-header-color:                                  var(--vscode-editor-placeholder-foreground),
+    $slick-sorting-header-color:                                $base-text-color,
+    $slick-placeholder-color:                                   var(--vscode-editor-placeholder-foreground),
+
+    /* cell */
+    $slick-cell-active-border:                                  none,
+    $slick-cell-active-box-shadow:                              inset 0 0 0 1px #aaaaaa,
+    $slick-cell-box-shadow:                                     none,
+    $slick-cell-display:                                        block,
+    $slick-cell-text-color:                                     $base-text-color,
+    $slick-cell-border-top:                                     1px transparent,
+    $slick-cell-border-right:                                   1px transparent,
+    $slick-cell-border-bottom:                                  1px transparent,
+    $slick-cell-border-left:                                    1px transparent,
+    $slick-cell-even-background-color:                          var(--vscode-diffEditor-unchangedCodeBackground),
+    $slick-cell-odd-background-color:                           var(--vscode-diffEditor-unchangedCodeBackground), // for striping every second row
+    $slick-cell-odd-active-background-color:                    var(--vscode-diffEditor-unchangedCodeBackground),
+    // var(--vscode-diffEditor-removedLineBackground),
+
+    /* row */
+    $slick-row-mouse-hover-color:                               var(--vscode-diffEditor-insertedLineBackground),
+    $slick-row-mouse-hover-box-shadow:                          none,
+    $slick-row-selected-color:                                  var(--vscode-editor-findMatchBackground),
+    $slick-row-highlight-background-color:                      var(--vscode-editor-selectionHighlightBackground),
+    $slick-row-checkbox-selector-background:                    inherit,
+    $slick-row-checkbox-selector-border:                        none,
+
+    // These rules were override because the color.adjust doesn't work with variables
+    $slick-autocomplete-hover-bg-color:                         var(--vscode-diffEditor-insertedLineBackground),
+    $slick-detail-view-icon-color-hover:                        $primary-color,
+    $slick-row-based-edit-editmode-active-bgcolor:              $base-text-color,
+    $slick-row-based-edit-editmode-active-hover-bgcolor:        $base-text-color,
+    $slick-row-based-edit-editmode-bgcolor:                     $base-text-color,
+    $slick-row-based-edit-editmode-hover-bgcolor:               $base-text-color,
+
+    /* header */
+    $slick-header-row-count:                                    1,
+    $slick-header-background-color:                             $base-background-color,
+    $slick-header-border-top:                                   0 none,                      // header, column titles, that is without the Filters
+    $slick-header-border-right:                                 0 none,
+    $slick-header-border-bottom:                                0 none,
+    $slick-header-border-left:                                  0 none,
+    $slick-header-column-background-active:                     $base-background-color, //---
+    $slick-header-column-background-hover:                      $base-background-color, //---
+    $slick-header-column-sortable-background-hover:             $base-background-color,
+    $slick-header-column-border-top:                            0 none,                      // header, column titles, that is without the Filters
+    $slick-header-column-border-right:                          0 none,
+    $slick-header-column-border-bottom:                         0 none,
+    $slick-header-column-border-left:                           0 none,
+    $slick-header-filter-row-border-top:                        0 none,                      // header row is where the Filters are showing
+    $slick-header-filter-row-border-right:                      0 none,
+    $slick-header-filter-row-border-bottom:                     0 none,
+    $slick-header-filter-row-border-left:                       0 none,
+    $slick-header-row-background-color:                         $base-background-color,
+    $slick-header-text-color:                                   $base-text-color,
+    $slick-header-resizable-hover:                              $slick-header-resizable-hover,
+    $slick-header-resizable-hover-border-bottom:                0 none,
+    $slick-header-resizable-hover-border-left:                  0 none,
+    $slick-header-resizable-hover-border-right:                 $slick-header-resizable-hover,
+    $slick-header-resizable-hover-border-top:                   0 none,
+
+    /* Empty Data Warning element */
+    $slick-empty-data-warning-color:                            $base-text-color,
+
+    /* icons */
+    $slick-icon-color:                                          $slick-icon-color,
+    $slick-icon-group-color:                                    $slick-icon-color,
+    $slick-icon-sort-color:                                     $slick-icon-color,
+    $slick-detail-view-icon-color:                              $slick-icon-color,
+    $slick-column-picker-icon-color:                            $slick-icon-color,
+    $slick-checkbox-icon-color:                                 $slick-icon-color,
+    $slick-multiselect-icon-color:                              $slick-icon-color,
+    $slick-multiselect-icon-checked-color:                      $slick-icon-color,
+    $slick-pagination-icon-color:                               $slick-icon-color,
+);

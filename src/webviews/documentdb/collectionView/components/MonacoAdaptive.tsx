@@ -9,7 +9,7 @@ import { MonacoEditor } from '../../../MonacoEditor';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit';
 import { useEffect, useRef, useState } from 'react';
 import './monacoAdaptive.scss';
 

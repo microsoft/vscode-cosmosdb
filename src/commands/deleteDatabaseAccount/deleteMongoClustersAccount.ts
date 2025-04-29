@@ -19,7 +19,7 @@ export async function deleteMongoClustersAccount(
     const resourceGroup = node.cluster.resourceGroup as string;
     const accountName = node.cluster.name;
 
-    const deletePromise = (await client).mongoClusters.beginDeleteAndWait(resourceGroup, accountName);
+    const deletePromise = (await client).mongoClusters.delete(resourceGroup, accountName).pollUntilDone();
     if (!context.suppressNotification) {
         const deletingMessage = l10n.t('Deleting account "{accountName}"…', { accountName });
         await vscode.window.withProgress(

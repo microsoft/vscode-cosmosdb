@@ -5,7 +5,7 @@
 
 import { type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
 import { parse as parseJson } from '@prantlf/jsonlint';
-import { isEqual } from 'lodash';
+import { isEqual } from 'es-toolkit';
 
 export type OpenDocumentMode = 'add' | 'edit' | 'view';
 

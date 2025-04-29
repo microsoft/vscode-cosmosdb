@@ -45,16 +45,18 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
                     this.cluster.name,
                 );
 
-                if (!clusterInformation.connectionString) {
+                const clusterConnectionString = clusterInformation.properties?.connectionString;
+                if (!clusterConnectionString) {
                     return undefined;
                 }
 
-                context.valuesToMask.push(clusterInformation.connectionString);
-                const connectionString = new ConnectionString(clusterInformation.connectionString as string);
+                context.valuesToMask.push(clusterConnectionString);
+                const connectionString = new ConnectionString(clusterConnectionString);
 
-                if (clusterInformation.administratorLogin) {
-                    context.valuesToMask.push(clusterInformation.administratorLogin);
-                    connectionString.username = clusterInformation.administratorLogin;
+                const username = clusterInformation.properties?.administrator?.userName;
+                if (username) {
+                    context.valuesToMask.push(username);
+                    connectionString.username = username;
                 }
 
                 connectionString.password = '';
@@ -86,16 +88,16 @@ export class MongoVCoreResourceItem extends ClusterItemBase {
                     this.cluster.name,
                 );
 
-                const clusterConnectionString = nonNullValue(clusterInformation.connectionString);
+                const clusterConnectionString = nonNullValue(clusterInformation.properties?.connectionString);
 
                 context.valuesToMask.push(clusterConnectionString);
-                if (clusterInformation.administratorLogin) {
-                    context.valuesToMask.push(clusterInformation.administratorLogin);
+                if (clusterInformation.properties?.administrator?.userName) {
+                    context.valuesToMask.push(clusterInformation.properties?.administrator?.userName);
                 }
 
                 const wizardContext: AuthenticateWizardContext = {
                     ...context,
-                    adminUserName: clusterInformation.administratorLogin,
+                    adminUserName: clusterInformation.properties?.administrator?.userName,
                     resourceName: this.cluster.name,
                 };
 

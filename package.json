@@ -161,7 +161,7 @@
     "es-toolkit": "~1.36.0",
     "monaco-editor": "~0.51.0",
     "mongodb": "~6.16.0",
-    "pg": "~8.14.1",
+    "pg": "~8.15.6",
     "pg-connection-string": "~2.8.5",
     "react-hotkeys-hook": "~5.0.1",
     "semver": "~7.7.1",
@@ -176,9 +176,7 @@
   },
   "//overrides": "jest 30 depends on glob 11, pg-pool and pg-protocol struggle with ESM",
   "overrides": {
-    "glob": "~11.0.2",
-    "pg-pool": "~3.8.0",
-    "pg-protocol": "~1.8.0"
+    "glob": "~11.0.2"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

@@ -11,7 +11,7 @@ import { ClustersClient, type DatabaseItemModel } from '../../documentdb/Cluster
 import { CredentialCache } from '../../documentdb/CredentialCache';
 import { ext } from '../../extensionVariables';
 import { regionToDisplayName } from '../../utils/regionToDisplayName';
-import { type ExtTreeElementBase, type TreeElement } from '../TreeElement';
+import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type ClusterModel } from './ClusterModel';
@@ -24,10 +24,6 @@ export abstract class ClusterItemBase implements TreeElement, TreeElementWithExp
     public readonly contextValue: string = 'treeItem.mongoCluster';
 
     private readonly experienceContextValue: string = '';
-
-    getParent(): ExtTreeElementBase | undefined | null {
-        return null;
-    }
 
     protected constructor(public cluster: ClusterModel) {
         this.id = cluster.id ?? '';
@@ -117,7 +113,7 @@ export abstract class ClusterItemBase implements TreeElement, TreeElementWithExp
             }
 
             // Map the databases to DatabaseItem elements
-            return databases.map((database) => new DatabaseItem(this, this.cluster, database));
+            return databases.map((database) => new DatabaseItem(this.cluster, database));
         });
     }
 

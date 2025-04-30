@@ -21,12 +21,7 @@ export class DatabaseItem implements TreeElement, TreeElementWithExperience, Tre
 
     private readonly experienceContextValue: string = '';
 
-    getParent(): TreeElement | undefined | null {
-        return this.parent;
-    }
-
     constructor(
-        readonly parent: TreeElement,
         readonly cluster: ClusterModel,
         readonly databaseInfo: DatabaseItemModel,
     ) {
@@ -55,7 +50,7 @@ export class DatabaseItem implements TreeElement, TreeElementWithExperience, Tre
         }
 
         return collections.map((collection) => {
-            return new CollectionItem(this, this.cluster, this.databaseInfo, collection);
+            return new CollectionItem(this.cluster, this.databaseInfo, collection);
         });
     }
 

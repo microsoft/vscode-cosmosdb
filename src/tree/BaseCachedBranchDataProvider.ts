@@ -227,13 +227,6 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             }
         }
 
-        // Element's own parent method
-        if (element.getParent && typeof element.getParent === 'function') {
-            // some tree elements keep track of their parents (documentdb clusters).
-            // we rely on this to get the parent element.
-            return element.getParent();
-        }
-
         // ID-based parent lookup
         const parentId = element.id?.substring(0, element.id.lastIndexOf('/'));
         if (parentId) {

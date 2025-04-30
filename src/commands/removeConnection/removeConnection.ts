@@ -9,14 +9,11 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { PostgresServerTreeItem } from '../../postgres/tree/PostgresServerTreeItem';
 import { StorageNames, StorageService } from '../../services/storageService';
-import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { CosmosDBAccountAttachedResourceItem } from '../../tree/cosmosdb/CosmosDBAccountAttachedResourceItem';
 import { ClusterItemBase } from '../../tree/documentdb/ClusterItemBase';
 import { AttachedAccountSuffix } from '../../tree/v1-legacy-api/AttachedAccountsTreeItem';
-import {
-    getWorkspaceResourceIdFromMongoTreeItem,
-    getWorkspaceResourceIdFromTreeItem,
-    WorkspaceResourceType,
-} from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { type ClusterItem } from '../../tree/workspace-view/documentdb/ClusterItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickWorkspaceResource } from '../../utils/pickItem/pickAppResource';
@@ -47,10 +44,10 @@ export async function removeConnectionV1(context: IActionContext, node?: AzExtTr
 
 export async function removeAzureConnection(
     context: IActionContext,
-    node?: CosmosDBAccountResourceItemBase | ClusterItemBase,
+    node?: CosmosDBAccountAttachedResourceItem | ClusterItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickWorkspaceResource<CosmosDBAccountResourceItemBase | ClusterItemBase>(context, {
+        node = await pickWorkspaceResource<CosmosDBAccountAttachedResourceItem | ClusterItem>(context, {
             type: [WorkspaceResourceType.AttachedAccounts, WorkspaceResourceType.MongoClusters],
             expectedChildContextValue: ['treeItem.account', 'treeItem.mongoCluster'],
         });
@@ -65,7 +62,7 @@ export async function removeAzureConnection(
 
 export async function removeConnection(
     context: IActionContext,
-    node: CosmosDBAccountResourceItemBase | ClusterItemBase,
+    node: CosmosDBAccountAttachedResourceItem | ClusterItem,
 ): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
@@ -79,7 +76,7 @@ export async function removeConnection(
     let connectionName: string;
     if (node instanceof ClusterItemBase) {
         connectionName = node.cluster.name;
-    } else if (node instanceof CosmosDBAccountResourceItemBase) {
+    } else if (node instanceof CosmosDBAccountAttachedResourceItem) {
         connectionName = node.account.name;
     } else {
         connectionName = 'unknown';
@@ -99,16 +96,16 @@ export async function removeConnection(
 
     if (node instanceof ClusterItemBase) {
         await ext.state.showDeleting(node.id, async () => {
-            const resourceId = getWorkspaceResourceIdFromMongoTreeItem(node);
+            const resourceId = node.storageId;
             await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.MongoClusters, resourceId);
         });
 
         ext.mongoClustersWorkspaceBranchDataProvider.refresh();
     }
 
-    if (node instanceof CosmosDBAccountResourceItemBase) {
+    if (node instanceof CosmosDBAccountAttachedResourceItem) {
         await ext.state.showDeleting(node.id, async () => {
-            const workspaceId = getWorkspaceResourceIdFromTreeItem(node);
+            const workspaceId = node.storageId;
             await StorageService.get(StorageNames.Workspace).delete(
                 WorkspaceResourceType.AttachedAccounts,
                 workspaceId,

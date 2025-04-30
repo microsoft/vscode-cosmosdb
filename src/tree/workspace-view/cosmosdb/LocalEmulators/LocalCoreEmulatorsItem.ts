@@ -59,6 +59,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                         const experience = getExperienceFromApi(api);
                         const accountModel: CosmosDBAttachedAccountModel = {
                             id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                            storageId: id,
                             name,
                             connectionString,
                             isEmulator,

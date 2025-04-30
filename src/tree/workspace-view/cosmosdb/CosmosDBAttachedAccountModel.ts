@@ -6,6 +6,7 @@
 export type CosmosDBAttachedAccountModel = {
     connectionString: string;
     id: string;
+    storageId: string;
     isEmulator: boolean;
     name: string;
 };

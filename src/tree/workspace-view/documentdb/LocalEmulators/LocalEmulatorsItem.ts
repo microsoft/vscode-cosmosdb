@@ -10,7 +10,7 @@ import { getThemeAgnosticIconPath } from '../../../../constants';
 import { StorageNames, StorageService } from '../../../../services/storageService';
 import { type EmulatorConfiguration } from '../../../../utils/emulatorConfiguration';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
-import { type ClusterModel } from '../../../documentdb/ClusterModel';
+import { type AttachedClusterModel } from '../../../documentdb/ClusterModel';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../../workspace-api/SharedWorkspaceResourceProvider';
@@ -40,8 +40,9 @@ export class LocalEmulatorsItem implements TreeElement, TreeElementWithContextVa
                             disableEmulatorSecurity: !!properties?.disableEmulatorSecurity,
                         };
 
-                        const model: ClusterModel = {
+                        const model: AttachedClusterModel = {
                             id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                            storageId: id,
                             name,
                             dbExperience: MongoClustersExperience,
                             connectionString: secrets?.[0],

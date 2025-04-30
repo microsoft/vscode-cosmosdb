@@ -7,7 +7,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
 import { StorageNames, StorageService } from '../../../services/storageService';
-import { type ClusterModel } from '../../documentdb/ClusterModel';
+import { type AttachedClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
@@ -32,8 +32,9 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
             ...allItems
                 .filter((item) => !item.properties?.isEmulator) // filter out emulators
                 .map((item) => {
-                    const model: ClusterModel = {
+                    const model: AttachedClusterModel = {
                         id: `${this.id}/${item.id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                        storageId: item.id,
                         name: item.name,
                         dbExperience: MongoClustersExperience,
                         connectionString: item?.secrets?.[0] ?? undefined,

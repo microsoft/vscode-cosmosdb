@@ -20,13 +20,21 @@ import { ProvidePasswordStep } from '../../../documentdb/wizards/authenticate/Pr
 import { ProvideUserNameStep } from '../../../documentdb/wizards/authenticate/ProvideUsernameStep';
 import { ext } from '../../../extensionVariables';
 import { ClusterItemBase } from '../../documentdb/ClusterItemBase';
-import { type ClusterModel } from '../../documentdb/ClusterModel';
+import { type AttachedClusterModel } from '../../documentdb/ClusterModel';
+import { type TreeElementWithStorageId } from '../../TreeElementWithStorageId';
 
 import ConnectionString from 'mongodb-connection-string-url';
 
-export class ClusterItem extends ClusterItemBase {
-    constructor(mongoCluster: ClusterModel) {
+export class ClusterItem extends ClusterItemBase implements TreeElementWithStorageId {
+    public override readonly cluster: AttachedClusterModel;
+
+    constructor(mongoCluster: AttachedClusterModel) {
         super(mongoCluster);
+        this.cluster = mongoCluster; // Store with correct type
+    }
+
+    public get storageId(): string {
+        return this.cluster.storageId;
     }
 
     public getConnectionString(): Promise<string | undefined> {

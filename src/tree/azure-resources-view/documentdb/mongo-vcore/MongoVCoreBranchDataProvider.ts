@@ -20,7 +20,7 @@ export type MongoVCoreResource = AzureResource &
     };
 
 export class MongoVCoreBranchDataProvider extends BaseCachedBranchDataProvider<MongoVCoreResource> {
-    protected get contextValuePrefix(): string {
+    protected get contextValue(): string {
         return 'mongoVCore.azure';
     }
 

@@ -5,6 +5,7 @@
 
 import {
     callWithTelemetryAndErrorHandling,
+    createContextValue,
     createGenericElement,
     type IActionContext,
     parseError,
@@ -78,7 +79,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      *     return 'cosmosDB.workspace';
      * }
      */
-    protected abstract get contextValuePrefix(): string;
+    protected abstract get contextValue(): string;
 
     /**
      * Creates a resource tree item for the given resource.
@@ -125,7 +126,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         context.telemetry.properties.parentNodeContext =
                             (await element.getTreeItem()).contextValue ?? 'unknown';
 
-                        context.telemetry.properties.view = this.contextValuePrefix;
+                        context.telemetry.properties.view = this.contextValue;
 
                         // TODO: values to mask. New TreeElements do not have valueToMask field
                         // I assume this array should be filled after element.getChildren() call
@@ -316,7 +317,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
     private createErrorElement(message: string, id: string): TreeElement {
         return createGenericElement({
-            contextValue: `${this.contextValuePrefix}.item.error`,
+            contextValue: createContextValue([this.contextValue, 'item.error']),
             label: message,
             id: id,
         }) as TreeElement;

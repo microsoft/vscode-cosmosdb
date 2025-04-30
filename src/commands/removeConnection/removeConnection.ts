@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { UserCancelledError, type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
@@ -65,55 +65,38 @@ export async function removeConnection(
     node: CosmosDBAccountAttachedResourceItem | ClusterItem,
 ): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
-
-    // ask for confirmation
-
-    /**
-     * Initial attempt with node.getTreeItem() and then accessing the label has failed, fell free to fix.
-     * This solution below was quicker to implement and works just as well.
-     */
-
+    let confirmed = false;
     let connectionName: string;
+    let storageType: WorkspaceResourceType;
+    let refreshProvider: { refresh: () => void };
     if (node instanceof ClusterItemBase) {
         connectionName = node.cluster.name;
+        storageType = WorkspaceResourceType.MongoClusters;
+        refreshProvider = ext.mongoClustersWorkspaceBranchDataProvider;
     } else if (node instanceof CosmosDBAccountAttachedResourceItem) {
         connectionName = node.account.name;
+        storageType = WorkspaceResourceType.AttachedAccounts;
+        refreshProvider = ext.cosmosDBWorkspaceBranchDataProvider;
     } else {
-        connectionName = 'unknown';
+        throw new Error(l10n.t('Unknown node type for deletion'));
     }
 
-    const confirmed = await getConfirmationAsInSettings(
-        l10n.t('Are you sure?'),
-        l10n.t('Delete "{connectionName}"?', { connectionName }) + '\n' + l10n.t('This cannot be undone.'),
-        'delete',
-    );
+    await ext.state.showDeleting(node.id, async () => {
+        // ask for confirmation
+        confirmed = await getConfirmationAsInSettings(
+            l10n.t('Are you sure?'),
+            l10n.t('Delete "{connectionName}"?', { connectionName }) + '\n' + l10n.t('This cannot be undone.'),
+            'delete',
+        );
 
-    if (!confirmed) {
-        return;
-    }
-
-    // continue with deletion
-
-    if (node instanceof ClusterItemBase) {
-        await ext.state.showDeleting(node.id, async () => {
+        if (confirmed) {
             const resourceId = node.storageId;
-            await StorageService.get(StorageNames.Workspace).delete(WorkspaceResourceType.MongoClusters, resourceId);
-        });
-
-        ext.mongoClustersWorkspaceBranchDataProvider.refresh();
+            await StorageService.get(StorageNames.Workspace).delete(storageType, resourceId);
+            showConfirmationAsInSettings(l10n.t('The selected connection has been removed from your workspace.'));
+        }
+        refreshProvider.refresh();
+    });
+    if (!confirmed) {
+        throw new UserCancelledError();
     }
-
-    if (node instanceof CosmosDBAccountAttachedResourceItem) {
-        await ext.state.showDeleting(node.id, async () => {
-            const workspaceId = node.storageId;
-            await StorageService.get(StorageNames.Workspace).delete(
-                WorkspaceResourceType.AttachedAccounts,
-                workspaceId,
-            );
-        });
-
-        ext.cosmosDBWorkspaceBranchDataProvider.refresh();
-    }
-
-    showConfirmationAsInSettings(l10n.t('The selected connection has been removed from your workspace.'));
 }

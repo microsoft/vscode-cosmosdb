@@ -29,6 +29,7 @@ import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { getConfirmationAsInSettings } from './utils/dialogs/getConfirmation';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId, getIsEmulatorConnection } from './utils/emulatorUtils';
+import { randomUtils } from './utils/randomUtils';
 
 const supportedProviders = [
     'Microsoft.DocumentDB/databaseAccounts',
@@ -199,13 +200,16 @@ async function handleConnectionStringRequest(
             await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
         } else {
             // Handle MongoDB and MongoClusters
-            const accountId =
-                parsedConnection.connectionString.username +
-                '@' +
-                parsedConnection.connectionString.redact().toString();
+            const hashedCS = randomUtils.getPseudononymousStringHash(params.connectionString, 'hex').substring(0, 24);
+            const accountId = `storageId-${parsedConnection.connectionString.hosts.join('_')}-${hashedCS}`;
+
             const isEmulator =
                 parsedConnection.connectionString.hosts?.length > 0 &&
                 parsedConnection.connectionString.hosts[0].includes('localhost');
+
+            const disableEmulatorSecurity =
+                parsedConnection.connectionString.searchParams.get('tlsAllowInvalidCertificates') === 'true';
+
             const fullId = await createAttachedForConnection(
                 accountId,
                 parsedConnection.connectionString.username + '@' + parsedConnection.connectionString.hosts.join(','),
@@ -213,6 +217,7 @@ async function handleConnectionStringRequest(
                 params.connectionString,
                 isEmulator,
                 parsedConnection.connectionString.port,
+                disableEmulatorSecurity,
             );
             ext.mongoClustersWorkspaceBranchDataProvider.refresh();
             await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
@@ -363,6 +368,7 @@ async function createAttachedForConnection(
     connectionString: string,
     isEmulator: boolean,
     emulatorPort?: string,
+    disableEmulatorSecurity?: boolean,
 ): Promise<string> {
     const rootId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}`;
     const parentId = `${rootId}${isEmulator ? '/localEmulators' : ''}`;
@@ -391,7 +397,7 @@ async function createAttachedForConnection(
         const storageItem: StorageItem = {
             id,
             name,
-            properties: { isEmulator, api },
+            properties: { isEmulator, api, ...(disableEmulatorSecurity && { disableEmulatorSecurity }) },
             secrets: [connectionString],
         };
 

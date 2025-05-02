@@ -29,7 +29,7 @@ import { isTreeElementWithExperience } from './tree/TreeElementWithExperience';
 import { WorkspaceResourceType } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { getConfirmationAsInSettings } from './utils/dialogs/getConfirmation';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId, getIsEmulatorConnection } from './utils/emulatorUtils';
-import { randomUtils } from './utils/randomUtils';
+import { generateMongoStorageId } from './utils/storageUtils';
 
 const supportedProviders = [
     'Microsoft.DocumentDB/databaseAccounts',
@@ -200,8 +200,7 @@ async function handleConnectionStringRequest(
             await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
         } else {
             // Handle MongoDB and MongoClusters
-            const hashedCS = randomUtils.getPseudononymousStringHash(params.connectionString, 'hex').substring(0, 24);
-            const accountId = `storageId-${parsedConnection.connectionString.hosts.join('_')}-${hashedCS}`;
+            const accountId = generateMongoStorageId(params.connectionString);
 
             const isEmulator =
                 parsedConnection.connectionString.hosts?.length > 0 &&

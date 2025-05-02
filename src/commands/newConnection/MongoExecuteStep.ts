@@ -10,7 +10,7 @@ import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { randomUtils } from '../../utils/randomUtils';
+import { generateMongoStorageId } from '../../utils/storageUtils';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -32,8 +32,7 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
                 async () => {
                     await new Promise((resolve) => setTimeout(resolve, 250));
 
-                    const hashedCS = randomUtils.getPseudononymousStringHash(connectionString, 'hex').substring(0, 24);
-                    const storageId = `storageId-${parsedCS.hosts.join('_')}-${hashedCS}`;
+                    const storageId = generateMongoStorageId(connectionString);
 
                     const storageItem: StorageItem = {
                         id: storageId,

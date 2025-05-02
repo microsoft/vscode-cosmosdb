@@ -4,11 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { ConnectionString } from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
 import { StorageNames, StorageService } from '../../../services/storageService';
-import { randomUtils } from '../../../utils/randomUtils';
+import { generateMongoStorageId } from '../../../utils/storageUtils'; // Import the new utility function
 import { type AttachedClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
@@ -43,13 +42,14 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
                 .map(async (item) => {
                     try {
                         const originalId = item.id;
+                        const connectionString = item.secrets?.[0];
 
-                        const parsedCS = new ConnectionString(item.secrets?.[0] ?? '');
+                        if (!connectionString) {
+                            console.warn(`Item ${originalId} has no connection string, skipping migration`);
+                            return;
+                        }
 
-                        const hashedCS = randomUtils
-                            .getPseudononymousStringHash(item.secrets?.[0] ?? '', 'hex')
-                            .substring(0, 24);
-                        const storageId = `storageId-${parsedCS.hosts.join('_')}-${hashedCS}`;
+                        const storageId = generateMongoStorageId(connectionString);
 
                         // Create the new item with updated ID
                         const newItem = { ...item, id: storageId };

@@ -115,6 +115,9 @@ class StorageImpl implements Storage {
         for (const key of keys) {
             const item = ext.context.globalState.get<StorageItem>(key);
             if (item) {
+                // ensure that the real id is used, same as the one used in the storage
+                item.id = key.substring(storageKeyPrefix.length);
+
                 // Read secrets associated with the item
                 const secretKey = `${key}/secrets`;
                 const secretsJson = await ext.secretStorage.get(secretKey);

@@ -4,9 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import { ConnectionString } from 'mongodb-connection-string-url';
 import * as vscode from 'vscode';
 import { MongoClustersExperience, type Experience } from '../../../AzureDBExperiences';
 import { StorageNames, StorageService } from '../../../services/storageService';
+import { randomUtils } from '../../../utils/randomUtils';
 import { type AttachedClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
@@ -26,6 +28,63 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
 
     async getChildren(): Promise<TreeElement[]> {
         const allItems = await StorageService.get(StorageNames.Workspace).getItems(WorkspaceResourceType.MongoClusters);
+
+        // TODO: remove this in a couple of releases
+        // If we find any items that are not in the new storage format,
+        // we need to migrate them to stay consistent
+        const itemUpdates = new Map<string, string>(); // original ID -> new ID
+        await Promise.allSettled(
+            allItems
+                // filter out emulators
+                .filter((item) => !item.properties?.isEmulator)
+                // only work on items in the old format
+                .filter((item) => !item.id.startsWith('storageId-'))
+                // convert them to the new format and return the modified items
+                .map(async (item) => {
+                    try {
+                        const originalId = item.id;
+
+                        const parsedCS = new ConnectionString(item.secrets?.[0] ?? '');
+
+                        const hashedCS = randomUtils
+                            .getPseudononymousStringHash(item.secrets?.[0] ?? '', 'hex')
+                            .substring(0, 24);
+                        const storageId = `storageId-${parsedCS.hosts.join('_')}-${hashedCS}`;
+
+                        // Create the new item with updated ID
+                        const newItem = { ...item, id: storageId };
+
+                        // Save new item first for safety
+                        await StorageService.get(StorageNames.Workspace).push(
+                            WorkspaceResourceType.MongoClusters,
+                            newItem,
+                            true,
+                        );
+
+                        // Delete old item after successful save
+                        await StorageService.get(StorageNames.Workspace).delete(
+                            WorkspaceResourceType.MongoClusters,
+                            originalId,
+                        );
+
+                        // Track this item for in-memory update
+                        itemUpdates.set(originalId, storageId);
+                    } catch (error) {
+                        console.error(`Failed to migrate item ${item.id}`, error);
+                    }
+                }),
+        );
+
+        // EXPLICIT SIDE EFFECT: Update the in-memory items to match storage changes
+        if (itemUpdates.size > 0) {
+            console.log(`Updating ${itemUpdates.size} in-memory items with new IDs`);
+            for (const item of allItems) {
+                const newId = itemUpdates.get(item.id);
+                if (newId) {
+                    item.id = newId; // Explicit side effect, updating allItems in-memory
+                }
+            }
+        }
 
         return [
             new LocalEmulatorsItem(this.id),

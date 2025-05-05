@@ -200,7 +200,7 @@ async function handleConnectionStringRequest(
             await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
         } else {
             // Handle MongoDB and MongoClusters
-            const accountId = generateMongoStorageId(params.connectionString);
+            const accountId = generateMongoStorageId(parsedConnection.connectionString.toString()); // FYI: working with the prasedConnection string for to guarantee a consistent accountId in this file.
 
             const isEmulator =
                 parsedConnection.connectionString.hosts?.length > 0 &&
@@ -504,8 +504,7 @@ async function openAppropriateEditorForConnection(
         });
     } else {
         // Open MongoDB editor
-        const accountId =
-            parsedConnection.connectionString.username + '@' + parsedConnection.connectionString.redact().toString();
+        const accountId = generateMongoStorageId(parsedConnection.connectionString.toString()); // FYI: working with the prasedConnection string for to guarantee a consistent accountId in this file.
         const expectedClusterId = `${WorkspaceResourceType.MongoClusters}/${accountId}`;
 
         return openCollectionViewInternal(context, {

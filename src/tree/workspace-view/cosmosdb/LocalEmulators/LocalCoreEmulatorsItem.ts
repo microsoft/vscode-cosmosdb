@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
+import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
@@ -45,32 +46,33 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
     }
 
     protected async getChildrenEmulatorOnlyImpl(items: StorageItem[]): Promise<TreeElement[]> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        return Promise.resolve(
-            items
-                .filter((item) => item.properties?.isEmulator) // only show emulators
-                .map((item) => {
-                    const { id, name, properties, secrets } = item;
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    const api: API = nonNullValue(properties?.api, 'api') as API;
-                    const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
-                    const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
-                    const experience = getExperienceFromApi(api);
-                    const accountModel: CosmosDBAttachedAccountModel = {
-                        id,
-                        name,
-                        connectionString,
-                        isEmulator,
-                    };
+        return (
+            await Promise.all(
+                items
+                    .filter((item) => item.properties?.isEmulator) // only show emulators
+                    .map(async (item) => {
+                        const { id, name, properties, secrets } = await migrateRawEmulatorItemToHashed(item);
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        const api: API = nonNullValue(properties?.api, 'api') as API;
+                        const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
+                        const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
+                        const experience = getExperienceFromApi(api);
+                        const accountModel: CosmosDBAttachedAccountModel = {
+                            id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                            storageId: id,
+                            name,
+                            connectionString,
+                            isEmulator,
+                        };
 
-                    if (experience?.api === API.Core) {
-                        return new NoSqlAccountAttachedResourceItem(accountModel, experience);
-                    }
+                        if (experience?.api === API.Core) {
+                            return new NoSqlAccountAttachedResourceItem(accountModel, experience);
+                        }
 
-                    // Unknown experience
-                    return undefined;
-                })
-                .filter((r) => r !== undefined),
-        );
+                        // Unknown experience
+                        return undefined;
+                    }),
+            )
+        ).filter((item) => item !== undefined); // Explicitly filter out undefined values
     }
 }

@@ -15,11 +15,19 @@ import { ext } from '../../extensionVariables';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
+import { type TreeElementWithStorageId } from '../TreeElementWithStorageId';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 
-export abstract class CosmosDBAccountAttachedResourceItem extends CosmosDBAccountResourceItemBase {
+export abstract class CosmosDBAccountAttachedResourceItem
+    extends CosmosDBAccountResourceItemBase
+    implements TreeElementWithStorageId
+{
     declare public readonly account: CosmosDBAttachedAccountModel;
+
+    public get storageId(): string {
+        return this.account.storageId;
+    }
 
     // To prevent the RBAC notification from showing up multiple times
     protected hasShownRbacNotification: boolean = false;

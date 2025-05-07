@@ -10,6 +10,7 @@ import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { generateMongoStorageId } from '../../utils/storageUtils';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
@@ -31,8 +32,10 @@ export class MongoExecuteStep extends AzureWizardExecuteStep<NewConnectionWizard
                 async () => {
                     await new Promise((resolve) => setTimeout(resolve, 250));
 
+                    const storageId = generateMongoStorageId(connectionString);
+
                     const storageItem: StorageItem = {
-                        id: parsedCS.username + '@' + parsedCS.redact().toString(),
+                        id: storageId,
                         name: label,
                         properties: { isEmulator: false, api },
                         secrets: [connectionString],

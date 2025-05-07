@@ -103,7 +103,7 @@ async function handleResourceIdRequest(
     context.telemetry.properties.resourceId = new vscode.TelemetryTrustedValue(resourceId.rawId);
     // Check if the provider is supported, even if revealing works for any resource,
     // we don't want to handle resources unsupported by this extension
-    if (!supportedProviders.includes(resourceId.provider)) {
+    if (!supportedProviders.some((provider) => provider.toLowerCase() === resourceId.provider.toLowerCase())) {
         throw new Error(
             l10n.t(
                 'Unsupported resource provider: {0}. This extension only supports Cosmos DB resources.',

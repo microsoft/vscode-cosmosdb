@@ -366,7 +366,6 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             return undefined;
         }
         let node = element;
-        // eslint-disable-next-line no-constant-condition
         outerLoop: while (true) {
             const children: TreeElement[] | null | undefined = await this.getChildren(node);
 

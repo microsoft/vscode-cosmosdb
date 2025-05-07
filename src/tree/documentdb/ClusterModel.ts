@@ -11,6 +11,16 @@ import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 // '|' means that you can only access properties that are common to both types.
 export type ClusterModel = (MongoClusterProperties | ResourceModelInUse) & ResourceModelInUse;
 
+/**
+ * Represents a cluster model that has been attached to the workspace
+ */
+export type AttachedClusterModel = ClusterModel & {
+    /**
+     * ID used to reference this attached cluster in storage
+     */
+    storageId: string;
+};
+
 interface ResourceModelInUse extends Resource {
     // from the original MongoClusterProperties type
     id: string;

@@ -22,7 +22,7 @@ import { type CosmosDBAttachedAccountModel } from './CosmosDBAttachedAccountMode
 import { LocalCoreEmulatorsItem } from './LocalEmulators/LocalCoreEmulatorsItem';
 
 export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContextValue {
-    public readonly id: string = WorkspaceResourceType.AttachedAccounts;
+    public readonly id: string = `${WorkspaceResourceType.AttachedAccounts}`;
     public readonly contextValue: string = 'treeItem.accounts';
 
     constructor() {
@@ -33,7 +33,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         // TODO: remove after a few releases
         await this.pickSupportedAccounts(); // Move accounts from the old storage format to the new one
 
-        const items = await StorageService.get(StorageNames.Workspace).getItems(this.id);
+        const items = await StorageService.get(StorageNames.Workspace).getItems(WorkspaceResourceType.AttachedAccounts);
         const children = await this.getChildrenNoEmulatorsImpl(items);
 
         if (isEmulatorSupported) {
@@ -64,7 +64,8 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                     const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
                     const experience = getExperienceFromApi(api);
                     const accountModel: CosmosDBAttachedAccountModel = {
-                        id,
+                        id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id
+                        storageId: id,
                         name,
                         connectionString,
                         isEmulator,

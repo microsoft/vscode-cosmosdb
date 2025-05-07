@@ -43,7 +43,9 @@
   "l10n": "./l10n",
   "activationEvents": [
     "onFileSystem:azureDatabases",
-    "onView:azureWorkspace"
+    "onView:azureWorkspace",
+    "onView:azureResourceGroups",
+    "onUri"
   ],
   "scripts": {
     "build": "tsc",

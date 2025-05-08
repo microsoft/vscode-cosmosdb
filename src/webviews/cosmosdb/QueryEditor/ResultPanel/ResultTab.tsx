@@ -5,7 +5,7 @@
 
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { type TreeData } from '../../../../utils/slickgrid/mongo/toSlickGridTree';
 import { queryResultToJSON, queryResultToTable, queryResultToTree, type TableData } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
@@ -26,6 +26,17 @@ const useClasses = makeStyles({
         height: '100%',
         width: '100%',
     },
+    screenReaderOnly: {
+        position: 'absolute',
+        width: '1px',
+        height: '1px',
+        padding: '0',
+        margin: '-1px',
+        overflow: 'hidden',
+        clip: 'rect(0, 0, 0, 0)',
+        whiteSpace: 'nowrap',
+        border: 'false',
+    },
 });
 
 type ViewData = {
@@ -39,6 +50,8 @@ export const ResultTab = () => {
     const { tableViewMode, currentQueryResult, partitionKey } = useQueryEditorState();
     const [viewData, setViewData] = useState<ViewData>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [resultCount, setResultCount] = useState<number>(0);
+    const previousLoadingState = useRef(false);
 
     useEffect(() => {
         // Skip if no query result
@@ -93,8 +106,43 @@ export const ResultTab = () => {
         setViewData({});
     }, [currentQueryResult, partitionKey]);
 
+     // Calculate and set result count when loading completes
+     useEffect(() => {
+        if (previousLoadingState.current && !isLoading) {
+            // Loading just completed, update result count based on view mode
+            let count = 0;
+            if (tableViewMode === 'Table' && viewData.table) {
+                count = viewData.table.dataset.length;
+            } else if (tableViewMode === 'Tree' && viewData.tree) {
+                count = viewData.tree.length;
+            } else if (tableViewMode === 'JSON' && viewData.json) {
+                // For JSON view, count top-level items if it's an array, otherwise just show 1
+                try {
+                    const parsedJson = JSON.parse(viewData.json) as unknown;
+                    count = Array.isArray(parsedJson) ? parsedJson.length : 1;
+                } catch {
+                    count = 0;
+                }
+            }
+            setResultCount(count);
+        }
+
+        previousLoadingState.current = isLoading;
+    }, [isLoading, viewData, tableViewMode]);
+
     return (
         <div className={[classes.container, 'resultsDisplayArea'].join(' ')}>
+            {/* Add an ARIA live region to announce results count */}
+            <div
+                className={classes.screenReaderOnly}
+                aria-live="polite"
+                aria-atomic="true"
+            >
+                {!isLoading && resultCount > 0 ?
+                    l10n.t('Query complete. {0} results displayed.', resultCount) :
+                    ''
+                }
+            </div>
             <Suspense fallback={<div>{l10n.t('Loading…')}</div>}>
                 {isLoading ? (
                     <div className={classes.loaderContainer}>

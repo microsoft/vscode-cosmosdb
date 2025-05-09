@@ -1,5 +1,25 @@
 # Change Log
 
+## 0.26.0
+
+### Added
+
+- New configuration setting `cosmosDB.preferredAuthenticationMethod` for the preferred authentication method for Cosmos DB accounts inside a new "Authentication" section '(deprecating the `azureDatabases.useCosmosOAuth` setting).
+- Support for Managed Identity authentication with Cosmos DB.
+- Support exporting selected rows to CSV.
+- New `cosmosDB.csvSeparator` setting to configure a custom CSV separator.
+- NoSQL Query History is now persisted for each Collection across sessions.
+- New 'Open Documents' command to Mongo 'Documents' tree node.
+- UriHandler to handle external requests to open/attach a specific account and open the Query Editor.
+
+### Changed
+
+- Fixed "Create Database"/"Create Collection" command spelling for Mongo (#2452).
+- Fixed a bug where rendering query results failed with a "Maximum call stack size exceeded" error (#2624).
+- Improved Cosmos DB Authentication logic for accounts with `databaseAccount.disableLocalAuth`.
+- Renamed "Documents" to "Items" for Cosmos DB.
+- Minor Bugfixes, component updates and code improvements.
+
 ## 0.25.1
 
 ### Added

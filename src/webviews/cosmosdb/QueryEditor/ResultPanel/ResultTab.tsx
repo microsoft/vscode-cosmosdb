@@ -5,7 +5,7 @@
 
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { Suspense, useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { type TreeData } from '../../../../utils/slickgrid/mongo/toSlickGridTree';
 import { queryResultToJSON, queryResultToTable, queryResultToTree, type TableData } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
@@ -106,8 +106,8 @@ export const ResultTab = () => {
         setViewData({});
     }, [currentQueryResult, partitionKey]);
 
-     // Calculate and set result count when loading completes
-     useEffect(() => {
+    // Calculate and set result count when loading completes
+    useEffect(() => {
         if (previousLoadingState.current && !isLoading) {
             // Loading just completed, update result count based on view mode
             let count = 0;
@@ -133,15 +133,8 @@ export const ResultTab = () => {
     return (
         <div className={[classes.container, 'resultsDisplayArea'].join(' ')}>
             {/* Add an ARIA live region to announce results count */}
-            <div
-                className={classes.screenReaderOnly}
-                aria-live="polite"
-                aria-atomic="true"
-            >
-                {!isLoading && resultCount > 0 ?
-                    l10n.t('Query complete. {0} results displayed.', resultCount) :
-                    ''
-                }
+            <div className={classes.screenReaderOnly} aria-live="polite" aria-atomic="true">
+                {!isLoading && resultCount > 0 ? l10n.t('Query complete. {0} results displayed.', resultCount) : ''}
             </div>
             <Suspense fallback={<div>{l10n.t('Loading…')}</div>}>
                 {isLoading ? (

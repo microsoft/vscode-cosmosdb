@@ -96,6 +96,18 @@ export function getCosmosClient(
     } else if (nonKeyCredentials.length > 0) {
         commonProperties.aadCredentials = {
             getToken: async (scopes, _options) => {
+                // Fix scope for Fabric Native artifacts
+                // TODO: this should be handled in the SDK
+                const fixedScopes = Array.isArray(scopes)
+                    ? scopes.map((scope) =>
+                          scope.endsWith('cosmos.fabric.microsoft.com/.default')
+                              ? 'https://cosmos.azure.com/.default'
+                              : scope,
+                      )
+                    : scopes.endsWith('cosmos.fabric.microsoft.com/.default')
+                      ? 'https://cosmos.azure.com/.default'
+                      : scopes;
+
                 // Track errors for better diagnostics
                 const errors: string[] = [];
 
@@ -118,7 +130,7 @@ export function getCosmosClient(
 
                             case AuthenticationMethod.entraId: {
                                 const { tenantId } = credential as CosmosDBEntraIdCredential;
-                                const session = await getSessionFromVSCode(scopes, tenantId, {
+                                const session = await getSessionFromVSCode(fixedScopes, tenantId, {
                                     createIfNone: forcePrompt,
                                 });
                                 return session?.accessToken ? formatToken(session.accessToken) : null;
@@ -127,7 +139,7 @@ export function getCosmosClient(
                             case AuthenticationMethod.managedIdentity: {
                                 const { clientId } = credential as CosmosDBManagedIdentityCredential;
                                 const auth = new ManagedIdentityCredential({ clientId });
-                                return await auth.getToken(scopes);
+                                return await auth.getToken(fixedScopes);
                             }
 
                             default:

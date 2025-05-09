@@ -510,6 +510,7 @@
   "Session is disposed": "Session is disposed",
   "Session is not running! Please run the session first": "Session is not running! Please run the session first",
   "Setting up credentials for server \"{0}\"…": "Setting up credentials for server \"{0}\"…",
+  "Show history of previous queries": "Show history of previous queries",
   "Showing Results": "Showing Results",
   "Sign in to Azure...": "Sign in to Azure...",
   "Signing out programmatically is not supported. You must sign out by selecting the account in the Accounts menu and choosing Sign Out.": "Signing out programmatically is not supported. You must sign out by selecting the account in the Accounts menu and choosing Sign Out.",

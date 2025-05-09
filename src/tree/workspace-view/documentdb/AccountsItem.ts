@@ -12,6 +12,7 @@ import { type AttachedClusterModel } from '../../documentdb/ClusterModel';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithExperience } from '../../TreeElementWithExperience';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
+import { postPickSupportedAccountsCleanUp } from '../accountMigration';
 import { ClusterItem } from './ClusterItem';
 import { LocalEmulatorsItem } from './LocalEmulators/LocalEmulatorsItem';
 import { NewConnectionItem } from './NewConnectionItem';
@@ -26,6 +27,9 @@ export class AccountsItem implements TreeElement, TreeElementWithExperience {
     }
 
     async getChildren(): Promise<TreeElement[]> {
+        // TODO: remove after a few releases
+        await postPickSupportedAccountsCleanUp();
+
         const allItems = await StorageService.get(StorageNames.Workspace).getItems(WorkspaceResourceType.MongoClusters);
 
         // TODO: remove this in a couple of releases

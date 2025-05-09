@@ -459,6 +459,7 @@
   "Provide function name": "Provide function name",
   "Provide stored procedure name": "Provide stored procedure name",
   "Provider \"{0}\" does not have resource type \"{1}\".": "Provider \"{0}\" does not have resource type \"{1}\".",
+  "Query complete. {0} results displayed.": "Query complete. {0} results displayed.",
   "Query engine execution time": "Query engine execution time",
   "Query examples": "Query examples",
   "Query failed": "Query failed",

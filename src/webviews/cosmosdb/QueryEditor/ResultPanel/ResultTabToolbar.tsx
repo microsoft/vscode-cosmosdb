@@ -51,7 +51,7 @@ export const ResultTabToolbar = ({ selectedTab }: ResultToolbarProps) => {
     }
 
     return (
-        <Toolbar  size="small">
+        <Toolbar size="small">
             {isEditMode && (
                 <>
                     <Tooltip content={l10n.t('Add new item in separate tab')} relationship="description" withArrow>

@@ -54,7 +54,6 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
                             {
                                 uri: 'mongodb-filter-query-schema.json', // Unique identifier
                                 fileMatch: ['*'], // Apply to all JSON files or specify as needed
-                                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                                 schema: schema,
                             },
                         ],
@@ -72,7 +71,6 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
                 {
                     uri: 'mongodb-filter-query-schema.json', // Unique identifier
                     fileMatch: ['*'], // Apply to all JSON files or specify as needed
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     schema: basicFindQuerySchema,
                     // schema: generateMongoFindJsonSchema(fieldEntries)
                 },

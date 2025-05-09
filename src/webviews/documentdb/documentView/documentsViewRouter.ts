@@ -66,7 +66,7 @@ export const documentsViewRouter = router({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let documentId: any;
             if (documentBson['_id']) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 documentId = documentBson['_id'];
             }
 

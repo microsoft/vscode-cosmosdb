@@ -12,7 +12,6 @@ import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
 import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey, extractPartitionKeyValues } from './document';
-import { type TreeData } from './slickgrid/mongo/toSlickGridTree';
 
 export type StatsItem = {
     metric: string;
@@ -26,6 +25,8 @@ export type TableData = {
     headers: string[];
     dataset: TableRecord[];
 };
+
+export type TreeData = { id: string; parentId: string | null; field: string; value: string; type: string };
 
 export type ColumnOptions = {
     ShowPartitionKey: 'first' | 'none'; // 'first' = show id + partition key first, 'none' = the nested partition key values are hidden + partition key are shown as is (without / prefix)

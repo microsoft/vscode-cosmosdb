@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line import/no-internal-modules
 import { ManagedIdentityCredential } from '@azure/identity';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';

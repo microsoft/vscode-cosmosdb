@@ -12,11 +12,10 @@ import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autoc
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 import * as l10n from '@vscode/l10n';
-import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
-// eslint-disable-next-line import/no-internal-modules
 import { ext } from '../../../extensionVariables';
 import { type CollectionItem } from '../../../tree/documentdb/CollectionItem';
 import { WorkspaceResourceType } from '../../../tree/workspace-api/SharedWorkspaceResourceProvider';
+import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
 import { generateMongoFindJsonSchema } from '../../../utils/json/mongo/autocomplete/generateMongoFindJsonSchema';
@@ -114,7 +113,6 @@ export const collectionsViewRouter = router({
             if (autoCompletionData.length > 0) {
                 querySchema = generateMongoFindJsonSchema(autoCompletionData);
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 querySchema = basicFindQuerySchema;
             }
 

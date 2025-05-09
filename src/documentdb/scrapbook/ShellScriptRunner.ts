@@ -5,13 +5,14 @@
 
 import { nonNullValue, parseError, UserCancelledError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as fse from 'fs-extra';
+import * as fs from 'node:fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import * as cpUtils from '../../utils/cp';
 import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
+import { pathExists } from '../../utils/fs/pathExists';
 import { InteractiveChildProcess } from '../../utils/InteractiveChildProcess';
 import { randomUtils } from '../../utils/randomUtils';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
@@ -347,7 +348,6 @@ export class ShellScriptRunner extends vscode.Disposable {
                     openFile,
                 );
                 if (response === openFile) {
-                    // eslint-disable-next-line no-constant-condition
                     while (true) {
                         const newPath: vscode.Uri[] = await context.ui.showOpenDialog({
                             filters: { 'Executable Files': [process.platform === 'win32' ? 'exe' : ''] },
@@ -391,8 +391,8 @@ export class ShellScriptRunner extends vscode.Disposable {
             }
         } else {
             // User has specified the path or command.  Sometimes they set the folder instead of a path to the file, let's check that and auto fix
-            if (await fse.pathExists(shellPathSetting)) {
-                const stat = await fse.stat(shellPathSetting);
+            if (await pathExists(shellPathSetting)) {
+                const stat = await fs.stat(shellPathSetting);
                 if (stat.isDirectory()) {
                     return path.join(shellPathSetting, mongoExecutableFileName);
                 }

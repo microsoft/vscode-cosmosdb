@@ -100,7 +100,6 @@ function vscodeLink(options: VSCodeLinkOptions): TRPCLink<AppRouter> {
                     if (message.id !== operationId) return;
 
                     if (message.error) {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                         observer.error(TRPCClientError.from(message.error));
                         return;
                     }

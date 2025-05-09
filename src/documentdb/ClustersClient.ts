@@ -263,7 +263,6 @@ export class ClustersClient {
         skip: number,
         limit: number,
     ): Promise<WithId<Document>[]> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
         }
@@ -295,7 +294,6 @@ export class ClustersClient {
          * Configuration
          */
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
         }
@@ -392,7 +390,7 @@ export class ClustersClient {
         documentId: string,
         document: Document,
     ): Promise<{ documentId: unknown; document: WithId<Document> | null }> {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let parsedId: any;
 
         if (documentId === '') {
@@ -412,16 +410,12 @@ export class ClustersClient {
         // connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         delete document._id;
 
-        const replaceResult = await collection.replaceOne(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            { _id: parsedId },
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            document as WithoutId<Document>,
-            { upsert: true },
-        );
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const replaceResult = await collection.replaceOne({ _id: parsedId }, document as WithoutId<Document>, {
+            upsert: true,
+        });
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         const newDocumentId = (replaceResult.upsertedId as any) ?? parsedId;

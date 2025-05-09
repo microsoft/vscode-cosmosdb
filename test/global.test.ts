@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TestOutputChannel, TestUserInput } from '@microsoft/vscode-azext-dev';
 import { type IAzureUserInput, registerOnActionStartHandler } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extension.bundle';
+import { TestOutputChannel } from './TestOutputChannel';
+import { TestUserInput } from './TestUserInput';
 
 const longRunningLocalTestsEnabled: boolean = !/^(false|0)?$/i.test(
     process.env.AzCode_EnableLongRunningTestsLocal || '',

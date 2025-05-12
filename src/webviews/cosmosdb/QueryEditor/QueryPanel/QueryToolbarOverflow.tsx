@@ -195,7 +195,7 @@ const DuplicateTabButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label={l10n.t('Copy into new tab')}
+                aria-label={l10n.t('Duplicate')}
                 icon={<TabDesktopMultipleRegular />}
                 onClick={() => void dispatcher.duplicateTab(state.queryValue)}
                 disabled={!state.isConnected}

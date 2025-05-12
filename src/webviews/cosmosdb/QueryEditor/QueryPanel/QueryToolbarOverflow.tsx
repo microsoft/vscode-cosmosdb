@@ -87,7 +87,10 @@ const RunQueryButton = forwardRef((props: OverflowToolbarItemProps, ref: Forward
                             icon={<PlayRegular />}
                             disabled={state.isExecuting || !state.isConnected}
                             appearance={'primary'}
-                            menuButton={triggerProps}
+                            menuButton={{
+                                ...triggerProps,
+                                'aria-label': l10n.t('Show history of previous queries'),
+                            }}
                             primaryActionButton={{ onClick: () => runQuery() }}
                         >
                             {l10n.t('Run')}
@@ -192,7 +195,7 @@ const DuplicateTabButton = forwardRef(
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 ref={ref}
-                aria-label={l10n.t('Copy into new tab')}
+                aria-label={l10n.t('Duplicate')}
                 icon={<TabDesktopMultipleRegular />}
                 onClick={() => void dispatcher.duplicateTab(state.queryValue)}
                 disabled={!state.isConnected}

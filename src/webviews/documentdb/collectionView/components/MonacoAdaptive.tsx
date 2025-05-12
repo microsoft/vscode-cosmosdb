@@ -9,7 +9,7 @@ import { MonacoEditor } from '../../../MonacoEditor';
 // eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit';
 import { useEffect, useRef, useState } from 'react';
 import './monacoAdaptive.scss';
 
@@ -50,7 +50,7 @@ export const MonacoAdaptive = (props: MonacoAdaptiveProps) => {
     // also, let's exclude onMount as we're adding our own handler and will invoke the provided one
     // once we're done with our setup
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { adaptiveHeight, onExecuteRequest, onMount, ...editorProps } = props;
 
     const handleMonacoEditorMount = (

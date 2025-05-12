@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "ES2022",
+    "target": "ES2023",
     "outDir": "out",
-    "lib": ["ES2022", "dom", "dom.iterable", "webworker"],
+    "lib": ["ES2023", "dom", "dom.iterable", "webworker"],
     "sourceMap": true,
     "esModuleInterop": true, // added by tnaum to help with Denque integration, happy to discuss other approaches
-    "allowSyntheticDefaultImports": true, // added by tnaum to fix SlickGrid integration, eager to discuss other approaches
     "noImplicitThis": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,

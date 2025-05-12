@@ -12,7 +12,9 @@ import { getKnownFields, type FieldEntry } from '../../../utils/json/mongo/autoc
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 import * as l10n from '@vscode/l10n';
+import { ext } from '../../../extensionVariables';
 import { type CollectionItem } from '../../../tree/documentdb/CollectionItem';
+import { WorkspaceResourceType } from '../../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { showConfirmationAsInSettings } from '../../../utils/dialogs/showConfirmation';
 // eslint-disable-next-line import/no-internal-modules
 import basicFindQuerySchema from '../../../utils/json/mongo/autocomplete/basicMongoFindFilterSchema.json';
@@ -26,8 +28,40 @@ export type RouterContext = BaseRouterContext & {
     clusterId: string;
     databaseName: string;
     collectionName: string;
-    collectionTreeItem: CollectionItem; // needed to execute commands on the collection as the tree APIv2 doesn't support id-based search for tree items.
 };
+
+// Helper function to find the collection node based on context
+async function findCollectionNodeInTree(
+    clusterId: string,
+    databaseName: string,
+    collectionName: string,
+): Promise<CollectionItem | undefined> {
+    let branchDataProvider: { findNodeById(id: string): Promise<unknown> } | undefined;
+    const nodeId = `${clusterId}/${databaseName}/${collectionName}`;
+
+    if (clusterId.startsWith(WorkspaceResourceType.MongoClusters)) {
+        branchDataProvider = ext.mongoClustersWorkspaceBranchDataProvider;
+    } else if (clusterId.includes('/providers/Microsoft.DocumentDB/mongoClusters/')) {
+        branchDataProvider = ext.mongoVCoreBranchDataProvider;
+    } else if (clusterId.includes('/providers/Microsoft.DocumentDb/databaseAccounts/')) {
+        branchDataProvider = ext.cosmosDBBranchDataProvider;
+    }
+
+    if (branchDataProvider) {
+        try {
+            // Assuming findNodeById might return undefined or throw if not found
+            const node = await branchDataProvider.findNodeById(nodeId);
+            // The cast is still necessary if the providers don't share a precise enough common type
+            return node as CollectionItem | undefined;
+        } catch (error) {
+            console.error(`Error finding node by ID '${nodeId}':`, error);
+            return undefined;
+        }
+    } else {
+        console.warn(`Could not determine branch data provider for clusterId: ${clusterId}`);
+        return undefined;
+    }
+}
 
 export const collectionsViewRouter = router({
     getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
@@ -79,7 +113,6 @@ export const collectionsViewRouter = router({
             if (autoCompletionData.length > 0) {
                 querySchema = generateMongoFindJsonSchema(autoCompletionData);
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 querySchema = basicFindQuerySchema;
             }
 
@@ -205,19 +238,42 @@ export const collectionsViewRouter = router({
         // parameters
         .input(z.object({ query: z.string() }))
         //procedure type
-        .query(({ input, ctx }) => {
+        .query(async ({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
-            vscode.commands.executeCommand('command.internal.mongoClusters.exportDocuments', myCtx.collectionTreeItem, {
-                queryText: input.query,
-                source: 'webview;collectionView',
-            });
+            // TODO: remove the dependency on the tree node, in the end it was here only to show progress on the 'tree item'
+            const collectionTreeNode = await findCollectionNodeInTree(
+                myCtx.clusterId,
+                myCtx.databaseName,
+                myCtx.collectionName,
+            );
+
+            if (collectionTreeNode) {
+                vscode.commands.executeCommand('command.internal.mongoClusters.exportDocuments', collectionTreeNode, {
+                    queryText: input.query,
+                    source: 'webview;collectionView',
+                });
+            } else {
+                throw new Error('Could not find the specified collection in the tree.');
+            }
         }),
-    importDocuments: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
+
+    importDocuments: publicProcedure.use(trpcToTelemetry).query(async ({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
-        vscode.commands.executeCommand('command.mongoClusters.importDocuments', myCtx.collectionTreeItem, null, {
-            source: 'webview;collectionView',
-        });
+        // TODO: remove the dependency on the tree node, in the end it was here only to show progress on the 'tree item'
+        const collectionTreeNode = await findCollectionNodeInTree(
+            myCtx.clusterId,
+            myCtx.databaseName,
+            myCtx.collectionName,
+        );
+
+        if (collectionTreeNode) {
+            vscode.commands.executeCommand('command.mongoClusters.importDocuments', collectionTreeNode, null, {
+                source: 'webview;collectionView',
+            });
+        } else {
+            throw new Error('Could not find the specified collection in the tree.');
+        }
     }),
 });

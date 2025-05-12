@@ -3,10 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export type CosmosDBAttachedAccountModel = {
-    connectionString: string;
-    id: string;
-    storageId: string;
-    isEmulator: boolean;
-    name: string;
-};
+import fs from 'node:fs/promises';
+
+export async function pathExists(path: string): Promise<boolean> {
+    try {
+        await fs.access(path);
+        return true; // File exists
+    } catch {
+        return false; // File does not exist
+    }
+}

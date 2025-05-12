@@ -9,7 +9,7 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import * as l10n from '@vscode/l10n';
 import { EJSON, type Document } from 'bson';
-import * as fse from 'fs-extra';
+import * as fs from 'node:fs/promises';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
@@ -199,7 +199,7 @@ async function parseAndValidateFile(
  * @returns A promise that resolves to an array of parsed documents as unknown objects.
  */
 async function parseAndValidateFileForMongo(uri: vscode.Uri): Promise<{ documents: unknown[]; errors: string[] }> {
-    const fileContent = await fse.readFile(uri.fsPath, 'utf8');
+    const fileContent = await fs.readFile(uri.fsPath, 'utf8');
     const parsed = EJSON.parse(fileContent) as unknown;
     const errors: string[] = [];
     const documents: unknown[] = [];
@@ -251,7 +251,7 @@ async function parseAndValidateFileForCosmosDB(
         return !hasErrors;
     };
 
-    const fileContent = await fse.readFile(uri.fsPath, 'utf8');
+    const fileContent = await fs.readFile(uri.fsPath, 'utf8');
     const parsed = parseJson(fileContent) as JSONValue;
 
     if (!parsed || typeof parsed !== 'object') {

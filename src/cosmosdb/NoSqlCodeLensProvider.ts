@@ -38,8 +38,6 @@ export class NoSqlCodeLensProvider implements vscode.CodeLensProvider {
             context.telemetry.suppressIfSuccessful = true;
             const text = document.getText();
             const queryText = text;
-
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
             const connectedCollection: NoSqlQueryConnection | undefined = KeyValueStore.instance.get(
                 noSqlQueryConnectionKey,
             ) as unknown as NoSqlQueryConnection;

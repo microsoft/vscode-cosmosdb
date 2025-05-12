@@ -144,13 +144,12 @@ class FindMongoCommandsVisitor extends MongoVisitor<MongoCommand[]> {
                 if (functionCallContext && functionCallContext.parent instanceof mongoParser.CommandContext) {
                     const lastCommand = this.commands[this.commands.length - 1];
                     const argAsObject = this.contextToObject(ctx);
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
                     const argText = EJSON.stringify(argAsObject);
                     nonNullProp(lastCommand, 'arguments').push(argText);
                     const escapeHandled = this.deduplicateEscapesForRegex(argText);
                     let ejsonParsed = {};
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         ejsonParsed = EJSON.parse(escapeHandled);
                     } catch (error) {
                         //EJSON parse failed due to a wrong flag, etc.

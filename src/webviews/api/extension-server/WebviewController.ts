@@ -120,7 +120,6 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
      */
     private async handleSubscriptionMessage(message: VsCodeLinkRequestMessage, context: BaseRouterContext) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const callerFactory = createCallerFactory(appRouter);
             const caller = callerFactory(context);
 
@@ -191,7 +190,6 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
      */
     private async handleDefaultMessage(message: VsCodeLinkRequestMessage, context: BaseRouterContext) {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const callerFactory = createCallerFactory(appRouter);
             const caller = callerFactory(context);
 

@@ -8,8 +8,8 @@ import { ManagedIdentityCredential } from '@azure/identity';
 // eslint-disable-next-line import/no-internal-modules
 import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
+import { merge } from 'es-toolkit';
 import * as https from 'https';
-import { merge } from 'lodash';
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
 import { ext } from '../extensionVariables';

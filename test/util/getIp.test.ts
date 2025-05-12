@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createTestActionContext } from '@microsoft/vscode-azext-dev';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import { isIPv4 } from 'net';
 import { getPublicIpv4, isIpInRanges } from '../../extension.bundle';
+import { createTestActionContext } from '../TestActionContext';
 
 suite('getPublicIpv4', () => {
     test('get IP', async () => {

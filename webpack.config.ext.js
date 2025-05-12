@@ -61,10 +61,19 @@ module.exports = (env, { mode }) => {
             'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
             /* PG optional dependencies */
             'pg-native': 'commonjs pg-native',
+            'pg-cloudflare': 'commonjs pg-cloudflare',
         },
         resolve: {
             roots: [__dirname],
+            // conditionNames: ['import', 'require', 'node'], // Uncomment when we will use VSCode what supports modules
+            mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
+            alias: {
+                'vscode-languageserver-types': path.resolve(
+                    __dirname,
+                    'node_modules/vscode-languageserver-types/lib/esm/main.js',
+                ),
+            },
         },
         module: {
             rules: [
@@ -81,7 +90,7 @@ module.exports = (env, { mode }) => {
                             jsc: {
                                 baseUrl: path.resolve(__dirname, './'), // Set absolute path here
                                 keepClassNames: true,
-                                target: 'es2022',
+                                target: 'es2023',
                                 parser: {
                                     syntax: 'typescript',
                                     tsx: true,

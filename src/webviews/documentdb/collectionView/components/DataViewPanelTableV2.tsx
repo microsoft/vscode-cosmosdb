@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit';
 import * as React from 'react';
 import { useContext, useRef } from 'react';
 import {
@@ -151,12 +151,9 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
                 gridId="myGrid"
                 ref={gridRef} // Attach the reference to SlickGrid
                 gridOptions={gridOptions}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 columnDefinitions={gridColumns}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 dataset={liveData}
                 onDblClick={(event) => onCellDblClick(event)}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                 // debouncing here as multiple events are fired on multiselect
                 onSelectedRowsChanged={debounce(
                     (event: { detail: { eventData: unknown; args: OnSelectedRowsChangedEventArgs } }) =>

@@ -70,9 +70,7 @@ export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.
             <SlickgridReact
                 gridId="myGrid"
                 gridOptions={gridOptions}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 columnDefinitions={gridColumns}
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 dataset={liveData}
                 onReactGridCreated={() => console.debug('Grid created')}
             />

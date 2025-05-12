@@ -83,7 +83,6 @@ export class MongoVisitor<T> implements mongoVisitor<T> {
         return !nextResult ? aggregate : nextResult;
     }
 
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
     shouldVisitNextChild(_node, _currentResult: T): boolean {
         return true;
     }

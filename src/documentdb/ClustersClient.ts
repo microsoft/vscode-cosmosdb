@@ -55,10 +55,21 @@ export interface IndexItemModel {
 }
 
 export type InsertDocumentsResult = {
-    /** Indicates whether this write result was acknowledged. If not, then all other members of this result will be undefined */
-    acknowledged: boolean;
     /** The number of inserted documents for this operations */
     insertedCount: number;
+    /** Indicates whether error occured duiring insertion. If not, then the member `errorMessage` will undefined */
+    errorsOccured: boolean;
+    /** Status code of insertion opertion */
+    errorMessage: string | undefined;
+    /** Array of writeError while processing the bulk write */
+    /** If writeErrors is valid, means the failure happened to specific documents, and the database acknowledged bulk write operation */
+    /** If writeErrors is undefined, means the failure happened to the whole operation, may related to doccument size or some other errors, where retry should be applied */
+    writeErrors:
+        | Array<{
+              index: number;
+              errmsg: string;
+          }>
+        | undefined;
 };
 
 export class ClustersClient {
@@ -263,6 +274,7 @@ export class ClustersClient {
         skip: number,
         limit: number,
     ): Promise<WithId<Document>[]> {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
         }
@@ -294,6 +306,7 @@ export class ClustersClient {
          * Configuration
          */
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         if (findQuery === undefined || findQuery.trim().length === 0) {
             findQuery = '{}';
         }
@@ -390,7 +403,7 @@ export class ClustersClient {
         documentId: string,
         document: Document,
     ): Promise<{ documentId: unknown; document: WithId<Document> | null }> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         let parsedId: any;
 
         if (documentId === '') {
@@ -410,12 +423,16 @@ export class ClustersClient {
         // connect and execute
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         delete document._id;
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const replaceResult = await collection.replaceOne({ _id: parsedId }, document as WithoutId<Document>, {
-            upsert: true,
-        });
+        const replaceResult = await collection.replaceOne(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            { _id: parsedId },
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            document as WithoutId<Document>,
+            { upsert: true },
+        );
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         const newDocumentId = (replaceResult.upsertedId as any) ?? parsedId;
@@ -453,11 +470,31 @@ export class ClustersClient {
     ): Promise<InsertDocumentsResult> {
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
-        const insertManyResults = await collection.insertMany(documents, { forceServerObjectId: true });
-
-        return {
-            acknowledged: insertManyResults.acknowledged,
-            insertedCount: insertManyResults.insertedCount,
-        };
+        try {
+            const insertManyResults = await collection.insertMany(documents, {
+                forceServerObjectId: true,
+                ordered: false,
+            });
+            return {
+                insertedCount: insertManyResults.insertedCount,
+                errorsOccured: false,
+                errorMessage: undefined,
+                writeErrors: undefined,
+            };
+        } catch (error) {
+            return {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+                insertedCount: error.insertedCount ?? 0,
+                errorsOccured: true,
+                errorMessage: parseError(error).message,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+                writeErrors:
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+                    error.writeErrors?.map((err: { index: number; errmsg: string }) => ({
+                        index: err.index,
+                        errmsg: err.errmsg,
+                    })) ?? undefined,
+            };
+        }
     }
 }

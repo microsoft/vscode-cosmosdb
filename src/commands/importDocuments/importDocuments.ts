@@ -9,7 +9,7 @@ import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import * as l10n from '@vscode/l10n';
 import { EJSON, type Document } from 'bson';
-import * as fs from 'node:fs/promises';
+import * as fse from 'fs-extra';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
@@ -19,6 +19,92 @@ import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBConta
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
+
+export class DocumentBufferforMongo {
+    private documents: Document[] = [];
+    private totalSize: number = 0;
+    private readonly node: CollectionItem;
+    private maxBatchSize: number = 50;
+    private maxDocumentSize: number = 16 * 1024 * 1024;
+    private maxTotalSize: number = 32 * 1024 * 1024;
+
+    constructor(node: CollectionItem) {
+        this.node = node;
+    }
+
+    public async addDocument(
+        document: Document,
+    ): Promise<{ count: number; error: Array<{ index: number; errmsg: string }> | string | undefined } | undefined> {
+        const docSize = this.estimateDocumentSize(document);
+
+        if (docSize > this.maxDocumentSize) {
+            return await this.insertSingleDocument(document);
+        }
+
+        let flushResponse: { count: number; error: Array<{ index: number; errmsg: string }> | undefined } | undefined;
+        if (this.documents.length >= this.maxBatchSize || this.totalSize + docSize > this.maxTotalSize) {
+            flushResponse = await this.flush();
+        }
+
+        this.documents.push(document);
+        this.totalSize += docSize;
+        return flushResponse;
+    }
+
+    private estimateDocumentSize(document: Document): number {
+        return Buffer.from(JSON.stringify(document)).length * 1.2;
+    }
+
+    public async flush(): Promise<{
+        count: number;
+        error: Array<{ index: number; errmsg: string }> | undefined;
+    }> {
+        if (this.documents.length === 0) {
+            return { count: 0, error: undefined };
+        }
+
+        const documentsToInsert = [...this.documents];
+        this.documents = [];
+        this.totalSize = 0;
+
+        return await this.insertBatch(documentsToInsert);
+    }
+
+    private async insertBatch(
+        documents: Document[],
+    ): Promise<{ count: number; error: Array<{ index: number; errmsg: string }> | undefined }> {
+        const client = await ClustersClient.getClient(this.node.cluster.id);
+        const response = await client.insertDocuments(
+            this.node.databaseInfo.name,
+            this.node.collectionInfo.name,
+            documents,
+        );
+
+        if (!response.errorsOccured) {
+            return { count: response.insertedCount, error: undefined };
+        } else if (response.writeErrors) {
+            return { count: response.insertedCount, error: response.writeErrors };
+        } else {
+            return {
+                count: response.insertedCount,
+                error: [{ index: -1 * documents.length, errmsg: response?.errorMessage ?? l10n.t('Unknown error') }],
+            };
+        }
+    }
+
+    private async insertSingleDocument(document: Document): Promise<{ count: number; error: string | undefined }> {
+        const client = await ClustersClient.getClient(this.node.cluster.id);
+        const response = await client.insertDocuments(this.node.databaseInfo.name, this.node.collectionInfo.name, [
+            document,
+        ]);
+
+        if (!response.errorsOccured) {
+            return { count: response.insertedCount, error: undefined };
+        } else {
+            return { count: 0, error: response?.errorMessage ?? l10n.t('Unknown error') };
+        }
+    }
+}
 
 export async function importDocuments(
     context: IActionContext,
@@ -116,6 +202,10 @@ export async function importDocumentsWithProgress(
             const countDocuments = documents.length;
             const incrementDocuments = 50 / (countDocuments || 1);
             let count = 0;
+            let buffer: DocumentBufferforMongo | undefined;
+            if (selectedItem instanceof CollectionItem) {
+                buffer = new DocumentBufferforMongo(selectedItem);
+            }
 
             for (let i = 0, percent = 0; i < countDocuments; i++, percent += incrementDocuments) {
                 progress.report({
@@ -126,20 +216,34 @@ export async function importDocumentsWithProgress(
                     }),
                 });
 
-                const result = await insertDocument(selectedItem, documents[i]);
-
-                if (result.error) {
-                    ext.outputChannel.appendLog(
-                        l10n.t('The insertion of document {number} failed with error: {error}', {
-                            number: i + 1,
-                            error: result.error,
-                        }),
-                    );
-                    ext.outputChannel.show();
-                    hasErrors = true;
-                } else {
-                    count++;
+                if (selectedItem instanceof CosmosDBContainerResourceItem) {
+                    const result = await insertDocument(selectedItem, documents[i]);
+                    if (result.error) {
+                        ext.outputChannel.appendLog(
+                            l10n.t('The insertion of document {number} failed with error: {error}', {
+                                number: i + 1,
+                                error: result.error,
+                            }),
+                        );
+                        ext.outputChannel.show();
+                        hasErrors = true;
+                    } else {
+                        count++;
+                    }
+                } else if (selectedItem instanceof CollectionItem) {
+                    const result = await insertDocumentWithBuffer(documents[i] as Document, buffer!);
+                    const parsedResult = handleInsertionResultForMongo(result, i, hasErrors);
+                    count += parsedResult.insertedCount;
+                    hasErrors = parsedResult.hasError;
                 }
+                // Do not need default case here, because the caller should check the type of selectedItem
+            }
+
+            if (buffer) {
+                const result = await buffer.flush();
+                const parsedResult = handleInsertionResultForMongo(result, countDocuments, hasErrors);
+                count += parsedResult.insertedCount;
+                hasErrors = parsedResult.hasError;
             }
 
             progress.report({ increment: 50, message: l10n.t('Finished importing') });
@@ -199,7 +303,7 @@ async function parseAndValidateFile(
  * @returns A promise that resolves to an array of parsed documents as unknown objects.
  */
 async function parseAndValidateFileForMongo(uri: vscode.Uri): Promise<{ documents: unknown[]; errors: string[] }> {
-    const fileContent = await fs.readFile(uri.fsPath, 'utf8');
+    const fileContent = await fse.readFile(uri.fsPath, 'utf8');
     const parsed = EJSON.parse(fileContent) as unknown;
     const errors: string[] = [];
     const documents: unknown[] = [];
@@ -251,7 +355,7 @@ async function parseAndValidateFileForCosmosDB(
         return !hasErrors;
     };
 
-    const fileContent = await fs.readFile(uri.fsPath, 'utf8');
+    const fileContent = await fse.readFile(uri.fsPath, 'utf8');
     const parsed = parseJson(fileContent) as JSONValue;
 
     if (!parsed || typeof parsed !== 'object') {
@@ -280,15 +384,10 @@ async function parseAndValidateFileForCosmosDB(
 }
 
 async function insertDocument(
-    node: CosmosDBContainerResourceItem | CollectionItem,
+    node: CosmosDBContainerResourceItem,
     document: unknown,
 ): Promise<{ document: unknown; error: string }> {
     try {
-        if (node instanceof CollectionItem) {
-            // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoCluster(node, document as Document);
-        }
-
         if (node instanceof CosmosDBContainerResourceItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
             return await insertDocumentIntoCosmosDB(node, document as ItemDefinition);
@@ -318,19 +417,60 @@ async function insertDocumentIntoCosmosDB(
     }
 }
 
-async function insertDocumentIntoCluster(
-    node: CollectionItem,
+async function insertDocumentWithBuffer(
     document: Document,
-): Promise<{ document: Document; error: string }> {
-    const client = await ClustersClient.getClient(node.cluster.id);
-    const response = await client.insertDocuments(node.databaseInfo.name, node.collectionInfo.name, [document]);
+    buffer: DocumentBufferforMongo,
+): Promise<{ count: number; error: Array<{ index: number; errmsg: string }> | string | undefined } | undefined> {
+    return await buffer.addDocument(document);
+}
 
-    if (response?.acknowledged) {
-        return { document, error: '' };
+function handleInsertionResultForMongo(
+    result: { count: number; error: Array<{ index: number; errmsg: string }> | string | undefined } | undefined,
+    i: number,
+    hasErrorsRef: boolean,
+): { insertedCount: number; hasError: boolean } {
+    let insertedCount = 0;
+    let hasError = false || hasErrorsRef;
+
+    if (!result?.error) {
+        // all documents inserted or just pushed to buffer
+        insertedCount += result?.count ?? 0;
+    } else if (typeof result.error === 'string') {
+        // error from single document insertion
+        ext.outputChannel.appendLog(
+            l10n.t('The insertion of document {number} failed with error: {error}', {
+                number: i + 1,
+                error: result.error,
+            }),
+        );
+        ext.outputChannel.show();
+        hasError = true;
+    } else if (result.error[0].index >= 0) {
+        // error from batch insertion
+        hasError = true;
+        insertedCount += result.count;
+        const startIndex = i - result.error.length - result.count;
+        for (const errorEle of result.error) {
+            ext.outputChannel.appendLog(
+                l10n.t('The insertion of document {number} failed with error: {error}', {
+                    number: startIndex + errorEle.index + 1,
+                    error: errorEle.errmsg,
+                }),
+            );
+            ext.outputChannel.show();
+        }
     } else {
-        return {
-            document,
-            error: l10n.t('The insertion failed. The operation was not acknowledged by the database.'),
-        };
+        // all batch inserted documents failed
+        ext.outputChannel.appendLog(
+            l10n.t('The insertion of document {startNumber}-{endNumber} failed with error: {error}', {
+                startNumber: i + result.error[0].index + 1,
+                endNumber: i + 1,
+                error: result.error[0].errmsg,
+            }),
+        );
+        ext.outputChannel.show();
+        hasError = true;
     }
+
+    return { insertedCount, hasError };
 }

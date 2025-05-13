@@ -55,8 +55,23 @@ export async function launchShell(
     const username = connectionString.username;
     const password = connectionString.password;
 
-    connectionString.username = isWindows ? '%USERNAME%' : '$USERNAME';
-    connectionString.password = isWindows ? '%PASSWORD%' : '$PASSWORD';
+    // Check if PowerShell is being used on Windows
+    const isWindowsPowerShell =
+        isWindows &&
+        (vscode.workspace.getConfiguration('terminal.integrated.defaultProfile').get('windows') === 'PowerShell' ||
+            vscode.workspace.getConfiguration('terminal.integrated.defaultProfile').get('windows') === 'pwsh');
+
+    // Use correct variable syntax based on shell
+    if (isWindows && isWindowsPowerShell) {
+        connectionString.username = '$env:USERNAME';
+        connectionString.password = '$env:PASSWORD';
+    } else if (isWindows) {
+        connectionString.username = '%USERNAME%';
+        connectionString.password = '%PASSWORD%';
+    } else {
+        connectionString.username = '$USERNAME';
+        connectionString.password = '$PASSWORD';
+    }
 
     if ('databaseInfo' in node && node.databaseInfo?.name) {
         connectionString.pathname = node.databaseInfo.name;

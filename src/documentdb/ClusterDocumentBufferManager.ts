@@ -14,6 +14,10 @@ export interface BufferStats {
     totalSize: number;
 }
 
+/**
+ * The BufferConfig interface is used to represent the configuration of a buffer
+ * It contains the maximum number of files, the maximum total size, and the maximum single file size
+ */
 export interface BufferConfig {
     maxFileCount: number;
     maxTotalSize: number;

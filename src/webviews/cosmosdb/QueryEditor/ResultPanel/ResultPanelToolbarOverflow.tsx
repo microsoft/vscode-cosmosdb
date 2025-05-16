@@ -6,13 +6,6 @@
 import { type OptionOnSelectData } from '@fluentui/react-combobox';
 import {
     Button,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogContent,
-    DialogSurface,
-    DialogTitle,
-    DialogTrigger,
     Dropdown,
     Label,
     Menu,
@@ -46,48 +39,15 @@ import {
     NumberSymbolSquareRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, type PropsWithChildren, useEffect, useState } from 'react';
+import { type ForwardedRef, forwardRef, type PropsWithChildren, useCallback, useEffect, useState } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
+import { AlertDialog } from '../../../common/AlertDialog';
 import { Timer } from '../../../Timer';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export type OpenAlertDialogProps = {
-    setOpen: (open: boolean) => void;
-    setDoAction: (doAction: () => () => Promise<void>) => void;
-};
-
-export type AlertDialogProps = {
-    open: boolean;
-    setOpen: (open: boolean) => void;
-    doAction: () => Promise<void>;
-};
-
-const AlertDialog = ({ open, setOpen, doAction }: AlertDialogProps) => {
-    return (
-        <Dialog modalType="alert" open={open} onOpenChange={(_event, data) => setOpen(data.open)}>
-            <DialogSurface>
-                <DialogBody>
-                    <DialogTitle>{l10n.t('Attention')}</DialogTitle>
-                    <DialogContent>
-                        <div>
-                            {l10n.t('All loaded data will be lost. The query will be executed again in new session.')}
-                        </div>
-                        <div>{l10n.t('Are you sure you want to continue?')}</div>
-                    </DialogContent>
-
-                    <DialogActions>
-                        <Button appearance="secondary" onClick={() => void doAction()}>
-                            {l10n.t('Continue')}
-                        </Button>
-
-                        <DialogTrigger disableButtonEnhancement>
-                            <Button appearance="primary">{l10n.t('Close')}</Button>
-                        </DialogTrigger>
-                    </DialogActions>
-                </DialogBody>
-            </DialogSurface>
-        </Dialog>
-    );
+    setIsOpen: (isOpen: boolean) => void;
+    setAction: (action: () => () => Promise<void>) => void;
 };
 
 type OverflowToolbarItemProps = {
@@ -99,12 +59,11 @@ const ReloadQueryButton = forwardRef(
         const state = useQueryEditorState();
         const dispatcher = useQueryEditorDispatcher();
         const restoreFocusTargetAttribute = useRestoreFocusTarget();
-        const { setOpen, setDoAction } = props;
+        const { setIsOpen, setAction } = props;
 
         const reloadData = () => {
-            setOpen(true);
-            setDoAction(() => async () => {
-                setOpen(false);
+            setIsOpen(true);
+            setAction(() => async () => {
                 await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], {
                     countPerPage: state.pageSize,
                 });
@@ -257,7 +216,7 @@ const ChangePageSizeButton = forwardRef(
         const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
         const pageSize = state.pageSize;
-        const { setOpen, setDoAction } = props;
+        const { setIsOpen, setAction } = props;
 
         const changePageSize = (countPerPage: number) => {
             if (!state.currentExecutionId) {
@@ -266,9 +225,8 @@ const ChangePageSizeButton = forwardRef(
                 return;
             }
 
-            setOpen(true);
-            setDoAction(() => async () => {
-                setOpen(false);
+            setIsOpen(true);
+            setAction(() => async () => {
                 dispatcher.setPageSize(countPerPage);
                 await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], { countPerPage });
             });
@@ -590,10 +548,8 @@ const ToolbarMenuOverflowDivider = (props: ToolbarMenuOverflowDividerProps) => {
     return <MenuDivider />;
 };
 
-const OverflowMenu = ({ selectedTab }: ResultToolbarProps & OpenAlertDialogProps) => {
+const OverflowMenu = ({ selectedTab, setIsOpen, setAction }: ResultToolbarProps & OpenAlertDialogProps) => {
     const { ref, isOverflowing } = useOverflowMenu<HTMLButtonElement>();
-    const [open, setOpen] = useState(false);
-    const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
 
     if (!isOverflowing) {
         return null;
@@ -601,7 +557,6 @@ const OverflowMenu = ({ selectedTab }: ResultToolbarProps & OpenAlertDialogProps
 
     return (
         <>
-            <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
             <Menu>
                 <MenuTrigger disableButtonEnhancement>
                     <Button
@@ -615,7 +570,7 @@ const OverflowMenu = ({ selectedTab }: ResultToolbarProps & OpenAlertDialogProps
                 <MenuPopover>
                     <MenuList>
                         <ToolbarOverflowMenuItem id={'1'}>
-                            <ReloadQueryButton type={'menuitem'} setOpen={setOpen} setDoAction={setDoAction} />
+                            <ReloadQueryButton type={'menuitem'} setIsOpen={setIsOpen} setAction={setAction} />
                         </ToolbarOverflowMenuItem>
                         <ToolbarMenuOverflowDivider id="1" />
                         <ToolbarOverflowMenuItem id={'2'}>
@@ -628,7 +583,7 @@ const OverflowMenu = ({ selectedTab }: ResultToolbarProps & OpenAlertDialogProps
                             <GoToNextPageButton type={'menuitem'} />
                         </ToolbarOverflowMenuItem>
                         <ToolbarOverflowMenuItem id={'5'}>
-                            <ChangePageSizeButton type={'menuitem'} setOpen={setOpen} setDoAction={setDoAction} />
+                            <ChangePageSizeButton type={'menuitem'} setIsOpen={setIsOpen} setAction={setAction} />
                         </ToolbarOverflowMenuItem>
                         <ToolbarMenuOverflowDivider id="2" />
                         <ToolbarOverflowMenuItem id={'6'}>
@@ -665,16 +620,41 @@ const ToolbarOverflowDivider = ({ groupId }: ToolbarOverflowDividerProps) => {
 export type ResultToolbarProps = { selectedTab: string };
 
 export const ResultPanelToolbarOverflow = ({ selectedTab }: ResultToolbarProps) => {
-    const [open, setOpen] = useState(false);
-    const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
+    const [isOpen, setIsOpen] = useState(false);
+    const [action, setAction] = useState<() => Promise<void>>(() => async () => {});
+
+    const handleDialogClose = useCallback(
+        (confirmed: boolean) => {
+            if (confirmed) {
+                // Execute the action
+                void action();
+            }
+            setIsOpen(false);
+        },
+        [action],
+    );
 
     return (
         <>
-            <AlertDialog open={open} setOpen={setOpen} doAction={doAction} />
+            <AlertDialog
+                isOpen={isOpen}
+                onClose={handleDialogClose}
+                title={l10n.t('Attention')}
+                content={
+                    <>
+                        <div>
+                            {l10n.t('All loaded data will be lost. The query will be executed again in new session.')}
+                        </div>
+                        <div>{l10n.t('Are you sure you want to continue?')}</div>
+                    </>
+                }
+                confirmButtonText={l10n.t('Continue')}
+                cancelButtonText={l10n.t('Close')}
+            />
             <Overflow padding={70}>
                 <Toolbar aria-label="Default" size={'small'}>
                     <OverflowItem id={'1'} groupId={'1'}>
-                        <ReloadQueryButton type={'button'} setOpen={setOpen} setDoAction={setDoAction} />
+                        <ReloadQueryButton type={'button'} setIsOpen={setIsOpen} setAction={setAction} />
                     </OverflowItem>
                     <ToolbarOverflowDivider groupId="1" />
                     <OverflowItem id={'2'} groupId={'2'}>
@@ -687,7 +667,7 @@ export const ResultPanelToolbarOverflow = ({ selectedTab }: ResultToolbarProps) 
                         <GoToNextPageButton type={'button'} />
                     </OverflowItem>
                     <OverflowItem id={'5'} groupId={'2'}>
-                        <ChangePageSizeButton type={'button'} setOpen={setOpen} setDoAction={setDoAction} />
+                        <ChangePageSizeButton type={'button'} setIsOpen={setIsOpen} setAction={setAction} />
                     </OverflowItem>
                     <ToolbarOverflowDivider groupId="2" />
                     <OverflowItem id={'6'} groupId={'3'}>
@@ -700,7 +680,7 @@ export const ResultPanelToolbarOverflow = ({ selectedTab }: ResultToolbarProps) 
                     <OverflowItem id={'8'} groupId={'4'}>
                         <ExportButton type={'button'} selectedTab={selectedTab} />
                     </OverflowItem>
-                    <OverflowMenu selectedTab={selectedTab} setOpen={setOpen} setDoAction={setDoAction} />
+                    <OverflowMenu selectedTab={selectedTab} setIsOpen={setIsOpen} setAction={setAction} />
                 </Toolbar>
             </Overflow>
         </>

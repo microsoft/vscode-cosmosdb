@@ -26,6 +26,7 @@ import {
     type WithoutId,
 } from 'mongodb';
 import { Links } from '../constants';
+import { ext } from '../extensionVariables';
 import { type EmulatorConfiguration } from '../utils/emulatorConfiguration';
 import { CredentialCache } from './CredentialCache';
 import { getHostsFromConnectionString, hasAzureDomain } from './utils/connectionStringHelpers';
@@ -54,9 +55,9 @@ export interface IndexItemModel {
     version?: number;
 }
 
+// Currently we only return insertedCount, but we can add more fields in the future if needed
+// Keep the type definition here for future extensibility
 export type InsertDocumentsResult = {
-    /** Indicates whether this write result was acknowledged. If not, then all other members of this result will be undefined */
-    acknowledged: boolean;
     /** The number of inserted documents for this operations */
     insertedCount: number;
 };
@@ -451,13 +452,43 @@ export class ClustersClient {
         collectionName: string,
         documents: Document[],
     ): Promise<InsertDocumentsResult> {
+        if (documents.length === 0) {
+            return { insertedCount: 0 };
+        }
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
-        const insertManyResults = await collection.insertMany(documents, { forceServerObjectId: true });
+        try {
+            const insertManyResults = await collection.insertMany(documents, {
+                forceServerObjectId: true,
 
-        return {
-            acknowledged: insertManyResults.acknowledged,
-            insertedCount: insertManyResults.insertedCount,
-        };
+                // Setting `ordered` to be false allows MongoDB to continue inserting remaining documents even if previous fails.
+                // More details: https://www.mongodb.com/docs/manual/reference/method/db.collection.insertMany/#syntax
+                ordered: false,
+            });
+            return {
+                insertedCount: insertManyResults.insertedCount,
+            };
+        } catch (error) {
+            // print error messages to the console
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            if (error.writeErrors) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                for (const writeError of error.writeErrors) {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                    ext.outputChannel.appendLog(`Write error: ${writeError.errmsg}`);
+                    ext.outputChannel.show();
+                }
+            } else {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                ext.outputChannel.appendLog(`Error: ${error.message}`);
+                ext.outputChannel.show();
+            }
+
+            // For BulkWriteErrors, we track the partial success count
+            return {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+                insertedCount: error.insertedCount || 0,
+            };
+        }
     }
 }

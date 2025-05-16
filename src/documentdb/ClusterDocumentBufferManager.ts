@@ -5,6 +5,10 @@
 
 import { type Document } from 'bson';
 
+/**
+ * The BufferStats interface is used to represent the statistics of a buffer
+ * It contains the number of files and the total size of the buffer
+ */
 export interface BufferStats {
     fileCount: number;
     totalSize: number;

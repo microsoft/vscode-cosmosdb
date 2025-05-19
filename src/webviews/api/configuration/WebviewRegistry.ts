@@ -6,7 +6,8 @@
 import { Document } from '../../Document/Document';
 import { CollectionView } from '../../mongoClusters/collectionView/CollectionView';
 import { DocumentView } from '../../mongoClusters/documentView/documentView';
-import { MigrationPanel } from '../../mongoMigration/migrationPanelView/MigrationPanel';
+//import { MigrationPanel } from '../../mongoMigration/migrationPanelView/MigrationPanel';
+import { AssessmentWizardView } from '../../mongoMigration/assessmentWizardView/assessmentWizardView';
 import { QueryEditor } from '../../QueryEditor/QueryEditor';
 
 export const WebviewRegistry = {
@@ -14,6 +15,6 @@ export const WebviewRegistry = {
     cosmosDbQuery: QueryEditor,
     mongoClustersCollectionView: CollectionView,
     mongoClustersDocumentView: DocumentView,
-    mongoMigrationPanel: MigrationPanel,
-    //   assessmentWizard: AssessmentWizardView,
+    //mongoMigrationPanel: MigrationPanel,
+    assessmentWizard: AssessmentWizardView,
 } as const;

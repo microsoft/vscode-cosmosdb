@@ -35,6 +35,7 @@ export class AssessmentWizardViewController extends WebviewController<Assessment
             dbExperience: API.Common,
             webviewName: 'assessmentWizardView',
             databaseName: initialData.databaseName,
+            connectionString: '', // Replace with the actual connection string
         };
 
         this.setupTrpc(trpcContext);

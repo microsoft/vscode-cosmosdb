@@ -1,4 +1,3 @@
-
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -8,16 +7,26 @@ import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-se
 
 // eslint-disable-next-line import/no-internal-modules
 import { z } from 'zod';
+import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
+import { EnumTargetOffering } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
+//import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 
 /**
  * Information shared during the life time of the webview
  */
 export type RouterContext = BaseRouterContext & {
     databaseName: string;
+    connectionString: string;
+};
+
+export const assessmentWizardView = {
+    connectionString: '', // This will be populated from the connectionString input
+    assessmentName: '', // This will be populated with the assessment name
 };
 
 export const assessmentWizardViewRouter = router({
+
     getInfo: publicProcedure.use(trpcToTelemetry).query(({ ctx }) => {
         const myCtx = ctx as RouterContext;
 
@@ -42,7 +51,7 @@ export const assessmentWizardViewRouter = router({
         // This is the input schema of your procedure, one parameter, a string
         .input(z.string())
         // Here the procedure (query or mutation)
-        .query(async ({ input, ctx }) => {
+        .query(({ input, ctx }) => {
             const myCtx = ctx as RouterContext;
 
             if (input === 'error') {
@@ -51,5 +60,36 @@ export const assessmentWizardViewRouter = router({
 
             // This is what you're returning to your client
             return { text: `Hello ${input}! (webview name: ${myCtx.webviewName})` };
+        }),
+
+    startAssessment: publicProcedure
+        .use(trpcToTelemetry)
+        .query(async () => {
+            //const myCtx = ctx as RouterContext;
+
+            const response = await AssessmentServiceClient.startAssessment({
+                "instanceId": "9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c",
+                "assessmentName": assessmentWizardView.assessmentName,
+                "assessmentId": "1a1263a9-e76a-407b-97bd-a5f7086c28d9",
+                "logFolderPath": "",
+                "targetPlatform": EnumTargetOffering.CosmosDBMongovCore,
+                "connectionString": assessmentWizardView.connectionString, // Use the connection string from the context
+                "assessmentFolderPath": "",
+                "dataAssessmentReportPath": "",
+            });
+            return 'Assessment started successfully: ' + JSON.stringify(response);
+        }),
+
+    getAssessmentDetails: publicProcedure
+        .use(trpcToTelemetry)
+        .query(async () => {
+            // Call the getAssessmentDetails procedure from migrationPanelViewRouter
+            const response = await AssessmentServiceClient.getAssessmentDetails({
+                "assessmentId": "1a1263a9-e76a-407b-97bd-a5f7086c28d9",
+                "instanceId": "9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c",
+                "assessmentName": "kjsd",
+                "assessmentFolderPath": ""
+            });
+            return JSON.stringify(response);
         }),
 });

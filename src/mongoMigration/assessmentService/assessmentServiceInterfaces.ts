@@ -144,6 +144,27 @@ export interface StartAssessmentResponse {
     startTime: Date
 }
 
+// // Define and export AssessmentProgressNotification
+// export interface AssessmentProgressNotification {
+//     assessmentId: string,
+//     assessmentStage: string,
+//     stageStatus: string,
+//     stageDuration: string,
+//     error?: ErrorEntity[],
+//     innerException?: string,
+//     warning?: WarningEntity[]
+// }
+
+export enum AssessmentStatus {
+    SUCCESS = 'Successful',
+    INPROGRESS = 'InProgress',
+    WAITING = 'Waiting',
+    FAILED = 'Failed',
+    WARNING = 'Warning',
+    ABORTED = 'Aborted',
+    CANCELLED = 'Cancelled'
+}
+
 export interface AssessmentReportRequestParameters {
     instanceId: string,
     assessmentId: string,

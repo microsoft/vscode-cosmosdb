@@ -12,7 +12,8 @@
 import { callWithTelemetryAndErrorHandling, type IActionContext, registerCommand } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
+import { AssessmentWizardViewController } from '../webviews/mongoMigration/assessmentWizardView/assessmentWizardViewController';
+//import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
 import { MongoAssessmentServiceRunner } from './assessmentService/assessmentServiceRunner';
 import { DotnetRuntimeExtensionResolver } from './dotnetRuntime/dotnetRuntimeExtensionResolver';
 import { isMongoMigrationSupportEnabled } from './utils/isMongoMigrationSupportEnabled';
@@ -53,11 +54,19 @@ export class MongoMigrationExtension implements vscode.Disposable {
                 // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
 
                 registerCommand('command.migration.startView', () => {
-                    const view = new MigrationPanelViewController({
+                    const view = new AssessmentWizardViewController({
+                        databaseName: 'aDatabaseName',
                         moreSettings: false,
                     });
 
                     view.revealToForeground();
+
+                    // const view = new MigrationPanelViewController({
+                    //     moreSettings: false,
+                    // });
+
+                    // view.revealToForeground();
+
                 });
 
                 ext.outputChannel.appendLine(`MongoDB Migration Support: activated.`);

@@ -12,21 +12,290 @@ import {
     Card,
     CardHeader,
     Input,
-    Label
+    Label,
+    Spinner,
+    Table,
+    TableBody,
+    TableCell,
+    TableHeader,
+    TableHeaderCell,
+    TableRow,
 } from '@fluentui/react-components';
 import {
     Circle20Filled,
-    Circle20Regular, // incomplete step icon (empty circle)
-    Record20Filled, // current step icon ("circlish")
+    Circle20Regular,
+    Record20Filled,
 } from '@fluentui/react-icons';
-import React, { useState, type JSX } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
+import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import './assessmentWizardView.scss';
 import { type AssessmentWizardViewWebviewConfigurationType } from './assessmentWizardViewController';
 
+export enum AssessmentStages {
+    CollectionsMetadataCollector = "CollectionMetadataCollector",
+    FeatureMetadataCollector = "FeatureSupportedCollector",
+    InstanceDetailsCollector = "InstanceDetailCollector",
+    ShardKeyMetadataCollector = "ShardKeyCollector",
+    CollectionOptionsAdvisor = "CollectionOptionsAdvisor",
+    FeatureAdvisor = "FeaturesAdvisor",
+    IndexAdvisor = "IndexAdvisor",
+    InstanceSummaryAdvisor = "InstanceSummaryAdvisor",
+    LimitsAndQuotasAdvisor = "LimitsAndQuotasAdvisor",
+    ShardKeyAdvisor = "ShardKeyAdvisor",
+}
+
+export interface AssessmentProgress {
+    assessmentStage: string;
+    assessmentStatus: 'SUCCESS' | 'INPROGRESS' | 'FAILED' | 'WARNING';
+    stageDuration?: number;
+}
+
+export interface AssessmentDetails {
+    stages: AssessmentProgress[];
+    assessmentStatus?: 'INPROGRESS' | 'SUCCESS' | 'FAILED' | 'CANCELLED'; // Add this if available
+}
+
+export const useAssessmentDetails = () => {
+    const { trpcClient } = useTrpcClient();
+    const [assessmentDetails, setAssessmentDetails] = useState<AssessmentDetails | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchAssessmentDetails = async () => {
+            try {
+                const response = await trpcClient.mongoMigration.migrationPanel.getAssessmentDetails.query();
+                const parsedResponse = JSON.parse(response) as AssessmentDetails;
+                setAssessmentDetails(parsedResponse);
+            } catch (err) {
+                console.error('Failed to fetch assessment details:', err);
+                setError('Failed to fetch assessment details.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        void fetchAssessmentDetails();
+    }, []);
+
+    return { assessmentDetails, loading, error };
+};
+
+const getStage = (stage: AssessmentStages): string => {
+    switch (stage) {
+        case AssessmentStages.InstanceDetailsCollector:
+            return 'Instance data collection';
+        case AssessmentStages.CollectionsMetadataCollector:
+            return 'Collections metadata collection';
+        case AssessmentStages.FeatureMetadataCollector:
+            return 'Feature data collection';
+        case AssessmentStages.ShardKeyMetadataCollector:
+            return 'Shard key data collection';
+        case AssessmentStages.InstanceSummaryAdvisor:
+            return 'Instance summary advisor';
+        case AssessmentStages.CollectionOptionsAdvisor:
+            return 'Collection options advisor';
+        case AssessmentStages.FeatureAdvisor:
+            return 'Feature advisor';
+        case AssessmentStages.IndexAdvisor:
+            return 'Index advisor';
+        case AssessmentStages.ShardKeyAdvisor:
+            return 'Shard key advisor';
+        case AssessmentStages.LimitsAndQuotasAdvisor:
+            return 'Limits and quotas advisor';
+        default:
+            return 'Unknown stage';
+    }
+};
+
+const getDuration = (duration?: number): string => {
+    if (!duration) return '--';
+    const seconds = Math.floor((duration / 1000) % 60);
+    const minutes = Math.floor((duration / (1000 * 60)) % 60);
+    const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
+    return `${hours} hr ${minutes} min ${seconds} sec`;
+};
+
+export const AssessmentProgressPage = (): JSX.Element => {
+    const { assessmentDetails, loading, error } = useAssessmentDetails();
+
+    const getStageStatus = (stage: string): string => {
+        const stageDetail = assessmentDetails?.stages.find(
+            (s) => s.assessmentStage.toLowerCase() === stage.toLowerCase()
+        );
+        return stageDetail?.assessmentStatus || 'Waiting';
+    };
+
+    const getStageDuration = (stage: string): string => {
+        const stageDetail = assessmentDetails?.stages.find(
+            (s) => s.assessmentStage.toLowerCase() === stage.toLowerCase()
+        );
+        return getDuration(stageDetail?.stageDuration);
+    };
+
+    if (loading) {
+        return (
+            <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                <Spinner size="large" label="Loading assessment progress..." />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                <p>{error}</p>
+            </div>
+        );
+    }
+
+    if (!assessmentDetails) {
+        return (
+            <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                <p>No assessment progress data available.</p>
+            </div>
+        );
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <strong>Assessment Progress</strong>
+            </CardHeader>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                <h2>Assessment in progress...</h2>
+                <Spinner size="medium" />
+            </div>
+            <Table aria-label="Assessment Progress Table">
+                <TableHeader>
+                    <TableRow>
+                        <TableHeaderCell>Assessment steps</TableHeaderCell>
+                        <TableHeaderCell>Status</TableHeaderCell>
+                        <TableHeaderCell>Time taken</TableHeaderCell>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {Object.values(AssessmentStages).map((stage, index) => (
+                        <TableRow key={index}>
+                            <TableCell>{getStage(stage)}</TableCell>
+                            <TableCell>{getStageStatus(stage)}</TableCell>
+                            <TableCell>{getStageDuration(stage)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </Card>
+    );
+};
+
 export const AssessmentWizardView = (): JSX.Element => {
+    // const { trpcClient } = useTrpcClient();
+    // const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+    // const steps = [
+    //     { key: 'configuration', text: 'Configuration' },
+    //     { key: 'results', text: 'Results' },
+    // ];
+
+    // const renderStepActions = () => {
+    //     switch (currentStepIndex) {
+    //         case 0:
+    //             return (
+    //                 <>
+    //                     <Button appearance="primary"
+    //                         onClick={() => {
+    //                             //setCurrentStepIndex(-1); // Temporary page index
+    //                             trpcClient.mongoMigration.assessmentWizard.startAssessment
+    //                                 .query()
+    //                                 .then((response: string) => {
+    //                                     const parsedResponse = JSON.parse(response) as { success: boolean; data?: unknown; error?: string };
+    //                                     if (parsedResponse.success) {
+    //                                         console.log('Assessment started successfully:', parsedResponse.data);
+    //                                         setCurrentStepIndex(-1);
+    //                                     } else {
+    //                                         console.error('Failed to start assessment:', parsedResponse.error);
+    //                                         setCurrentStepIndex(0); // Return to step 1 on failure
+    //                                     }
+    //                                 })
+    //                                 .catch((error: Error) => {
+    //                                     console.error('An error occurred while starting the assessment:', error);
+    //                                     setCurrentStepIndex(0); // Return to step 1 on error
+    //                                 });
+    //                         }}>
+    //                         Start assessment
+    //                     </Button>
+    //                     <Button appearance="secondary" onClick={() => window.close()}>
+    //                         Cancel
+    //                     </Button>
+    //                 </>
+    //             );
+    //         case 1:
+    //             return (
+    //                 <>
+    //                     <Button appearance="secondary" onClick={() => setCurrentStepIndex(0)}>
+    //                         Previous
+    //                     </Button>
+    //                     <Button appearance="primary" onClick={() => setCurrentStepIndex(2)}>
+    //                         Next
+    //                     </Button>
+    //                     <Button appearance="secondary" onClick={() => window.close()}>
+    //                         Cancel
+    //                     </Button>
+    //                 </>
+    //             );
+    //         default:
+    //             return null;
+    //     }
+    // };
+
+    // return (
+    //     <div className="documentView">
+    //         <Breadcrumb aria-label="Wizard progress" className="wizardBreadcrumb">
+    //             {steps.map((step, index) => (
+    //                 <React.Fragment key={step.key}>
+    //                     {index > 0 && <BreadcrumbDivider />}
+    //                     <BreadcrumbItem>
+    //                         <BreadcrumbButton
+    //                             onClick={index < currentStepIndex ? () => setCurrentStepIndex(index) : undefined}
+    //                             current={index === currentStepIndex}
+    //                             icon={
+    //                                 index < currentStepIndex ? (
+    //                                     <Circle20Filled />
+    //                                 ) : index === currentStepIndex ? (
+    //                                     <Record20Filled />
+    //                                 ) : (
+    //                                     <Circle20Regular />
+    //                                 )
+    //                             }
+    //                         >
+    //                             {step.text}
+    //                         </BreadcrumbButton>
+    //                     </BreadcrumbItem>
+    //                 </React.Fragment>
+    //             ))}
+    //         </Breadcrumb>
+
+    //         {currentStepIndex === -1 && <AssessmentProgressPage />}
+    //         {currentStepIndex === 0 && (
+    //             <div>
+    //                 <h2>Step 1: Run a new assessment of your MongoDB server</h2>
+    //                 <p>Before we start migration, we need to start an assessment on your MongoDB server.</p>
+    //             </div>
+    //         )}
+    //         {currentStepIndex === 1 && (
+    //             <div>
+    //                 <h2>Step 2: View assessment results</h2>
+    //                 <p>The assessment report below highlights the incompatibilities that require your attention.</p>
+    //             </div>
+    //         )}
+
+    //         <div className="stepActions">{renderStepActions()}</div>
+    //     </div>
+    // );
+
     useConfiguration<AssessmentWizardViewWebviewConfigurationType>();
-    // Removed unused migrationLog state variable
+    const { trpcClient } = useTrpcClient();
 
     // Define wizard steps
     const steps = [
@@ -34,13 +303,26 @@ export const AssessmentWizardView = (): JSX.Element => {
         { key: 'results', text: 'Results' },
     ];
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
+    const { assessmentDetails, loading } = useAssessmentDetails();
+
+    const isAssessmentInProgress = () => {
+        // If we're on step 1 and loading or have no details yet, treat as in progress
+        if (currentStepIndex === 1 && (loading || !assessmentDetails)) return true;
+        if (!assessmentDetails) return false;
+        if (assessmentDetails.assessmentStatus) {
+            return assessmentDetails.assessmentStatus === 'INPROGRESS';
+        }
+        return assessmentDetails.stages.some(
+            (s) => s.assessmentStatus === 'INPROGRESS' || s.assessmentStatus === 'WARNING'
+        );
+    };
 
     // Allow navigation only to steps before the current one
-    const onBreadcrumbClick = (index: number) => {
-        if (index < currentStepIndex) {
-            setCurrentStepIndex(index);
-        }
-    };
+    // const onBreadcrumbClick = (index: number) => {
+    //     if (index < currentStepIndex) {
+    //         setCurrentStepIndex(index);
+    //     }
+    // };
 
     // Render step navigation actions above the content
     const renderStepActions = () => {
@@ -50,8 +332,23 @@ export const AssessmentWizardView = (): JSX.Element => {
                     <>
                         <Button appearance="primary"
                             onClick={() => {
-                                console.log('Assessment started successfully.');
-                                setCurrentStepIndex(1);
+                                //setCurrentStepIndex(-1); // Temporary page index
+                                trpcClient.mongoMigration.assessmentWizard.startAssessment
+                                    .query()
+                                    .then((response: string) => {
+                                        const parsedResponse = JSON.parse(response) as { success: boolean; data?: unknown; error?: string };
+                                        if (parsedResponse.success) {
+                                            console.log('Assessment started successfully:', parsedResponse.data);
+                                            setCurrentStepIndex(1);
+                                        } else {
+                                            console.error('Failed to start assessment:', parsedResponse.error);
+                                            setCurrentStepIndex(0); // Return to step 1 on failure
+                                        }
+                                    })
+                                    .catch((error: Error) => {
+                                        console.error('An error occurred while starting the assessment:', error);
+                                        setCurrentStepIndex(0); // Return to step 1 on error
+                                    });
                             }}>
                             Start assessment
                         </Button>
@@ -118,7 +415,7 @@ export const AssessmentWizardView = (): JSX.Element => {
                         {index > 0 && <BreadcrumbDivider />}
                         <BreadcrumbItem>
                             <BreadcrumbButton
-                                onClick={index < currentStepIndex ? () => onBreadcrumbClick(index) : undefined}
+                                onClick={index < currentStepIndex ? () => setCurrentStepIndex(index) : undefined}
                                 current={index === currentStepIndex}
                                 icon={
                                     index < currentStepIndex ? (
@@ -139,7 +436,7 @@ export const AssessmentWizardView = (): JSX.Element => {
 
             <p>{'Migrate MongoDB Server Instance - //server'}</p>
 
-            {/* Step 1 content */}
+            {/* Step 1: Configuration */}
             {currentStepIndex === 0 && (
                 <>
                     <h2>{`Step 1: Run a new assessment of your MongoDB server`}</h2>
@@ -197,8 +494,41 @@ export const AssessmentWizardView = (): JSX.Element => {
                 </>
             )}
 
-            {/* Step 2 content */}
-            {currentStepIndex === 1 && (
+            {/* Step 2: Progress */}
+            {/* {currentStepIndex === -1 &&  <AssessmentProgressPage />(
+                <div className="assessmentProgress">
+                    <h2>{`Assessment in progress...`}</h2>
+                    <p>{`We are assessing your MongoDB server instance to check whether you are using any features or syntax that are not supported in Azure Cosmos DB for MongoDB.`}</p>
+                    <table className="assessmentTable" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+                        <thead>                            <tr style={{ backgroundColor: 'inherit', textAlign: 'left' }}>
+                                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Assessment steps</th>
+                                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Status</th>
+                                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Time taken</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.values(AssessmentStages).map((stage, index) => (
+                                <tr key={index}>
+                                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>{getStage(stage)}</td>
+                                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                                        {getStatus(stage)}
+                                    </td>
+                                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                                        {getStageDuration(stage)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )
+            } */}
+            {currentStepIndex === 1 && isAssessmentInProgress() && (
+                <AssessmentProgressPage />
+            )}
+
+            {/* Step 2: Results */}
+            {currentStepIndex === 1 && !isAssessmentInProgress() && (
                 <>
                     <h2>{`Step 2: View assessment results`}</h2>
                     <p>{`The assessment report below highlights the incompatibilities that require your attention before initiating the migration process.

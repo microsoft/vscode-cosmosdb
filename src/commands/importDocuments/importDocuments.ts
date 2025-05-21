@@ -160,7 +160,7 @@ export async function importDocumentsWithProgress(
                     undefined,
                 );
                 count += lastBatchResult.count;
-                hasErrors = hasErrors || lastBatchResult.errorOccured;
+                hasErrors = hasErrors || lastBatchResult.errorOccurred;
             }
 
             progress.report({ increment: 50, message: l10n.t('Finished importing') });
@@ -304,12 +304,12 @@ async function insertDocument(
     node: CosmosDBContainerResourceItem | CollectionItem,
     document: unknown,
     buffer: ClusterBufferManager | undefined,
-): Promise<{ document: unknown; error: string } | { count: number; errorOccured: boolean }> {
+): Promise<{ document: unknown; error: string } | { count: number; errorOccurred: boolean }> {
     try {
         if (node instanceof CollectionItem) {
             // await needs to catch the error here, otherwise it will be thrown to the caller
             if (!buffer) {
-                return { count: 0, errorOccured: true };
+                return { count: 0, errorOccurred: true };
             }
             return await insertDocumentWithBuffer(node, buffer, document as Document);
         }
@@ -349,7 +349,7 @@ async function insertDocumentWithBuffer(
     document?: Document,
     // If document is undefined, it means that we are flushing the buffer
     // It is used for the last batch, and not recommended to be used for normal batches
-): Promise<{ count: number; errorOccured: boolean }> {
+): Promise<{ count: number; errorOccurred: boolean }> {
     const result = { count: 0, errorOccurred: false };
 
     const client = await ClustersClient.getClient(node.cluster.id);
@@ -362,7 +362,7 @@ async function insertDocumentWithBuffer(
         const documents = buffer.flush(databaseName, collectionName);
         const response = await client.insertDocuments(databaseName, collectionName, documents);
         result.count = response.insertedCount;
-        result.errorOccured = response.insertedCount < documents.length;
+        result.errorOccurred = response.insertedCount < documents.length;
     }
 
     if (isLastBatch) {
@@ -379,7 +379,7 @@ async function insertDocumentWithBuffer(
             insertBufferResult.documentsToProcess || [],
         );
         result.count += insertSingleResult.insertedCount;
-        result.errorOccured = insertSingleResult.insertedCount === 0;
+        result.errorOccurred = insertSingleResult.insertedCount === 0;
     }
 
     return result;

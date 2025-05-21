@@ -350,7 +350,7 @@ async function insertDocumentWithBuffer(
     // If document is undefined, it means that we are flushing the buffer
     // It is used for the last batch, and not recommended to be used for normal batches
 ): Promise<{ count: number; errorOccured: boolean }> {
-    const result = { count: 0, errorOccured: false };
+    const result = { count: 0, errorOccurred: false };
 
     const client = await ClustersClient.getClient(node.cluster.id);
     const databaseName = node.databaseInfo.name;

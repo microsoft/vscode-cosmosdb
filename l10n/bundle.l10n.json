@@ -149,6 +149,7 @@
   "Database name cannot contain the characters '\\', '/', '#', '?', '='": "Database name cannot contain the characters '\\', '/', '#', '?', '='",
   "Database name is required.": "Database name is required.",
   "Default": "Default",
+  "Default Windows terminal profile not found in VS Code settings. Assuming PowerShell for launching MongoDB shell.": "Default Windows terminal profile not found in VS Code settings. Assuming PowerShell for launching MongoDB shell.",
   "Delete": "Delete",
   "Delete \"{connectionName}\"?": "Delete \"{connectionName}\"?",
   "Delete \"{nodeName}\"?": "Delete \"{nodeName}\"?",

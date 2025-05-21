@@ -237,23 +237,68 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         return undefined;
     }
 
+    /**
+     * Refreshes the tree data.
+     * This will trigger the view to update the changed element/root and its children recursively (if shown).
+     *
+     * @param element The element to refresh. If not provided, the entire tree will be refreshed.
+     *
+     * Note: This implementation handles both current and stale element references.
+     * If a stale reference is provided but has an ID, it will attempt to find the current
+     * reference in the tree before refreshing.
+     */
     refresh(element?: TreeElement): void {
         if (element?.id) {
-            // 1. Clear the cache for this ID to remove any stale references
-            // (drops the element and its children)
-            this.pruneCache(element.id);
+            // We have an element with an ID
 
-            // 2. Re-register the node (but not its children)
-            // This ensures any references to this node are still valid
-            if (element.id) {
-                this.nodeCache.set(element.id, element);
-            }
+            // Handle potential stale reference issue:
+            // VS Code's TreeView API relies on object identity (reference equality),
+            // not just ID equality. Find the current reference before clearing the cache.
+            void this.findAndRefreshCurrentElement(element);
         } else {
+            // No element or no ID, refresh the entire tree
             this.nodeCache.clear();
             this.childToParentMap.clear();
+            this.onDidChangeTreeDataEmitter.fire(element);
         }
+    }
 
-        this.onDidChangeTreeDataEmitter.fire(element);
+    /**
+     * Helper method to find the current instance of an element by ID and refresh it.
+     * This addresses the issue where stale references won't properly refresh the tree.
+     *
+     * @param element Potentially stale element reference
+     */
+    private async findAndRefreshCurrentElement(element: TreeElement): Promise<void> {
+        try {
+            // First try to find the current instance with this ID
+            const currentElement = await this.findNodeById(element.id!);
+
+            // AFTER finding the element, update the cache:
+            // 1. Clear the cache for this ID to remove any stale references
+            // (drops the element and its children)
+            this.pruneCache(element.id!);
+
+            // 2. Re-register the node (but not its children)
+            if (currentElement?.id) {
+                this.nodeCache.set(currentElement.id, currentElement);
+            }
+
+            if (currentElement) {
+                // We found the current instance, use it for refresh
+                this.onDidChangeTreeDataEmitter.fire(currentElement);
+            } else {
+                // Current instance not found, fallback to using the provided element
+                // This may not work if it's truly a stale reference, but we've tried our best
+                this.onDidChangeTreeDataEmitter.fire(element);
+            }
+        } catch (error) {
+            // If anything goes wrong during the lookup, still attempt the refresh with the original element
+            // and clear the cache for this ID
+            console.log(`Error finding current element for refresh: ${error}`);
+            this.pruneCache(element.id!);
+            this.onDidChangeTreeDataEmitter.fire(element);
+        }
     }
 
     /**

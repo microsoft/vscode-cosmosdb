@@ -8,8 +8,8 @@ import { ManagedIdentityCredential } from '@azure/identity';
 // eslint-disable-next-line import/no-internal-modules
 import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
+import { merge } from 'es-toolkit';
 import * as https from 'https';
-import { merge } from 'lodash';
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
 import { ext } from '../extensionVariables';
@@ -96,6 +96,9 @@ export function getCosmosClient(
     } else if (nonKeyCredentials.length > 0) {
         commonProperties.aadCredentials = {
             getToken: async (scopes, _options) => {
+                // Fix scopes for test environments
+                const normalizedAuthScopes = normalizeCosmosScopes(scopes);
+
                 // Track errors for better diagnostics
                 const errors: string[] = [];
 
@@ -118,7 +121,7 @@ export function getCosmosClient(
 
                             case AuthenticationMethod.entraId: {
                                 const { tenantId } = credential as CosmosDBEntraIdCredential;
-                                const session = await getSessionFromVSCode(scopes, tenantId, {
+                                const session = await getSessionFromVSCode(normalizedAuthScopes, tenantId, {
                                     createIfNone: forcePrompt,
                                 });
                                 return session?.accessToken ? formatToken(session.accessToken) : null;
@@ -127,7 +130,7 @@ export function getCosmosClient(
                             case AuthenticationMethod.managedIdentity: {
                                 const { clientId } = credential as CosmosDBManagedIdentityCredential;
                                 const auth = new ManagedIdentityCredential({ clientId });
-                                return await auth.getToken(scopes);
+                                return await auth.getToken(normalizedAuthScopes);
                             }
 
                             default:
@@ -197,4 +200,30 @@ export function getCosmosClient(
     }
 
     return new CosmosClient(merge(options ?? {}, commonProperties));
+}
+
+function normalizeCosmosScopes(scopes: string | string[]): string | string[] {
+    if (!scopes) {
+        return scopes;
+    }
+
+    return Array.isArray(scopes) ? scopes.map(normalizeCosmosScope) : normalizeCosmosScope(scopes);
+}
+
+function normalizeCosmosScope(scope: string): string {
+    if (!scope) {
+        return scope;
+    }
+
+    // Convert all test/internal endpoints to the standard production endpoint
+    const fabricSuffix = '.cosmos.fabric.microsoft.com/.default';
+    if (!scope.endsWith(fabricSuffix)) {
+        return scope;
+    }
+    const prefix = scope.substring(0, scope.length - fabricSuffix.length);
+    if (prefix.endsWith('dxt-sql') || prefix.endsWith('msit-sql') || prefix.endsWith('daily-sql')) {
+        return 'https://cosmos.azure.com/.default';
+    }
+
+    return scope;
 }

@@ -297,7 +297,6 @@ const commonRouter = router({
 //         }),
 // });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const appRouter = router({
     common: commonRouter,
     // demo: demoRouter, // this is a demo-router and it's left for reference for future projects

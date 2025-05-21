@@ -50,7 +50,7 @@ module.exports = (env, { mode }) => {
                             sourceMaps: isDev,
                             jsc: {
                                 keepClassNames: true,
-                                target: 'es2022',
+                                target: 'es2023',
                                 parser: {
                                     syntax: 'typescript',
                                     tsx: true,
@@ -91,6 +91,10 @@ module.exports = (env, { mode }) => {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
                 'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+            },
+            // https://github.com/webpack/webpack-dev-server/issues/5446#issuecomment-2768816082
+            setupMiddlewares: (middlewares) => {
+                return middlewares.filter((middleware) => middleware.name !== 'cross-origin-header-check');
             },
             hot: true,
             host: '127.0.0.1',

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
 
 import { type Db, type FindCursor } from 'mongodb';
 import { type JSONSchema, type SchemaConfiguration } from 'vscode-json-languageservice';
@@ -127,7 +127,7 @@ export class SchemaService {
 
     private setSchemaForDocumentProperty(parent: string, property: string, document: any, schema: JSONSchema): void {
         const scopedProperty = parent ? `${parent}.${property}` : property;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const value = document[property];
         const type = this.getMongoDocumentType(value);
 

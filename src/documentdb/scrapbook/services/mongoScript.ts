@@ -62,29 +62,29 @@ export class MongoScriptDocument {
     }
 }
 
-class NodeFinder extends MongoVisitor<ParseTree> {
+class NodeFinder extends MongoVisitor<ParseTree | null> {
     constructor(private offset: number) {
         super();
     }
 
-    protected defaultResult(ctx: ParseTree): ParseTree {
+    protected defaultResult(ctx: ParseTree): ParseTree | null {
         if (ctx instanceof ParserRuleContext) {
             const stop = ctx.stop ? ctx.stop.stopIndex : ctx.start.stopIndex;
             if (stop < this.offset) {
                 return ctx;
             }
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return null!;
+
+            return null;
         }
         if (ctx instanceof TerminalNode) {
             if (ctx.symbol.stopIndex < this.offset) {
                 return ctx;
             }
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            return null!;
+
+            return null;
         }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return null!;
+
+        return null;
     }
 
     protected aggregateResult(aggregate: ParseTree, nextResult: ParseTree): ParseTree {

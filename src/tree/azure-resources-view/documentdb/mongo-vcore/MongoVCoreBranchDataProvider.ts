@@ -98,7 +98,6 @@ export class MongoVCoreBranchDataProvider extends BaseCachedBranchDataProvider<M
                     const accounts = await uiUtils.listAllIterator(client.mongoClusters.list());
 
                     accounts.map((MongoClustersAccount) => {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
                         this.detailsCache.set(nonNullProp(MongoClustersAccount, 'id'), {
                             dbExperience: MongoClustersExperience,
                             id: MongoClustersAccount.id as string,
@@ -106,28 +105,16 @@ export class MongoVCoreBranchDataProvider extends BaseCachedBranchDataProvider<M
                             resourceGroup: getResourceGroupFromId(MongoClustersAccount.id as string),
 
                             location: MongoClustersAccount.location as string,
-                            serverVersion: MongoClustersAccount.serverVersion as string,
+                            serverVersion: MongoClustersAccount.properties?.serverVersion ?? '',
 
                             systemData: {
                                 createdAt: MongoClustersAccount.systemData?.createdAt,
                             },
 
-                            sku:
-                                MongoClustersAccount.nodeGroupSpecs !== undefined
-                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.sku as string)
-                                    : undefined,
-                            diskSize:
-                                MongoClustersAccount.nodeGroupSpecs !== undefined
-                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.diskSizeGB as number)
-                                    : undefined,
-                            nodeCount:
-                                MongoClustersAccount.nodeGroupSpecs !== undefined
-                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.nodeCount as number)
-                                    : undefined,
-                            enableHa:
-                                MongoClustersAccount.nodeGroupSpecs !== undefined
-                                    ? (MongoClustersAccount.nodeGroupSpecs[0]?.enableHa as boolean)
-                                    : undefined,
+                            sku: MongoClustersAccount.properties?.compute?.tier,
+                            diskSize: MongoClustersAccount.properties?.storage?.sizeGb,
+                            nodeCount: MongoClustersAccount.properties?.sharding?.shardCount,
+                            enableHa: MongoClustersAccount.properties?.highAvailability?.targetMode !== 'Disabled',
                         });
                     });
                 } catch (e) {

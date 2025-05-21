@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import debounce from 'lodash.debounce';
+import { debounce } from 'es-toolkit';
 import * as React from 'react';
 import { MonacoEditor } from '../../../MonacoEditor';
 

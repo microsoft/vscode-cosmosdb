@@ -4,13 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 // CONSIDER: Run in pipeline
-import { parseError } from '@microsoft/vscode-azext-utils';
+import { AzExtFsExtra, parseError } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import * as cp from 'child_process';
-import * as fse from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
-import { isNumber } from 'util';
 import type * as vscode from 'vscode';
 import { ext, isWindows, type IDisposable } from '../extension.bundle';
 import { ShellScriptRunner } from '../src/documentdb/scrapbook/ShellScriptRunner';
@@ -49,15 +47,15 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
     let mongoDErrors = '';
     let isClosed = false;
 
-    if (!fse.existsSync(mongodPath)) {
+    if (!(await AzExtFsExtra.pathExists(mongodPath))) {
         console.log(`Couldn't find mongod.exe at ${mongodPath} - skipping MongoShell tests`);
         testsSupported = false;
-    } else if (!fse.existsSync(mongodPath)) {
+    } else if (!(await AzExtFsExtra.pathExists(mongodPath))) {
         console.log(`Couldn't find mongo.exe at ${mongoPath} - skipping MongoShell tests`);
         testsSupported = false;
     } else {
         // Prevent code 100 error: https://stackoverflow.com/questions/41420466/mongodb-shuts-down-with-code-100
-        await fse.ensureDir('D:\\data\\db\\');
+        await AzExtFsExtra.ensureDir('D:\\data\\db\\');
     }
 
     class FakeOutputChannel implements vscode.OutputChannel {
@@ -100,10 +98,10 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
         return cp.execSync(command, {}).toString();
     }
 
-    suiteSetup(() => {
+    suiteSetup(async () => {
         if (testsSupported) {
-            assert(fse.existsSync(mongodPath), "Couldn't find mongod.exe at " + mongodPath);
-            assert(fse.existsSync(mongoPath), "Couldn't find mongo.exe at " + mongoPath);
+            assert(await AzExtFsExtra.pathExists(mongodPath), "Couldn't find mongod.exe at " + mongodPath);
+            assert(await AzExtFsExtra.pathExists(mongoPath), "Couldn't find mongo.exe at " + mongoPath);
 
             // Shut down any still-running mongo server
             try {
@@ -132,7 +130,7 @@ suite('MongoShell', async function (this: Mocha.Suite): Promise<void> {
             mongodCP.on('close', (code?: number) => {
                 console.log(`mongo server: Close code=${code}`);
                 isClosed = true;
-                if (isNumber(code) && code !== 0) {
+                if (typeof code === 'number' && code !== 0) {
                     mongoDErrors += `mongo server: Closed with code "${code}"${os.EOL}`;
                 }
             });

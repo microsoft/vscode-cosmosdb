@@ -52,7 +52,6 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                     .filter((item) => item.properties?.isEmulator) // only show emulators
                     .map(async (item) => {
                         const { id, name, properties, secrets } = await migrateRawEmulatorItemToHashed(item);
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         const api: API = nonNullValue(properties?.api, 'api') as API;
                         const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
                         const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');

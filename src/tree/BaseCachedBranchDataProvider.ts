@@ -239,7 +239,15 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
     refresh(element?: TreeElement): void {
         if (element?.id) {
+            // 1. Clear the cache for this ID to remove any stale references
+            // (drops the element and its children)
             this.pruneCache(element.id);
+
+            // 2. Re-register the node (but not its children)
+            // This ensures any references to this node are still valid
+            if (element.id) {
+                this.nodeCache.set(element.id, element);
+            }
         } else {
             this.nodeCache.clear();
             this.childToParentMap.clear();

@@ -137,7 +137,7 @@ export async function importDocumentsWithProgress(
                     // 'count' in result means that the result is from the buffer
                     count += result.count;
                     // check if error occurred as partial failure would happen in bulk insertion
-                    hasErrors = hasErrors || result.errorOccured;
+                    hasErrors = hasErrors || result.errorOccurred;
                 } else if (result.error) {
                     ext.outputChannel.appendLog(
                         l10n.t('The insertion of document {number} failed with error: {error}', {

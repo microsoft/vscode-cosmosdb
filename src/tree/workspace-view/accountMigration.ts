@@ -7,6 +7,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext, nonNullValue } 
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
+import { generateMongoStorageId } from '../../utils/storageUtils';
 import { type PersistedAccount } from '../v1-legacy-api/AttachedAccountsTreeItem';
 import { WorkspaceResourceType } from '../workspace-api/SharedWorkspaceResourceProvider';
 
@@ -84,27 +85,41 @@ export async function postPickSupportedAccountsCleanUp(): Promise<void> {
         async (context: IActionContext) => {
             let migratedAccounts = 0;
             let totalAccounts = 0;
+            let noSecretsAccounts = 0;
+
             try {
-                const items = await StorageService.get(StorageNames.Workspace).getItems(
+                const oldItems = await StorageService.get(StorageNames.Workspace).getItems(
                     WorkspaceResourceType.AttachedAccounts,
                 );
-                const documentDbAccounts = items.filter((item) => {
+                const oldDocumentDbAccounts = oldItems.filter((item) => {
                     const api: API = nonNullValue(item.properties?.api, API.Common) as API;
                     return api === API.MongoDB || api === API.MongoClusters;
                 });
 
-                for (const item of documentDbAccounts) {
+                for (const currentItem of oldDocumentDbAccounts) {
                     totalAccounts++;
                     try {
-                        if (!item.properties) {
-                            item.properties = {};
+                        if (!currentItem.properties) {
+                            currentItem.properties = {};
                         }
-                        item.properties.api = API.MongoClusters; // Update the API to MongoClusters
+                        currentItem.properties.api = API.MongoClusters; // Update the API to MongoClusters
+
+                        if (!currentItem.secrets || currentItem.secrets.length === 0) {
+                            // this is an item that is invalid as it doesn't have a connection string
+                            // let's just drop it, no comment needed
+                            noSecretsAccounts++;
+                            continue;
+                        }
+
+                        const oldStorageId = currentItem.id;
+                        // generate a new ID for the item that's inline with the new storage format
+                        const newStorageId = generateMongoStorageId(currentItem.secrets[0]);
+                        currentItem.id = newStorageId; // Update the ID to the new format
 
                         // First, try to push the item to the new location
                         await StorageService.get(StorageNames.Workspace).push(
                             WorkspaceResourceType.MongoClusters,
-                            item,
+                            currentItem,
                             true,
                         );
 
@@ -112,14 +127,14 @@ export async function postPickSupportedAccountsCleanUp(): Promise<void> {
                         const migratedItems = await StorageService.get(StorageNames.Workspace).getItems(
                             WorkspaceResourceType.MongoClusters,
                         );
-                        const isMigrated = migratedItems.some((migratedItem) => migratedItem.id === item.id);
+                        const isMigrated = migratedItems.some((migratedItem) => migratedItem.id === newStorageId);
 
                         if (isMigrated) {
                             try {
                                 // Then delete from the old location
                                 await StorageService.get(StorageNames.Workspace).delete(
                                     WorkspaceResourceType.AttachedAccounts,
-                                    item.id,
+                                    oldStorageId,
                                 );
 
                                 migratedAccounts++;
@@ -127,18 +142,18 @@ export async function postPickSupportedAccountsCleanUp(): Promise<void> {
                                 // If deletion fails, log it but don't throw - the item will be deleted on next run
                                 // In worst case, we'll have duplicates until next clean-up run
                                 console.log(
-                                    `Failed to delete item ${item.id} from AttachedAccounts, will retry on next run: ${deleteError}`,
+                                    `Failed to delete item ${oldStorageId} from AttachedAccounts, will retry on next run: ${deleteError}`,
                                 );
                             }
                         } else {
                             // Item wasn't successfully migrated, log the issue
                             console.warn(
-                                `Failed to verify migration of item ${item.id} to MongoClusters, skipping deletion`,
+                                `Failed to verify migration of item ${oldStorageId} to MongoClusters, skipping deletion`,
                             );
                         }
                     } catch (itemError) {
                         // If processing a single item fails, log it and continue with other items
-                        console.error(`Error processing item ${item.id}: ${itemError}`);
+                        console.error(`Error processing item ${currentItem.id}: ${itemError}`);
                         // Continue with other items rather than failing the entire migration
                     }
                 }
@@ -149,6 +164,7 @@ export async function postPickSupportedAccountsCleanUp(): Promise<void> {
             } finally {
                 context.telemetry.measurements.migratedAccounts = migratedAccounts;
                 context.telemetry.measurements.totalAccounts = totalAccounts;
+                context.telemetry.measurements.skippedDueToMissingSecrets = noSecretsAccounts;
             }
         },
     );

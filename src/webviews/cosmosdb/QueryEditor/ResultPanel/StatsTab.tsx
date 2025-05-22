@@ -79,7 +79,10 @@ export const StatsTab = () => {
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
                         <Label size={'large'}>{l10n.t('Query metrics')}</Label> (
-                        <Link href={QUERY_METRICS_DOC_URL}>{l10n.t('Learn more…')}</Link>)
+                        <Link href={QUERY_METRICS_DOC_URL} arial-label={l10n.t('Learn more about query metrics…')}>
+                            {l10n.t('Learn more…')}
+                        </Link>
+                        )
                     </div>
                     <Table arial-label={l10n.t('Stats table')} style={{ minWidth: '510px' }}>
                         <TableHeader>

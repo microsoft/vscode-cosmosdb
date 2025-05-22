@@ -189,7 +189,7 @@ export const AssessmentProgressPage = (): JSX.Element => {
     );
 };
 
-export const AssessmentWizardView = (): JSX.Element => {
+export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JSX.Element => {
     // const { trpcClient } = useTrpcClient();
     // const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -352,7 +352,7 @@ export const AssessmentWizardView = (): JSX.Element => {
                             }}>
                             Start assessment
                         </Button>
-                        <Button appearance="secondary" onClick={() => window.close()}>
+                        <Button appearance="secondary" onClick={onCancel}>
                             Cancel
                         </Button>
                     </>

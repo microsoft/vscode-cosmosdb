@@ -7,6 +7,7 @@ import { useState, type JSX } from 'react';
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { type PropsWithChildren } from 'react';
+import { AssessmentsDashboardTab } from './AssessmentsDashboardTab';
 import { MigrationDashboardTab } from './MigrationDashboardTab';
 import './migrationPanelView.scss';
 
@@ -111,9 +112,9 @@ export const MigrationPanel = (): JSX.Element => {
                             <Tab id="Dashboard" value="dashboard__tab">
                                 Dashboard
                             </Tab>
-                            <Tab id="Migrations" value="migrations__tab">
+                            {/* <Tab id="Migrations" value="migrations__tab">
                                 Migrations
-                            </Tab>
+                            </Tab> */}
                             <Tab id="Assessments" value="assessments__tab">
                                 Assessments
                             </Tab>
@@ -124,6 +125,7 @@ export const MigrationPanel = (): JSX.Element => {
                 </ActionBar>
                 <div className={styles.tabContainer}>
                     {selectedTab === 'dashboard__tab' && <MigrationDashboardTab />}
+                    {selectedTab === 'assessments__tab' && <AssessmentsDashboardTab />}
                 </div>
             </section>
         </div>

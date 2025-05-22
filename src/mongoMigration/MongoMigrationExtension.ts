@@ -12,8 +12,8 @@
 import { callWithTelemetryAndErrorHandling, type IActionContext, registerCommand } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
-import { AssessmentWizardViewController } from '../webviews/mongoMigration/assessmentWizardView/assessmentWizardViewController';
 //import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
+import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
 import { MongoAssessmentServiceRunner } from './assessmentService/assessmentServiceRunner';
 import { DotnetRuntimeExtensionResolver } from './dotnetRuntime/dotnetRuntimeExtensionResolver';
 import { isMongoMigrationSupportEnabled } from './utils/isMongoMigrationSupportEnabled';
@@ -54,18 +54,11 @@ export class MongoMigrationExtension implements vscode.Disposable {
                 // https://github.com/microsoft/vscode-azuretools/tree/main/utils#telemetry-and-error-handling
 
                 registerCommand('command.migration.startView', () => {
-                    const view = new AssessmentWizardViewController({
-                        databaseName: 'aDatabaseName',
+                    const view = new MigrationPanelViewController({
                         moreSettings: false,
                     });
 
                     view.revealToForeground();
-
-                    // const view = new MigrationPanelViewController({
-                    //     moreSettings: false,
-                    // });
-
-                    // view.revealToForeground();
 
                 });
 

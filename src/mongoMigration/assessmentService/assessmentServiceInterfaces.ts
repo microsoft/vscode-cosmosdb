@@ -4,12 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 export interface AssessmentMetadata {
-    assessmentId: string;
-    assessmentName: string;
-    assessmentStatus: string;
-    startTime: Date;
-    endTime: Date;
+    AssessmentId: string;
+    AssessmentName: string;
+    AssessmentStatus: string;
+    StartTime: string;
+    EndTime: string;
     TargetPlatform: EnumTargetOffering;
+}
+
+export interface GetAllAssessmentsResponse {
+    Body: AssessmentMetadata[];
 }
 
 export interface AssessmentRequestParameters {

@@ -112,9 +112,6 @@ export const MigrationPanel = (): JSX.Element => {
                             <Tab id="Dashboard" value="dashboard__tab">
                                 Dashboard
                             </Tab>
-                            {/* <Tab id="Migrations" value="migrations__tab">
-                                Migrations
-                            </Tab> */}
                             <Tab id="Assessments" value="assessments__tab">
                                 Assessments
                             </Tab>

@@ -62,12 +62,9 @@ export const AssessmentsDashboardTab: React.FC = () => {
             const response = await trpcClient.mongoMigration.migrationPanel.getAllAssessments.query();
             const rawData = (response as unknown as GetAllAssessmentsResponse).Body;
             const formatted: AssessmentMetadata[] = rawData.map((a) => ({
-                AssessmentId: a.AssessmentId,
-                AssessmentName: a.AssessmentName,
-                AssessmentStatus: a.AssessmentStatus,
-                StartTime: a.StartTime,
-                EndTime: a.EndTime,
-                TargetPlatform: a.TargetPlatform,
+                ...a,
+                StartTime: formatDate(a.StartTime),
+                EndTime: formatDate(a.EndTime),
             }));
 
             setAssessments(formatted);
@@ -80,6 +77,75 @@ export const AssessmentsDashboardTab: React.FC = () => {
     useEffect(() => {
         fetchAssessments();
     }, []);
+
+    const formatDate = (dateString: string) =>
+        new Date(dateString).toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        });
+
+    const renderAssessmentStatus = (item: AssessmentMetadata) => (
+        <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+            {item.AssessmentStatus === 'Successful' && (
+                <PresenceAvailable10Filled style={{ color: '#107C10', width: 16, height: 16 }} />
+            )}
+            {item.AssessmentStatus === 'Cancelled' && (
+                <DismissCircle24Regular style={{ color: '#A4262C', width: 18, height: 18 }} />
+            )}
+            <span>{item.AssessmentStatus}</span>
+        </Stack>
+    );
+    const renderActions = (item?: AssessmentMetadata) => {
+        const handleDelete = async () => {
+            if (!item) return;
+            try {
+                await trpcClient.mongoMigration.migrationPanel.deleteAssessment.mutate({
+                    assessmentId: item.AssessmentId,
+                    assessmentName: item.AssessmentName,
+                });
+
+                await fetchAssessments();
+            } catch (err) {
+                console.error('Failed to delete assessment:', err);
+                alert('Failed to delete the assessment. Please try again.');
+            }
+        };
+
+        return (
+            <Stack horizontal tokens={{ childrenGap: 8 }}>
+                <button
+                    title="Delete"
+                    aria-label="Delete"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'inherit',
+                    }}
+                    onClick={handleDelete}
+                >
+                    <Delete24Regular />
+                </button>
+                <button
+                    title="Download"
+                    aria-label="Download"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'inherit',
+                    }}
+                    onClick={() => console.log('Download clicked')}
+                >
+                    <ArrowDownload24Regular />
+                </button>
+            </Stack>
+        );
+    };
 
     const columns: IColumn[] = [
         {
@@ -95,17 +161,7 @@ export const AssessmentsDashboardTab: React.FC = () => {
             fieldName: 'AssessmentStatus',
             minWidth: 120,
             isResizable: true,
-            onRender: (item) => (
-                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-                    {item.AssessmentStatus === 'Successful' && (
-                        <PresenceAvailable10Filled style={{ color: '#107C10', width: 16, height: 16 }} />
-                    )}
-                    {item.AssessmentStatus === 'Cancelled' && (
-                        <DismissCircle24Regular style={{ color: '#A4262C', width: 18, height: 18 }} />
-                    )}
-                    <span>{item.AssessmentStatus}</span>
-                </Stack>
-            ),
+            onRender: renderAssessmentStatus,
         },
         {
             key: 'startTime',
@@ -126,36 +182,7 @@ export const AssessmentsDashboardTab: React.FC = () => {
             name: 'Actions',
             minWidth: 120,
             isResizable: false,
-            onRender: () => (
-                <Stack horizontal tokens={{ childrenGap: 8 }}>
-                    <button
-                        title="Delete"
-                        aria-label="Delete"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'inherit',
-                        }}
-                        onClick={() => console.log('Delete clicked')}
-                    >
-                        <Delete24Regular />
-                    </button>
-                    <button
-                        title="Download"
-                        aria-label="Download"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'inherit',
-                        }}
-                        onClick={() => console.log('Download clicked')}
-                    >
-                        <ArrowDownload24Regular />
-                    </button>
-                </Stack>
-            ),
+            onRender: renderActions,
         },
     ];
 

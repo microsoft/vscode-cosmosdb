@@ -3,9 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, makeStyles } from '@fluentui/react-components';
+import { makeStyles } from '@fluentui/react-components';
 import { useState } from 'react';
-import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { AssessmentWizardView } from '../assessmentWizardView/assessmentWizardView';
 
 const useStyles = makeStyles({
@@ -73,10 +72,7 @@ const useStyles = makeStyles({
 
 export const MigrationDashboardTab = () => {
     const classes = useStyles();
-    const { trpcClient } = useTrpcClient();
     const [showAssessmentWizard, setShowAssessmentWizard] = useState(false);
-    const [currentAssessmentData, setCurrentAssessmentData] = useState<string | null>(null);
-    // const [modalOpen, setModalOpen] = useState(false);
 
     if (showAssessmentWizard) {
         return (
@@ -107,53 +103,6 @@ export const MigrationDashboardTab = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Database Migration Status Box V2*/}
-            {/* <div className={classes.cardBox}>
-                <div className={classes.title} style={{ marginBottom: '12px' }}>
-                    Database Migration Status
-                </div>
-                <>
-                    <Button
-                        appearance="secondary"
-                        iconPosition="before"
-                        icon={<span>🔄</span>}
-                        onClick={() => setModalOpen(true)}
-                    >
-                        Select a Database Migration Service
-                    </Button>
-
-                    <DatabaseMigrationService isOpen={modalOpen} onClose={() => setModalOpen(false)} />
-                </>
-                <div className={classes.migrationHint}>
-                    Add your Azure account to view existing migrations and their status.
-                </div>
-            </div> */}
-
-            <Button
-                appearance="primary"
-                onClick={() => {
-                    /**
-                     * a simple call with no parameters, but with error handling.
-                     * telemetry is "added " in the router for the function call
-                     */
-                    trpcClient.mongoMigration.migrationPanel.getAssessmentDetails
-                        .query()
-                        .then((response) => {
-                            setCurrentAssessmentData(JSON.stringify(response));
-                        })
-                        .catch((error) => {
-                            void trpcClient.common.displayErrorMessage.mutate({
-                                message: 'Error while loading the autocompletion data',
-                                modal: false,
-                                cause: error instanceof Error ? error.message : String(error),
-                            });
-                        });
-                }}
-            >
-                Check Prerequisite
-            </Button>
-            <p>{currentAssessmentData}</p>
         </div>
     );
 };

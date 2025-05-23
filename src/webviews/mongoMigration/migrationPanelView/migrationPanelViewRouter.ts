@@ -6,6 +6,7 @@
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 // eslint-disable-next-line import/no-internal-modules
+import { z } from 'zod';
 import { getThemeAgnosticIconPath } from '../../../constants';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
@@ -32,14 +33,31 @@ export const migrationPanelViewRouter = router({
         return getThemeAgnosticIconPath('mongoMigrationWatermark.svg').light;
     }),
     getAllAssessments: publicProcedure
-    .use(trpcToTelemetry)
-    .query(async () => {
-        const response = await AssessmentServiceClient.getAllAssessments({
-        instanceId: "9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c",
-        assessmentFolderPath: "",
-        });
-        return response;
+        .use(trpcToTelemetry)
+        .query(async () => {
+            const response = await AssessmentServiceClient.getAllAssessments({
+            instanceId: "9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c",
+            assessmentFolderPath: "",
+            });
+            return response;
+        }),
+    deleteAssessment: publicProcedure
+        .input(z.object({
+            assessmentId: z.string(),
+            assessmentName: z.string()
+        }))
+        .use(trpcToTelemetry)
+        .mutation(async ({ input }) => {
+            const response = await AssessmentServiceClient.deleteAssessment({
+            instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+            assessmentFolderPath: "",
+            assessmentId: input.assessmentId,
+            assessmentName: input.assessmentName,
+            });
+
+            return response;
     }),
+
 
 });
 

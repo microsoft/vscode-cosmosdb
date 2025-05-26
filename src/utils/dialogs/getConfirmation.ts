@@ -108,14 +108,6 @@ export async function getConfirmationWithNumberQuiz(title: string, message: stri
         randomInput.randomNumbers[2].toString(),
     );
 
-    // Ensure that randomPosition is not 0 as a precaution.
-    // This should not happen because getRandomArrayAndIndex is designed to always return a randomPosition > 0.
-    // However, this check is added to avoid any potential mistakes or edge cases.
-    if (randomInput.randomPosition === 0) {
-        // and finally, in case the array is not large enough, we ensure that the random position is set to a valid index.
-        randomInput.randomPosition = Math.min(1, randomInput.randomNumbers.length - 1);
-    }
-
     return confirmation === randomInput.randomNumbers[randomInput.randomPosition].toString();
 }
 

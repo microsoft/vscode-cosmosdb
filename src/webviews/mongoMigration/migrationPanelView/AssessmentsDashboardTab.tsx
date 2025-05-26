@@ -26,6 +26,7 @@ import {
     GetAllAssessmentsResponse,
 } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { buildHtmlReport } from './reportBuilder';
 
 initializeIcons();
 
@@ -115,6 +116,33 @@ export const AssessmentsDashboardTab: React.FC = () => {
             }
         };
 
+        const handleDownload = async () => {
+            if (!item) return;
+            const [assessmentDetails, instanceSummary, combinedAssessmentReportData] = await Promise.all([
+                trpcClient.mongoMigration.migrationPanel.getAssessmentDetails2.query({
+                    assessmentId: item.AssessmentId,
+                    assessmentName: item.AssessmentName,
+                }),
+                trpcClient.mongoMigration.migrationPanel.getInstanceSummary.query({
+                    assessmentId: item.AssessmentId,
+                    assessmentName: item.AssessmentName,
+                }),
+                trpcClient.mongoMigration.migrationPanel.getCombinedAssessmentReport.query({
+                    assessmentId: item.AssessmentId,
+                    assessmentName: item.AssessmentName,
+                }),
+            ]);
+            const htmlContent = buildHtmlReport({
+                assessmentDetails: assessmentDetails.Body,
+                instanceSummary: instanceSummary.Body,
+                combinedAssessmentReportData: combinedAssessmentReportData.Body,
+            });
+            await trpcClient.mongoMigration.migrationPanel.downloadHtml.mutate({
+                filename: `assessmentreport_${item.AssessmentName}.html`,
+                content: htmlContent,
+            });
+        };
+
         return (
             <Stack horizontal tokens={{ childrenGap: 8 }}>
                 <button
@@ -133,13 +161,15 @@ export const AssessmentsDashboardTab: React.FC = () => {
                 <button
                     title="Download"
                     aria-label="Download"
+                    disabled={item?.AssessmentStatus !== 'Successful'}
                     style={{
                         background: 'transparent',
                         border: 'none',
-                        cursor: 'pointer',
-                        color: 'inherit',
+                        cursor: item?.AssessmentStatus === 'Successful' ? 'pointer' : 'not-allowed',
+                        color: item?.AssessmentStatus === 'Successful' ? 'inherit' : '#999',
+                        opacity: item?.AssessmentStatus === 'Successful' ? 1 : 0.5,
                     }}
-                    onClick={() => console.log('Download clicked')}
+                    onClick={item?.AssessmentStatus === 'Successful' ? handleDownload : undefined}
                 >
                     <ArrowDownload24Regular />
                 </button>

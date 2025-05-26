@@ -174,7 +174,7 @@ export interface AssessmentReportRequestParameters {
     assessmentId: string,
     assessmentName: string,
     assessmentFolderPath: string,
-    assessmentType: EnumAssessmentType
+    assessmentType?: EnumAssessmentType
 }
 
 export enum EnumAssessmentType {

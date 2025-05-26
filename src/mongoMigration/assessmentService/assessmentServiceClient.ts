@@ -7,6 +7,7 @@ import * as net from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import { type Duplex } from 'stream';
+import * as vscode from 'vscode';
 // eslint-disable-next-line import/no-internal-modules
 import * as rpc from 'vscode-jsonrpc/node';
 import { ext } from '../../extensionVariables';
@@ -109,18 +110,18 @@ export class AssessmentServiceClient {
      * Calls the `GetAssessmentDetails` RPC method.
      * @returns Details of one Assessment.
      */
-    public static async getAssessmentDetails(input: AssessmentTypes.AssessmentRequestParameters): Promise<AssessmentTypes.AssessmentDetails> {
+    public static async getAssessmentDetails(input: AssessmentTypes.AssessmentRequestParameters): Promise<{Body:AssessmentTypes.AssessmentDetails}> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.AssessmentDetails>('GetAssessmentDetailsAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<{Body:AssessmentTypes.AssessmentDetails}>('GetAssessmentDetailsAsync', input, /*Assessment client for telemetry*/null);
     }
 
     /**
      * Calls the `GetInstanceSummaryReportAsync` RPC method.
      * @returns Returns Instance summary from assessment report.
      */
-    public static async getInstanceSummary(input: AssessmentTypes.AssessmentRequestParameters): Promise<AssessmentTypes.InstanceSummaryResponse> {
+    public static async getInstanceSummary(input: AssessmentTypes.AssessmentRequestParameters): Promise<{Body:AssessmentTypes.InstanceSummaryResponse}> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.InstanceSummaryResponse>('GetInstanceSummaryReportAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<{Body:AssessmentTypes.InstanceSummaryResponse}>('GetInstanceSummaryReportAsync', input, /*Assessment client for telemetry*/null);
     }
 
     /**
@@ -162,8 +163,25 @@ export class AssessmentServiceClient {
      * Calls the `GetCombinedAssessmentReportAsync` RPC method.
      * @returns Returns a combined Assessment Report.
      */
-    public static async getCombinedAssessmentReport(input: AssessmentTypes.AssessmentReportRequestParameters): Promise<AssessmentTypes.GetAssessmentReportResponse> {
+    public static async getCombinedAssessmentReport(input: AssessmentTypes.AssessmentReportRequestParameters): Promise<{Body:AssessmentTypes.GetAssessmentReportResponse}> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.GetAssessmentReportResponse>('GetCombinedAssessmentReportAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<{Body:AssessmentTypes.GetAssessmentReportResponse}>('GetCombinedAssessmentReportAsync', input, /*Assessment client for telemetry*/null);
+    }
+    public static async downloadHtmlToDisk(filename: string, content: string): Promise<{ success: boolean; path?: string }> {
+        const uri = await vscode.window.showSaveDialog({
+        title: 'Save HTML Report',
+        defaultUri: vscode.Uri.file(filename),
+        filters: { 'HTML Files': ['html'] },
+        });
+
+        if (!uri) {
+        vscode.window.showWarningMessage('Download cancelled.');
+        return { success: false };
+        }
+
+        await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+        vscode.window.showInformationMessage(`Report saved to ${uri.fsPath}`);
+
+        return { success: true, path: uri.fsPath };
     }
 }

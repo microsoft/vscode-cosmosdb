@@ -11,6 +11,7 @@ import { getThemeAgnosticIconPath } from '../../../constants';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 
+
 /**
  * Information shared during the life time of the webview
  */
@@ -32,6 +33,55 @@ export const migrationPanelViewRouter = router({
     getWaterMarkIconPath: publicProcedure.use(trpcToTelemetry).query(() => {
         return getThemeAgnosticIconPath('mongoMigrationWatermark.svg').light;
     }),
+    getAssessmentDetails2: publicProcedure //usethis
+        .input(z.object({
+            assessmentId: z.string(),
+            assessmentName: z.string()
+            }))
+            .use(trpcToTelemetry)
+            .query(async ({ input }) => {
+            const response = await AssessmentServiceClient.getAssessmentDetails({
+                assessmentId: input.assessmentId,
+                assessmentName: input.assessmentName,
+                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                assessmentFolderPath: '',
+            });
+
+            return response;
+    }),
+    getInstanceSummary: publicProcedure
+        .input(z.object({
+            assessmentId: z.string(),
+            assessmentName: z.string()
+            }))
+            .use(trpcToTelemetry)
+            .query(async ({ input }) => {
+            const response = await AssessmentServiceClient.getInstanceSummary({
+                assessmentId: input.assessmentId,
+                assessmentName: input.assessmentName,
+                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                assessmentFolderPath: '',
+            });
+
+            return response;
+    }),
+    getCombinedAssessmentReport: publicProcedure
+        .input(z.object({
+            assessmentId: z.string(),
+            assessmentName: z.string()
+            }))
+            .use(trpcToTelemetry)
+            .query(async ({ input }) => {
+            const response = await AssessmentServiceClient.getCombinedAssessmentReport({
+                assessmentId: input.assessmentId,
+                assessmentName: input.assessmentName,
+                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                assessmentFolderPath: '',
+            });
+
+            return response;
+    }),
+
     getAllAssessments: publicProcedure
         .use(trpcToTelemetry)
         .query(async () => {
@@ -57,8 +107,15 @@ export const migrationPanelViewRouter = router({
 
             return response;
     }),
-
-
+    downloadHtml: publicProcedure
+        .input(z.object({
+        filename: z.string(),
+        content: z.string(),
+        }))
+        .mutation(async ({ input }) => {
+        const result = await AssessmentServiceClient.downloadHtmlToDisk(input.filename, input.content);
+        return result;
+        }),
 });
 
 

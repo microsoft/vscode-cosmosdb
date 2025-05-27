@@ -3,6 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/* eslint-disable @typescript-eslint/no-misused-promises */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import {
     DefaultButton,
     DetailsList,
@@ -21,7 +27,7 @@ import {
     PresenceAvailable10Filled,
 } from '@fluentui/react-icons';
 import React, { useEffect, useState } from 'react';
-import { AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
+import { type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { buildHtmlReport } from './reportBuilder';
 
@@ -73,7 +79,7 @@ export const AssessmentsDashboardTab: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchAssessments();
+        void fetchAssessments();
     }, []);
 
     const formatDate = (dateString: string) =>

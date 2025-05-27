@@ -13,10 +13,10 @@ export interface AssessmentMetadata {
 }
 
 export interface AssessmentRequestParameters {
-    instanceId: string,
-    assessmentId: string,
-    assessmentName: string,
-    assessmentFolderPath: string
+    instanceId: string;
+    assessmentId: string;
+    assessmentName: string;
+    assessmentFolderPath: string;
 }
 
 export enum EnumTargetOffering {
@@ -53,43 +53,43 @@ export interface CheckPrerequisiteInput {
 }
 
 export interface AssessmentDetails {
-    assessmentId: string,
-    assessmentName: string,
-    assessmentStatus: string,
-    startTime: Date,
-    endTime: Date,
-    targetPlatform: EnumTargetOffering,
-    logFolderPath: string,
-    assessmentProgress: AssessmentProgress[]
+    assessmentId: string;
+    assessmentName: string;
+    assessmentStatus: string;
+    startTime: Date;
+    endTime: Date;
+    targetPlatform: EnumTargetOffering;
+    logFolderPath: string;
+    assessmentProgress: AssessmentProgress[];
 }
 
 export interface AssessmentProgress {
-    assessmentStage: string,
-    assessmentStatus: string,
-    stageDuration: string,
-    errorInfo: ErrorEntity[],
-    innerException: string,
-    warningInfo: WarningEntity[]
+    assessmentStage: string;
+    assessmentStatus: string;
+    stageDuration: string;
+    errorInfo: ErrorEntity[];
+    innerException: string;
+    warningInfo: WarningEntity[];
 }
 
 export interface GetAssessmentReportResponse {
-    assessments: AssessmentData[],
+    assessments: AssessmentData[];
 }
 
 export interface AssessmentData {
-    databaseName: string,
-    collectionName: string,
-    assessmentCategory: string,
-    assessmentSeverity: string,
-    description: string,
-    moreInfo: MoreInfo,
-    message: string,
-    additionalDetails: string,
+    databaseName: string;
+    collectionName: string;
+    assessmentCategory: string;
+    assessmentSeverity: string;
+    description: string;
+    moreInfo: MoreInfo;
+    message: string;
+    additionalDetails: string;
 }
 
 export interface MoreInfo {
-    href: string,
-    label: string
+    href: string;
+    label: string;
 }
 
 export interface InstanceSummaryResponse {
@@ -108,24 +108,24 @@ export interface InstanceSummaryResponse {
 }
 
 export interface DatabaseSummary {
-    databaseName: string,
-    collectionCount: number,
-    viewCount: number,
-    timeSeriesCount: number,
-    dataSize: number
+    databaseName: string;
+    collectionCount: number;
+    viewCount: number;
+    timeSeriesCount: number;
+    dataSize: number;
 }
 
 export interface CollectionSummary {
-    databaseName: string,
-    collectionName: string,
-    type: string,
-    isSharded: boolean,
-    shardKey: string,
-    documentCount: number,
-    indexCount: number,
-    dataSize: number,
-    indexSize: number,
-    averageDocumentSize: number
+    databaseName: string;
+    collectionName: string;
+    type: string;
+    isSharded: boolean;
+    shardKey: string;
+    documentCount: number;
+    indexCount: number;
+    dataSize: number;
+    indexSize: number;
+    averageDocumentSize: number;
 }
 
 export interface AssessmentWorkflowParameters {
@@ -134,14 +134,14 @@ export interface AssessmentWorkflowParameters {
     assessmentId: string;
     logFolderPath: string | undefined;
     targetPlatform: EnumTargetOffering;
-    connectionString: string,
-    assessmentFolderPath: string
+    connectionString: string;
+    assessmentFolderPath: string;
     dataAssessmentReportPath: string | undefined;
 }
 
 export interface StartAssessmentResponse {
-    assessmentId: string,
-    startTime: Date
+    assessmentId: string;
+    startTime: Date;
 }
 
 // // Define and export AssessmentProgressNotification
@@ -162,25 +162,25 @@ export enum AssessmentStatus {
     FAILED = 'Failed',
     WARNING = 'Warning',
     ABORTED = 'Aborted',
-    CANCELLED = 'Cancelled'
+    CANCELLED = 'Cancelled',
 }
 
 export interface AssessmentReportRequestParameters {
-    instanceId: string,
-    assessmentId: string,
-    assessmentName: string,
-    assessmentFolderPath: string,
-    assessmentType?: EnumAssessmentType
+    instanceId: string;
+    assessmentId: string;
+    assessmentName: string;
+    assessmentFolderPath: string;
+    assessmentType?: EnumAssessmentType;
 }
 
 export enum EnumAssessmentType {
-    CollectionOptions = "CollectionOptions",
-    Features = "Features",
-    Index = "Index",
-    LimitsAndQuotas = "LimitsAndQuotas",
-    ShardKey = "ShardKey"
+    CollectionOptions = 'CollectionOptions',
+    Features = 'Features',
+    Index = 'Index',
+    LimitsAndQuotas = 'LimitsAndQuotas',
+    ShardKey = 'ShardKey',
 }
 
 export interface GetAssessmentReportResponse {
-    assessments: AssessmentData[],
+    assessments: AssessmentData[];
 }

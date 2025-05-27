@@ -42,7 +42,7 @@ export interface BufferInsertResult<T> {
      * This could be the current document if it's too large, or
      * the contents of the buffer if it's full and needs to be flushed
      */
-    documentsToProcess?: T[];
+    documentsToProcess?: T[] | T;
 }
 
 /**
@@ -101,7 +101,7 @@ export class DocumentBuffer<T> {
         if (documentSize > this.options.maxSingleDocumentSizeBytes) {
             return {
                 success: false,
-                documentsToProcess: [document],
+                documentsToProcess: document,
             };
         }
 
@@ -144,38 +144,44 @@ export class DocumentBuffer<T> {
     }
 }
 
+// Default configuration for MongoDB buffers
+const defaultMongoBufferConfig: DocumentBufferOptions = {
+    maxBufferSizeBytes: 32 * 1024 * 1024, // 32MB for batch operations
+    maxDocumentCount: 50,
+    maxSingleDocumentSizeBytes: 16 * 1024 * 1024, // 16MB (MongoDB document size limit)
+    calculateDocumentSize: (document: unknown) => {
+        // Use EJSON to calculate the size of MongoDB documents
+        // Adding 20% for BSON overhead compared to JSON
+        return document ? Buffer.byteLength(EJSON.stringify(document)) * 1.2 : 0;
+    },
+};
+
+// Default configuration for Cosmos DB buffers
+const defaultCosmosBufferConfig: DocumentBufferOptions = {
+    maxBufferSizeBytes: 4 * 1024 * 1024, // 4MB total buffer size
+    maxDocumentCount: 30, // Cosmos DB has higher latency, so use smaller batches
+    maxSingleDocumentSizeBytes: 2 * 1024 * 1024, // 2MB (Cosmos DB document size limit)
+    calculateDocumentSize: (document: unknown) => {
+        return document ? Buffer.byteLength(EJSON.stringify(document)) * 1.2 : 0;
+    },
+};
+
 /**
  * Create a document buffer configured for MongoDB
  */
-export function createMongoDbBuffer<T>(): DocumentBuffer<T> {
+export function createMongoDbBuffer<T>(customConfig?: DocumentBufferOptions): DocumentBuffer<T> {
     return new DocumentBuffer<T>({
-        maxBufferSizeBytes: 32 * 1024 * 1024, // 32MB for batch operations
-        maxDocumentCount: 50,
-        maxSingleDocumentSizeBytes: 16 * 1024 * 1024, // 16MB (MongoDB document size limit)
-        calculateDocumentSize: (document: unknown) => {
-            // Use EJSON to calculate the size of MongoDB documents
-            // Adding 20% for BSON overhead compared to JSON
-            return document ? Buffer.byteLength(EJSON.stringify(document)) * 1.2 : 0;
-        },
+        ...defaultMongoBufferConfig,
+        ...customConfig,
     });
 }
 
 /**
  * Create a document buffer configured for Cosmos DB
  */
-export function createCosmosDbBuffer<T>(): DocumentBuffer<T> {
+export function createCosmosDbBuffer<T>(customConfig?: DocumentBufferOptions): DocumentBuffer<T> {
     return new DocumentBuffer<T>({
-        maxBufferSizeBytes: 4 * 1024 * 1024, // 4MB total buffer size
-        maxDocumentCount: 100, // Cosmos DB has higher latency, so use smaller batches
-        maxSingleDocumentSizeBytes: 2 * 1024 * 1024, // 2MB (Cosmos DB document size limit)
-        calculateDocumentSize: (document: unknown) => {
-            try {
-                // Use JSON.stringify to calculate the size of Cosmos DB documents
-                return Buffer.byteLength(JSON.stringify(document));
-            } catch {
-                // If the document can't be stringified, estimate its size as 1KB
-                return 1024;
-            }
-        },
+        ...defaultCosmosBufferConfig,
+        ...customConfig,
     });
 }

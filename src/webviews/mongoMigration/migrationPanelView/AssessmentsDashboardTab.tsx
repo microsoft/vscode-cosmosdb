@@ -21,10 +21,7 @@ import {
     PresenceAvailable10Filled,
 } from '@fluentui/react-icons';
 import React, { useEffect, useState } from 'react';
-import {
-    AssessmentMetadata,
-    GetAllAssessmentsResponse,
-} from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
+import { AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { buildHtmlReport } from './reportBuilder';
 
@@ -61,7 +58,7 @@ export const AssessmentsDashboardTab: React.FC = () => {
         setLoading(true);
         try {
             const response = await trpcClient.mongoMigration.migrationPanel.getAllAssessments.query();
-            const rawData = (response as unknown as GetAllAssessmentsResponse).Body;
+            const rawData = response.Body;
             const formatted: AssessmentMetadata[] = rawData.map((a) => ({
                 ...a,
                 StartTime: formatDate(a.StartTime),

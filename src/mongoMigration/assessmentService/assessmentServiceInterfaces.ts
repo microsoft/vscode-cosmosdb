@@ -12,10 +12,6 @@ export interface AssessmentMetadata {
     TargetPlatform: EnumTargetOffering;
 }
 
-export interface GetAllAssessmentsResponse {
-    Body: AssessmentMetadata[];
-}
-
 export interface AssessmentRequestParameters {
     instanceId: string,
     assessmentId: string,
@@ -30,7 +26,7 @@ export enum EnumTargetOffering {
 }
 
 export interface RPCResponseEntity<T> {
-    body: T;
+    Body: T;
     error: ErrorEntity;
     Warnings: WarningEntity[];
 }

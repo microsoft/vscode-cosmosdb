@@ -93,44 +93,72 @@ export class AssessmentServiceClient {
      * @param input The input parameters for the method.
      * @returns The response from the server.
      */
-    public static async checkPrerequisite(input: AssessmentTypes.CheckPrerequisiteInput): Promise<{ Body: { IsPreReqSatisfied: boolean } }> {
-        return this.sendRequest<{ Body: { IsPreReqSatisfied: boolean } }>('CheckPrerequisiteAsync', input, /*Assessment client for telemetry*/null);
+    public static async checkPrerequisite(
+        input: AssessmentTypes.CheckPrerequisiteInput,
+    ): Promise<AssessmentTypes.RPCResponseEntity<{ IsPreReqSatisfied: boolean }>> {
+        return this.sendRequest<AssessmentTypes.RPCResponseEntity<{ IsPreReqSatisfied: boolean }>>(
+            'CheckPrerequisiteAsync',
+            input,
+        );
     }
 
     /**
      * Calls the `GetAllAssessments` RPC method.
-     * @returns A list of assessment metadata.
+     * @returns A list of assessment metadata wrapped in RPCResponseEntity.
      */
-    public static async getAllAssessments(input: AssessmentTypes.AssessmentListRequestParameter): Promise<AssessmentTypes.AssessmentMetadata[]> {
+    public static async getAllAssessments(
+        input: AssessmentTypes.AssessmentListRequestParameter,
+    ): Promise<AssessmentTypes.RPCResponseEntity<AssessmentTypes.AssessmentMetadata[]>> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.AssessmentMetadata[]>('GetAllAssessmentsAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<AssessmentTypes.RPCResponseEntity<AssessmentTypes.AssessmentMetadata[]>>(
+            'GetAllAssessmentsAsync',
+            input,
+            /* Assessment client for telemetry */ null,
+        );
     }
 
     /**
      * Calls the `GetAssessmentDetails` RPC method.
      * @returns Details of one Assessment.
      */
-    public static async getAssessmentDetails(input: AssessmentTypes.AssessmentRequestParameters): Promise<{Body:AssessmentTypes.AssessmentDetails}> {
+    public static async getAssessmentDetails(
+        input: AssessmentTypes.AssessmentRequestParameters,
+    ): Promise<AssessmentTypes.RPCResponseEntity<AssessmentTypes.AssessmentDetails>> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<{Body:AssessmentTypes.AssessmentDetails}>('GetAssessmentDetailsAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<AssessmentTypes.RPCResponseEntity<AssessmentTypes.AssessmentDetails>>(
+            'GetAssessmentDetailsAsync',
+            input,
+            /* Assessment client for telemetry */ null,
+        );
     }
 
     /**
      * Calls the `GetInstanceSummaryReportAsync` RPC method.
      * @returns Returns Instance summary from assessment report.
      */
-    public static async getInstanceSummary(input: AssessmentTypes.AssessmentRequestParameters): Promise<{Body:AssessmentTypes.InstanceSummaryResponse}> {
+    public static async getInstanceSummary(
+        input: AssessmentTypes.AssessmentRequestParameters,
+    ): Promise<AssessmentTypes.RPCResponseEntity<AssessmentTypes.InstanceSummaryResponse>> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<{Body:AssessmentTypes.InstanceSummaryResponse}>('GetInstanceSummaryReportAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<AssessmentTypes.RPCResponseEntity<AssessmentTypes.InstanceSummaryResponse>>(
+            'GetInstanceSummaryReportAsync',
+            input,
+            /* Assessment client for telemetry */ null,
+        );
     }
-
     /**
      * Calls the `StartAssessmentAsync` RPC method.
      * @returns Starts an Assessment.
      */
-    public static async startAssessment(input: AssessmentTypes.AssessmentWorkflowParameters): Promise<AssessmentTypes.StartAssessmentResponse> {
+    public static async startAssessment(
+        input: AssessmentTypes.AssessmentWorkflowParameters,
+    ): Promise<AssessmentTypes.StartAssessmentResponse> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.StartAssessmentResponse>('StartAssessmentAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<AssessmentTypes.StartAssessmentResponse>(
+            'StartAssessmentAsync',
+            input,
+            /*Assessment client for telemetry*/ null,
+        );
     }
 
     /**
@@ -139,7 +167,7 @@ export class AssessmentServiceClient {
      */
     public static async deleteAssessment(input: AssessmentTypes.AssessmentRequestParameters): Promise<boolean> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<boolean>('DeleteAssessmentAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<boolean>('DeleteAssessmentAsync', input, /*Assessment client for telemetry*/ null);
     }
 
     /**
@@ -147,36 +175,55 @@ export class AssessmentServiceClient {
      * @returns Cancels an Assessment.
      */
     public static async cancelAssessment(assessmentId: string): Promise<boolean> {
-        return this.sendRequest<boolean>('CancelAssessmentAsync', assessmentId, /*Assessment client for telemetry*/null);
+        return this.sendRequest<boolean>(
+            'CancelAssessmentAsync',
+            assessmentId,
+            /*Assessment client for telemetry*/ null,
+        );
     }
 
     /**
      * Calls the `GetAssessmentReportAsync` RPC method.
      * @returns Returns an Assessment Report for particular assessment type.
      */
-    public static async getAssessmentReport(input: AssessmentTypes.AssessmentReportRequestParameters): Promise<AssessmentTypes.GetAssessmentReportResponse> {
+    public static async getAssessmentReport(
+        input: AssessmentTypes.AssessmentReportRequestParameters,
+    ): Promise<AssessmentTypes.GetAssessmentReportResponse> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.GetAssessmentReportResponse>('GetAssessmentReportAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<AssessmentTypes.GetAssessmentReportResponse>(
+            'GetAssessmentReportAsync',
+            input,
+            /*Assessment client for telemetry*/ null,
+        );
     }
 
     /**
      * Calls the `GetCombinedAssessmentReportAsync` RPC method.
      * @returns Returns a combined Assessment Report.
      */
-    public static async getCombinedAssessmentReport(input: AssessmentTypes.AssessmentReportRequestParameters): Promise<{Body:AssessmentTypes.GetAssessmentReportResponse}> {
+    public static async getCombinedAssessmentReport(
+        input: AssessmentTypes.AssessmentReportRequestParameters,
+    ): Promise<AssessmentTypes.RPCResponseEntity<AssessmentTypes.GetAssessmentReportResponse>> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<{Body:AssessmentTypes.GetAssessmentReportResponse}>('GetCombinedAssessmentReportAsync', input, /*Assessment client for telemetry*/null);
+        return this.sendRequest<AssessmentTypes.RPCResponseEntity<AssessmentTypes.GetAssessmentReportResponse>>(
+            'GetCombinedAssessmentReportAsync',
+            input,
+            /* Assessment client for telemetry */ null,
+        );
     }
-    public static async downloadHtmlToDisk(filename: string, content: string): Promise<{ success: boolean; path?: string }> {
+    public static async downloadHtmlToDisk(
+        filename: string,
+        content: string,
+    ): Promise<{ success: boolean; path?: string }> {
         const uri = await vscode.window.showSaveDialog({
-        title: 'Save HTML Report',
-        defaultUri: vscode.Uri.file(filename),
-        filters: { 'HTML Files': ['html'] },
+            title: 'Save HTML Report',
+            defaultUri: vscode.Uri.file(filename),
+            filters: { 'HTML Files': ['html'] },
         });
 
         if (!uri) {
-        vscode.window.showWarningMessage('Download cancelled.');
-        return { success: false };
+            vscode.window.showWarningMessage('Download cancelled.');
+            return { success: false };
         }
 
         await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));

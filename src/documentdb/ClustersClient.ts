@@ -13,6 +13,7 @@ import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling, parseError
 import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import {
+    MongoBulkWriteError,
     MongoClient,
     ObjectId,
     type Collection,
@@ -470,24 +471,21 @@ export class ClustersClient {
             };
         } catch (error) {
             // print error messages to the console
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (error.writeErrors) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                for (const writeError of error.writeErrors) {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    ext.outputChannel.appendLog(`Write error: ${writeError.errmsg}`);
-                    ext.outputChannel.show();
+            if (error instanceof MongoBulkWriteError) {
+                // Wrap writeErrors in an array
+                const writeErrors = Array.isArray(error.writeErrors) ? error.writeErrors : [error.writeErrors];
+                for (const writeError of writeErrors) {
+                    const errorMessage = parseError(writeError).message;
+                    ext.outputChannel.appendLog(`Write error: ${errorMessage}`);
                 }
-            } else {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                ext.outputChannel.show();
+            } else if (error instanceof Error) {
                 ext.outputChannel.appendLog(`Error: ${error.message}`);
                 ext.outputChannel.show();
             }
 
-            // For BulkWriteErrors, we track the partial success count
             return {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-                insertedCount: error.insertedCount || 0,
+                insertedCount: error instanceof MongoBulkWriteError ? error.insertedCount || 0 : 0,
             };
         }
     }

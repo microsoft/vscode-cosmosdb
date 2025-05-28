@@ -3,18 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type OptionOnSelectData, type SelectionEvents } from '@fluentui/react-combobox';
 import {
     Button,
+    Dropdown,
     makeStyles,
     Menu,
     type MenuButtonProps,
     MenuDivider,
     MenuItem,
+    MenuItemCheckbox,
     MenuItemLink,
     type MenuItemProps,
     MenuList,
     MenuPopover,
+    MenuSplitGroup,
     MenuTrigger,
+    Option,
+    OptionGroup,
     Overflow,
     OverflowItem,
     SplitButton,
@@ -27,8 +33,12 @@ import {
     useIsOverflowGroupVisible,
     useIsOverflowItemVisible,
     useOverflowMenu,
+    useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import {
+    bundleIcon,
+    ChevronRightFilled,
+    ChevronRightRegular,
     CommentCheckmarkRegular,
     DatabasePlugConnectedRegular,
     EmojiSmileSlightRegular,
@@ -41,7 +51,15 @@ import {
     TabDesktopMultipleRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, type PropsWithChildren } from 'react';
+import {
+    type ForwardedRef,
+    forwardRef,
+    type PropsWithChildren,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 const useClasses = makeStyles({
@@ -52,6 +70,8 @@ const useClasses = makeStyles({
         color: tokens.colorStatusDangerBorderActive,
     },
 });
+
+const ChevronRightIcon = bundleIcon(ChevronRightFilled, ChevronRightRegular);
 
 type OverflowToolbarItemProps = {
     type: 'button' | 'menuitem';
@@ -213,19 +233,20 @@ const LearnButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedR
     const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
     const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
     const cosmosDBLimitations = 'https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/cosmosdb/cosmos#limitations';
+    const Component = props.type === 'button' ? ToolbarButton : MenuItem;
 
     return (
         <Menu>
             <MenuTrigger>
-                {props.type === 'button' ? (
-                    <ToolbarButton ref={ref} aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
-                        {l10n.t('Learn')}
-                    </ToolbarButton>
-                ) : (
-                    <MenuItem aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
-                        {l10n.t('Learn')}
-                    </MenuItem>
-                )}
+                <Component
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
+                    ref={ref}
+                    aria-label={l10n.t('Learn more')}
+                    icon={<LibraryRegular />}
+                >
+                    {l10n.t('Learn')}
+                </Component>
             </MenuTrigger>
             <MenuPopover>
                 <MenuList>
@@ -291,42 +312,156 @@ const ProvideFeedbackButton = forwardRef((props: OverflowToolbarItemProps, ref: 
     }
 });
 
-const ConnectionButton = forwardRef(
-    (props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement | HTMLDivElement>) => {
-        const classes = useClasses();
-        const state = useQueryEditorState();
-        const dispatcher = useQueryEditorDispatcher();
-        const Component = props.type === 'button' ? ToolbarButton : MenuItem;
+const ConnectionButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLDivElement>) => {
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+    const restoreFocusTargetAttribute = useRestoreFocusTarget();
+    const [connectionList, setConnectionList] = useState(state.connectionList);
+    const [checkedValues, setCheckedValues] = useState<Record<string, string[]>>({ databaseId: [], collectionId: [] });
+    const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
-        if (state.isConnected) {
-            return (
-                <Component
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    ref={ref}
-                    aria-label={l10n.t('Disconnect')}
-                    icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
-                    onClick={() => void dispatcher.disconnectFromDatabase()}
-                >
-                    {l10n.t('Disconnect')}
-                </Component>
-            );
-        }
+    const currentValue = useMemo(() => {
+        return state.dbName && state.collectionName ? `${state.dbName}/${state.collectionName}` : '';
+    }, [state.dbName, state.collectionName]);
 
+    useEffect(() => {
+        setSelectedOptions([`${state.dbName}/${state.collectionName}`]);
+        setCheckedValues({ databaseId: [state.dbName], collectionId: [state.collectionName] });
+    }, [state.dbName, state.collectionName]);
+
+    useEffect(() => {
+        setConnectionList(state.connectionList);
+    }, [state.connectionList]);
+
+    const onOpenChange = useCallback(
+        (_e: never, data: { open: boolean }) => {
+            if (data.open) {
+                void dispatcher.getConnections();
+            }
+        },
+        [dispatcher],
+    );
+
+    const onSetConnection = useCallback(
+        (databaseId: string, collectionId: string) => {
+            void dispatcher.setConnection(databaseId, collectionId);
+        },
+        [dispatcher],
+    );
+
+    const onOptionSelect = useCallback(
+        (_event: SelectionEvents, data: OptionOnSelectData) => {
+            const selected = data.optionValue;
+            if (selected) {
+                const [databaseId, collectionId] = selected.split('/');
+                void onSetConnection(databaseId, collectionId);
+            }
+        },
+        [dispatcher],
+    );
+
+    if (props.type === 'button') {
         return (
-            <Component
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                ref={ref}
-                aria-label={l10n.t('Connect')}
-                icon={<DatabasePlugConnectedRegular />}
-                onClick={() => void dispatcher.connectToDatabase()}
-            >
-                {l10n.t('Connect')}
-            </Component>
+            <div ref={ref} style={{ paddingLeft: '8px' }}>
+                <Dropdown
+                    style={{ minWidth: '100px', maxWidth: '300px' }}
+                    aria-label={l10n.t('Connect to…')}
+                    placeholder={l10n.t('Connect to…')}
+                    value={currentValue}
+                    selectedOptions={selectedOptions}
+                    onOptionSelect={onOptionSelect}
+                    onOpenChange={onOpenChange}
+                    {...restoreFocusTargetAttribute}
+                >
+                    {state.isConnected && !connectionList && (
+                        <OptionGroup label={state.dbName}>
+                            <Option value={currentValue} text={currentValue}>
+                                {state.collectionName}
+                            </Option>
+                        </OptionGroup>
+                    )}
+                    {!connectionList && <Option aria-label={l10n.t('Loading…')}>{l10n.t('Loading…')}</Option>}
+                    {connectionList && Object.entries(connectionList).length === 0 && (
+                        <Option disabled aria-label={l10n.t('No connections')}>
+                            {l10n.t('No connections')}
+                        </Option>
+                    )}
+                    {connectionList &&
+                        Object.entries(connectionList).map(([databaseId, collections]) => (
+                            <OptionGroup key={databaseId} label={databaseId}>
+                                {collections.length === 0 && <Option disabled>{l10n.t('No collections')}</Option>}
+                                {collections.map((collectionId) => (
+                                    <Option
+                                        key={collectionId}
+                                        value={`${databaseId}/${collectionId}`}
+                                        text={`${databaseId}/${collectionId}`}
+                                    >
+                                        {collectionId}
+                                    </Option>
+                                ))}
+                            </OptionGroup>
+                        ))}
+                </Dropdown>
+            </div>
         );
-    },
-);
+    }
+
+    return (
+        <Menu hasCheckmarks={true} onOpenChange={onOpenChange} checkedValues={checkedValues}>
+            <MenuTrigger>
+                <MenuItem aria-label={l10n.t('Connect to…')} icon={<DatabasePlugConnectedRegular />}>
+                    {l10n.t('Connect to…')}
+                </MenuItem>
+            </MenuTrigger>
+            <MenuPopover>
+                <MenuList>
+                    {!connectionList && <MenuItem>{l10n.t('Loading…')}</MenuItem>}
+                    {connectionList && Object.entries(connectionList).length === 0 && (
+                        <MenuItem disabled>{l10n.t('No connections')}</MenuItem>
+                    )}
+                    {connectionList &&
+                        Object.entries(connectionList).map(([databaseId, collections]) => (
+                            <Menu hasCheckmarks={true} checkedValues={checkedValues}>
+                                <MenuTrigger disableButtonEnhancement>
+                                    <MenuSplitGroup>
+                                        <MenuItemCheckbox
+                                            key={databaseId}
+                                            //icon={databaseId === state.dbName ? <Checkmark16Regular /> : undefined}
+                                            name={'databaseId'}
+                                            value={databaseId}
+                                            submenuIndicator={<ChevronRightIcon />}
+                                        >
+                                            {databaseId}
+                                        </MenuItemCheckbox>
+                                        <MenuTrigger disableButtonEnhancement>
+                                            <MenuItem aria-label="Open collection list" />
+                                        </MenuTrigger>
+                                    </MenuSplitGroup>
+                                </MenuTrigger>
+                                <MenuPopover>
+                                    <MenuList>
+                                        {collections.length === 0 && (
+                                            <MenuItem disabled>{l10n.t('No collections')}</MenuItem>
+                                        )}
+                                        {collections.map((collectionId) => (
+                                            <MenuItemCheckbox
+                                                key={collectionId}
+                                                name={'collectionId'}
+                                                value={collectionId}
+                                                onClick={() => void onSetConnection(databaseId, collectionId)}
+                                            >
+                                                {collectionId}
+                                            </MenuItemCheckbox>
+                                        ))}
+                                    </MenuList>
+                                </MenuPopover>
+                            </Menu>
+                        ))}
+                </MenuList>
+            </MenuPopover>
+        </Menu>
+    );
+});
 
 interface ToolbarOverflowMenuItemProps extends Omit<MenuItemProps, 'id'> {
     id: string;

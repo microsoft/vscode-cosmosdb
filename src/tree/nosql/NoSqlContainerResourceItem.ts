@@ -10,10 +10,18 @@ import { type CosmosDBContainerModel } from '../cosmosdb/models/CosmosDBContaine
 import { NoSqlItemsResourceItem } from './NoSqlItemsResourceItem';
 import { NoSqlStoredProceduresResourceItem } from './NoSqlStoredProceduresResourceItem';
 import { NoSqlTriggersResourceItem } from './NoSqlTriggersResourceItem';
+import { NoSqlQueryEditorResourceItem } from './NoSqlQueryEditorResourceItem';
 
 export class NoSqlContainerResourceItem extends CosmosDBContainerResourceItem {
     constructor(model: CosmosDBContainerModel, experience: Experience) {
         super(model, experience);
+    }
+
+    async getChildren(): Promise<TreeElement[]> {
+        const items = await super.getChildren();
+        const queryEditor = new NoSqlQueryEditorResourceItem({ ...this.model }, this.experience);
+
+        return [queryEditor, ...items];
     }
 
     protected getChildrenTriggersImpl(): Promise<TreeElement | undefined> {

@@ -418,7 +418,7 @@ async function insertDocumentWithBufferIntoCosmosDB(
             // Log errors to output channel
             response.forEach((op) => {
                 if (op.statusCode >= 300) {
-                    ext.outputChannel.appendLog(l10n.t('The insertion failed with status code {1}', op.statusCode));
+                    ext.outputChannel.appendLog(l10n.t('The insertion failed with status code {0}', op.statusCode));
                 }
             });
             ext.outputChannel.show();
@@ -429,7 +429,7 @@ async function insertDocumentWithBufferIntoCosmosDB(
             errorOccurred,
         };
     } catch (error) {
-        ext.outputChannel.appendLog(l10n.t('Bulk insert operation failed: {0}', parseError(error).message));
+        ext.outputChannel.appendLog(l10n.t('The insertion failed with error: {0}', parseError(error).message));
         ext.outputChannel.show();
         return {
             count: 0,

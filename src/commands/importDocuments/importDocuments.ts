@@ -418,6 +418,8 @@ async function insertDocumentWithBufferIntoCosmosDB(
             operationType: 'Create' as const,
             resourceBody: {
                 ...doc,
+                // Ensure id is set, if not provided, generate a new UUID
+                // This is important for CosmosDB bulk operations as it requires an id field
                 id: doc.id ?? uuidv4(),
             },
         };

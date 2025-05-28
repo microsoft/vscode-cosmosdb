@@ -41,6 +41,15 @@ export interface BufferInsertResult<T> {
      * Documents that need to be processed immediately if not buffered
      * This could be the current document if it's too large, or
      * the contents of the buffer if it's full and needs to be flushed
+     *
+     * The type of documentsToProcess indicates different scenarios:
+     * - If success is false and documentsToProcess is undefined. it means the document is undefined or null.
+     *   It is usually used in last batch to flush the buffer forcibly.
+     * - If documentsToProcess is an array, it means the buffer is full and these documents need to be processed.
+     *   Need to insert current document after processing these documents.
+     * - If documentsToProcess is a single document, it means the document is too large to fit in the buffer
+     *   Current document should be processed immediately, and should not be added to the buffer,
+     *   or it will fail the whole batch operation.
      */
     documentsToProcess?: T[] | T;
 }
@@ -146,9 +155,9 @@ export class DocumentBuffer<T> {
 
 // Default configuration for MongoDB buffers
 const defaultMongoBufferConfig: DocumentBufferOptions = {
-    maxBufferSizeBytes: 32 * 1024 * 1024, // 32MB for batch operations
+    maxBufferSizeBytes: 32 * 1024 * 1024, // 32MB
     maxDocumentCount: 50,
-    maxSingleDocumentSizeBytes: 16 * 1024 * 1024, // 16MB (MongoDB document size limit)
+    maxSingleDocumentSizeBytes: 16 * 1024 * 1024, // 16MB
     calculateDocumentSize: (document: unknown) => {
         // Use EJSON to calculate the size of MongoDB documents
         // Adding 20% for BSON overhead compared to JSON
@@ -158,11 +167,11 @@ const defaultMongoBufferConfig: DocumentBufferOptions = {
 
 // Default configuration for Cosmos DB buffers
 const defaultCosmosBufferConfig: DocumentBufferOptions = {
-    maxBufferSizeBytes: 4 * 1024 * 1024, // 4MB total buffer size
+    maxBufferSizeBytes: 4 * 1024 * 1024, // 4MB
     maxDocumentCount: 30, // Cosmos DB has higher latency, so use smaller batches
-    maxSingleDocumentSizeBytes: 2 * 1024 * 1024, // 2MB (Cosmos DB document size limit)
+    maxSingleDocumentSizeBytes: 2 * 1024 * 1024, // 2MB
     calculateDocumentSize: (document: unknown) => {
-        return document ? Buffer.byteLength(EJSON.stringify(document)) * 1.2 : 0;
+        return document ? Buffer.byteLength(EJSON.stringify(document)) : 0;
     },
 };
 

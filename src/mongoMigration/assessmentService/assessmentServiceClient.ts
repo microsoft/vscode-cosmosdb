@@ -99,6 +99,7 @@ export class AssessmentServiceClient {
         return this.sendRequest<AssessmentTypes.RPCResponseEntity<{ IsPreReqSatisfied: boolean }>>(
             'CheckPrerequisiteAsync',
             input,
+            /* Assessment client for telemetry */ null,
         );
     }
 
@@ -152,9 +153,9 @@ export class AssessmentServiceClient {
      */
     public static async startAssessment(
         input: AssessmentTypes.AssessmentWorkflowParameters,
-    ): Promise<AssessmentTypes.StartAssessmentResponse> {
+    ): Promise<AssessmentTypes.RPCResponseEntity<AssessmentTypes.StartAssessmentResponse>> {
         input.assessmentFolderPath = this.getDefaultAssessmentPath();
-        return this.sendRequest<AssessmentTypes.StartAssessmentResponse>(
+        return this.sendRequest<AssessmentTypes.RPCResponseEntity<AssessmentTypes.StartAssessmentResponse>>(
             'StartAssessmentAsync',
             input,
             /*Assessment client for telemetry*/ null,

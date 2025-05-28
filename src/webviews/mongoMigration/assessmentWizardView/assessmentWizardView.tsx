@@ -4,14 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 /* eslint-disable @typescript-eslint/no-misused-promises */
-
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
     Button,
     Card,
     CardHeader,
+    Dropdown,
     Field,
     Input,
     Link,
+    Option,
     Text,
     makeStyles
 } from '@fluentui/react-components';
@@ -60,18 +63,30 @@ const useStyles = makeStyles({
     },
 });
 
-const StepBreadcrumb = ({ currentStep }: { currentStep: number }) => {
+const StepBreadcrumb = ({
+    currentStep,
+    onStepClick,
+}: {
+    currentStep: number;
+    onStepClick: (step: number) => void;
+}) => {
     const styles = useStyles();
-    const steps = ['Validation', 'Assessment', 'Report'];
+    const steps = ['Validation', 'Assessment', 'Assessment Results', 'Report'];
 
     return (
         <div className={styles.breadcrumb}>
             {steps.map((step, index) => {
                 const isActive = index === currentStep;
                 const isCompleted = index < currentStep;
+                const isClickable = index < currentStep;
 
                 return (
-                    <div key={step} className={styles.breadcrumbItem}>
+                    <div
+                        key={step}
+                        className={styles.breadcrumbItem}
+                        onClick={() => isClickable && onStepClick(index)}
+                        style={{ cursor: isClickable ? 'pointer' : 'default' }}
+                    >
                         <div
                             className={styles.circle}
                             style={{
@@ -98,7 +113,8 @@ const FormInputRow = ({
     placeholder,
     link,
     onChange,
-    value
+    value,
+    children
 }: {
     id: string;
     label: string;
@@ -106,8 +122,10 @@ const FormInputRow = ({
     placeholder?: string;
     helpText?: string;
     link?: { href: string; text: string };
+    children?: React.ReactNode;
     value?: string;
     onChange?: (val: string) => void;
+
 }) => (
     <Field label={label} required={required}>
         {link && (
@@ -115,56 +133,78 @@ const FormInputRow = ({
                 {link.text}
             </Link>
         )}
-        <Input id={id} placeholder={placeholder} style={{ width: '50%' }} value={value}
-            onChange={(e, data) => onChange?.(data.value)} />
+        {children ? (
+            children
+        ) : (
+            <Input
+                id={id}
+                placeholder={placeholder}
+                style={{ width: '50%' }}
+                value={value}
+                onChange={(e, data) => onChange?.(data.value)}
+            />
+        )}
     </Field>
 );
 
 export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JSX.Element => {
     useConfiguration<AssessmentWizardViewWebviewConfigurationType>();
     const styles = useStyles();
-    const [currentStep,] = useState(0);
-    const [connectionString, setConnectionString] = useState('');
     const { trpcClient } = useTrpcClient();
 
+    const [currentStep, setCurrentStep] = useState(0);
+    const [connectionString, setConnectionString] = useState('');
+    const [offering, setOffering] = useState<string>('2');
+    const [assessmentName, setAssessmentName] = useState('');
 
-    // const startAssessment = async () => {
-    //     try {
-    //         const response = await trpcClient.mongoMigration.assessmentWizard.startAssessment.query();
-    //         const parsed = JSON.parse(response) as { success: boolean; data?: unknown; error?: string };
-    //         if (parsed.success) {
-    //             console.log('Assessment started:', parsed.data);
-    //             setCurrentStep(1); // Proceed to step 2
-    //         } else {
-    //             console.error('Assessment failed:', parsed.error);
-    //         }
-    //     } catch (e) {
-    //         console.error('Error starting assessment:', e);
-    //     }
-    // };
+
+
+    const startAssessment = async () => {
+        if (!connectionString || !offering) {
+            return;
+        }
+        try {
+            const response = await trpcClient.mongoMigration.assessmentWizard.startAssessment.mutate({
+                connectionString,
+                assessmentName,
+                targetPlatform: parseInt(offering, 10),
+            });
+            if (response.Body) {
+                setCurrentStep(2);
+            } else {
+                alert("Validation failed.");
+            }
+            console.log("response", response)
+        } catch (err) {
+            console.error('Validation error:', err);
+            alert('Validation failed. Please try again.');
+        }
+    };
 
     const runValidation = async () => {
         if (!connectionString) {
             return;
         }
-        console.log("I am connection", connectionString)
         try {
             const response = await trpcClient.mongoMigration.assessmentWizard.checkPrerequisite.mutate({
                 connectionString,
             });
-            console.log("I am response", response)
+            if (response.Body?.IsPreReqSatisfied) {
+                setCurrentStep(1);
+            } else {
+                alert("Validation failed.");
+            }
         } catch (err) {
-            console.error('Failed to delete assessment:', err);
-            alert('Failed to delete the assessment. Please try again.');
+            console.error('Validation error:', err);
+            alert('Validation failed. Please try again.');
         }
     };
 
-
     return (
         <div>
-            <StepBreadcrumb currentStep={currentStep} />
+            <StepBreadcrumb currentStep={currentStep} onStepClick={(step) => setCurrentStep(step)} />
 
-            {currentStep === 0 && (
+            {(currentStep === 0 || currentStep === 1) && (
                 <>
                     <h2>Run a new assessment of your MongoDB server</h2>
                     <Text>
@@ -182,6 +222,8 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                 label="Assessment name"
                                 placeholder="Enter assessment name"
                                 required
+                                value={assessmentName}
+                                onChange={setAssessmentName}
                             />
                             <FormInputRow
                                 id="connectionString"
@@ -191,6 +233,19 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                 value={connectionString}
                                 onChange={setConnectionString}
                             />
+                            <FormInputRow id="offering" label="Offering" required>
+                                <Dropdown
+                                    selectedValue={offering}
+                                    onOptionSelect={(_, data) => {
+                                        setOffering(data.optionValue ?? '');
+                                    }}
+                                    style={{ width: '50%' }}
+                                >
+                                    <Option value="2">vCore</Option>
+                                    <Option value="1">RU</Option>
+                                </Dropdown>
+                            </FormInputRow>
+
                             <FormInputRow
                                 id="logFolderPath"
                                 label="[Optional] Log folder path"
@@ -213,9 +268,15 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                     </Card>
 
                     <div className={styles.stepActions}>
-                        <Button appearance="primary" onClick={runValidation}>
-                            Run Validation
-                        </Button>
+                        {currentStep === 0 ? (
+                            <Button appearance="primary" onClick={() => void runValidation()}>
+                                Run Validation
+                            </Button>
+                        ) : (
+                            <Button appearance="primary" onClick={() => void startAssessment()}>
+                                Start Assessment
+                            </Button>
+                        )}
                         <Button appearance="secondary" onClick={onCancel}>
                             Cancel
                         </Button>
@@ -223,18 +284,10 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                 </>
             )}
 
-            {currentStep === 1 && (
-                <div>
-                    <h2>Assessment in Progress</h2>
-                    <Text>We are currently assessing your MongoDB server...</Text>
-                    {/* Add spinner/progress bar or API polling here */}
-                </div>
-            )}
-
             {currentStep === 2 && (
                 <div>
-                    <h2>Assessment Report</h2>
-                    <Text>The report is ready. Display results or link to download.</Text>
+                    <h2>Assessment Results</h2>
+                    <Text>Show progress bar</Text>
                 </div>
             )}
         </div>

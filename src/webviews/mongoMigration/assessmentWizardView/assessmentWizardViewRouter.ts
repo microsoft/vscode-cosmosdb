@@ -8,7 +8,6 @@ import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-se
 // eslint-disable-next-line import/no-internal-modules
 import { z } from 'zod';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
-import { EnumTargetOffering } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 //import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 
@@ -36,21 +35,30 @@ export const assessmentWizardViewRouter = router({
 
         return myCtx.databaseName;
     }),
-    startAssessment: publicProcedure.use(trpcToTelemetry).query(async () => {
-        //const myCtx = ctx as RouterContext;
 
-        const response = await AssessmentServiceClient.startAssessment({
-            instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
-            assessmentName: assessmentWizardView.assessmentName,
-            assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
-            logFolderPath: '',
-            targetPlatform: EnumTargetOffering.CosmosDBMongovCore,
-            connectionString: assessmentWizardView.connectionString, // Use the connection string from the context
-            assessmentFolderPath: '',
-            dataAssessmentReportPath: '',
-        });
-        return 'Assessment started successfully: ' + JSON.stringify(response);
-    }),
+    startAssessment: publicProcedure
+        .input(
+            z.object({
+                connectionString: z.string(),
+                assessmentName: z.string(),
+                targetPlatform: z.number(),
+            }),
+        )
+        .use(trpcToTelemetry)
+        .mutation(async ({ input }) => {
+            const response = await AssessmentServiceClient.startAssessment({
+                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                assessmentName: input.assessmentName,
+                assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
+                logFolderPath: '',
+                targetPlatform: input.targetPlatform,
+                connectionString: input.connectionString,
+                assessmentFolderPath: '',
+                dataAssessmentReportPath: '',
+            });
+
+            return response;
+        }),
 
     getAssessmentDetails: publicProcedure.use(trpcToTelemetry).query(async () => {
         // Call the getAssessmentDetails procedure from migrationPanelViewRouter

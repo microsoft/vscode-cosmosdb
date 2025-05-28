@@ -168,7 +168,7 @@ const defaultMongoBufferConfig: DocumentBufferOptions = {
 // Default configuration for Cosmos DB buffers
 const defaultCosmosBufferConfig: DocumentBufferOptions = {
     maxBufferSizeBytes: 4 * 1024 * 1024, // 4MB
-    maxDocumentCount: 30, // Cosmos DB has higher latency, so use smaller batches
+    maxDocumentCount: 100,
     maxSingleDocumentSizeBytes: 2 * 1024 * 1024, // 2MB
     calculateDocumentSize: (document: unknown) => {
         return document ? Buffer.byteLength(EJSON.stringify(document)) : 0;

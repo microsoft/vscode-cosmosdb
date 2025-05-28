@@ -116,7 +116,7 @@ export async function importDocumentsWithProgress(
             }
 
             const countDocuments = documents.length;
-            const incrementDocuments = 50 / (countDocuments || 1);
+            const incrementDocuments = 100 / (countDocuments || 1);
             let count = 0;
             let buffer: DocumentBuffer<unknown> | undefined;
             if (selectedItem instanceof CollectionItem) {
@@ -125,9 +125,9 @@ export async function importDocumentsWithProgress(
                 buffer = createCosmosDbBuffer<unknown>();
             }
 
-            for (let i = 0, percent = 0; i < countDocuments; i++, percent += incrementDocuments) {
+            for (let i = 0; i < countDocuments; i++) {
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: incrementDocuments,
                     message: l10n.t('Importing document {num} of {countDocuments}', {
                         num: i + 1,
                         countDocuments,
@@ -311,24 +311,6 @@ async function insertDocument(
         return { count: 0, errorOccurred: true };
     }
 }
-
-// async function insertDocumentIntoCosmosDB(
-//     node: CosmosDBContainerResourceItem,
-//     document: ItemDefinition,
-// ): Promise<{ document: ItemDefinition; error: string }> {
-//     const { endpoint, credentials, isEmulator } = node.model.accountInfo;
-//     const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-//     const response = await cosmosClient
-//         .database(node.model.database.id)
-//         .container(node.model.container.id)
-//         .items.create<ItemDefinition>(document);
-
-//     if (response.resource) {
-//         return { document, error: '' };
-//     } else {
-//         return { document, error: l10n.t('The insertion failed with status code {0}', response.statusCode) };
-//     }
-// }
 
 async function insertDocumentWithBufferIntoCluster(
     node: CollectionItem,

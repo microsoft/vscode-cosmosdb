@@ -418,11 +418,18 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         if (!id.startsWith(element.id)) {
             return undefined;
         }
-        let node = element;
-        outerLoop: while (true) {
-            const children: TreeElement[] | null | undefined = await this.getChildren(node);
+        const node = element;
+        const queue: TreeElement[] = [];
+        queue.push(node);
 
-            if (!children) {
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (!current) {
+                continue;
+            }
+
+            const children: TreeElement[] | null | undefined = await this.getChildren(current);
+            if (!children || children.length === 0) {
                 return;
             }
 
@@ -430,13 +437,19 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 if (child.id.toLowerCase() === id.toLowerCase()) {
                     return child;
                 } else if (this.isAncestorOf(child, id)) {
-                    node = child;
-                    continue outerLoop;
+                    // Since isAncestorOf has simple logic
+                    // we cannot guarantee that element.id does not contain additional slashes or
+                    // that two elements have the same name but a different case
+                    // the following ids might be conflicting with search id `parent/child/grandchild/aaa/bbb`:
+                    // -- parent/child/GRANDCHILD/AAA <-- Where `GRANDCHILD/AAA` is name of the child
+                    // -- parent/child/grandchild <-- Where `grandchild` is name of the child
+                    // The chance is low but still possible, therefore, we need to use BFS.
+                    queue.push(child);
                 }
             }
-
-            return undefined;
         }
+
+        return undefined;
     }
 
     /**

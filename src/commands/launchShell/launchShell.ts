@@ -28,6 +28,7 @@ export async function launchShell(
     }
 
     context.telemetry.properties.experience = node.experience.api;
+    context.telemetry.properties.isWindows = isWindows.toString();
 
     let rawConnectionString: string | undefined;
 
@@ -49,14 +50,79 @@ export async function launchShell(
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
         return;
     }
+    context.valuesToMask.push(rawConnectionString);
 
     const connectionString: ConnectionString = new ConnectionString(rawConnectionString);
 
-    const username = connectionString.username;
-    const password = connectionString.password;
+    const actualPassword = connectionString.password;
+    context.valuesToMask.push(actualPassword);
 
-    connectionString.username = isWindows ? '%USERNAME%' : '$USERNAME';
-    connectionString.password = isWindows ? '%PASSWORD%' : '$PASSWORD';
+    // Use unique environment variable names to avoid conflicts
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a 6-digit random number string
+    const uniquePassEnvVar = `documentdb_${randomSuffix}`; // Use a lowercase, generic-looking variable name to avoid drawing attention in the shell output—this helps prevent bystanders from noticing sensitive info if they're watching the user's screen.
+
+    // Determine appropriate environment variable syntax based on shell type
+    let envVarSyntax = '';
+    if (isWindows) {
+        const terminalProfile = vscode.workspace.getConfiguration('terminal.integrated.defaultProfile').get('windows');
+
+        if (terminalProfile === null || typeof terminalProfile === 'undefined') {
+            // Default to PowerShell if no profile is found
+            ext.outputChannel.appendLog(
+                l10n.t(
+                    'Default Windows terminal profile not found in VS Code settings. Assuming PowerShell for launching MongoDB shell.',
+                ),
+            );
+            envVarSyntax = `$env:${uniquePassEnvVar}`;
+            context.telemetry.properties.terminalType = 'PowerShell';
+        } else if (typeof terminalProfile === 'string') {
+            const profile = terminalProfile.toLowerCase();
+
+            if (profile === 'powershell' || profile === 'pwsh' || profile === 'windows powershell') {
+                // PowerShell detected
+                envVarSyntax = `$env:${uniquePassEnvVar}`;
+                context.telemetry.properties.terminalType = 'PowerShell';
+            } else if (profile === 'cmd' || profile === 'command prompt') {
+                // Command Prompt detected
+                envVarSyntax = `%${uniquePassEnvVar}%`;
+                context.telemetry.properties.terminalType = 'Cmd';
+            } else if (profile === 'git bash') {
+                // Git Bash detected
+                envVarSyntax = `$${uniquePassEnvVar}`;
+                context.telemetry.properties.terminalType = 'GitBash';
+            } else if (profile.includes('wsl')) {
+                // WSL shell detected
+                envVarSyntax = `$${uniquePassEnvVar}`;
+                context.telemetry.properties.terminalType = 'WSL';
+            } else {
+                // Unrecognized profile, default to CMD syntax
+                envVarSyntax = `%${uniquePassEnvVar}%`;
+                context.telemetry.properties.terminalType = 'Other';
+                context.telemetry.properties.terminalProfileValue = terminalProfile;
+            }
+        }
+    } else {
+        // Unix-like environment (macOS/Linux)
+        envVarSyntax = `$${uniquePassEnvVar}`;
+        context.telemetry.properties.terminalType = 'Unix';
+    }
+
+    // Note to code maintainers:
+    // We're using a sentinel value approach here to avoid URL encoding issues with environment variable
+    // references. For example, in PowerShell the environment variable reference "$env:VAR_NAME" contains
+    // a colon character (":") which gets URL encoded to "%3A" when added directly to connectionString.password.
+    // This encoding breaks the environment variable reference syntax in the shell.
+    //
+    // By using a unique sentinel string first and then replacing it with the raw (unencoded) environment
+    // variable reference after toString() is called, we ensure the shell correctly interprets the
+    // environment variable.
+    const PASSWORD_SENTINEL = '__MONGO_PASSWORD_PLACEHOLDER__';
+    connectionString.password = PASSWORD_SENTINEL;
+
+    // If the username or password is empty, remove them from the connection string to avoid invalid connection strings
+    if (!connectionString.username || !actualPassword) {
+        connectionString.password = '';
+    }
 
     if ('databaseInfo' in node && node.databaseInfo?.name) {
         connectionString.pathname = node.databaseInfo.name;
@@ -68,11 +134,10 @@ export async function launchShell(
     // }
 
     const terminal: vscode.Terminal = vscode.window.createTerminal({
-        name: `MongoDB Shell (${username})`,
+        name: `MongoDB Shell (${connectionString.username || 'default'})`, // Display actual username or a default
         hideFromUser: false,
         env: {
-            USERNAME: username,
-            PASSWORD: password,
+            [uniquePassEnvVar]: actualPassword,
         },
     });
 
@@ -87,6 +152,9 @@ export async function launchShell(
 
     const tlsConfiguration = isEmulatorWithSecurityDisabled ? '--tlsAllowInvalidCertificates' : '';
 
-    terminal.sendText(`mongosh "${connectionString.toString()}" ${tlsConfiguration}`);
+    // Get the connection string and replace the sentinel with the environment variable syntax
+    const finalConnectionString = connectionString.toString().replace(PASSWORD_SENTINEL, envVarSyntax);
+
+    terminal.sendText(`mongosh "${finalConnectionString}" ${tlsConfiguration}`);
     terminal.show();
 }

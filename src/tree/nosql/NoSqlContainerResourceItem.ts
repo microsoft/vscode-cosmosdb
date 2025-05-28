@@ -8,9 +8,9 @@ import { type TreeElement } from '../TreeElement';
 import { CosmosDBContainerResourceItem } from '../cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBContainerModel } from '../cosmosdb/models/CosmosDBContainerModel';
 import { NoSqlItemsResourceItem } from './NoSqlItemsResourceItem';
+import { NoSqlQueryEditorResourceItem } from './NoSqlQueryEditorResourceItem';
 import { NoSqlStoredProceduresResourceItem } from './NoSqlStoredProceduresResourceItem';
 import { NoSqlTriggersResourceItem } from './NoSqlTriggersResourceItem';
-import { NoSqlQueryEditorResourceItem } from './NoSqlQueryEditorResourceItem';
 
 export class NoSqlContainerResourceItem extends CosmosDBContainerResourceItem {
     constructor(model: CosmosDBContainerModel, experience: Experience) {

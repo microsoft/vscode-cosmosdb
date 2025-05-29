@@ -6,9 +6,11 @@
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 // eslint-disable-next-line import/no-internal-modules
+import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
+
 //import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 
 /**
@@ -46,10 +48,11 @@ export const assessmentWizardViewRouter = router({
         )
         .use(trpcToTelemetry)
         .mutation(async ({ input }) => {
+            const assessmentId = uuidv4();
             const response = await AssessmentServiceClient.startAssessment({
                 instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
                 assessmentName: input.assessmentName,
-                assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
+                assessmentId,
                 logFolderPath: '',
                 targetPlatform: input.targetPlatform,
                 connectionString: input.connectionString,
@@ -57,7 +60,10 @@ export const assessmentWizardViewRouter = router({
                 dataAssessmentReportPath: '',
             });
 
-            return response;
+            return {
+                ...response,
+                assessmentId,
+            };
         }),
 
     getAssessmentDetails: publicProcedure.use(trpcToTelemetry).query(async () => {

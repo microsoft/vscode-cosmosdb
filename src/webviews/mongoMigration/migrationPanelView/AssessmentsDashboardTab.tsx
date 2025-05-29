@@ -29,7 +29,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
-import { buildHtmlReport } from './reportBuilder';
+import { fetchAndBuildHtmlReport } from './apiUtils';
 
 initializeIcons();
 
@@ -121,25 +121,9 @@ export const AssessmentsDashboardTab: React.FC = () => {
 
         const handleDownload = async () => {
             if (!item) return;
-            const [assessmentDetails, instanceSummary, combinedAssessmentReportData] = await Promise.all([
-                trpcClient.mongoMigration.migrationPanel.getAssessmentDetails2.query({
-                    assessmentId: item.AssessmentId,
-                    assessmentName: item.AssessmentName,
-                }),
-                trpcClient.mongoMigration.migrationPanel.getInstanceSummary.query({
-                    assessmentId: item.AssessmentId,
-                    assessmentName: item.AssessmentName,
-                }),
-                trpcClient.mongoMigration.migrationPanel.getCombinedAssessmentReport.query({
-                    assessmentId: item.AssessmentId,
-                    assessmentName: item.AssessmentName,
-                }),
-            ]);
-            const htmlContent = buildHtmlReport({
-                assessmentDetails: assessmentDetails.Body,
-                instanceSummary: instanceSummary.Body,
-                combinedAssessmentReportData: combinedAssessmentReportData.Body,
-            });
+
+            const htmlContent = await fetchAndBuildHtmlReport(item,trpcClient);
+
             await trpcClient.mongoMigration.migrationPanel.downloadHtml.mutate({
                 filename: `assessmentreport_${item.AssessmentName}.html`,
                 content: htmlContent,

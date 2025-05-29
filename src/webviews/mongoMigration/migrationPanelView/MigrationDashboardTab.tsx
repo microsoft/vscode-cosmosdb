@@ -97,7 +97,7 @@ export const MigrationDashboardTab = () => {
                 </div>
 
                 <div className={classes.card}>
-                    <div className={classes.title}>Assess and Migrate Database(s)</div>
+                    <div className={classes.title}>Assess Database(s)</div>
                     <div className={classes.subtitle}>
                         Conduct a workload assessment and then migrate to Azure Cosmos DB.
                     </div>

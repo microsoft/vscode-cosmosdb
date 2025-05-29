@@ -21,6 +21,7 @@ import {
 import { useState } from 'react';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { AssessmentResults, pollAssessmentStatus } from './AssessmentResults';
 import './assessmentWizardView.scss';
 import { type AssessmentWizardViewWebviewConfigurationType } from './assessmentWizardViewController';
 
@@ -71,7 +72,7 @@ const StepBreadcrumb = ({
     onStepClick: (step: number) => void;
 }) => {
     const styles = useStyles();
-    const steps = ['Validation', 'Assessment', 'Assessment Results', 'Report'];
+    const steps = ['Validation', 'Assessment', 'Report'];
 
     return (
         <div className={styles.breadcrumb}>
@@ -156,11 +157,13 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
     const [connectionString, setConnectionString] = useState('');
     const [offering, setOffering] = useState<string>('2');
     const [assessmentName, setAssessmentName] = useState('');
+    const [assessmentId, setAssessmentId] = useState<string>(''); // default: empty string
 
+    const [assessmentDetails, setAssessmentDetails] = useState<any>(null);
 
 
     const startAssessment = async () => {
-        if (!connectionString || !offering) {
+        if (!connectionString || !offering || !assessmentName) {
             return;
         }
         try {
@@ -169,17 +172,21 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                 assessmentName,
                 targetPlatform: parseInt(offering, 10),
             });
-            if (response.Body) {
-                setCurrentStep(2);
-            } else {
-                alert("Validation failed.");
+
+            if (!response || !response.assessmentId) {
+                return;
             }
-            console.log("response", response)
+            const newAssessmentId = response.assessmentId;
+            setAssessmentId(newAssessmentId);
+            setCurrentStep(2);
+            pollAssessmentStatus(trpcClient, newAssessmentId, assessmentName, setAssessmentDetails);
+
         } catch (err) {
-            console.error('Validation error:', err);
-            alert('Validation failed. Please try again.');
+            console.error("Assessment failed:", err);
+            alert("Assessment failed. Please try again.");
         }
     };
+
 
     const runValidation = async () => {
         if (!connectionString) {
@@ -239,7 +246,7 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                     onOptionSelect={(_, data) => {
                                         setOffering(data.optionValue ?? '');
                                     }}
-                                    style={{ width: '50%' }}
+                                    style={{ width: '50%', height: '30px' }}
                                 >
                                     <Option value="2">vCore</Option>
                                     <Option value="1">RU</Option>
@@ -284,12 +291,8 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                 </>
             )}
 
-            {currentStep === 2 && (
-                <div>
-                    <h2>Assessment Results</h2>
-                    <Text>Show progress bar</Text>
-                </div>
-            )}
+            {currentStep === 2 && <AssessmentResults assessmentDetails={assessmentDetails} />}
+
         </div>
     );
 };

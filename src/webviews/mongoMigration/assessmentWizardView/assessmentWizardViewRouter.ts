@@ -19,9 +19,19 @@ export type RouterContext = BaseRouterContext & {
     connectionString: string;
 };
 
-export const assessmentWizardView = {
-    connectionString: '', // This will be populated from the connectionString input
-    assessmentName: '', // This will be populated with the assessment name
+/**
+ * Helper to hash a connection string using sha256.
+ */
+async function getInstanceIdHash(connectionString: string): Promise<string> {
+    const crypto = await import('crypto');
+    return crypto.createHash('sha256').update(connectionString).digest('hex');
+}
+
+export const assessmentWizardInputs = {
+    assessmentId: uuidv4(),
+    connectionString: '',
+    assessmentName: '',
+    instanceIdHash: '',
 };
 
 export const assessmentWizardViewRouter = router({
@@ -46,10 +56,12 @@ export const assessmentWizardViewRouter = router({
         )
         .use(trpcToTelemetry)
         .mutation(async ({ input }) => {
+            assessmentWizardInputs.instanceIdHash = await getInstanceIdHash(input.connectionString);
+
             const response = await AssessmentServiceClient.startAssessment({
-                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentName: input.assessmentName,
-                assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
+                assessmentId: assessmentWizardInputs.assessmentId,
                 logFolderPath: '',
                 targetPlatform: input.targetPlatform,
                 connectionString: input.connectionString,
@@ -60,16 +72,26 @@ export const assessmentWizardViewRouter = router({
             return response;
         }),
 
-    getAssessmentDetails: publicProcedure.use(trpcToTelemetry).query(async () => {
-        // Call the getAssessmentDetails procedure from migrationPanelViewRouter
-        const response = await AssessmentServiceClient.getAssessmentDetails({
-            assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
-            instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
-            assessmentName: 'kjsd',
-            assessmentFolderPath: '',
-        });
-        return JSON.stringify(response);
-    }),
+    getAssessmentDetails: publicProcedure
+        .input(
+            z.object({
+                assessmentName: z.string(),
+            }),
+        )
+        .use(trpcToTelemetry)
+        .mutation(async ({ input }) => {
+            // Call the getAssessmentDetails procedure from migrationPanelViewRouter
+            //const assessmentFolderPath = `${process.env.USERPROFILE || process.env.HOME}\\Desktop`;
+
+            const response = await AssessmentServiceClient.getAssessmentDetails({
+                assessmentId: assessmentWizardInputs.assessmentId,
+                instanceId: assessmentWizardInputs.instanceIdHash,
+                assessmentName: input.assessmentName,
+                assessmentFolderPath: '',
+            });
+            return response;
+        }),
+
     checkPrerequisite: publicProcedure
         .input(
             z.object({
@@ -78,11 +100,24 @@ export const assessmentWizardViewRouter = router({
         )
         .use(trpcToTelemetry)
         .mutation(async ({ input }) => {
+            // Store the connectionString for use in other procedures
+            assessmentWizardInputs.connectionString = input.connectionString;
+
             const response = await AssessmentServiceClient.checkPrerequisite({
                 connectionString: input.connectionString,
-                assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
+                assessmentId: assessmentWizardInputs.assessmentId,
             });
 
             return response;
         }),
 });
+
+function uuidv4(): string {
+    // Generates a RFC4122 version 4 UUID
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+

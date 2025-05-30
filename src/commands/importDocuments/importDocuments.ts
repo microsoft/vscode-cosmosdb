@@ -89,13 +89,14 @@ export async function importDocumentsWithProgress(
             progress.report({ increment: 0, message: l10n.t('Loading documents…') });
 
             const countUri = uris.length;
-            const incrementUri = 50 / (countUri || 1);
+            const incrementUri = 25 / (countUri || 1);
             const documents: unknown[] = [];
             let hasErrors = false;
 
-            for (let i = 0, percent = 0; i < countUri; i++, percent += incrementUri) {
+            for (let i = 0; i < countUri; i++) {
+                const increment = (i + 1) * incrementUri;
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: Math.floor(increment),
                     message: l10n.t('Loading document {num} of {countUri}', { num: i + 1, countUri }),
                 });
 
@@ -116,7 +117,7 @@ export async function importDocumentsWithProgress(
             }
 
             const countDocuments = documents.length;
-            const incrementDocuments = 100 / (countDocuments || 1);
+            const incrementDocuments = 75 / (countDocuments || 1);
             let count = 0;
             let buffer: DocumentBuffer<unknown> | undefined;
             if (selectedItem instanceof CollectionItem) {

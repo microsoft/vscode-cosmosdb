@@ -13,14 +13,18 @@ import {
     Dropdown,
     Field,
     Input,
+    InputOnChangeData,
     Link,
     Option,
     Text,
     makeStyles
 } from '@fluentui/react-components';
-import { useState } from 'react';
+import { Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
+import { useEffect, useState } from 'react';
 import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { fetchAssessments } from '../migrationPanelView/apiUtils';
+import { AssessmentResults, pollAssessmentStatus } from './AssessmentResults';
 import './assessmentWizardView.scss';
 import { type AssessmentWizardViewWebviewConfigurationType } from './assessmentWizardViewController';
 
@@ -71,7 +75,7 @@ const StepBreadcrumb = ({
     onStepClick: (step: number) => void;
 }) => {
     const styles = useStyles();
-    const steps = ['Validation', 'Assessment', 'Assessment Results', 'Report'];
+    const steps = ['Validation', 'Assessment', 'Report'];
 
     return (
         <div className={styles.breadcrumb}>
@@ -114,7 +118,9 @@ const FormInputRow = ({
     link,
     onChange,
     value,
-    children
+    children,
+    validationState,
+    validationMessage
 }: {
     id: string;
     label: string;
@@ -125,9 +131,11 @@ const FormInputRow = ({
     children?: React.ReactNode;
     value?: string;
     onChange?: (val: string) => void;
+    validationState?: 'error' | 'warning' | 'success';
+    validationMessage?: string;
 
 }) => (
-    <Field label={label} required={required}>
+    <Field label={label} required={required} validationState={validationState} validationMessage={validationMessage}>
         {link && (
             <Link href={link.href} target="_blank" rel="noopener noreferrer">
                 {link.text}
@@ -154,13 +162,74 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
 
     const [currentStep, setCurrentStep] = useState(0);
     const [connectionString, setConnectionString] = useState('');
-    const [offering, setOffering] = useState<string>('2');
+    const [offering, setOffering] = useState<string>('');
     const [assessmentName, setAssessmentName] = useState('');
+    const [showConnectionString, setShowConnectionString] = useState(false);
+    const [assessmentId, setAssessmentId] = useState<string>('');
+    const [errors, setErrors] = useState({
+        connectionString: { hasError: false, message: '' },
+        offering: { hasError: false, message: '' },
+        assessmentName: { hasError: false, message: '' }
+    });
+    const [assessmentDetails, setAssessmentDetails] = useState<any>(null);
+    const [existingAssessmentNames, setExistingAssessmentNames] = useState<string[]>([]);
 
+
+    useEffect(() => {
+        const loadNames = async () => {
+            const data = await fetchAssessments(trpcClient);
+            const names = data.map(a => a.AssessmentName.toLowerCase());
+            setExistingAssessmentNames(names);
+        };
+        void loadNames();
+    }, [trpcClient]);
+    console.log("existingAssessmentNames", existingAssessmentNames)
+
+    const validateFields = () => {
+        const alphabetCount = (assessmentName.match(/[a-zA-Z]/g) || []).length;
+        const lower = assessmentName.toLowerCase();
+
+        const newErrors = {
+            connectionString: {
+                hasError: connectionString.trim() === '',
+                message: connectionString.trim() === '' ? 'Connection string is required' : ''
+            },
+            offering: {
+                hasError: offering.trim() === '',
+                message: offering.trim() === '' ? 'Offering is required' : ''
+            },
+            assessmentName: {
+                hasError: false,
+                message: ''
+            }
+        };
+
+        if (assessmentName === '') {
+            newErrors.assessmentName = {
+                hasError: true,
+                message: 'Assessment name is required'
+            };
+        } else if (alphabetCount < 3) {
+            newErrors.assessmentName = {
+                hasError: true,
+                message: 'Must contain at least 3 alphabets'
+            };
+        } else if (existingAssessmentNames.includes(lower)) {
+            newErrors.assessmentName = {
+                hasError: true,
+                message: 'Assessment name already exists'
+            };
+        }
+
+        setErrors(newErrors);
+
+        return !Object.values(newErrors).some(e => e.hasError);
+    };
 
 
     const startAssessment = async () => {
-        if (!connectionString || !offering) {
+        if (!validateFields()) return;
+        if (!connectionString || !offering || !assessmentName) {
             return;
         }
         try {
@@ -169,19 +238,24 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                 assessmentName,
                 targetPlatform: parseInt(offering, 10),
             });
-            if (response.Body) {
-                setCurrentStep(2);
-            } else {
-                alert("Validation failed.");
+
+            if (!response || !response.assessmentId) {
+                return;
             }
-            console.log("response", response)
+            const newAssessmentId = response.assessmentId;
+            setAssessmentId(newAssessmentId);
+            setCurrentStep(2);
+            pollAssessmentStatus(trpcClient, newAssessmentId, assessmentName, setAssessmentDetails);
+
         } catch (err) {
-            console.error('Validation error:', err);
-            alert('Validation failed. Please try again.');
+            console.error("Assessment failed:", err);
+            alert("Assessment failed. Please try again.");
         }
     };
 
+
     const runValidation = async () => {
+        if (!validateFields()) return;
         if (!connectionString) {
             return;
         }
@@ -191,8 +265,12 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
             });
             if (response.Body?.IsPreReqSatisfied) {
                 setCurrentStep(1);
-            } else {
-                alert("Validation failed.");
+            }
+            else {
+                window.acquireVsCodeApi().postMessage({
+                    type: 'error',
+                    message: 'Assessment failed. Please try again.',
+                });
             }
         } catch (err) {
             console.error('Validation error:', err);
@@ -224,25 +302,43 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                 required
                                 value={assessmentName}
                                 onChange={setAssessmentName}
+                                validationState={errors.assessmentName.hasError ? 'error' : undefined}
+                                validationMessage={errors.assessmentName.message}
                             />
                             <FormInputRow
                                 id="connectionString"
                                 label="Source MongoDB server Connection String"
-                                placeholder="Enter connection string"
                                 required
-                                value={connectionString}
-                                onChange={setConnectionString}
-                            />
-                            <FormInputRow id="offering" label="Offering" required>
+                                validationState={errors.connectionString.hasError ? 'error' : undefined}
+                                validationMessage={errors.connectionString.message}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Input
+                                        type={showConnectionString ? 'text' : 'password'}
+                                        value={connectionString}
+                                        placeholder="Enter connection string"
+                                        onChange={(_, data: InputOnChangeData) => setConnectionString(data.value)}
+                                        style={{ width: '50%' }}
+                                    />
+                                    <Button
+                                        icon={showConnectionString ? <EyeOff24Regular /> : <Eye24Regular />}
+                                        appearance="subtle"
+                                        onClick={() => setShowConnectionString(prev => !prev)}
+                                        style={{ minWidth: 'auto', padding: '4px' }}
+                                    />
+                                </div>
+                            </FormInputRow>
+                            <FormInputRow id="offering" label="Offering" required validationState={errors.offering.hasError ? 'error' : undefined}
+                                validationMessage={errors.offering.message}>
                                 <Dropdown
                                     selectedValue={offering}
                                     onOptionSelect={(_, data) => {
                                         setOffering(data.optionValue ?? '');
                                     }}
-                                    style={{ width: '50%' }}
+                                    style={{ width: '50%', height: '30px' }}
                                 >
-                                    <Option value="2">vCore</Option>
-                                    <Option value="1">RU</Option>
+                                    <Option key="vcore" value="2">vCore</Option>
+                                    <Option key="ru" value="1">RU</Option>
                                 </Dropdown>
                             </FormInputRow>
 
@@ -282,14 +378,11 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                         </Button>
                     </div>
                 </>
-            )}
+            )
+            }
 
-            {currentStep === 2 && (
-                <div>
-                    <h2>Assessment Results</h2>
-                    <Text>Show progress bar</Text>
-                </div>
-            )}
-        </div>
+            {currentStep === 2 && <AssessmentResults assessmentDetails={assessmentDetails} />}
+
+        </div >
     );
 };

@@ -29,7 +29,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
-import { fetchAndBuildHtmlReport } from './apiUtils';
+import { fetchAndBuildHtmlReport, fetchAssessments } from './apiUtils';
 
 initializeIcons();
 
@@ -56,41 +56,17 @@ if (document.body.classList.contains('vscode-dark')) {
 }
 
 export const AssessmentsDashboardTab: React.FC = () => {
-    const [assessments, setAssessments] = useState<AssessmentMetadata[]>([]);
-    const [loading, setLoading] = useState(false);
     const { trpcClient } = useTrpcClient();
+    const [assessments, setAssessments] = useState<AssessmentMetadata[]>([]);
 
-    const fetchAssessments = async () => {
-        setLoading(true);
-        try {
-            const response = await trpcClient.mongoMigration.migrationPanel.getAllAssessments.query();
-            const rawData = response.Body;
-            const formatted: AssessmentMetadata[] = rawData.map((a) => ({
-                ...a,
-                StartTime: formatDate(a.StartTime),
-                EndTime: formatDate(a.EndTime),
-            }));
-
-            setAssessments(formatted);
-        } catch (err) {
-            console.error('Failed to fetch assessments', err);
-        }
-        setLoading(false);
+    const handleFetchAssessments = async () => {
+        const data = await fetchAssessments(trpcClient);
+        setAssessments(data);
     };
 
     useEffect(() => {
-        void fetchAssessments();
+        void handleFetchAssessments();
     }, []);
-
-    const formatDate = (dateString: string) =>
-        new Date(dateString).toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'numeric',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        });
 
     const renderAssessmentStatus = (item: AssessmentMetadata) => (
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
@@ -112,7 +88,7 @@ export const AssessmentsDashboardTab: React.FC = () => {
                     assessmentName: item.AssessmentName,
                 });
 
-                await fetchAssessments();
+                await handleFetchAssessments();
             } catch (err) {
                 console.error('Failed to delete assessment:', err);
                 alert('Failed to delete the assessment. Please try again.');
@@ -122,7 +98,7 @@ export const AssessmentsDashboardTab: React.FC = () => {
         const handleDownload = async () => {
             if (!item) return;
 
-            const htmlContent = await fetchAndBuildHtmlReport(item,trpcClient);
+            const htmlContent = await fetchAndBuildHtmlReport(item, trpcClient);
 
             await trpcClient.mongoMigration.migrationPanel.downloadHtml.mutate({
                 filename: `assessmentreport_${item.AssessmentName}.html`,
@@ -206,10 +182,10 @@ export const AssessmentsDashboardTab: React.FC = () => {
     return (
         <Stack tokens={{ childrenGap: 20 }}>
             <DefaultButton
-                text={loading ? 'Refreshing...' : 'Refresh'}
-                disabled={loading}
+                text={'Refresh'}
+                // disabled={loading}
                 onRenderIcon={() => <ArrowClockwise24Regular style={{ marginRight: 4 }} />}
-                onClick={fetchAssessments}
+                onClick={handleFetchAssessments}
                 styles={{
                     root: {
                         width: '120px',

@@ -1,3 +1,4 @@
+import { AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { buildHtmlReport } from './reportBuilder';
 
 export async function fetchAssessmentDetails(
@@ -61,3 +62,30 @@ export async function fetchAndBuildHtmlReport(
         combinedAssessmentReportData,
     });
 }
+const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+
+export const fetchAssessments = async (trpcClient: any): Promise<AssessmentMetadata[]> => {
+    try {
+        const response = await trpcClient.mongoMigration.migrationPanel.getAllAssessments.query();
+        const rawData = response.Body;
+
+        const formatted: AssessmentMetadata[] = rawData.map((a) => ({
+            ...a,
+            StartTime: formatDate(a.StartTime),
+            EndTime: formatDate(a.EndTime),
+        }));
+
+        return formatted;
+    } catch (err) {
+        console.error('Failed to fetch assessments', err);
+        return [];
+    }
+};

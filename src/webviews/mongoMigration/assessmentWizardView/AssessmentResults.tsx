@@ -1,8 +1,10 @@
 import { Button, Spinner, Text } from '@fluentui/react-components';
+import {
+    ArrowDownload24Regular,
+} from '@fluentui/react-icons';
 import { AssessmentStatus } from "../../../mongoMigration/assessmentService/assessmentServiceInterfaces";
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { fetchAndBuildHtmlReport, fetchAssessmentDetails } from "../migrationPanelView/apiUtils";
-
 export const pollAssessmentStatus = async (
     trpcClient: any,
     assessmentId: string,
@@ -44,17 +46,26 @@ export const AssessmentResults = ({ assessmentDetails }: { assessmentDetails: an
         });
     };
     return (
-        <div>
-            <h2>Assessment Results</h2>
+        <div
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5rem',
+                padding: '2rem',
+            }}
+        >
             {assessmentDetails?.AssessmentStatus === AssessmentStatus.SUCCESS ? (
-                <div>
-                    <Text>✅ Assessment complete</Text>
+                <>
+                    <Text size={400}>✅ Assessment complete</Text>
                     <Button
+                        icon={<ArrowDownload24Regular />}
+                        appearance="primary"
                         onClick={handleDownload}
+                        style={{ width: 'fit-content', alignSelf: 'flex-start' }}
                     >
                         Download Report
                     </Button>
-                </div>
+                </>
             ) : (
                 <Spinner label="Assessment in progress... Please wait." />
             )}

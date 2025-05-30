@@ -102,6 +102,8 @@ export async function importDocumentsWithProgress(
 
                 const result = await parseAndValidateFile(selectedItem, uris[i]);
 
+                // Note to future maintainers: the validation can return 0 valid documents and still have errors.
+
                 if (result.errors && result.errors.length) {
                     ext.outputChannel.appendLog(
                         l10n.t('Errors found in document {path}. Please fix these.', { path: uris[i].path }),
@@ -111,12 +113,12 @@ export async function importDocumentsWithProgress(
                     hasErrors = true;
                 }
 
-                if (result.documents && result.documents.length) {
+                if (result.documents && result.documents.length > 0) {
                     documents.push(...result.documents);
                 }
             }
 
-            const countDocuments = documents.length;
+            const countDocuments = documents.length ?? 0;
             const incrementDocuments = 75 / (countDocuments || 1);
             let count = 0;
             let buffer: DocumentBuffer<unknown> | undefined;
@@ -144,14 +146,15 @@ export async function importDocumentsWithProgress(
             }
 
             // Do insertion for the last batch for bulk insertion
-            if (buffer) {
+            if (buffer && buffer.getStats().documentCount > 0) {
                 const lastBatchFlushResult = await insertDocument(selectedItem, undefined, buffer);
 
                 count += lastBatchFlushResult.count;
                 hasErrors = hasErrors || lastBatchFlushResult.errorOccurred;
             }
 
-            progress.report({ increment: 50, message: l10n.t('Finished importing') });
+            // let's make sure we reach 100% progress, useful in case of errors etc.
+            progress.report({ increment: 100, message: l10n.t('Finished importing') });
 
             return (
                 (hasErrors ? l10n.t('Import has accomplished with errors.') : l10n.t('Import successful.')) +

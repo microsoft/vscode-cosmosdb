@@ -176,11 +176,7 @@ export class AssessmentServiceClient {
      * @returns Cancels an Assessment.
      */
     public static async cancelAssessment(assessmentId: string): Promise<boolean> {
-        return this.sendRequest<boolean>(
-            'CancelAssessmentAsync',
-            assessmentId,
-            /*Assessment client for telemetry*/ null,
-        );
+        return this.sendRequest<boolean>('CancelAssessmentAsync', assessmentId);
     }
 
     /**
@@ -231,5 +227,9 @@ export class AssessmentServiceClient {
         vscode.window.showInformationMessage(`Report saved to ${uri.fsPath}`);
 
         return { success: true, path: uri.fsPath };
+    }
+
+    public static async showError(message: string): Promise<void> {
+        await vscode.window.showErrorMessage(message);
     }
 }

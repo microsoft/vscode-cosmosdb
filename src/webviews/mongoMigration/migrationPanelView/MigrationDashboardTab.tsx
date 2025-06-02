@@ -5,7 +5,7 @@
 
 import { makeStyles } from '@fluentui/react-components';
 import { useState } from 'react';
-import { AssessmentWizardView } from '../assessmentWizardView/assessmentWizardView';
+import { AssessmentWizardView } from './AssessmentWizardView';
 
 const useStyles = makeStyles({
     container: {

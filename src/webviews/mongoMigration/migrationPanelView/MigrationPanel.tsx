@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { type PropsWithChildren } from 'react';
@@ -102,6 +102,18 @@ export const MigrationPanel = (): JSX.Element => {
     const onTabSelect = (_event: SelectTabEvent, data: SelectTabData) => {
         setSelectedTab(data.value as string);
     };
+
+    useEffect(() => {
+        const switchTab = (e: Event) => {
+            const customEvent = e as CustomEvent<string>;
+            if (customEvent.detail === 'assessments__tab') {
+                setSelectedTab('assessments__tab');
+            }
+        };
+
+        window.addEventListener('switch-tab', switchTab);
+        return () => window.removeEventListener('switch-tab', switchTab);
+    }, []);
 
     return (
         <div className="documentView">

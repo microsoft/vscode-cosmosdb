@@ -2,10 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-
-/* eslint-disable @typescript-eslint/no-misused-promises */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
     Button,
     Card,
@@ -21,12 +17,9 @@ import {
 } from '@fluentui/react-components';
 import { Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
-import { useConfiguration } from '../../api/webview-client/useConfiguration';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
-import { fetchAssessments } from '../migrationPanelView/apiUtils';
 import { AssessmentResults, pollAssessmentStatus } from './AssessmentResults';
-import './assessmentWizardView.scss';
-import { type AssessmentWizardViewWebviewConfigurationType } from './assessmentWizardViewController';
+import { fetchAssessments } from './Utils/apiUtils';
 
 const useStyles = makeStyles({
     cardBody: {
@@ -156,7 +149,6 @@ const FormInputRow = ({
 );
 
 export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JSX.Element => {
-    useConfiguration<AssessmentWizardViewWebviewConfigurationType>();
     const styles = useStyles();
     const { trpcClient } = useTrpcClient();
 
@@ -166,11 +158,17 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
     const [assessmentName, setAssessmentName] = useState('');
     const [showConnectionString, setShowConnectionString] = useState(false);
     const [assessmentId, setAssessmentId] = useState<string>('');
-    const [errors, setErrors] = useState({
-        connectionString: { hasError: false, message: '' },
-        offering: { hasError: false, message: '' },
-        assessmentName: { hasError: false, message: '' }
-    });
+    const [errors, setErrors] = useState<{
+        connectionString: string | null;
+        offering: string | null;
+        assessmentName: string | null;
+    }>(() => ({
+        connectionString: null,
+        offering: null,
+        assessmentName: null
+    }));
+
+
     const [assessmentDetails, setAssessmentDetails] = useState<any>(null);
     const [existingAssessmentNames, setExistingAssessmentNames] = useState<string[]>([]);
 
@@ -183,48 +181,30 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
         };
         void loadNames();
     }, [trpcClient]);
-    console.log("existingAssessmentNames", existingAssessmentNames)
 
     const validateFields = () => {
-        const alphabetCount = (assessmentName.match(/[a-zA-Z]/g) || []).length;
-        const lower = assessmentName.toLowerCase();
-
         const newErrors = {
-            connectionString: {
-                hasError: connectionString.trim() === '',
-                message: connectionString.trim() === '' ? 'Connection string is required' : ''
-            },
-            offering: {
-                hasError: offering.trim() === '',
-                message: offering.trim() === '' ? 'Offering is required' : ''
-            },
-            assessmentName: {
-                hasError: false,
-                message: ''
-            }
+            connectionString: connectionString === '' ? 'Connection string is required' : null,
+            offering: offering === '' ? 'Offering is required' : null,
+            assessmentName: null as string | null
         };
 
-        if (assessmentName === '') {
-            newErrors.assessmentName = {
-                hasError: true,
-                message: 'Assessment name is required'
-            };
+        const name = assessmentName;
+        const lower = name.toLowerCase();
+        const alphabetCount = (name.match(/[a-zA-Z]/g) || []).length;
+
+        if (name === '') {
+            newErrors.assessmentName = 'Assessment name is required';
         } else if (alphabetCount < 3) {
-            newErrors.assessmentName = {
-                hasError: true,
-                message: 'Must contain at least 3 alphabets'
-            };
+            newErrors.assessmentName = 'Must contain at least 3 alphabets';
         } else if (existingAssessmentNames.includes(lower)) {
-            newErrors.assessmentName = {
-                hasError: true,
-                message: 'Assessment name already exists'
-            };
+            newErrors.assessmentName = 'Assessment name already exists';
         }
 
         setErrors(newErrors);
-
-        return !Object.values(newErrors).some(e => e.hasError);
+        return Object.values(newErrors).every(e => e === null);
     };
+
 
 
     const startAssessment = async () => {
@@ -233,50 +213,52 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
             return;
         }
         try {
-            const response = await trpcClient.mongoMigration.assessmentWizard.startAssessment.mutate({
+            const response = await trpcClient.mongoMigration.migrationPanel.startAssessment.mutate({
                 connectionString,
                 assessmentName,
                 targetPlatform: parseInt(offering, 10),
             });
-
-            if (!response || !response.assessmentId) {
-                return;
+            if (!response.Body || !response.assessmentId) {
+                throw new Error("Assessment could not be started. Missing assessment ID.");
             }
             const newAssessmentId = response.assessmentId;
             setAssessmentId(newAssessmentId);
             setCurrentStep(2);
-            pollAssessmentStatus(trpcClient, newAssessmentId, assessmentName, setAssessmentDetails);
+            const assessmentPollingResult = await pollAssessmentStatus(trpcClient, newAssessmentId, assessmentName);
+            setAssessmentDetails(assessmentPollingResult)
+            console.log("I am assessmentId generated", newAssessmentId)
+            console.log("I am assessmentId returned", assessmentPollingResult)
 
         } catch (err) {
-            console.error("Assessment failed:", err);
-            alert("Assessment failed. Please try again.");
+            const errorMessage = err instanceof Error ? err.message : "Assessment failed.";
+            await trpcClient.mongoMigration.migrationPanel.showError.mutate({
+                error: errorMessage
+            });
         }
     };
 
 
     const runValidation = async () => {
         if (!validateFields()) return;
-        if (!connectionString) {
-            return;
-        }
         try {
-            const response = await trpcClient.mongoMigration.assessmentWizard.checkPrerequisite.mutate({
+            const response = await trpcClient.mongoMigration.migrationPanel.checkPrerequisite.mutate({
                 connectionString,
             });
+
             if (response.Body?.IsPreReqSatisfied) {
                 setCurrentStep(1);
+                return;
             }
-            else {
-                window.acquireVsCodeApi().postMessage({
-                    type: 'error',
-                    message: 'Assessment failed. Please try again.',
-                });
-            }
+            throw new Error(response.Error?.ErrorMessage || "Unknown validation failure.");
+
         } catch (err) {
-            console.error('Validation error:', err);
-            alert('Validation failed. Please try again.');
+            const errorMessage = err instanceof Error ? err.message : "Validation failed.";
+            await trpcClient.mongoMigration.migrationPanel.showError.mutate({
+                error: errorMessage
+            });
         }
     };
+
 
     return (
         <div>
@@ -302,15 +284,15 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                 required
                                 value={assessmentName}
                                 onChange={setAssessmentName}
-                                validationState={errors.assessmentName.hasError ? 'error' : undefined}
-                                validationMessage={errors.assessmentName.message}
+                                validationState={errors.assessmentName ? 'error' : undefined}
+                                validationMessage={errors.assessmentName || undefined}
                             />
                             <FormInputRow
                                 id="connectionString"
                                 label="Source MongoDB server Connection String"
                                 required
-                                validationState={errors.connectionString.hasError ? 'error' : undefined}
-                                validationMessage={errors.connectionString.message}
+                                validationState={errors.connectionString ? 'error' : undefined}
+                                validationMessage={errors.connectionString || undefined}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Input
@@ -319,6 +301,7 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                         placeholder="Enter connection string"
                                         onChange={(_, data: InputOnChangeData) => setConnectionString(data.value)}
                                         style={{ width: '50%' }}
+                                        disabled={currentStep === 1}
                                     />
                                     <Button
                                         icon={showConnectionString ? <EyeOff24Regular /> : <Eye24Regular />}
@@ -328,8 +311,12 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
                                     />
                                 </div>
                             </FormInputRow>
-                            <FormInputRow id="offering" label="Offering" required validationState={errors.offering.hasError ? 'error' : undefined}
-                                validationMessage={errors.offering.message}>
+                            <FormInputRow
+                                id="offering"
+                                label="Offering"
+                                required
+                                validationState={errors.offering ? 'error' : undefined}
+                                validationMessage={errors.offering || undefined}>
                                 <Dropdown
                                     selectedValue={offering}
                                     onOptionSelect={(_, data) => {
@@ -381,7 +368,13 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
             )
             }
 
-            {currentStep === 2 && <AssessmentResults assessmentDetails={assessmentDetails} />}
+            {currentStep === 2 && (
+                <AssessmentResults
+                    assessmentDetails={assessmentDetails}
+                    assessmentId={assessmentId}
+                    onCancel={onCancel}
+                />
+            )}
 
         </div >
     );

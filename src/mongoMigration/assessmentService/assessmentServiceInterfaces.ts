@@ -27,14 +27,14 @@ export enum EnumTargetOffering {
 
 export interface RPCResponseEntity<T> {
     Body: T;
-    error: ErrorEntity;
+    Error: ErrorEntity;
     Warnings: WarningEntity[];
 }
 
 export interface ErrorEntity {
-    errorCode: string;
-    errorMessage: string;
-    errorParameters: string[];
+    ErrorCode: string;
+    ErrorMessage: string;
+    ErrorParameters: string[];
 }
 
 export interface WarningEntity {

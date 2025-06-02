@@ -4,11 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 /* eslint-disable @typescript-eslint/no-misused-promises */
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import {
     DefaultButton,
     DetailsList,
@@ -29,7 +24,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
-import { fetchAndBuildHtmlReport, fetchAssessments } from './apiUtils';
+import { fetchAndBuildHtmlReport, fetchAssessments } from './Utils/apiUtils';
 
 initializeIcons();
 

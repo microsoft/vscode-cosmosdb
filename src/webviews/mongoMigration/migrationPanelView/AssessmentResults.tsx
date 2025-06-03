@@ -25,7 +25,7 @@ export const pollAssessmentStatus = async (
                 AssessmentName: assessmentName,
             });
 
-            if (result.AssessmentStatus !== AssessmentStatus.INPROGRESS) {
+            if (result.AssessmentStatus !== undefined && result.AssessmentStatus !== AssessmentStatus.INPROGRESS) {
                 return result;
             }
 

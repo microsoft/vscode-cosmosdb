@@ -167,8 +167,6 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
         offering: null,
         assessmentName: null
     }));
-
-
     const [assessmentDetails, setAssessmentDetails] = useState<any>(null);
     const [existingAssessmentNames, setExistingAssessmentNames] = useState<string[]>([]);
 
@@ -225,8 +223,6 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
             setCurrentStep(2);
             const assessmentPollingResult = await pollAssessmentStatus(trpcClient, newAssessmentId, assessmentName);
             setAssessmentDetails(assessmentPollingResult)
-            console.log("I am assessmentId generated", newAssessmentId)
-            console.log("I am assessmentId returned", assessmentPollingResult)
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Assessment failed.";

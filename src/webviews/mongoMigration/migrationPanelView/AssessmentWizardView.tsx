@@ -207,6 +207,9 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
 
     const startAssessment = async () => {
         if (!validateFields()) return;
+
+        setAssessmentDetails(null);
+        setAssessmentId('');
         if (!connectionString || !offering || !assessmentName) {
             return;
         }

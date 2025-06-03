@@ -72,7 +72,25 @@ export async function getConfirmationWithWordQuestion(
 }
 
 export async function getConfirmationWithNumberQuiz(title: string, message: string): Promise<boolean> {
-    const randomInput: { numbers: number[]; index: number } = getRandomArrayAndIndex(3);
+    /**
+     * This function presents a confirmation dialog with three buttons, each labeled with a random number.
+     * The user must select the correct button to confirm the operation. The correct button is determined
+     * by the `getRandomArrayAndIndex` function, which ensures that the correct button is never the first
+     * button (position 0) that many operating systems select as the default when the dialog is displayed.
+     *
+     * ### Why this behavior is important:
+     * - If the correct button were at position 0, users could accidentally confirm the operation by simply
+     *   pressing "Enter" without carefully reading the dialog. This could lead to unintended confirmations
+     *   and potentially destructive actions.
+     * - By ensuring that the correct button is never the default, we add an extra layer of safety, requiring
+     *   users to make an intentional choice to confirm the operation.
+     *
+     * ### Note to maintainers:
+     * - The `getRandomArrayAndIndex` function is designed to exclude position 0 as the correct button.
+     * - Any changes to this behavior should be carefully considered, as it directly impacts the user experience
+     *   and the safety of confirmation dialogs.
+     */
+    const randomInput: { randomNumbers: number[]; randomPosition: number } = getRandomArrayAndIndex(3);
 
     const confirmation = await vscode.window.showWarningMessage(
         title,
@@ -81,14 +99,16 @@ export async function getConfirmationWithNumberQuiz(title: string, message: stri
             detail:
                 message +
                 '\n\n' +
-                l10n.t('Pick "{number}" to confirm and continue.', { number: randomInput.numbers[randomInput.index] }),
+                l10n.t('Pick "{number}" to confirm and continue.', {
+                    number: randomInput.randomNumbers[randomInput.randomPosition],
+                }),
         },
-        randomInput.numbers[0].toString(),
-        randomInput.numbers[1].toString(),
-        randomInput.numbers[2].toString(),
+        randomInput.randomNumbers[0].toString(),
+        randomInput.randomNumbers[1].toString(),
+        randomInput.randomNumbers[2].toString(),
     );
 
-    return confirmation === randomInput.numbers[randomInput.index].toString();
+    return confirmation === randomInput.randomNumbers[randomInput.randomPosition].toString();
 }
 
 export async function getConfirmationWithClick(title: string, message: string): Promise<boolean> {
@@ -105,21 +125,20 @@ export async function getConfirmationWithClick(title: string, message: string): 
 }
 
 /**
- * Generates an array of random numbers and a random index that is always greater than 0.
+ * Generates an array of random numbers and a random position (index) within the returned randomNumbers.
+ * The random index will never point to position 0, ensuring that position 0 is not selected as the first, default position.
  * The provided length must be larger than 1.
  *
  * @param length - The length of the array to generate.
- * @returns An object containing the array of random numbers and a random index greater than 0.
+ * @returns An object containing the array of randomNumbers and a random position (index) within the array.
  */
-function getRandomArrayAndIndex(length: number): { numbers: number[]; index: number } {
+function getRandomArrayAndIndex(length: number): { randomNumbers: number[]; randomPosition: number } {
     if (length <= 1) {
         throw new Error(l10n.t('Length must be greater than 1'));
     }
 
     // Generate an array of random numbers between 0 and 100 (can adjust range).
-    // Why the loop below? Well, we want to ensure that these random numbers are unique,
-    // and it did seem unlikely that we would get a duplicate number in a small array
-    // but I actually got a duplicate number in a 3 element array on the second try
+    // Note: Ensuring unique random numbers to avoid duplicates in the array.
     const randomNumbers: number[] = [];
     while (randomNumbers.length < length) {
         const randomNumber = Math.floor(Math.random() * 101);
@@ -128,8 +147,14 @@ function getRandomArrayAndIndex(length: number): { numbers: number[]; index: num
         }
     }
 
-    // Ensure the random index is always greater than 0
-    const randomIndex: number = Math.floor(Math.random() * (randomNumbers.length - 1)) + 1;
+    // Generate a random index that is always greater than 0.
+    // Note to code maintainers: This behavior ensures that position 0 is never selected as the default.
+    // Changing this behavior may break the UX where position 0 is intentionally excluded.
+    const randomPosition: number = Math.floor(Math.random() * (randomNumbers.length - 1)) + 1;
 
-    return { numbers: randomNumbers, index: randomIndex };
+    // Explanation: Math.random() generates a number between 0 (inclusive) and 1 (exclusive).
+    // Multiplying by (randomNumbers.length - 1) ensures the range is [0, length-2].
+    // Adding 1 shifts the range to [1, length-1], excluding 0.
+
+    return { randomNumbers, randomPosition };
 }

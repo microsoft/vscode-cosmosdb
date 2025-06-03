@@ -12,13 +12,21 @@ import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-se
 /**
  * Information shared during the life time of the webview
  */
+async function getInstanceIdHash(connectionString: string): Promise<string> {
+    const crypto = await import('crypto');
+    return crypto.createHash('sha256').update(connectionString).digest('hex');
+}
+
+export const assessmentWizardInputs = {
+    connectionString: '',
+    instanceIdHash: '',
+};
 
 export type RouterContext = BaseRouterContext & {};
 export const migrationPanelViewRouter = router({
     startAssessment: publicProcedure
         .input(
             z.object({
-                connectionString: z.string(),
                 assessmentName: z.string(),
                 targetPlatform: z.number(),
             }),
@@ -27,12 +35,12 @@ export const migrationPanelViewRouter = router({
         .mutation(async ({ input }) => {
             const assessmentId = uuidv4();
             const response = await AssessmentServiceClient.startAssessment({
-                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentName: input.assessmentName,
                 assessmentId,
                 logFolderPath: '',
                 targetPlatform: input.targetPlatform,
-                connectionString: input.connectionString,
+                connectionString: assessmentWizardInputs.connectionString,
                 assessmentFolderPath: '',
                 dataAssessmentReportPath: '',
             });
@@ -42,11 +50,9 @@ export const migrationPanelViewRouter = router({
                 assessmentId,
             };
         }),
-    cancelAssessment: publicProcedure
-        .input(z.string()) // ✅ Expect just a string
-        .mutation(async ({ input }) => {
-            return await AssessmentServiceClient.cancelAssessment(input); // ✅ input is already a string
-        }),
+    cancelAssessment: publicProcedure.input(z.string()).mutation(async ({ input }) => {
+        return await AssessmentServiceClient.cancelAssessment(input);
+    }),
 
     checkPrerequisite: publicProcedure
         .input(
@@ -56,24 +62,17 @@ export const migrationPanelViewRouter = router({
         )
         .use(trpcToTelemetry)
         .mutation(async ({ input }) => {
+            assessmentWizardInputs.instanceIdHash = await getInstanceIdHash(input.connectionString);
+            assessmentWizardInputs.connectionString = input.connectionString;
             const response = await AssessmentServiceClient.checkPrerequisite({
-                connectionString: input.connectionString,
+                connectionString: assessmentWizardInputs.connectionString,
                 assessmentId: '',
             });
 
             return response;
         }),
 
-    getAssessmentDetails: publicProcedure.use(trpcToTelemetry).query(async () => {
-        const response = await AssessmentServiceClient.getAssessmentDetails({
-            assessmentId: '1a1263a9-e76a-407b-97bd-a5f7086c28d9',
-            instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
-            assessmentName: 'kjsd',
-            assessmentFolderPath: '',
-        });
-        return 'Assessment data returned ' + JSON.stringify(response);
-    }),
-    getAssessmentDetails2: publicProcedure //usethis
+    getAssessmentDetails: publicProcedure
         .input(
             z.object({
                 assessmentId: z.string(),
@@ -85,7 +84,7 @@ export const migrationPanelViewRouter = router({
             const response = await AssessmentServiceClient.getAssessmentDetails({
                 assessmentId: input.assessmentId,
                 assessmentName: input.assessmentName,
-                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentFolderPath: '',
             });
 
@@ -103,7 +102,7 @@ export const migrationPanelViewRouter = router({
             const response = await AssessmentServiceClient.getInstanceSummary({
                 assessmentId: input.assessmentId,
                 assessmentName: input.assessmentName,
-                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentFolderPath: '',
             });
 
@@ -121,7 +120,7 @@ export const migrationPanelViewRouter = router({
             const response = await AssessmentServiceClient.getCombinedAssessmentReport({
                 assessmentId: input.assessmentId,
                 assessmentName: input.assessmentName,
-                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentFolderPath: '',
             });
 
@@ -130,7 +129,7 @@ export const migrationPanelViewRouter = router({
 
     getAllAssessments: publicProcedure.use(trpcToTelemetry).query(async () => {
         const response = await AssessmentServiceClient.getAllAssessments({
-            instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+            instanceId: assessmentWizardInputs.instanceIdHash, //to be removed
             assessmentFolderPath: '',
         });
         return response;
@@ -145,7 +144,7 @@ export const migrationPanelViewRouter = router({
         .use(trpcToTelemetry)
         .mutation(async ({ input }) => {
             const response = await AssessmentServiceClient.deleteAssessment({
-                instanceId: '9966ba26e354b9d88cb313a7f19991cc13a3bdb0e7be54cce31dc31a90feba7c',
+                instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentFolderPath: '',
                 assessmentId: input.assessmentId,
                 assessmentName: input.assessmentName,

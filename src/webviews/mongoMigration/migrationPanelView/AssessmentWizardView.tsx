@@ -214,7 +214,6 @@ export const AssessmentWizardView = ({ onCancel }: { onCancel: () => void }): JS
         }
         try {
             const response = await trpcClient.mongoMigration.migrationPanel.startAssessment.mutate({
-                connectionString,
                 assessmentName,
                 targetPlatform: parseInt(offering, 10),
             });

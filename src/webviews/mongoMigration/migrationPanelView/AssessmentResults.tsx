@@ -60,7 +60,7 @@ export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }:
 
     const handleCancel = async () => {
         try {
-            const resp = await trpcClient.mongoMigration.migrationPanel.cancelAssessment.mutate(assessmentId);
+            await trpcClient.mongoMigration.migrationPanel.cancelAssessment.mutate(assessmentId);
             onCancel()
 
         } catch (err) {
@@ -85,17 +85,17 @@ export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }:
                     </Button>
                 </>
             ) : (
-                <>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
                     <Spinner label="Assessment in progress... Please wait." />
                     <Button
                         icon={<Dismiss24Regular />}
                         appearance="secondary"
                         onClick={handleCancel}
-                        style={{ width: 'fit-content', alignSelf: 'flex-start' }}
+                        style={{ width: 'fit-content' }}
                     >
                         Cancel Assessment
                     </Button>
-                </>
+                </div>
             )}
 
             <div

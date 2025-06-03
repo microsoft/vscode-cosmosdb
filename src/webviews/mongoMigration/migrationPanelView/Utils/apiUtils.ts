@@ -13,7 +13,7 @@ export async function fetchAssessmentDetails(
         AssessmentName: string;
     },
 ) {
-    const response = await trpcClient.mongoMigration.migrationPanel.getAssessmentDetails2.query({
+    const response = await trpcClient.mongoMigration.migrationPanel.getAssessmentDetails.query({
         assessmentId: item.AssessmentId,
         assessmentName: item.AssessmentName,
     });

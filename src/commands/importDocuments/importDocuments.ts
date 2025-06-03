@@ -18,7 +18,12 @@ import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
-import { createCosmosDbBuffer, createMongoDbBuffer, type DocumentBuffer } from '../../utils/documentBuffer';
+import {
+    BufferErrorCode,
+    createCosmosDbBuffer,
+    createMongoDbBuffer,
+    type DocumentBuffer,
+} from '../../utils/documentBuffer';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 
@@ -326,33 +331,26 @@ async function insertDocumentWithBufferIntoCluster(
     const databaseName = node.databaseInfo.name;
     const collectionName = node.collectionInfo.name;
     // Try to add document to buffer
-    const insertToBufferResult = buffer.insert(document);
+    const insertOrFlushToBufferResult = buffer.instertOrFlush(document);
     // If successful, no immediate action needed
-    if (insertToBufferResult.success) {
+    if (insertOrFlushToBufferResult.success) {
         return { count: 0, errorOccurred: false };
     }
 
-    let documentsToProcess: Document[];
-    if (insertToBufferResult.documentsToProcess) {
-        if (!Array.isArray(insertToBufferResult.documentsToProcess)) {
-            // If the documentsToProcess is not an array, it means that the document was too large
-            documentsToProcess = [insertToBufferResult.documentsToProcess as Document];
-        } else {
-            // If the documentsToProcess is an array, it means that the buffer was full
-            // and we need to process the contents of the buffer
-            documentsToProcess = insertToBufferResult.documentsToProcess as Document[];
-            // Insert current document into the buffer
-            buffer.insert(document);
-        }
-    } else {
-        // In this case, we are flushing the buffer
-        documentsToProcess = buffer.flush() as Document[];
+    let documentsToProcess = insertOrFlushToBufferResult.documentsToProcess;
+    if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.BufferFull) {
+        // The buffer has been flushed by the insertOrFlush method
+        // We need to insert current document to buffer here
+        // As we have inserted it once, so it has been verified that it is not too large and not undefined
+        buffer.insert(document);
+    } else if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.EmptyDocument) {
+        documentsToProcess = buffer.flush();
     }
 
     // Documents to process could be the current document (if too large)
     // or the contents of the buffer (if it was full)
     const client = await ClustersClient.getClient(node.cluster.id);
-    const insertResult = await client.insertDocuments(databaseName, collectionName, documentsToProcess);
+    const insertResult = await client.insertDocuments(databaseName, collectionName, documentsToProcess as Document[]);
 
     return {
         count: insertResult.insertedCount,
@@ -370,27 +368,20 @@ async function insertDocumentWithBufferIntoCosmosDB(
     const containerName = node.model.container.id;
 
     // Try to add document to buffer
-    const insertToBufferResult = buffer.insert(document);
+    const insertOrFlushToBufferResult = buffer.instertOrFlush(document);
     // If successful, no immediate action needed
-    if (insertToBufferResult.success) {
+    if (insertOrFlushToBufferResult.success) {
         return { count: 0, errorOccurred: false };
     }
 
-    let documentsToProcess: ItemDefinition[];
-    if (insertToBufferResult.documentsToProcess) {
-        if (!Array.isArray(insertToBufferResult.documentsToProcess)) {
-            // If the documentsToProcess is not an array, it means that the document was too large
-            documentsToProcess = [insertToBufferResult.documentsToProcess as ItemDefinition];
-        } else {
-            // If the documentsToProcess is an array, it means that the buffer was full
-            // and we need to process the contents of the buffer
-            documentsToProcess = insertToBufferResult.documentsToProcess as ItemDefinition[];
-            // Insert current document into the buffer
-            buffer.insert(document);
-        }
-    } else {
-        // In this case, we are flushing the buffer
-        documentsToProcess = buffer.flush() as ItemDefinition[];
+    let documentsToProcess = insertOrFlushToBufferResult.documentsToProcess;
+    if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.BufferFull) {
+        // The buffer has been flushed by the insertOrFlush method
+        // We need to insert current document to buffer here
+        // As we have inserted it once, so it has been verified that it is not too large and not undefined
+        buffer.insert(document);
+    } else if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.EmptyDocument) {
+        documentsToProcess = buffer.flush();
     }
 
     // Documents to process could be the current document (if too large)
@@ -399,7 +390,8 @@ async function insertDocumentWithBufferIntoCosmosDB(
     const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
     const container = cosmosClient.database(databaseName).container(containerName);
 
-    const bulkOperations = documentsToProcess.map((doc) => {
+    const typedDocuments = documentsToProcess as ItemDefinition[];
+    const bulkOperations = typedDocuments.map((doc) => {
         return {
             operationType: 'Create' as const,
             resourceBody: {

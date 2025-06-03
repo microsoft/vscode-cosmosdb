@@ -30,7 +30,41 @@ export interface DocumentBufferOptions {
     calculateDocumentSize: (document: unknown) => number;
 }
 
-export interface BufferInsertResult<T> {
+/**
+ * Error codes for document buffer operations
+ */
+export enum BufferErrorCode {
+    /**
+     * No error occurred
+     */
+    None = 'none',
+
+    /**
+     * Document is too large to fit in the buffer based on maxSingleDocumentSizeBytes
+     */
+    DocumentTooLarge = 'document_too_large',
+
+    /**
+     * Buffer has reached maximum number of documents (maxDocumentCount)
+     * or maximum size in bytes (maxBufferSizeBytes)
+     */
+    BufferFull = 'buffer_full',
+
+    /**
+     * Document is null or undefined
+     */
+    EmptyDocument = 'empty_document',
+
+    /**
+     * Other unexpected errors
+     */
+    Other = 'other',
+}
+
+/**
+ * Result of an insert operation into the document buffer
+ */
+export interface BufferInsertResult {
     /**
      * Whether the insert operation was successful
      * If true, the documentsToProcess will be undefined
@@ -38,20 +72,18 @@ export interface BufferInsertResult<T> {
     success: boolean;
 
     /**
+     * Error code indicating the reason for failure
+     */
+    errorCode: BufferErrorCode;
+}
+
+export interface BufferInsertOrFlushResult<T> extends BufferInsertResult {
+    /**
      * Documents that need to be processed immediately if not buffered
      * This could be the current document if it's too large, or
      * the contents of the buffer if it's full and needs to be flushed
-     *
-     * The type of documentsToProcess indicates different scenarios:
-     * - If success is false and documentsToProcess is undefined. it means the document is undefined or null.
-     *   It is usually used in last batch to flush the buffer forcibly.
-     * - If documentsToProcess is an array, it means the buffer is full and these documents need to be processed.
-     *   Need to insert current document after processing these documents.
-     * - If documentsToProcess is a single document, it means the document is too large to fit in the buffer
-     *   Current document should be processed immediately, and should not be added to the buffer,
-     *   or it will fail the whole batch operation.
      */
-    documentsToProcess?: T[] | T;
+    documentsToProcess?: T[];
 }
 
 /**
@@ -72,7 +104,7 @@ export class DocumentBuffer<T> {
     /**
      * Calculate the size of a document using the provided size calculation function
      */
-    public getSize(document?: T): number {
+    public getDocumentSize(document?: T): number {
         if (!document) {
             return 0;
         }
@@ -99,26 +131,71 @@ export class DocumentBuffer<T> {
      * @param document The document to insert
      * @returns Result indicating success or documents that need immediate processing
      */
-    public insert(document: T): BufferInsertResult<T> {
+    public instertOrFlush(document: T): BufferInsertOrFlushResult<T> {
+        const insertResult = this.insert(document);
+        if (insertResult.success) {
+            // If the insert was successful, return success with no documents to process
+            return { ...insertResult, documentsToProcess: undefined };
+        }
+        // If the insert failed, we need to determine what to do next
+        switch (insertResult.errorCode) {
+            case BufferErrorCode.DocumentTooLarge:
+                // If the document is too large, return it for immediate processing
+                return {
+                    ...insertResult,
+                    documentsToProcess: [document],
+                };
+
+            case BufferErrorCode.BufferFull:
+                // If the buffer is full, return the current buffer for processing
+                // Note that current document is not added to the buffer yet
+                return {
+                    ...insertResult,
+                    documentsToProcess: this.flush(),
+                };
+
+            case BufferErrorCode.EmptyDocument:
+                // If the document is empty, return an empty array for processing
+                return {
+                    ...insertResult,
+                    documentsToProcess: [],
+                };
+
+            case BufferErrorCode.None:
+                // This shouldn't happen since we already checked success, but handle it anyway
+                return { ...insertResult, documentsToProcess: undefined };
+
+            case BufferErrorCode.Other:
+            default:
+                // Handle any other error codes or future additions
+                return {
+                    ...insertResult,
+                    documentsToProcess: [],
+                };
+        }
+    }
+
+    public insert(document: T): BufferInsertResult {
+        // Check if the document is valid
         if (!document) {
-            return { success: false };
+            return { success: false, errorCode: BufferErrorCode.EmptyDocument };
         }
 
-        const documentSize = this.getSize(document);
+        const documentSize = this.getDocumentSize(document);
 
-        // If the document is too large to ever fit in the buffer, return it for immediate processing
+        // If the document is too large to fit in the buffer, return it for immediate processing
         if (documentSize > this.options.maxSingleDocumentSizeBytes) {
             return {
                 success: false,
-                documentsToProcess: document,
+                errorCode: BufferErrorCode.DocumentTooLarge,
             };
         }
 
-        // If adding this document would cause the buffer to overflow, flush first
+        // Check if buffer is full
         if (this.shouldFlush(documentSize)) {
             return {
                 success: false,
-                documentsToProcess: this.flush(),
+                errorCode: BufferErrorCode.BufferFull,
             };
         }
 
@@ -126,7 +203,7 @@ export class DocumentBuffer<T> {
         this.documents.push(document);
         this.currentSize += documentSize;
 
-        return { success: true };
+        return { success: true, errorCode: BufferErrorCode.None };
     }
 
     /**

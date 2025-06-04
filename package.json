@@ -406,6 +406,12 @@
         "title": "%cosmosdb.command.trigger.open%"
       },
       {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.launchCosmosShell",
+        "title": "%cosmosdb.command.cosmos_shell.launch%",
+        "when": "vscodeDatabases.cosmosShellSupportEnabled"
+    },
+      {
         "category": "NoSQL",
         "command": "cosmosDB.deleteTrigger",
         "title": "%cosmosdb.command.trigger.delete%"
@@ -809,11 +815,66 @@
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunction",
           "group": "1@2"
         },
+                {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBTableAccount(?![a-z])/i",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view == azureWorkspace && viewItem == cosmosDBMongoServerAttached",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view == azureWorkspace && viewItem == cosmosDBGraphAccountAttached",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view == azureWorkspace && viewItem == cosmosDBDocumentServerAttached",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view == azureWorkspace && viewItem == cosmosDBTableAccountAttached",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentDatabase",
+            "group": "2@1"
+        },
+        {
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
+            "group": "2@1"
+        },
         {
           "//": "[Functions] (Postgres) Refresh",
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunctions",
-          "group": "2@1"
+          "group": "3@1"
         },
         {
           "//": "[Stored Procedure] (Postgres) Create Stored Procedure",

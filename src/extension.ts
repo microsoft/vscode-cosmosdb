@@ -39,6 +39,7 @@ import {
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
+import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 
 export async function activateInternal(
     context: vscode.ExtensionContext,
@@ -115,6 +116,9 @@ export async function activateInternal(
         const clustersSupport: ClustersExtension = new ClustersExtension();
         context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
         await clustersSupport.activate();
+
+        const cosmosShellSupport: CosmosShellExtension = new CosmosShellExtension();
+        await cosmosShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
-import { BaseRouterContext } from '../../api/configuration/appRouter';
+import { type BaseRouterContext } from '../../api/configuration/appRouter';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
 
 /**
@@ -44,6 +45,19 @@ export const migrationPanelViewRouter = router({
                 assessmentFolderPath: '',
                 dataAssessmentReportPath: '',
             });
+
+            if (response.Error !== null && response.Error !== undefined) {
+                // Log telemetry for startAssessment error
+                void callWithTelemetryAndErrorHandling<void>(
+                    'cosmosDB.mongoMigration.webview.event.migrationPanelView.startAssessmentError',
+                    (context) => {
+                        context.errorHandling.suppressDisplay = true;
+                        context.telemetry.properties.experience = 'mongoMigration';
+                        context.telemetry.properties.assessmentName = input.assessmentName;
+                        context.telemetry.properties.assessmentId = assessmentId;
+                        context.telemetry.properties.error = JSON.stringify(response.Error);
+                    }); //TODO: can add connection string?
+            }
 
             return {
                 ...response,
@@ -88,6 +102,19 @@ export const migrationPanelViewRouter = router({
                 assessmentFolderPath: '',
             });
 
+            if (response.Error !== null && response.Error !== undefined) {
+                // Log telemetry for getAssessmentDetails error
+                void callWithTelemetryAndErrorHandling<void>(
+                    'cosmosDB.mongoMigration.webview.event.migrationPanelView.getAssessmentDetailsError',
+                    (context) => {
+                        context.errorHandling.suppressDisplay = true;
+                        context.telemetry.properties.experience = 'mongoMigration';
+                        context.telemetry.properties.assessmentName = input.assessmentName;
+                        context.telemetry.properties.assessmentId = input.assessmentId;
+                        context.telemetry.properties.error = JSON.stringify(response.Error);
+                    }); //TODO: can add connection string?
+            }
+
             return response;
         }),
     getInstanceSummary: publicProcedure
@@ -105,6 +132,19 @@ export const migrationPanelViewRouter = router({
                 instanceId: assessmentWizardInputs.instanceIdHash,
                 assessmentFolderPath: '',
             });
+
+            if (response.Error !== null && response.Error !== undefined) {
+                // Log telemetry for getInstanceSummary error
+                void callWithTelemetryAndErrorHandling<void>(
+                    'cosmosDB.mongoMigration.webview.event.migrationPanelView.getInstanceSummaryError',
+                    (context) => {
+                        context.errorHandling.suppressDisplay = true;
+                        context.telemetry.properties.experience = 'mongoMigration';
+                        context.telemetry.properties.assessmentName = input.assessmentName;
+                        context.telemetry.properties.assessmentId = input.assessmentId;
+                        context.telemetry.properties.error = JSON.stringify(response.Error);
+                    }); //TODO: can add connection string?
+            }
 
             return response;
         }),
@@ -124,6 +164,19 @@ export const migrationPanelViewRouter = router({
                 assessmentFolderPath: '',
             });
 
+            if (response.Error !== null && response.Error !== undefined) {
+                // Log telemetry for getCombinedAssessmentReport error
+                void callWithTelemetryAndErrorHandling<void>(
+                    'cosmosDB.mongoMigration.webview.event.migrationPanelView.getCombinedAssessmentReportError',
+                    (context) => {
+                        context.errorHandling.suppressDisplay = true;
+                        context.telemetry.properties.experience = 'mongoMigration';
+                        context.telemetry.properties.assessmentName = input.assessmentName;
+                        context.telemetry.properties.assessmentId = input.assessmentId;
+                        context.telemetry.properties.error = JSON.stringify(response.Error);
+                    }); //TODO: can add connection string?
+            }
+
             return response;
         }),
 
@@ -132,6 +185,18 @@ export const migrationPanelViewRouter = router({
             instanceId: assessmentWizardInputs.instanceIdHash, //to be removed
             assessmentFolderPath: '',
         });
+
+        if (response.Error !== null && response.Error !== undefined) {
+            // Log telemetry for getAllAssessments error
+            void callWithTelemetryAndErrorHandling<void>(
+                'cosmosDB.mongoMigration.webview.event.migrationPanelView.getAllAssessmentsError',
+                (context) => {
+                    context.errorHandling.suppressDisplay = true;
+                    context.telemetry.properties.experience = 'mongoMigration';
+                    context.telemetry.properties.error = JSON.stringify(response.Error);
+                }); //TODO: can add connection string?
+        }
+
         return response;
     }),
     deleteAssessment: publicProcedure
@@ -149,6 +214,20 @@ export const migrationPanelViewRouter = router({
                 assessmentId: input.assessmentId,
                 assessmentName: input.assessmentName,
             });
+
+            if (response.valueOf() === false) {
+                // Log telemetry for deleteAssessment error
+                void callWithTelemetryAndErrorHandling<void>(
+                    'cosmosDB.mongoMigration.webview.event.migrationPanelView.deleteAssessmentError',
+                    (context) => {
+                        context.errorHandling.suppressDisplay = true;
+                        context.telemetry.properties.experience = 'mongoMigration';
+                        context.telemetry.properties.assessmentName = input.assessmentName;
+                        context.telemetry.properties.assessmentId = input.assessmentId;
+                        context.telemetry.properties.error = 'Delete assessment failed';
+                    }); //TODO: can add connection string?
+                //TODO: deleteAssessment response doesn't have error information, so we log a generic error
+            }
 
             return response;
         }),

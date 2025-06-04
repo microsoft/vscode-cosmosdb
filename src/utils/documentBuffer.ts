@@ -131,7 +131,7 @@ export class DocumentBuffer<T> {
      * @param document The document to insert
      * @returns Result indicating success or documents that need immediate processing
      */
-    public instertOrFlush(document: T): BufferInsertOrFlushResult<T> {
+    public insertOrFlush(document: T): BufferInsertOrFlushResult<T> {
         const insertResult = this.insert(document);
         if (insertResult.success) {
             // If the insert was successful, return success with no documents to process

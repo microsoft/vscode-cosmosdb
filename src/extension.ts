@@ -45,6 +45,7 @@ import {
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
+import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 
 // Interface for the MongoDB connection migration API
 interface MongoConnectionMigrationApi extends AzureExtensionApi {
@@ -142,6 +143,9 @@ export async function activateInternal(
             context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
             await clustersSupport.activate();
         }
+
+        const cosmosShellSupport: CosmosShellExtension = new CosmosShellExtension();
+        await cosmosShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

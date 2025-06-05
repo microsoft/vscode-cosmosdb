@@ -94,3 +94,43 @@ export const fetchAssessments = async (trpcClient: any): Promise<AssessmentMetad
         return [];
     }
 };
+export const checkPrerequisite = async (trpcClient: any): Promise<boolean> => {
+    try {
+        const response = await trpcClient.mongoMigration.migrationPanel.checkPrerequisite.mutate();
+
+        if (response.Body?.IsPreReqSatisfied) {
+            return true;
+        } else {
+            throw new Error(response.Error?.ErrorMessage || 'Validation failed.');
+        }
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Validation failed.';
+        await trpcClient.mongoMigration.migrationPanel.showError.mutate({
+            error: errorMessage,
+        });
+        return false;
+    }
+};
+
+export function extractHost(connectionString) {
+    if (!connectionString || typeof connectionString !== 'string') {
+        return '';
+    }
+
+    try {
+        const encoded = connectionString;
+
+        const startIndex = encoded.indexOf('://') + 3;
+        if (startIndex < 3 || startIndex >= encoded.length) return '';
+
+        let endIndex = encoded.indexOf('/', startIndex);
+        if (endIndex === -1) endIndex = encoded.indexOf('?', startIndex);
+        if (endIndex === -1) endIndex = encoded.length;
+
+        const hostPart = encoded.substring(startIndex, endIndex);
+        const parts = hostPart.split('@');
+        return parts.length > 1 ? parts[1] : parts[0];
+    } catch {
+        return '';
+    }
+}

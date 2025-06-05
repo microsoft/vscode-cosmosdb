@@ -9,7 +9,6 @@ import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } fro
 import { type PropsWithChildren } from 'react';
 import { AssessmentsDashboardTab } from './AssessmentsDashboardTab';
 import { MigrationDashboardTab } from './MigrationDashboardTab';
-import './migrationPanelView.scss';
 
 const useStyles = makeStyles({
     root: {

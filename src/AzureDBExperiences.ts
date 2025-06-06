@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb/src/models';
+import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 

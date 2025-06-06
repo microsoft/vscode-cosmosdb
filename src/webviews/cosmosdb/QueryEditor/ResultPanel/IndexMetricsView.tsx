@@ -72,15 +72,17 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
                                 {section.indexes && section.indexes.length > 0 ? (
                                     <Table>
                                         <TableBody>
-                                            {section.indexes.map((cosmosdbIndex, index) => (
+                                            {section.indexes.map((cosmosdbIndex, rIndex) => (
                                                 <TableRow
-                                                    key={index}
-                                                    {...(index === section.indexes.length - 1
+                                                    key={rIndex}
+                                                    {...(rIndex === section.indexes.length - 1
                                                         ? { style: { borderBottom: '0px' } }
                                                         : {})}
                                                 >
-                                                    {columns.map((column) => (
-                                                        <TableCell>{cosmosdbIndex[column]}</TableCell>
+                                                    {columns.map((column, cIndex) => (
+                                                        <TableCell key={`${rIndex}-${cIndex}`}>
+                                                            {cosmosdbIndex[column]}
+                                                        </TableCell>
                                                     ))}
                                                 </TableRow>
                                             ))}

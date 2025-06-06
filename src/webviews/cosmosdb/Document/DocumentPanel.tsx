@@ -4,13 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles, MessageBar, ProgressBar } from '@fluentui/react-components';
-import { useEffect, useState } from 'react';
-import { useHotkeys } from 'react-hotkeys-hook';
+import { useCallback, useEffect } from 'react';
 import { validateDocument } from '../../../cosmosdb/utils/validateDocument';
+import { HotkeyScope, useHotkeyScope } from '../../common/hotkeys';
 import { MonacoEditor } from '../../MonacoEditor';
 import { DocumentToolbar } from './DocumentToolbar';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
-import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 
 const useClasses = makeStyles({
     resultDisplay: {
@@ -34,91 +33,29 @@ export const DocumentPanel = () => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
 
-    const isReady = state.isReady;
     const isReadOnly = state.mode === 'view';
     const inProgress = state.isSaving || state.isRefreshing;
-    const hasDocumentInDB = state.documentId !== '';
 
-    const onSave = async () => {
-        // Save document to the database
-        await dispatcher.saveDocument(state.currentDocumentContent);
-    };
+    const onChange = useCallback(
+        (newValue: string) => {
+            dispatcher.setCurrentDocumentContent(newValue);
 
-    const onEdit = async () => {
-        // Open document for editing
-        await dispatcher.setMode('edit');
-    };
+            const errors = validateDocument(newValue, state.partitionKey);
 
-    const onRefresh = async () => {
-        // Reload original document from the database
-        if (state.isDirty) {
-            setOpen(true);
-            setDoAction(() => async () => {
-                setOpen(false);
-                await dispatcher.refreshDocument();
-            });
-        } else {
-            await dispatcher.refreshDocument();
-        }
-    };
-
-    const [open, setOpen] = useState(false);
-    const [doAction, setDoAction] = useState<() => Promise<void>>(() => async () => {});
-
-    const stopPropagation = (event: KeyboardEvent) => {
-        event.stopPropagation();
-        event.preventDefault();
-    };
-    useHotkeys(
-        'mod+s, mod+shift+s',
-        (event) => {
-            stopPropagation(event);
-            void onSave();
+            dispatcher.setValid(errors.length === 0, errors);
         },
-        {
-            enabled: () => !inProgress && state.isDirty && state.isValid, // The same check is done in the toolbar
-            enableOnFormTags: ['textarea'], // Allow saving when the focus is in the editor
-        },
+        [dispatcher, state.partitionKey],
     );
 
-    useHotkeys(
-        'mod+shift+e',
-        (event) => {
-            stopPropagation(event);
-            void onEdit();
-        },
-        {
-            enabled: () => isReadOnly, // The same check is done in the toolbar
-            enableOnFormTags: ['textarea'], // Allow editing when the focus is in the editor
-        },
-    );
-
-    useHotkeys(
-        'mod+shift+r',
-        (event) => {
-            stopPropagation(event);
-            void onRefresh();
-        },
-        {
-            enabled: () => !inProgress && hasDocumentInDB, // The same check is done in the toolbar
-            enableOnFormTags: ['textarea'], // Allow refreshing when the focus is in the editor
-        },
-    );
-
-    const onChange = (newValue: string) => {
-        dispatcher.setCurrentDocumentContent(newValue);
-
-        const errors = validateDocument(newValue, state.partitionKey);
-
-        dispatcher.setValid(errors.length === 0, errors);
-    };
+    // Set up the scope for this component
+    const editorRef = useHotkeyScope(HotkeyScope.DocumentEditor);
 
     // TODO: Hack, remove this when DocumentPanel will be moved to CustomTextEditor.
     useEffect(() => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
 
-    if (!isReady || !state.currentDocumentContent) {
+    if (!state.isReady || !state.currentDocumentContent) {
         return (
             <section className={classes.container}>
                 <ProgressBar />
@@ -127,9 +64,8 @@ export const DocumentPanel = () => {
     }
 
     return (
-        <section className={classes.container}>
-            <UnsavedChangesDialog open={open} setOpen={setOpen} doAction={doAction} />
-            <DocumentToolbar onSave={onSave} onEdit={onEdit} onRefresh={onRefresh} />
+        <section className={classes.container} ref={editorRef} tabIndex={-1}>
+            <DocumentToolbar />
             {inProgress && <ProgressBar />}
             {state.error && (
                 <MessageBar key={'error'} intent={'error'} layout={'multiline'}>

@@ -104,7 +104,7 @@ export const ResultTab = () => {
         }, 100);
 
         return () => clearTimeout(timer);
-    }, [tableViewMode, currentQueryResult, partitionKey]);
+    }, [tableViewMode, currentQueryResult, partitionKey, viewData]);
 
     // Clear cached data when query result changes
     useEffect(() => {

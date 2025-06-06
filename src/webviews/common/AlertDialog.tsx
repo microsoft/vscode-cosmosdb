@@ -14,13 +14,13 @@ import {
     DialogTrigger,
 } from '@fluentui/react-components';
 import { type DialogOpenChangeEventHandler } from '@fluentui/react-dialog';
-import * as React from 'react';
+import type * as React from 'react';
 import { useCallback } from 'react';
-export interface AlertDialogProps {
+
+export interface AlertDialogProps extends React.PropsWithChildren {
     isOpen: boolean;
     onClose: (confirmed: boolean) => void;
     title: string;
-    content: React.ReactNode;
     confirmButtonText: string;
     cancelButtonText: string;
     reverseButtonOrder?: boolean;
@@ -30,7 +30,7 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
     isOpen,
     onClose,
     title,
-    content,
+    children,
     confirmButtonText,
     cancelButtonText,
     reverseButtonOrder = false,
@@ -48,7 +48,6 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
         onClose(true); // Closed with confirmation
     }, [onClose]);
 
-    // Render buttons in the specified order
     const renderButtons = () => {
         const confirmButton = (
             <Button appearance="primary" onClick={handleConfirm}>
@@ -80,7 +79,7 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
             <DialogSurface>
                 <DialogBody>
                     <DialogTitle>{title}</DialogTitle>
-                    <DialogContent>{content}</DialogContent>
+                    <DialogContent>{children}</DialogContent>
                     <DialogActions>{renderButtons()}</DialogActions>
                 </DialogBody>
             </DialogSurface>

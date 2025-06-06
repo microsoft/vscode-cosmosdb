@@ -6,6 +6,7 @@
 import js from '@eslint/js';
 import importPlugin from 'eslint-plugin-import';
 import jest from 'eslint-plugin-jest';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import licenseHeader from 'eslint-plugin-license-header';
 import mocha from 'eslint-plugin-mocha';
 import react from 'eslint-plugin-react';
@@ -109,6 +110,7 @@ export default defineConfig([
         extends: [
             ts.configs.recommendedTypeChecked,
             react.configs.flat.recommended,
+            jsxA11y.flatConfigs.recommended,
             react.configs.flat['jsx-runtime'],
             reactHooks.configs['recommended-latest'],
         ],
@@ -122,6 +124,8 @@ export default defineConfig([
             parser: ts.parser,
             ecmaVersion: 2023,
             sourceType: 'module',
+
+            ...jsxA11y.flatConfigs.recommended.languageOptions,
 
             globals: {
                 ...globals.browser,

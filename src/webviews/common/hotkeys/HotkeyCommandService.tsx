@@ -145,7 +145,7 @@ export class HotkeyCommandService {
                 const handlers = scopeHandlers.get(command);
                 if (handlers) {
                     const scopePromises = Array.from(handlers)
-                        .filter((handler) => !this.isHandlerEnabled(handler))
+                        .filter((handler) => this.isHandlerEnabled(handler))
                         .map((handler) => {
                             const result = handler(event, ...params);
                             return result instanceof Promise ? result : Promise.resolve();

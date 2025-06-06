@@ -14,8 +14,8 @@ import {
     DialogTrigger,
 } from '@fluentui/react-components';
 import { type DialogOpenChangeEventHandler } from '@fluentui/react-dialog';
-import * as React from 'react';
-import { useCallback, useRef } from 'react';
+import type * as React from 'react';
+import { useCallback } from 'react';
 
 export interface AlertDialogProps extends React.PropsWithChildren {
     isOpen: boolean;
@@ -35,20 +35,6 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
     cancelButtonText,
     reverseButtonOrder = false,
 }) => {
-    const previousFocusRef = useRef<HTMLElement | null>(null);
-
-    // Store the active element when dialog opens
-    React.useEffect(() => {
-        if (isOpen) {
-            previousFocusRef.current = document.activeElement as HTMLElement;
-        } else if (previousFocusRef.current) {
-            // When dialog closes, explicitly restore focus
-            setTimeout(() => {
-                previousFocusRef.current?.focus();
-            }, 0);
-        }
-    }, [isOpen]);
-
     const handleOpenChange = useCallback<DialogOpenChangeEventHandler>(
         (_event, data) => {
             if (!data.open) {

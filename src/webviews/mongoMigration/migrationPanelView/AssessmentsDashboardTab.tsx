@@ -17,12 +17,14 @@ import {
 import {
     ArrowClockwise24Regular,
     ArrowDownload24Regular,
+    Clock20Regular,
     Delete24Regular,
     DismissCircle24Regular,
     PresenceAvailable10Filled,
+    Warning20Regular,
 } from '@fluentui/react-icons';
 import React, { useEffect, useState } from 'react';
-import { type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
+import { AssessmentStatus, type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
 import { fetchAndBuildHtmlReport, fetchAssessments } from './Utils/apiUtils';
 
@@ -62,14 +64,22 @@ export const AssessmentsDashboardTab: React.FC = () => {
     useEffect(() => {
         void handleFetchAssessments();
     }, []);
-
     const renderAssessmentStatus = (item: AssessmentMetadata) => (
         <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
-            {item.AssessmentStatus === 'Successful' && (
+            {(item.AssessmentStatus === AssessmentStatus.SUCCESS) && (
                 <PresenceAvailable10Filled style={{ color: '#107C10', width: 16, height: 16 }} />
             )}
-            {item.AssessmentStatus === 'Cancelled' && (
-                <DismissCircle24Regular style={{ color: '#A4262C', width: 18, height: 18 }} />
+            {(item.AssessmentStatus === AssessmentStatus.FAILED ||
+                item.AssessmentStatus === AssessmentStatus.ABORTED ||
+                item.AssessmentStatus === AssessmentStatus.CANCELLED) && (
+                    <DismissCircle24Regular style={{ color: '#A4262C', width: 18, height: 18 }} />
+                )}
+            {(item.AssessmentStatus === AssessmentStatus.INPROGRESS ||
+                item.AssessmentStatus === AssessmentStatus.WAITING) && (
+                    <Clock20Regular style={{ color: '#0078D4', width: 16, height: 16 }} />
+                )}
+            {item.AssessmentStatus === AssessmentStatus.WARNING && (
+                <Warning20Regular style={{ color: '#FFD335', width: 16, height: 16 }} />
             )}
             <span>{item.AssessmentStatus}</span>
         </Stack>
@@ -119,15 +129,15 @@ export const AssessmentsDashboardTab: React.FC = () => {
                 <button
                     title="Download"
                     aria-label="Download"
-                    disabled={item?.AssessmentStatus !== 'Successful'}
+                    disabled={item?.AssessmentStatus !== AssessmentStatus.SUCCESS}
                     style={{
                         background: 'transparent',
                         border: 'none',
-                        cursor: item?.AssessmentStatus === 'Successful' ? 'pointer' : 'not-allowed',
-                        color: item?.AssessmentStatus === 'Successful' ? 'inherit' : '#999',
-                        opacity: item?.AssessmentStatus === 'Successful' ? 1 : 0.5,
+                        cursor: item?.AssessmentStatus === AssessmentStatus.SUCCESS ? 'pointer' : 'not-allowed',
+                        color: item?.AssessmentStatus === AssessmentStatus.SUCCESS ? 'inherit' : '#999',
+                        opacity: item?.AssessmentStatus === AssessmentStatus.SUCCESS ? 1 : 0.5,
                     }}
-                    onClick={item?.AssessmentStatus === 'Successful' ? handleDownload : undefined}
+                    onClick={item?.AssessmentStatus === AssessmentStatus.SUCCESS ? handleDownload : undefined}
                 >
                     <ArrowDownload24Regular />
                 </button>

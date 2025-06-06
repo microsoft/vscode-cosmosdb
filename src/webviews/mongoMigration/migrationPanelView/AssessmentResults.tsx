@@ -43,7 +43,7 @@ export const pollAssessmentStatus = async (
 
 
 
-export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }: { assessmentDetails: any, assessmentId: any, onCancel: () => void }) => {
+export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }: { assessmentDetails: any, assessmentId: string, onCancel: () => void }) => {
     const { trpcClient } = useTrpcClient();
     const handleDownload = async () => {
         if (!assessmentDetails.AssessmentName || !assessmentDetails.AssessmentId) return;

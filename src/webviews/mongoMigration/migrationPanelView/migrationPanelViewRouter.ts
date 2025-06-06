@@ -9,20 +9,24 @@ import { z } from 'zod';
 import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../../api/configuration/appRouter';
 import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
+import { extractHost } from './Utils/apiUtils';
 
 let instanceIdHash: string | null = null;
 const connectionStringVsCode =
     'mongodb+srv://bharath:bharath@m0-cluster-1.v5ezy.mongodb.net/?retryWrites=true&w=majority&connectTimeoutMS=10000';
 //to be received by Tomasz
 
-async function getInstanceIdHash(connectionString: string): Promise<string> {
+let hostName = extractHost(connectionStringVsCode);
+console.log(hostName);
+
+async function getInstanceIdHash(hostName: string): Promise<string> {
     const crypto = await import('crypto');
-    return crypto.createHash('sha256').update(connectionString).digest('hex');
+    return crypto.createHash('sha256').update(hostName).digest('hex');
 }
 
 async function getInstanceId(): Promise<string> {
     if (!instanceIdHash) {
-        instanceIdHash = await getInstanceIdHash(connectionStringVsCode);
+        instanceIdHash = await getInstanceIdHash(hostName);
     }
     return instanceIdHash;
 }
@@ -60,7 +64,8 @@ export const migrationPanelViewRouter = router({
                         context.telemetry.properties.assessmentName = input.assessmentName;
                         context.telemetry.properties.assessmentId = assessmentId;
                         context.telemetry.properties.error = JSON.stringify(response.Error);
-                    }); //TODO: can add connection string?
+                    },
+                ); //TODO: can add connection string?
             }
 
             return {
@@ -107,7 +112,8 @@ export const migrationPanelViewRouter = router({
                         context.telemetry.properties.assessmentName = input.assessmentName;
                         context.telemetry.properties.assessmentId = input.assessmentId;
                         context.telemetry.properties.error = JSON.stringify(response.Error);
-                    }); //TODO: can add connection string?
+                    },
+                ); //TODO: can add connection string?
             }
 
             return response;
@@ -138,7 +144,8 @@ export const migrationPanelViewRouter = router({
                         context.telemetry.properties.assessmentName = input.assessmentName;
                         context.telemetry.properties.assessmentId = input.assessmentId;
                         context.telemetry.properties.error = JSON.stringify(response.Error);
-                    }); //TODO: can add connection string?
+                    },
+                ); //TODO: can add connection string?
             }
 
             return response;
@@ -169,7 +176,8 @@ export const migrationPanelViewRouter = router({
                         context.telemetry.properties.assessmentName = input.assessmentName;
                         context.telemetry.properties.assessmentId = input.assessmentId;
                         context.telemetry.properties.error = JSON.stringify(response.Error);
-                    }); //TODO: can add connection string?
+                    },
+                ); //TODO: can add connection string?
             }
 
             return response;
@@ -189,7 +197,8 @@ export const migrationPanelViewRouter = router({
                     context.errorHandling.suppressDisplay = true;
                     context.telemetry.properties.experience = 'mongoMigration';
                     context.telemetry.properties.error = JSON.stringify(response.Error);
-                }); //TODO: can add connection string?
+                },
+            ); //TODO: can add connection string?
         }
 
         return response;
@@ -220,7 +229,8 @@ export const migrationPanelViewRouter = router({
                         context.telemetry.properties.assessmentName = input.assessmentName;
                         context.telemetry.properties.assessmentId = input.assessmentId;
                         context.telemetry.properties.error = 'Delete assessment failed';
-                    }); //TODO: can add connection string?
+                    },
+                ); //TODO: can add connection string?
                 //TODO: deleteAssessment response doesn't have error information, so we log a generic error
             }
 

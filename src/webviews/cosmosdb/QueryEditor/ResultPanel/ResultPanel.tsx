@@ -97,7 +97,7 @@ export const ResultPanel = () => {
     useCommandHotkey(HotkeyScope.Global, CommandType.SwitchToStatsTab, () => setSelectedTab('stats__tab'), []);
 
     return (
-        <section className={styles.root} ref={panelRef} tabIndex={-1} role="region" aria-label="Result Panel">
+        <section className={styles.root} ref={panelRef} tabIndex={-1} aria-label="Result Panel">
             <ActionBar>
                 <div className={styles.tabs}>
                     <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>

@@ -693,6 +693,7 @@
   "Where to save the exported documents?": "Where to save the exported documents?",
   "with Popover": "with Popover",
   "Working…": "Working…",
+  "Write error: {0}": "Write error: {0}",
   "Yes": "Yes",
   "You are not signed in to an Azure account. Please sign in.": "You are not signed in to an Azure account. Please sign in.",
   "You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node \"{0}\") and try again.": "You are not signed in to the MongoDB Cluster. Please sign in (by expanding the node \"{0}\") and try again.",

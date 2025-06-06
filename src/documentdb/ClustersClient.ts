@@ -25,6 +25,7 @@ import {
     type MongoClientOptions,
     type WithId,
     type WithoutId,
+    type WriteError,
 } from 'mongodb';
 import { Links } from '../constants';
 import { ext } from '../extensionVariables';
@@ -472,15 +473,23 @@ export class ClustersClient {
         } catch (error) {
             // print error messages to the console
             if (error instanceof MongoBulkWriteError) {
-                // Wrap writeErrors in an array
-                const writeErrors = Array.isArray(error.writeErrors) ? error.writeErrors : [error.writeErrors];
+                const writeErrors: WriteError[] = Array.isArray(error.writeErrors)
+                    ? (error.writeErrors as WriteError[])
+                    : [error.writeErrors as WriteError];
+
                 for (const writeError of writeErrors) {
-                    const errorMessage = parseError(writeError).message;
-                    ext.outputChannel.appendLog(`Write error: ${errorMessage}`);
+                    const generalErrorMessage = parseError(writeError).message;
+                    const descriptiveErrorMessage = writeError.err?.errmsg;
+
+                    const fullErrorMessage = descriptiveErrorMessage
+                        ? `${generalErrorMessage} - ${descriptiveErrorMessage}`
+                        : generalErrorMessage;
+
+                    ext.outputChannel.appendLog(l10n.t('Write error: {0}', fullErrorMessage));
                 }
                 ext.outputChannel.show();
             } else if (error instanceof Error) {
-                ext.outputChannel.appendLog(`Error: ${error.message}`);
+                ext.outputChannel.appendLog(l10n.t('Error: {0}', error.message));
                 ext.outputChannel.show();
             }
 

@@ -25,6 +25,7 @@ import {
     useIsOverflowGroupVisible,
     useIsOverflowItemVisible,
     useOverflowMenu,
+    useRestoreFocusSource,
     useRestoreFocusTarget,
 } from '@fluentui/react-components';
 import {
@@ -39,9 +40,11 @@ import {
     NumberSymbolSquareRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
+import type React from 'react';
 import { type ForwardedRef, forwardRef, type PropsWithChildren, useCallback, useEffect, useState } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
 import { AlertDialog } from '../../../common/AlertDialog';
+import { CommandType, HotkeyScope, useCommandHotkey } from '../../../common/hotkeys';
 import { Timer } from '../../../Timer';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -54,189 +57,192 @@ type OverflowToolbarItemProps = {
     type: 'button' | 'menuitem';
 };
 
+type ToolbarOverflowButtonProps = {
+    type: 'button' | 'menuitem';
+    refs: ForwardedRef<HTMLButtonElement>;
+    content: string;
+    onClick: () => Promise<void> | void;
+    icon: React.ReactElement;
+    ariaLabel: string;
+    disabled?: boolean;
+};
+
+const ToolbarOverflowButton = (props: ToolbarOverflowButtonProps) => {
+    const { type, refs, content, onClick, icon, ariaLabel, disabled } = props;
+
+    const restoreFocusTargetAttribute = useRestoreFocusTarget();
+    const restoreFocusSourceAttribute = useRestoreFocusSource();
+
+    return (
+        <>
+            {type === 'button' && (
+                <Tooltip content={content} relationship="description" withArrow>
+                    <ToolbarButton
+                        ref={refs}
+                        onClick={() => void onClick()}
+                        aria-label={ariaLabel}
+                        icon={icon}
+                        disabled={disabled}
+                        {...restoreFocusTargetAttribute}
+                    />
+                </Tooltip>
+            )}
+            {type === 'menuitem' && (
+                <MenuItem
+                    onClick={() => void onClick()}
+                    aria-label={ariaLabel}
+                    icon={icon}
+                    disabled={disabled}
+                    {...restoreFocusSourceAttribute}
+                >
+                    {content}
+                </MenuItem>
+            )}
+        </>
+    );
+};
+
 const ReloadQueryButton = forwardRef(
     (props: OverflowToolbarItemProps & OpenAlertDialogProps, ref: ForwardedRef<HTMLButtonElement>) => {
         const state = useQueryEditorState();
         const dispatcher = useQueryEditorDispatcher();
-        const restoreFocusTargetAttribute = useRestoreFocusTarget();
         const { setIsOpen, setAction } = props;
+        const isDisabled = !state.isConnected || !state.currentExecutionId;
 
-        const reloadData = () => {
+        const reloadData = useCallback(() => {
             setIsOpen(true);
             setAction(() => async () => {
                 await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], {
                     countPerPage: state.pageSize,
                 });
             });
-        };
+        }, [dispatcher, state, setAction, setIsOpen]);
+
+        useCommandHotkey(HotkeyScope.ResultPanel, CommandType.Refresh, reloadData, { disabled: isDisabled });
 
         return (
-            <>
-                {props.type === 'button' && (
-                    <Tooltip content={l10n.t('Reload query results')} relationship="description" withArrow>
-                        <ToolbarButton
-                            ref={ref}
-                            onClick={() => reloadData()}
-                            aria-label={l10n.t('Refresh')}
-                            icon={<ArrowClockwiseFilled />}
-                            {...restoreFocusTargetAttribute}
-                            disabled={!state.isConnected || !state.currentExecutionId}
-                        />
-                    </Tooltip>
-                )}
-                {props.type === 'menuitem' && (
-                    <MenuItem
-                        onClick={() => reloadData()}
-                        aria-label={l10n.t('Refresh')}
-                        icon={<ArrowClockwiseFilled />}
-                        disabled={!state.isConnected || !state.currentExecutionId}
-                    >
-                        {l10n.t('Reload query results')}
-                    </MenuItem>
-                )}
-            </>
+            <ToolbarOverflowButton
+                type={props.type}
+                refs={ref}
+                onClick={reloadData}
+                icon={<ArrowClockwiseFilled />}
+                ariaLabel={l10n.t('Refresh')}
+                content={l10n.t('Reload query results')}
+                disabled={isDisabled}
+            />
         );
     },
 );
+ReloadQueryButton.displayName = 'ReloadQueryButton';
 
 const GoToFirstPageButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const toFirstPageDisabled =
-        state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
-    const firstPage = async () => {
-        await dispatcher.firstPage(state.currentExecutionId);
-    };
+    const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
 
-    if (props.type === 'button') {
-        return (
-            <Tooltip content={l10n.t('Go to first page')} relationship="description" withArrow>
-                <ToolbarButton
-                    ref={ref}
-                    onClick={() => void firstPage()}
-                    aria-label={l10n.t('Go to start')}
-                    icon={<ArrowPreviousFilled />}
-                    disabled={toFirstPageDisabled}
-                />
-            </Tooltip>
-        );
-    }
+    const firstPage = useCallback(() => dispatcher.firstPage(state.currentExecutionId), [dispatcher, state]);
+
+    useCommandHotkey(HotkeyScope.ResultPanel, CommandType.SwitchToFirstPage, firstPage, { disabled: isDisabled });
 
     return (
-        <MenuItem
-            onClick={() => void firstPage()}
-            aria-label={l10n.t('Go to start')}
+        <ToolbarOverflowButton
+            type={props.type}
+            refs={ref}
+            onClick={firstPage}
             icon={<ArrowPreviousFilled />}
-            disabled={toFirstPageDisabled}
-        >
-            {l10n.t('Go to first page')}
-        </MenuItem>
+            ariaLabel={l10n.t('Go to first page')}
+            content={l10n.t('Go to first page')}
+            disabled={isDisabled}
+        />
     );
 });
+GoToFirstPageButton.displayName = 'GoToFirstPageButton';
 
 const GoToPrevPageButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const toPrevPageDisabled =
-        state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
-    const prevPage = async () => {
-        await dispatcher.prevPage(state.currentExecutionId);
-    };
+    const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
 
-    if (props.type === 'button') {
-        return (
-            <Tooltip content={l10n.t('Go to previous page')} relationship="description" withArrow>
-                <ToolbarButton
-                    ref={ref}
-                    onClick={() => void prevPage()}
-                    aria-label={l10n.t('Go to previous page')}
-                    icon={<ArrowLeftFilled />}
-                    disabled={toPrevPageDisabled}
-                />
-            </Tooltip>
-        );
-    }
+    const prevPage = useCallback(() => dispatcher.prevPage(state.currentExecutionId), [dispatcher, state]);
+
+    useCommandHotkey(HotkeyScope.ResultPanel, CommandType.SwitchToPreviousPage, prevPage, { disabled: isDisabled });
 
     return (
-        <MenuItem
-            onClick={() => void prevPage()}
-            aria-label={l10n.t('Go to previous page')}
+        <ToolbarOverflowButton
+            type={props.type}
+            refs={ref}
+            onClick={prevPage}
             icon={<ArrowLeftFilled />}
-            disabled={toPrevPageDisabled}
-        >
-            {l10n.t('Go to previous page')}
-        </MenuItem>
+            ariaLabel={l10n.t('Go to previous page')}
+            content={l10n.t('Go to previous page')}
+            disabled={isDisabled}
+        />
     );
 });
+GoToPrevPageButton.displayName = 'GoToPrevPageButton';
 
 const GoToNextPageButton = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const hasMoreResults = state.currentQueryResult?.hasMoreResults ?? false;
-    const toNextPageDisabled =
+    const isDisabled =
         state.pageSize === -1 || // Disable if page size is set to 'All'
         !state.isConnected ||
         state.isExecuting ||
         !state.currentExecutionId ||
         !hasMoreResults;
-    const nextPage = async () => {
-        await dispatcher.nextPage(state.currentExecutionId);
-    };
 
-    if (props.type === 'button') {
-        return (
-            <Tooltip content={l10n.t('Go to next page (Load more)')} relationship="description" withArrow>
-                <ToolbarButton
-                    ref={ref}
-                    onClick={() => void nextPage()}
-                    aria-label={l10n.t('Go to next page')}
-                    icon={<ArrowRightFilled />}
-                    disabled={toNextPageDisabled}
-                />
-            </Tooltip>
-        );
-    }
+    const nextPage = useCallback(() => dispatcher.nextPage(state.currentExecutionId), [dispatcher, state]);
+
+    useCommandHotkey(HotkeyScope.ResultPanel, CommandType.SwitchToNextPage, nextPage, { disabled: isDisabled });
 
     return (
-        <MenuItem
-            onClick={() => void nextPage()}
-            aria-label={l10n.t('Go to next page')}
+        <ToolbarOverflowButton
+            type={props.type}
+            refs={ref}
+            onClick={nextPage}
             icon={<ArrowRightFilled />}
-            disabled={toNextPageDisabled}
-        >
-            {l10n.t('Go to next page')}
-        </MenuItem>
+            ariaLabel={l10n.t('Go to next page')}
+            content={l10n.t('Go to next page (Load more)')}
+            disabled={isDisabled}
+        />
     );
 });
+GoToNextPageButton.displayName = 'GoToNextPageButton';
 
 const ChangePageSizeButton = forwardRef(
     (props: OverflowToolbarItemProps & OpenAlertDialogProps, ref: ForwardedRef<HTMLDivElement>) => {
         const state = useQueryEditorState();
         const dispatcher = useQueryEditorDispatcher();
-        const restoreFocusTargetAttribute = useRestoreFocusTarget();
 
         const pageSize = state.pageSize;
         const { setIsOpen, setAction } = props;
 
-        const changePageSize = (countPerPage: number) => {
-            if (!state.currentExecutionId) {
-                // The result is not loaded yet, just set the page size
-                dispatcher.setPageSize(countPerPage);
-                return;
-            }
+        const changePageSize = useCallback(
+            (countPerPage: number) => {
+                if (!state.currentExecutionId) {
+                    // The result is not loaded yet, just set the page size
+                    dispatcher.setPageSize(countPerPage);
+                    return;
+                }
 
-            setIsOpen(true);
-            setAction(() => async () => {
-                dispatcher.setPageSize(countPerPage);
-                await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], { countPerPage });
-            });
-        };
+                setIsOpen(true);
+                setAction(() => async () => {
+                    dispatcher.setPageSize(countPerPage);
+                    await dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], { countPerPage });
+                });
+            },
+            [dispatcher, state, setAction, setIsOpen],
+        );
 
-        const onOptionSelect = (data: OptionOnSelectData) => {
-            const parsedValue = parseInt(data.optionValue ?? '', 10);
-            const countPerPage = isFinite(parsedValue) ? parsedValue : -1;
-            changePageSize(countPerPage);
-        };
+        const onOptionSelect = useCallback(
+            (data: OptionOnSelectData) => {
+                const parsedValue = parseInt(data.optionValue ?? '', 10);
+                const countPerPage = isFinite(parsedValue) ? parsedValue : -1;
+                changePageSize(countPerPage);
+            },
+            [changePageSize],
+        );
 
         if (props.type === 'button') {
             return (
@@ -247,7 +253,6 @@ const ChangePageSizeButton = forwardRef(
                             style={{ minWidth: '100px', maxWidth: '100px' }}
                             value={pageSize === -1 ? l10n.t('All') : pageSize.toString()}
                             selectedOptions={[pageSize.toString()]}
-                            {...restoreFocusTargetAttribute}
                         >
                             <Option key="10" value={'10'}>
                                 10
@@ -331,6 +336,7 @@ const ChangePageSizeButton = forwardRef(
         );
     },
 );
+ChangePageSizeButton.displayName = 'ChangePageSizeButton';
 
 const StatusBar = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef<HTMLDivElement>) => {
     const state = useQueryEditorState();
@@ -378,20 +384,22 @@ const StatusBar = forwardRef((props: OverflowToolbarItemProps, ref: ForwardedRef
         </MenuItem>
     );
 });
+StatusBar.displayName = 'StatusBar';
 
 const CopyToClipboardButton = forwardRef(
     (props: OverflowToolbarItemProps & ResultToolbarProps, ref: ForwardedRef<HTMLButtonElement>) => {
         const state = useQueryEditorState();
         const dispatcher = useQueryEditorDispatcher();
+
         const { selectedTab } = props;
         const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
         const tooltipClipboardContent = hasSelection
             ? l10n.t('Copy selected items to clipboard')
             : l10n.t('Copy all results from the current page to clipboard');
 
-        async function onSaveToClipboardAsCSV() {
+        const onSaveToClipboardAsCSV = useCallback(() => {
             if (selectedTab === 'result__tab') {
-                await dispatcher.copyCSVToClipboard(
+                return dispatcher.copyCSVToClipboard(
                     state.currentQueryResult,
                     state.partitionKey,
                     hasSelection ? state.selectedRows : undefined,
@@ -399,44 +407,52 @@ const CopyToClipboardButton = forwardRef(
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.copyMetricsCSVToClipboard(state.currentQueryResult);
+                return dispatcher.copyMetricsCSVToClipboard(state.currentQueryResult);
             }
-        }
 
-        async function onSaveToClipboardAsJSON() {
+            return Promise.resolve();
+        }, [dispatcher, state, selectedTab, hasSelection]);
+
+        const onSaveToClipboardAsJSON = useCallback(async () => {
             if (selectedTab === 'result__tab') {
                 const selectedRows = hasSelection ? state.selectedRows : undefined;
                 const json = queryResultToJSON(state.currentQueryResult, selectedRows);
-                await dispatcher.copyToClipboard(json);
+                return dispatcher.copyToClipboard(json);
             }
 
             if (selectedTab === 'stats__tab') {
                 const json = await queryMetricsToJSON(state.currentQueryResult);
-                await dispatcher.copyToClipboard(json);
+                return await dispatcher.copyToClipboard(json);
             }
-        }
+
+            return Promise.resolve();
+        }, [dispatcher, state, selectedTab, hasSelection]);
+
+        useCommandHotkey(HotkeyScope.ResultPanel, CommandType.CopyToClipboard, onSaveToClipboardAsJSON, {
+            disabled: !state.isConnected,
+        });
 
         return (
             <Menu>
                 <MenuTrigger>
-                    <Tooltip content={tooltipClipboardContent} relationship="description" withArrow>
-                        {props.type === 'button' ? (
+                    {props.type === 'button' ? (
+                        <Tooltip content={tooltipClipboardContent} relationship="description" withArrow>
                             <ToolbarButton
                                 ref={ref}
                                 aria-label={l10n.t('Copy to clipboard')}
                                 icon={<DocumentCopyRegular />}
                                 disabled={!state.isConnected}
                             />
-                        ) : (
-                            <MenuItem
-                                aria-label={l10n.t('Copy to clipboard')}
-                                icon={<DocumentCopyRegular />}
-                                disabled={!state.isConnected}
-                            >
-                                {l10n.t('Copy to clipboard')}
-                            </MenuItem>
-                        )}
-                    </Tooltip>
+                        </Tooltip>
+                    ) : (
+                        <MenuItem
+                            aria-label={l10n.t('Copy to clipboard')}
+                            icon={<DocumentCopyRegular />}
+                            disabled={!state.isConnected}
+                        >
+                            {l10n.t('Copy to clipboard')}
+                        </MenuItem>
+                    )}
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
@@ -448,6 +464,7 @@ const CopyToClipboardButton = forwardRef(
         );
     },
 );
+CopyToClipboardButton.displayName = 'CopyToClipboardButton';
 
 const ExportButton = forwardRef(
     (props: OverflowToolbarItemProps & ResultToolbarProps, ref: ForwardedRef<HTMLButtonElement>) => {
@@ -459,11 +476,11 @@ const ExportButton = forwardRef(
             ? l10n.t('Export selected items')
             : l10n.t('Export all results from the current page');
 
-        async function onSaveAsCSV() {
+        const onSaveAsCSV = useCallback(async () => {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
                 const selectedRows = hasSelection ? state.selectedRows : undefined;
-                await dispatcher.saveCSV(
+                return dispatcher.saveCSV(
                     `${filename}_result`,
                     state.currentQueryResult,
                     state.partitionKey,
@@ -472,41 +489,49 @@ const ExportButton = forwardRef(
             }
 
             if (selectedTab === 'stats__tab') {
-                await dispatcher.saveMetricsCSV(`${filename}_stats`, state.currentQueryResult);
+                return dispatcher.saveMetricsCSV(`${filename}_stats`, state.currentQueryResult);
             }
-        }
 
-        async function onSaveAsJSON() {
+            return Promise.resolve();
+        }, [dispatcher, state, selectedTab, hasSelection]);
+
+        const onSaveAsJSON = useCallback(async () => {
             const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
             if (selectedTab === 'result__tab') {
                 const selectedRows = hasSelection ? state.selectedRows : undefined;
                 const json = queryResultToJSON(state.currentQueryResult, selectedRows);
-                await dispatcher.saveToFile(json, `${filename}_result`, 'json');
+                return dispatcher.saveToFile(json, `${filename}_result`, 'json');
             }
 
             if (selectedTab === 'stats__tab') {
                 const json = await queryMetricsToJSON(state.currentQueryResult);
-                await dispatcher.saveToFile(json, `${filename}_stats`, 'json');
+                return dispatcher.saveToFile(json, `${filename}_stats`, 'json');
             }
-        }
+
+            return Promise.resolve();
+        }, [dispatcher, state, selectedTab, hasSelection]);
+
+        useCommandHotkey(HotkeyScope.ResultPanel, CommandType.SaveToDisk, onSaveAsJSON, {
+            disabled: !state.isConnected,
+        });
 
         return (
             <Menu>
                 <MenuTrigger>
-                    <Tooltip content={tooltipExportContent} relationship="description" withArrow>
-                        {props.type === 'button' ? (
+                    {props.type === 'button' ? (
+                        <Tooltip content={tooltipExportContent} relationship="description" withArrow>
                             <ToolbarButton
                                 ref={ref}
                                 aria-label={l10n.t('Export')}
                                 icon={<ArrowDownloadRegular />}
                                 disabled={!state.isConnected}
                             />
-                        ) : (
-                            <MenuItem aria-label="Export" icon={<ArrowDownloadRegular />} disabled={!state.isConnected}>
-                                {l10n.t('Export')}
-                            </MenuItem>
-                        )}
-                    </Tooltip>
+                        </Tooltip>
+                    ) : (
+                        <MenuItem aria-label="Export" icon={<ArrowDownloadRegular />} disabled={!state.isConnected}>
+                            {l10n.t('Export')}
+                        </MenuItem>
+                    )}
                 </MenuTrigger>
                 <MenuPopover>
                     <MenuList>
@@ -518,6 +543,7 @@ const ExportButton = forwardRef(
         );
     },
 );
+ExportButton.displayName = 'ExportButton';
 
 interface ToolbarOverflowMenuItemProps extends Omit<MenuItemProps, 'id'> {
     id: string;
@@ -640,17 +666,12 @@ export const ResultPanelToolbarOverflow = ({ selectedTab }: ResultToolbarProps) 
                 isOpen={isOpen}
                 onClose={handleDialogClose}
                 title={l10n.t('Attention')}
-                content={
-                    <>
-                        <div>
-                            {l10n.t('All loaded data will be lost. The query will be executed again in new session.')}
-                        </div>
-                        <div>{l10n.t('Are you sure you want to continue?')}</div>
-                    </>
-                }
                 confirmButtonText={l10n.t('Continue')}
                 cancelButtonText={l10n.t('Close')}
-            />
+            >
+                <div>{l10n.t('All loaded data will be lost. The query will be executed again in new session.')}</div>
+                <div>{l10n.t('Are you sure you want to continue?')}</div>
+            </AlertDialog>
             <Overflow padding={70}>
                 <Toolbar aria-label="Default" size={'small'}>
                     <OverflowItem id={'1'} groupId={'1'}>

@@ -6,6 +6,7 @@
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useState, type PropsWithChildren } from 'react';
+import { CommandType, HotkeyScope, useCommandHotkey, useHotkeyScope } from '../../../common/hotkeys';
 import { ResultPanelToolbarOverflow } from './ResultPanelToolbarOverflow';
 import { ResultTab } from './ResultTab';
 import { ResultTabToolbar } from './ResultTabToolbar';
@@ -89,8 +90,14 @@ export const ResultPanel = () => {
         setSelectedTab(data.value as string);
     };
 
+    const panelRef = useHotkeyScope(HotkeyScope.ResultPanel); // Set up the scope for this component
+
+    useCommandHotkey(HotkeyScope.Global, CommandType.SwitchToResultTab, () => setSelectedTab('result__tab'), []);
+
+    useCommandHotkey(HotkeyScope.Global, CommandType.SwitchToStatsTab, () => setSelectedTab('stats__tab'), []);
+
     return (
-        <section className={styles.root}>
+        <section className={styles.root} ref={panelRef} tabIndex={-1}>
             <ActionBar>
                 <div className={styles.tabs}>
                     <TabList selectedValue={selectedTab} onTabSelect={onTabSelect}>

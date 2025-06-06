@@ -6,33 +6,117 @@
 import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, EditRegular, SaveRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useDocumentState } from './state/DocumentContext';
+import { useCallback, useMemo, useState } from 'react';
+import { AlertDialog } from '../../common/AlertDialog';
+import { CommandType, findHotkeyMapping, HotkeyScope, useCommandHotkey } from '../../common/hotkeys';
+import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
 const ToolbarDividerTransparent = () => {
     return <div style={{ padding: '4px' }} />;
 };
 
-export type DocumentToolbarProps = {
-    onSave: () => Promise<void>;
-    onEdit: () => Promise<void>;
-    onRefresh: () => Promise<void>;
-};
-
-export const DocumentToolbar = (props: DocumentToolbarProps) => {
+export const DocumentToolbar = () => {
     const state = useDocumentState();
+    const dispatcher = useDocumentDispatcher();
+
+    const [isOpen, setIsOpen] = useState(false);
+    const [action, setAction] = useState<() => Promise<void>>(() => async () => {});
 
     const isReady = state.isReady;
+    const isReadOnly = state.mode === 'view';
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== '';
-    const isReadOnly = isReady && state.mode === 'view'; // If the document is not initialized, it is considered as not state
-    const isMac = navigator.platform.toLowerCase().includes('mac');
+    const isSaveDisabled = inProgress || !state.isDirty || !state.isValid;
+    const isEditDisabled = !isReadOnly;
+    const isRefreshDisabled = inProgress || !hasDocumentInDB;
 
-    const onSaveHotkeyTitle = isMac ? '\u2318 S' : 'Ctrl+S';
-    const onEditHotkeyTitle = isMac ? '\u2318 \u21E7 E' : 'Ctrl+Shift+E';
-    const onRefreshHotkeyTitle = isMac ? '\u2318 \u21E7 R' : 'Ctrl+Shift+R';
+    const isMac = useMemo(() => /Mac|iPod|iPhone|iPad/.test(navigator.userAgent), []);
+    const onSaveHotkeyTitle = useMemo(() => {
+        const hotkeys = findHotkeyMapping(CommandType.SaveDocument, HotkeyScope.DocumentEditor);
+        return hotkeys?.[0].shortcutDisplay[isMac ? 'mac' : 'windows'] ?? '';
+    }, [isMac]);
+    const onEditHotkeyTitle = useMemo(() => {
+        const hotkeys = findHotkeyMapping(CommandType.EditDocument, HotkeyScope.DocumentEditor);
+        return hotkeys?.[0].shortcutDisplay[isMac ? 'mac' : 'windows'] ?? '';
+    }, [isMac]);
+    const onRefreshHotkeyTitle = useMemo(() => {
+        const hotkeys = findHotkeyMapping(CommandType.Refresh, HotkeyScope.DocumentEditor);
+        return hotkeys?.[0].shortcutDisplay[isMac ? 'mac' : 'windows'] ?? '';
+    }, [isMac]);
+
+    //#region Callbacks
+    const stopPropagation = useCallback((event: KeyboardEvent) => {
+        event.stopPropagation();
+        event.preventDefault();
+    }, []);
+
+    const onSave = useCallback(
+        async (event?: KeyboardEvent) => {
+            // Save document to the database
+            if (event) stopPropagation(event);
+            await dispatcher.saveDocument(state.currentDocumentContent);
+        },
+        [dispatcher, state, stopPropagation],
+    );
+
+    const onEdit = useCallback(
+        async (event?: KeyboardEvent) => {
+            // Open document for editing
+            if (event) stopPropagation(event);
+            await dispatcher.setMode('edit');
+        },
+        [dispatcher, stopPropagation],
+    );
+
+    const onRefresh = useCallback(
+        async (event?: KeyboardEvent) => {
+            // Reload original document from the database
+            if (event) stopPropagation(event);
+            if (state.isDirty) {
+                setIsOpen(true);
+                setAction(() => async () => {
+                    await dispatcher.refreshDocument();
+                });
+            } else {
+                await dispatcher.refreshDocument();
+            }
+        },
+        [dispatcher, state, stopPropagation],
+    );
+
+    const handleDialogClose = useCallback(
+        (confirmed: boolean) => {
+            if (confirmed) {
+                // Execute the action
+                void action();
+            }
+            setIsOpen(false);
+        },
+        [action],
+    );
+    //#endregion
+
+    //#region Hotkeys
+    // Set up the scope for this component
+    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.SaveDocument, onSave, { disabled: isSaveDisabled });
+
+    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.EditDocument, onEdit, { disabled: isEditDisabled });
+
+    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.Refresh, onRefresh, { disabled: isRefreshDisabled });
+    //#endregion
 
     return (
         <>
+            <AlertDialog
+                isOpen={isOpen}
+                title={l10n.t('Attention')}
+                confirmButtonText={l10n.t('Continue')}
+                cancelButtonText={l10n.t('Close')}
+                onClose={handleDialogClose}
+            >
+                <div>{l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.')}</div>
+                <div>{l10n.t('Are you sure you want to continue?')}</div>
+            </AlertDialog>
             <Toolbar size={'small'}>
                 {isReady && !isReadOnly && (
                     <Tooltip
@@ -41,11 +125,11 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
                         withArrow
                     >
                         <ToolbarButton
-                            onClick={() => void props.onSave()}
+                            onClick={() => void onSave()}
                             aria-label={l10n.t('Save item to the database')}
                             icon={<SaveRegular />}
                             appearance={'primary'}
-                            disabled={inProgress || !state.isDirty || !state.isValid}
+                            disabled={isSaveDisabled}
                         >
                             {l10n.t('Save')}
                         </ToolbarButton>
@@ -58,7 +142,7 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
                         withArrow
                     >
                         <ToolbarButton
-                            onClick={() => void props.onEdit()}
+                            onClick={() => void onEdit()}
                             aria-label={l10n.t('Open item for editing')}
                             icon={<EditRegular />}
                             appearance={'primary'}
@@ -76,10 +160,10 @@ export const DocumentToolbar = (props: DocumentToolbarProps) => {
                     withArrow
                 >
                     <ToolbarButton
-                        onClick={() => void props.onRefresh()}
+                        onClick={() => void onRefresh()}
                         aria-label={l10n.t('Reload original item from the database')}
                         icon={<ArrowClockwiseRegular />}
-                        disabled={inProgress || !hasDocumentInDB}
+                        disabled={isRefreshDisabled}
                     >
                         {l10n.t('Refresh')}
                     </ToolbarButton>

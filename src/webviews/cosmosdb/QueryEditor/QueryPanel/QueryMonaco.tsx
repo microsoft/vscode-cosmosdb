@@ -24,7 +24,7 @@ export const QueryMonaco = () => {
             const selectedContent: string = editorRef.current.getModel()?.getValueInRange(event.selection) ?? '';
             dispatcher.setSelectedText(selectedContent);
         },
-        [editorRef.current, dispatcher],
+        [dispatcher],
     );
 
     useEffect(() => {
@@ -37,7 +37,7 @@ export const QueryMonaco = () => {
         return () => {
             disposable.dispose();
         };
-    }, [editorRef.current, cursorSelectionHandler]);
+    }, [cursorSelectionHandler]);
 
     const onMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
         // Store the editor instance in ref

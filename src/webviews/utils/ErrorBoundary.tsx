@@ -26,7 +26,11 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, p
         },
         [provider],
     );
-    return <ErrorBoundaryComponent style={style} onError={errorHandler} children={children} />;
+    return (
+        <ErrorBoundaryComponent style={style} onError={errorHandler}>
+            {children}
+        </ErrorBoundaryComponent>
+    );
 };
 
 const useStyles = makeStyles({

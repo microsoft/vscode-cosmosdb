@@ -255,7 +255,7 @@ const defaultCosmosBufferConfig: DocumentBufferOptions = {
 /**
  * Create a document buffer configured for MongoDB
  */
-export function createMongoDbBuffer<T>(customConfig?: DocumentBufferOptions): DocumentBuffer<T> {
+export function createMongoDbBuffer<T>(customConfig?: Partial<DocumentBufferOptions>): DocumentBuffer<T> {
     return new DocumentBuffer<T>({
         ...defaultMongoBufferConfig,
         ...customConfig,
@@ -265,7 +265,7 @@ export function createMongoDbBuffer<T>(customConfig?: DocumentBufferOptions): Do
 /**
  * Create a document buffer configured for Cosmos DB
  */
-export function createCosmosDbBuffer<T>(customConfig?: DocumentBufferOptions): DocumentBuffer<T> {
+export function createCosmosDbBuffer<T>(customConfig?: Partial<DocumentBufferOptions>): DocumentBuffer<T> {
     return new DocumentBuffer<T>({
         ...defaultCosmosBufferConfig,
         ...customConfig,

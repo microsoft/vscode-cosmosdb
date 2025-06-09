@@ -128,7 +128,15 @@ export async function importDocumentsWithProgress(
             let count = 0;
             let buffer: DocumentBuffer<unknown> | undefined;
             if (selectedItem instanceof CollectionItem) {
-                buffer = createMongoDbBuffer<unknown>();
+                const isRuResource = await ClustersClient.isAzureMongoRuConnection(selectedItem.cluster.id);
+                if (isRuResource) {
+                    // For Azure MongoDB RU, we use a buffer with maxDocumentCount = 1
+                    buffer = createMongoDbBuffer<unknown>({
+                        maxDocumentCount: 1,
+                    });
+                } else {
+                    buffer = createMongoDbBuffer<unknown>();
+                }
             } else if (selectedItem instanceof CosmosDBContainerResourceItem) {
                 buffer = createCosmosDbBuffer<unknown>();
             }

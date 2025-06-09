@@ -189,6 +189,28 @@ export class ClustersClient {
         return client;
     }
 
+    public static async isAzureMongoRuConnection(credentialId: string): Promise<boolean> {
+        const client = ClustersClient._clients.get(credentialId);
+        if (client) {
+            try {
+                const hosts = getHostsFromConnectionString(
+                    CredentialCache.getCredentials(credentialId)?.connectionString as string,
+                );
+                const metadata: ClusterMetadata = await getClusterMetadata(client._mongoClient, hosts);
+
+                // Simple check - only checks the domain info of the first cluster
+                return metadata['domainInfo_isAzure'] === 'true' && metadata['domainInfo_api'] === 'RU';
+            } catch (error) {
+                // Log the error and return false for any issues
+                console.log(l10n.t('Error checking MongoDB connection type: {0}', parseError(error).message));
+                return false;
+            }
+        }
+
+        // Client not found in cache
+        return false;
+    }
+
     public static async deleteClient(credentialId: string): Promise<void> {
         if (ClustersClient._clients.has(credentialId)) {
             const client = ClustersClient._clients.get(credentialId) as ClustersClient;

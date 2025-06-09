@@ -19,6 +19,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
+import { hasRetryNode } from '../utils/treeUtils';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
@@ -56,6 +57,18 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<TreeElement | undefined>();
     private readonly nodeCache = new Map<string, TreeElement>();
     private readonly childToParentMap = new Map<string, string>();
+
+    /**
+     * Caches nodes whose getChildren() call has failed.
+     *
+     * This cache prevents repeated attempts to fetch children for nodes that have previously failed,
+     * such as when a user enters invalid credentials. By storing the failed nodes, we avoid unnecessary
+     * repeated calls until the error state is explicitly cleared.
+     *
+     * Key: Node ID (parent)
+     * Value: Array of TreeElement representing the failed children (usually an error node)
+     */
+    private readonly errorNodeCache = new Map<string, TreeElement[]>();
 
     /**
      * Gets the name of the provider, used primarily in telemetry and logging.
@@ -117,6 +130,15 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         context.errorHandling.rethrow = true;
                         context.errorHandling.forceIncludeInReportIssueCommand = true;
 
+                        // 1. Check if we have a cached error for this element
+                        //
+                        // This prevents repeated attempts to fetch children for nodes that have previously failed
+                        // (e.g., due to invalid credentials or connection issues).
+                        if (element.id && this.errorNodeCache.has(element.id)) {
+                            context.telemetry.properties.usedCachedErrorNode = 'true';
+                            return this.errorNodeCache.get(element.id) ?? [];
+                        }
+
                         if (isTreeElementWithContextValue(element)) {
                             context.telemetry.properties.parentContext = element.contextValue;
                         }
@@ -147,17 +169,34 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         this.pruneCache(element.id, false);
                         const children = await this.getChildrenFromElement(element);
 
+                        // 2. Check if the returned children contain an error/retry node
+                        // This means the operation failed (e.g. authentication)
+                        if (hasRetryNode(children)) {
+                            // Store the error node(s) in our cache for future refreshes
+                            if (element.id) {
+                                this.errorNodeCache.set(element.id, children);
+                                context.telemetry.properties.cachedErrorNode = 'true';
+                            }
+                        }
+
                         return children.map((child) => this.processChild(child, element));
                     },
                 )) ?? []
             );
         } catch (error) {
-            return [
+            const errorNodes = [
                 this.createErrorElement(
                     l10n.t('Error: {0}', parseError(error).message),
                     `${element.id}/error-${Date.now()}`,
                 ),
             ];
+            
+            // Cache the error nodes to prevent repeated attempts
+            if (element.id) {
+                this.errorNodeCache.set(element.id, errorNodes);
+            }
+            
+            return errorNodes;
         }
     }
 
@@ -238,6 +277,16 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     }
 
     /**
+     * Removes a node's error state from the failed node cache.
+     * This allows the node to be refreshed and its children to be re-fetched on the next refresh call.
+     * If not reset, the cached error children will always be returned for this node.
+     * @param nodeId The ID of the node to clear from the failed node cache.
+     */
+    resetNodeErrorState(nodeId: string): void {
+        this.errorNodeCache.delete(nodeId);
+    }
+
+    /**
      * Refreshes the tree data.
      * This will trigger the view to update the changed element/root and its children recursively (if shown).
      *
@@ -259,6 +308,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             // No element or no ID, refresh the entire tree
             this.nodeCache.clear();
             this.childToParentMap.clear();
+            this.errorNodeCache.clear();
             this.onDidChangeTreeDataEmitter.fire(element);
         }
     }
@@ -315,6 +365,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         if (includeElement) {
             this.nodeCache.delete(elementId);
             this.childToParentMap.delete(elementId);
+            this.errorNodeCache.delete(elementId);
         }
 
         const prefix = `${elementId}/`;
@@ -326,9 +377,21 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             }
         });
 
+        // Also clean up error cache entries for child nodes
+        const errorKeysToDelete: string[] = [];
+        this.errorNodeCache.forEach((_, key) => {
+            if (key.startsWith(prefix)) {
+                errorKeysToDelete.push(key);
+            }
+        });
+
         keysToDelete.forEach((key) => {
             this.nodeCache.delete(key);
             this.childToParentMap.delete(key);
+        });
+
+        errorKeysToDelete.forEach((key) => {
+            this.errorNodeCache.delete(key);
         });
     }
 

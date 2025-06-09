@@ -189,6 +189,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                     l10n.t('Error: {0}', parseError(error).message),
                     `${element.id}/error-${Date.now()}`,
                 ),
+                this.createRetryElement(element.id),
             ];
             
             // Cache the error nodes to prevent repeated attempts
@@ -436,6 +437,23 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             contextValue: createContextValue([this.contextValue, 'item.error']),
             label: message,
             id: id,
+        }) as TreeElement;
+    }
+
+    /**
+     * Creates a retry element that users can click to retry failed operations.
+     * This element has a specific context value and command for retry functionality.
+     *
+     * @param parentId The ID of the parent element that failed
+     * @returns A tree element that represents a retry option
+     */
+    private createRetryElement(parentId: string): TreeElement {
+        return createGenericElement({
+            contextValue: createContextValue([this.contextValue, 'item.retry']),
+            label: l10n.t('Click here to retry'),
+            id: `${parentId}/reconnect`,
+            commandId: 'azureDatabases.retryAuthentication',
+            iconPath: 'refresh',
         }) as TreeElement;
     }
 

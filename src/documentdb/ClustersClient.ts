@@ -189,6 +189,13 @@ export class ClustersClient {
         return client;
     }
 
+    /**
+     * Checks if the MongoDB connection is an Azure Cosmos DB for MongoDB RU connection.
+     * This is determined by checking the metadata of the cluster.
+     *
+     * @param credentialId - The credential ID to check.
+     * @returns A promise that resolves to a boolean indicating if the connection is an Azure Cosmos DB for MongoDB RU connection.
+     */
     public static async isAzureMongoRuConnection(credentialId: string): Promise<boolean> {
         const client = ClustersClient._clients.get(credentialId);
         if (client) {

@@ -9,7 +9,7 @@ import { type PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresColumnTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresColumn';
-    public readonly contextValue: string = PostgresColumnTreeItem.contextValue;
+    public contextValue: string = PostgresColumnTreeItem.contextValue;
     public readonly columnName: string;
     declare public readonly parent: PostgresTableTreeItem;
 

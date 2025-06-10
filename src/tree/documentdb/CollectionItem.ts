@@ -17,7 +17,7 @@ import { IndexesItem } from './IndexesItem';
 export class CollectionItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
-    public readonly contextValue: string = 'treeItem.collection';
+    public contextValue: string = 'treeItem.collection';
 
     private readonly experienceContextValue: string = '';
 

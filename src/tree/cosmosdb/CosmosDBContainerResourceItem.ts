@@ -15,7 +15,7 @@ export abstract class CosmosDBContainerResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.container';
+    public contextValue: string = 'treeItem.container';
 
     protected constructor(
         public readonly model: CosmosDBContainerModel,

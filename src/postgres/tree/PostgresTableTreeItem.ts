@@ -12,7 +12,7 @@ import { type PostgresTablesTreeItem } from './PostgresTablesTreeItem';
 
 export class PostgresTableTreeItem extends AzExtParentTreeItem {
     public static contextValue: string = 'postgresTable';
-    public readonly contextValue: string = PostgresTableTreeItem.contextValue;
+    public contextValue: string = PostgresTableTreeItem.contextValue;
     public readonly table: IPostgresTable;
     declare public readonly parent: PostgresTablesTreeItem;
 

@@ -10,7 +10,7 @@ import { type TreeElementWithContextValue } from '../../TreeElementWithContextVa
 
 export class CosmosDBAttachAccountResourceItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.attachAccount';
+    public contextValue: string = 'treeItem.attachAccount';
 
     constructor(public readonly parentId: string) {
         this.id = `${parentId}/attachAccount`;

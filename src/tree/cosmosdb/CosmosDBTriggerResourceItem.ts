@@ -16,7 +16,7 @@ export abstract class CosmosDBTriggerResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.trigger';
+    public contextValue: string = 'treeItem.trigger';
 
     protected constructor(
         public readonly model: CosmosDBTriggerModel,

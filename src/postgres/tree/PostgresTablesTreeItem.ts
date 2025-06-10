@@ -13,7 +13,7 @@ import { PostgresTableTreeItem } from './PostgresTableTreeItem';
 
 export class PostgresTablesTreeItem extends PostgresResourcesTreeItemBase {
     public static contextValue: string = 'postgresTables';
-    public readonly contextValue: string = PostgresTablesTreeItem.contextValue;
+    public contextValue: string = PostgresTablesTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Table';
     public readonly label: string = 'Tables';
     public suppressMaskLabel = true;

@@ -15,7 +15,7 @@ import { type ClusterModel } from './ClusterModel';
 export class IndexItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
-    public readonly contextValue: string = 'treeItem.index';
+    public contextValue: string = 'treeItem.index';
 
     private readonly experienceContextValue: string = '';
 

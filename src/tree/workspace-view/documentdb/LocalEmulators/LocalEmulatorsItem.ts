@@ -19,7 +19,7 @@ import { NewEmulatorConnectionItem } from './NewEmulatorConnectionItem';
 
 export class LocalEmulatorsItem implements TreeElement, TreeElementWithContextValue {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.newConnection';
+    public contextValue: string = 'treeItem.newConnection';
 
     constructor(public readonly parentId: string) {
         this.id = `${parentId}/localEmulators`;

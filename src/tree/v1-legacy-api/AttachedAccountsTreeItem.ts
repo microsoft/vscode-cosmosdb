@@ -42,7 +42,7 @@ export class AttachedAccountsTreeItem extends AzExtParentTreeItem {
     public static contextValue: string =
         'cosmosDBAttachedAccounts' + (isEmulatorSupported ? 'WithEmulator' : 'WithoutEmulator');
     public static readonly serviceName: string = 'ms-azuretools.vscode-cosmosdb.connectionStrings';
-    public readonly contextValue: string = AttachedAccountsTreeItem.contextValue;
+    public contextValue: string = AttachedAccountsTreeItem.contextValue;
     public readonly label: string = l10n.t('PostgreSQL servers');
     public childTypeLabel: string = 'Account';
     public suppressMaskLabel = true;

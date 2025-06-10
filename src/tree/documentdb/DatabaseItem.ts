@@ -17,7 +17,7 @@ import { CollectionItem } from './CollectionItem';
 export class DatabaseItem implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
-    public readonly contextValue: string = 'treeItem.database';
+    public contextValue: string = 'treeItem.database';
 
     private readonly experienceContextValue: string = '';
 

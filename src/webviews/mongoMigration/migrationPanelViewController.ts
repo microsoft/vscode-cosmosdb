@@ -6,7 +6,7 @@
 import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { WebviewController } from '../api/extension-server/WebviewController';
-import { type RouterContext } from './migrationPanelViewRouter';
+import { type RouterContext } from './MigrationPanelViewRouter';
 
 export type MigrationPanelWebviewConfigurationType = {
     moreSettings?: boolean;

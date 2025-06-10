@@ -12,8 +12,8 @@ import {
 } from '@fluentui/react-components';
 import { Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
+import { extractHost } from '../Utils/ApiUtils';
 import { FormInputRow } from '../Utils/FormInputRow';
-import { extractHost } from '../Utils/apiUtils';
 import './AssessmentWizardView.css';
 
 const connectionStringVsCode =

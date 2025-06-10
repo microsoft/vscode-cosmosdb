@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
-import { buildHtmlReport } from '../reportBuilder';
+import { buildHtmlReport } from '../ReportBuilder';
 
 export async function fetchAssessmentDetails(
     trpcClient: any,

@@ -7,10 +7,10 @@ import {
 } from '@fluentui/react-components';
 import { useState } from 'react';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
-import { StartAssessment } from '../startAssessment';
-import { checkPrerequisite } from '../Utils/apiUtils';
+import { checkPrerequisite } from '../Utils/ApiUtils';
 import { AssessmentResults, pollAssessmentStatus } from './AssessmentResults';
 import './AssessmentWizardView.css';
+import { StartAssessment } from './StartAssessment';
 import { ValidateConnections } from './ValidateConnection';
 
 const StepBreadcrumb = ({

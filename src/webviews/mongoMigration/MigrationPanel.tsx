@@ -7,8 +7,8 @@ import { useEffect, useState, type JSX } from 'react';
 
 import { makeStyles, Tab, TabList, type SelectTabData, type SelectTabEvent } from '@fluentui/react-components';
 import { type PropsWithChildren } from 'react';
-import { AssessmentsDashboardTab } from './AssessmentsDashboardTab';
 import { MigrationDashboardTab } from './MigrationDashboardTab';
+import { ViewAllAssessmentsTab } from './ViewAllAssessmentsTab';
 
 const useStyles = makeStyles({
     root: {
@@ -90,10 +90,6 @@ export const MigrationPanel = (): JSX.Element => {
      * Use the `useTrpcClient` hook to get the tRPC client and an event target
      * for handling notifications from the extension.
      */
-    //   const { trpcClient } = useTrpcClient();
-
-    //  const [migrationLog, setMigrationLog] = useState<string>('');
-
     const styles = useStyles();
 
     const [selectedTab, setSelectedTab] = useState<string>('dashboard__tab');
@@ -133,7 +129,7 @@ export const MigrationPanel = (): JSX.Element => {
                 </ActionBar>
                 <div className={styles.tabContainer}>
                     {selectedTab === 'dashboard__tab' && <MigrationDashboardTab />}
-                    {selectedTab === 'assessments__tab' && <AssessmentsDashboardTab />}
+                    {selectedTab === 'assessments__tab' && <ViewAllAssessmentsTab />}
                 </div>
             </section>
         </div>

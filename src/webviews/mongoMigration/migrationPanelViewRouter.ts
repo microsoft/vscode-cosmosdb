@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { AssessmentServiceClient } from '../../mongoMigration/assessmentService/assessmentServiceClient';
 import { type BaseRouterContext } from '../api/configuration/appRouter';
 import { publicProcedure, router, trpcToTelemetry } from '../api/extension-server/trpc';
-import { extractHost } from './Utils/apiUtils';
+import { extractHost } from './Utils/ApiUtils';
 
 let instanceIdHash: string | null = null;
 const connectionStringVsCode =

@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
 import { collectionsViewRouter as collectionViewRouter } from '../../mongoClusters/collectionView/collectionViewRouter';
 import { documentsViewRouter as documentViewRouter } from '../../mongoClusters/documentView/documentsViewRouter';
-import { migrationPanelViewRouter } from '../../mongoMigration/migrationPanelViewRouter';
+import { migrationPanelViewRouter } from '../../mongoMigration/MigrationPanelViewRouter';
 import { publicProcedure, router } from '../extension-server/trpc';
 
 /**

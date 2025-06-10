@@ -26,7 +26,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { AssessmentStatus, type AssessmentMetadata } from '../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { useTrpcClient } from '../api/webview-client/useTrpcClient';
-import { fetchAndBuildHtmlReport, fetchAssessments } from './Utils/apiUtils';
+import { fetchAndBuildHtmlReport, fetchAssessments } from './Utils/ApiUtils';
 
 initializeIcons();
 
@@ -52,7 +52,7 @@ if (document.body.classList.contains('vscode-dark')) {
     loadTheme(darkTheme);
 }
 
-export const AssessmentsDashboardTab: React.FC = () => {
+export const ViewAllAssessmentsTab: React.FC = () => {
     const { trpcClient } = useTrpcClient();
     const [assessments, setAssessments] = useState<AssessmentMetadata[]>([]);
 

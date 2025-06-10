@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
+import { Toolbar, ToolbarButton, Tooltip, useFocusFinders } from '@fluentui/react-components';
 import { ArrowClockwiseRegular, EditRegular, SaveRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useMemo, useState } from 'react';
+import type React from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AlertDialog } from '../../common/AlertDialog';
 import { CommandType, findHotkeyMapping, HotkeyScope, useCommandHotkey } from '../../common/hotkeys';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
@@ -19,6 +20,8 @@ export const DocumentToolbar = () => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
 
+    const { findFirstFocusable } = useFocusFinders();
+    const triggerRef = useRef<HTMLElement>(findFirstFocusable(document.body) ?? null);
     const [isOpen, setIsOpen] = useState(false);
     const [action, setAction] = useState<() => Promise<void>>(() => async () => {});
 
@@ -45,13 +48,13 @@ export const DocumentToolbar = () => {
     }, [isMac]);
 
     //#region Callbacks
-    const stopPropagation = useCallback((event: KeyboardEvent) => {
+    const stopPropagation = useCallback((event: KeyboardEvent | MouseEvent | React.MouseEvent) => {
         event.stopPropagation();
         event.preventDefault();
     }, []);
 
     const onSave = useCallback(
-        async (event?: KeyboardEvent) => {
+        async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {
             // Save document to the database
             if (event) stopPropagation(event);
             await dispatcher.saveDocument(state.currentDocumentContent);
@@ -59,8 +62,17 @@ export const DocumentToolbar = () => {
         [dispatcher, state, stopPropagation],
     );
 
+    const onSaveAs = useCallback(
+        async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {
+            // Save document as json file, but we have to save actual content, not currentDocumentContent
+            if (event) stopPropagation(event);
+            await dispatcher.saveDocumentAsFile(state.documentContent);
+        },
+        [dispatcher, state, stopPropagation],
+    );
+
     const onEdit = useCallback(
-        async (event?: KeyboardEvent) => {
+        async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {
             // Open document for editing
             if (event) stopPropagation(event);
             await dispatcher.setMode('edit');
@@ -69,10 +81,13 @@ export const DocumentToolbar = () => {
     );
 
     const onRefresh = useCallback(
-        async (event?: KeyboardEvent) => {
+        async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {
             // Reload original document from the database
             if (event) stopPropagation(event);
             if (state.isDirty) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
+                triggerRef.current = event?.target as HTMLElement;
                 setIsOpen(true);
                 setAction(() => async () => {
                     await dispatcher.refreshDocument();
@@ -91,6 +106,7 @@ export const DocumentToolbar = () => {
                 void action();
             }
             setIsOpen(false);
+            triggerRef.current?.focus();
         },
         [action],
     );
@@ -99,6 +115,8 @@ export const DocumentToolbar = () => {
     //#region Hotkeys
     // Set up the scope for this component
     useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.SaveDocument, onSave, { disabled: isSaveDisabled });
+
+    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.SaveToDisk, onSaveAs, { disabled: isSaveDisabled });
 
     useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.EditDocument, onEdit, { disabled: isEditDisabled });
 
@@ -160,7 +178,7 @@ export const DocumentToolbar = () => {
                     withArrow
                 >
                     <ToolbarButton
-                        onClick={() => void onRefresh()}
+                        onClick={(event) => void onRefresh(event)}
                         aria-label={l10n.t('Reload original item from the database')}
                         icon={<ArrowClockwiseRegular />}
                         disabled={isRefreshDisabled}

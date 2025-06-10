@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { isEqual } from 'es-toolkit';
-import { useEffect, type RefObject } from 'react';
+import { useCallback, useEffect, useState, type RefCallback } from 'react';
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook';
 import { HotkeyCommandService } from './HotkeyCommandService';
 import { HotkeyScope } from './HotkeyTypes';
@@ -13,6 +13,10 @@ import { HotkeyScope } from './HotkeyTypes';
 export const useHotkeyScope = (scope: HotkeyScope) => {
     const commandService = HotkeyCommandService.getInstance();
     const { enableScope, disableScope } = useHotkeysContext();
+    const [node, setNode] = useState<HTMLElement | null>(null);
+
+    // Callback ref to track DOM node changes
+    const ref: RefCallback<HTMLElement> = useCallback((el) => setNode(el), []);
 
     // Get all hotkey mappings for this scope
     const mappings = commandService.getMappingsForScope(scope);
@@ -21,7 +25,8 @@ export const useHotkeyScope = (scope: HotkeyScope) => {
     const keysString = mappings.map((m) => m.key).join(', ');
 
     // Use react-hotkeys-hook to handle hotkeys
-    const ref = useHotkeys(
+    // The event will always be added to the document, so we can use the scope name as a unique identifier
+    useHotkeys(
         keysString,
         (event, handler) => {
             // Find the mapping that matches this key
@@ -49,6 +54,21 @@ export const useHotkeyScope = (scope: HotkeyScope) => {
             );
 
             if (mapping) {
+                if (node !== null) {
+                    // Since the event is now attached to the node, the active element can never be inside the node.
+                    // The hotkey only triggers if the node is/has the active element.
+                    // This is a problem since focused subcomponents won't trigger the hotkey.
+                    const rootNode = node.getRootNode();
+
+                    if (
+                        (rootNode instanceof Document || rootNode instanceof ShadowRoot) &&
+                        rootNode.activeElement !== node &&
+                        !node.contains(rootNode.activeElement)
+                    ) {
+                        // Just ignore the event if the active element is not within the scope node
+                        return;
+                    }
+                }
                 // Pass the event to allow handlers to control propagation
                 void commandService.executeCommand(mapping.command, event, scope);
             }
@@ -62,22 +82,20 @@ export const useHotkeyScope = (scope: HotkeyScope) => {
 
     // Manage scope enabling/disabling based on DOM attachment
     useEffect(() => {
-        // Register this ref with the command service
-        commandService.setRef(scope, ref as RefObject<HTMLElement>);
-
-        // Always enable global scope
         if (scope === HotkeyScope.Global) {
+            // Always enable global scope
             enableScope(scope);
-            return () => {
-                commandService.removeRef(scope);
-            };
+        } else if (node) {
+            // For other scopes, we only enable if the node is attached
+            enableScope(scope);
+        } else {
+            disableScope(scope);
         }
 
         return () => {
             disableScope(scope);
-            commandService.removeRef(scope);
         };
-    }, [scope, commandService, enableScope, disableScope, ref]);
+    }, [scope, commandService, enableScope, disableScope, ref, node]);
 
-    return ref as RefObject<HTMLElement>;
+    return ref;
 };

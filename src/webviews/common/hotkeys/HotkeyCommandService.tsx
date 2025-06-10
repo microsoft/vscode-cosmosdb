@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type RefObject } from 'react';
 import { defaultHotkeyMappings, type CommandType, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
 
 // Updated handler type to receive event as first parameter
@@ -18,7 +17,6 @@ export class HotkeyCommandService {
     // Store handlers by scope and command
     private commandHandlers: Map<HotkeyScope, Map<CommandType, Set<CommandHandler>>> = new Map();
     private hotkeyMappings: HotkeyMapping[] = [...defaultHotkeyMappings];
-    private _hotkeyRefs: Map<HotkeyScope, RefObject<HTMLElement>> = new Map();
 
     // Track enabled/disabled state of handlers
     private disabledHandlers: Set<CommandHandler> = new Set();
@@ -30,22 +28,6 @@ export class HotkeyCommandService {
             HotkeyCommandService.instance = new HotkeyCommandService();
         }
         return HotkeyCommandService.instance;
-    }
-
-    public get hotkeyRefs(): ReadonlyMap<HotkeyScope, RefObject<HTMLElement>> {
-        return this._hotkeyRefs;
-    }
-
-    public setRef(scope: HotkeyScope, ref: RefObject<HTMLElement>): void {
-        this._hotkeyRefs.set(scope, ref);
-    }
-
-    public getRef(scope: HotkeyScope): RefObject<HTMLElement> | undefined {
-        return this._hotkeyRefs.get(scope);
-    }
-
-    public removeRef(scope: HotkeyScope): void {
-        this._hotkeyRefs.delete(scope);
     }
 
     public getMappingsForScope(scope: HotkeyScope): HotkeyMapping[] {

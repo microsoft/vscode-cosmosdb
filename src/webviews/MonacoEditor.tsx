@@ -44,7 +44,7 @@ export const MonacoEditor = (props: EditorProps) => {
                     left: '0px',
                 }}
             ></i>
-            <Editor {...props} data-is-focus-trap-zone-bumper={'true'} theme={themeState.monaco.themeName} />
+            <Editor {...props} data-is-focus-trap-zone-bumper={true} theme={themeState.monaco.themeName} />
         </section>
     );
 };

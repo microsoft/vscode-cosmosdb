@@ -444,14 +444,14 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      * @param parentId The ID of the parent element that failed
      * @returns A tree element that represents a retry option
      */
-    private createRetryNode(element: TreeElement): TreeElement {
+    private createRetryNode(parentElement: TreeElement): TreeElement {
         return createGenericElementWithContext({
             contextValue: createContextValue([this.contextValue, 'item.retry']),
             label: l10n.t('Click here to retry'),
-            id: `${element.id}/reconnect`,
+            id: `${parentElement.id}/reconnect`,
             iconPath: new vscode.ThemeIcon('refresh'),
             commandId: 'azureDatabases.retryOperation',
-            commandArgs: [element],
+            commandArgs: [parentElement],
         }) as TreeElement;
     }
 

@@ -4,13 +4,13 @@ The Query Editor provides a set of keyboard shortcuts to enhance your productivi
 These shortcuts allow for efficient navigation, execution, and management of your queries without having to use the
 mouse.
 
-| Description            | Windows Shortcut                                            | Mac Shortcut                 |
-|------------------------|-------------------------------------------------------------|------------------------------|
-| Execute query          | <kbd>F5</kbd>, <kbd>Shift</kbd></kbd>+<kbd><kbd>Enter</kbd> | <kbd>F5</kbd>, <kbd>⇧↩</kbd> |
-| Save query             | <kbd>Ctrl</kbd></kbd>+<kbd><kbd>S</kbd>                     | <kbd>⌘S</kbd>                |
-| Cancel query execution | <kbd>Esc</kbd>                                              | <kbd>⎋</kbd>                 |
-| Open query             | <kbd>Ctrl</kbd>+<kbd>O</kbd>                                | <kbd>⌘O</kbd>                |
-| Duplicate query        | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd>                 | <kbd>⌥⌘D</kbd>               |
+| Description            | Windows Shortcut                                 | Mac Shortcut                 |
+|------------------------|--------------------------------------------------|------------------------------|
+| Execute query          | <kbd>F5</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>F5</kbd>, <kbd>⇧↩</kbd> |
+| Save query             | <kbd>Ctrl</kbd>+<kbd>S</kbd>                     | <kbd>⌘S</kbd>                |
+| Cancel query execution | <kbd>Esc</kbd>                                   | <kbd>⎋</kbd>                 |
+| Open query             | <kbd>Ctrl</kbd>+<kbd>O</kbd>                     | <kbd>⌘O</kbd>                |
+| Duplicate query        | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd>      | <kbd>⌥⌘D</kbd>               |
 
 ## Result Panel Shortcuts
 

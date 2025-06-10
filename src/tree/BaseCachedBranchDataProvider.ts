@@ -169,6 +169,14 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                         this.pruneCache(element.id, false);
                         const children = await this.getChildrenFromElement(element);
 
+                        // update contextValue, append this.contextValue to each child's contextValue
+                        // This is needed as we need to know the context (which view/provider is showing this element)
+                        children.forEach((child) => {
+                            if (isTreeElementWithContextValue(child)) {
+                                child.contextValue = createContextValue([this.contextValue, child.contextValue]);
+                            }
+                        });
+
                         // 2. Check if the returned children contain an error/retry node
                         // This means the operation failed (e.g. authentication)
                         if (isTreeElementWithRetryChildren(element) && element.hasRetryNode(children)) {

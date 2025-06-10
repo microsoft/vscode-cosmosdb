@@ -6,7 +6,6 @@
 import {
     callWithTelemetryAndErrorHandling,
     createContextValue,
-    createGenericElement,
     type IActionContext,
     parseError,
 } from '@microsoft/vscode-azext-utils';
@@ -19,10 +18,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
-import { hasRetryNode } from '../utils/treeUtils';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
+import { isTreeElementWithRetryChildren } from './TreeElementWithRetryChildren';
+import { createGenericElementWithContext } from './createGenericElementWithContext';
 
 /**
  * Abstract base class that implements a cached tree data provider for Visual Studio Code extensions.
@@ -171,7 +171,10 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
                         // 2. Check if the returned children contain an error/retry node
                         // This means the operation failed (e.g. authentication)
-                        if (hasRetryNode(children)) {
+                        if (isTreeElementWithRetryChildren(element) && element.hasRetryNode(children)) {
+                            // BTW: Here one could add more helpful nodes useful for the user,
+                            // e.g. like the current "Click here to retry" node.
+
                             // Store the error node(s) in our cache for future refreshes
                             if (element.id) {
                                 this.errorNodeCache.set(element.id, children);
@@ -189,14 +192,14 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                     l10n.t('Error: {0}', parseError(error).message),
                     `${element.id}/error-${Date.now()}`,
                 ),
-                this.createRetryElement(element.id),
+                this.createRetryNode(element),
             ];
-            
+
             // Cache the error nodes to prevent repeated attempts
             if (element.id) {
                 this.errorNodeCache.set(element.id, errorNodes);
             }
-            
+
             return errorNodes;
         }
     }
@@ -309,7 +312,6 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             // No element or no ID, refresh the entire tree
             this.nodeCache.clear();
             this.childToParentMap.clear();
-            this.errorNodeCache.clear();
             this.onDidChangeTreeDataEmitter.fire(element);
         }
     }
@@ -366,7 +368,6 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         if (includeElement) {
             this.nodeCache.delete(elementId);
             this.childToParentMap.delete(elementId);
-            this.errorNodeCache.delete(elementId);
         }
 
         const prefix = `${elementId}/`;
@@ -378,21 +379,9 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             }
         });
 
-        // Also clean up error cache entries for child nodes
-        const errorKeysToDelete: string[] = [];
-        this.errorNodeCache.forEach((_, key) => {
-            if (key.startsWith(prefix)) {
-                errorKeysToDelete.push(key);
-            }
-        });
-
         keysToDelete.forEach((key) => {
             this.nodeCache.delete(key);
             this.childToParentMap.delete(key);
-        });
-
-        errorKeysToDelete.forEach((key) => {
-            this.errorNodeCache.delete(key);
         });
     }
 
@@ -433,7 +422,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     }
 
     private createErrorElement(message: string, id: string): TreeElement {
-        return createGenericElement({
+        return createGenericElementWithContext({
             contextValue: createContextValue([this.contextValue, 'item.error']),
             label: message,
             id: id,
@@ -447,13 +436,14 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      * @param parentId The ID of the parent element that failed
      * @returns A tree element that represents a retry option
      */
-    private createRetryElement(parentId: string): TreeElement {
-        return createGenericElement({
+    private createRetryNode(element: TreeElement): TreeElement {
+        return createGenericElementWithContext({
             contextValue: createContextValue([this.contextValue, 'item.retry']),
             label: l10n.t('Click here to retry'),
-            id: `${parentId}/reconnect`,
-            commandId: 'azureDatabases.retryAuthentication',
-            iconPath: 'refresh',
+            id: `${element.id}/reconnect`,
+            iconPath: new vscode.ThemeIcon('refresh'),
+            commandId: 'azureDatabases.retryOperation',
+            commandArgs: [element],
         }) as TreeElement;
     }
 

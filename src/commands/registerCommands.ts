@@ -38,7 +38,7 @@ import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredPro
 import { cosmosDBOpenTrigger } from './openTrigger/openTrigger';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { removeConnection } from './removeConnection/removeConnection';
-import { retryAuthentication } from './retryAuthentication/retryAuthentication';
+import { retryOperation } from './retryOperation/retryOperation';
 import { cosmosDBViewContainerOffer, cosmosDBViewDatabaseOffer } from './viewOffer/viewOffer';
 
 /**
@@ -65,7 +65,7 @@ export function registerCommands(): void {
     registerPostgresCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
-    registerCommandWithTreeNodeUnwrapping('azureDatabases.retryAuthentication', retryAuthentication);
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.retryOperation', retryOperation);
 
     // For Cosmos DB FileSystem (Scrapbook)
     registerCommandWithTreeNodeUnwrapping(

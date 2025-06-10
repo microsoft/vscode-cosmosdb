@@ -213,7 +213,6 @@
   "Enter the port number of the Emulator": "Enter the port number of the Emulator",
   "Enter the username for {experience}": "Enter the username for {experience}",
   "Enter username for server \"{0}\"": "Enter username for server \"{0}\"",
-  "Error checking MongoDB connection type: {0}": "Error checking MongoDB connection type: {0}",
   "Error creating resource: {0}": "Error creating resource: {0}",
   "Error deleting selected documents": "Error deleting selected documents",
   "Error exporting documents: {error}": "Error exporting documents: {error}",

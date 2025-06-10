@@ -110,18 +110,19 @@ export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }:
             >
                 <Button
                     appearance="secondary"
-                    onClick={onCancel}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    appearance="secondary"
                     onClick={() => {
                         window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'assessments__tab' }));
                     }}
                 >
                     View All Assessments
                 </Button>
+                <Button
+                    appearance="secondary"
+                    onClick={onCancel}
+                >
+                    Close
+                </Button>
+
             </div>
         </div>
     );

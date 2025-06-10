@@ -7,6 +7,7 @@ import {
     Card,
     CardHeader,
     Input,
+    Link,
     Text
 } from '@fluentui/react-components';
 import { Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
@@ -31,7 +32,10 @@ export const ValidateConnections = ({ onCancel, runValidation }: Props) => {
         <>
             <h2>Validate your MongoDB server connection</h2>
             <Text>
-                We will validate the MongoDB connection string and check for prerequisite requirements.
+                We need to verify the credentials, prerequisites, and connectivity before getting started.{' '}
+                <Link href="https://aka.ms/mongo-assessment-prereq" target="_blank">
+                    Learn More
+                </Link>
             </Text>
 
             <Card>
@@ -79,7 +83,7 @@ export const ValidateConnections = ({ onCancel, runValidation }: Props) => {
                     Run Validation
                 </Button>
                 <Button appearance="secondary" onClick={onCancel}>
-                    Cancel
+                    Close
                 </Button>
             </div>
         </>

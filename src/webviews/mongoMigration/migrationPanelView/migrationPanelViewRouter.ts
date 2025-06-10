@@ -37,21 +37,24 @@ export const migrationPanelViewRouter = router({
         .input(
             z.object({
                 assessmentName: z.string(),
-                targetPlatform: z.string(),
+                targetPlatform: z.number(),
+                logFolderPath: z.string(),
+                dataAssessmentReportPath: z.string(),
             }),
         )
         .use(trpcToTelemetry)
         .mutation(async ({ input }) => {
+            console.log('I am targetPlatform', input.targetPlatform);
             const assessmentId = uuidv4();
             const response = await AssessmentServiceClient.startAssessment({
                 instanceId: await getInstanceId(),
                 assessmentName: input.assessmentName,
                 assessmentId,
-                logFolderPath: '',
-                targetPlatform: parseInt(input.targetPlatform, 10),
+                logFolderPath: input.logFolderPath,
+                targetPlatform: input.targetPlatform,
                 connectionString: connectionStringVsCode,
                 assessmentFolderPath: '',
-                dataAssessmentReportPath: '',
+                dataAssessmentReportPath: input.dataAssessmentReportPath,
             });
 
             if (response.Error !== null && response.Error !== undefined) {

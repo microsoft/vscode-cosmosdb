@@ -24,8 +24,8 @@ import {
     Warning20Regular,
 } from '@fluentui/react-icons';
 import React, { useEffect, useState } from 'react';
-import { AssessmentStatus, type AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
-import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { AssessmentStatus, type AssessmentMetadata } from '../../mongoMigration/assessmentService/assessmentServiceInterfaces';
+import { useTrpcClient } from '../api/webview-client/useTrpcClient';
 import { fetchAndBuildHtmlReport, fetchAssessments } from './Utils/apiUtils';
 
 initializeIcons();

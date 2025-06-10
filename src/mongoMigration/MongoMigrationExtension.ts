@@ -13,7 +13,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext, registerCommand
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 //import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
-import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelView/migrationPanelViewController';
+import { MigrationPanelViewController } from '../webviews/mongoMigration/migrationPanelViewController';
 import { MongoAssessmentServiceRunner } from './assessmentService/assessmentServiceRunner';
 import { DotnetRuntimeExtensionResolver } from './dotnetRuntime/dotnetRuntimeExtensionResolver';
 import { isMongoMigrationSupportEnabled } from './utils/isMongoMigrationSupportEnabled';
@@ -59,7 +59,6 @@ export class MongoMigrationExtension implements vscode.Disposable {
                     });
 
                     view.revealToForeground();
-
                 });
 
                 ext.outputChannel.appendLine(`MongoDB Migration Support: activated.`);

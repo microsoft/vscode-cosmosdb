@@ -5,7 +5,7 @@
 
 import { makeStyles } from '@fluentui/react-components';
 import { useState } from 'react';
-import { AssessmentWizardView } from './AssessmentWizardView';
+import { AssessmentWizardView } from './AssessmentWizard/AssessmentWizardView';
 
 const useStyles = makeStyles({
     container: {
@@ -90,7 +90,7 @@ export const MigrationDashboardTab = () => {
                     setShowAssessmentWizard(true);
                 }}
             >
-                <div className={classes.sectionTitle}>Azure Cosmos DB Migration for MongoDB</div>
+                <div className={classes.sectionTitle}>Azure Cosmos DB Assessment for MongoDB</div>
                 <div className={classes.paragraph}>
                     This extension helps you run an end-to-end assessment on your MongoDB workload and seamlessly
                     migrate your workload to Azure Cosmos DB for MongoDB.

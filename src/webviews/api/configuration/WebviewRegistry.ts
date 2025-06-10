@@ -6,7 +6,7 @@
 import { Document } from '../../Document/Document';
 import { CollectionView } from '../../mongoClusters/collectionView/CollectionView';
 import { DocumentView } from '../../mongoClusters/documentView/documentView';
-import { MigrationPanel } from '../../mongoMigration/migrationPanelView/MigrationPanel';
+import { MigrationPanel } from '../../mongoMigration/MigrationPanel';
 import { QueryEditor } from '../../QueryEditor/QueryEditor';
 
 export const WebviewRegistry = {

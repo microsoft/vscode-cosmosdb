@@ -9,7 +9,7 @@ import {
 } from '@fluentui/react-icons';
 import { AssessmentStatus } from "../../../mongoMigration/assessmentService/assessmentServiceInterfaces";
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
-import { fetchAndBuildHtmlReport, fetchAssessmentDetails } from "./Utils/apiUtils";
+import { fetchAndBuildHtmlReport, fetchAssessmentDetails } from "../Utils/apiUtils";
 
 export const pollAssessmentStatus = async (
     trpcClient: any,
@@ -73,7 +73,7 @@ export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }:
     return (
         <div>
             {assessmentDetails?.AssessmentStatus === AssessmentStatus.SUCCESS ? (
-                <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px' }}>
                     <Text size={400}>✅ Assessment complete</Text>
                     <Button
                         icon={<ArrowDownload24Regular />}
@@ -83,7 +83,7 @@ export const AssessmentResults = ({ assessmentDetails, assessmentId, onCancel }:
                     >
                         Download Report
                     </Button>
-                </>
+                </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
                     <Spinner label="Assessment in progress... Please wait." />

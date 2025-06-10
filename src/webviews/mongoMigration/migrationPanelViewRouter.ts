@@ -6,9 +6,9 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { AssessmentServiceClient } from '../../../mongoMigration/assessmentService/assessmentServiceClient';
-import { type BaseRouterContext } from '../../api/configuration/appRouter';
-import { publicProcedure, router, trpcToTelemetry } from '../../api/extension-server/trpc';
+import { AssessmentServiceClient } from '../../mongoMigration/assessmentService/assessmentServiceClient';
+import { type BaseRouterContext } from '../api/configuration/appRouter';
+import { publicProcedure, router, trpcToTelemetry } from '../api/extension-server/trpc';
 import { extractHost } from './Utils/apiUtils';
 
 let instanceIdHash: string | null = null;

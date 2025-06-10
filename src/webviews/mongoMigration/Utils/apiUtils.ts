@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AssessmentMetadata } from '../../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
+import { AssessmentMetadata } from '../../../mongoMigration/assessmentService/assessmentServiceInterfaces';
 import { buildHtmlReport } from '../reportBuilder';
 
 export async function fetchAssessmentDetails(

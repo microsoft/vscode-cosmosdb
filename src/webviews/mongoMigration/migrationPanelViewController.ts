@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { API } from '../../../AzureDBExperiences';
-import { ext } from '../../../extensionVariables';
-import { WebviewController } from '../../api/extension-server/WebviewController';
+import { API } from '../../AzureDBExperiences';
+import { ext } from '../../extensionVariables';
+import { WebviewController } from '../api/extension-server/WebviewController';
 import { type RouterContext } from './migrationPanelViewRouter';
 
 export type MigrationPanelWebviewConfigurationType = {
@@ -17,7 +17,7 @@ export class MigrationPanelViewController extends WebviewController<MigrationPan
         // ext.context here is the vscode.ExtensionContext required by the ReactWebviewPanelController's original implementation
         // we're not modifying it here in order to be ready for future updates of the webview API.
 
-        const title: string = `Azure Cosmos DB Migration for MongoDB`;
+        const title: string = `Azure Cosmos DB Assessment for MongoDB`;
 
         /**
          * initialData is passed to the webview as a prop, and can be used to initialize the webview's state.

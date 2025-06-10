@@ -10,7 +10,7 @@ import {
     Text
 } from '@fluentui/react-components';
 import { useEffect, useState } from 'react';
-import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
+import { useTrpcClient } from '../api/webview-client/useTrpcClient';
 import { FormInputRow } from './Utils/FormInputRow';
 import { fetchAssessments } from './Utils/apiUtils';
 

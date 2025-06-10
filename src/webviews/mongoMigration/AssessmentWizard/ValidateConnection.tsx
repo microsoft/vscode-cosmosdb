@@ -12,9 +12,9 @@ import {
 } from '@fluentui/react-components';
 import { Eye24Regular, EyeOff24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
+import { FormInputRow } from '../Utils/FormInputRow';
+import { extractHost } from '../Utils/apiUtils';
 import './AssessmentWizardView.css';
-import { FormInputRow } from './Utils/FormInputRow';
-import { extractHost } from './Utils/apiUtils';
 
 const connectionStringVsCode =
     'mongodb+srv://bharath:bharath@m0-cluster-1.v5ezy.mongodb.net/?retryWrites=true&w=majority&connectTimeoutMS=10000';

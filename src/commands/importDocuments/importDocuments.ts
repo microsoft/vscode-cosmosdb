@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition, type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
-import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { nonNullProp, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import * as l10n from '@vscode/l10n';
@@ -15,6 +15,11 @@ import * as vscode from 'vscode';
 import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
 import { ClustersClient } from '../../documentdb/ClustersClient';
+import {
+    AzureDomains,
+    getHostsFromConnectionString,
+    hasDomainSuffix,
+} from '../../documentdb/utils/connectionStringHelpers';
 import { ext } from '../../extensionVariables';
 import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
@@ -128,7 +133,9 @@ export async function importDocumentsWithProgress(
             let count = 0;
             let buffer: DocumentBuffer<unknown> | undefined;
             if (selectedItem instanceof CollectionItem) {
-                const isRuResource = await ClustersClient.isAzureMongoRuConnection(selectedItem.cluster.id);
+                const hosts = getHostsFromConnectionString(nonNullProp(selectedItem.cluster, 'connectionString'));
+                const isRuResource = hasDomainSuffix(AzureDomains.RU, ...hosts);
+
                 if (isRuResource) {
                     // For Azure MongoDB RU, we use a buffer with maxDocumentCount = 1
                     buffer = createMongoDbBuffer<unknown>({

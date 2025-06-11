@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 export type TreeElementWithContextValue = {
-    readonly contextValue: string;
+    contextValue: string;
 };
 
 export function isTreeElementWithContextValue(node: unknown): node is TreeElementWithContextValue {

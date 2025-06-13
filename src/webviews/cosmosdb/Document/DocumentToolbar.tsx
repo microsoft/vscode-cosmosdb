@@ -9,12 +9,10 @@ import * as l10n from '@vscode/l10n';
 import type React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AlertDialog } from '../../common/AlertDialog';
-import { CommandType, findHotkeyMapping, HotkeyScope, useCommandHotkey } from '../../common/hotkeys';
+import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
+import { ToolbarOverflowDividerTransparent } from '../QueryEditor/ToolbarOverflowDividerTransparent';
+import { type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
-
-const ToolbarDividerTransparent = () => {
-    return <div style={{ padding: '4px' }} />;
-};
 
 export const DocumentToolbar = () => {
     const state = useDocumentState();
@@ -33,19 +31,29 @@ export const DocumentToolbar = () => {
     const isEditDisabled = !isReadOnly;
     const isRefreshDisabled = inProgress || !hasDocumentInDB;
 
-    const isMac = useMemo(() => /Mac|iPod|iPhone|iPad/.test(navigator.userAgent), []);
+    //#region Hotkey titles
     const onSaveHotkeyTitle = useMemo(() => {
-        const hotkeys = findHotkeyMapping(CommandType.SaveDocument, HotkeyScope.DocumentEditor);
-        return hotkeys?.[0].shortcutDisplay[isMac ? 'mac' : 'windows'] ?? '';
-    }, [isMac]);
+        const title = HotkeyCommandService.getInstance<DocumentHotkeyScope, DocumentHotkeyCommand>().getShortcutDisplay(
+            'global',
+            'SaveDocument',
+        );
+        return title ? ` (${title})` : '';
+    }, []);
     const onEditHotkeyTitle = useMemo(() => {
-        const hotkeys = findHotkeyMapping(CommandType.EditDocument, HotkeyScope.DocumentEditor);
-        return hotkeys?.[0].shortcutDisplay[isMac ? 'mac' : 'windows'] ?? '';
-    }, [isMac]);
+        const title = HotkeyCommandService.getInstance<DocumentHotkeyScope, DocumentHotkeyCommand>().getShortcutDisplay(
+            'global',
+            'EditDocument',
+        );
+        return title ? ` (${title})` : '';
+    }, []);
     const onRefreshHotkeyTitle = useMemo(() => {
-        const hotkeys = findHotkeyMapping(CommandType.Refresh, HotkeyScope.DocumentEditor);
-        return hotkeys?.[0].shortcutDisplay[isMac ? 'mac' : 'windows'] ?? '';
-    }, [isMac]);
+        const title = HotkeyCommandService.getInstance<DocumentHotkeyScope, DocumentHotkeyCommand>().getShortcutDisplay(
+            'global',
+            'Refresh',
+        );
+        return title ? ` (${title})` : '';
+    }, []);
+    //#endregion
 
     //#region Callbacks
     const stopPropagation = useCallback((event: KeyboardEvent | MouseEvent | React.MouseEvent) => {
@@ -113,14 +121,22 @@ export const DocumentToolbar = () => {
     //#endregion
 
     //#region Hotkeys
-    // Set up the scope for this component
-    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.SaveDocument, onSave, { disabled: isSaveDisabled });
+    // It works without setting generic type, but it is better to have it for type safety
+    useCommandHotkey<DocumentHotkeyScope, DocumentHotkeyCommand>('global', 'SaveDocument', onSave, {
+        disabled: isSaveDisabled,
+    });
 
-    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.SaveToDisk, onSaveAs, { disabled: isSaveDisabled });
+    useCommandHotkey<DocumentHotkeyScope, DocumentHotkeyCommand>('global', 'SaveToDisk', onSaveAs, {
+        disabled: isSaveDisabled,
+    });
 
-    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.EditDocument, onEdit, { disabled: isEditDisabled });
+    useCommandHotkey<DocumentHotkeyScope, DocumentHotkeyCommand>('global', 'EditDocument', onEdit, {
+        disabled: isEditDisabled,
+    });
 
-    useCommandHotkey(HotkeyScope.DocumentEditor, CommandType.Refresh, onRefresh, { disabled: isRefreshDisabled });
+    useCommandHotkey<DocumentHotkeyScope, DocumentHotkeyCommand>('global', 'Refresh', onRefresh, {
+        disabled: isRefreshDisabled,
+    });
     //#endregion
 
     return (
@@ -138,8 +154,9 @@ export const DocumentToolbar = () => {
             <Toolbar size={'small'}>
                 {isReady && !isReadOnly && (
                     <Tooltip
-                        content={l10n.t('Save item to the database') + ` (${onSaveHotkeyTitle})`}
+                        content={l10n.t('Save item to the database') + onSaveHotkeyTitle}
                         relationship="description"
+                        appearance="inverted"
                         withArrow
                     >
                         <ToolbarButton
@@ -155,8 +172,9 @@ export const DocumentToolbar = () => {
                 )}
                 {isReady && isReadOnly && (
                     <Tooltip
-                        content={l10n.t('Open item for editing') + ` (${onEditHotkeyTitle})`}
+                        content={l10n.t('Open item for editing') + onEditHotkeyTitle}
                         relationship="description"
+                        appearance="inverted"
                         withArrow
                     >
                         <ToolbarButton
@@ -170,11 +188,12 @@ export const DocumentToolbar = () => {
                     </Tooltip>
                 )}
 
-                <ToolbarDividerTransparent />
+                <ToolbarOverflowDividerTransparent />
 
                 <Tooltip
-                    content={l10n.t('Reload original item from the database') + ` (${onRefreshHotkeyTitle})`}
+                    content={l10n.t('Reload original item from the database') + onRefreshHotkeyTitle}
                     relationship="description"
+                    appearance="inverted"
                     withArrow
                 >
                     <ToolbarButton

@@ -3,40 +3,24 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useCallback, useEffect, useRef, type DependencyList } from 'react';
-import { HotkeyCommandService } from './HotkeyCommandService';
-import { type CommandType, type HotkeyScope } from './HotkeyTypes';
+import { useCallback, useEffect, useRef } from 'react';
+import { HotkeyCommandService, type CommandHandler } from './HotkeyCommandService';
+import { type HotkeyCommand, type HotkeyScope } from './HotkeyTypes';
 
 export interface UseCommandHotkeyOptions {
     disabled?: boolean;
 }
 
-export const useCommandHotkey = <T extends unknown[]>(
-    scope: HotkeyScope,
-    command: CommandType,
-    handler: (event: KeyboardEvent, ...params: T) => Promise<void> | void,
-    dependencies?: DependencyList | UseCommandHotkeyOptions,
+export const useCommandHotkey = <Scope extends HotkeyScope, Command extends HotkeyCommand, T extends unknown[] = []>(
+    scope: Scope,
+    command: Command,
+    handler: CommandHandler,
     options?: UseCommandHotkeyOptions,
 ): void => {
-    const commandService = HotkeyCommandService.getInstance();
-    if (dependencies && !Array.isArray(dependencies) && typeof dependencies === 'object') {
-        // If dependencies is an object, treat it as options
-        options = dependencies as UseCommandHotkeyOptions;
-        dependencies = undefined; // Clear dependencies to avoid confusion
-    }
+    const commandService = HotkeyCommandService.getInstance<Scope, Command>();
+    const handlerRef = useRef<CommandHandler>(handler);
 
-    // Memoize the handler if dependencies are provided
-    const isMemoized = dependencies && dependencies.length > 0;
-    const memoizedHandler = useCallback(handler, dependencies ?? []);
-    const handlerRef = useRef(memoizedHandler);
-
-    if (isMemoized) {
-        // Update the ref to the latest memoized handler
-        handlerRef.current = memoizedHandler;
-    } else {
-        // If no dependencies, use the original handler directly
-        handlerRef.current = handler;
-    }
+    handlerRef.current = handler;
 
     // Create a stable wrapper function that always calls the current handler
     const stableWrapper = useCallback((event: KeyboardEvent, ...params: T) => {
@@ -55,9 +39,9 @@ export const useCommandHotkey = <T extends unknown[]>(
     // Handle enabled state
     useEffect(() => {
         if (options?.disabled === true) {
-            commandService.setHandlerDisabled(stableWrapper);
+            commandService.disableHandler(scope, command, stableWrapper);
         } else {
-            commandService.setHandlerEnabled(stableWrapper);
+            commandService.enableHandler(scope, command, stableWrapper);
         }
-    }, [commandService, stableWrapper, options?.disabled]);
+    }, [commandService, scope, command, stableWrapper, options?.disabled]);
 };

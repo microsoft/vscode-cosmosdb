@@ -5,29 +5,31 @@
 
 import * as l10n from '@vscode/l10n';
 import { isEqual } from 'es-toolkit';
-import { useCallback, useEffect, useState, type RefCallback } from 'react';
-import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook';
+import { useCallback, useEffect, useRef, useState, type RefCallback } from 'react';
+import { useHotkeys, type HotkeyCallback } from 'react-hotkeys-hook';
 import { HotkeyCommandService } from './HotkeyCommandService';
-import { HotkeyScope } from './HotkeyTypes';
+import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
 
-export const useHotkeyScope = (scope: HotkeyScope) => {
-    const commandService = HotkeyCommandService.getInstance();
-    const { enableScope, disableScope } = useHotkeysContext();
-    const [node, setNode] = useState<HTMLElement | null>(null);
+export const useHotkeyScope = <Scope extends HotkeyScope, Command extends HotkeyCommand>(
+    scope: Scope,
+    hotkeys: HotkeyMapping<Command>[],
+) => {
+    const commandService = HotkeyCommandService.getInstance<Scope, Command>();
+    const [isRegistered, setIsRegistered] = useState(false);
+    const hotkeysRef = useRef<HotkeyMapping<Command>[]>([]);
+    const ref: RefCallback<HTMLElement> = useCallback(
+        (el) => el && !commandService.getRef(scope) && commandService.setRef(scope, el),
+        [commandService, scope],
+    );
 
-    // Callback ref to track DOM node changes
-    const ref: RefCallback<HTMLElement> = useCallback((el) => setNode(el), []);
+    if (!isRegistered) {
+        // Register the scope with the command service if not already registered
+        commandService.registerScope(scope, hotkeys);
+        hotkeysRef.current = hotkeys;
+        setIsRegistered(true);
+    }
 
-    // Get all hotkey mappings for this scope
-    const mappings = commandService.getMappingsForScope(scope);
-
-    // Combine all keys for this scope
-    const keysString = mappings.map((m) => m.key).join(', ');
-
-    // Use react-hotkeys-hook to handle hotkeys
-    // The event will always be added to the document, so we can use the scope name as a unique identifier
-    useHotkeys(
-        keysString,
+    const eventHandler = useCallback<HotkeyCallback>(
         (event, handler) => {
             // Find the mapping that matches this key
             if (handler.isSequence) {
@@ -46,7 +48,8 @@ export const useHotkeyScope = (scope: HotkeyScope) => {
                 .filter((k) => k)
                 .sort();
 
-            const mapping = mappings.find((m) =>
+            const registeredHotkeys = Array.from(commandService.registeredHotkeys(scope));
+            const mapping = registeredHotkeys.find((m) =>
                 m.key
                     .split(', ')
                     .map((k) => k.split('+').sort())
@@ -54,7 +57,8 @@ export const useHotkeyScope = (scope: HotkeyScope) => {
             );
 
             if (mapping) {
-                if (node !== null) {
+                const node = commandService.getRef(scope);
+                if (node) {
                     // Since the event is now attached to the node, the active element can never be inside the node.
                     // The hotkey only triggers if the node is/has the active element.
                     // This is a problem since focused subcomponents won't trigger the hotkey.
@@ -70,32 +74,45 @@ export const useHotkeyScope = (scope: HotkeyScope) => {
                     }
                 }
                 // Pass the event to allow handlers to control propagation
-                void commandService.executeCommand(mapping.command, event, scope);
+                void commandService.executeCommand(scope, mapping.command, event);
             }
         },
-        {
-            enableOnFormTags: ['textarea', 'input'],
-            enableOnContentEditable: true,
-            scopes: scope, // Use the scope name as the scope identifier
-        },
+        [scope, commandService],
     );
 
-    // Manage scope enabling/disabling based on DOM attachment
     useEffect(() => {
-        if (scope === HotkeyScope.Global) {
-            // Always enable global scope
-            enableScope(scope);
-        } else if (node) {
-            // For other scopes, we only enable if the node is attached
-            enableScope(scope);
-        } else {
-            disableScope(scope);
-        }
-
+        // Unregister any previous hotkeys for this scope
         return () => {
-            disableScope(scope);
+            // Sometimes might be a race condition when the old component is not unmounted before the new one is mounted
+            // Therefore we rely on useHotkeyCommand to handle the unregistration of action,
+            // then useHotkeys will remove the keyboard event listener.
+            // Race condition can happen in the following scenario (i.e. hot reloading of the component):
+            // 1. Old component is unmounting
+            // 2. New component is mounting
+            // 3. New component registers the same scope
+            // 4. Old component tries to unregister the scope, but it is already registered by the new component
+            // 5. Old component totally wipes out the hotkeys for the scope, which is not what we want
+            // commandService.unregisterScope(scope, hotkeysRef.current);
+
+            // Clear the hotkeys reference
+            hotkeysRef.current = [];
+            // Reset the registration state
+            setIsRegistered(false);
         };
-    }, [scope, commandService, enableScope, disableScope, ref, node]);
+    }, [scope, hotkeys, commandService]);
+
+    // Combine all keys for this scope
+    const keysString = hotkeys
+        .map((m) => m.key)
+        .sort()
+        .join(', ');
+    // Use react-hotkeys-hook to handle hotkeys
+    // The event will always be added to the document, so we can use the scope name as a unique identifier
+    useHotkeys(keysString, eventHandler, {
+        enableOnFormTags: ['textarea', 'input'],
+        enableOnContentEditable: true,
+        scopes: scope, // Use the scope name as the scope identifier
+    });
 
     return ref;
 };

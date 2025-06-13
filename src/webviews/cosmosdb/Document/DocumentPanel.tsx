@@ -6,7 +6,6 @@
 import { makeStyles, MessageBar, ProgressBar } from '@fluentui/react-components';
 import { useCallback, useEffect } from 'react';
 import { validateDocument } from '../../../cosmosdb/utils/validateDocument';
-import { HotkeyScope, useHotkeyScope } from '../../common/hotkeys';
 import { MonacoEditor } from '../../MonacoEditor';
 import { DocumentToolbar } from './DocumentToolbar';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
@@ -47,9 +46,6 @@ export const DocumentPanel = () => {
         [dispatcher, state.partitionKey],
     );
 
-    // Set up the scope for this component
-    const editorRef = useHotkeyScope(HotkeyScope.DocumentEditor);
-
     // TODO: Hack, remove this when DocumentPanel will be moved to CustomTextEditor.
     useEffect(() => {
         void dispatcher?.notifyDirty?.(state.isDirty);
@@ -64,7 +60,7 @@ export const DocumentPanel = () => {
     }
 
     return (
-        <section className={classes.container} ref={editorRef} tabIndex={-1}>
+        <section className={classes.container} tabIndex={-1}>
             <DocumentToolbar />
             {inProgress && <ProgressBar />}
             {state.error && (

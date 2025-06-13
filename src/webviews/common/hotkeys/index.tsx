@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 export * from './HotkeyCommandService';
-export * from './HotkeyGlobalScope';
 export * from './HotkeyTypes';
 export * from './useCommandHotkey';
 export * from './useHotkeyScope';

@@ -4,7 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from '@fluentui/react-components';
-import { HotkeyScope, useHotkeyScope } from '../../../common/hotkeys';
+import { useHotkeyScope } from '../../../common/hotkeys';
+import { type QueryEditorHotkeyCommand, QueryEditorHotkeys, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { QueryMonaco } from './QueryMonaco';
 import { QueryToolbarOverflow } from './QueryToolbarOverflow';
 
@@ -25,7 +26,11 @@ const useClasses = makeStyles({
 export const QueryPanel = () => {
     const classes = useClasses();
 
-    const editorRef = useHotkeyScope(HotkeyScope.QueryEditor); // Set up the scope for this component
+    // Set up the scope for this component
+    const editorRef = useHotkeyScope<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>(
+        'queryEditor',
+        QueryEditorHotkeys,
+    );
 
     return (
         <section className={classes.container} ref={editorRef} tabIndex={-1}>

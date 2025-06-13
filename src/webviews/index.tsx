@@ -10,7 +10,6 @@ import type * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
 import { WebviewRegistry } from './api/configuration/WebviewRegistry';
-import { HotkeyGlobalScope } from './common/hotkeys';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { type WebviewState, WithWebviewContext } from './WebviewContext';
 
@@ -32,7 +31,6 @@ export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewS
     root.render(
         <DynamicThemeProvider useAdaptive={true}>
             <WithWebviewContext vscodeApi={vscodeApi}>
-                <HotkeyGlobalScope />
                 <Component />
             </WithWebviewContext>
         </DynamicThemeProvider>,

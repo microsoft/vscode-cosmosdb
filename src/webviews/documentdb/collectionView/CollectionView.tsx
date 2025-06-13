@@ -432,7 +432,7 @@ export const CollectionView = (): JSX.Element => {
                             ),
                             'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
                             'JSON View': <DataViewPanelJSON value={currentQueryResults?.jsonDocuments ?? []} />,
-                            default: <div>error '{currentContext.currentView}'</div>,
+                            default: <div>error &apos;{currentContext.currentView}&apos;</div>,
                         }[currentContext.currentView] // switch-statement
                     }
                 </div>

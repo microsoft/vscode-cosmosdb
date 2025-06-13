@@ -25,6 +25,9 @@ export class DocumentContextProvider extends BaseContextProvider {
 
         await this.sendCommand('saveDocument', documentText);
     }
+    public async saveDocumentAsFile(documentText: string): Promise<void> {
+        await this.sendCommand('saveDocumentAsFile', documentText);
+    }
     public async refreshDocument(): Promise<void> {
         this.dispatch({ type: 'setError', error: undefined });
         this.dispatch({ type: 'setRefreshing', isRefreshing: true });

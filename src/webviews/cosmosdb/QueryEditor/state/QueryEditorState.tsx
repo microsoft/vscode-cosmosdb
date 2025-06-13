@@ -5,9 +5,9 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
+import { isSelectStar } from '../../../../utils/convertors';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
-export const QUERY_HISTORY_SIZE = 10;
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
@@ -76,6 +76,7 @@ export type QueryEditorState = {
     querySelectedValue: string;
     isConnected: boolean;
     isExecuting: boolean;
+    isEditMode: boolean; // Query or selected query is start select (select * from c)
     startExecutionTime: number; // Time when the query execution started
     endExecutionTime: number; // Time when the query execution ended
 
@@ -101,6 +102,7 @@ export const defaultState: QueryEditorState = {
     querySelectedValue: '',
     isConnected: false,
     isExecuting: false,
+    isEditMode: false,
     startExecutionTime: 0,
     endExecutionTime: 0,
 
@@ -119,7 +121,11 @@ export const defaultState: QueryEditorState = {
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
     switch (action.type) {
         case 'insertText':
-            return { ...state, queryValue: action.queryValue };
+            return {
+                ...state,
+                queryValue: action.queryValue,
+                isEditMode: isSelectStar(state.currentQueryResult?.query || action.queryValue || ''),
+            };
         case 'databaseConnected':
             return {
                 ...state,
@@ -138,6 +144,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 pageNumber: 1,
                 currentQueryResult: null,
                 startExecutionTime: action.startExecutionTime,
+                isEditMode: isSelectStar(state.querySelectedValue || state.queryValue || ''),
             };
         case 'executionStopped': {
             if (action.executionId !== state.currentExecutionId) {
@@ -151,7 +158,12 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'setPageSize':
             return { ...state, pageSize: action.pageSize };
         case 'updateQueryResult':
-            return { ...state, currentQueryResult: action.result, pageNumber: action.currentPage };
+            return {
+                ...state,
+                currentQueryResult: action.result,
+                pageNumber: action.currentPage,
+                isEditMode: isSelectStar(action.result?.query || state.queryValue || ''),
+            };
         case 'setTableViewMode':
             return { ...state, tableViewMode: action.mode };
         case 'setSelectedRows':

@@ -71,9 +71,9 @@ $slick-header-resizable-hover: 1px solid var(--vscode-editor-selectionBackground
     $slick-row-based-edit-editmode-hover-bgcolor:               $base-text-color,
 
     /* header */
-    $slick-header-row-count:                                    1,
+    $slick-header-row-count:                                    2,                          // how many rows to display on the header
     $slick-header-background-color:                             $base-background-color,
-    $slick-header-border-top:                                   0 none,                      // header, column titles, that is without the Filters
+    $slick-header-border-top:                                   0 none,                     // header, column titles, that is without the Filters
     $slick-header-border-right:                                 0 none,
     $slick-header-border-bottom:                                0 none,
     $slick-header-border-left:                                  0 none,

@@ -5,14 +5,14 @@
 
 import { debounce } from 'es-toolkit';
 import * as React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
     SlickgridReact,
     type GridOption,
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { getDocumentId, isSelectStar, type TableData } from '../../../utils';
+import { getDocumentId, type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 type ResultTabViewTableProps = TableData & {};
@@ -24,79 +24,77 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const dispatcher = useQueryEditorDispatcher();
     const gridRef = useRef<SlickgridReact>(null);
 
-    const isEditMode = useMemo<boolean>(
-        () => isSelectStar(state.currentQueryResult?.query ?? ''),
-        [state.currentQueryResult],
-    );
-
     React.useEffect(() => {
         gridRef.current?.gridService.renderGrid();
     }, [dataset, headers]); // Re-run when headers or data change
 
-    const [reservedHeaders, setReservedHeaders] = useState<string[]>([]);
+    const gridColumns: GridColumn[] = useMemo(
+        () =>
+            headers.map((header) => {
+                return {
+                    id: header + '_id',
+                    name: header,
+                    field: header.startsWith('/') ? header.slice(1) : header,
+                    minWidth: 100,
+                };
+            }),
+        [headers],
+    );
 
-    useEffect(() => {
-        setReservedHeaders(headers);
-    }, [headers]);
+    const onDblClick = useCallback(
+        (args: OnDblClickEventArgs) => {
+            // If not in edit mode, do nothing
+            if (!state.isEditMode) return;
 
-    // If query is executing and headers are not available, use reserved headers (previous)
-    // It is fix for the message "No data to display" since without data grid folds by width
-    if ((!headers || headers.length === 0) && reservedHeaders.length !== 0 && state.isExecuting) {
-        headers = reservedHeaders;
-    }
-
-    const gridColumns: GridColumn[] = headers.map((header) => {
-        return {
-            id: header + '_id',
-            name: header,
-            field: header.startsWith('/') ? header.slice(1) : header,
-            minWidth: 100,
-        };
-    });
-
-    const onDblClick = (args: OnDblClickEventArgs) => {
-        // If not in edit mode, do nothing
-        if (!isEditMode) return;
-
-        // Open document in view mode
-        const activeDocument = dataset[args.row];
-        const documentId = activeDocument ? getDocumentId(activeDocument, state.partitionKey) : undefined;
-        if (documentId) {
-            void dispatcher.openDocument('view', documentId);
-        }
-    };
-
-    // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
-    const onSelectedRowsChanged = debounce((args: OnSelectedRowsChangedEventArgs) => {
-        dispatcher.setSelectedRows(args.rows);
-    }, 100);
-
-    const gridOptions: GridOption = {
-        autoResize: {
-            calculateAvailableSizeBy: 'container',
-            container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
-            delay: 100,
+            // Open document in view mode
+            const activeDocument = dataset[args.row];
+            const documentId = activeDocument ? getDocumentId(activeDocument, state.partitionKey) : undefined;
+            if (documentId) {
+                void dispatcher.openDocument('view', documentId);
+            }
         },
-        enableAutoResize: true,
-        autoFitColumnsOnFirstLoad: true, // This
-        enableAutoSizeColumns: true, // + this
-        // disabling features that with them the grid has side effects (columns resize incorrectly after second render)
-        autosizeColumnsByCellContentOnFirstLoad: false, // or this (but not both)
-        enableAutoResizeColumnsByCellContent: false, // + this
-        enableCellNavigation: true,
-        enableCheckboxSelector: false,
-        enableRowSelection: true,
-        multiSelect: true,
-        // disabling features that would require more polishing to make them production-ready
-        enableColumnPicker: false,
-        enableColumnReorder: false,
-        enableContextMenu: false,
-        enableGridMenu: false,
-        enableHeaderButton: false,
-        enableHeaderMenu: false,
-        datasetIdPropertyName: '__id',
-        cellValueCouldBeUndefined: true,
-    };
+        [dataset, dispatcher, state.isEditMode, state.partitionKey],
+    );
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const onSelectedRowsChanged = useCallback(
+        // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
+        debounce((args: OnSelectedRowsChangedEventArgs) => {
+            dispatcher.setSelectedRows(args.rows);
+        }, 100),
+        [dispatcher],
+    );
+
+    const gridOptions = useMemo(
+        (): GridOption => ({
+            autoResize: {
+                calculateAvailableSizeBy: 'container',
+                container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
+                delay: 100,
+            },
+            enableAutoResize: true,
+            autoFitColumnsOnFirstLoad: false, // This
+            enableAutoSizeColumns: false, // + this
+            // disabling features that with them the grid has side effects (columns resize incorrectly after second render)
+            autosizeColumnsByCellContentOnFirstLoad: true, // or this (but not both)
+            enableAutoResizeColumnsByCellContent: true, // + this
+            resizeByContentOnlyOnFirstLoad: false, // + this
+            enableCellNavigation: true,
+            enableCheckboxSelector: false,
+            enableRowSelection: true,
+            multiSelect: true,
+            // disabling features that would require more polishing to make them production-ready
+            enableColumnPicker: false,
+            enableColumnReorder: false,
+            enableContextMenu: false,
+            enableGridMenu: false,
+            enableHeaderButton: false,
+            enableHeaderMenu: false,
+            datasetIdPropertyName: '__id',
+            cellValueCouldBeUndefined: true,
+        }),
+        [],
+    );
 
     return (
         <SlickgridReact

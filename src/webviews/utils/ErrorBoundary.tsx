@@ -22,11 +22,15 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, p
     const errorHandler = useCallback(
         (message: string, stack?: string, componentStack?: string | null) => {
             // If rendering throws right away, provider.reportWebviewError might not be initialized, yet, so check first.
-            void provider.reportWebviewError(message, stack, componentStack);
+            void provider?.reportWebviewError(message, stack, componentStack);
         },
         [provider],
     );
-    return <ErrorBoundaryComponent style={style} onError={errorHandler} children={children} />;
+    return (
+        <ErrorBoundaryComponent style={style} onError={errorHandler}>
+            {children}
+        </ErrorBoundaryComponent>
+    );
 };
 
 const useStyles = makeStyles({

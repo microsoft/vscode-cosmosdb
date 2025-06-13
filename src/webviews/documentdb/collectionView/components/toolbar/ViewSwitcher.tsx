@@ -10,7 +10,7 @@ import { CollectionViewContext } from '../../collectionViewContext';
 
 const defaultView: string = 'Table View';
 
-export function ViewSwitcher({ onViewChanged }): JSX.Element {
+export function ViewSwitcher({ onViewChanged }: { onViewChanged: (value?: string) => void }): JSX.Element {
     const [currentContext] = useContext(CollectionViewContext);
 
     return (
@@ -18,7 +18,6 @@ export function ViewSwitcher({ onViewChanged }): JSX.Element {
             disabled={currentContext.isLoading}
             style={{ minWidth: '120px', maxWidth: '120px' }}
             defaultValue={defaultView}
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
             onOptionSelect={(_, data) => onViewChanged(data.optionValue)}
         >
             <Option key="table">{l10n.t('Table View')}</Option>

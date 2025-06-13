@@ -96,6 +96,12 @@ Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for dev
 
 - **New Emulator Connection**: Expand 'CosmosDB Accounts', next expand 'Local Emulators', and select 'New Emulator Connection' to link the emulator to your workspace.
 
+## Keyboard Shortcuts
+
+The Azure Databases extension supports various keyboard shortcuts to improve your productivity when working with queries and documents.
+
+For a complete list of keyboard shortcuts, see [Keyboard Shortcuts](docs/keyboard_shortcuts.md).
+
 # Prerequisites
 
 - **Mongo Shell Requirement (Optional)**: Some advanced commands in the Mongo [scrapbook](#mongo-scrapbooks) and use of the Mongo shell require installing [Mongo DB and Mongo shell](https://docs.mongodb.com/manual/installation/).

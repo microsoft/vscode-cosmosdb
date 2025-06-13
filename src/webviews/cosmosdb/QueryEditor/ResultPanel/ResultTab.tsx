@@ -5,7 +5,7 @@
 
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import {
     queryResultToJSON,
     queryResultToTable,
@@ -50,96 +50,124 @@ type ViewData = {
     tree?: TreeData[];
 };
 
-export const ResultTab = () => {
+interface ResultTabProps {
+    className?: string | undefined;
+}
+
+export const ResultTab = ({ className }: ResultTabProps) => {
     const classes = useClasses();
     const { tableViewMode, currentQueryResult, partitionKey } = useQueryEditorState();
     const [viewData, setViewData] = useState<ViewData>({});
     const [isLoading, setIsLoading] = useState(false);
     const [resultCount, setResultCount] = useState<number>(0);
-    const previousLoadingState = useRef(false);
+    const [hasPreviousData, setHasPreviousData] = useState<boolean>(false);
 
+    // Remove the second useEffect entirely and modify the first one
     useEffect(() => {
         // Skip if no query result
-        if (!currentQueryResult) return;
-
-        // Set loading state while calculating
-        setIsLoading(true);
-
-        // Calculate only for the current view mode
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        const timer = setTimeout(async () => {
-            try {
-                switch (tableViewMode) {
-                    case 'Table':
-                        if (!viewData.table) {
-                            const tableData = await queryResultToTable(currentQueryResult, partitionKey);
-                            setViewData((prev) => ({
-                                ...prev,
-                                table: tableData,
-                            }));
-                        }
-                        break;
-                    case 'Tree':
-                        if (!viewData.tree) {
-                            const treeData = await queryResultToTree(currentQueryResult, partitionKey);
-                            setViewData((prev) => ({
-                                ...prev,
-                                tree: treeData,
-                            }));
-                        }
-                        break;
-                    case 'JSON':
-                        if (!viewData.json) {
-                            const jsonData = queryResultToJSON(currentQueryResult);
-                            setViewData((prev) => ({
-                                ...prev,
-                                json: jsonData,
-                            }));
-                        }
-                        break;
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        }, 100);
-
-        return () => clearTimeout(timer);
-    }, [tableViewMode, currentQueryResult, partitionKey]);
-
-    // Clear cached data when query result changes
-    useEffect(() => {
-        setViewData({});
-    }, [currentQueryResult, partitionKey]);
-
-    // Calculate and set result count when loading completes
-    useEffect(() => {
-        if (previousLoadingState.current && !isLoading) {
-            // Loading just completed, update result count based on view mode
-            let count = 0;
-            if (tableViewMode === 'Table' && viewData.table) {
-                count = viewData.table.dataset.length;
-            } else if (tableViewMode === 'Tree' && viewData.tree) {
-                count = viewData.tree.length;
-            } else if (tableViewMode === 'JSON' && viewData.json) {
-                // For JSON view, count top-level items if it's an array, otherwise just show 1
-                try {
-                    const parsedJson = JSON.parse(viewData.json) as unknown;
-                    count = Array.isArray(parsedJson) ? parsedJson.length : 1;
-                } catch {
-                    count = 0;
-                }
-            }
-            setResultCount(count);
+        if (!currentQueryResult || currentQueryResult.documents.length === 0) {
+            setViewData({});
+            setIsLoading(false);
+            setResultCount(-1);
+            return;
         }
 
-        previousLoadingState.current = isLoading;
-    }, [isLoading, viewData, tableViewMode]);
+        setHasPreviousData(true);
+        // Set loading state first
+        setIsLoading(true);
+        // Update result count
+        setResultCount(currentQueryResult?.documents.length ?? -1);
+
+        // Create an abort controller to cancel operations if needed
+        const abortController = new AbortController();
+        const signal = abortController.signal;
+
+        // Check if data for current view mode needs calculation
+        const needsCalculation =
+            (tableViewMode === 'Table' && !viewData.table) ||
+            (tableViewMode === 'Tree' && !viewData.tree) ||
+            (tableViewMode === 'JSON' && !viewData.json);
+
+        // Only calculate if needed
+        if (needsCalculation) {
+            // Async calculation function with proper error handling
+            const calculateData = async () => {
+                try {
+                    // Wait a short time before starting calculation
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+
+                    // Check if operation was aborted
+                    if (signal.aborted) return;
+
+                    switch (tableViewMode) {
+                        case 'Table': {
+                            const newData = await queryResultToTable(currentQueryResult, partitionKey);
+                            if (!signal.aborted) {
+                                setViewData((prev) => ({ ...prev, table: newData }));
+                            }
+                            break;
+                        }
+                        case 'Tree': {
+                            const newData = await queryResultToTree(currentQueryResult, partitionKey);
+                            if (!signal.aborted) {
+                                setViewData((prev) => ({ ...prev, tree: newData }));
+                            }
+                            break;
+                        }
+                        case 'JSON': {
+                            const newData = queryResultToJSON(currentQueryResult);
+                            if (!signal.aborted) {
+                                setViewData((prev) => ({ ...prev, json: newData }));
+                            }
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    if (!signal.aborted) {
+                        console.error('Error calculating view data:', error);
+                    }
+                } finally {
+                    if (!signal.aborted) {
+                        setIsLoading(false);
+                    }
+                }
+            };
+
+            void calculateData();
+        } else {
+            setIsLoading(false);
+        }
+
+        // Cleanup function
+        return () => {
+            abortController.abort();
+        };
+    }, [tableViewMode, currentQueryResult, partitionKey, viewData.table, viewData.tree, viewData.json]);
+
+    if (!currentQueryResult || currentQueryResult.documents.length === 0) {
+        return (
+            <div className={[classes.container, 'resultsDisplayArea', className].join(' ')}>
+                <div className={classes.screenReaderOnly} aria-live="polite" aria-atomic="true">
+                    {l10n.t('No results to display.')}
+                </div>
+                <div className={classes.loaderContainer}>
+                    {hasPreviousData ? (
+                        <div className={classes.loaderContainer}>
+                            <Spinner labelPosition="below" label="Loading…" />
+                        </div>
+                    ) : (
+                        <div>{l10n.t('No results to display.')}</div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className={[classes.container, 'resultsDisplayArea'].join(' ')}>
+        <div className={[classes.container, 'resultsDisplayArea', className].join(' ')}>
             {/* Add an ARIA live region to announce results count */}
             <div className={classes.screenReaderOnly} aria-live="polite" aria-atomic="true">
-                {!isLoading && resultCount > 0 ? l10n.t('Query complete. {0} results displayed.', resultCount) : ''}
+                {!isLoading && resultCount > -1 ? l10n.t('Query complete. {0} results displayed.', resultCount) : ''}
             </div>
             <Suspense fallback={<div>{l10n.t('Loading…')}</div>}>
                 {isLoading ? (

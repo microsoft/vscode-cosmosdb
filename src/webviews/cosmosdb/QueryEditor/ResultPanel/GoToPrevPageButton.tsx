@@ -3,16 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
-import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
-import  { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { ArrowLeftFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import  { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
-import { ToolbarOverflowButton } from '../ToolbarOverflowButton';
+import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
+import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const GoToPrevPageButton = forwardRef( function GoToPrevPageButton(props: ToolbarOverflowItemProps, ref: ForwardedRef<HTMLButtonElement>)  {
+export const GoToPrevPageButton = forwardRef(function GoToPrevPageButton(
+    props: ToolbarOverflowItemProps,
+    ref: ForwardedRef<HTMLButtonElement>,
+) {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;

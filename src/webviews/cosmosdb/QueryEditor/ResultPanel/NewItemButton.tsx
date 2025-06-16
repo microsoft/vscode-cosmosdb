@@ -7,9 +7,9 @@ import { AddFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
-import { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
-import { ToolbarOverflowButton } from '../ToolbarOverflowButton';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const NewItemButton = (props: ToolbarOverflowItemProps) => {

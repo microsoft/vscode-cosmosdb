@@ -16,9 +16,9 @@ import {
 } from '@fluentui/react-components';
 import { MoreHorizontal20Filled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { ToolbarOverflowDivider } from '../ToolbarOverflowDivider';
-import { ToolbarOverflowMenuDivider } from '../ToolbarOverflowMenuDivider';
-import { ToolbarOverflowMenuItem } from '../ToolbarOverflowMenuItem';
+import { ToolbarOverflowDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowDivider';
+import { ToolbarOverflowMenuDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuDivider';
+import { ToolbarOverflowMenuItem } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuItem';
 import { ChangePageSizeDropdown } from './ChangePageSizeDropdown';
 import { CopyToClipboardButton } from './CopyToClipboardButton';
 import { ExportButton } from './ExportButton';

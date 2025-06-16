@@ -7,9 +7,9 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { DatabasePlugConnectedRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, useCallback } from 'react';
-import { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { ToolbarOverflowButton } from '../ToolbarOverflowButton';
 
 const useClasses = makeStyles({
     iconDisconnect: {

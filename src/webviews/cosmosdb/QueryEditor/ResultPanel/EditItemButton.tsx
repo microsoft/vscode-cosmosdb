@@ -9,10 +9,10 @@ import { useCallback, useMemo } from 'react';
 import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
 import { getDocumentId } from '../../../../utils/document';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
-import { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { ToolbarOverflowButton } from '../ToolbarOverflowButton';
 
 export const EditItemButton = (props: ToolbarOverflowItemProps) => {
     const state = useQueryEditorState();

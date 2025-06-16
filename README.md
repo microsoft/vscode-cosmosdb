@@ -100,7 +100,7 @@ Attach the Cosmos DB Emulator to work with a local instance of Cosmos DB for dev
 
 The Azure Databases extension supports various keyboard shortcuts to improve your productivity when working with queries and documents.
 
-For a complete list of keyboard shortcuts, see [Keyboard Shortcuts](docs/keyboard_shortcuts.md).
+For a complete list of keyboard shortcuts, see [Keyboard Shortcuts](docs/hotkeys/01_keyboard_shortcuts.md).
 
 # Prerequisites
 

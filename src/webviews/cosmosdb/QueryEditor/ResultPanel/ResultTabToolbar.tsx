@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toolbar } from '@fluentui/react-components';
+import { ToolbarOverflowDividerTransparent } from '../../../common/ToolbarOverflow/ToolbarOverflowDividerTransparent';
 import { useQueryEditorState } from '../state/QueryEditorContext';
-import { ToolbarOverflowDividerTransparent } from '../ToolbarOverflowDividerTransparent';
 import { ChangeViewModeDropdown } from './ChangeViewModeDropdown';
 import { DeleteItemButton } from './DeleteItemButton';
 import { EditItemButton } from './EditItemButton';

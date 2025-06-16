@@ -8,10 +8,10 @@ import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, useCallback, useMemo, useState } from 'react';
 import { AlertDialog } from '../../../common/AlertDialog';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
-import { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { ToolbarOverflowButton } from '../ToolbarOverflowButton';
 
 export const ReloadQueryButton = forwardRef(function ReloadQueryButton(
     props: ToolbarOverflowItemProps,

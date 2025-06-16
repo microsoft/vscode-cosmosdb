@@ -3,14 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ForwardedRef, forwardRef, useEffect, useState } from 'react';
-import { useQueryEditorState } from '../state/QueryEditorContext';
-import * as l10n from '@vscode/l10n';
-import { Timer } from '../../../Timer';
 import { Label, MenuItem } from '@fluentui/react-components';
-import  { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import * as l10n from '@vscode/l10n';
+import { type ForwardedRef, forwardRef, useEffect, useState } from 'react';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
+import { Timer } from '../../../Timer';
+import { useQueryEditorState } from '../state/QueryEditorContext';
 
-export const StatusBar = forwardRef(function StatusBar(props: ToolbarOverflowItemProps, ref: ForwardedRef<HTMLDivElement>)  {
+export const StatusBar = forwardRef(function StatusBar(
+    props: ToolbarOverflowItemProps,
+    ref: ForwardedRef<HTMLDivElement>,
+) {
     const state = useQueryEditorState();
 
     const [time, setTime] = useState(0);

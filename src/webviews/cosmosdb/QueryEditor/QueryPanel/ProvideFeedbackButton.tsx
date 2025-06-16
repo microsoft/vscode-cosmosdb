@@ -7,7 +7,7 @@ import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tool
 import { CommentCheckmarkRegular, EmojiSmileSlightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, useCallback } from 'react';
-import { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 export const ProvideFeedbackButton = forwardRef(function ProvideFeedbackButton(

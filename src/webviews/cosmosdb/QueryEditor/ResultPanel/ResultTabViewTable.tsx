@@ -71,7 +71,19 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 calculateAvailableSizeBy: 'container',
                 container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
                 delay: 100,
+                autoHeightRecalcRow: 1,
+                autoHeight: true,
+                bottomPadding: 20,
+                resizeDetection: 'container',
+                applyResizeToContainer: true,
             },
+            resizeByContentOptions: {
+                alwaysRecalculateColumnWidth: true,
+                cellCharWidthInPx: 8.5,
+                defaultRatioForStringType: 1.0,
+            },
+            alwaysShowVerticalScroll: false,
+            autoHeight: false, // this is set to false because we want to use autoResize instead
             enableAutoResize: true,
             autoFitColumnsOnFirstLoad: false, // This
             enableAutoSizeColumns: false, // + this

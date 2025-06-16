@@ -8,10 +8,10 @@ import { StopRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
-import { type ToolbarOverflowItemProps } from '../OverflowToolbarItem';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { ToolbarOverflowButton } from '../ToolbarOverflowButton';
 
 const useClasses = makeStyles({
     iconStop: {

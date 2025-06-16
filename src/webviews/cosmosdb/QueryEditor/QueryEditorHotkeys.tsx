@@ -28,10 +28,10 @@ export type QueryEditorHotkeyCommand =
 
 export const QueryEditorGlobalHotkeys: HotkeyMapping<QueryEditorHotkeyCommand>[] = [
     {
-        key: 'mod+alt+d',
+        key: 'alt+shift+d',
         command: 'DuplicateQueryEditor',
         description: 'Duplicate query',
-        shortcutDisplay: { windows: 'Ctrl+Alt+D', mac: '⌥⌘D' },
+        shortcutDisplay: { windows: 'Alt+Shift+D', mac: '⌥⇧D' },
     },
     {
         key: 'alt+1',

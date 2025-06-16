@@ -10,6 +10,8 @@ import {
     Tooltip,
     useRestoreFocusSource,
     useRestoreFocusTarget,
+    type MenuItemProps,
+    type ToolbarButtonProps,
 } from '@fluentui/react-components';
 import type React from 'react';
 import { forwardRef, type ForwardedRef } from 'react';
@@ -31,6 +33,8 @@ type ToolbarOverflowButtonProps = {
     showButtonText?: boolean;
     tooltip: string;
     type: 'button' | 'menuitem';
+    menuItemProps?: MenuItemProps;
+    toolbarButtonProps?: ToolbarButtonProps;
 };
 
 export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
@@ -53,6 +57,7 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
             >
                 <ToolbarButton
                     ref={props.refs ?? ref}
+                    {...props.toolbarButtonProps}
                     // eslint-disable-next-line @typescript-eslint/no-misused-promises
                     onClick={onClick}
                     aria-label={ariaLabel}
@@ -69,6 +74,7 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
     if (type === 'menuitem') {
         return (
             <MenuItem
+                {...props.menuItemProps}
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 onClick={onClick}
                 secondaryContent={hotkey}

@@ -134,7 +134,7 @@
     "ts-jest": "~29.4.0",
     "ts-node": "~10.9.2",
     "typescript": "~5.8.3",
-    "typescript-eslint": "~8.34.0",
+    "typescript-eslint": "~8.34.1",
     "webpack": "~5.95.0",
     "webpack-bundle-analyzer": "~4.10.2",
     "webpack-cli": "~6.0.1",
@@ -178,7 +178,7 @@
     "vscode-languageserver": "~9.0.1",
     "vscode-languageserver-textdocument": "~1.0.12",
     "vscode-uri": "~3.1.0",
-    "zod": "~3.25.64"
+    "zod": "~3.25.67"
   },
   "overrides": {
     "glob": "~11.0.3"

@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useIsOverflowItemVisible, type MenuItemProps } from '@fluentui/react-components';
+import { useIsOverflowItemVisible } from '@fluentui/react-components';
 import { type PropsWithChildren } from 'react';
 
-export interface ToolbarOverflowMenuItemProps extends Omit<MenuItemProps, 'id'> {
+export type ToolbarOverflowMenuItemProps = {
     id: string;
-}
+};
 
 export const ToolbarOverflowMenuItem = (props: PropsWithChildren<ToolbarOverflowMenuItemProps>) => {
     const { id, children } = props;

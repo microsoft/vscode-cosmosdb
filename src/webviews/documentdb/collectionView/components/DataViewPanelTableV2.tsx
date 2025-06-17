@@ -127,12 +127,6 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
         footerRowHeight: 1,
     };
 
-    React.useEffect(() => {
-        return () => {
-            gridRef.current?.gridService.setSelectedRows([]);
-        };
-    }, []);
-
     /*
      * Effect to manually trigger grid update on liveHeaders or liveData change.
      * This is necessary because SlickGrid does not consistently re-render when data changes.

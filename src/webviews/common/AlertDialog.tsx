@@ -12,15 +12,16 @@ import {
     DialogSurface,
     DialogTitle,
     DialogTrigger,
+    useId,
 } from '@fluentui/react-components';
 import { type DialogOpenChangeEventHandler } from '@fluentui/react-dialog';
-import * as React from 'react';
-import { useCallback } from 'react';
-export interface AlertDialogProps {
+import type * as React from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+
+export interface AlertDialogProps extends React.PropsWithChildren {
     isOpen: boolean;
     onClose: (confirmed: boolean) => void;
     title: string;
-    content: React.ReactNode;
     confirmButtonText: string;
     cancelButtonText: string;
     reverseButtonOrder?: boolean;
@@ -30,11 +31,20 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
     isOpen,
     onClose,
     title,
-    content,
+    children,
     confirmButtonText,
     cancelButtonText,
     reverseButtonOrder = false,
 }) => {
+    const dialogId = useId('dialog-');
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        if (isOpen && buttonRef.current) {
+            buttonRef.current.focus();
+        }
+    }, [isOpen]);
+
     const handleOpenChange = useCallback<DialogOpenChangeEventHandler>(
         (_event, data) => {
             if (!data.open) {
@@ -48,17 +58,20 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
         onClose(true); // Closed with confirmation
     }, [onClose]);
 
-    // Render buttons in the specified order
     const renderButtons = () => {
         const confirmButton = (
-            <Button appearance="primary" onClick={handleConfirm}>
-                {confirmButtonText}
-            </Button>
+            <DialogTrigger disableButtonEnhancement>
+                <Button appearance="primary" onClick={handleConfirm}>
+                    {confirmButtonText}
+                </Button>
+            </DialogTrigger>
         );
 
         const cancelButton = (
             <DialogTrigger disableButtonEnhancement>
-                <Button appearance="secondary">{cancelButtonText}</Button>
+                <Button ref={buttonRef} appearance="secondary">
+                    {cancelButtonText}
+                </Button>
             </DialogTrigger>
         );
 
@@ -77,10 +90,10 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
 
     return (
         <Dialog modalType="alert" open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogSurface>
+            <DialogSurface aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-content`}>
                 <DialogBody>
-                    <DialogTitle>{title}</DialogTitle>
-                    <DialogContent>{content}</DialogContent>
+                    <DialogTitle id={`${dialogId}-title`}>{title}</DialogTitle>
+                    <DialogContent id={`${dialogId}-content`}>{children}</DialogContent>
                     <DialogActions>{renderButtons()}</DialogActions>
                 </DialogBody>
             </DialogSurface>

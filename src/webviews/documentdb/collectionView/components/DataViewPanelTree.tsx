@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react';
+import type * as React from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
 
 interface Props {

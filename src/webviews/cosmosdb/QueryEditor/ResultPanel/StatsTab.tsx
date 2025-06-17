@@ -52,7 +52,11 @@ const useStyles = makeStyles({
     },
 });
 
-export const StatsTab = () => {
+interface StatsTabProps {
+    className?: string | undefined;
+}
+
+export const StatsTab = ({ className }: StatsTabProps) => {
     const styles = useStyles();
     const { currentQueryResult } = useQueryEditorState();
     const [items, setItems] = useState<StatsItem[]>([]);
@@ -75,7 +79,7 @@ export const StatsTab = () => {
 
     return (
         <>
-            <div className={styles.container}>
+            <div className={[styles.container, className].join(' ')}>
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
                         <Label size={'large'}>{l10n.t('Query metrics')}</Label> (
@@ -100,7 +104,12 @@ export const StatsTab = () => {
                                     <TableCell>
                                         <TableCellLayout>
                                             {!!item.tooltip && (
-                                                <Tooltip content={item.tooltip} relationship="description" withArrow>
+                                                <Tooltip
+                                                    content={item.tooltip}
+                                                    relationship="description"
+                                                    appearance="inverted"
+                                                    withArrow
+                                                >
                                                     <Label>{item.formattedValue}</Label>
                                                 </Tooltip>
                                             )}{' '}

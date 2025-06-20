@@ -92,7 +92,7 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
         <>
             <div className={topLabelStyle}>
                 <Label size={'large'}>{parsed.title}</Label> (
-                <Link href={INDEX_METRICS_DOC_URL} arial-label={l10n.t('Learn more about index metrics…')}>
+                <Link href={INDEX_METRICS_DOC_URL} aria-label={l10n.t('Learn more about index metrics…')}>
                     {l10n.t('Learn more…')}
                 </Link>
                 )

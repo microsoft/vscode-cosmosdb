@@ -111,6 +111,14 @@ export class DocumentContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
             this.dispatch({ type: 'setSaving', isSaving: false });
         });
+
+        this.channel.on('operationAborted', (_sessionId: string, message?: string) => {
+            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
+            this.dispatch({ type: 'setSaving', isSaving: false });
+            if (message) {
+                void this.showInformationMessage(message);
+            }
+        });
     }
 
     private parseError(error: string): string {

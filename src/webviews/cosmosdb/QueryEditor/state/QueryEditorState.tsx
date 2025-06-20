@@ -162,6 +162,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 ...state,
                 currentQueryResult: action.result,
                 pageNumber: action.currentPage,
+                pageSize: action.result.metadata.countPerPage || DEFAULT_PAGE_SIZE,
                 isEditMode: isSelectStar(action.result?.query || state.queryValue || ''),
             };
         case 'setTableViewMode':

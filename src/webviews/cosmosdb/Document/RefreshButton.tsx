@@ -3,12 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useFocusFinders } from '@fluentui/react-components';
 import { ArrowClockwiseRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import type React from 'react';
-import { type ForwardedRef, forwardRef, useCallback, useMemo, useRef, useState } from 'react';
-import { AlertDialog } from '../../common/AlertDialog';
+import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
 import { ToolbarOverflowButton } from '../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
@@ -21,11 +19,6 @@ export const RefreshButton = forwardRef(function RefreshButton(
 ) {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
-
-    const { findFirstFocusable } = useFocusFinders();
-    const triggerRef = useRef<HTMLElement>(findFirstFocusable(document.body) ?? null);
-    const [isOpen, setIsOpen] = useState(false);
-    const [action, setAction] = useState<() => Promise<void>>(() => async () => {});
 
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== '';
@@ -40,18 +33,6 @@ export const RefreshButton = forwardRef(function RefreshButton(
         [],
     );
 
-    const handleDialogClose = useCallback(
-        (confirmed: boolean) => {
-            if (confirmed) {
-                // Execute the action
-                void action();
-            }
-            setIsOpen(false);
-            triggerRef.current?.focus();
-        },
-        [action],
-    );
-
     const onRefresh = useCallback(
         async (event?: KeyboardEvent | MouseEvent | React.MouseEvent) => {
             // Reload original document from the database
@@ -59,19 +40,10 @@ export const RefreshButton = forwardRef(function RefreshButton(
                 event.stopPropagation();
                 event.preventDefault();
             }
-            if (state.isDirty) {
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-expect-error
-                triggerRef.current = event?.target as HTMLElement;
-                setIsOpen(true);
-                setAction(() => async () => {
-                    await dispatcher.refreshDocument();
-                });
-            } else {
-                await dispatcher.refreshDocument();
-            }
+
+            await dispatcher.refreshDocument();
         },
-        [dispatcher, state],
+        [dispatcher],
     );
 
     useCommandHotkey<DocumentHotkeyScope, DocumentHotkeyCommand>('global', 'Refresh', onRefresh, {
@@ -80,16 +52,6 @@ export const RefreshButton = forwardRef(function RefreshButton(
 
     return (
         <>
-            <AlertDialog
-                isOpen={isOpen}
-                title={l10n.t('Attention')}
-                confirmButtonText={l10n.t('Continue')}
-                cancelButtonText={l10n.t('Close')}
-                onClose={handleDialogClose}
-            >
-                <div>{l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.')}</div>
-                <div>{l10n.t('Are you sure you want to continue?')}</div>
-            </AlertDialog>
             <ToolbarOverflowButton
                 type={props.type}
                 refs={ref}

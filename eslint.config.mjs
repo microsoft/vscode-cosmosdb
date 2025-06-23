@@ -6,8 +6,11 @@
 import js from '@eslint/js';
 import importPlugin from 'eslint-plugin-import';
 import jest from 'eslint-plugin-jest';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import licenseHeader from 'eslint-plugin-license-header';
 import mocha from 'eslint-plugin-mocha';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import ts from 'typescript-eslint';
@@ -68,7 +71,7 @@ export default defineConfig([
         },
     },
     {
-        files: ['**/*.ts', '**/*.tsx'],
+        files: ['**/*.ts'],
 
         extends: [ts.configs.recommendedTypeChecked],
 
@@ -84,6 +87,62 @@ export default defineConfig([
             parserOptions: {
                 projectService: true,
                 tsconfigRootDir: import.meta.dirname,
+            },
+        },
+
+        rules: {
+            '@typescript-eslint/consistent-type-imports': 'error',
+            '@typescript-eslint/no-base-to-string': 'warn',
+            '@typescript-eslint/no-inferrable-types': 'off',
+            '@typescript-eslint/no-namespace': 'off',
+            '@typescript-eslint/no-restricted-types': 'error',
+            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            '@typescript-eslint/prefer-regexp-exec': 'off',
+            '@typescript-eslint/require-await': 'warn',
+            '@typescript-eslint/restrict-template-expressions': 'off',
+            '@typescript-eslint/unbound-method': 'warn',
+        },
+    },
+    {
+        files: ['**/*.tsx'],
+
+        extends: [
+            ts.configs.recommendedTypeChecked,
+            react.configs.flat.recommended,
+            jsxA11y.flatConfigs.recommended,
+            react.configs.flat['jsx-runtime'],
+            reactHooks.configs['recommended-latest'],
+        ],
+
+        plugins: {
+            react: react,
+            '@typescript-eslint': ts.plugin,
+        },
+
+        languageOptions: {
+            parser: ts.parser,
+            ecmaVersion: 2023,
+            sourceType: 'module',
+
+            ...jsxA11y.flatConfigs.recommended.languageOptions,
+
+            globals: {
+                ...globals.browser,
+            },
+
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
+                ecmaFeatures: {
+                    jsx: true,
+                },
+            },
+        },
+
+        settings: {
+            react: {
+                version: 'detect',
             },
         },
 

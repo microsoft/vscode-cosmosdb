@@ -42,7 +42,7 @@ export const DocumentView = (): JSX.Element => {
      */
     const { trpcClient } = useTrpcClient();
 
-    const [editorContent] = configuration.mode === 'add' ? useState('{  }') : useState('{ "loading…": true }');
+    const [editorContent] = useState(configuration.mode === 'add' ? '{  }' : '{ "loading…": true }');
     const [isLoading, setIsLoading] = useState(configuration.mode !== 'add');
     const [isDirty, setIsDirty] = useState(true);
 
@@ -69,7 +69,7 @@ export const DocumentView = (): JSX.Element => {
                     setIsLoading(false);
                 });
         }
-    }, []);
+    }, [configuration, trpcClient]);
 
     const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
     const getCurrentContent = () => editorRef.current?.getValue() || '';

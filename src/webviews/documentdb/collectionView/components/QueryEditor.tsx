@@ -13,7 +13,11 @@ import { type editor } from 'monaco-editor/esm/vs/editor/editor.api';
 import { CollectionViewContext } from '../collectionViewContext';
 import { MonacoAdaptive } from './MonacoAdaptive';
 
-export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
+export const QueryEditor = ({
+    onExecuteRequest,
+}: {
+    onExecuteRequest: (editorContent: string) => void;
+}): JSX.Element => {
     const [, setCurrentContext] = useContext(CollectionViewContext);
 
     const handleEditorDidMount = (editor: monacoEditor.editor.IStandaloneCodeEditor, monaco: typeof monacoEditor) => {
@@ -113,7 +117,6 @@ export const QueryEditor = ({ onExecuteRequest }): JSX.Element => {
                 lineHeight: 19,
             }}
             onExecuteRequest={(input) => {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call
                 onExecuteRequest(input);
             }}
             onMount={handleEditorDidMount}

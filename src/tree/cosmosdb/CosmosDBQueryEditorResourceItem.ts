@@ -31,7 +31,7 @@ export abstract class CosmosDBQueryEditorResourceItem
             id: this.id,
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('plus'),
-            label: 'Query Editor',
+            label: 'Create Query',
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
                 title: l10n.t('Open Query Editor'),

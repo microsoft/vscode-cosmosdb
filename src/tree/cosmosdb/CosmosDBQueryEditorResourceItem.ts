@@ -7,7 +7,6 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemedIconPath } from '../../constants';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -31,7 +30,7 @@ export abstract class CosmosDBQueryEditorResourceItem
         return {
             id: this.id,
             contextValue: this.contextValue,
-            iconPath: getThemedIconPath('search_database_16.svg'),
+            iconPath: new vscode.ThemeIcon('plus'),
             label: 'Query Editor',
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {

@@ -54,7 +54,7 @@ export class QueryEditorTab extends BaseTab {
         this.connection = connection;
         this.query = query;
 
-        this.panel.iconPath = getThemedIconPathURI('search_database_16.svg');
+        this.panel.iconPath = getThemedIconPathURI('editor.svg');
 
         if (connection) {
             if (connection.credentials) {

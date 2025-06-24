@@ -3,8 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { type DatabaseAccountListKeysResult } from '@azure/arm-cosmosdb/src/models';
+import {
+    type CosmosDBManagementClient,
+    type DatabaseAccountGetResults,
+    type DatabaseAccountsListKeysResponse,
+} from '@azure/arm-cosmosdb';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -259,7 +262,7 @@ async function getKeyCredentialWithARM(
     try {
         context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
 
-        let keyResult: DatabaseAccountListKeysResult | undefined;
+        let keyResult: DatabaseAccountsListKeysResponse | undefined;
         // If the account has local auth disabled, don't even try to use key auth
         if (!localAuthDisabled) {
             keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);

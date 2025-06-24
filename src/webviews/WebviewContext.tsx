@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as React from 'react';
+import type * as React from 'react';
 import { createContext } from 'react';
 import { type WebviewApi } from 'vscode-webview';
 import { type Channel } from '../panels/Communication/Channel/Channel';

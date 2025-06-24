@@ -5,7 +5,7 @@
 
 import { ProgressBar, Tab, TabList } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type JSX, useEffect, useRef, useState } from 'react';
+import { type JSX, useCallback, useEffect, useRef, useState } from 'react';
 import { type TableDataEntry } from '../../../documentdb/ClusterSession';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { useTrpcClient } from '../../api/webview-client/useTrpcClient';
@@ -75,6 +75,250 @@ export const CollectionView = (): JSX.Element => {
     const currentQueryResultsRef = useRef(currentQueryResults);
     const currentContextRef = useRef(currentContext);
 
+    const getDataForView = useCallback(
+        (selectedView: Views): void => {
+            switch (selectedView) {
+                case Views.TABLE: {
+                    const path = currentContext.currentViewState?.currentPath ?? [];
+
+                    trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
+                        .query(path)
+                        .then((result) => {
+                            let tableHeaders: string[];
+
+                            /*
+                             * If the _id is not in the headers, we add it as the first column.
+                             * This is a presentation detail, not a data detail, that's why it's done
+                             * here, in the view, not in the controller.
+                             */
+                            if (result.headers.find((header) => header === '_id') === undefined) {
+                                tableHeaders = ['_id', ...result.headers];
+                            } else {
+                                tableHeaders = result.headers ?? [];
+                            }
+
+                            setCurrentQueryResults((prev) => ({
+                                ...prev,
+                                tableHeaders: tableHeaders,
+                                tableData: (result.data as TableDataEntry[]) ?? [],
+                            }));
+                        })
+                        .catch((error) => {
+                            void trpcClient.common.displayErrorMessage.mutate({
+                                message: l10n.t('Error while loading the data'),
+                                modal: false,
+                                cause: error instanceof Error ? error.message : String(error),
+                            });
+                        });
+                    break;
+                }
+                case Views.TREE:
+                    trpcClient.mongoClusters.collectionView.getCurrentPageAsTree
+                        .query()
+                        .then((result) => {
+                            setCurrentQueryResults((prev) => ({
+                                ...prev,
+                                treeData: result,
+                            }));
+                        })
+                        .catch((error) => {
+                            void trpcClient.common.displayErrorMessage.mutate({
+                                message: l10n.t('Error while loading the data'),
+                                modal: false,
+                                cause: error instanceof Error ? error.message : String(error),
+                            });
+                        });
+                    break;
+                case Views.JSON:
+                    trpcClient.mongoClusters.collectionView.getCurrentPageAsJson
+                        .query()
+                        .then((result) => {
+                            setCurrentQueryResults((prev) => ({
+                                ...prev,
+                                jsonDocuments: result,
+                            }));
+                        })
+                        .catch((error) => {
+                            void trpcClient.common.displayErrorMessage.mutate({
+                                message: l10n.t('Error while loading the data'),
+                                modal: false,
+                                cause: error instanceof Error ? error.message : String(error),
+                            });
+                        });
+                    break;
+                default:
+                    break;
+            }
+        },
+        [currentContext, trpcClient],
+    );
+
+    const handleViewChanged = useCallback(
+        (optionValue: string) => {
+            const selection =
+                optionValue === 'Tree View' ? Views.TREE : optionValue === 'JSON View' ? Views.JSON : Views.TABLE;
+
+            trpcClient.common.reportEvent
+                .mutate({
+                    eventName: 'viewChanged',
+                    properties: {
+                        view: selection,
+                    },
+                })
+                .catch((error) => {
+                    console.debug('Failed to report an event:', error);
+                });
+
+            setCurrentContext((prev) => ({ ...prev, currentView: selection }));
+            getDataForView(selection);
+
+            trpcClient.common.surveyPing
+                .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
+                .catch(() => {});
+        },
+        [getDataForView, trpcClient],
+    );
+
+    const updateAutoCompletionData = useCallback((): void => {
+        trpcClient.mongoClusters.collectionView.getAutocompletionSchema
+            .query()
+            .then(async (schema) => {
+                void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
+            })
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: l10n.t('Error while loading the autocompletion data'),
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            });
+    }, [trpcClient]);
+
+    const handleDeleteDocumentRequest = useCallback((): void => {
+        trpcClient.mongoClusters.collectionView.deleteDocumentsById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds)
+            .then((acknowledged) => {
+                if (!acknowledged) {
+                    return;
+                }
+
+                /**
+                 * The data on the server has been deleted and our extension code has updated its
+                 * cache as well. Now we need to update the view locally, so that the user sees
+                 * the changes immediately without potential focus/table resizing issues etc.
+                 */
+
+                setCurrentQueryResults((prev) => ({
+                    ...prev,
+                    tableData: prev?.tableData?.filter(
+                        (row) =>
+                            !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
+                                row['x-objectid'] ?? '',
+                            ),
+                    ),
+                }));
+
+                setCurrentContext((prev) => ({
+                    ...prev,
+                    dataSelection: {
+                        selectedDocumentIndexes: [],
+                        selectedDocumentObjectIds: [],
+                    },
+                }));
+            })
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: l10n.t('Error deleting selected documents'),
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            });
+    }, [currentContext.dataSelection.selectedDocumentObjectIds, trpcClient]);
+
+    const handleViewDocumentRequest = useCallback((): void => {
+        trpcClient.mongoClusters.collectionView.viewDocumentById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: l10n.t('Error opening the document view'),
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            });
+    }, [currentContext.dataSelection.selectedDocumentObjectIds, trpcClient]);
+
+    const handleEditDocumentRequest = useCallback((): void => {
+        trpcClient.mongoClusters.collectionView.editDocumentById
+            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
+            .catch((error) => {
+                void trpcClient.common.displayErrorMessage.mutate({
+                    message: l10n.t('Error opening the document view'),
+                    modal: false,
+                    cause: error instanceof Error ? error.message : String(error),
+                });
+            });
+    }, [currentContext.dataSelection.selectedDocumentObjectIds, trpcClient]);
+
+    const handleAddDocumentRequest = useCallback((): void => {
+        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error) => {
+            void trpcClient.common.displayErrorMessage.mutate({
+                message: l10n.t('Error opening the document view'),
+                modal: false,
+                cause: error instanceof Error ? error.message : String(error),
+            });
+        });
+    }, [trpcClient]);
+
+    const handleStepInRequest = useCallback(
+        (row: number, cell: number): void => {
+            const activeDocument: TableDataEntry = currentQueryResults?.tableData?.[row] ?? {};
+            const activeColumn: string = currentQueryResults?.tableHeaders?.[cell] ?? '';
+
+            const activeCell = activeDocument[activeColumn] as { value?: string; type?: string };
+
+            console.debug('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
+
+            if (activeColumn === '_id') {
+                console.debug('Cell is an _id, skipping step-in');
+                return;
+            }
+
+            if (activeCell.type !== 'object') {
+                console.debug('Cell is not an object, skipping step-in');
+                return;
+            }
+
+            const newPath = [...(currentContext.currentViewState?.currentPath ?? []), activeColumn];
+
+            setCurrentContext((prev) => ({
+                ...prev,
+                currentViewState: {
+                    currentPath: newPath,
+                },
+            }));
+
+            trpcClient.common.reportEvent
+                .mutate({
+                    eventName: 'stepIn',
+                    properties: {
+                        source: 'step-in-button',
+                    },
+                    measurements: {
+                        depth: newPath.length ?? 0,
+                    },
+                })
+                .catch((error) => {
+                    console.debug('Failed to report an event:', error);
+                });
+        },
+        [
+            currentContext.currentViewState?.currentPath,
+            currentQueryResults?.tableData,
+            currentQueryResults?.tableHeaders,
+            trpcClient,
+        ],
+    );
+
     useEffect(() => {
         currentQueryResultsRef.current = currentQueryResults;
         currentContextRef.current = currentContext;
@@ -119,257 +363,13 @@ export const CollectionView = (): JSX.Element => {
             .finally(() => {
                 setCurrentContext((prev) => ({ ...prev, isLoading: false, isFirstTimeLoad: false }));
             });
-    }, [currentContext.currentQueryDefinition]);
+    }, [currentContext.currentQueryDefinition, currentContext, trpcClient, getDataForView, updateAutoCompletionData]);
 
     useEffect(() => {
         if (currentContext.currentView === Views.TABLE && currentContext.currentViewState?.currentPath) {
             getDataForView(currentContext.currentView);
         }
-    }, [currentContext.currentViewState?.currentPath]);
-
-    const handleViewChanged = (_optionValue: string) => {
-        let selection: Views;
-
-        switch (_optionValue) {
-            case 'Table View':
-                selection = Views.TABLE;
-                break;
-            case 'Tree View':
-                selection = Views.TREE;
-                break;
-            case 'JSON View':
-                selection = Views.JSON;
-                break;
-            default:
-                selection = Views.TABLE;
-                break;
-        }
-
-        trpcClient.common.reportEvent
-            .mutate({
-                eventName: 'viewChanged',
-                properties: {
-                    view: selection,
-                },
-            })
-            .catch((error) => {
-                console.debug('Failed to report an event:', error);
-            });
-
-        setCurrentContext((prev) => ({ ...prev, currentView: selection }));
-        getDataForView(selection);
-
-        trpcClient.common.surveyPing
-            .mutate({ experienceKind: ExperienceKind.Mongo, usageImpact: UsageImpact.Medium })
-            .catch(() => {});
-    };
-
-    function getDataForView(selectedView: Views): void {
-        switch (selectedView) {
-            case Views.TABLE: {
-                const path = currentContext.currentViewState?.currentPath ?? [];
-
-                trpcClient.mongoClusters.collectionView.getCurrentPageAsTable
-                    .query(path)
-                    .then((result) => {
-                        let tableHeaders: string[];
-
-                        /*
-                         * If the _id is not in the headers, we add it as the first column.
-                         * This is a presentation detail, not a data detail, that's why it's done
-                         * here, in the view, not in the controller.
-                         */
-                        if (result.headers.find((header) => header === '_id') === undefined) {
-                            tableHeaders = ['_id', ...result.headers];
-                        } else {
-                            tableHeaders = result.headers ?? [];
-                        }
-
-                        setCurrentQueryResults((prev) => ({
-                            ...prev,
-                            tableHeaders: tableHeaders,
-                            tableData: (result.data as TableDataEntry[]) ?? [],
-                        }));
-                    })
-                    .catch((error) => {
-                        void trpcClient.common.displayErrorMessage.mutate({
-                            message: l10n.t('Error while loading the data'),
-                            modal: false,
-                            cause: error instanceof Error ? error.message : String(error),
-                        });
-                    });
-                break;
-            }
-            case Views.TREE:
-                trpcClient.mongoClusters.collectionView.getCurrentPageAsTree
-                    .query()
-                    .then((result) => {
-                        setCurrentQueryResults((prev) => ({
-                            ...prev,
-                            treeData: result,
-                        }));
-                    })
-                    .catch((error) => {
-                        void trpcClient.common.displayErrorMessage.mutate({
-                            message: l10n.t('Error while loading the data'),
-                            modal: false,
-                            cause: error instanceof Error ? error.message : String(error),
-                        });
-                    });
-                break;
-            case Views.JSON:
-                trpcClient.mongoClusters.collectionView.getCurrentPageAsJson
-                    .query()
-                    .then((result) => {
-                        setCurrentQueryResults((prev) => ({
-                            ...prev,
-                            jsonDocuments: result,
-                        }));
-                    })
-                    .catch((error) => {
-                        void trpcClient.common.displayErrorMessage.mutate({
-                            message: l10n.t('Error while loading the data'),
-                            modal: false,
-                            cause: error instanceof Error ? error.message : String(error),
-                        });
-                    });
-                break;
-            default:
-                break;
-        }
-    }
-
-    function updateAutoCompletionData(): void {
-        trpcClient.mongoClusters.collectionView.getAutocompletionSchema
-            .query()
-            .then(async (schema) => {
-                void (await currentContextRef.current.queryEditor?.setJsonSchema(schema));
-            })
-            .catch((error) => {
-                void trpcClient.common.displayErrorMessage.mutate({
-                    message: l10n.t('Error while loading the autocompletion data'),
-                    modal: false,
-                    cause: error instanceof Error ? error.message : String(error),
-                });
-            });
-    }
-
-    function handleDeleteDocumentRequest(): void {
-        trpcClient.mongoClusters.collectionView.deleteDocumentsById
-            .mutate(currentContext.dataSelection.selectedDocumentObjectIds)
-            .then((acknowledged) => {
-                if (!acknowledged) {
-                    return;
-                }
-
-                /**
-                 * The data on the server has been deleted and our extension code has updated its
-                 * cache as well. Now we need to update the view locally, so that the user sees
-                 * the changes immediately without potential focus/table resizing issues etc.
-                 */
-
-                setCurrentQueryResults((prev) => ({
-                    ...prev,
-                    tableData: prev?.tableData?.filter(
-                        (row) =>
-                            !currentContextRef.current.dataSelection.selectedDocumentObjectIds.includes(
-                                row['x-objectid'] ?? '',
-                            ),
-                    ),
-                }));
-
-                setCurrentContext((prev) => ({
-                    ...prev,
-                    dataSelection: {
-                        selectedDocumentIndexes: [],
-                        selectedDocumentObjectIds: [],
-                    },
-                }));
-            })
-            .catch((error) => {
-                void trpcClient.common.displayErrorMessage.mutate({
-                    message: l10n.t('Error deleting selected documents'),
-                    modal: false,
-                    cause: error instanceof Error ? error.message : String(error),
-                });
-            });
-    }
-
-    function handleViewDocumentRequest(): void {
-        trpcClient.mongoClusters.collectionView.viewDocumentById
-            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
-            .catch((error) => {
-                void trpcClient.common.displayErrorMessage.mutate({
-                    message: l10n.t('Error opening the document view'),
-                    modal: false,
-                    cause: error instanceof Error ? error.message : String(error),
-                });
-            });
-    }
-
-    function handleEditDocumentRequest(): void {
-        trpcClient.mongoClusters.collectionView.editDocumentById
-            .mutate(currentContext.dataSelection.selectedDocumentObjectIds[0])
-            .catch((error) => {
-                void trpcClient.common.displayErrorMessage.mutate({
-                    message: l10n.t('Error opening the document view'),
-                    modal: false,
-                    cause: error instanceof Error ? error.message : String(error),
-                });
-            });
-    }
-
-    function handleAddDocumentRequest(): void {
-        trpcClient.mongoClusters.collectionView.addDocument.mutate().catch((error) => {
-            void trpcClient.common.displayErrorMessage.mutate({
-                message: l10n.t('Error opening the document view'),
-                modal: false,
-                cause: error instanceof Error ? error.message : String(error),
-            });
-        });
-    }
-
-    function handleStepInRequest(row: number, cell: number): void {
-        const activeDocument: TableDataEntry = currentQueryResults?.tableData?.[row] ?? {};
-        const activeColumn: string = currentQueryResults?.tableHeaders?.[cell] ?? '';
-
-        const activeCell = activeDocument[activeColumn] as { value?: string; type?: string };
-
-        console.debug('Step-in requested on cell', activeCell, 'in row', row, 'column', cell);
-
-        if (activeColumn === '_id') {
-            console.debug('Cell is an _id, skipping step-in');
-            return;
-        }
-
-        if (activeCell.type !== 'object') {
-            console.debug('Cell is not an object, skipping step-in');
-            return;
-        }
-
-        const newPath = [...(currentContext.currentViewState?.currentPath ?? []), activeColumn];
-
-        setCurrentContext((prev) => ({
-            ...prev,
-            currentViewState: {
-                currentPath: newPath,
-            },
-        }));
-
-        trpcClient.common.reportEvent
-            .mutate({
-                eventName: 'stepIn',
-                properties: {
-                    source: 'step-in-button',
-                },
-                measurements: {
-                    depth: newPath.length ?? 0,
-                },
-            })
-            .catch((error) => {
-                console.debug('Failed to report an event:', error);
-            });
-    }
+    }, [currentContext.currentView, currentContext.currentViewState?.currentPath, getDataForView]);
 
     return (
         <CollectionViewContext.Provider value={[currentContext, setCurrentContext]}>
@@ -432,7 +432,7 @@ export const CollectionView = (): JSX.Element => {
                             ),
                             'Tree View': <DataViewPanelTree liveData={currentQueryResults?.treeData ?? []} />,
                             'JSON View': <DataViewPanelJSON value={currentQueryResults?.jsonDocuments ?? []} />,
-                            default: <div>error '{currentContext.currentView}'</div>,
+                            default: <div>error &apos;{currentContext.currentView}&apos;</div>,
                         }[currentContext.currentView] // switch-statement
                     }
                 </div>

@@ -64,6 +64,10 @@ export type DispatchAction =
     | {
           type: 'setIsSurveyCandidate';
           isSurveyCandidate: boolean;
+      }
+    | {
+          type: 'setConnectionList';
+          connectionList: Record<string, string[]> | undefined;
       };
 
 export type QueryEditorState = {
@@ -79,7 +83,7 @@ export type QueryEditorState = {
     isEditMode: boolean; // Query or selected query is start select (select * from c)
     startExecutionTime: number; // Time when the query execution started
     endExecutionTime: number; // Time when the query execution ended
-
+    connectionList: Record<string, string[]> | undefined; // List of connections, undefined if not connected
     isSurveyCandidate: boolean; // Whether the user is a survey candidate
 
     // Result state
@@ -105,7 +109,7 @@ export const defaultState: QueryEditorState = {
     isEditMode: false,
     startExecutionTime: 0,
     endExecutionTime: 0,
-
+    connectionList: undefined,
     isSurveyCandidate: false,
 
     // Result state
@@ -172,5 +176,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, querySelectedValue: action.selectedValue };
         case 'setIsSurveyCandidate':
             return { ...state, isSurveyCandidate: action.isSurveyCandidate };
+        case 'setConnectionList':
+            return { ...state, connectionList: action.connectionList };
     }
 }

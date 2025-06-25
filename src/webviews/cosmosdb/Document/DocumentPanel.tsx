@@ -27,6 +27,11 @@ const useClasses = makeStyles({
     },
 });
 
+/**
+ * Fake progress bar component to show a mock bar to prevent layout shift
+ */
+const FakeProgressBar = () => <div style={{ height: '2px' }} />;
+
 export const DocumentPanel = () => {
     const classes = useClasses();
     const state = useDocumentState();
@@ -46,7 +51,9 @@ export const DocumentPanel = () => {
         [dispatcher, state.partitionKey],
     );
 
-    // TODO: Hack, remove this when DocumentPanel will be moved to CustomTextEditor.
+    // TODO: At this moment the dirty (and others) state is used only on UI.
+    //  But the server side also has to be aware of the dirty state to prevent data loss.
+    //  If the documents will moved to the custom editor, the editor will know about the dirty state itself.
     useEffect(() => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
@@ -63,6 +70,7 @@ export const DocumentPanel = () => {
         <section className={classes.container} tabIndex={-1}>
             <DocumentToolbar />
             {inProgress && <ProgressBar />}
+            {!inProgress && <FakeProgressBar />}
             {state.error && (
                 <MessageBar key={'error'} intent={'error'} layout={'multiline'}>
                     {state.error}

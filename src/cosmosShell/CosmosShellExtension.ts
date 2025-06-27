@@ -54,15 +54,19 @@ function getCosmosShellCommand(): string {
 
 export async function launchCosmosShell(
     _context: IActionContext,
-    node?: DatabaseItem | CollectionItem | ClusterItemBase
+    node?: DatabaseItem | CollectionItem | ClusterItemBase,
 ) {
     const command = getCosmosShellCommand();
     if (!node) {
-        const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, ['--mcp', '--mcp-port', '6128']);
+        const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, [
+            '--mcp',
+            '--mcp-port',
+            '6128',
+        ]);
         terminal.show();
         return;
     }
-     let rawConnectionString: string | undefined;
+    let rawConnectionString: string | undefined;
 
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
 
@@ -84,10 +88,12 @@ export async function launchCosmosShell(
     }
 
     const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, [
-        '--mcp', '6128',
+        '--mcp',
+        '6128',
         '--connect',
         rawConnectionString,
     ]);
+
     terminal.show();
     const label = node.getTreeItem().label;
     if (typeof label !== 'string') {
@@ -97,9 +103,41 @@ export async function launchCosmosShell(
     if (node instanceof CollectionItem) {
         terminal.sendText('cd ' + label, true);
         // terminal.sendText('cd ' + node.parent.label + '/' + label, true);
-    } else  {
+    } else {
         terminal.sendText('cd ' + label, true);
     }
+    await vscode.workspace.getConfiguration().update(
+        'mcp',
+        {
+            servers: {
+                'my-mcp-server-shell': {
+                    url: 'http://localhost:6128',
+                },
+            },
+        },
+        vscode.ConfigurationTarget.Global,
+    );
+
+    // Connect to the MCP server that was just configured
+    try {
+        ext.outputChannel.appendLine('Connecting to MCP server at http://localhost:6128...');
+        await vscode.commands.executeCommand('mcp.command.startServer', 'my-mcp-server-shell');
+        ext.outputChannel.appendLine('Successfully connected to MCP server.');
+    } catch (error) {
+        ext.outputChannel.appendLine(`Failed to connect to MCP server: ${error instanceof Error ? error.message : String(error)}`);
+        void vscode.window.showErrorMessage(l10n.t('Failed to connect to the MCP server. Check the output for details.'));
+    }
+
+    // Start a new Copilot chat session
+    await vscode.commands.executeCommand('github.copilot.chat.startSession');
+
+
+    /*
+    await vscode.workspace.getConfiguration().update(
+        'chat.mode',
+        'agent',
+        vscode.ConfigurationTarget.Workspace
+    );*/
 }
 
 /**

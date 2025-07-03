@@ -88,4 +88,5 @@ export type SerializedQueryResult = {
 export type ResultViewMetadata = {
     countPerPage?: number;
     timeout?: number; // How long the query is allowed to run in seconds
+    throughputBucket?: number; // The throughput bucket selected by the user,
 };

@@ -1,0 +1,159 @@
+# Trigger the build whenever `main` or `rel/*` is updated
+trigger:
+    - main
+    - rel/*
+
+# Disable PR trigger
+pr: none
+
+# Scheduled nightly build of `main`
+#schedules:
+#    - cron: '0 0 * * *'
+#      displayName: Nightly scheduled build
+#      always: false # Don't rebuild if there haven't been changes
+#      branches:
+#          include:
+#              - main
+
+parameters:
+    - name: 'debug'
+      displayName: 'Enable debug output'
+      type: boolean
+      default: false
+    - name: isOfficialBuild
+      type: boolean
+      default: true
+
+variables:
+    CDP_DEFINITION_BUILD_COUNT: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
+    system.debug: ${{ parameters.debug }}
+
+    WindowsContainerImage: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest' # Docker image which is used to build the project https://aka.ms/obpipelines/containers
+
+resources:
+    repositories:
+        - repository: templates
+          type: git
+          name: OneBranch.Pipelines/GovernedTemplates
+          ref: refs/heads/main
+
+extends:
+    ${{ if eq(parameters.isOfficialBuild, true) }}:
+        template: v2/OneBranch.Official.CrossPlat.yml@templates # https://aka.ms/obpipelines/templates
+    ${{ else }}:
+        template: v2/OneBranch.NonOfficial.CrossPlat.yml@templates # https://aka.ms/obpipelines/templates
+    parameters:
+        cloudvault: # https://aka.ms/obpipelines/cloudvault
+            enabled: false
+        globalSdl: # https://aka.ms/obpipelines/sdl
+            asyncSdl:
+                enabled: false
+            tsa:
+                enabled: false # onebranch publish all sdl results to TSA. If TSA is disabled all SDL tools will forced into'break' build mode.
+                #configFile: '$(Build.SourcesDirectory)/.azure-pipelines/compliance/tsaoptions.json'
+            credscan:
+                suppressionsFile: $(Build.SourcesDirectory)/.azure-pipelines/compliance/CredScanSuppressions.json
+            policheck:
+                break: true # always break the build on policheck issues. You can disable it by setting to 'false'
+            suppression:
+                suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
+            codeql:
+                excludePathPatterns: '**/.vscode-test, dist' # Exclude .vscode-test and dist directories from CodeQL alerting
+                compiled:
+                    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+                        enabled: true
+                    ${{ else }}:
+                        enabled: false
+                tsaEnabled: false # See 'Codeql.TSAEnabled' in the Addition Options section below
+            componentgovernance:
+                ignoreDirectories: $(Build.SourcesDirectory)/.vscode-test
+        featureFlags:
+            linuxEsrpSigning: true
+            WindowsHostVersion:
+                Version: 2022
+
+        stages:
+            - stage: BuildStage
+              jobs:
+                  - job: Main
+                    pool:
+                        type: windows
+                    variables:
+                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)\build' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
+                        ob_sdl_binskim_break: true # https://aka.ms/obpipelines/sdl
+                        ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}: # conditionally enable symbolsPublishing for master branch only
+                            ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
+                        ob_sdl_codeSignValidation_excludes: '-|**\*.json;-|**\*.js;-|**\node_modules\**;'
+                        # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
+                        ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+                            ob_sdl_codeql_compiled_enabled: true
+                    steps:
+                        - task: NodeTool@0
+                          displayName: "\U0001F449 Using Node.js"
+                          inputs:
+                              versionSource: fromFile
+                              versionFilePath: .nvmrc
+                          condition: succeeded()
+
+                        - task: npmAuthenticate@0
+                          inputs:
+                              workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Install Dependencies"
+                          inputs:
+                              command: custom
+                              customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                              workingDir: $(Build.SourcesDirectory)
+                          condition: succeeded()
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Build"
+                          inputs:
+                              command: custom
+                              customCommand: run build
+                              workingDir: $(Build.SourcesDirectory)
+                          condition: succeeded()
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Package"
+                          inputs:
+                              command: custom
+                              customCommand: run package
+                              workingDir: $(Build.SourcesDirectory)
+                          condition: succeeded()
+
+                        - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
+                          displayName: 'Sign VSIX package'
+                          inputs:
+                              command: 'sign'
+                              signing_environment: 'azure-ado'
+                              cp_code: '100040160'
+                              files_to_sign: '*.vsix'
+                              search_root: '$(Build.SourcesDirectory)'
+
+                        - task: CopyFiles@2
+                          displayName: "\U0001F449 Copy packages and vsix to staging directory"
+                          inputs:
+                              # Uploading the package.json so we can publish later without cloning the source
+                              # Files related to signing:
+                              #   extension.manifest is the signature file
+                              #   extension.signature.p7s is the extension manifest generated by vsce
+                              Contents: |
+                                  **/*.vsix
+                                  **/package.json
+                                  extension.manifest
+                                  extension.signature.p7s
+                                  **/*.tar.gz
+                                  **/*.tgz
+                                  !**/node_modules/**
+                              TargetFolder: '$(build.ArtifactStagingDirectory)\build'
+                          condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Test"
+                          inputs:
+                              command: custom
+                              customCommand: test
+                              workingDir: $(Build.SourcesDirectory)
+                          condition: succeeded()

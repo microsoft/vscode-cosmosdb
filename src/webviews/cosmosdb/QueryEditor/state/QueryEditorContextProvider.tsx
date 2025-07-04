@@ -132,6 +132,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('copyMetricsCSVToClipboard', currentQueryResult);
     }
 
+    public selectBucket(throughputBucket?: number): void {
+        this.dispatch({ type: 'selectBucket', throughputBucket });
+    }
+
     protected initEventListeners() {
         super.initEventListeners();
 
@@ -174,6 +178,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         //      all errors should be handled by QuerySession and dispatched to host error handling.
         this.channel.on('queryError', (_executionId: string, _error: string) => {
             //this.showToast('Query error', error, 'error');
+        });
+
+        this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
+            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
         });
     }
 }

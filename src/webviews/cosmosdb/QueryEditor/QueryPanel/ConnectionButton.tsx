@@ -142,7 +142,7 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
                         <MenuItem disabled>{l10n.t('No connections')}</MenuItem>
                     )}
                     {connectionList &&
-                        Object.entries(connectionList).map(([databaseId, collections], index) => (
+                        Object.entries(connectionList).map(([databaseId, collections]) => (
                             <Menu key={databaseId} hasCheckmarks={true} checkedValues={checkedValues}>
                                 <MenuTrigger disableButtonEnhancement>
                                     <MenuSplitGroup>

@@ -83,7 +83,7 @@ export const StatsTab = ({ className }: StatsTabProps) => {
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
                         <Label size={'large'}>{l10n.t('Query metrics')}</Label> (
-                        <Link href={QUERY_METRICS_DOC_URL} arial-label={l10n.t('Learn more about query metrics…')}>
+                        <Link href={QUERY_METRICS_DOC_URL} aria-label={l10n.t('Learn more about query metrics…')}>
                             {l10n.t('Learn more…')}
                         </Link>
                         )

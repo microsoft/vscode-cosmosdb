@@ -117,7 +117,11 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
                 </TableHeader>
                 <TableBody>
                     {parsed.sections.map((section, index) => (
-                        <TableRow key={`${section.title}-${index}`}>
+                        <TableRow
+                            key={`${section.title}-${index}`}
+                            aria-label={section.title + ' ' + Object.values(section.indexes).join(' ')}
+                            tabIndex={0}
+                        >
                             <TableCell>{section.title}</TableCell>
                             <TableCell>
                                 {section.indexes && section.indexes.length > 0 ? (

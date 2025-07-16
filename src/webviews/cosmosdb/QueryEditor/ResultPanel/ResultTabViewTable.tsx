@@ -41,6 +41,44 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         [headers],
     );
 
+    React.useEffect(() => {
+        gridRef.current?.gridService.renderGrid();
+
+        // Add ARIA attributes after rendering
+        setTimeout(() => {
+            const grid = gridRef.current?.grid;
+            if (!grid) return;
+
+            // Set grid role
+            const gridElement = grid.getContainerNode();
+            gridElement?.setAttribute('role', 'grid');
+            gridElement?.setAttribute('aria-label', 'Query results data grid');
+
+            // Add live region for announcements
+            const liveRegion = document.createElement('div');
+            liveRegion.setAttribute('role', 'status');
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('aria-atomic', 'true');
+            liveRegion.className = 'sr-only';
+            liveRegion.id = 'grid-announcer';
+            gridElement?.appendChild(liveRegion);
+
+            // Announce cell values on navigation
+            grid.onActiveCellChanged.subscribe((_e, args) => {
+                const column = gridColumns[args.cell];
+                const data = dataset[args.row];
+                if (column && data) {
+                    const value = data[column.field] || '';
+                    const announcement = `${column.name}: ${value}`;
+                    const announcer = document.getElementById('grid-announcer');
+                    if (announcer) {
+                        announcer.textContent = announcement;
+                    }
+                }
+            });
+        }, 100);
+    }, [dataset, headers, gridColumns]);
+
     const onDblClick = useCallback(
         (args: OnDblClickEventArgs) => {
             // If not in edit mode, do nothing

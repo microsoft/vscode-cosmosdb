@@ -26,7 +26,7 @@ const useStyles = makeStyles({
 const ensureStopSymbol = (text: string): string => {
     text = text.trim();
     // Check if the text already ends with a stop symbol
-    if (/[.,!?]$/.test(text)) {
+    if (/[.,!?;:…]$/.test(text)) {
         return text;
     }
     // Add a period if no stop symbol is present

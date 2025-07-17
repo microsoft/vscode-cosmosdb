@@ -96,6 +96,7 @@ extends:
                           condition: succeeded()
 
                         - task: npmAuthenticate@0
+                          displayName: "\U0001F449 Authenticate to npm registry"
                           inputs:
                               workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
 
@@ -124,7 +125,7 @@ extends:
                           condition: succeeded()
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
-                          displayName: 'Sign VSIX package'
+                          displayName: '\U0001F449 Sign VSIX package'
                           inputs:
                               command: 'sign'
                               signing_environment: 'azure-ado'

@@ -70,6 +70,7 @@
   "Azure Cosmos DB for MongoDB (RU)": "Azure Cosmos DB for MongoDB (RU)",
   "Back": "Back",
   "Browse to {mongoExecutableFileName}": "Browse to {mongoExecutableFileName}",
+  "Bulk Delete Confirmation": "Bulk Delete Confirmation",
   "Bulk delete operation completed with {count} deleted documents.": "Bulk delete operation completed with {count} deleted documents.",
   "Bulk delete operation completed with {deleted} deleted, {throttled} throttled, and {failed} failed documents.": "Bulk delete operation completed with {deleted} deleted, {throttled} throttled, and {failed} failed documents.",
   "Bulk delete operation was aborted by the user.": "Bulk delete operation was aborted by the user.",

@@ -24,6 +24,7 @@ import { HttpStatusCodes } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
+import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, getCosmosDBKeyCredential } from '../getCosmosClient';
@@ -307,8 +308,10 @@ export class DocumentSession {
                 return sendResponse();
             }
 
-            const confirmation = await this.showConfirmation(
+            const confirmation = await getConfirmationAsInSettings(
+                l10n.t('Bulk Delete Confirmation'),
                 l10n.t('Are you sure you want to delete selected item(s)?'),
+                'delete',
             );
 
             if (!confirmation) {
@@ -538,13 +541,6 @@ export class DocumentSession {
                 ext.outputChannel.show();
             }
         });
-    }
-
-    private async showConfirmation(message: string): Promise<boolean> {
-        const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
-        const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
-        const confirmation = await vscode.window.showWarningMessage(message, { modal: true }, continueItem, closeItem);
-        return confirmation === continueItem;
     }
 
     private prepareDeleteProgressMessage(status: DeleteStatus): string {

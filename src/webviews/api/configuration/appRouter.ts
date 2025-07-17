@@ -45,8 +45,8 @@ const commonRouter = router({
         .input(
             z.object({
                 eventName: z.string(),
-                properties: z.optional(z.record(z.string())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
-                measurements: z.optional(z.record(z.number())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
+                properties: z.optional(z.record(z.string(), z.string())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
+                measurements: z.optional(z.record(z.string(), z.number())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
             }),
         )
         // Here the procedure (query or mutation)
@@ -70,7 +70,7 @@ const commonRouter = router({
                 message: z.string(),
                 stack: z.string(),
                 componentStack: z.optional(z.string()),
-                properties: z.optional(z.record(z.string())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
+                properties: z.optional(z.record(z.string(), z.string())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
             }),
         )
         // Here the procedure (query or mutation)

@@ -406,7 +406,7 @@
         "title": "%cosmosdb.command.trigger.open%"
       },
       {
-        "category": "Cosmos DB",
+        "category": "NoSQL",
         "command": "cosmosDB.launchCosmosShell",
         "title": "%cosmosdb.command.cosmos_shell.launch%",
         "when": "vscodeDatabases.cosmosShellSupportEnabled"
@@ -815,61 +815,6 @@
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunction",
           "group": "1@2"
         },
-                {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBMongoServer(?![a-z])/i",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBGraphAccount(?![a-z])/i",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBDocumentServer(?![a-z])/i",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /(azureResourceGroups|azureFocusView)/ && viewItem =~ /cosmosDBTableAccount(?![a-z])/i",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view == azureWorkspace && viewItem == cosmosDBMongoServerAttached",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view == azureWorkspace && viewItem == cosmosDBGraphAccountAttached",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view == azureWorkspace && viewItem == cosmosDBDocumentServerAttached",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view == azureWorkspace && viewItem == cosmosDBTableAccountAttached",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentDatabase",
-            "group": "2@1"
-        },
-        {
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == cosmosDBDocumentCollection",
-            "group": "2@1"
-        },
         {
           "//": "[Functions] (Postgres) Refresh",
           "command": "azureDatabases.refresh",
@@ -977,6 +922,12 @@
           "submenu": "azureDatabases.submenus.mongo.database.scrapbook",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
           "group": "2@2"
+        },
+        {
+            "//": "[Database] Launch Cosmos Shell",
+            "command": "cosmosDB.launchCosmosShell",
+            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.](table|cassandra|core)/i",
+            "group": "2@1"
         },
         {
           "//": "[Database] Refresh",

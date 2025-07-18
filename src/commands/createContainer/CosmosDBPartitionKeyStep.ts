@@ -7,32 +7,31 @@ import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
-export enum HierarchyStep {
-    First = 1,
-    Second = 2,
-    Third = 3,
-}
+const HierarchyStep = ['first', 'second', 'third'] as const;
+export type HierarchyStep = (typeof HierarchyStep)[number];
 
 export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
     public hideStepCount: boolean = false;
 
     constructor(public readonly hierarchyStep: HierarchyStep) {
         super();
+
+        this.id = `cosmosDBPartitionKeyStep.${hierarchyStep}`;
     }
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
         const placeHolder =
-            this.hierarchyStep === HierarchyStep.First
+            this.hierarchyStep === 'first'
                 ? l10n.t('first partition key e.g., /TenantId')
-                : this.hierarchyStep === HierarchyStep.Second
+                : this.hierarchyStep === 'second'
                   ? l10n.t('second partition key e.g., /UserId')
-                  : this.hierarchyStep === HierarchyStep.Third
+                  : this.hierarchyStep === 'third'
                     ? l10n.t('third partition key e.g., /address/zipCode')
                     : l10n.t('partition key');
         const prompt = l10n
             .t(
                 'Enter the partition key for the container {0}',
-                this.hierarchyStep === HierarchyStep.First ? '' : l10n.t('(leave blank to skip)'),
+                this.hierarchyStep === 'first' ? '' : l10n.t('(leave blank to skip)'),
             )
             .trim();
 
@@ -61,11 +60,11 @@ export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContai
     }
 
     public shouldPrompt(context: CreateContainerWizardContext): boolean {
-        if (this.hierarchyStep === HierarchyStep.First || this.hierarchyStep === HierarchyStep.Second) {
+        if (this.hierarchyStep === 'first' || this.hierarchyStep === 'second') {
             return true;
         }
 
-        if (this.hierarchyStep === HierarchyStep.Third) {
+        if (this.hierarchyStep === 'third') {
             return (context.partitionKey?.paths?.length ?? 0) >= 2;
         }
 
@@ -99,7 +98,7 @@ export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContai
         context: CreateContainerWizardContext,
         partitionKey: string,
     ): Promise<string | undefined> {
-        if (this.hierarchyStep === HierarchyStep.First && partitionKey.length === 0) {
+        if (this.hierarchyStep === 'first' && partitionKey.length === 0) {
             return l10n.t('Partition key is required.');
         }
 

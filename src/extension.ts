@@ -26,6 +26,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
@@ -115,6 +116,9 @@ export async function activateInternal(
         const clustersSupport: ClustersExtension = new ClustersExtension();
         context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
         await clustersSupport.activate();
+
+        const cosmosShellSupport: CosmosShellExtension = new CosmosShellExtension();
+        await cosmosShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),

@@ -3,87 +3,28 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Toolbar, ToolbarButton, Tooltip } from '@fluentui/react-components';
-import { ArrowClockwiseRegular, EditRegular, SaveRegular } from '@fluentui/react-icons';
-import * as l10n from '@vscode/l10n';
+import { Toolbar } from '@fluentui/react-components';
+import { ToolbarOverflowDividerTransparent } from '../../common/ToolbarOverflow/ToolbarOverflowDividerTransparent';
+import { EditButton } from './EditButton';
+import { RefreshButton } from './RefreshButton';
+import { SaveButton } from './SaveButton';
 import { useDocumentState } from './state/DocumentContext';
 
-const ToolbarDividerTransparent = () => {
-    return <div style={{ padding: '4px' }} />;
-};
-
-export type DocumentToolbarProps = {
-    onSave: () => Promise<void>;
-    onEdit: () => Promise<void>;
-    onRefresh: () => Promise<void>;
-};
-
-export const DocumentToolbar = (props: DocumentToolbarProps) => {
+export const DocumentToolbar = () => {
     const state = useDocumentState();
 
     const isReady = state.isReady;
-    const inProgress = state.isSaving || state.isRefreshing;
-    const hasDocumentInDB = state.documentId !== '';
-    const isReadOnly = isReady && state.mode === 'view'; // If the document is not initialized, it is considered as not state
-    const isMac = navigator.platform.toLowerCase().includes('mac');
-
-    const onSaveHotkeyTitle = isMac ? '\u2318 S' : 'Ctrl+S';
-    const onEditHotkeyTitle = isMac ? '\u2318 \u21E7 E' : 'Ctrl+Shift+E';
-    const onRefreshHotkeyTitle = isMac ? '\u2318 \u21E7 R' : 'Ctrl+Shift+R';
+    const isReadOnly = state.mode === 'view';
 
     return (
         <>
             <Toolbar size={'small'}>
-                {isReady && !isReadOnly && (
-                    <Tooltip
-                        content={l10n.t('Save item to the database') + ` (${onSaveHotkeyTitle})`}
-                        relationship="description"
-                        withArrow
-                    >
-                        <ToolbarButton
-                            onClick={() => void props.onSave()}
-                            aria-label={l10n.t('Save item to the database')}
-                            icon={<SaveRegular />}
-                            appearance={'primary'}
-                            disabled={inProgress || !state.isDirty || !state.isValid}
-                        >
-                            {l10n.t('Save')}
-                        </ToolbarButton>
-                    </Tooltip>
-                )}
-                {isReady && isReadOnly && (
-                    <Tooltip
-                        content={l10n.t('Open item for editing') + ` (${onEditHotkeyTitle})`}
-                        relationship="description"
-                        withArrow
-                    >
-                        <ToolbarButton
-                            onClick={() => void props.onEdit()}
-                            aria-label={l10n.t('Open item for editing')}
-                            icon={<EditRegular />}
-                            appearance={'primary'}
-                        >
-                            {l10n.t('Edit')}
-                        </ToolbarButton>
-                    </Tooltip>
-                )}
+                {isReady && !isReadOnly && <SaveButton type={'button'} />}
+                {isReady && isReadOnly && <EditButton type={'button'} />}
 
-                <ToolbarDividerTransparent />
+                <ToolbarOverflowDividerTransparent />
 
-                <Tooltip
-                    content={l10n.t('Reload original item from the database') + ` (${onRefreshHotkeyTitle})`}
-                    relationship="description"
-                    withArrow
-                >
-                    <ToolbarButton
-                        onClick={() => void props.onRefresh()}
-                        aria-label={l10n.t('Reload original item from the database')}
-                        icon={<ArrowClockwiseRegular />}
-                        disabled={inProgress || !hasDocumentInDB}
-                    >
-                        {l10n.t('Refresh')}
-                    </ToolbarButton>
-                </Tooltip>
+                <RefreshButton type={'button'} />
             </Toolbar>
         </>
     );

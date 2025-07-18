@@ -13,6 +13,7 @@ import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
 import { promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
+import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
@@ -154,6 +155,8 @@ export class DocumentTab extends BaseTab {
                 return this.refreshDocument();
             case 'saveDocument':
                 return this.saveDocument(payload.params[0] as string);
+            case 'saveDocumentAsFile':
+                return this.saveDocumentAsFile(payload.params[0] as string);
             case 'setMode':
                 this.mode = payload.params[0] as DocumentTabMode;
                 return Promise.resolve();
@@ -199,6 +202,22 @@ export class DocumentTab extends BaseTab {
             this.panel.title = `${this.documentId.id}.json`;
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
+    }
+
+    private async saveDocumentAsFile(documentText: string): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.document.saveDocumentAsFile';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+            context.telemetry.suppressIfSuccessful = true;
+
+            const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
+
+            if (!this.isCosmosDBItemDefinition(documentContent)) {
+                throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
+            }
+
+            await vscodeUtil.showNewFile(documentText, this.documentId?.id ?? documentContent.id ?? 'Unknown', '.json');
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private isCosmosDBItemDefinition(documentContent: unknown): documentContent is ItemDefinition {

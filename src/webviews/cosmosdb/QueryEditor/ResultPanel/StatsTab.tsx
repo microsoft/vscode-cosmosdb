@@ -52,7 +52,11 @@ const useStyles = makeStyles({
     },
 });
 
-export const StatsTab = () => {
+interface StatsTabProps {
+    className?: string | undefined;
+}
+
+export const StatsTab = ({ className }: StatsTabProps) => {
     const styles = useStyles();
     const { currentQueryResult } = useQueryEditorState();
     const [items, setItems] = useState<StatsItem[]>([]);
@@ -75,11 +79,11 @@ export const StatsTab = () => {
 
     return (
         <>
-            <div className={styles.container}>
+            <div className={[styles.container, className].join(' ')}>
                 <div className={styles.panel1}>
                     <div className={styles.topLabel}>
                         <Label size={'large'}>{l10n.t('Query metrics')}</Label> (
-                        <Link href={QUERY_METRICS_DOC_URL} arial-label={l10n.t('Learn more about query metrics…')}>
+                        <Link href={QUERY_METRICS_DOC_URL} aria-label={l10n.t('Learn more about query metrics…')}>
                             {l10n.t('Learn more…')}
                         </Link>
                         )
@@ -93,14 +97,23 @@ export const StatsTab = () => {
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
-                                <TableRow key={item.metric}>
+                                <TableRow
+                                    key={item.metric}
+                                    aria-label={item.tooltip + ' ' + item.formattedValue}
+                                    tabIndex={0}
+                                >
                                     <TableCell>
                                         <TableCellLayout>{item.metric}</TableCellLayout>
                                     </TableCell>
                                     <TableCell>
                                         <TableCellLayout>
                                             {!!item.tooltip && (
-                                                <Tooltip content={item.tooltip} relationship="description" withArrow>
+                                                <Tooltip
+                                                    content={item.tooltip}
+                                                    relationship="description"
+                                                    appearance="inverted"
+                                                    withArrow
+                                                >
                                                     <Label>{item.formattedValue}</Label>
                                                 </Tooltip>
                                             )}{' '}

@@ -8,7 +8,13 @@ import { Allotment } from 'allotment';
 // eslint-disable-next-line import/no-internal-modules
 import 'allotment/dist/style.css';
 import { useContext } from 'react';
+import { useHotkeyScope } from '../../common/hotkeys';
 import { WebviewContext } from '../../WebviewContext';
+import {
+    QueryEditorGlobalHotkeys,
+    type QueryEditorHotkeyCommand,
+    type QueryEditorHotkeyScope,
+} from './QueryEditorHotkeys';
 import { QueryPanel } from './QueryPanel/QueryPanel';
 import { ResultPanel } from './ResultPanel/ResultPanel';
 import { WithQueryEditorContext } from './state/QueryEditorContext';
@@ -24,6 +30,10 @@ const useStyles = makeStyles({
 export const QueryEditor = () => {
     const styles = useStyles();
     const { channel, vscodeApi } = useContext(WebviewContext);
+
+    // Set up the hotkey scope for the global context
+    useHotkeyScope<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('global', QueryEditorGlobalHotkeys);
+
     return (
         <div className={styles.root}>
             <WithQueryEditorContext channel={channel} vscodeApi={vscodeApi}>

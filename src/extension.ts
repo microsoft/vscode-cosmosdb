@@ -30,6 +30,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
@@ -45,7 +46,6 @@ import {
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
-import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 
 // Interface for the MongoDB connection migration API
 interface MongoConnectionMigrationApi extends AzureExtensionApi {

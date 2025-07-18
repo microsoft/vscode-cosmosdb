@@ -117,6 +117,7 @@ export function isCosmosShellSupportEnabled(): boolean {
         return true;
     } catch (err) {
         ext.outputChannel.appendLine('fail ' + err);
+        ext.outputChannel.appendLine('while running "' + command + ' --version"');
         return false;
     }
 }

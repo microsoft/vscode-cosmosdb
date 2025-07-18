@@ -64,8 +64,15 @@ export type DispatchAction =
     | {
           type: 'setIsSurveyCandidate';
           isSurveyCandidate: boolean;
+      }
+    | {
+          type: 'selectBucket';
+          throughputBucket?: number;
+      }
+    | {
+          type: 'updateThroughputBuckets';
+          throughputBuckets?: boolean[];
       };
-
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
@@ -88,6 +95,9 @@ export type QueryEditorState = {
 
     currentQueryResult: SerializedQueryResult | null;
     selectedRows: number[];
+
+    throughputBuckets?: boolean[];
+    selectedThroughputBucket?: number;
 
     tableViewMode: TableViewMode;
 };
@@ -114,6 +124,9 @@ export const defaultState: QueryEditorState = {
 
     currentQueryResult: null,
     selectedRows: [],
+
+    throughputBuckets: [true, true, true, true, true],
+    selectedThroughputBucket: undefined,
 
     tableViewMode: 'Table',
 };
@@ -172,5 +185,9 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, querySelectedValue: action.selectedValue };
         case 'setIsSurveyCandidate':
             return { ...state, isSurveyCandidate: action.isSurveyCandidate };
+        case 'selectBucket':
+            return { ...state, selectedThroughputBucket: action.throughputBucket };
+        case 'updateThroughputBuckets':
+            return { ...state, throughputBuckets: action.throughputBuckets };
     }
 }

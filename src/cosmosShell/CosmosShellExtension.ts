@@ -45,7 +45,7 @@ export class CosmosShellExtension implements vscode.Disposable {
 
 function getCosmosShellCommand(): string {
     const config = vscode.workspace.getConfiguration();
-    const shellPath: string | undefined = config.get('cosmos.shell.path');
+    const shellPath: string | undefined = config.get('cosmosDB.shell.path');
     return shellPath || 'CosmosShell';
 }
 
@@ -66,8 +66,8 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
 
     const config = vscode.workspace.getConfiguration();
 
-    const mcpEnabled = config.get<boolean>('cosmos.shell.mcp.enabled') ?? true;
-    const mcpPort = (config.get<number>('cosmos.shell.mcp.port') ?? 6128).toString();
+    const mcpEnabled = config.get<boolean>('cosmosDB.shell.mcp.enabled') ?? true;
+    const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();
 
     const useMcp = mcpEnabled && !foundTerminal;
     ext.outputChannel.appendLine(`MCP enabled: ${useMcp}, MCP port: ${mcpPort}`);

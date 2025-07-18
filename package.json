@@ -1308,18 +1308,18 @@
               "string",
               "null"
             ],
-            "description": "%cosmosdb.configuration.cosmos.shell.path%",
+            "description": "%cosmosdb.configuration.cosmosDB.shell.path%",
             "default": null
           },
           "cosmosDB.shell.MCP.enabled": {
             "type": "boolean",
             "default": true,
-            "description": "%cosmosdb.configuration.cosmos.shell.mcp.enabled%"
+            "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.enabled%"
           },
           "cosmosDB.shell.MCP.port": {
             "type": "integer",
             "default": 6128,
-            "description": "%cosmosdb.configuration.cosmos.shell.mcp.port%"
+            "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.port%"
           }
         }
       }

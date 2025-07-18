@@ -44,7 +44,9 @@ export class CosmosShellExtension implements vscode.Disposable {
 }
 
 function getCosmosShellCommand(): string {
-    return vscode.workspace.getConfiguration('cosmosdb').get<string>('cosmos.shell.path') || 'CosmosShell';
+    const config = vscode.workspace.getConfiguration();
+    const shellPath: string | undefined = config.get('cosmos.shell.path');
+    return shellPath || 'CosmosShell';
 }
 
 export function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
@@ -52,7 +54,9 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
 
     if (!isCosmosShellInstalled) {
         void vscode.window.showErrorMessage(
-            l10n.t('Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.')
+            l10n.t(
+                'Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.',
+            ),
         );
         return;
     }
@@ -60,11 +64,13 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     const command = getCosmosShellCommand();
     const foundTerminal = vscode.window.terminals.find((terminal) => terminal.creationOptions.name === 'Cosmos Shell');
 
-    const mcpEnabled = vscode.workspace.getConfiguration('cosmosdb').get<boolean>('cosmos.shell.mcp.enabled', true);
-    const mcpPort = vscode.workspace.getConfiguration('cosmosdb').get<number>('cosmos.shell.mcp.port', 6128).toString();
+    const config = vscode.workspace.getConfiguration();
 
-    const useMcp = mcpEnabled && foundTerminal;
+    const mcpEnabled = config.get<boolean>('cosmos.shell.mcp.enabled') ?? true;
+    const mcpPort = (config.get<number>('cosmos.shell.mcp.port') ?? 6128).toString();
 
+    const useMcp = mcpEnabled && !foundTerminal;
+    ext.outputChannel.appendLine(`MCP enabled: ${useMcp}, MCP port: ${mcpPort}`);
     let args: string[];
     if (!node) {
         if (useMcp) {

@@ -33,10 +33,8 @@ export class CosmosShellExtension implements vscode.Disposable {
                 'vscodeDatabases.cosmosShellSupportEnabled',
                 isCosmosShellInstalled,
             );
-
+            registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosShell', launchCosmosShell);
             if (isCosmosShellInstalled) {
-                //   registerCommand('cosmosDB.launchCosmosShell', launchCosmosShell);
-                registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosShell', launchCosmosShell);
                 ext.outputChannel.appendLine(`Cosmos Shell Extension: activated.`);
             } else {
                 ext.outputChannel.appendLine(`Cosmos Shell Extension: deactivated.`);
@@ -50,6 +48,15 @@ function getCosmosShellCommand(): string {
 }
 
 export function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+    const isCosmosShellInstalled: boolean = isCosmosShellSupportEnabled();
+
+    if (!isCosmosShellInstalled) {
+        void vscode.window.showErrorMessage(
+            l10n.t('Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.')
+        );
+        return;
+    }
+
     const command = getCosmosShellCommand();
     const foundTerminal = vscode.window.terminals.find((terminal) => terminal.creationOptions.name === 'Cosmos Shell');
 

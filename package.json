@@ -410,7 +410,7 @@
         "command": "cosmosDB.launchCosmosShell",
         "title": "%cosmosdb.command.cosmos_shell.launch%",
         "when": "vscodeDatabases.cosmosShellSupportEnabled"
-    },
+      },
       {
         "category": "NoSQL",
         "command": "cosmosDB.deleteTrigger",
@@ -924,10 +924,10 @@
           "group": "2@2"
         },
         {
-            "//": "[Database] Launch Cosmos Shell",
-            "command": "cosmosDB.launchCosmosShell",
-            "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.](table|cassandra|core)/i",
-            "group": "2@1"
+          "//": "[Database] Launch Cosmos Shell",
+          "command": "cosmosDB.launchCosmosShell",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.](table|cassandra|core)/i",
+          "group": "2@1"
         },
         {
           "//": "[Database] Refresh",
@@ -1302,6 +1302,24 @@
             "type": "string",
             "default": ";",
             "markdownDescription": "%cosmosdb.configuration.csv.separator%"
+          },
+          "cosmosDB.shell.path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "%cosmosdb.configuration.cosmos.shell.path%",
+            "default": null
+          },
+          "cosmosDB.shell.MCP.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "%cosmosdb.configuration.cosmos.shell.mcp.enabled%"
+          },
+          "cosmosDB.shell.MCP.port": {
+            "type": "integer",
+            "default": 6128,
+            "description": "%cosmosdb.configuration.cosmos.shell.mcp.port%"
           }
         }
       }

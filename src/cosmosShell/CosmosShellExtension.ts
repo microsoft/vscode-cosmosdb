@@ -46,42 +46,47 @@ export class CosmosShellExtension implements vscode.Disposable {
 }
 
 function getCosmosShellCommand(): string {
-    return process.env.COSMOS_SHELL_PATH || 'CosmosShell';
+    return vscode.workspace.getConfiguration('cosmosdb').get<string>('cosmos.shell.path') || 'CosmosShell';
 }
 
-export function launchCosmosShell(
-    _context: IActionContext,
-    node?: NoSqlContainerResourceItem
-) {
+export function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
     const command = getCosmosShellCommand();
+    const foundTerminal = vscode.window.terminals.find((terminal) => terminal.creationOptions.name === 'Cosmos Shell');
+
+    const mcpEnabled = vscode.workspace.getConfiguration('cosmosdb').get<boolean>('cosmos.shell.mcp.enabled', true);
+    const mcpPort = vscode.workspace.getConfiguration('cosmosdb').get<number>('cosmos.shell.mcp.port', 6128).toString();
+
+    const useMcp = mcpEnabled && foundTerminal;
+
+    let args: string[];
     if (!node) {
-        const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, [
-            '--mcp',
-            '--mcp-port',
-            '6128',
-        ]);
+        if (useMcp) {
+            args = ['--mcp', '--mcp-port', mcpPort];
+        } else {
+            args = [];
+        }
+        const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, args);
         terminal.show();
         return;
     }
     // connection string discovery for these items can be slow, so we need to run it with a temporary description
-    const rawConnectionString = node.model.accountInfo.endpoint
+    const rawConnectionString = node.model.accountInfo.endpoint;
 
     if (!rawConnectionString) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
         return;
     }
 
-    const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, [
-        '--mcp',
-        '--mcp-port',
-        '6128',
-        '--connect',
-        rawConnectionString,
-    ]);
+    if (useMcp) {
+        args = ['--mcp', '--mcp-port', mcpPort, '--connect', rawConnectionString];
+    } else {
+        args = ['--connect', rawConnectionString];
+    }
+    const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, args);
 
     terminal.show();
     if (node.model.container) {
-        terminal.sendText('cd '+ node.model.database.id + '/' + node.model.container.id, true);
+        terminal.sendText('cd ' + node.model.database.id + '/' + node.model.container.id, true);
     } else if (node.model.database) {
         terminal.sendText('cd ' + node.model.database.id, true);
     }

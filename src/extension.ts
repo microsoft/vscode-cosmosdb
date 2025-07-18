@@ -26,6 +26,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
@@ -39,7 +40,6 @@ import {
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
-import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
 
 export async function activateInternal(
     context: vscode.ExtensionContext,

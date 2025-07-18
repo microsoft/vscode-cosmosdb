@@ -5,9 +5,12 @@
 
 import {
     AbortError,
+    BulkOperationType,
     ErrorResponse,
     TimeoutError,
+    type BulkOperationResult,
     type CosmosClient,
+    type DeleteOperationInput,
     type ItemDefinition,
     type JSONObject,
     type PartitionKeyDefinition,
@@ -17,13 +20,33 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
+import { HttpStatusCodes } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
+import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, getCosmosDBKeyCredential } from '../getCosmosClient';
 import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
+
+/**
+ * Is more specific type for document identifiers used for deleting documents.
+ */
+type DocumentId = CosmosDBRecordIdentifier & { id: string };
+
+const isDocumentId = (documentId: CosmosDBRecordIdentifier): documentId is DocumentId => {
+    return documentId.id !== undefined && documentId.id !== '';
+};
+
+type DeleteStatus = {
+    valid: DocumentId[];
+    invalid: CosmosDBRecordIdentifier[];
+    deleted: DocumentId[];
+    throttled: DocumentId[];
+    failed: DocumentId[];
+    aborted: boolean;
+};
 
 export class DocumentSession {
     public readonly id: string;
@@ -256,6 +279,114 @@ export class DocumentSession {
         });
     }
 
+    public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.bulkDelete', async (context) => {
+            this.setTelemetryProperties(context);
+
+            if (this.isDisposed) {
+                throw new Error(l10n.t('Session is disposed'));
+            }
+
+            const status: DeleteStatus = {
+                valid: documentIds.filter((documentId) => isDocumentId(documentId)),
+                invalid: documentIds.filter((documentId) => !isDocumentId(documentId)),
+                deleted: [],
+                throttled: [],
+                failed: [],
+                aborted: false,
+            };
+
+            const sendResponse = async () => {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'bulkDelete',
+                    params: [this.id, status],
+                });
+            };
+
+            if (status.valid.length === 0) {
+                return sendResponse();
+            }
+
+            const confirmation = await getConfirmationAsInSettings(
+                l10n.t('Bulk Delete Confirmation'),
+                l10n.t('Are you sure you want to delete selected item(s)?'),
+                'delete',
+            );
+
+            if (!confirmation) {
+                status.aborted = true;
+                return sendResponse();
+            }
+
+            try {
+                await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: l10n.t('Deleting documents'),
+                        cancellable: true,
+                    },
+                    async (progress, token) => {
+                        const abortController = new AbortController();
+                        const abortSignal = abortController.signal;
+
+                        token.onCancellationRequested(async () => {
+                            status.aborted = true;
+                            await sendResponse();
+                            abortController.abort();
+                        });
+
+                        let processedDocumentIds = Array.from(status.valid);
+                        let retryAfterMilliseconds = 0;
+
+                        while (processedDocumentIds.length > 0 && !this.isDisposed && !abortSignal.aborted) {
+                            // If throttled, wait for the specified time before retrying
+                            if (retryAfterMilliseconds > 0) {
+                                await new Promise((resolve) => setTimeout(resolve, result.retryAfterMilliseconds));
+                                processedDocumentIds = Array.from(status.throttled);
+                            }
+
+                            progress.report({ message: this.prepareDeleteProgressMessage(status) });
+
+                            const result = await this.processBulkDelete(processedDocumentIds, abortSignal);
+                            retryAfterMilliseconds = result.retryAfterMilliseconds;
+                            status.deleted.push(...result.deleted);
+                            status.throttled.push(...result.throttled);
+                            status.failed.push(...result.failed);
+                        }
+                    },
+                );
+
+                if (status.aborted) {
+                    this.showError(l10n.t('Bulk delete operation was aborted by the user.'));
+                } else if (status.deleted.length === 0 && status.throttled.length === 0 && status.failed.length === 0) {
+                    this.showError(l10n.t('No documents were deleted.'));
+                } else if (status.throttled.length > 0 || status.failed.length > 0) {
+                    this.showError(
+                        l10n.t(
+                            'Bulk delete operation completed with {deleted} deleted, {throttled} throttled, and {failed} failed documents.',
+                            {
+                                deleted: status.deleted.length,
+                                throttled: status.throttled.length,
+                                failed: status.failed.length,
+                            },
+                        ),
+                    );
+                } else {
+                    this.showInfo(
+                        l10n.t('Bulk delete operation completed with {count} deleted documents.', {
+                            count: status.deleted.length,
+                        }),
+                    );
+                }
+
+                return sendResponse();
+            } catch (error) {
+                await this.errorHandling(error, context);
+            }
+        });
+    }
+
     public async setNewDocumentTemplate(): Promise<void> {
         await callWithTelemetryAndErrorHandling(
             'cosmosDB.nosql.document.session.setNewDocumentTemplate',
@@ -376,7 +507,6 @@ export class DocumentSession {
             //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
             // we need to parse the error message and show it in a better way in the UI
             const parsedError = parseError(error);
-            ext.outputChannel.error(`${message}: ${parsedError.message}`);
 
             if (parsedError.message) {
                 message = `${message}\n${parsedError.message}`;
@@ -386,14 +516,139 @@ export class DocumentSession {
                 message = `${message}\nActivityId: ${error.ActivityId}`;
             }
 
-            const showLogButton = l10n.t('Go to output');
-            if (await vscode.window.showErrorMessage(message, showLogButton)) {
-                ext.outputChannel.show();
-            }
+            this.showError(message);
+
             throw new Error(`${message}, ${parsedError.message}`);
         } else {
-            await vscode.window.showErrorMessage(message);
+            vscode.window.showErrorMessage(message);
             throw new Error(message);
         }
+    }
+
+    private showError(message: string): void {
+        ext.outputChannel.error(message);
+        vscode.window.showErrorMessage(message, l10n.t('Go to output')).then((result) => {
+            if (result) {
+                ext.outputChannel.show();
+            }
+        });
+    }
+
+    private showInfo(message: string): void {
+        ext.outputChannel.appendLog(message);
+        vscode.window.showInformationMessage(message, l10n.t('Go to output')).then((result) => {
+            if (result) {
+                ext.outputChannel.show();
+            }
+        });
+    }
+
+    private prepareDeleteProgressMessage(status: DeleteStatus): string {
+        const parts: string[] = [
+            l10n.t('Total: {count}', { count: status.valid.length }),
+            l10n.t('Deleted: {count}', { count: status.deleted.length }),
+            l10n.t('Throttled: {count}', { count: status.throttled.length }),
+            l10n.t('Failed: {count}', { count: status.failed.length }),
+        ];
+
+        if (status.invalid.length > 0) {
+            parts.push(l10n.t('Invalid: {count}', { count: status.invalid.length }));
+        }
+
+        return parts.join(' | ');
+    }
+
+    private async processBulkDelete(processedDocumentIds: DocumentId[], abortSignal: AbortSignal) {
+        if (this.isDisposed) {
+            throw new Error(l10n.t('Session is disposed'));
+        }
+
+        const result = {
+            deleted: [] as DocumentId[],
+            throttled: [] as DocumentId[],
+            failed: [] as DocumentId[],
+            retryAfterMilliseconds: 0,
+        };
+
+        ext.outputChannel.appendLog(l10n.t('Deleting {count} document(s)', { count: processedDocumentIds.length }));
+
+        // Bulk can only delete 100 documents at a time
+        const BULK_DELETE_LIMIT = 100;
+        const promiseArray: Promise<Array<BulkOperationResult & { documentId: DocumentId }>>[] = [];
+
+        // Trying to delete as many documents as possible
+        while (processedDocumentIds.length > 0 && !this.isDisposed && !abortSignal.aborted) {
+            const documentIdsChunk = processedDocumentIds.splice(0, BULK_DELETE_LIMIT);
+            const operations = documentIdsChunk.map(
+                (documentId): DeleteOperationInput => ({
+                    id: documentId.id,
+                    // bulk delete: if not partition key is specified, do not pass empty array, but undefined
+                    partitionKey:
+                        Array.isArray(documentId.partitionKey) && documentId.partitionKey.length === 0
+                            ? undefined
+                            : documentId.partitionKey,
+                    operationType: BulkOperationType.Delete,
+                }),
+            );
+
+            const promise = this.client
+                .database(this.databaseId)
+                .container(this.containerId)
+                .items.executeBulkOperations(operations, {
+                    abortSignal,
+                })
+                .then((bulkResults) => {
+                    return bulkResults.map((bulkResult, index) => {
+                        const documentId = documentIdsChunk[index];
+                        return { ...bulkResult, documentId };
+                    });
+                });
+            promiseArray.push(promise);
+        }
+
+        // Wait for all delete operations to complete
+        const deleteResult = (await Promise.all(promiseArray)).flat();
+
+        deleteResult.forEach((bulkDeleteResult) => {
+            const statusCode =
+                bulkDeleteResult.response?.statusCode ??
+                (typeof bulkDeleteResult?.error?.code === 'number' ? bulkDeleteResult?.error?.code : null) ??
+                HttpStatusCodes.BAD_REQUEST;
+
+            const retryAfterMs =
+                (bulkDeleteResult.response?.headers?.['x-ms-retry-after-ms'] as number) ??
+                bulkDeleteResult.error?.retryAfterInMs ??
+                300;
+
+            if (statusCode === HttpStatusCodes.NO_CONTENT) {
+                result.deleted.push(bulkDeleteResult.documentId);
+            } else if (statusCode === HttpStatusCodes.TOO_MANY_REQUESTS) {
+                result.retryAfterMilliseconds = Math.max(retryAfterMs, result.retryAfterMilliseconds);
+                result.throttled.push(bulkDeleteResult.documentId);
+            } else if (statusCode >= HttpStatusCodes.BAD_REQUEST) {
+                ext.outputChannel.appendLog(
+                    l10n.t('Failed to delete document {id} with status code {statusCode}. Error: {error}', {
+                        id: bulkDeleteResult.documentId.id,
+                        statusCode,
+                        error: bulkDeleteResult.error?.body?.message ?? l10n.t('Unknown error'),
+                    }),
+                );
+                result.failed.push(bulkDeleteResult.documentId);
+            }
+        });
+
+        ext.outputChannel.appendLog(
+            l10n.t('Successfully deleted {count} document(s)', { count: result.deleted.length }),
+        );
+
+        if (result.throttled.length > 0) {
+            ext.outputChannel.appendLog(
+                l10n.t('Failed to delete {count} document(s) due to "Request too large" (429) error. Retrying...', {
+                    count: result.throttled.length,
+                }),
+            );
+        }
+
+        return result;
     }
 }

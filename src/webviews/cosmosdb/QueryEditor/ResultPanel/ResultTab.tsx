@@ -5,7 +5,7 @@
 
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     queryResultToJSON,
     queryResultToTable,
@@ -56,7 +56,7 @@ interface ResultTabProps {
 
 export const ResultTab = ({ className }: ResultTabProps) => {
     const classes = useClasses();
-    const { tableViewMode, currentQueryResult, partitionKey } = useQueryEditorState();
+    const { tableViewMode, currentQueryResult, partitionKey, isExecuting } = useQueryEditorState();
     const [viewData, setViewData] = useState<ViewData>({});
     const [isLoading, setIsLoading] = useState(false);
     const [resultCount, setResultCount] = useState<number>(0);
@@ -67,8 +67,13 @@ export const ResultTab = ({ className }: ResultTabProps) => {
         // Skip if no query result
         if (!currentQueryResult || currentQueryResult.documents.length === 0) {
             setViewData({});
-            setIsLoading(false);
             setResultCount(-1);
+            if (!isExecuting) {
+                setIsLoading(false);
+                setHasPreviousData(false);
+            } else {
+                setIsLoading(true);
+            }
             return;
         }
 
@@ -142,7 +147,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
         return () => {
             abortController.abort();
         };
-    }, [tableViewMode, currentQueryResult, partitionKey, viewData.table, viewData.tree, viewData.json]);
+    }, [tableViewMode, currentQueryResult, partitionKey, viewData.table, viewData.tree, viewData.json, isExecuting]);
 
     if (!currentQueryResult || currentQueryResult.documents.length === 0) {
         return (
@@ -151,7 +156,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                     {l10n.t('No results to display.')}
                 </div>
                 <div className={classes.loaderContainer}>
-                    {hasPreviousData ? (
+                    {hasPreviousData || isLoading ? (
                         <div className={classes.loaderContainer}>
                             <Spinner labelPosition="below" label="Loading…" />
                         </div>
@@ -169,24 +174,22 @@ export const ResultTab = ({ className }: ResultTabProps) => {
             <div className={classes.screenReaderOnly} aria-live="polite" aria-atomic="true">
                 {!isLoading && resultCount > -1 ? l10n.t('Query complete. {0} results displayed.', resultCount) : ''}
             </div>
-            <Suspense fallback={<div>{l10n.t('Loading…')}</div>}>
-                {isLoading ? (
-                    <div className={classes.loaderContainer}>
-                        <Spinner labelPosition="below" label="Loading…" />
-                    </div>
-                ) : (
-                    <>
-                        {tableViewMode === 'Table' && (
-                            <ResultTabViewTable
-                                headers={viewData.table?.headers ?? []}
-                                dataset={viewData.table?.dataset ?? []}
-                            />
-                        )}
-                        {tableViewMode === 'Tree' && <ResultTabViewTree data={viewData.tree ?? []} />}
-                        {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
-                    </>
-                )}
-            </Suspense>
+            {isLoading ? (
+                <div className={classes.loaderContainer}>
+                    <Spinner labelPosition="below" label={l10n.t('Loading…')} />
+                </div>
+            ) : (
+                <>
+                    {tableViewMode === 'Table' && (
+                        <ResultTabViewTable
+                            headers={viewData.table?.headers ?? []}
+                            dataset={viewData.table?.dataset ?? []}
+                        />
+                    )}
+                    {tableViewMode === 'Tree' && <ResultTabViewTree data={viewData.tree ?? []} />}
+                    {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
+                </>
+            )}
         </div>
     );
 };

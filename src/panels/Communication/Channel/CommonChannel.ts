@@ -204,7 +204,7 @@ export class CommonChannel implements Channel {
             }
 
             if (payload.type === 'event' || payload.type === 'request') {
-                const callbacks = this.listeners[payload.name];
+                const callbacks = this.listeners[payload.name] ?? [];
 
                 callbacks.forEach((cb) => {
                     // One callback throwing an error should not prevent other callbacks from being called

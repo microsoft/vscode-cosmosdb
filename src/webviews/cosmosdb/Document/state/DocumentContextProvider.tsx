@@ -42,7 +42,7 @@ export class DocumentContextProvider extends BaseContextProvider {
     public setValid(isValid: boolean, errors?: string[]): void {
         this.dispatch({ type: 'setValid', isValid });
         if (errors) {
-            this.dispatch({ type: 'setError', error: errors.join('\n') });
+            this.dispatch({ type: 'setError', error: errors });
         }
     }
 

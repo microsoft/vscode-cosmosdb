@@ -21,7 +21,7 @@ import { DatabaseItem } from './DatabaseItem';
 export abstract class ClusterItemBase implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue {
     public readonly id: string;
     public readonly experience: Experience;
-    public readonly contextValue: string = 'treeItem.mongoCluster';
+    public contextValue: string = 'treeItem.mongoCluster';
 
     private readonly experienceContextValue: string = '';
 

@@ -45,7 +45,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     public static serviceName: string = 'ms-azuretools.vscode-azuredatabases.postgresPasswords';
     public static ipAddr: string | undefined;
 
-    public readonly contextValue: string = PostgresServerTreeItem.contextValue;
+    public contextValue: string = PostgresServerTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Database';
     public readonly serverType: PostgresServerType;
 

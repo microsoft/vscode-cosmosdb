@@ -13,7 +13,7 @@ import { PostgresStoredProcedureTreeItem } from './PostgresStoredProcedureTreeIt
 
 export class PostgresStoredProceduresTreeItem extends PostgresResourcesTreeItemBase {
     public static contextValue: string = 'postgresStoredProcedures';
-    public readonly contextValue: string = PostgresStoredProceduresTreeItem.contextValue;
+    public contextValue: string = PostgresStoredProceduresTreeItem.contextValue;
     public readonly label: string = 'Stored Procedures';
     public readonly childTypeLabel: string = 'Stored Procedure';
     public suppressMaskLabel = true;

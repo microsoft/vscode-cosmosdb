@@ -17,6 +17,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import { isJSON } from 'es-toolkit';
 import type React from 'react';
+import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 interface IndexMetricsSection {
     title: string;
@@ -85,14 +86,19 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
     indexMetricsStr,
     topLabelStyle,
 }) => {
+    const dispatcher = useQueryEditorDispatcher();
+
     let parsed: IndexMetrics | undefined = undefined;
     try {
         parsed = parseIndexMetrics(indexMetricsStr);
     } catch (error) {
+        const message = (error as Error).message;
+        void dispatcher.reportWebviewError(message, undefined, undefined);
+
         return (
             <Label>
                 {l10n.t('Failed to parse index metrics: {error}', {
-                    error: (error as Error).message,
+                    error: message,
                 })}
             </Label>
         );

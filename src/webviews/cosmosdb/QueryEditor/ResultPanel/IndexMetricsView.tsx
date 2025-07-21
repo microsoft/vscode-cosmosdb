@@ -85,7 +85,23 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
     indexMetricsStr,
     topLabelStyle,
 }) => {
-    const parsed = parseIndexMetrics(indexMetricsStr);
+    let parsed: IndexMetrics | undefined = undefined;
+    try {
+        parsed = parseIndexMetrics(indexMetricsStr);
+    } catch (error) {
+        return (
+            <Label>
+                {l10n.t('Failed to parse index metrics: {error}', {
+                    error: (error as Error).message,
+                })}
+            </Label>
+        );
+    }
+
+    if (!parsed) {
+        return <Label>{l10n.t('No index metrics available')}</Label>;
+    }
+
     const columns = [l10n.t('Index Spec'), l10n.t('Index Impact Score')];
 
     return (

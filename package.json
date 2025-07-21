@@ -146,7 +146,7 @@
     "@azure/arm-postgresql": "~6.1.0",
     "@azure/arm-postgresql-flexible": "~8.0.0",
     "@azure/arm-resources": "~6.1.0",
-    "@azure/cosmos": "~4.4.1",
+    "@azure/cosmos": "~4.5.0",
     "@azure/identity": "~4.10.1",
     "@fluentui/react-components": "~9.66.1",
     "@fluentui/react-icons": "~2.0.303",

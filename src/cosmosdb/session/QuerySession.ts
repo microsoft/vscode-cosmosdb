@@ -17,8 +17,8 @@ import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../getC
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
+    type QueryMetadata,
     type QueryResultRecord,
-    type ResultViewMetadata,
 } from '../types/queryResult';
 import { QuerySessionResult } from './QuerySessionResult';
 
@@ -28,7 +28,7 @@ export class QuerySession {
     private readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
-    private readonly resultViewMetadata: ResultViewMetadata = {};
+    private readonly resultViewMetadata: QueryMetadata = {};
     private readonly query: string;
     // For telemetry
     private readonly endpoint: string;
@@ -39,14 +39,9 @@ export class QuerySession {
     private abortController: AbortController | null = null;
     private iterator: QueryIterator<QueryResultRecord> | null = null;
     private currentIteration = 0;
-    private isDisposed = false;
+    private _isDisposed = false;
 
-    constructor(
-        connection: NoSqlQueryConnection,
-        channel: Channel,
-        query: string,
-        resultViewMetadata: ResultViewMetadata,
-    ) {
+    constructor(connection: NoSqlQueryConnection, channel: Channel, query: string, resultViewMetadata: QueryMetadata) {
         const { databaseId, containerId, endpoint, credentials } = connection;
 
         this.id = uuid();
@@ -60,6 +55,10 @@ export class QuerySession {
         this.query = query;
 
         this.sessionResult = new QuerySessionResult(this.query, resultViewMetadata);
+    }
+
+    public get isDisposed(): boolean {
+        return this._isDisposed;
     }
 
     public async run(): Promise<void> {
@@ -236,7 +235,7 @@ export class QuerySession {
     }
 
     public dispose(): void {
-        this.isDisposed = true;
+        this._isDisposed = true;
         this.abortController?.abort();
     }
 
@@ -308,7 +307,6 @@ export class QuerySession {
             //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
             // we need to parse the error message and show it in a better way in the UI
             const parsedError = parseError(error);
-            ext.outputChannel.error(`${message}: ${parsedError.message}`);
 
             if (parsedError.message) {
                 message = `${message}\n${parsedError.message}`;
@@ -318,15 +316,22 @@ export class QuerySession {
                 message = `${message}\nActivityId: ${error.ActivityId}`;
             }
 
-            const showLogButton = l10n.t('Go to output');
-            if (await vscode.window.showErrorMessage(message, showLogButton)) {
-                ext.outputChannel.show();
-            }
+            this.showError(message);
+
             throw new Error(`${message}, ${parsedError.message}`);
         } else {
-            await vscode.window.showErrorMessage(message);
+            vscode.window.showErrorMessage(message);
             throw new Error(message);
         }
+    }
+
+    private showError(message: string): void {
+        ext.outputChannel.error(message);
+        vscode.window.showErrorMessage(message, l10n.t('Go to output')).then((result) => {
+            if (result) {
+                ext.outputChannel.show();
+            }
+        });
     }
 
     private setTelemetryProperties(context: IActionContext): void {

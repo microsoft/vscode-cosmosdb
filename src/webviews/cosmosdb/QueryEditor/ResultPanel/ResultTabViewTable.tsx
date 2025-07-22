@@ -60,6 +60,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const onSelectedRowsChanged = useCallback(
         // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
         debounce((args: OnSelectedRowsChangedEventArgs) => {
+            globalThis.getSelection()?.removeAllRanges(); // Clear the selection in the browser to avoid confusion with SlickGrid selection
             dispatcher.setSelectedRows(args.rows);
         }, 100),
         [dispatcher],

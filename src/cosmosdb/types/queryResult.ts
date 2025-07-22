@@ -45,7 +45,7 @@ export type QueryResult = {
     activityId?: string;
     documents: QueryResultRecord[];
     iteration: number;
-    metadata: ResultViewMetadata;
+    metadata: QueryMetadata;
     indexMetrics: string;
     queryMetrics?: QueryMetrics;
     requestCharge: number;
@@ -75,7 +75,7 @@ export type SerializedQueryResult = {
     activityId?: string;
     documents: QueryResultRecord[];
     iteration: number;
-    metadata: ResultViewMetadata;
+    metadata: QueryMetadata;
     indexMetrics: string;
     queryMetrics?: SerializedQueryMetrics;
     requestCharge: number;
@@ -85,7 +85,8 @@ export type SerializedQueryResult = {
     query: string; // The query that was executed
 };
 
-export type ResultViewMetadata = {
+export type QueryMetadata = {
+    sessionId?: string; // The session ID for the query, if specified, used for take the same session for subsequent queries
     countPerPage?: number;
     timeout?: number; // How long the query is allowed to run in seconds
     throughputBucket?: number; // The throughput bucket selected by the user,

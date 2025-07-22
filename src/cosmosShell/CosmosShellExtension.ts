@@ -17,6 +17,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as child from 'child_process';
 import * as vscode from 'vscode';
+import { type CosmosDBKeyCredential, type CosmosDBManagedIdentityCredential } from '../cosmosdb/getCosmosClient';
 import { ext } from '../extensionVariables';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 
@@ -93,9 +94,26 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         terminal.show();
         return;
     }
-    // connection string discovery for these items can be slow, so we need to run it with a temporary description
-    const rawConnectionString = node.model.accountInfo.endpoint;
 
+    let cosmosShellCredential: string | undefined;
+
+    for (const credential of node.model.accountInfo.credentials) {
+        const keyCredential = credential as CosmosDBKeyCredential;
+        if (keyCredential && keyCredential.key) {
+            cosmosShellCredential = `key=${keyCredential.key}`;
+            break;
+        }
+
+        // EntraID credentials are not supported for giving to other tools like Cosmos Shell.
+
+        const identityCredential = credential as CosmosDBManagedIdentityCredential;
+        if (identityCredential) {
+            cosmosShellCredential = `identity=${identityCredential.type}`;
+            break;
+        }
+    }
+
+    const rawConnectionString = node.model.accountInfo.endpoint;
     if (!rawConnectionString) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
         return;
@@ -106,7 +124,13 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     } else {
         args = ['--connect', rawConnectionString];
     }
-    const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, args);
+
+    const terminal: vscode.Terminal = vscode.window.createTerminal({
+        name: 'Cosmos Shell',
+        shellPath: command,
+        shellArgs: args,
+        env: cosmosShellCredential ? { COSMOS_SHELL_CREDENTIAL: cosmosShellCredential } : undefined,
+    });
 
     terminal.show();
     if (node.model.container) {

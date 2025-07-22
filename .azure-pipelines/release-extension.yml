@@ -15,10 +15,15 @@ parameters:
       type: string
       default: AzCodeReleases
 
-      # When true, skips the deployment job which actually publishes the extension
+    # When true, skips the deployment job which actually publishes the extension
     - name: dryRun
       type: boolean
       default: true
+
+    - name: 'debug'
+      displayName: 'Enable debug output'
+      type: boolean
+      default: false
 
 resources:
     repositories:
@@ -32,9 +37,9 @@ resources:
           source: \VSCode Extensions\vscode-cosmosdb # name of the pipeline that produces the artifacts
 
 variables:
+    system.debug: ${{ parameters.debug }}
     # Required by MicroBuild template
-    - name: TeamName
-      value: 'Desktop Tools'
+    TeamName: 'Desktop Tools'
 
 extends:
     template: v2/OneBranch.Official.CrossPlat.yml@templates

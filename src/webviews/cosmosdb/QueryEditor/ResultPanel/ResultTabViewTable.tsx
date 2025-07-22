@@ -5,13 +5,14 @@
 
 import { debounce } from 'es-toolkit';
 import * as React from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
     SlickgridReact,
     type GridOption,
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
+import { DynamicThemeProvider } from '../../../theme/DynamicThemeProvider';
 import { getDocumentId, type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -23,6 +24,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const gridRef = useRef<SlickgridReact>(null);
+    const [announcement, setAnnouncement] = useState('');
 
     React.useEffect(() => {
         gridRef.current?.gridService.renderGrid();
@@ -44,7 +46,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     React.useEffect(() => {
         gridRef.current?.gridService.renderGrid();
 
-        // Add ARIA attributes after rendering
         setTimeout(() => {
             const grid = gridRef.current?.grid;
             if (!grid) return;
@@ -54,26 +55,14 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             gridElement?.setAttribute('role', 'grid');
             gridElement?.setAttribute('aria-label', 'Query results data grid');
 
-            // Add live region for announcements
-            const liveRegion = document.createElement('div');
-            liveRegion.setAttribute('role', 'status');
-            liveRegion.setAttribute('aria-live', 'polite');
-            liveRegion.setAttribute('aria-atomic', 'true');
-            liveRegion.className = 'sr-only';
-            liveRegion.id = 'grid-announcer';
-            gridElement?.appendChild(liveRegion);
-
-            // Announce cell values on navigation
+            // Announce cell values on navigation using ARIA live region
             grid.onActiveCellChanged.subscribe((_e, args) => {
                 const column = gridColumns[args.cell];
                 const data = dataset[args.row];
                 if (column && data) {
                     const value = data[column.field] || '';
-                    const announcement = `${column.name}: ${value}`;
-                    const announcer = document.getElementById('grid-announcer');
-                    if (announcer) {
-                        announcer.textContent = announcement;
-                    }
+                    const announcementText = `${column.name}: ${value}`;
+                    setAnnouncement(announcementText);
                 }
             });
         }, 100);
@@ -147,16 +136,26 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     );
 
     return (
-        <SlickgridReact
-            gridId="myGrid"
-            ref={gridRef} // Attach the reference to SlickGrid
-            gridOptions={gridOptions}
-            columnDefinitions={gridColumns}
-            dataset={dataset}
-            onDblClick={(event) => onDblClick(event.detail.args)}
-            onSelectedRowsChanged={(event: CustomEvent<{ args: OnSelectedRowsChangedEventArgs }>) =>
-                onSelectedRowsChanged(event.detail.args)
-            }
-        />
+        <DynamicThemeProvider useAdaptive={true}>
+            {/* ARIA live region for announcements */}
+            <div
+                aria-live="polite"
+                aria-atomic="true"
+                style={{ position: 'absolute', left: '-10000px', width: '1px', height: '1px', overflow: 'hidden' }}
+            >
+                {announcement}
+            </div>
+            <SlickgridReact
+                gridId="myGrid"
+                ref={gridRef}
+                gridOptions={gridOptions}
+                columnDefinitions={gridColumns}
+                dataset={dataset}
+                onDblClick={(event) => onDblClick(event.detail.args)}
+                onSelectedRowsChanged={(event: CustomEvent<{ args: OnSelectedRowsChangedEventArgs }>) =>
+                    onSelectedRowsChanged(event.detail.args)
+                }
+            />
+        </DynamicThemeProvider>
     );
 };

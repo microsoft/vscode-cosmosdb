@@ -53,11 +53,22 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     const isCosmosShellInstalled: boolean = isCosmosShellSupportEnabled();
 
     if (!isCosmosShellInstalled) {
-        void vscode.window.showErrorMessage(
-            l10n.t(
-                'Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.',
-            ),
-        );
+        const settings = l10n.t('Settings');
+        void vscode.window
+            .showErrorMessage(
+                l10n.t(
+                    'Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.',
+                ),
+                settings,
+            )
+            .then((selection) => {
+                if (selection === settings) {
+                    void vscode.commands.executeCommand(
+                        'vscode.open',
+                        vscode.Uri.parse('vscode://settings/cosmosDB.shell.path'),
+                    );
+                }
+            });
         return;
     }
 

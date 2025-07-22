@@ -108,6 +108,7 @@ export class QueryEditorTab extends BaseTab {
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
             await this.updateQueryHistory();
+            await this.updateThroughputBuckets();
             if (this.query) {
                 await this.channel.postMessage({
                     type: 'event',
@@ -313,6 +314,27 @@ export class QueryEditorTab extends BaseTab {
                 params: [historyData.properties.history],
             });
         });
+    }
+
+    private async updateThroughputBuckets(): Promise<void> {
+        await callWithTelemetryAndErrorHandling(
+            'cosmosDB.nosql.queryEditor.updateThroughputBuckets',
+            async (context) => {
+                context.telemetry.suppressIfSuccessful = true;
+
+                if (!this.connection) {
+                    throw new Error(l10n.t('No connection'));
+                }
+
+                // TODO: Implement logic to fetch throughput buckets
+                // For now, we will just set the buckets to true.
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'updateThroughputBuckets',
+                    params: [[true, true, true, true, true]],
+                });
+            },
+        );
     }
 
     private async duplicateTab(text: string): Promise<void> {

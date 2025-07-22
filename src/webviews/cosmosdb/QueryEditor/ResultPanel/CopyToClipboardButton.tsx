@@ -86,7 +86,7 @@ export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
                     >
                         <ToolbarButton
                             ref={ref}
-                            aria-label={l10n.t('Copy to clipboard')}
+                            aria-label={tooltipClipboardContent}
                             icon={<DocumentCopyRegular />}
                             disabled={!state.isConnected}
                         />

@@ -82,6 +82,7 @@ export class QuerySession {
                     connectionPolicy: {
                         requestTimeout: this.resultViewMetadata.timeout ?? DEFAULT_EXECUTION_TIMEOUT,
                     },
+                    throughputBucket: this.resultViewMetadata.throughputBucket,
                 });
 
                 this.iterator = client

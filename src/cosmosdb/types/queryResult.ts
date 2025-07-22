@@ -89,4 +89,5 @@ export type QueryMetadata = {
     sessionId?: string; // The session ID for the query, if specified, used for take the same session for subsequent queries
     countPerPage?: number;
     timeout?: number; // How long the query is allowed to run in seconds
+    throughputBucket?: number; // The throughput bucket selected by the user,
 };

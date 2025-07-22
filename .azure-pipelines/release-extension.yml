@@ -57,6 +57,8 @@ extends:
                               pipeline: build
                               targetPath: $(System.DefaultWorkingDirectory)
                               artifactName: drop_BuildStage_Main
+                    pool:
+                        type: release
                     strategy:
                         runOnce:
                             deploy:

@@ -65,6 +65,8 @@ extends:
                     pool:
                         type: windows
                     #    type: release
+                    variables:
+                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
 
                     steps:
                         # Modify the build number to include repo name, extension version, and if dry run is true

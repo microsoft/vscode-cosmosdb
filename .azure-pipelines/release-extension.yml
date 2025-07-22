@@ -63,7 +63,8 @@ extends:
                               targetPath: $(System.DefaultWorkingDirectory)
                               artifactName: drop_BuildStage_Main
                     pool:
-                        type: release
+                        type: windows
+                    #    type: release
 
                     steps:
                         # Modify the build number to include repo name, extension version, and if dry run is true
@@ -139,6 +140,15 @@ extends:
                                     Write-Output "Found .vsix file: $vsixFileName"
                                   }
                           displayName: "\U0001F449 Find and Set .vsix File Variable"
+
+                        - task: AzureCLI@2
+                          displayName: 'Get AzDO User ID'
+                          inputs:
+                              azureSubscription: 'CosmosDB VSCode Publishing'
+                              scriptType: pscore
+                              scriptLocation: inlineScript
+                              inlineScript: |
+                                  az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me --resource 499b84ac-1321-427f-aa17-267ca6975798
 
                         #- task: UseNode@1
                         #  inputs:

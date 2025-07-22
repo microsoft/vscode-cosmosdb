@@ -49,12 +49,9 @@ extends:
                   - name: ob_release_environment
                     value: Production # should be  Test, PPE or Production
               jobs:
-                  - deployment: Publish
+                  - job: ReleaseJob
                     displayName: Publish extension
-                    environment: ${{ parameters.environmentName }}
                     templateContext:
-                        type: releaseJob
-                        isProduction: true
                         inputs:
                             - input: pipelineArtifact
                               pipeline: build

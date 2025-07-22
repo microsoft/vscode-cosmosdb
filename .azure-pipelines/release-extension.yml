@@ -45,6 +45,9 @@ extends:
         stages:
             - stage: Release
               displayName: Release extension
+              variables:
+                  - name: ob_release_environment
+                    value: Production # should be  Test, PPE or Production
               jobs:
                   - deployment: Publish
                     displayName: Publish extension

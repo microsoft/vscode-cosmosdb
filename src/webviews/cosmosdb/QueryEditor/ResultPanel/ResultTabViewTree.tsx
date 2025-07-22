@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
+import { l10n } from 'vscode';
 
 type ResultTabViewTreeProps = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,7 +94,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
         // Set ARIA attributes for the grid
         const gridElement = grid.getContainerNode();
         gridElement?.setAttribute('role', 'treegrid');
-        gridElement?.setAttribute('aria-label', 'Document tree view');
+        gridElement?.setAttribute('aria-label', l10n.t('Document tree view'));
 
         // Create a live region for announcements
         let announcer = document.getElementById('tree-announcer');
@@ -134,12 +135,10 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
 
             // Build comprehensive announcement
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            let announcement = `${columnName}: ${value}`;
+            let announcement = l10n.t('{0}: {1}, tree level {2}', columnName, value, level);
             if (hasChildren) {
-                const isExpanded = hasChildren ? (item?.__collapsed ? 'collapsed' : 'expanded') : '';
-                announcement += `, tree level ${level}, ${isExpanded}`;
-            } else if (level > 0) {
-                announcement += `, tree level ${level}`;
+                const isExpanded = hasChildren ? (item?.__collapsed ? l10n.t('collapsed') : l10n.t('expanded')) : '';
+                announcement += `, ${isExpanded}`;
             }
 
             // Announce the content
@@ -169,13 +168,16 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             grid.render();
 
             // Announce the new state
-            const state = item.__collapsed ? 'collapsed' : 'expanded';
+            const state = item.__collapsed ? l10n.t('collapsed') : l10n.t('expanded');
             const column = grid.getColumns()[activeCell.cell];
-            const value = item[column.field] || '';
+            const fieldValue = item[column.field];
+            const value = fieldValue !== null && fieldValue !== undefined ? String(fieldValue) : '';
             const level = item.__treeLevel ?? 0;
+            const columnName = typeof column?.name === 'string' ? column.name : '';
             const announcerElement = document.getElementById('tree-announcer');
             if (announcerElement) {
-                announcerElement.textContent = `${column.name}: ${value}, tree level ${level}, ${state}`;
+                announcerElement.textContent =
+                    l10n.t('{0}: {1}, tree level {2}', columnName, value, level) + `, ${state}`;
             }
 
             e.preventDefault();

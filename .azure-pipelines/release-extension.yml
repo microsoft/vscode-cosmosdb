@@ -135,20 +135,20 @@ extends:
                                   }
                           displayName: "\U0001F449 Find and Set .vsix File Variable"
 
-                        - task: UseNode@1
-                          inputs:
-                              version: '20.x'
-                          displayName: "\U0001F449 Install Node.js"
+                        #- task: UseNode@1
+                        #  inputs:
+                        #      version: '20.x'
+                        #  displayName: "\U0001F449 Install Node.js"
 
-                        - script: npm i -g @vscode/vsce
-                          displayName: "\U0001F449 Install vsce"
+                        #- script: npm i -g @vscode/vsce
+                        #  displayName: "\U0001F449 Install vsce"
 
-                        - task: AzureCLI@2
-                          displayName: "\U0001F449 Run vsce publish"
-                          condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
-                          inputs:
-                              azureSubscription: ${{ parameters.ExtensionReleaseServiceConnection }}
-                              scriptType: pscore
-                              scriptLocation: inlineScript
-                              inlineScript: |
-                                  vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s
+                        #- task: AzureCLI@2
+                        #  displayName: "\U0001F449 Run vsce publish"
+                        #  condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
+                        #  inputs:
+                        #      azureSubscription: ${{ parameters.ExtensionReleaseServiceConnection }}
+                        #      scriptType: pscore
+                        #      scriptLocation: inlineScript
+                        #      inlineScript: |
+                        #          vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s

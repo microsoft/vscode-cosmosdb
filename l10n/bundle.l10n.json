@@ -562,6 +562,7 @@
   "Session is disposed": "Session is disposed",
   "Session is not running! Please run the session first": "Session is not running! Please run the session first",
   "Setting up credentials for server \"{0}\"…": "Setting up credentials for server \"{0}\"…",
+  "Settings": "Settings",
   "Show history of previous queries": "Show history of previous queries",
   "Showing Results": "Showing Results",
   "Sign in to Azure...": "Sign in to Azure...",

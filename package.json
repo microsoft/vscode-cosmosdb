@@ -1313,7 +1313,7 @@
           },
           "cosmosDB.shell.MCP.enabled": {
             "type": "boolean",
-            "default": true,
+            "default": false,
             "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.enabled%"
           },
           "cosmosDB.shell.MCP.port": {

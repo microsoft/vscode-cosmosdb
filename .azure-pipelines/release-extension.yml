@@ -1,0 +1,147 @@
+parameters:
+    # The intended extension version to publish.
+    # This is used to verify the version in package.json matches the version to publish to avoid accidental publishing.
+    - name: publishVersion
+      type: string
+
+    # Customize the environment to associate the deployment with.
+    # Useful to control which group of people should be required to approve the deployment.
+    - name: environmentName
+      type: string
+      default: AzCodeDeploy
+
+    # The service connection to use to authenticate the vsce to publish the extension.
+    - name: ExtensionReleaseServiceConnection
+      type: string
+      default: AzCodeReleases
+
+      # When true, skips the deployment job which actually publishes the extension
+    - name: dryRun
+      type: boolean
+      default: true
+
+resources:
+    repositories:
+        - repository: templates
+          type: git
+          name: OneBranch.Pipelines/GovernedTemplates
+          ref: refs/heads/main
+    pipelines:
+        - pipeline: build # Alias for your build pipeline source
+          project: 'CosmosDB'
+          source: \VSCode Extensions\vscode-cosmosdb # name of the pipeline that produces the artifacts
+
+variables:
+    # Required by MicroBuild template
+    - name: TeamName
+      value: 'Desktop Tools'
+
+extends:
+    template: v2/OneBranch.Official.CrossPlat.yml@templates
+    parameters:
+        release:
+            category: NonAzure # NonAzure category is used to indicate that this is not an Azure service
+
+        stages:
+            - stage: Release
+              displayName: Release extension
+              jobs:
+                  - deployment: Publish
+                    displayName: Publish extension
+                    environment: ${{ parameters.environmentName }}
+                    templateContext:
+                        type: releaseJob
+                        isProduction: true
+                        inputs:
+                            - input: pipelineArtifact
+                              pipeline: build
+                              targetPath: $(System.DefaultWorkingDirectory)
+                              artifactName: drop_BuildStage_Main
+                    strategy:
+                        runOnce:
+                            deploy:
+                                steps:
+                                    - checkout: none
+
+                                    # Modify the build number to include repo name, extension version, and if dry run is true
+                                    - powershell: |
+                                          # Get the version from package.json
+
+                                          $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
+                                          $npmVersionString = (Get-Content $packageJsonPath | ConvertFrom-Json).version
+                                          $isDryRun = "$env:dryRun"
+                                          $currentBuildNumber = "$(Build.BuildId)"
+
+                                          $repoName = "$(Build.Repository.Name)"
+                                          $repoNameParts = $repoName -split '/'
+                                          $repoNameWithoutOwner = $repoNameParts[-1]
+
+                                          $dry = ""
+                                          if ($isDryRun -eq 'True') {
+                                            Write-Output "Dry run was set to True. Adding 'dry' to the build number."
+                                            $dry = "dry"
+                                          }
+
+                                          $newBuildNumber = "$repoNameWithoutOwner-$npmVersionString-$dry-$currentBuildNumber"
+                                          Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
+                                      displayName: "\U0001F449 Prepend version from package.json to build number"
+                                      env:
+                                          dryRun: ${{ parameters.dryRun }}
+
+                                    # For safety, verify the version in package.json matches the version to publish entered by the releaser
+                                    # If they don't match, this step fails
+                                    - powershell: |
+                                          # Get the version from package.json
+                                          $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
+                                          $npmVersionString = (Get-Content $packageJsonPath | ConvertFrom-Json).version
+                                          $publishVersion = "$env:publishVersion"
+                                          Write-Output "Publishing version: $publishVersion"
+                                          # Check if more than one .vsix file is found
+                                          if ($npmVersionString -eq $publishVersion) {
+                                            Write-Output "Publish version matches package.json version. Proceeding with release."
+                                          } else {
+                                            Write-Error "Publish version $publishVersion doesn't match version found in package.json $npmVersionString. Cancelling release."
+                                            exit 1
+                                          }
+                                      displayName: "\U0001F449 Verify publish version"
+                                      env:
+                                          publishVersion: ${{ parameters.publishVersion }}
+
+                                    # Find the vsix to release and set the vsix file name variable
+                                    # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
+                                    - powershell: |
+                                          # Get all .vsix files in the current directory
+                                          $vsixFiles = Get-ChildItem -Path $(System.DefaultWorkingDirectory) -Filter *.vsix -File
+
+                                          # Check if more than one .vsix file is found
+                                          if ($vsixFiles.Count -gt 1) {
+                                            Write-Error "More than one .vsix file found."
+                                            exit 1
+                                          } elseif ($vsixFiles.Count -eq 0) {
+                                            Write-Error "No .vsix files found."
+                                            exit 1
+                                          } else {
+                                            # Set the pipeline variable
+                                            $vsixFileName = $vsixFiles.Name
+                                            Write-Output "##vso[task.setvariable variable=vsixFileName;]$vsixFileName"
+                                            Write-Output "Found .vsix file: $vsixFileName"
+                                          }
+                                      displayName: "\U0001F449 Find and Set .vsix File Variable"
+
+                                    - task: UseNode@1
+                                      inputs:
+                                          version: '20.x'
+                                      displayName: "\U0001F449 Install Node.js"
+
+                                    - script: npm i -g @vscode/vsce
+                                      displayName: "\U0001F449 Install vsce"
+
+                                    - task: AzureCLI@2
+                                      displayName: "\U0001F449 Run vsce publish"
+                                      condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
+                                      inputs:
+                                          azureSubscription: ${{ parameters.ExtensionReleaseServiceConnection }}
+                                          scriptType: pscore
+                                          scriptLocation: inlineScript
+                                          inlineScript: |
+                                              vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s

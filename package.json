@@ -926,8 +926,8 @@
         {
           "//": "[Database] Launch Cosmos Shell",
           "command": "cosmosDB.launchCosmosShell",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.](table|cassandra|core)/i",
-          "group": "2@1"
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
+          "group": "1@4"
         },
         {
           "//": "[Database] Refresh",

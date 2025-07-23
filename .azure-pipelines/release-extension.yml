@@ -83,7 +83,7 @@ extends:
             category: NonAzure # NonAzure category is used to indicate that this is not an Azure service
 
         stages:
-            - stage: Validate Service Connection
+            - stage: ValidateServiceConnection
               displayName: Validate Service Connection
               jobs:
                   - job: ValidateServiceConnection

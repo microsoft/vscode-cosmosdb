@@ -89,22 +89,14 @@ extends:
                   - name: ob_release_environment
                     value: Production # should be  Test, PPE or Production
               jobs:
-                  - job: ReleaseJob
-                    displayName: Publish extension
-                    templateContext:
-                        inputs:
-                            - input: pipelineArtifact
-                              pipeline: build
-                              targetPath: $(System.DefaultWorkingDirectory)
-                              artifactName: drop_BuildStage_Main
+                  - job: ServiceValidation
+                    displayName: "\U00002713 Validate Service Connection"
                     pool:
                         type: windows
-                    #    type: release
                     variables:
                         ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
-
                     steps:
-
+                        # Get the user ID of the Azure DevOps Service Connection user to use for publishing
                         - task: AzureCLI@2
                           displayName: 'Get AzDO User ID'
                           inputs:
@@ -114,6 +106,19 @@ extends:
                               inlineScript: |
                                   az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me --resource 499b84ac-1321-427f-aa17-267ca6975798
 
+                  - job: ReleaseValidation
+                    displayName: "\U00002713 Validate Artifacts"
+                    templateContext:
+                        inputs:
+                            - input: pipelineArtifact
+                              pipeline: build
+                              targetPath: $(System.DefaultWorkingDirectory)
+                              artifactName: drop_BuildStage_Main
+                    pool:
+                        type: release
+                    variables:
+                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
+                    steps:
                         # Modify the build number to include repo name, extension version, and if dry run is true
                         - task: PowerShell@2
                           inputs:

@@ -161,6 +161,7 @@ extends:
                               targetType: 'inline'
                               script: |
                                   # Get all .vsix files in the current directory
+                                  Get-ChildItem -Path $(System.DefaultWorkingDirectory) -File
                                   $vsixFiles = Get-ChildItem -Path $(System.DefaultWorkingDirectory) -Filter *.vsix -File
 
                                   # Check if more than one .vsix file is found

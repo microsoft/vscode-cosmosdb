@@ -10,11 +10,6 @@ parameters:
       type: string
       default: AzCodeDeploy
 
-    # The service connection to use to authenticate the vsce to publish the extension.
-    - name: ExtensionReleaseServiceConnection
-      type: string
-      default: AzCodeReleases
-
     # When true, skips the deployment job which actually publishes the extension
     - name: dryRun
       type: boolean
@@ -97,7 +92,7 @@ extends:
                         - task: AzureCLI@2
                           displayName: 'Get AzDO User ID'
                           inputs:
-                              azureSubscription: ${{ parameters.ExtensionReleaseServiceConnection }}
+                              azureSubscription: 'CosmosDB VSCode Publishing'
                               scriptType: pscore
                               scriptLocation: inlineScript
                               inlineScript: |
@@ -208,7 +203,7 @@ extends:
                         #  displayName: "\U0001F449 Run vsce publish"
                         #  condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
                         #  inputs:
-                        #      azureSubscription: ${{ parameters.ExtensionReleaseServiceConnection }}
+                        #      azureSubscription: "CosmosDB VSCode Publishing"
                         #      scriptType: pscore
                         #      scriptLocation: inlineScript
                         #      inlineScript: |

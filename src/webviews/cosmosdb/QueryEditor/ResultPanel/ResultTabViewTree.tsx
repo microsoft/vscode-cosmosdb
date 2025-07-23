@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { useEffect, useMemo, useRef } from 'react';
+import * as l10n from '@vscode/l10n';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
-import { l10n } from 'vscode';
+import { DynamicThemeProvider } from '../../../theme/DynamicThemeProvider';
 
 type ResultTabViewTreeProps = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,31 +87,13 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
         }),
         [],
     );
-
+    const [announcement, setAnnouncement] = useState('');
     useEffect(() => {
         const grid = gridRef.current?.grid;
         if (!grid) return;
 
         // Set ARIA attributes for the grid
         const gridElement = grid.getContainerNode();
-        gridElement?.setAttribute('role', 'treegrid');
-        gridElement?.setAttribute('aria-label', l10n.t('Document tree view'));
-
-        // Create a live region for announcements
-        let announcer = document.getElementById('tree-announcer');
-        if (!announcer) {
-            announcer = document.createElement('div');
-            announcer.id = 'tree-announcer';
-            announcer.setAttribute('role', 'status');
-            announcer.setAttribute('aria-live', 'polite');
-            announcer.setAttribute('aria-atomic', 'true');
-            announcer.style.position = 'absolute';
-            announcer.style.left = '-10000px';
-            announcer.style.width = '1px';
-            announcer.style.height = '1px';
-            announcer.style.overflow = 'hidden';
-            document.body.appendChild(announcer);
-        }
 
         // Announce cell content when active cell changes
         const handleActiveCellChanged = (_e: unknown, args: { row: number; cell: number }) => {
@@ -135,17 +118,13 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
 
             // Build comprehensive announcement
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            let announcement = l10n.t('{0}: {1}, tree level {2}', columnName, value, level);
+            let announcementText = l10n.t('{0}: {1}, tree level {2}', columnName, value, level);
             if (hasChildren) {
                 const isExpanded = hasChildren ? (item?.__collapsed ? l10n.t('collapsed') : l10n.t('expanded')) : '';
-                announcement += `, ${isExpanded}`;
+                announcementText += `, ${isExpanded}`;
             }
-
             // Announce the content
-            const announcerElement = document.getElementById('tree-announcer');
-            if (announcerElement) {
-                announcerElement.textContent = announcement;
-            }
+            setAnnouncement(announcementText);
         };
 
         // Subscribe to active cell changes
@@ -174,12 +153,8 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             const value = fieldValue !== null && fieldValue !== undefined ? String(fieldValue) : '';
             const level = item.__treeLevel ?? 0;
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            const announcerElement = document.getElementById('tree-announcer');
-            if (announcerElement) {
-                announcerElement.textContent =
-                    l10n.t('{0}: {1}, tree level {2}', columnName, value, level) + `, ${state}`;
-            }
-
+            const announcementText = l10n.t('{0}: {1}, tree level {2}', columnName, value, level) + `, ${state}`;
+            setAnnouncement(announcementText);
             e.preventDefault();
             e.stopPropagation();
         };
@@ -189,20 +164,27 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
         // Clean up on unmount
         return () => {
             grid.onActiveCellChanged.unsubscribe(handleActiveCellChanged);
-            const announcerElement = document.getElementById('tree-announcer');
-            if (announcerElement) {
-                document.body.removeChild(announcerElement);
-            }
+            gridElement?.removeEventListener('keydown', handleKeyDown);
         };
     }, [data, columnsDef]);
 
     return (
-        <SlickgridReact
-            ref={gridRef}
-            gridId="myGridTree"
-            gridOptions={gridOptions}
-            columnDefinitions={columnsDef}
-            dataset={data}
-        />
+        <DynamicThemeProvider useAdaptive={true}>
+            {/* ARIA live region for announcements */}
+            <div
+                aria-live="polite"
+                aria-atomic="true"
+                style={{ position: 'absolute', left: '-10000px', width: '1px', height: '1px', overflow: 'hidden' }}
+            >
+                {announcement}
+            </div>
+            <SlickgridReact
+                ref={gridRef}
+                gridId="myGridTree"
+                gridOptions={gridOptions}
+                columnDefinitions={columnsDef}
+                dataset={data}
+            />
+        </DynamicThemeProvider>
     );
 };

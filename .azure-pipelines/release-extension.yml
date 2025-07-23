@@ -83,13 +83,10 @@ extends:
             category: NonAzure # NonAzure category is used to indicate that this is not an Azure service
 
         stages:
-            - stage: Release
-              displayName: Release extension
-              variables:
-                  - name: ob_release_environment
-                    value: Production # should be  Test, PPE or Production
+            - stage: Validate Service Connection
+              displayName: Validate Service Connection
               jobs:
-                  - job: ServiceValidation
+                  - job: ValidateServiceConnection
                     displayName: "\U00002713 Validate Service Connection"
                     pool:
                         type: windows
@@ -100,12 +97,17 @@ extends:
                         - task: AzureCLI@2
                           displayName: 'Get AzDO User ID'
                           inputs:
-                              azureSubscription: 'CosmosDB VSCode Publishing'
+                              azureSubscription: ${{ parameters.ExtensionReleaseServiceConnection }}
                               scriptType: pscore
                               scriptLocation: inlineScript
                               inlineScript: |
                                   az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me --resource 499b84ac-1321-427f-aa17-267ca6975798
-
+            - stage: Release
+              displayName: Release extension
+              variables:
+                  - name: ob_release_environment
+                    value: Production # should be  Test, PPE or Production
+              jobs:
                   - job: ReleaseValidation
                     displayName: "\U00002713 Validate Artifacts"
                     templateContext:

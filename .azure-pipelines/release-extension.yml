@@ -40,6 +40,7 @@ variables:
     system.debug: ${{ parameters.debug }}
     # Required by MicroBuild template
     TeamName: 'Desktop Tools'
+    WindowsContainerImage: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest' # Docker image which is used to build the project https://aka.ms/obpipelines/containers
 
 extends:
     template: v2/OneBranch.Official.CrossPlat.yml@templates

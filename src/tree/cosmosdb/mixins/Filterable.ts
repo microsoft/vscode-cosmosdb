@@ -227,7 +227,7 @@ export function makeFilterable<T extends TreeElement>(
 
         const pattern = await vscode.window.showInputBox({
             placeHolder: l10n.t('Filter pattern (e.g., "user*" or "*test*")'),
-            prompt: l10n.t('Enter glob pattern to filter items or leave empty to clear'),
+            prompt: l10n.t('Enter filter pattern or leave empty to clear filtration'),
             value: this.filterPattern || '',
         });
 
@@ -290,7 +290,7 @@ function getPropertyValue(item: vscode.TreeItem, prop: TreeItemStringProps): str
         if (typeof item.id === 'string') {
             const lastSlashIndex = item.id.lastIndexOf('/');
             if (lastSlashIndex !== -1) {
-                return item.id.substring(0, lastSlashIndex);
+                return item.id.substring(lastSlashIndex + 1);
             }
         }
         // If id is not a string or does not contain a slash, return the full id

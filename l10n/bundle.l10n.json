@@ -356,7 +356,6 @@
   "Invalid Connection String: {error}": "Invalid Connection String: {error}",
   "Invalid Cosmos DB connection string.": "Invalid Cosmos DB connection string.",
   "Invalid document ID: {0}": "Invalid document ID: {0}",
-  "Invalid filter pattern: {pattern}": "Invalid filter pattern: {pattern}",
   "Invalid mode: {0}": "Invalid mode: {0}",
   "Invalid semver \"{0}\".": "Invalid semver \"{0}\".",
   "Invalid workspace resource ID: {0}": "Invalid workspace resource ID: {0}",

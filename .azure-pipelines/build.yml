@@ -21,6 +21,7 @@ parameters:
       type: boolean
       default: false
     - name: isOfficialBuild
+      displayName: 'Official Build + signing'
       type: boolean
       default: true
 
@@ -135,6 +136,7 @@ extends:
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: '\U0001F449 Sign VSIX package'
+                          condition: and(succeeded(), eq(parameters.isOfficialBuild, false))
                           inputs:
                               command: 'sign'
                               #signing_environment: 'azure-ado'

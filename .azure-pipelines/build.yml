@@ -124,13 +124,24 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
                           condition: succeeded()
 
+                        - script: npm i -g @vscode/vsce
+                          displayName: "\U0001F449 Install vsce"
+                          condition: succeeded()
+
+                        ## Sign the extension using OneBranch signing task
+                        ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
+                        - script: vsce generate-manifest -i *.vsix -o extension.manifest
+                          displayName: "\U0001F449 Generate extension manifest for signing"
+
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: '\U0001F449 Sign VSIX package'
                           inputs:
                               command: 'sign'
-                              signing_environment: 'azure-ado'
-                              cp_code: '100040160'
-                              files_to_sign: '*.vsix'
+                              #signing_environment: 'azure-ado'
+                              #cp_code: '100040160'
+                              #files_to_sign: '*.vsix'
+                              cp_code: CP-401405-VSCodePublisherSign
+                              files_to_sign: 'extension.signature.p7s'
                               search_root: '$(Build.SourcesDirectory)'
 
                         - task: CopyFiles@2
@@ -148,7 +159,7 @@ extends:
                                   **/*.tar.gz
                                   **/*.tgz
                                   !**/node_modules/**
-                              TargetFolder: '$(build.ArtifactStagingDirectory)\build'
+                              TargetFolder: $(ob_outputDirectory)
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: Npm@1

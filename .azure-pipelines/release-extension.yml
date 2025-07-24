@@ -80,6 +80,7 @@ extends:
         stages:
             - stage: ValidateServiceConnection
               displayName: Validate Service Connection
+              condition: eq(parameters.debug, true)
               jobs:
                   - job: ValidateServiceConnection
                     displayName: "\U00002713 Validate Service Connection"
@@ -101,7 +102,8 @@ extends:
               displayName: Release extension
               variables:
                   - name: ob_release_environment
-                    value: Production # should be  Test, PPE or Production
+                    value: Test # should be  Test, PPE or Production
+                    #value: Production # should be  Test, PPE or Production
               jobs:
                   - job: ReleaseValidation
                     displayName: "\U00002713 Validate Artifacts"
@@ -208,6 +210,7 @@ extends:
                         vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
                     steps:
                         - task: PowerShell@2
+                          displayName: "\U0001F449 Verify .vsix File Variable"
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -221,10 +224,10 @@ extends:
                                     Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
                                     exit 1
                                   }
-                          displayName: "\U0001F449 Verify .vsix File Variable"
 
                   - job: PublishExtension
                     displayName: "\U00002713 Publish Extension"
+                    condition: eq(parameters.dryRun, false)
                     dependsOn: ReleaseValidation
                     pool:
                       type: release
@@ -243,7 +246,7 @@ extends:
                           vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
                           preRelease: true # default false. Whether the extension is a pre-release.
                           #signaturePath: path/to/signatureFile # optional
-                          manifestPath: build.manifest # optional
+                          #manifestPath: build.manifest # optional
                           useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
                           feed:
                             organization: msdata

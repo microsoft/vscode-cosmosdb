@@ -125,17 +125,17 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
                           condition: succeeded()
 
-                        - script: npm i -g @vscode/vsce
+                        - script: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
                           displayName: "\U0001F449 Install vsce"
                           condition: succeeded()
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
                         - script: vsce generate-manifest -i *.vsix -o extension.manifest
-                          displayName: "\U0001F449 Generate extension manifest for signing"
+                          displayName: "\U0001F5DD Generate extension manifest for signing"
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
-                          displayName: '\U0001F449 Sign VSIX package'
+                          displayName: "\U0001F5DD Sign VSIX package"
                           # Only sign if isOfficialBuild is false
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, false) }})
                           inputs:

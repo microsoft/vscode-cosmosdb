@@ -193,7 +193,7 @@ extends:
                           name: setVsixFileNameStep
 
                   - job: ReleaseExtension
-                    displayName: "\U00002713 Release Extension"
+                    displayName: "\U00002713 Release Extension Test"
                     dependsOn: ReleaseValidation
                     templateContext:
                         inputs:
@@ -222,22 +222,48 @@ extends:
                                     Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
                                     exit 1
                                   }
+                  - job: PublishExtension
+                    displayName: "\U00002713 Publish Extension"
+                    dependsOn: ReleaseValidation
+                    pool:
+                      type: release
+                    variables:
+                        vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
+                    templateContext:
+                        inputs:
+                            - input: pipelineArtifact
+                              pipeline: build
+                              targetPath: $(System.DefaultWorkingDirectory)
+                              artifactName: drop_BuildStage_Main
+                        workflow: vsce
+                        vsce:
+                          serviceConnection: myServiceConnection # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
+                          #vsixPath: '$(Pipeline.Workspace)/adovsix/out/artifacts/adovsix/extension.vsix' # Path to VSIX file in artifact
+                          vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
+                          preRelease: true # default false. Whether the extension is a pre-release.
+                          #signaturePath: path/to/signatureFile # optional
+                          manifestPath: build.manifest # optional
+                          useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
+                          feed:
+                            organization: msdata
+                            project: CosmosDB
+                            feedName: vscode-cosmosdb
 
-                        - task: UseNode@1
-                          inputs:
-                              version: '20.x'
-                          displayName: "\U0001F449 Install Node.js"
+                        #- task: UseNode@1
+                        #  inputs:
+                        #      version: '20.x'
+                        #  displayName: "\U0001F449 Install Node.js"
 
-                        - script: npm i -g @vscode/vsce
-                          displayName: "\U0001F449 Install vsce"
+                        #- script: npm i -g @vscode/vsce
+                        #  displayName: "\U0001F449 Install vsce"
 
-                        - task: AzureCLI@2
-                          displayName: "\U0001F449 Run vsce publish"
-                          condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
-                          inputs:
-                              azureSubscription: "CosmosDB VSCode Publishing"
-                              scriptType: pscore
-                              scriptLocation: inlineScript
-                              inlineScript: |
-                                  vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath build.manifest --pre-release
-                                  # vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s
+                        #- task: AzureCLI@2
+                        #  displayName: "\U0001F449 Run vsce publish"
+                        #  condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
+                        #  inputs:
+                        #      azureSubscription: "CosmosDB VSCode Publishing"
+                        #      scriptType: pscore
+                        #      scriptLocation: inlineScript
+                        #      inlineScript: |
+                        #          vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath build.manifest --pre-release
+                        #          # vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s

@@ -249,7 +249,22 @@ extends:
                             organization: msdata
                             project: CosmosDB
                             feedName: vscode-cosmosdb
-
+                    steps:
+                        - task: PowerShell@2
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  if (-not $env:vsixFileName) {
+                                    Write-Error "vsixFileName variable not defined. Release Failed."
+                                    exit 1
+                                  }
+                                  if (Test-Path -Path $(System.DefaultWorkingDirectory)/$env:vsixFileName) {
+                                    Write-Output "($env:vsixFileName) published successfully."
+                                  } else {
+                                    Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
+                                    exit 1
+                                  }
+                          displayName: "\U0001F449 Verify .vsix File Variable"
                         #- task: UseNode@1
                         #  inputs:
                         #      version: '20.x'

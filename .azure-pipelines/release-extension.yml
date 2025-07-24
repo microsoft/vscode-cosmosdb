@@ -238,7 +238,7 @@ extends:
                               artifactName: drop_BuildStage_Main
                         workflow: vsce
                         vsce:
-                          serviceConnection: myServiceConnection # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
+                          serviceConnection: "CosmosDB VSCode Publishing" # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
                           #vsixPath: '$(Pipeline.Workspace)/adovsix/out/artifacts/adovsix/extension.vsix' # Path to VSIX file in artifact
                           vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
                           preRelease: true # default false. Whether the extension is a pre-release.

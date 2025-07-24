@@ -170,7 +170,7 @@ export function makeSortable<T extends TreeElement>(
             const children = await originalGetChildren();
 
             // If sorting is applied, sort the children
-            if (this.sortProperty && this.sortDirection) {
+            if (this.sortProperty) {
                 return this.sortItems(children, this.sortProperty, this.sortDirection);
             }
 

@@ -101,7 +101,7 @@ extends:
               displayName: Release extension
               variables:
                   - name: ob_release_environment
-                    value: Test # should be  Test, PPE or Production
+                    value: Production # should be  Test, PPE or Production
               jobs:
                   - job: ReleaseValidation
                     displayName: "\U00002713 Validate Artifacts"
@@ -208,7 +208,6 @@ extends:
                         vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
                     steps:
                         - task: PowerShell@2
-                          displayName: "\U0001F449 Verify .vsix File Variable"
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -222,6 +221,8 @@ extends:
                                     Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
                                     exit 1
                                   }
+                          displayName: "\U0001F449 Verify .vsix File Variable"
+
                   - job: PublishExtension
                     displayName: "\U00002713 Publish Extension"
                     dependsOn: ReleaseValidation

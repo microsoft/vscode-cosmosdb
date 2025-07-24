@@ -9,7 +9,7 @@
 Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Azure Cosmos DB for NoSQL**.
 
 
-![Azure Databases Extension](resources/readme/overview.png)
+![Azure Databases Extension](resources/readme/overview.gif)
 
 > Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
 

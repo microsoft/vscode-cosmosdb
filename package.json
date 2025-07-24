@@ -17,7 +17,7 @@
     "color": "#3c3c3c",
     "theme": "dark"
   },
-  "icon": "resources/databases.png",
+  "icon": "resources/azurecosmosdb.png",
   "categories": [
     "Azure",
     "Data Science"
@@ -613,8 +613,8 @@
         "id": "azureDatabases.submenus.workspaceActions",
         "label": "Azure Databases",
         "icon": {
-          "dark": "resources/databases.png",
-          "light": "resources/databases.png"
+          "dark": "resources/azurecosmosdb.png",
+          "light": "resources/azurecosmosdb.png"
         }
       },
       {

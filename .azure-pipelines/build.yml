@@ -158,12 +158,12 @@ extends:
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
                         - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
                           displayName: "\U0001F5DD Generate extension manifest for signing"
-                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, false) }})
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: "\U0001F5DD Sign VSIX package"
-                          # Only sign if isOfficialBuild is false
-                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, false) }})
+                          # Only sign if isOfficialBuild is true
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               command: 'sign'
                               #signing_environment: 'azure-ado'

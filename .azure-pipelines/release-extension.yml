@@ -186,25 +186,58 @@ extends:
                                   } else {
                                     # Set the pipeline variable
                                     $vsixFileName = $vsixFiles.Name
-                                    Write-Output "##vso[task.setvariable variable=vsixFileName;]$vsixFileName"
+                                    Write-Output "##vso[task.setvariable variable=vsixFileName;isOutput=true]$vsixFileName"
                                     Write-Output "Found .vsix file: $vsixFileName"
                                   }
                           displayName: "\U0001F449 Find and Set .vsix File Variable"
+                          name: setVsixFileNameStep
 
-                        #- task: UseNode@1
-                        #  inputs:
-                        #      version: '20.x'
-                        #  displayName: "\U0001F449 Install Node.js"
+                  - job: ReleaseExtension
+                    displayName: "\U00002713 Release Extension"
+                    dependsOn: ReleaseValidation
+                    templateContext:
+                        inputs:
+                            - input: pipelineArtifact
+                              pipeline: build
+                              targetPath: $(System.DefaultWorkingDirectory)
+                              artifactName: drop_BuildStage_Main
+                    pool:
+                        type: release
+                    variables:
+                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
+                        vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
+                    steps:
+                        - task: PowerShell@2
+                          displayName: "\U0001F449 Verify .vsix File Variable"
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  if (-not $env:vsixFileName) {
+                                    Write-Error "vsixFileName variable not defined. Cannot proceed with release."
+                                    exit 1
+                                  }
+                                  if (Test-Path -Path $(System.DefaultWorkingDirectory)/$env:vsixFileName) {
+                                    Write-Output "Found .vsix file: $env:vsixFileName"
+                                  } else {
+                                    Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
+                                    exit 1
+                                  }
 
-                        #- script: npm i -g @vscode/vsce
-                        #  displayName: "\U0001F449 Install vsce"
+                        - task: UseNode@1
+                          inputs:
+                              version: '20.x'
+                          displayName: "\U0001F449 Install Node.js"
 
-                        #- task: AzureCLI@2
-                        #  displayName: "\U0001F449 Run vsce publish"
-                        #  condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
-                        #  inputs:
-                        #      azureSubscription: "CosmosDB VSCode Publishing"
-                        #      scriptType: pscore
-                        #      scriptLocation: inlineScript
-                        #      inlineScript: |
-                        #          vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s
+                        - script: npm i -g @vscode/vsce
+                          displayName: "\U0001F449 Install vsce"
+
+                        - task: AzureCLI@2
+                          displayName: "\U0001F449 Run vsce publish"
+                          condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
+                          inputs:
+                              azureSubscription: "CosmosDB VSCode Publishing"
+                              scriptType: pscore
+                              scriptLocation: inlineScript
+                              inlineScript: |
+                                  vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath build.manifest --pre-release
+                                  # vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s

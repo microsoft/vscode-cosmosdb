@@ -129,10 +129,36 @@ extends:
                           displayName: "\U0001F449 Install vsce"
                           condition: succeeded()
 
+                        # Find the vsix and set the vsix file name variable
+                        # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
+                        - task: PowerShell@2
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  # Get all .vsix files in the current directory
+                                  Get-ChildItem -Path $(Build.SourcesDirectory) -File
+                                  $vsixFiles = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.vsix -File
+
+                                  # Check if more than one .vsix file is found
+                                  if ($vsixFiles.Count -gt 1) {
+                                    Write-Error "More than one .vsix file found."
+                                    exit 1
+                                  } elseif ($vsixFiles.Count -eq 0) {
+                                    Write-Error "No .vsix files found."
+                                    exit 1
+                                  } else {
+                                    # Set the pipeline variable
+                                    $vsixFileName = $vsixFiles.Name
+                                    Write-Output "##vso[task.setvariable variable=vsixFileName]$vsixFileName"
+                                    Write-Output "Found .vsix file: $vsixFileName"
+                                  }
+                          displayName: "\U0001F449 Find and Set .vsix File Variable"
+
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
-                        - script: vsce generate-manifest -i *.vsix -o extension.manifest
+                        - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
                           displayName: "\U0001F5DD Generate extension manifest for signing"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, false) }})
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: "\U0001F5DD Sign VSIX package"

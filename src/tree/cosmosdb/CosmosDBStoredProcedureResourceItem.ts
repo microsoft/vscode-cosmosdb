@@ -16,7 +16,7 @@ export abstract class CosmosDBStoredProcedureResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.storedProcedure';
+    public contextValue: string = 'treeItem.storedProcedure';
 
     protected constructor(
         public readonly model: CosmosDBStoredProcedureModel,

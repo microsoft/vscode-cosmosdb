@@ -80,7 +80,7 @@ extends:
         stages:
             - stage: ValidateServiceConnection
               displayName: Validate Service Connection
-              condition: eq(parameters.debug, true)
+              condition: ${{ eq(parameters.debug, true) }}
               jobs:
                   - job: ValidateServiceConnection
                     displayName: "\U00002713 Validate Service Connection"
@@ -227,7 +227,7 @@ extends:
 
                   - job: PublishExtension
                     displayName: "\U00002713 Publish Extension"
-                    condition: eq(parameters.dryRun, false)
+                    condition: ${{ eq(parameters.dryRun, false) }}
                     dependsOn: ReleaseValidation
                     pool:
                       type: release

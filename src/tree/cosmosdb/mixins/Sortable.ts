@@ -56,7 +56,7 @@ export const isSortable = (instance: unknown): instance is Sortable => {
         'sortProperty' in instance &&
         (typeof instance.sortProperty === 'string' || instance.sortProperty === undefined) &&
         'sortDirection' in instance &&
-        (instance.sortDirection === 'asc' || instance.sortDirection === 'desc' || instance.sortDirection === undefined)
+        (instance.sortDirection === 'asc' || instance.sortDirection === 'desc')
     );
 };
 

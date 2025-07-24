@@ -80,7 +80,6 @@ extends:
         stages:
             - stage: ValidateServiceConnection
               displayName: Validate Service Connection
-              condition: ${{ eq(parameters.debug, true) }}
               jobs:
                   - job: ValidateServiceConnection
                     displayName: "\U00002713 Validate Service Connection"

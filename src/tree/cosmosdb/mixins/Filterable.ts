@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import { Minimatch } from 'minimatch';
 import * as vscode from 'vscode';
 import { type TreeElement } from '../../TreeElement';
 
@@ -84,59 +83,67 @@ export function makeFilterable<T extends TreeElement>(
         propertyName: TreeItemStringProps,
         pattern: string,
     ): Promise<U[]> {
-        const mn = new Minimatch(pattern, { nocase: true, dot: true });
-        const regex = mn.makeRe();
+        pattern = pattern.trim();
 
-        if (!regex) {
-            // If the pattern is invalid, return the original items
-            void vscode.window.showErrorMessage(l10n.t('Invalid filter pattern: {pattern}', { pattern }));
+        if (!pattern) {
+            // If no pattern is provided, return the items as is
             return items;
         }
 
-        function getPropertyValue(item: vscode.TreeItem, prop: TreeItemStringProps): string | undefined {
-            if (prop === 'id') {
-                if (typeof item.id === 'string') {
-                    const lastSlashIndex = item.id.lastIndexOf('/');
-                    if (lastSlashIndex !== -1) {
-                        return item.id.substring(0, lastSlashIndex);
-                    }
+        const escapedPattern = escapeSpecialCharacters(pattern);
+        const regex = new RegExp(`(${escapedPattern})`, 'gim');
+        const propertyValues = await getPropertyValues(items, propertyName);
+
+        // Move filtered items to the top of the list, others to the bottom
+        return items
+            .map((item, index) => {
+                const value = propertyValues[index] || '';
+                const normalizedValue = removeDiacritics(value);
+                // Reset regex for each test
+                regex.lastIndex = 0;
+                return {
+                    item,
+                    value,
+                    match: regex.test(normalizedValue),
+                    originalIndex: index,
+                };
+            })
+            .sort((a, b) => {
+                // First sort by match status (matched items first)
+                if (a.match && !b.match) return -1;
+                if (!a.match && b.match) return 1;
+
+                // Within each group (matched or non-matched), preserve original order
+                return a.originalIndex - b.originalIndex;
+            })
+            .map(({ item, match }) => {
+                // Substitute the item getTreeItem method to highlight the matched property
+                if (item.getTreeItem && propertyName === 'label' && match) {
+                    const originalGetTreeItem = item.getTreeItem.bind(item) as () => Promise<vscode.TreeItem>;
+                    item.getTreeItem = async function (): Promise<vscode.TreeItem> {
+                        const treeItem = await originalGetTreeItem();
+                        const propertyValue = getPropertyValue(treeItem, propertyName);
+
+                        // If the property value matches the filter pattern, highlight it
+                        if (propertyValue) {
+                            regex.lastIndex = -1; // Reset regex index for global match
+                            const match = regex.exec(removeDiacritics(propertyValue));
+                            if (!match) {
+                                return treeItem; // No match found, return original item
+                            }
+                            // If a match is found, highlight it
+                            treeItem.label = {
+                                label:
+                                    typeof treeItem.label === 'string' ? treeItem.label : (treeItem.label?.label ?? ''),
+                                highlights: match[0] ? [[match.index, match.index + match[0].length]] : undefined,
+                            };
+                        }
+                        return treeItem;
+                    };
                 }
-                // If id is not a string or does not contain a slash, return the full id
-                return item.id;
-            } else if (prop === 'label') {
-                return typeof item.label === 'string' ? item.label : String(item.label?.label);
-            } else if (prop === 'description') {
-                return typeof item.description === 'string' ? item.description : undefined;
-            } else if (prop === 'contextValue') {
-                return item.contextValue;
-            } else if (prop === 'tooltip') {
-                return typeof item.tooltip === 'string' ? item.tooltip : item.tooltip?.value;
-            }
-            return undefined; // If the property is not recognized
-        }
 
-        async function getPropertyValues(items: U[]): Promise<Array<string | undefined>> {
-            // For other properties we have to call getTreeItem to ensure we have the correct value
-            const promises = items.map((item) => item.getTreeItem());
-            return Promise.allSettled(promises).then((results) => {
-                return results.map((result) =>
-                    result.status === 'fulfilled' && result.value
-                        ? getPropertyValue(result.value, propertyName)
-                        : undefined,
-                );
+                return item;
             });
-        }
-
-        const propertyValues = await getPropertyValues(items);
-
-        // Filter properties, undefined values will be skipped
-        return items.filter((_item, index) => {
-            const value = propertyValues[index];
-            if (value === undefined) {
-                return false; // Skip items with undefined property values
-            }
-            return regex.test(value); // Check if the value matches the filter pattern
-        });
     };
 
     // Store the original getTreeItem method to call it from our enhanced version
@@ -240,4 +247,75 @@ export function makeFilterable<T extends TreeElement>(
     };
 
     return enhanced;
+}
+
+/**
+ * Escapes special characters in a string for use in a regular expression.
+ * This function replaces asterisks (*) with .* to allow for wildcard matching.
+ * @param str The string to escape.
+ * @returns The escaped string suitable for regex matching.
+ */
+function escapeSpecialCharacters(str: string): string {
+    return str
+        .replace(/\*/g, '§§ASTERISK§§') // Use a placeholder for asterisks
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex characters
+        .replace(/§§ASTERISK§§/g, '.*'); // Replace placeholders with .*
+}
+
+/**
+ * Removes diacritics from a string, converting accented characters to their base form.
+ * For example, "é" becomes "e", "ñ" becomes "n", etc.
+ * @param str The string from which to remove diacritics.
+ * @returns The string without diacritics.
+ */
+function removeDiacritics(str: string): string {
+    return str
+        .normalize('NFD') // Decompose accented characters
+        .replace(/[\u0300-\u036f]/g, ''); // Remove combining diacritical marks
+}
+
+/**
+ * Retrieves the value of a specific property from a TreeItem.
+ * If the property is 'id', it returns the part before the last slash.
+ * If the property is 'label', it returns the label string or its label property.
+ * If the property is 'description', it returns the description string.
+ * If the property is 'contextValue', it returns the context value string.
+ * If the property is 'tooltip', it returns the tooltip string or its value property.
+ * @param item The TreeItem to retrieve the property from.
+ * @param prop The property to retrieve.
+ * @returns The value of the specified property, or undefined if not found.
+ */
+function getPropertyValue(item: vscode.TreeItem, prop: TreeItemStringProps): string | undefined {
+    if (prop === 'id') {
+        if (typeof item.id === 'string') {
+            const lastSlashIndex = item.id.lastIndexOf('/');
+            if (lastSlashIndex !== -1) {
+                return item.id.substring(0, lastSlashIndex);
+            }
+        }
+        // If id is not a string or does not contain a slash, return the full id
+        return item.id;
+    } else if (prop === 'label') {
+        return typeof item.label === 'string' ? item.label : String(item.label?.label);
+    } else if (prop === 'description') {
+        return typeof item.description === 'string' ? item.description : undefined;
+    } else if (prop === 'contextValue') {
+        return item.contextValue;
+    } else if (prop === 'tooltip') {
+        return typeof item.tooltip === 'string' ? item.tooltip : item.tooltip?.value;
+    }
+    return undefined; // If the property is not recognized
+}
+
+async function getPropertyValues<U extends TreeElement>(
+    items: U[],
+    propertyName: TreeItemStringProps,
+): Promise<Array<string | undefined>> {
+    // For other properties we have to call getTreeItem to ensure we have the correct value
+    const promises = items.map((item) => item.getTreeItem());
+    return Promise.allSettled(promises).then((results) => {
+        return results.map((result) =>
+            result.status === 'fulfilled' && result.value ? getPropertyValue(result.value, propertyName) : undefined,
+        );
+    });
 }

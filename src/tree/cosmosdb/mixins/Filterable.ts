@@ -226,8 +226,8 @@ export function makeFilterable<T extends TreeElement>(
         }
 
         const pattern = await vscode.window.showInputBox({
-            placeHolder: 'Filter pattern (e.g., "user*" or "*test*")',
-            prompt: 'Enter glob pattern to filter items or leave empty to clear',
+            placeHolder: l10n.t('Filter pattern (e.g., "user*" or "*test*")'),
+            prompt: l10n.t('Enter glob pattern to filter items or leave empty to clear'),
             value: this.filterPattern || '',
         });
 

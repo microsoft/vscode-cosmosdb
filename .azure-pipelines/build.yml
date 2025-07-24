@@ -136,7 +136,8 @@ extends:
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: '\U0001F449 Sign VSIX package'
-                          condition: and(succeeded(), eq(parameters.isOfficialBuild, false))
+                          # Only sign if isOfficialBuild is false
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, false) }})
                           inputs:
                               command: 'sign'
                               #signing_environment: 'azure-ado'

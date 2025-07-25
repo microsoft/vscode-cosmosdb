@@ -82,10 +82,7 @@ extends:
                     variables:
                         ob_outputDirectory: '$(Build.ArtifactStagingDirectory)\build' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
                         ob_sdl_binskim_break: true # https://aka.ms/obpipelines/sdl
-                        ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}: # conditionally enable symbolsPublishing for master branch only
-                            ob_symbolsPublishing_enabled: true # https://aka.ms/obpipelines/symbols
                         ob_sdl_codeSignValidation_excludes: '-|**\*.json;-|**\*.js;-|**\node_modules\**;'
-                        # ob_sdl_suppression_suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
@@ -94,44 +91,45 @@ extends:
                           inputs:
                               versionSource: fromFile
                               versionFilePath: .nvmrc
-                          condition: succeeded()
 
                         - task: npmAuthenticate@0
                           displayName: "\U0001F449 Authenticate to npm registry"
+                          condition: succeeded()
                           inputs:
                               workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
 
                         - task: Npm@1
                           displayName: "\U0001F449 Install Dependencies"
+                          condition: succeeded()
                           inputs:
                               command: custom
                               customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
                               workingDir: $(Build.SourcesDirectory)
-                          condition: succeeded()
 
                         - task: Npm@1
                           displayName: "\U0001F449 Build"
+                          condition: succeeded()
                           inputs:
                               command: custom
                               customCommand: run build
                               workingDir: $(Build.SourcesDirectory)
-                          condition: succeeded()
 
                         - task: Npm@1
                           displayName: "\U0001F449 Package"
+                          condition: succeeded()
                           inputs:
                               command: custom
                               customCommand: run package
                               workingDir: $(Build.SourcesDirectory)
-                          condition: succeeded()
 
-                        - script: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                        - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
                           displayName: "\U0001F449 Install vsce"
                           condition: succeeded()
 
                         # Find the vsix and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
+                          displayName: "\U0001F50D Find VSIX File"
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -152,7 +150,6 @@ extends:
                                     Write-Output "##vso[task.setvariable variable=vsixFileName]$vsixFileName"
                                     Write-Output "Found .vsix file: $vsixFileName"
                                   }
-                          displayName: "\U0001F449 Find and Set .vsix File Variable"
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
@@ -161,12 +158,12 @@ extends:
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
                         - task: PowerShell@2
+                          displayName: "\U0001F408 Prepare manifest for signing"
                           inputs:
                               targetType: 'inline'
                               script: |
                                   Copy-Item -Path "$(ob_outputDirectory)\extension.manifest" -Destination "$(ob_outputDirectory)\extension.signature.p7s"
                                   Get-ChildItem -Path "$(ob_outputDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
-                          displayName: "\U0001F5DD Prepare manifest for signing"
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: "\U0001F5DD Sign VSIX package"
@@ -179,19 +176,18 @@ extends:
                               search_root: '$(ob_outputDirectory)'
 
                         - task: PowerShell@2
+                          displayName: "\U0001F396 Verify VSIX signature"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
-                              failOnStderr: true
                               targetType: 'inline'
                               script: |
                                   vsce verify-signature -i $(vsixFileName) -m $(ob_outputDirectory)/extension.manifest -s $(ob_outputDirectory)/extension.signature.p7s
                                   if ($exitCode -ne 0)
                                   {
-                                      Write-Output ("[Error] VSIX signature verification failed since return code was {0} while expected 0." -f $exitCode)
+                                      Write-Error "VSIX signature verification failed since return code was $exitCode while expected 0."
                                       exit 1
                                   }
                                   [Environment]::Exit($exitCode)
-                          displayName: "\U0001F5DD Verify VSIX signature"
-                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
                         - task: CopyFiles@2
                           displayName: "\U0001F449 Copy packages and vsix to staging directory"

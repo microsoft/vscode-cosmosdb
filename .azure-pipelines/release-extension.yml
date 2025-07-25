@@ -6,12 +6,14 @@ parameters:
 
     # Customize the environment to associate the deployment with.
     # Useful to control which group of people should be required to approve the deployment.
-    - name: environmentName
-      type: string
-      default: AzCodeDeploy
+    # Deprecated on OneBranch pipelines, use `ob_release_environment` variable and ApprovalService instead.
+    #- name: environmentName
+    #  type: string
+    #  default: AzCodeDeploy
 
     # When true, skips the deployment job which actually publishes the extension
     - name: dryRun
+      displayName: 'Dry Run without publishing'
       type: boolean
       default: true
 
@@ -78,25 +80,31 @@ extends:
             category: NonAzure # NonAzure category is used to indicate that this is not an Azure service
 
         stages:
-            - stage: ValidateServiceConnection
-              displayName: Validate Service Connection
-              jobs:
-                  - job: ValidateServiceConnection
-                    displayName: "\U00002713 Validate Service Connection"
-                    pool:
-                        type: windows
-                    variables:
-                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
-                    steps:
-                        # Get the user ID of the Azure DevOps Service Connection user to use for publishing
-                        - task: AzureCLI@2
-                          displayName: 'Get AzDO User ID'
-                          inputs:
-                              azureSubscription: 'CosmosDB VSCode Publishing'
-                              scriptType: pscore
-                              scriptLocation: inlineScript
-                              inlineScript: |
-                                  az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me --resource 499b84ac-1321-427f-aa17-267ca6975798
+            ## Uncomment this stage to validate the service connection and retrieve the user ID of the Azure DevOps Service Connection user.
+            ## NOTE: this has to be a separate stage with pool type 'windows' to ensure that the Azure CLI task can run successfully,
+            ## which is not supported on 'release' pool type.
+            ## See https://aka.ms/VSM-MS-Publisher-Automate for more details.
+            #- stage: ValidateServiceConnection
+            #  displayName: Validate Service Connection
+            #  jobs:
+            #      - job: ValidateServiceConnection
+            #        displayName: "\U00002713 Validate Service Connection"
+            #        pool:
+            #            type: windows
+            #        variables:
+            #            ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
+            #        steps:
+            #            # Get the user ID of the Azure DevOps Service Connection user to use for publishing
+            #            - task: AzureCLI@2
+            #              displayName: 'Get AzDO User ID'
+            #              inputs:
+            #                  azureSubscription: 'CosmosDB VSCode Publishing'
+            #                  scriptType: pscore
+            #                  scriptLocation: inlineScript
+            #                  inlineScript: |
+            #                      az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me --resource 499b84ac-1321-427f-aa17-267ca6975798
+            ## END of ValidateServiceConnection stage
+
             - stage: Release
               displayName: Release extension
               variables:
@@ -241,11 +249,10 @@ extends:
                         workflow: vsce
                         vsce:
                           serviceConnection: "CosmosDB VSCode Publishing" # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
-                          #vsixPath: '$(Pipeline.Workspace)/adovsix/out/artifacts/adovsix/extension.vsix' # Path to VSIX file in artifact
                           vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
-                          preRelease: true # default false. Whether the extension is a pre-release.
-                          #signaturePath: path/to/signatureFile # optional
-                          #manifestPath: build.manifest # optional
+                          #preRelease: true # default false. Whether the extension is a pre-release.
+                          signaturePath: $(System.DefaultWorkingDirectory)/extension.signature.p7s # optional
+                          manifestPath: $(System.DefaultWorkingDirectory)/extension.manifest # optional
                           useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
                           feed:
                             organization: msdata
@@ -267,21 +274,3 @@ extends:
                                     exit 1
                                   }
                           displayName: "\U0001F449 Verify .vsix File Variable"
-                        #- task: UseNode@1
-                        #  inputs:
-                        #      version: '20.x'
-                        #  displayName: "\U0001F449 Install Node.js"
-
-                        #- script: npm i -g @vscode/vsce
-                        #  displayName: "\U0001F449 Install vsce"
-
-                        #- task: AzureCLI@2
-                        #  displayName: "\U0001F449 Run vsce publish"
-                        #  condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
-                        #  inputs:
-                        #      azureSubscription: "CosmosDB VSCode Publishing"
-                        #      scriptType: pscore
-                        #      scriptLocation: inlineScript
-                        #      inlineScript: |
-                        #          vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath build.manifest --pre-release
-                        #          # vsce publish --azure-credential --packagePath $(vsixFileName) --manifestPath extension.manifest --signaturePath extension.signature.p7s

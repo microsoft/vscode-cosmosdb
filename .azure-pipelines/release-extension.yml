@@ -245,7 +245,6 @@ extends:
                                     Write-Error "[Error] vsixFileName variable not defined."
                                     exit 1
                                   }
-                                  exit 1
 
                                   $vsixPath = "$(System.DefaultWorkingDirectory)/$vsixFileName"
                                   $manifestPath = "$(System.DefaultWorkingDirectory)/extension.manifest"
@@ -304,5 +303,5 @@ extends:
                     steps:
                         # we need a noop step otherwise the vsce template won't run
                         - pwsh: Write-Output "Done"
-                          condition: ${{ eq(parameters.dryRun, false) }}
+                          condition: ${{ eq(parameters.dryRun, true) }} # noop this condition is always false
                           displayName: "\U0001F449 Post-Publishing"

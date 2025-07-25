@@ -184,6 +184,12 @@ extends:
                               targetType: 'inline'
                               script: |
                                   vsce verify-signature -i $(vsixFileName) -m $(ob_outputDirectory)/extension.manifest -s $(ob_outputDirectory)/extension.signature.p7s
+                                  if ($exitCode -ne 0)
+                                  {
+                                      Write-Output ("[Error] VSIX signature verification failed since return code was {0} while expected 0." -f $exitCode)
+                                      exit 1
+                                  }
+                                  [Environment]::Exit($exitCode)
                           displayName: "\U0001F5DD Verify VSIX signature"
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 

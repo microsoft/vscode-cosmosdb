@@ -162,7 +162,6 @@ extends:
 
                         - script: cp $(ob_outputDirectory)/extension.manifest $(ob_outputDirectory)/extension.signature.p7s
                           displayName: "\U0001F5DD Prepare manifest for signing"
-                          workingDirectory: samples/extension-signing
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: "\U0001F5DD Sign VSIX package"

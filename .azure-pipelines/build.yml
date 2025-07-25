@@ -153,7 +153,7 @@ extends:
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
-                        - script: vsce generate-manifest -i $(vsixFileName) -o $(ob_outputDirectory)/extension.manifest
+                        - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
                           displayName: "\U0001F5DD Generate extension manifest for signing"
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
@@ -162,8 +162,8 @@ extends:
                           inputs:
                               targetType: 'inline'
                               script: |
-                                  Copy-Item -Path "$(ob_outputDirectory)\extension.manifest" -Destination "$(ob_outputDirectory)\extension.signature.p7s"
-                                  Get-ChildItem -Path "$(ob_outputDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
+                                  Copy-Item -Path "extension.manifest" -Destination "extension.signature.p7s"
+                                  Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: "\U0001F5DD Sign VSIX package"
@@ -172,19 +172,20 @@ extends:
                           inputs:
                               command: 'sign'
                               cp_code: CP-401405-VSCodePublisherSign
-                              files_to_sign: '**/extension.signature.p7s'
-                              search_root: '$(ob_outputDirectory)'
+                              files_to_sign: '**/extension1.signature.p7s'
+                              search_root: '$(Build.SourcesDirectory)'
 
                         - task: PowerShell@2
                           displayName: "\U0001F396 Verify VSIX signature"
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               targetType: 'inline'
+                              failOnStderr: true
                               script: |
-                                  vsce verify-signature -i $(vsixFileName) -m $(ob_outputDirectory)/extension.manifest -s $(ob_outputDirectory)/extension.signature.p7s
-                                  if ($exitCode -ne 0)
+                                  vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s
+                                  if ($LastExitCode -ne 0)
                                   {
-                                      Write-Error "[Error] VSIX signature verification failed."
+                                      Write-Error "[Error] VSIX signature verification failed with exit code $LastExitCode."
                                       exit 1
                                   }
 

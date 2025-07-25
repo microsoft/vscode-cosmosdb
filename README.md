@@ -1,4 +1,4 @@
-# Azure Databases for VS Code (Preview)
+# Azure Cosmos DB for VS Code (Preview)
 
 <!-- region exclude-from-marketplace -->
 
@@ -9,17 +9,17 @@
 Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Azure Cosmos DB for NoSQL**.
 
 
-![Azure Databases Extension](resources/readme/overview.gif)
+![Azure Cosmos DB Extension](resources/readme/overview.gif)
 
 > Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
 
 # Features
 
-## Azure Databases Explorer
+## Azure Cosmos DB Explorer
 
-The Azure Databases Explorer helps you find, view, and manage your Azure databases.
+The Azure Cosmos DB Explorer helps you find, view, and manage your Azure CosmosDB databases.
 
-- **Discover Database Servers**: scan your Azure subscription for available database servers and get a structured list of your resources.
+- **Discover Database Accounts**: scan your Azure subscription for available database accounts and get a structured list of your resources.
 
 - **Open in Azure Portal**: Access database servers directly in the Azure portal.
 
@@ -76,7 +76,7 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 
 ## Known Issues
 
-Here are some known issues and limitations to be aware of when using the Azure Databases extension:
+Here are some known issues and limitations to be aware of when using the Azure Cosmos DB extension:
 
 - **Table Viewing/Editing**: Viewing and editing tables is not currently supported by the extension.
 

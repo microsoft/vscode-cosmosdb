@@ -27,6 +27,7 @@ import { cosmosDBDeleteItem } from './deleteItems/deleteItems';
 import { cosmosDBDeleteStoredProcedure } from './deleteStoredProcedure/deleteStoredProcedure';
 import { cosmosDBDeleteTrigger } from './deleteTrigger/deleteTrigger';
 import { cosmosDBExecuteStoredProcedure } from './executeStoredProcedure/executeStoredProcedure';
+import { filterTreeItems } from './filterTreeItems/filterTreeItems';
 import { importDocuments } from './importDocuments/importDocuments';
 import { cosmosDBLoadMore } from './loadMore/loadMore';
 import { newConnection } from './newConnection/newConnection';
@@ -38,6 +39,7 @@ import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredPro
 import { cosmosDBOpenTrigger } from './openTrigger/openTrigger';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { removeConnection } from './removeConnection/removeConnection';
+import { sortTreeItems } from './sortTreeItems/sortTreeItems';
 import { cosmosDBViewContainerOffer, cosmosDBViewDatabaseOffer } from './viewOffer/viewOffer';
 
 /**
@@ -70,6 +72,9 @@ export function registerCommands(): void {
         'azureDatabases.update',
         async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
     );
+
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
+    registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 }
 
 export function registerAccountCommands() {

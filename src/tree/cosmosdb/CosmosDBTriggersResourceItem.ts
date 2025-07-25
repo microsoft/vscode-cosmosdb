@@ -32,8 +32,9 @@ export abstract class CosmosDBTriggersResourceItem
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
         const triggers = await this.getTriggers(cosmosClient);
+        const sortedTriggers = triggers.sort((a, b) => a.id.localeCompare(b.id));
 
-        return this.getChildrenImpl(triggers);
+        return this.getChildrenImpl(sortedTriggers);
     }
 
     getTreeItem(): vscode.TreeItem {

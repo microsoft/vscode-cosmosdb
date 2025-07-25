@@ -127,13 +127,26 @@ extends:
                     steps:
                         # Modify the build number to include repo name, extension version, and if dry run is true
                         - task: PowerShell@2
+                          displayName: "\U0001F449 Prepend version from package.json to build number"
+                          env:
+                              dryRun: ${{ parameters.dryRun }}
                           inputs:
                               targetType: 'inline'
                               script: |
                                   # Get the version from package.json
-
                                   $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
-                                  $npmVersionString = (Get-Content $packageJsonPath | ConvertFrom-Json).version
+                                  if (-not (Test-Path $packageJsonPath)) {
+                                      Write-Error "[Error] package.json not found at $packageJsonPath"
+                                      exit 1
+                                  }
+
+                                  $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
+                                  $npmVersionString = $packageJson.version
+                                  if (-not $npmVersionString) {
+                                      Write-Error "[Error] Version not found in package.json"
+                                      exit 1
+                                  }
+
                                   $isDryRun = "$env:dryRun"
                                   $currentBuildNumber = "$(Build.BuildId)"
 
@@ -141,96 +154,124 @@ extends:
                                   $repoNameParts = $repoName -split '/'
                                   $repoNameWithoutOwner = $repoNameParts[-1]
 
-                                  $dry = ""
+                                  $dryRunSuffix = ""
                                   if ($isDryRun -eq 'True') {
                                     Write-Output "Dry run was set to True. Adding 'dry' to the build number."
-                                    $dry = "dry"
+                                    $dryRunSuffix = "-dry"
                                   }
 
-                                  $newBuildNumber = "$repoNameWithoutOwner-$npmVersionString-$dry-$currentBuildNumber"
+                                  $newBuildNumber = "$repoNameWithoutOwner-$npmVersionString$dryRunSuffix-$currentBuildNumber"
+                                  Write-Output "Setting build number to: $newBuildNumber"
                                   Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
-                          displayName: "\U0001F449 Prepend version from package.json to build number"
-                          env:
-                              dryRun: ${{ parameters.dryRun }}
 
                         # For safety, verify the version in package.json matches the version to publish entered by the releaser
                         # If they don't match, this step fails
                         - task: PowerShell@2
+                          env:
+                              publishVersion: ${{ parameters.publishVersion }}
                           inputs:
                               targetType: 'inline'
+                              displayName: "\U0001F449 Verify publish version"
                               script: |
                                   # Get the version from package.json
                                   $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
-                                  $npmVersionString = (Get-Content $packageJsonPath | ConvertFrom-Json).version
+                                  if (-not (Test-Path $packageJsonPath)) {
+                                      Write-Error "[Error] package.json not found at $packageJsonPath"
+                                      exit 1
+                                  }
+
+                                  $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
+                                  $npmVersionString = $packageJson.version
                                   $publishVersion = "$env:publishVersion"
-                                  Write-Output "Publishing version: $publishVersion"
-                                  # Check if more than one .vsix file is found
+
+                                  Write-Output "Package.json version: $npmVersionString"
+                                  Write-Output "Requested publish version: $publishVersion"
+
+                                  # Validate both versions are semantic versions
+                                  $semverPattern = '^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$'
+                                  if ($npmVersionString -notmatch $semverPattern) {
+                                      Write-Error "[Error] Version in package.json ($npmVersionString) is not a valid semantic version"
+                                      exit 1
+                                  }
+                                  if ($publishVersion -notmatch $semverPattern) {
+                                      Write-Error "[Error] Publish version ($publishVersion) is not a valid semantic version"
+                                      exit 1
+                                  }
+
                                   if ($npmVersionString -eq $publishVersion) {
-                                    Write-Output "Publish version matches package.json version. Proceeding with release."
+                                    Write-Output "[Success] Publish version matches package.json version. Proceeding with release."
                                   } else {
-                                    Write-Error "Publish version $publishVersion doesn't match version found in package.json $npmVersionString. Cancelling release."
+                                    Write-Error "[Error] Publish version '$publishVersion' doesn't match version found in package.json '$npmVersionString'. Cancelling release."
                                     exit 1
                                   }
-                          displayName: "\U0001F449 Verify publish version"
-                          env:
-                              publishVersion: ${{ parameters.publishVersion }}
 
                         # Find the vsix to release and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
+                          displayName: "\U0001F449 Find and Set .vsix File Variable"
+                          name: setVsixFileNameStep
                           inputs:
                               targetType: 'inline'
                               script: |
                                   # Get all .vsix files in the current directory
-                                  Get-ChildItem -Path $(System.DefaultWorkingDirectory) -File
+                                  Write-Output "Searching for .vsix files in: $(System.DefaultWorkingDirectory)"
+                                  Write-Output "Directory contents:"
+                                  Get-ChildItem -Path $(System.DefaultWorkingDirectory) -File | Where-Object { $_.Extension -in @('.vsix', '.json', '.p7s', '.manifest') } | Select-Object Name, Length, LastWriteTime | Format-Table
+
                                   $vsixFiles = Get-ChildItem -Path $(System.DefaultWorkingDirectory) -Filter *.vsix -File
 
                                   # Check if more than one .vsix file is found
                                   if ($vsixFiles.Count -gt 1) {
-                                    Write-Error "More than one .vsix file found."
+                                    Write-Error "[Error] More than one .vsix file found: $($vsixFiles.Name -join ', ')"
                                     exit 1
                                   } elseif ($vsixFiles.Count -eq 0) {
-                                    Write-Error "No .vsix files found."
+                                    Write-Error "[Error] No .vsix files found in $(System.DefaultWorkingDirectory)"
                                     exit 1
                                   } else {
                                     # Set the pipeline variable
                                     $vsixFileName = $vsixFiles.Name
+                                    $vsixFileSize = [math]::Round($vsixFiles.Length / 1MB, 2)
                                     Write-Output "##vso[task.setvariable variable=vsixFileName;isOutput=true]$vsixFileName"
-                                    Write-Output "Found .vsix file: $vsixFileName"
+                                    Write-Output "[Success] Found .vsix file: $vsixFileName (${vsixFileSize} MB)"
                                   }
-                          displayName: "\U0001F449 Find and Set .vsix File Variable"
-                          name: setVsixFileNameStep
 
-                  - job: ReleaseExtension
-                    displayName: "\U00002713 Release Extension Test"
-                    dependsOn: ReleaseValidation
-                    templateContext:
-                        inputs:
-                            - input: pipelineArtifact
-                              pipeline: build
-                              targetPath: $(System.DefaultWorkingDirectory)
-                              artifactName: drop_BuildStage_Main
-                    pool:
-                        type: release
-                    variables:
-                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
-                        vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
-                    steps:
                         - task: PowerShell@2
-                          displayName: "\U0001F449 Verify .vsix File Variable"
+                          displayName: "\U0001F449 Verify Publishing Files"
                           inputs:
                               targetType: 'inline'
                               script: |
                                   if (-not $env:vsixFileName) {
-                                    Write-Error "vsixFileName variable not defined. Cannot proceed with release."
+                                    Write-Error "[Error] vsixFileName variable not defined."
                                     exit 1
                                   }
-                                  if (Test-Path -Path $(System.DefaultWorkingDirectory)/$env:vsixFileName) {
-                                    Write-Output "Found .vsix file: $env:vsixFileName"
+
+                                  $vsixPath = "$(System.DefaultWorkingDirectory)/$env:vsixFileName"
+                                  $manifestPath = "$(System.DefaultWorkingDirectory)/extension.manifest"
+                                  $signaturePath = "$(System.DefaultWorkingDirectory)/extension.signature.p7s"
+
+                                  Write-Output "Validating required files for publishing:"
+
+                                  if (Test-Path -Path $vsixPath) {
+                                    $vsixSize = [math]::Round((Get-Item $vsixPath).Length / 1MB, 2)
+                                    Write-Output "✓ VSIX file found: $env:vsixFileName (${vsixSize} MB)"
                                   } else {
-                                    Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
+                                    Write-Error "[Error] The specified VSIX file does not exist: $vsixPath"
                                     exit 1
                                   }
+
+                                  if (Test-Path -Path $manifestPath) {
+                                    Write-Output "✓ Manifest file found: extension.manifest"
+                                  } else {
+                                    Write-Warning "[Warning] Manifest file not found: $manifestPath"
+                                  }
+
+                                  if (Test-Path -Path $signaturePath) {
+                                    Write-Output "✓ Signature file found: extension.signature.p7s"
+                                  } else {
+                                    Write-Warning "[Warning] Signature file not found: $signaturePath"
+                                  }
+
+                                  Write-Output "[Success] ($env:vsixFileName) is ready for publishing."
 
                   - job: PublishExtension
                     displayName: "\U00002713 Publish Extension"
@@ -259,18 +300,7 @@ extends:
                             project: CosmosDB
                             feedName: vscode-cosmosdb
                     steps:
-                        - task: PowerShell@2
-                          inputs:
-                              targetType: 'inline'
-                              script: |
-                                  if (-not $env:vsixFileName) {
-                                    Write-Error "vsixFileName variable not defined. Release Failed."
-                                    exit 1
-                                  }
-                                  if (Test-Path -Path $(System.DefaultWorkingDirectory)/$env:vsixFileName) {
-                                    Write-Output "($env:vsixFileName) published successfully."
-                                  } else {
-                                    Write-Error "The specified $env:vsixFileName file does not exist in the current directory."
-                                    exit 1
-                                  }
-                          displayName: "\U0001F449 Verify .vsix File Variable"
+                        # we need a noop step otherwise the vsce template won't run
+                        - pwsh: Write-Output "Done"
+                          condition: ${{ eq(parameters.dryRun, false) }}
+                          displayName: "\U0001F449 Post-Publishing"

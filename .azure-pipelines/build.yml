@@ -179,7 +179,7 @@ extends:
                               #files_to_sign: '*.vsix'
                               cp_code: CP-401405-VSCodePublisherSign
                               files_to_sign: '**/extension.signature.p7s'
-                              search_root: '$(Build.SourcesDirectory)'
+                              search_root: '$(ob_outputDirectory)'
 
                         - script: vsce verify-signature -i $(vsixFileName) -m $(ob_outputDirectory)/extension.manifest -s $(ob_outputDirectory)/extension.signature.p7s
                           displayName: "\U0001F5DD Verify VSIX signature"

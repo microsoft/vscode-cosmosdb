@@ -240,12 +240,12 @@ extends:
                           inputs:
                               targetType: 'inline'
                               script: |
-                                  if (-not $env:vsixFileName) {
+                                  if (-not $(setVsixFileNameStep.vsixFileName)) {
                                     Write-Error "[Error] vsixFileName variable not defined."
                                     exit 1
                                   }
 
-                                  $vsixPath = "$(System.DefaultWorkingDirectory)/$env:vsixFileName"
+                                  $vsixPath = "$(System.DefaultWorkingDirectory)/$(setVsixFileNameStep.vsixFileName)"
                                   $manifestPath = "$(System.DefaultWorkingDirectory)/extension.manifest"
                                   $signaturePath = "$(System.DefaultWorkingDirectory)/extension.signature.p7s"
 
@@ -253,7 +253,7 @@ extends:
 
                                   if (Test-Path -Path $vsixPath) {
                                     $vsixSize = [math]::Round((Get-Item $vsixPath).Length / 1MB, 2)
-                                    Write-Output "✓ VSIX file found: $env:vsixFileName (${vsixSize} MB)"
+                                    Write-Output "✓ VSIX file found: $(setVsixFileNameStep.vsixFileName) (${vsixSize} MB)"
                                   } else {
                                     Write-Error "[Error] The specified VSIX file does not exist: $vsixPath"
                                     exit 1
@@ -271,7 +271,7 @@ extends:
                                     Write-Warning "[Warning] Signature file not found: $signaturePath"
                                   }
 
-                                  Write-Output "[Success] ($env:vsixFileName) is ready for publishing."
+                                  Write-Output "[Success] $(setVsixFileNameStep.vsixFileName) is ready for publishing."
 
                   - job: PublishExtension
                     displayName: "\U00002713 Publish Extension"

@@ -134,21 +134,22 @@ extends:
                               targetType: 'inline'
                               script: |
                                   # Get all .vsix files in the current directory
-                                  Get-ChildItem -Path $(Build.SourcesDirectory) -File
+                                  Write-Output "Searching for .vsix files in: $(Build.SourcesDirectory)"
                                   $vsixFiles = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.vsix -File
 
                                   # Check if more than one .vsix file is found
                                   if ($vsixFiles.Count -gt 1) {
-                                    Write-Error "[Error] More than one .vsix file found."
+                                    Write-Error "[Error] More than one .vsix file found: $($vsixFiles.Name -join ', ')"
                                     exit 1
                                   } elseif ($vsixFiles.Count -eq 0) {
-                                    Write-Error "[Error] No .vsix files found."
+                                    Write-Error "[Error] No .vsix files found in $(Build.SourcesDirectory)"
                                     exit 1
                                   } else {
                                     # Set the pipeline variable
                                     $vsixFileName = $vsixFiles.Name
+                                    $vsixFileSize = [math]::Round($vsixFiles.Length / 1MB, 2)
                                     Write-Output "##vso[task.setvariable variable=vsixFileName]$vsixFileName"
-                                    Write-Output "Found .vsix file: $vsixFileName"
+                                    Write-Output "Found .vsix file: $vsixFileName (${vsixFileSize} MB)"
                                   }
 
                         ## Sign the extension using OneBranch signing task
@@ -159,9 +160,16 @@ extends:
 
                         - task: PowerShell@2
                           displayName: "\U0001F408 Prepare manifest for signing"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               targetType: 'inline'
                               script: |
+                                  # Verify extension.manifest exists before proceeding
+                                  if (-not (Test-Path "extension.manifest")) {
+                                      Write-Error "[Error] extension.manifest file not found. Cannot proceed with signing."
+                                      exit 1
+                                  }
+
                                   Copy-Item -Path "extension.manifest" -Destination "extension.signature.p7s"
                                   Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
 

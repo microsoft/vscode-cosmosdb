@@ -174,7 +174,7 @@ extends:
                               cp_code: CP-401405-VSCodePublisherSign
                               files_to_sign: '**/extension.signature.p7s'
                               search_root: '$(Build.SourcesDirectory)'
-                              use_testsign: true # Use test signing for development purposes, set to false for production builds
+                              #use_testsign: true # Set to true for test signing for development purposes, default is false
 
                         - task: PowerShell@2
                           displayName: "\U0001F396 Verify VSIX signature"

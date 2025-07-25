@@ -160,7 +160,12 @@ extends:
                           displayName: "\U0001F5DD Generate extension manifest for signing"
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
-                        - pwsh: Copy-Item -Path "$(ob_outputDirectory)/extension.manifest" -Destination "$(ob_outputDirectory)/extension.signature.p7s"
+                        - task: PowerShell@2
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  Copy-Item -Path "$(ob_outputDirectory)\extension.manifest" -Destination "$(ob_outputDirectory)\extension.signature.p7s"
+                                  Get-ChildItem -Path "$(ob_outputDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
                           displayName: "\U0001F5DD Prepare manifest for signing"
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing

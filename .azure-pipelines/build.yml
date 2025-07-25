@@ -156,9 +156,13 @@ extends:
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
-                        - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
+                        - script: vsce generate-manifest -i $(vsixFileName) -o $(ob_outputDirectory)/extension.manifest
                           displayName: "\U0001F5DD Generate extension manifest for signing"
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
+
+                        - script: cp $(ob_outputDirectory)/extension.manifest $(ob_outputDirectory)/extension.signature.p7s
+                          displayName: "\U0001F5DD Prepare manifest for signing"
+                          workingDirectory: samples/extension-signing
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: "\U0001F5DD Sign VSIX package"
@@ -170,8 +174,12 @@ extends:
                               #cp_code: '100040160'
                               #files_to_sign: '*.vsix'
                               cp_code: CP-401405-VSCodePublisherSign
-                              files_to_sign: 'extension.signature.p7s'
+                              files_to_sign: '**/extension.signature.p7s'
                               search_root: '$(Build.SourcesDirectory)'
+
+                        - script: vsce verify-signature -i $(vsixFileName) -m $(ob_outputDirectory)/extension.manifest -s $(ob_outputDirectory)/extension.signature.p7s
+                          displayName: "\U0001F5DD Verify VSIX signature"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
                         - task: CopyFiles@2
                           displayName: "\U0001F449 Copy packages and vsix to staging directory"

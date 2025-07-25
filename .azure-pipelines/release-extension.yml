@@ -167,11 +167,11 @@ extends:
                         # For safety, verify the version in package.json matches the version to publish entered by the releaser
                         # If they don't match, this step fails
                         - task: PowerShell@2
+                          displayName: "\U0001F449 Verify publish version"
                           env:
                               publishVersion: ${{ parameters.publishVersion }}
                           inputs:
                               targetType: 'inline'
-                              displayName: "\U0001F449 Verify publish version"
                               script: |
                                   # Get the version from package.json
                                   $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
@@ -245,6 +245,7 @@ extends:
                                     Write-Error "[Error] vsixFileName variable not defined."
                                     exit 1
                                   }
+                                  exit 1
 
                                   $vsixPath = "$(System.DefaultWorkingDirectory)/$vsixFileName"
                                   $manifestPath = "$(System.DefaultWorkingDirectory)/extension.manifest"

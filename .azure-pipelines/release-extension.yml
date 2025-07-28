@@ -2,6 +2,7 @@ parameters:
     # The intended extension version to publish.
     # This is used to verify the version in package.json matches the version to publish to avoid accidental publishing.
     - name: publishVersion
+      displayName: 'Publish Version'
       type: string
 
     # Customize the environment to associate the deployment with.

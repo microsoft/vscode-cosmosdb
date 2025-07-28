@@ -17,6 +17,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import { isJSON } from 'es-toolkit';
 import type React from 'react';
+import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 interface IndexMetricsSection {
     title: string;
@@ -85,7 +86,28 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
     indexMetricsStr,
     topLabelStyle,
 }) => {
-    const parsed = parseIndexMetrics(indexMetricsStr);
+    const dispatcher = useQueryEditorDispatcher();
+
+    let parsed: IndexMetrics | undefined = undefined;
+    try {
+        parsed = parseIndexMetrics(indexMetricsStr);
+    } catch (error) {
+        const message = (error as Error).message;
+        void dispatcher.reportWebviewError(message, undefined, undefined);
+
+        return (
+            <Label>
+                {l10n.t('Failed to parse index metrics: {error}', {
+                    error: message,
+                })}
+            </Label>
+        );
+    }
+
+    if (!parsed) {
+        return <Label>{l10n.t('No index metrics available')}</Label>;
+    }
+
     const columns = [l10n.t('Index Spec'), l10n.t('Index Impact Score')];
 
     return (
@@ -117,7 +139,11 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
                 </TableHeader>
                 <TableBody>
                     {parsed.sections.map((section, index) => (
-                        <TableRow key={`${section.title}-${index}`}>
+                        <TableRow
+                            key={`${section.title}-${index}`}
+                            aria-label={section.title + ' ' + Object.values(section.indexes).join(' ')}
+                            tabIndex={0}
+                        >
                             <TableCell>{section.title}</TableCell>
                             <TableCell>
                                 {section.indexes && section.indexes.length > 0 ? (

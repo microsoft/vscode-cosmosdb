@@ -42,7 +42,7 @@ export class DocumentContextProvider extends BaseContextProvider {
     public setValid(isValid: boolean, errors?: string[]): void {
         this.dispatch({ type: 'setValid', isValid });
         if (errors) {
-            this.dispatch({ type: 'setError', error: errors.join('\n') });
+            this.dispatch({ type: 'setError', error: errors });
         }
     }
 
@@ -110,6 +110,14 @@ export class DocumentContextProvider extends BaseContextProvider {
         this.channel.on('queryError', (_sessionId: string, _error: string) => {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
             this.dispatch({ type: 'setSaving', isSaving: false });
+        });
+
+        this.channel.on('operationAborted', (_sessionId: string, message?: string) => {
+            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
+            this.dispatch({ type: 'setSaving', isSaving: false });
+            if (message) {
+                void this.showInformationMessage(message);
+            }
         });
     }
 

@@ -61,6 +61,10 @@ export const QueryMonaco = () => {
             value={state.queryValue}
             onChange={onChange}
             onMount={onMount}
+            options={{
+                accessibilitySupport: 'on',
+                accessibilityPageSize: 1,
+            }}
         />
     );
 };

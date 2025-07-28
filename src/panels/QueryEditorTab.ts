@@ -14,7 +14,7 @@ import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
 import {
     type CosmosDBRecordIdentifier,
-    type ResultViewMetadata,
+    type QueryMetadata,
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
@@ -108,6 +108,7 @@ export class QueryEditorTab extends BaseTab {
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
             await this.updateQueryHistory();
+            await this.updateThroughputBuckets();
             if (this.query) {
                 await this.channel.postMessage({
                     type: 'event',
@@ -143,7 +144,7 @@ export class QueryEditorTab extends BaseTab {
             case 'disconnectFromDatabase':
                 return this.disconnectFromDatabase();
             case 'runQuery':
-                return this.runQuery(payload.params[0] as string, payload.params[1] as ResultViewMetadata);
+                return this.runQuery(payload.params[0] as string, payload.params[1] as QueryMetadata);
             case 'stopQuery':
                 return this.stopQuery(payload.params[0] as string);
             case 'nextPage':
@@ -156,6 +157,8 @@ export class QueryEditorTab extends BaseTab {
                 return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDBRecordIdentifier);
             case 'deleteDocument':
                 return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
+            case 'deleteDocuments':
+                return this.deleteDocuments(payload.params[0] as CosmosDBRecordIdentifier[]);
             case 'provideFeedback':
                 return this.provideFeedback();
             case 'saveCSV':
@@ -313,6 +316,27 @@ export class QueryEditorTab extends BaseTab {
         });
     }
 
+    private async updateThroughputBuckets(): Promise<void> {
+        await callWithTelemetryAndErrorHandling(
+            'cosmosDB.nosql.queryEditor.updateThroughputBuckets',
+            async (context) => {
+                context.telemetry.suppressIfSuccessful = true;
+
+                if (!this.connection) {
+                    throw new Error(l10n.t('No connection'));
+                }
+
+                // TODO: Implement logic to fetch throughput buckets
+                // For now, we will just set the buckets to true.
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'updateThroughputBuckets',
+                    params: [[true, true, true, true, true]],
+                });
+            },
+        );
+    }
+
     private async duplicateTab(text: string): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.duplicateTab', () => {
             QueryEditorTab.render(this.connection, this.panel.viewColumn, false, text);
@@ -352,16 +376,46 @@ export class QueryEditorTab extends BaseTab {
         });
     }
 
-    private async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
+    private async runQuery(query: string, options: QueryMetadata): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }
 
+            if (options.sessionId) {
+                // Need to check if session exists in the current sessions
+                // Ask the user about losing the current session and starting a new one
+                const existingSession = this.sessions.get(options.sessionId);
+                if (existingSession) {
+                    const message =
+                        l10n.t('All loaded data will be lost. The query will be executed again in new session.') +
+                        '\n' +
+                        l10n.t('Are you sure you want to continue?');
+                    const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+                    const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
+                    const choice = await vscode.window.showWarningMessage(
+                        message,
+                        {
+                            modal: true,
+                        },
+                        continueItem,
+                        closeItem,
+                    );
+
+                    if (choice !== continueItem) {
+                        return;
+                    }
+                }
+            }
+
             const session = new QuerySession(this.connection, this.channel, query, options);
 
             context.telemetry.properties.executionId = session.id;
+
+            // Need to stop and remove all previous sessions
+            this.sessions.forEach((existingSession) => existingSession.dispose());
+            this.sessions.clear();
 
             this.sessions.set(session.id, session);
 
@@ -469,11 +523,24 @@ export class QueryEditorTab extends BaseTab {
             }
 
             if (!documentId) {
-                throw new Error(l10n.t('Impossible to open an item without an id'));
+                throw new Error(l10n.t('Impossible to delete an item without an id'));
             }
 
             const session = new DocumentSession(this.connection, this.channel);
             await session.delete(documentId);
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private async deleteDocuments(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocuments';
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const session = new DocumentSession(this.connection, this.channel);
+            await session.bulkDelete(documentIds);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }

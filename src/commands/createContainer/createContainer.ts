@@ -13,7 +13,7 @@ import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmati
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { CosmosDBContainerNameStep } from './CosmosDBContainerNameStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
-import { CosmosDBPartitionKeyStep, HierarchyStep } from './CosmosDBPartitionKeyStep';
+import { CosmosDBPartitionKeyStep } from './CosmosDBPartitionKeyStep';
 import { CosmosDBThroughputStep } from './CosmosDBThroughputStep';
 import { type CreateCollectionWizardContext } from './CreateCollectionWizardContext';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -67,9 +67,9 @@ export async function cosmosDBCreateContainer(
         title: isCore ? l10n.t('Create container') : l10n.t('Create graph'),
         promptSteps: [
             new CosmosDBContainerNameStep(),
-            new CosmosDBPartitionKeyStep(HierarchyStep.First),
-            isCore ? new CosmosDBPartitionKeyStep(HierarchyStep.Second) : undefined,
-            isCore ? new CosmosDBPartitionKeyStep(HierarchyStep.Third) : undefined,
+            new CosmosDBPartitionKeyStep('first'),
+            isCore ? new CosmosDBPartitionKeyStep('second') : undefined,
+            isCore ? new CosmosDBPartitionKeyStep('third') : undefined,
             new CosmosDBThroughputStep(),
         ].filter((s) => !!s),
         executeSteps: [new CosmosDBExecuteStep()],

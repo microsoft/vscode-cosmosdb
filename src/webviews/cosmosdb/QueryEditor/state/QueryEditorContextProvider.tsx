@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import type * as React from 'react';
 import {
     type CosmosDBRecordIdentifier,
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
-    type ResultViewMetadata,
+    type QueryMetadata,
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
@@ -16,7 +17,7 @@ import { BaseContextProvider } from '../../../utils/context/BaseContextProvider'
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
-const DEFAULT_RESULT_VIEW_METADATA: ResultViewMetadata = {
+const DEFAULT_RESULT_VIEW_METADATA: QueryMetadata = {
     countPerPage: DEFAULT_PAGE_SIZE,
     timeout: DEFAULT_EXECUTION_TIMEOUT,
 };
@@ -30,7 +31,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         super(channel, dispatchToast);
     }
 
-    public async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
+    public async runQuery(query: string, options: QueryMetadata): Promise<void> {
         await this.sendCommand('updateQueryHistory', query);
         await this.sendCommand('runQuery', query, { ...DEFAULT_RESULT_VIEW_METADATA, ...options });
     }
@@ -99,9 +100,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('deleteDocument', document);
     }
     public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        for (const document of documents) {
-            await this.deleteDocument(document);
-        }
+        await this.sendCommand('deleteDocuments', documents);
     }
     public async provideFeedback(): Promise<void> {
         await this.sendCommand('provideFeedback');
@@ -130,6 +129,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
     public async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         await this.sendCommand('copyMetricsCSVToClipboard', currentQueryResult);
+    }
+
+    public selectBucket(throughputBucket?: number): void {
+        this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
     protected initEventListeners() {
@@ -174,6 +177,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         //      all errors should be handled by QuerySession and dispatched to host error handling.
         this.channel.on('queryError', (_executionId: string, _error: string) => {
             //this.showToast('Query error', error, 'error');
+        });
+
+        this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
+            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
         });
     }
 }

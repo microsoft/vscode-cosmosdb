@@ -86,6 +86,12 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
+                        - task: notice@0
+                          displayName: "\U0001F449 Generate NOTICE file"
+                          inputs:
+                            outputfile: $(Build.SourcesDirectory)/NOTICE.html
+                            outputformat: html
+
                         - task: NodeTool@0
                           displayName: "\U0001F449 Using Node.js"
                           inputs:
@@ -229,6 +235,7 @@ extends:
                                   package.json
                                   extension.manifest
                                   extension.signature.p7s
+                                  NOTICE.html
                                   **/*.tar.gz
                                   **/*.tgz
                                   !**/node_modules/**

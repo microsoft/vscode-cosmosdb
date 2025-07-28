@@ -170,6 +170,31 @@ export class DocumentTab extends BaseTab {
 
     private async refreshDocument(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.refreshDocument', async () => {
+            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+            const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
+            const message =
+                l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.') +
+                '\n' +
+                l10n.t('Are you sure you want to continue?');
+
+            if (this.isDirty) {
+                const confirmation = await vscode.window.showWarningMessage(
+                    message,
+                    { modal: true },
+                    continueItem,
+                    closeItem,
+                );
+
+                if (confirmation !== continueItem) {
+                    void this.channel.postMessage({
+                        type: 'event',
+                        name: 'operationAborted',
+                        params: [],
+                    });
+                    return;
+                }
+            }
+
             if (this.documentId) {
                 await this.session.read(this.documentId);
             } else {

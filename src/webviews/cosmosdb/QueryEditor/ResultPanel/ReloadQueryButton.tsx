@@ -5,8 +5,7 @@
 
 import { ArrowClockwiseFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo, useState } from 'react';
-import { AlertDialog } from '../../../common/AlertDialog';
+import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
@@ -19,23 +18,15 @@ export const ReloadQueryButton = forwardRef(function ReloadQueryButton(
 ) {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const [isOpen, setIsOpen] = useState(false);
 
     const isDisabled = !state.isConnected || !state.currentExecutionId;
 
-    const handleDialogClose = useCallback(
-        (confirmed: boolean) => {
-            if (confirmed) {
-                void dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], {
-                    countPerPage: state.pageSize,
-                });
-            }
-            setIsOpen(false);
-        },
-        [dispatcher, state],
-    );
-
-    const reloadData = useCallback(() => setIsOpen(true), []);
+    const reloadData = useCallback(() => {
+        void dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], {
+            countPerPage: state.pageSize,
+            sessionId: state.currentExecutionId,
+        });
+    }, [dispatcher, state]);
 
     const hotkey = useMemo(
         () =>
@@ -52,16 +43,6 @@ export const ReloadQueryButton = forwardRef(function ReloadQueryButton(
 
     return (
         <>
-            <AlertDialog
-                isOpen={isOpen}
-                onClose={handleDialogClose}
-                title={l10n.t('Attention')}
-                confirmButtonText={l10n.t('Continue')}
-                cancelButtonText={l10n.t('Close')}
-            >
-                <div>{l10n.t('All loaded data will be lost. The query will be executed again in new session.')}</div>
-                <div>{l10n.t('Are you sure you want to continue?')}</div>
-            </AlertDialog>
             <ToolbarOverflowButton
                 ariaLabel={l10n.t('Reload query results')}
                 content={l10n.t('Refresh')}

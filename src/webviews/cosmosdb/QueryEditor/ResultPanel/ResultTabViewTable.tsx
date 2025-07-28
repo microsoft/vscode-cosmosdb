@@ -8,27 +8,29 @@ import * as React from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import {
     SlickgridReact,
+    type Column,
     type GridOption,
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
 import { getDocumentId, type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
+import { useColumnMenu } from './ColumnMenu';
 
 type ResultTabViewTableProps = TableData & {};
-
-type GridColumn = { id: string; name: string; field: string; minWidth: number };
 
 export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const gridRef = useRef<SlickgridReact>(null);
 
+    const { handleHeaderButtonClick, MenuElement } = useColumnMenu(gridRef);
+
     React.useEffect(() => {
         gridRef.current?.gridService.renderGrid();
     }, [dataset, headers]); // Re-run when headers or data change
 
-    const gridColumns: GridColumn[] = useMemo(
+    const gridColumns = useMemo(
         () =>
             headers.map((header) => {
                 return {
@@ -36,9 +38,19 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     name: header,
                     field: header.startsWith('/') ? header.slice(1) : header,
                     minWidth: 100,
-                };
+                    rerenderOnResize: true,
+                    header: {
+                        buttons: [
+                            {
+                                cssClass: 'slick-header-menu-button',
+                                command: 'show-column-menu',
+                                action: handleHeaderButtonClick,
+                            },
+                        ],
+                    },
+                } as Column;
             }),
-        [headers],
+        [handleHeaderButtonClick, headers],
     );
 
     const onDblClick = useCallback(
@@ -60,6 +72,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const onSelectedRowsChanged = useCallback(
         // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
         debounce((args: OnSelectedRowsChangedEventArgs) => {
+            globalThis.getSelection()?.removeAllRanges(); // Clear the selection in the browser to avoid confusion with SlickGrid selection
             dispatcher.setSelectedRows(args.rows);
         }, 100),
         [dispatcher],
@@ -100,8 +113,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             enableColumnReorder: false,
             enableContextMenu: false,
             enableGridMenu: false,
-            enableHeaderButton: false,
-            enableHeaderMenu: false,
+            enableHeaderMenu: false, // Disable header menu by default
+            enableHeaderButton: true, // Enable header buttons
             datasetIdPropertyName: '__id',
             cellValueCouldBeUndefined: true,
         }),
@@ -109,16 +122,19 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     );
 
     return (
-        <SlickgridReact
-            gridId="myGrid"
-            ref={gridRef} // Attach the reference to SlickGrid
-            gridOptions={gridOptions}
-            columnDefinitions={gridColumns}
-            dataset={dataset}
-            onDblClick={(event) => onDblClick(event.detail.args)}
-            onSelectedRowsChanged={(event: CustomEvent<{ args: OnSelectedRowsChangedEventArgs }>) =>
-                onSelectedRowsChanged(event.detail.args)
-            }
-        />
+        <>
+            <SlickgridReact
+                gridId="myGrid"
+                ref={gridRef} // Attach the reference to SlickGrid
+                gridOptions={gridOptions}
+                columnDefinitions={gridColumns}
+                dataset={dataset}
+                onDblClick={(event) => onDblClick(event.detail.args)}
+                onSelectedRowsChanged={(event: CustomEvent<{ args: OnSelectedRowsChangedEventArgs }>) =>
+                    onSelectedRowsChanged(event.detail.args)
+                }
+            />
+            {MenuElement}
+        </>
     );
 };

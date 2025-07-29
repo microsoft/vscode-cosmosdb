@@ -6,7 +6,6 @@
 import * as l10n from '@vscode/l10n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
-import { DynamicThemeProvider } from '../../../theme/DynamicThemeProvider';
 import { useColumnMenu } from './ColumnMenu';
 
 type ResultTabViewTreeProps = {
@@ -155,7 +154,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
 
             // Build comprehensive announcement
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            let announcementText = l10n.t('{columnName}: {value}, tree level {level}', { columnName, value, level});
+            let announcementText = l10n.t('{columnName}: {value}, tree level {level}', { columnName, value, level });
             if (hasChildren) {
                 const isExpanded = hasChildren ? (item?.__collapsed ? l10n.t('collapsed') : l10n.t('expanded')) : '';
                 announcementText += `, ${isExpanded}`;
@@ -190,7 +189,8 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             const value = fieldValue !== null && fieldValue !== undefined ? String(fieldValue) : '';
             const level = item.__treeLevel ?? 0;
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            const announcementText = l10n.t('{columnName}: {value}, tree level {level}', { columnName, value, level}) + `, ${state}`;
+            const announcementText =
+                l10n.t('{columnName}: {value}, tree level {level}', { columnName, value, level }) + `, ${state}`;
             setAnnouncement(announcementText);
             e.preventDefault();
             e.stopPropagation();
@@ -206,7 +206,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     }, [data, columnsDef]);
 
     return (
-        <DynamicThemeProvider useAdaptive={true}>
+        <>
             {/* ARIA live region for announcements */}
             <div
                 aria-live="polite"
@@ -223,6 +223,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
                 dataset={data}
             />
             {MenuElement}
-        </DynamicThemeProvider>
+        </>
     );
 };

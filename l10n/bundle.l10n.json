@@ -11,7 +11,7 @@
   "[VSCodeTransport] Error occurred handling received message": "[VSCodeTransport] Error occurred handling received message",
   "[WebviewTransport] Error occurred calling callback": "[WebviewTransport] Error occurred calling callback",
   "[WebviewTransport] Error occurred handling received message": "[WebviewTransport] Error occurred handling received message",
-  "{0}: {1}, tree level {2}": "{0}: {1}, tree level {2}",
+  "{columnName}: {value}, tree level {level}": "{columnName}: {value}, tree level {level}",
   "{countMany} documents have been deleted.": "{countMany} documents have been deleted.",
   "{countOne} document has been deleted.": "{countOne} document has been deleted.",
   "{documentCount} documents exported…": "{documentCount} documents exported…",

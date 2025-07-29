@@ -13,7 +13,6 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { DynamicThemeProvider } from '../../../theme/DynamicThemeProvider';
 import { getDocumentId, type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { useColumnMenu } from './ColumnMenu';
@@ -149,7 +148,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     );
 
     return (
-        <DynamicThemeProvider useAdaptive={true}>
+        <>
             {/* ARIA live region for announcements */}
             <div
                 aria-live="polite"
@@ -170,6 +169,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 }
             />
             {MenuElement}
-        </DynamicThemeProvider>
+        </>
     );
 };

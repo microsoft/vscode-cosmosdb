@@ -2,6 +2,7 @@ parameters:
     # The intended extension version to publish.
     # This is used to verify the version in package.json matches the version to publish to avoid accidental publishing.
     - name: publishVersion
+      displayName: 'Publish Version'
       type: string
 
     # Customize the environment to associate the deployment with.
@@ -109,8 +110,8 @@ extends:
               displayName: Release extension
               variables:
                   - name: ob_release_environment
-                    value: Test # should be  Test, PPE or Production
-                    #value: Production # should be  Test, PPE or Production
+                    #value: Test # should be  Test, PPE or Production
+                    value: Production # should be  Test, PPE or Production
               jobs:
                   - job: ReleaseValidation
                     displayName: "\U00002713 Validate Artifacts"

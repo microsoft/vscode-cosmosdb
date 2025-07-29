@@ -190,7 +190,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             const value = fieldValue !== null && fieldValue !== undefined ? String(fieldValue) : '';
             const level = item.__treeLevel ?? 0;
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            const announcementText = l10n.t('{0}: {1}, tree level {2}', columnName, value, level) + `, ${state}`;
+            const announcementText = l10n.t('{columnName}: {value}, tree level {level}', { columnName, value, level}) + `, ${state}`;
             setAnnouncement(announcementText);
             e.preventDefault();
             e.stopPropagation();

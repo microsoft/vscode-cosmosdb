@@ -8,7 +8,7 @@ import {
     type MenuButtonProps,
     MenuDivider,
     MenuItem,
-    MenuItemCheckbox,
+    MenuItemRadio,
     MenuList,
     MenuPopover,
     MenuTrigger,
@@ -122,14 +122,24 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                     <>
                         <MenuDivider />
                         <Menu
+                            key={`bucket-menu-${state.selectedThroughputBucket}`}
                             checkedValues={{
-                                throughputBucket: state.selectedThroughputBucket
-                                    ? [state.selectedThroughputBucket.toString()]
-                                    : ['0'],
+                                throughputBucket:
+                                    state.selectedThroughputBucket !== null &&
+                                    state.selectedThroughputBucket !== undefined
+                                        ? [state.selectedThroughputBucket.toString()]
+                                        : ['0'],
+                            }}
+                            onCheckedValueChange={(_, data) => {
+                                const value = data.checkedItems[0];
+                                if (value !== undefined) {
+                                    const bucketNumber = parseInt(value, 10);
+                                    dispatcher.selectBucket(bucketNumber);
+                                }
                             }}
                         >
                             <MenuTrigger>
-                                <MenuItem>{l10n.t('Throughput Bucket')}</MenuItem>
+                                <MenuItem hasSubmenu>{l10n.t('Throughput Bucket')}</MenuItem>
                             </MenuTrigger>
                             <MenuPopover>
                                 <MenuList>
@@ -137,25 +147,20 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                                         <MenuItem disabled>{l10n.t('No buckets')}</MenuItem>
                                     )}
                                     {state.throughputBuckets.length > 0 && (
-                                        <MenuItemCheckbox
-                                            name="throughputBucket"
-                                            value="0"
-                                            onClick={() => dispatcher.selectBucket(0)}
-                                        >
+                                        <MenuItemRadio name="throughputBucket" value="0">
                                             {l10n.t('No bucket')}
-                                        </MenuItemCheckbox>
+                                        </MenuItemRadio>
                                     )}
                                     {state.throughputBuckets.length > 0 &&
                                         state.throughputBuckets.map((isActive, index) => (
-                                            <MenuItemCheckbox
+                                            <MenuItemRadio
                                                 key={`throughputBucket-${index + 1}`}
                                                 name="throughputBucket"
                                                 value={(index + 1).toString()}
                                                 disabled={!isActive}
-                                                onClick={() => dispatcher.selectBucket(index + 1)}
                                             >
                                                 {l10n.t('Bucket {0}', index + 1)}
-                                            </MenuItemCheckbox>
+                                            </MenuItemRadio>
                                         ))}
                                 </MenuList>
                             </MenuPopover>

@@ -131,7 +131,7 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                                         : ['0'],
                             }}
                             onCheckedValueChange={(_, data) => {
-                                const value = data.checkedItems[0];
+                                const value = data.checkedItems?.[0];
                                 if (value !== undefined) {
                                     const bucketNumber = parseInt(value, 10);
                                     dispatcher.selectBucket(bucketNumber);

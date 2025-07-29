@@ -155,7 +155,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
 
             // Build comprehensive announcement
             const columnName = typeof column?.name === 'string' ? column.name : '';
-            let announcementText = l10n.t('{0}: {1}, tree level {2}', columnName, value, level);
+            let announcementText = l10n.t('{columnName}: {value}, tree level {level}', { columnName, value, level});
             if (hasChildren) {
                 const isExpanded = hasChildren ? (item?.__collapsed ? l10n.t('collapsed') : l10n.t('expanded')) : '';
                 announcementText += `, ${isExpanded}`;

@@ -126,11 +126,9 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                                 key={`bucket-menu-${state.selectedThroughputBucket ?? 0}`}
                                 defaultCheckedValues={{ throughputBucket: ['0'] }}
                                 checkedValues={{
-                                    throughputBucket:
-                                        state.selectedThroughputBucket !== null &&
-                                        state.selectedThroughputBucket !== undefined
-                                            ? [state.selectedThroughputBucket.toString()]
-                                            : ['0'],
+                                    throughputBucket: state.selectedThroughputBucket
+                                        ? [state.selectedThroughputBucket.toString()]
+                                        : ['0'],
                                 }}
                                 onCheckedValueChange={(_, data) => {
                                     const value = data.checkedItems?.[0];
@@ -144,25 +142,27 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                                     <MenuItem hasSubmenu>{l10n.t('Throughput Bucket')}</MenuItem>
                                 </MenuTrigger>
                                 <MenuPopover>
-                                    {state.throughputBuckets.length === 0 && (
-                                        <MenuItem disabled>{l10n.t('No buckets')}</MenuItem>
-                                    )}
-                                    {state.throughputBuckets.length > 0 && (
-                                        <MenuItemRadio key="throughputBucket-0" name="throughputBucket" value="0">
-                                            {l10n.t('No bucket')}
-                                        </MenuItemRadio>
-                                    )}
-                                    {state.throughputBuckets.length > 0 &&
-                                        state.throughputBuckets.map((isActive, index) => (
-                                            <MenuItemRadio
-                                                key={`throughputBucket-${index + 1}`}
-                                                name="throughputBucket"
-                                                value={(index + 1).toString()}
-                                                disabled={!isActive}
-                                            >
-                                                {l10n.t('Bucket {0}', index + 1)}
+                                    <MenuList>
+                                        {state.throughputBuckets.length === 0 && (
+                                            <MenuItem disabled>{l10n.t('No buckets')}</MenuItem>
+                                        )}
+                                        {state.throughputBuckets.length > 0 && (
+                                            <MenuItemRadio key="throughputBucket-0" name="throughputBucket" value="0">
+                                                {l10n.t('No bucket')}
                                             </MenuItemRadio>
-                                        ))}
+                                        )}
+                                        {state.throughputBuckets.length > 0 &&
+                                            state.throughputBuckets.map((isActive, index) => (
+                                                <MenuItemRadio
+                                                    key={`throughputBucket-${index + 1}`}
+                                                    name="throughputBucket"
+                                                    value={(index + 1).toString()}
+                                                    disabled={!isActive}
+                                                >
+                                                    {l10n.t('Bucket {0}', index + 1)}
+                                                </MenuItemRadio>
+                                            ))}
+                                    </MenuList>
                                 </MenuPopover>
                             </Menu>
                         </MenuList>

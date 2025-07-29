@@ -1,0 +1,253 @@
+# Trigger the build whenever `main` or `rel/*` is updated
+trigger:
+    - main
+    - rel/*
+
+# Disable PR trigger
+pr: none
+
+# Scheduled nightly build of `main`
+#schedules:
+#    - cron: '0 0 * * *'
+#      displayName: Nightly scheduled build
+#      always: false # Don't rebuild if there haven't been changes
+#      branches:
+#          include:
+#              - main
+
+parameters:
+    - name: 'debug'
+      displayName: 'Enable debug output'
+      type: boolean
+      default: false
+    - name: isOfficialBuild
+      displayName: 'Official Build + signing'
+      type: boolean
+      default: true
+
+variables:
+    CDP_DEFINITION_BUILD_COUNT: $[counter('', 0)] # needed for onebranch.pipeline.version task https://aka.ms/obpipelines/versioning
+    system.debug: ${{ parameters.debug }}
+
+    WindowsContainerImage: 'onebranch.azurecr.io/windows/ltsc2022/vse2022:latest' # Docker image which is used to build the project https://aka.ms/obpipelines/containers
+
+resources:
+    repositories:
+        - repository: templates
+          type: git
+          name: OneBranch.Pipelines/GovernedTemplates
+          ref: refs/heads/main
+
+extends:
+    ${{ if eq(parameters.isOfficialBuild, true) }}:
+        template: v2/OneBranch.Official.CrossPlat.yml@templates # https://aka.ms/obpipelines/templates
+    ${{ else }}:
+        template: v2/OneBranch.NonOfficial.CrossPlat.yml@templates # https://aka.ms/obpipelines/templates
+    parameters:
+        cloudvault: # https://aka.ms/obpipelines/cloudvault
+            enabled: false
+        globalSdl: # https://aka.ms/obpipelines/sdl
+            asyncSdl:
+                enabled: false
+            tsa:
+                enabled: false # onebranch publish all sdl results to TSA. If TSA is disabled all SDL tools will forced into'break' build mode.
+                #configFile: '$(Build.SourcesDirectory)/.azure-pipelines/compliance/tsaoptions.json'
+            credscan:
+                suppressionsFile: $(Build.SourcesDirectory)/.azure-pipelines/compliance/CredScanSuppressions.json
+            policheck:
+                break: true # always break the build on policheck issues. You can disable it by setting to 'false'
+            suppression:
+                suppressionFile: $(Build.SourcesDirectory)/.config/guardian/.gdnsuppress
+            codeql:
+                excludePathPatterns: '**/.vscode-test, dist' # Exclude .vscode-test and dist directories from CodeQL alerting
+                compiled:
+                    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+                        enabled: true
+                    ${{ else }}:
+                        enabled: false
+                tsaEnabled: false # See 'Codeql.TSAEnabled' in the Addition Options section below
+            componentgovernance:
+                ignoreDirectories: $(Build.SourcesDirectory)/.vscode-test
+        featureFlags:
+            linuxEsrpSigning: true
+            WindowsHostVersion:
+                Version: 2022
+
+        stages:
+            - stage: BuildStage
+              jobs:
+                  - job: Main
+                    pool:
+                        type: windows
+                    variables:
+                        ob_outputDirectory: '$(Build.ArtifactStagingDirectory)\build' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
+                        ob_sdl_binskim_break: true # https://aka.ms/obpipelines/sdl
+                        ob_sdl_codeSignValidation_excludes: '-|**\*.json;-|**\*.js;-|**\node_modules\**;'
+                        ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
+                            ob_sdl_codeql_compiled_enabled: true
+                    steps:
+                        - task: ComponentGovernanceComponentDetection@0
+                          displayName: 'Component Governance - Component Detection'
+                        - task: notice@0
+                          displayName: "\U0001F449 Generate NOTICE file"
+                          inputs:
+                            outputfile: $(Build.SourcesDirectory)/NOTICE.html
+                            outputformat: html
+
+                        - task: NodeTool@0
+                          displayName: "\U0001F449 Using Node.js"
+                          inputs:
+                              versionSource: fromFile
+                              versionFilePath: .nvmrc
+
+                        - task: npmAuthenticate@0
+                          displayName: "\U0001F449 Authenticate to npm registry"
+                          condition: succeeded()
+                          inputs:
+                              workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Install Dependencies"
+                          condition: succeeded()
+                          inputs:
+                              command: custom
+                              customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                              workingDir: $(Build.SourcesDirectory)
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Build"
+                          condition: succeeded()
+                          inputs:
+                              command: custom
+                              customCommand: run build
+                              workingDir: $(Build.SourcesDirectory)
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Package"
+                          condition: succeeded()
+                          inputs:
+                              command: custom
+                              customCommand: run package
+                              workingDir: $(Build.SourcesDirectory)
+
+                        - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                          displayName: "\U0001F449 Install vsce"
+                          condition: succeeded()
+
+                        # Find the vsix and set the vsix file name variable
+                        # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
+                        - task: PowerShell@2
+                          displayName: "\U0001F50D Find VSIX File"
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  # Get all .vsix files in the current directory
+                                  Write-Output "Searching for .vsix files in: $(Build.SourcesDirectory)"
+                                  $vsixFiles = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.vsix -File
+
+                                  # Check if more than one .vsix file is found
+                                  if ($vsixFiles.Count -gt 1) {
+                                    Write-Error "[Error] More than one .vsix file found: $($vsixFiles.Name -join ', ')"
+                                    exit 1
+                                  } elseif ($vsixFiles.Count -eq 0) {
+                                    Write-Error "[Error] No .vsix files found in $(Build.SourcesDirectory)"
+                                    exit 1
+                                  } else {
+                                    # Set the pipeline variable
+                                    $vsixFileName = $vsixFiles.Name
+                                    $vsixFileSize = [math]::Round($vsixFiles.Length / 1MB, 2)
+                                    Write-Output "##vso[task.setvariable variable=vsixFileName]$vsixFileName"
+                                    Write-Output "Found .vsix file: $vsixFileName (${vsixFileSize} MB)"
+                                  }
+
+                        ## Sign the extension using OneBranch signing task
+                        ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
+                        - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
+                          displayName: "\U0001F5DD Generate extension manifest for signing"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
+
+                        - task: PowerShell@2
+                          displayName: "\U0001F408 Prepare manifest for signing"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  # Verify extension.manifest exists before proceeding
+                                  if (-not (Test-Path "extension.manifest")) {
+                                      Write-Error "[Error] extension.manifest file not found. Cannot proceed with signing."
+                                      exit 1
+                                  }
+
+                                  Copy-Item -Path "extension.manifest" -Destination "extension.signature.p7s"
+                                  Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
+
+                        - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
+                          displayName: "\U0001F5DD Sign VSIX package"
+                          # Only sign if isOfficialBuild is true
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
+                          inputs:
+                              command: 'sign'
+                              cp_code: CP-401405-VSCodePublisherSign
+                              files_to_sign: '**/extension.signature.p7s'
+                              search_root: '$(Build.SourcesDirectory)'
+                              #use_testsign: true # Set to true for test signing for development purposes, default is false
+
+                        - task: PowerShell@2
+                          displayName: "\U0001F396 Verify VSIX signature"
+                          condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
+                          inputs:
+                              targetType: 'inline'
+                              failOnStderr: true
+                              script: |
+                                  $output = vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
+                                  Write-Output $output
+
+                                  # Check if the vsce command failed to execute
+                                  if ($LastExitCode -ne 0)
+                                  {
+                                      Write-Error "[Error] VSIX signature verification command failed with exit code $LastExitCode."
+                                      exit 1
+                                  }
+
+                                  # Parse the output to find the actual exit code line
+                                  $exitCodeLine = $output | Where-Object { $_ -match "^Exit [Cc]ode:\s*(.+)$" }
+                                  if ($exitCodeLine) {
+                                      $exitCodeValue = $Matches[1].Trim()
+                                      if ($exitCodeValue -eq "Success") {
+                                          Write-Output "[Success] VSIX signature verification succeeded."
+                                      } elseif ($exitCodeValue -eq "UnhandledException") {
+                                          Write-Error "[Error] VSIX signature verification failed with UnhandledException."
+                                          exit 1
+                                      } else {
+                                          Write-Warning "[Warning] VSIX signature verification completed with unexpected exit code: $exitCodeValue"
+                                      }
+                                  } else {
+                                      Write-Warning "[Warning] Could not parse exit code from vsce verify-signature output."
+                                  }
+
+                        - task: CopyFiles@2
+                          displayName: "\U0001F449 Copy packages and vsix to staging directory"
+                          inputs:
+                              # Uploading the package.json so we can publish later without cloning the source
+                              # Files related to signing:
+                              #   extension.manifest is the extension manifest generated by vsce
+                              #   extension.signature.p7s is the signature file
+                              Contents: |
+                                  *.vsix
+                                  package.json
+                                  extension.manifest
+                                  extension.signature.p7s
+                                  NOTICE.html
+                                  **/*.tar.gz
+                                  **/*.tgz
+                                  !**/node_modules/**
+                              TargetFolder: $(ob_outputDirectory)
+                          condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+
+                        - task: Npm@1
+                          displayName: "\U0001F449 Test"
+                          inputs:
+                              command: custom
+                              customCommand: test
+                              workingDir: $(Build.SourcesDirectory)
+                          condition: succeeded()

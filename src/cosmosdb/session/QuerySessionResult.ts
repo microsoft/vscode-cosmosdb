@@ -6,21 +6,21 @@
 import { type FeedResponse, type QueryMetrics } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import {
+    type QueryMetadata,
     type QueryResult,
     type QueryResultRecord,
-    type ResultViewMetadata,
     type SerializedQueryResult,
 } from '../types/queryResult';
 
 export class QuerySessionResult {
     private readonly queryResults = new Map<number, QueryResult>();
     private readonly isFetchedAll: boolean;
-    private readonly metadata: ResultViewMetadata;
+    private readonly metadata: QueryMetadata;
     private readonly query: string;
 
     private hasMoreResults = false;
 
-    constructor(query: string, metadata: ResultViewMetadata) {
+    constructor(query: string, metadata: QueryMetadata) {
         this.metadata = metadata;
         this.query = query;
         this.isFetchedAll = metadata.countPerPage === -1;

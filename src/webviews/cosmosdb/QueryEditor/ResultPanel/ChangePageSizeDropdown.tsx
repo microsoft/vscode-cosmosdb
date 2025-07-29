@@ -16,8 +16,7 @@ import {
 } from '@fluentui/react-components';
 import { Checkmark16Filled, NumberSymbolSquareRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useState } from 'react';
-import { AlertDialog } from '../../../common/AlertDialog';
+import { type ForwardedRef, forwardRef, useCallback } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -27,30 +26,20 @@ export const ChangePageSizeDropdown = forwardRef(function ChangePageSizeDropdown
 ) {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const [isOpen, setIsOpen] = useState(false);
-    const [pageSize, setPageSize] = useState(state.pageSize);
-
-    const handleDialogClose = useCallback(
-        (confirmed: boolean) => {
-            if (confirmed) {
-                dispatcher.setPageSize(pageSize);
-                void dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], { countPerPage: pageSize });
-            }
-            setIsOpen(false);
-        },
-        [dispatcher, pageSize, state],
-    );
+    const pageSize = state.pageSize;
 
     const changePageSize = useCallback(
         (countPerPage: number) => {
-            setPageSize(countPerPage);
-            if (!state.currentExecutionId) {
+            if (!state.currentExecutionId || !state.currentQueryResult?.query) {
                 // The result is not loaded yet, just set the page size
                 dispatcher.setPageSize(countPerPage);
                 return;
             }
 
-            setIsOpen(true);
+            void dispatcher.runQuery(state.currentQueryResult?.query, {
+                sessionId: state.currentExecutionId,
+                countPerPage: countPerPage,
+            });
         },
         [dispatcher, state],
     );
@@ -66,16 +55,6 @@ export const ChangePageSizeDropdown = forwardRef(function ChangePageSizeDropdown
 
     return (
         <>
-            <AlertDialog
-                isOpen={isOpen}
-                onClose={handleDialogClose}
-                title={l10n.t('Attention')}
-                confirmButtonText={l10n.t('Continue')}
-                cancelButtonText={l10n.t('Close')}
-            >
-                <div>{l10n.t('All loaded data will be lost. The query will be executed again in new session.')}</div>
-                <div>{l10n.t('Are you sure you want to continue?')}</div>
-            </AlertDialog>
             {props.type === 'button' ? (
                 <div ref={ref} style={{ paddingLeft: '8px' }}>
                     <Tooltip content={l10n.t('Change page size')} relationship="label" appearance="inverted" withArrow>

@@ -121,33 +121,34 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                 {state.throughputBuckets !== null && state.throughputBuckets !== undefined && (
                     <>
                         <MenuDivider />
-                        <Menu
-                            key={`bucket-menu-${state.selectedThroughputBucket}`}
-                            checkedValues={{
-                                throughputBucket:
-                                    state.selectedThroughputBucket !== null &&
-                                    state.selectedThroughputBucket !== undefined
-                                        ? [state.selectedThroughputBucket.toString()]
-                                        : ['0'],
-                            }}
-                            onCheckedValueChange={(_, data) => {
-                                const value = data.checkedItems?.[0];
-                                if (value !== undefined) {
-                                    const bucketNumber = parseInt(value, 10);
-                                    dispatcher.selectBucket(bucketNumber);
-                                }
-                            }}
-                        >
-                            <MenuTrigger>
-                                <MenuItem hasSubmenu>{l10n.t('Throughput Bucket')}</MenuItem>
-                            </MenuTrigger>
-                            <MenuPopover>
-                                <MenuList>
+                        <MenuList>
+                            <Menu
+                                key={`bucket-menu-${state.selectedThroughputBucket ?? 0}`}
+                                defaultCheckedValues={{ throughputBucket: ['0'] }}
+                                checkedValues={{
+                                    throughputBucket:
+                                        state.selectedThroughputBucket !== null &&
+                                        state.selectedThroughputBucket !== undefined
+                                            ? [state.selectedThroughputBucket.toString()]
+                                            : ['0'],
+                                }}
+                                onCheckedValueChange={(_, data) => {
+                                    const value = data.checkedItems?.[0];
+                                    if (value !== undefined) {
+                                        const bucketNumber = parseInt(value, 10);
+                                        dispatcher.selectBucket(bucketNumber);
+                                    }
+                                }}
+                            >
+                                <MenuTrigger>
+                                    <MenuItem hasSubmenu>{l10n.t('Throughput Bucket')}</MenuItem>
+                                </MenuTrigger>
+                                <MenuPopover>
                                     {state.throughputBuckets.length === 0 && (
                                         <MenuItem disabled>{l10n.t('No buckets')}</MenuItem>
                                     )}
                                     {state.throughputBuckets.length > 0 && (
-                                        <MenuItemRadio name="throughputBucket" value="0">
+                                        <MenuItemRadio key="throughputBucket-0" name="throughputBucket" value="0">
                                             {l10n.t('No bucket')}
                                         </MenuItemRadio>
                                     )}
@@ -162,9 +163,9 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                                                 {l10n.t('Bucket {0}', index + 1)}
                                             </MenuItemRadio>
                                         ))}
-                                </MenuList>
-                            </MenuPopover>
-                        </Menu>
+                                </MenuPopover>
+                            </Menu>
+                        </MenuList>
                     </>
                 )}
             </MenuPopover>

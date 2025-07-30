@@ -16,7 +16,7 @@ export abstract class CosmosDBAccountResourceItemBase
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
 {
     public readonly id: string;
-    public readonly contextValue: string = 'treeItem.account';
+    public contextValue: string = 'treeItem.account';
 
     protected constructor(
         public readonly account: ResourceBase,

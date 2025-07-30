@@ -28,7 +28,7 @@ The Azure Cosmos DB Explorer helps you find, view, and manage your Azure CosmosD
 
 - **Save Changes**: Make updates and persist them to the cloud.
 
-- **Workspace Support**: Attach database servers to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
+- **Workspace Support**: Attach database accounts to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
 
 ## Query Editor
 

@@ -8,7 +8,6 @@
 
 Browse, manage, and query your Azure Cosmos DB databases both locally and in the cloud with support for **Azure Cosmos DB for NoSQL**.
 
-
 ![Azure Cosmos DB Extension](resources/readme/overview.gif)
 
 > Sign up today for your free Azure account and receive 12 months of free popular services, $200 free credit and 25+ always free services 👉 [Start Free](https://azure.microsoft.com/free/open-source).
@@ -27,10 +26,9 @@ The Azure Cosmos DB Explorer helps you find, view, and manage your Azure CosmosD
 
 - **Edit Documents and Queries**: Open documents, stored procedures, and queries in the editor.
 
-- **Save Changes**:  Make updates and persist them to the cloud.
+- **Save Changes**: Make updates and persist them to the cloud.
 
 - **Workspace Support**: Attach database servers to your workspace using connection strings. This is especially useful for teams working with shared resources from various subscriptions.
-
 
 ## Query Editor
 
@@ -82,7 +80,6 @@ Here are some known issues and limitations to be aware of when using the Azure C
 
 - **Escaped Characters in Scrapbooks**: Scrapbook support for escaped characters is preliminary. Use double escaping for newlines (`\\n` instead of `\n`). If you find issues, report them to [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
 
-
 <!-- region exclude-from-marketplace -->
 
 # How to Contribute
@@ -106,6 +103,8 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 # Telemetry
 
 VS Code collects usage data and sends it to Microsoft to help improve our products and services. Read our [privacy statement](https://go.microsoft.com/fwlink/?LinkID=528096&clcid=0x409) to learn more. If you don’t wish to send usage data to Microsoft, you can set the `telemetry.enableTelemetry` setting to `false`. Learn more in our [FAQ](https://code.visualstudio.com/docs/supporting/faq#_how-to-disable-telemetry-reporting).
+
+**Data Collection.** The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft’s privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
 
 # License
 

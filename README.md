@@ -74,11 +74,10 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 
 - **New Emulator Connection**: Expand 'CosmosDB Accounts', next expand 'Local Emulators', and select 'New Emulator Connection' to link the emulator to your workspace.
 
-> [!WARNING]
-
-> Support for previously included features such as Universal MongoDB and PostgreSQL has been moved to separate extensions. You can find the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb) and the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
-
 ## Known Issues
+
+> [!WARNING]
+> Support for previously included features such as Universal MongoDB and PostgreSQL has been moved to separate extensions. You can find the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb) and the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
 
 Here are some known issues and limitations to be aware of when using the Azure Cosmos DB extension:
 

@@ -52,6 +52,12 @@ The Query Editor allows you to write and execute queries across your databases.
 
 ![Query Editor with Results](resources/readme/queryEditor.png)
 
+### Keyboard Shortcuts
+
+The Azure Cosmos DB extension supports various keyboard shortcuts to improve your productivity when working with queries and documents.
+
+For a complete list of keyboard shortcuts, see [Keyboard Shortcuts](docs/hotkeys/01_keyboard_shortcuts.md).
+
 ## Import into Azure Cosmos DB
 
 The extension allows you to import documents into CosmosDB.

@@ -84,19 +84,11 @@ Here are some known issues and limitations to be aware of when using the Azure C
 
 # How to Contribute
 
-To contribute, see these documents:
+This project welcomes contributions and suggestions. To contribute, see these documents:
 
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Security](./SECURITY.md)
 - [Contributing](./CONTRIBUTING.md)
-
-## Legal
-
-Before we can accept your pull request, you will need to sign a **Contribution License Agreement**. All you need to do is to submit a pull request, then the PR will get appropriately labeled (e.g. `cla-required`, `cla-norequired`, `cla-signed`, `cla-already-signed`). If you already signed the agreement, we will continue with reviewing the PR, otherwise the system will tell you how you can sign the CLA. Once you sign the CLA, all future PRs will be labeled as `cla-signed`.
-
-## Code of Conduct
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
 <!-- endregion exclude-from-marketplace -->
 

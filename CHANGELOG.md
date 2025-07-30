@@ -1,5 +1,30 @@
 # Change Log
 
+## 0.27.1
+
+### Added
+
+- Support for selecting Throughput Buckets when running NoSQL queries (#2713, #2733).
+
+### Changed
+
+- Fixed missing 0.27.0 changelog
+- Updated SECURITY.md and CODE_OF_CONDUCT.md
+
+## 0.27.0
+
+### Added
+
+- Support for Bulk Deleteing selected documents from the NoSQL Query Results with confirmation and status notification (#2709).
+- Added support for different Shell environments when running the Shell (#2698)
+
+### Changed
+
+- Fixed NoSQL "Index Metrics" parsing and error handling (#2724).
+- Fixed various accessibility issues.
+- Fixed an issue with container creation where the first partition key was carried over to the next partition key entry causing confusion (#2715)
+- Minor Bugfixes, component updates and code improvements.
+
 ## 0.26.0
 
 ### Added
@@ -470,13 +495,11 @@ A big thank you to the following contributors that helped make the extension eve
 ### Added
 
 - Mongo
-
   - CodeLens support for scrapbook
   - Execute all commands in a scrapbook, allowing you to use scrapbooks as scripts
   - Support for ObjectIDs, ISODate, and extended JSON data types in document views
 
 - SQL
-
   - View, open, edit and update Stored Procedures
 
 - Miscellaneous
@@ -499,7 +522,6 @@ A big thank you to the following contributors that helped make the extension eve
 ### Added
 
 - Mongo
-
   - mongo.shell.path setting no longer required if shell is in system path
   - Allow mongo.shell.path to be specified in workspace settings as well as user settings
   - No longer asking for an id for new documents
@@ -507,7 +529,6 @@ A big thank you to the following contributors that helped make the extension eve
   - Improvements to scrapbook setup and error handling
 
 - Azure subscriptions
-
   - New "filter" button on subscription nodes
   - New "Open in Portal" menu item for subscriptions
 

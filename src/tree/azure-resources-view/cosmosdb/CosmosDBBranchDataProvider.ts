@@ -9,6 +9,8 @@ import { API, CoreExperience, MongoExperience, tryGetExperience } from '../../..
 import { databaseAccountType } from '../../../constants';
 import { nonNullProp } from '../../../utils/nonNull';
 import { BaseCachedBranchDataProvider } from '../../BaseCachedBranchDataProvider';
+import { makeFilterable } from '../../cosmosdb/mixins/Filterable';
+import { makeSortable } from '../../cosmosdb/mixins/Sortable';
 import { type CosmosDBAccountModel } from '../../cosmosdb/models/CosmosDBAccountModel';
 import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { GraphAccountResourceItem } from '../../graph/GraphAccountResourceItem';
@@ -50,7 +52,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
             }
 
             if (experience?.api === API.Core) {
-                resourceItem = new NoSqlAccountResourceItem(accountModel, experience);
+                resourceItem = makeFilterable(makeSortable(new NoSqlAccountResourceItem(accountModel, experience)));
             }
 
             if (experience?.api === API.Graph) {

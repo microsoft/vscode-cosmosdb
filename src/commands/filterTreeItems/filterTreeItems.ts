@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
-import { isFilterable } from '../../tree/cosmosdb/mixins/Filterable';
+import { isFilterable } from '../../tree/mixins/Filterable';
 import { type TreeElement } from '../../tree/TreeElement';
 
 export async function filterTreeItems(_context: IActionContext, node: TreeElement): Promise<void> {

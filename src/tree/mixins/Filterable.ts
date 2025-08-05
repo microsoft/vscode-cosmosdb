@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { type TreeElement } from '../../TreeElement';
+import { type TreeElement } from '../TreeElement';
 
 export type TreeItemStringProps = 'id' | 'label' | 'description' | 'contextValue' | 'tooltip';
 
@@ -71,6 +71,10 @@ export function makeFilterable<T extends TreeElement>(
     instance: T,
     properties: TreeItemStringProps[] = ['label'],
 ): T & Filterable {
+    if (isFilterable(instance)) {
+        return instance; // If already filterable, return the instance as is
+    }
+
     const enhanced = instance as T & Filterable;
 
     // Add filtering properties and methods

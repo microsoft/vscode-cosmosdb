@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
-import { isSortable } from '../../tree/cosmosdb/mixins/Sortable';
+import { isSortable } from '../../tree/mixins/Sortable';
 import { type TreeElement } from '../../tree/TreeElement';
 
 export async function sortTreeItems(_context: IActionContext, node: TreeElement): Promise<void> {

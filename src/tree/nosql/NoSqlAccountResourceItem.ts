@@ -8,9 +8,9 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
 import { type AccountInfo } from '../cosmosdb/AccountInfo';
 import { CosmosDBAccountResourceItem } from '../cosmosdb/CosmosDBAccountResourceItem';
-import { makeFilterable } from '../cosmosdb/mixins/Filterable';
-import { makeSortable } from '../cosmosdb/mixins/Sortable';
 import { type CosmosDBAccountModel } from '../cosmosdb/models/CosmosDBAccountModel';
+import { makeFilterable } from '../mixins/Filterable';
+import { makeSortable } from '../mixins/Sortable';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 
 export class NoSqlAccountResourceItem extends CosmosDBAccountResourceItem {

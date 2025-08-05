@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { type TreeElement } from '../../TreeElement';
+import { type TreeElement } from '../TreeElement';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -70,6 +70,10 @@ export function makeSortable<T extends TreeElement>(
     instance: T,
     properties: TreeItemStringProps[] = ['id'],
 ): T & Sortable {
+    if (isSortable(instance)) {
+        return instance; // Already sortable, return as is
+    }
+
     const enhanced = instance as T & Sortable;
 
     // Add sorting properties and methods

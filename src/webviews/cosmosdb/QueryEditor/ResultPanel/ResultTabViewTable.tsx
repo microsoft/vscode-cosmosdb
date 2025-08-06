@@ -5,7 +5,7 @@
 
 import { debounce } from 'es-toolkit';
 import * as React from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
     SlickgridReact,
     type Column,
@@ -23,6 +23,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const gridRef = useRef<SlickgridReact>(null);
+    const [announcement, setAnnouncement] = useState('');
 
     const { handleHeaderButtonClick, MenuElement } = useColumnMenu(gridRef);
 
@@ -52,6 +53,31 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             }),
         [handleHeaderButtonClick, headers],
     );
+
+    React.useEffect(() => {
+        gridRef.current?.gridService.renderGrid();
+
+        setTimeout(() => {
+            const grid = gridRef.current?.grid;
+            if (!grid) return;
+
+            // Set grid role
+            const gridElement = grid.getContainerNode();
+            gridElement?.setAttribute('role', 'grid');
+            gridElement?.setAttribute('aria-label', 'Query results data grid');
+
+            // Announce cell values on navigation using ARIA live region
+            grid.onActiveCellChanged.subscribe((_e, args) => {
+                const column = gridColumns[args.cell];
+                const data = dataset[args.row];
+                if (column && data) {
+                    const value = data[column.field] || '';
+                    const announcementText = `${column.name}: ${value}`;
+                    setAnnouncement(announcementText);
+                }
+            });
+        }, 100);
+    }, [dataset, headers, gridColumns]);
 
     const onDblClick = useCallback(
         (args: OnDblClickEventArgs) => {
@@ -123,6 +149,14 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
     return (
         <>
+            {/* ARIA live region for announcements */}
+            <div
+                aria-live="polite"
+                aria-atomic="true"
+                style={{ position: 'absolute', left: '-10000px', width: '1px', height: '1px', overflow: 'hidden' }}
+            >
+                {announcement}
+            </div>
             <SlickgridReact
                 gridId="myGrid"
                 ref={gridRef} // Attach the reference to SlickGrid

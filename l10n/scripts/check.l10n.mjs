@@ -48,7 +48,9 @@ const checkLocalisationBundle = async () => {
     const bundleNew = JSON.stringify(sortObjectByKeys(output));
 
     // Compare the old and new bundles to check for changes
-    if (getStringDiff(bundleOld, bundleNew)) {
+    const strDiff = getStringDiff(bundleOld, bundleNew);
+    if (strDiff) {
+        console.log('Diff:\n' + strDiff);
         console.log('Localization file has changed. Please run "npm run l10n" to update it.');
         process.exit(1); // Exit with an error code if changes are detected
     } else {

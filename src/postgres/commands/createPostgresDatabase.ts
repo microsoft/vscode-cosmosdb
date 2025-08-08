@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { showPostgresOperationProhibitedError } from '../deprication';
+import { showPostgresOperationProhibitedError } from '../deprecation';
 
 export async function createPostgresDatabase(context: IActionContext): Promise<void> {
-    context.telemetry.properties.depricated = 'true';
+    context.telemetry.properties.deprecated = 'true';
     await showPostgresOperationProhibitedError();
 
     return;

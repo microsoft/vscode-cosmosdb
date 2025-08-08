@@ -24,7 +24,7 @@ import { nonNullProp } from '../../utils/nonNull';
 import { createAbstractPostgresClient, type AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresServerType, type PostgresAbstractServer } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
-import { showPostgresDeprecationWarning } from '../deprication';
+import { showPostgresDeprecationWarning } from '../deprecation';
 import { type ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
@@ -116,7 +116,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
-        // Need show deprication notification
+        // Need show deprecation notification
         await showPostgresDeprecationWarning();
 
         context.telemetry.properties.serverType = this.serverType;

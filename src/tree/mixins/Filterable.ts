@@ -78,7 +78,7 @@ export function makeFilterable<T extends TreeElement>(
     const enhanced = instance as T & Filterable;
 
     // Add filtering properties and methods
-    enhanced.filterProperties = properties;
+    enhanced.filterProperties = [...properties]; // Copy the provided properties
     enhanced.filterProperty = undefined; // Initially no property is selected
     enhanced.filterPattern = undefined; // Initially no filter pattern is set
 

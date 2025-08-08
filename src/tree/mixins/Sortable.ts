@@ -77,7 +77,7 @@ export function makeSortable<T extends TreeElement>(
     const enhanced = instance as T & Sortable;
 
     // Add sorting properties and methods
-    enhanced.sortProperties = properties;
+    enhanced.sortProperties = [...properties];
     enhanced.sortProperty = undefined;
     enhanced.sortDirection = 'asc'; // Default sort direction
 

@@ -18,9 +18,9 @@ const checkLocalisationBundle = async () => {
     }
 
     // Read the existing localization bundle file
-    const bundleOld = fs.readFileSync(bundlePath, 'utf8').trim().replace(/\r\n/g, '\n');
+    const bundleOld = JSON.stringify(sortObjectByKeys(JSON.parse(fs.readFileSync(bundlePath, 'utf8'))));
     // Serialize the merged localization data
-    const bundleNew = JSON.stringify(sortObjectByKeys(output), null, 2).trim().replace(/\r\n/g, '\n');
+    const bundleNew = JSON.stringify(sortObjectByKeys(output));
 
     // Compare the old and new bundles to check for changes
     if (bundleOld !== bundleNew) {

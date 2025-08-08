@@ -12,6 +12,8 @@ import { BaseCachedBranchDataProvider } from '../../BaseCachedBranchDataProvider
 import { type CosmosDBAccountModel } from '../../cosmosdb/models/CosmosDBAccountModel';
 import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { GraphAccountResourceItem } from '../../graph/GraphAccountResourceItem';
+import { makeFilterable } from '../../mixins/Filterable';
+import { makeSortable } from '../../mixins/Sortable';
 import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
 import { TableAccountResourceItem } from '../../table/TableAccountResourceItem';
 import { type TreeElement } from '../../TreeElement';
@@ -50,7 +52,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
             }
 
             if (experience?.api === API.Core) {
-                resourceItem = new NoSqlAccountResourceItem(accountModel, experience);
+                resourceItem = makeFilterable(makeSortable(new NoSqlAccountResourceItem(accountModel, experience)));
             }
 
             if (experience?.api === API.Graph) {
@@ -71,5 +73,9 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
         }
 
         throw new Error(l10n.t('Unsupported resource type'));
+    }
+
+    protected onResourceItemRetrieved() {
+        // No additional actions needed after retrieving the resource item
     }
 }

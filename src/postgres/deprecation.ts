@@ -66,8 +66,7 @@ export async function showPostgresOperationProhibitedError(): Promise<void> {
 
     const message =
         l10n.t(
-            'This operation is prohibited. All create, update, and delete PostgreSQL operations are no longer \
-            supported as this functionality has been deprecated in the Azure CosmosDB extension.',
+            'This operation is prohibited. All create, update, and delete PostgreSQL operations are no longer supported as this functionality has been deprecated in the Azure CosmosDB extension.',
         ) +
         ' ' +
         l10n.t('Please use the dedicated PostgreSQL extension instead.');

@@ -3,22 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
-import * as l10n from '@vscode/l10n';
-import { type PostgresStoredProceduresTreeItem } from '../../../tree/PostgresStoredProceduresTreeItem';
-import { runPostgresQueryWizard } from '../runPostgresQueryWizard';
-import { StoredProcedureQueryCreateStep } from './steps/StoredProcedureQueryCreateStep';
-import { StoredProcedureQueryNameStep } from './steps/StoredProcedureQueryNameStep';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { showPostgresOperationProhibitedError } from '../../../deprecation';
 
-export async function createPostgresStoredProcedureQuery(
-    context: IActionContext,
-    treeItem?: PostgresStoredProceduresTreeItem,
-): Promise<void> {
-    const wizard = new AzureWizard(context, {
-        promptSteps: [new StoredProcedureQueryNameStep()],
-        executeSteps: [new StoredProcedureQueryCreateStep()],
-        title: l10n.t('Create PostgreSQL Stored Procedure Query'),
-    });
+export async function createPostgresStoredProcedureQuery(context: IActionContext): Promise<void> {
+    context.telemetry.properties.deprecated = 'true';
+    await showPostgresOperationProhibitedError();
 
-    await runPostgresQueryWizard(wizard, context, treeItem);
+    return;
 }

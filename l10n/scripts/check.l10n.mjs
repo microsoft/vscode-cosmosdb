@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as diff from 'diff';
+import { diffLines } from 'diff';
 import fs from 'node:fs';
 import { bundlePath } from './constants.mjs';
 import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
@@ -12,7 +12,7 @@ import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
  * Compares two strings and returns a readable diff
  */
 function getStringDiff(oldStr, newStr) {
-    const differences = diff.diffLines(oldStr, newStr);
+    const differences = diffLines(oldStr, newStr, { newlineIsToken: true, stripTrailingCr: true });
     let result = '';
 
     differences.forEach((part) => {

@@ -72,7 +72,9 @@ export async function showPostgresOperationProhibitedError(): Promise<void> {
         ' ' +
         l10n.t('Please use the dedicated PostgreSQL extension instead.');
 
-    const buttonText = isExtensionInstalled ? 'Open PostgreSQL Extension' : 'Install PostgreSQL Extension';
+    const buttonText = isExtensionInstalled
+        ? l10n.t('Open PostgreSQL Extension')
+        : l10n.t('Install PostgreSQL Extension');
 
     const selection = await vscode.window.showErrorMessage(message, { modal: true }, { title: buttonText });
 

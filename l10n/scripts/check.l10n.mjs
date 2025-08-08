@@ -16,6 +16,9 @@ function getStringDiff(oldStr, newStr) {
     let result = '';
 
     differences.forEach((part) => {
+        if (!part.added && !part.removed) {
+            return; // Skip unchanged parts
+        }
         // Format the output - added parts in green, removed in red
         const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
         const formattedText = part.value

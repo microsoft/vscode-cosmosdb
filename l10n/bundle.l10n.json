@@ -659,7 +659,7 @@
   "This item is read-only. To edit it, switch to edit mode.": "This item is read-only. To edit it, switch to edit mode.",
   "This item is valid and ready to be saved.": "This item is valid and ready to be saved.",
   "This operation is not supported.": "This operation is not supported.",
-  "This operation is prohibited. All create, update, and delete PostgreSQL operations are no longer \r\n            supported as this functionality has been deprecated in the Azure CosmosDB extension.": "This operation is prohibited. All create, update, and delete PostgreSQL operations are no longer \r\n            supported as this functionality has been deprecated in the Azure CosmosDB extension.",
+  "This operation is prohibited. All create, update, and delete PostgreSQL operations are no longer supported as this functionality has been deprecated in the Azure CosmosDB extension.": "This operation is prohibited. All create, update, and delete PostgreSQL operations are no longer supported as this functionality has been deprecated in the Azure CosmosDB extension.",
   "This table view presents data at the root level by default.": "This table view presents data at the root level by default.",
   "Throttled: {count}": "Throttled: {count}",
   "Throughput Bucket": "Throughput Bucket",

@@ -4,19 +4,31 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition, type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
-import { parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { nonNullProp, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import * as l10n from '@vscode/l10n';
 import { EJSON, type Document } from 'bson';
 import * as fs from 'node:fs/promises';
+import { v4 as uuidv4 } from 'uuid';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
 import { ClustersClient } from '../../documentdb/ClustersClient';
+import {
+    AzureDomains,
+    getHostsFromConnectionString,
+    hasDomainSuffix,
+} from '../../documentdb/utils/connectionStringHelpers';
 import { ext } from '../../extensionVariables';
 import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { CollectionItem } from '../../tree/documentdb/CollectionItem';
+import {
+    BufferErrorCode,
+    createCosmosDbBuffer,
+    createMongoDbBuffer,
+    type DocumentBuffer,
+} from '../../utils/documentBuffer';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 
@@ -87,17 +99,20 @@ export async function importDocumentsWithProgress(
             progress.report({ increment: 0, message: l10n.t('Loading documents…') });
 
             const countUri = uris.length;
-            const incrementUri = 50 / (countUri || 1);
+            const incrementUri = 25 / (countUri || 1);
             const documents: unknown[] = [];
             let hasErrors = false;
 
-            for (let i = 0, percent = 0; i < countUri; i++, percent += incrementUri) {
+            for (let i = 0; i < countUri; i++) {
+                const increment = (i + 1) * incrementUri;
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: Math.floor(increment),
                     message: l10n.t('Loading document {num} of {countUri}', { num: i + 1, countUri }),
                 });
 
                 const result = await parseAndValidateFile(selectedItem, uris[i]);
+
+                // Note to future maintainers: the validation can return 0 valid documents and still have errors.
 
                 if (result.errors && result.errors.length) {
                     ext.outputChannel.appendLog(
@@ -108,47 +123,64 @@ export async function importDocumentsWithProgress(
                     hasErrors = true;
                 }
 
-                if (result.documents && result.documents.length) {
+                if (result.documents && result.documents.length > 0) {
                     documents.push(...result.documents);
                 }
             }
 
             const countDocuments = documents.length;
-            const incrementDocuments = 50 / (countDocuments || 1);
+            const incrementDocuments = 75 / (countDocuments || 1);
             let count = 0;
+            let buffer: DocumentBuffer<unknown> | undefined;
+            if (selectedItem instanceof CollectionItem) {
+                const hosts = getHostsFromConnectionString(nonNullProp(selectedItem.cluster, 'connectionString'));
+                const isRuResource = hasDomainSuffix(AzureDomains.RU, ...hosts);
 
-            for (let i = 0, percent = 0; i < countDocuments; i++, percent += incrementDocuments) {
+                if (isRuResource) {
+                    // For Azure MongoDB RU, we use a buffer with maxDocumentCount = 1
+                    buffer = createMongoDbBuffer<unknown>({
+                        maxDocumentCount: 1,
+                    });
+                } else {
+                    buffer = createMongoDbBuffer<unknown>();
+                }
+            } else if (selectedItem instanceof CosmosDBContainerResourceItem) {
+                buffer = createCosmosDbBuffer<unknown>();
+            }
+
+            for (let i = 0; i < countDocuments; i++) {
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: incrementDocuments,
                     message: l10n.t('Importing document {num} of {countDocuments}', {
                         num: i + 1,
                         countDocuments,
                     }),
                 });
 
-                const result = await insertDocument(selectedItem, documents[i]);
+                const result = await insertDocument(selectedItem, documents[i], buffer);
 
-                if (result.error) {
-                    ext.outputChannel.appendLog(
-                        l10n.t('The insertion of document {number} failed with error: {error}', {
-                            number: i + 1,
-                            error: result.error,
-                        }),
-                    );
-                    ext.outputChannel.show();
-                    hasErrors = true;
-                } else {
-                    count++;
-                }
+                // 'count' in result means that the result is from the buffer
+                count += result.count;
+                // check if error occurred as partial failure would happen in bulk insertion
+                hasErrors = hasErrors || result.errorOccurred;
             }
 
-            progress.report({ increment: 50, message: l10n.t('Finished importing') });
+            // Do insertion for the last batch for bulk insertion
+            if (buffer && buffer.getStats().documentCount > 0) {
+                const lastBatchFlushResult = await insertDocument(selectedItem, undefined, buffer);
 
-            return hasErrors
-                ? l10n.t('Import has accomplished with errors.')
-                : l10n.t('Import successful.') +
-                      ' ' +
-                      l10n.t('Inserted {0} document(s). See output for more details.', count);
+                count += lastBatchFlushResult.count;
+                hasErrors = hasErrors || lastBatchFlushResult.errorOccurred;
+            }
+
+            // let's make sure we reach 100% progress, useful in case of errors etc.
+            progress.report({ increment: 100, message: l10n.t('Finished importing') });
+
+            return (
+                (hasErrors ? l10n.t('Import has accomplished with errors.') : l10n.t('Import successful.')) +
+                ' ' +
+                l10n.t('Inserted {0} document(s). See output for more details.', count)
+            );
         },
     );
 
@@ -282,55 +314,137 @@ async function parseAndValidateFileForCosmosDB(
 async function insertDocument(
     node: CosmosDBContainerResourceItem | CollectionItem,
     document: unknown,
-): Promise<{ document: unknown; error: string }> {
+    buffer: DocumentBuffer<unknown> | undefined,
+): Promise<{ count: number; errorOccurred: boolean }> {
     try {
+        // Check for valid buffer
+        if (!buffer) {
+            return { count: 0, errorOccurred: true };
+        }
+
+        // Route to appropriate handler based on node type
         if (node instanceof CollectionItem) {
-            // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoCluster(node, document as Document);
+            return await insertDocumentWithBufferIntoCluster(node, buffer, document as Document);
+        } else if (node instanceof CosmosDBContainerResourceItem) {
+            return await insertDocumentWithBufferIntoCosmosDB(node, buffer, document as ItemDefinition);
         }
 
-        if (node instanceof CosmosDBContainerResourceItem) {
-            // await needs to catch the error here, otherwise it will be thrown to the caller
-            return await insertDocumentIntoCosmosDB(node, document as ItemDefinition);
-        }
-    } catch (e) {
-        return { document, error: parseError(e).message };
+        // Should only reach here if node is neither CollectionItem nor CosmosDBContainerResourceItem
+        return { count: 0, errorOccurred: true };
+    } catch {
+        return { count: 0, errorOccurred: true };
     }
-
-    return { document, error: l10n.t('Unknown error') };
 }
 
-async function insertDocumentIntoCosmosDB(
+async function insertDocumentWithBufferIntoCluster(
+    node: CollectionItem,
+    buffer: DocumentBuffer<unknown>,
+    document?: Document,
+    // If document is undefined, it means that we are flushing the buffer
+    // It is used for the last batch, and not recommended to be used for normal batches
+): Promise<{ count: number; errorOccurred: boolean }> {
+    const databaseName = node.databaseInfo.name;
+    const collectionName = node.collectionInfo.name;
+    // Try to add document to buffer
+    const insertOrFlushToBufferResult = buffer.insertOrFlush(document);
+    // If successful, no immediate action needed
+    if (insertOrFlushToBufferResult.success) {
+        return { count: 0, errorOccurred: false };
+    }
+
+    let documentsToProcess = insertOrFlushToBufferResult.documentsToProcess;
+    if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.BufferFull) {
+        // The buffer has been flushed by the insertOrFlush method
+        // We need to insert current document to buffer here
+        // As we have inserted it once, so it has been verified that it is not too large and not undefined
+        buffer.insert(document);
+    } else if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.EmptyDocument) {
+        documentsToProcess = buffer.flush();
+    }
+
+    // Documents to process could be the current document (if too large)
+    // or the contents of the buffer (if it was full)
+    const client = await ClustersClient.getClient(node.cluster.id);
+    const insertResult = await client.insertDocuments(databaseName, collectionName, documentsToProcess as Document[]);
+
+    return {
+        count: insertResult.insertedCount,
+        errorOccurred: insertResult.insertedCount < (documentsToProcess?.length || 0),
+    };
+}
+
+async function insertDocumentWithBufferIntoCosmosDB(
     node: CosmosDBContainerResourceItem,
-    document: ItemDefinition,
-): Promise<{ document: ItemDefinition; error: string }> {
+    buffer: DocumentBuffer<unknown>,
+    document?: ItemDefinition,
+    // If document is undefined, it means that we are flushing the buffer
+): Promise<{ count: number; errorOccurred: boolean }> {
+    const databaseName = node.model.database.id;
+    const containerName = node.model.container.id;
+
+    // Try to add document to buffer
+    const insertOrFlushToBufferResult = buffer.insertOrFlush(document);
+    // If successful, no immediate action needed
+    if (insertOrFlushToBufferResult.success) {
+        return { count: 0, errorOccurred: false };
+    }
+
+    let documentsToProcess = insertOrFlushToBufferResult.documentsToProcess;
+    if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.BufferFull) {
+        // The buffer has been flushed by the insertOrFlush method
+        // We need to insert current document to buffer here
+        // As we have inserted it once, so it has been verified that it is not too large and not undefined
+        buffer.insert(document);
+    } else if (insertOrFlushToBufferResult.errorCode === BufferErrorCode.EmptyDocument) {
+        documentsToProcess = buffer.flush();
+    }
+
+    // Documents to process could be the current document (if too large)
+    // or the contents of the buffer (if it was full)
     const { endpoint, credentials, isEmulator } = node.model.accountInfo;
     const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-    const response = await cosmosClient
-        .database(node.model.database.id)
-        .container(node.model.container.id)
-        .items.create<ItemDefinition>(document);
+    const container = cosmosClient.database(databaseName).container(containerName);
 
-    if (response.resource) {
-        return { document, error: '' };
-    } else {
-        return { document, error: l10n.t('The insertion failed with status code {0}', response.statusCode) };
-    }
-}
-
-async function insertDocumentIntoCluster(
-    node: CollectionItem,
-    document: Document,
-): Promise<{ document: Document; error: string }> {
-    const client = await ClustersClient.getClient(node.cluster.id);
-    const response = await client.insertDocuments(node.databaseInfo.name, node.collectionInfo.name, [document]);
-
-    if (response?.acknowledged) {
-        return { document, error: '' };
-    } else {
+    const typedDocuments = documentsToProcess as ItemDefinition[];
+    const bulkOperations = typedDocuments.map((doc) => {
         return {
-            document,
-            error: l10n.t('The insertion failed. The operation was not acknowledged by the database.'),
+            operationType: 'Create' as const,
+            resourceBody: {
+                ...doc,
+                // Ensure id is set, if not provided, generate a new UUID
+                // This is important for CosmosDB bulk operations as it requires an id field
+                id: doc.id ?? uuidv4(),
+            },
+        };
+    });
+
+    try {
+        const response = await container.items.bulk(bulkOperations);
+
+        // Count successful operations
+        const successCount = response.filter((op) => op.statusCode >= 200 && op.statusCode < 300).length;
+        const errorOccurred = successCount < bulkOperations.length;
+
+        if (errorOccurred) {
+            // Log errors to output channel
+            response.forEach((op) => {
+                if (op.statusCode >= 300) {
+                    ext.outputChannel.appendLog(l10n.t('The insertion failed with status code {0}', op.statusCode));
+                }
+            });
+            ext.outputChannel.show();
+        }
+
+        return {
+            count: successCount,
+            errorOccurred,
+        };
+    } catch (error) {
+        ext.outputChannel.appendLog(l10n.t('The insertion failed with error: {0}', parseError(error).message));
+        ext.outputChannel.show();
+        return {
+            count: 0,
+            errorOccurred: true,
         };
     }
 }

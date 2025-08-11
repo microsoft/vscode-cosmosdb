@@ -13,6 +13,7 @@ import { appendExtensionUserAgent, callWithTelemetryAndErrorHandling, parseError
 import * as l10n from '@vscode/l10n';
 import { EJSON } from 'bson';
 import {
+    MongoBulkWriteError,
     MongoClient,
     ObjectId,
     type Collection,
@@ -24,8 +25,10 @@ import {
     type MongoClientOptions,
     type WithId,
     type WithoutId,
+    type WriteError,
 } from 'mongodb';
 import { Links } from '../constants';
+import { ext } from '../extensionVariables';
 import { type EmulatorConfiguration } from '../utils/emulatorConfiguration';
 import { CredentialCache } from './CredentialCache';
 import { getHostsFromConnectionString, hasAzureDomain } from './utils/connectionStringHelpers';
@@ -54,9 +57,9 @@ export interface IndexItemModel {
     version?: number;
 }
 
+// Currently we only return insertedCount, but we can add more fields in the future if needed
+// Keep the type definition here for future extensibility
 export type InsertDocumentsResult = {
-    /** Indicates whether this write result was acknowledged. If not, then all other members of this result will be undefined */
-    acknowledged: boolean;
     /** The number of inserted documents for this operations */
     insertedCount: number;
 };
@@ -451,13 +454,48 @@ export class ClustersClient {
         collectionName: string,
         documents: Document[],
     ): Promise<InsertDocumentsResult> {
+        if (documents.length === 0) {
+            return { insertedCount: 0 };
+        }
         const collection = this._mongoClient.db(databaseName).collection(collectionName);
 
-        const insertManyResults = await collection.insertMany(documents, { forceServerObjectId: true });
+        try {
+            const insertManyResults = await collection.insertMany(documents, {
+                forceServerObjectId: true,
 
-        return {
-            acknowledged: insertManyResults.acknowledged,
-            insertedCount: insertManyResults.insertedCount,
-        };
+                // Setting `ordered` to be false allows MongoDB to continue inserting remaining documents even if previous fails.
+                // More details: https://www.mongodb.com/docs/manual/reference/method/db.collection.insertMany/#syntax
+                ordered: false,
+            });
+            return {
+                insertedCount: insertManyResults.insertedCount,
+            };
+        } catch (error) {
+            // print error messages to the console
+            if (error instanceof MongoBulkWriteError) {
+                const writeErrors: WriteError[] = Array.isArray(error.writeErrors)
+                    ? (error.writeErrors as WriteError[])
+                    : [error.writeErrors as WriteError];
+
+                for (const writeError of writeErrors) {
+                    const generalErrorMessage = parseError(writeError).message;
+                    const descriptiveErrorMessage = writeError.err?.errmsg;
+
+                    const fullErrorMessage = descriptiveErrorMessage
+                        ? `${generalErrorMessage} - ${descriptiveErrorMessage}`
+                        : generalErrorMessage;
+
+                    ext.outputChannel.appendLog(l10n.t('Write error: {0}', fullErrorMessage));
+                }
+                ext.outputChannel.show();
+            } else if (error instanceof Error) {
+                ext.outputChannel.appendLog(l10n.t('Error: {0}', error.message));
+                ext.outputChannel.show();
+            }
+
+            return {
+                insertedCount: error instanceof MongoBulkWriteError ? error.insertedCount || 0 : 0,
+            };
+        }
     }
 }

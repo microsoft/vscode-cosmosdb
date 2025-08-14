@@ -72,7 +72,7 @@ export const LearnButton = forwardRef(function LearnButton(
                     </Menu>
                     <MenuItemLink href={noSqlQuickReferenceUrl}>{l10n.t('NoSQL quick reference')}</MenuItemLink>
                     <MenuItemLink href={noSqlLearningCenterUrl}>{l10n.t('Learning center')}</MenuItemLink>
-                    <MenuItemLink href={cosmosDBLimitations}>{l10n.t('CosmosDB SDK limitations')}</MenuItemLink>
+                    <MenuItemLink href={cosmosDBLimitations}>{l10n.t('Cosmos DB SDK limitations')}</MenuItemLink>
                 </MenuList>
             </MenuPopover>
         </Menu>

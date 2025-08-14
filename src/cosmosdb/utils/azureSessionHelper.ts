@@ -12,8 +12,7 @@ export async function getSignedInPrincipalIdForAccountEndpoint(
     tenantId: string | undefined,
 ): Promise<string | undefined> {
     const session = await getSessionForDatabaseAccount(accountEndpoint, tenantId);
-    const principalId = session?.account.id.split('/')[1] ?? session?.account.id;
-    return principalId;
+    return session?.account.id.split('/')[1] ?? session?.account.id;
 }
 
 async function getSessionForDatabaseAccount(
@@ -21,6 +20,6 @@ async function getSessionForDatabaseAccount(
     tenantId: string | undefined,
 ): Promise<vscode.AuthenticationSession | undefined> {
     const endpointUrl = new URL(endpoint);
-    const scrope = `${endpointUrl.origin}${endpointUrl.pathname}.default`;
-    return await getSessionFromVSCode(scrope, tenantId, { createIfNone: false });
+    const scope = `${endpointUrl.origin}${endpointUrl.pathname}.default`;
+    return await getSessionFromVSCode(scope, tenantId, { createIfNone: false });
 }

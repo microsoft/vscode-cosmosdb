@@ -47,7 +47,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: l10n.t('CosmosDB Accounts'),
+            label: l10n.t('Cosmos DB Accounts'),
             iconPath: new vscode.ThemeIcon('plug'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };

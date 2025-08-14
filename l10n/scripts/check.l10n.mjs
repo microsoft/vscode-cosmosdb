@@ -3,9 +3,37 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { diffLines } from 'diff';
 import fs from 'node:fs';
 import { bundlePath } from './constants.mjs';
 import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
+
+/**
+ * Compares two strings and returns a readable diff
+ */
+function getStringDiff(oldStr, newStr) {
+    const differences = diffLines(oldStr, newStr, { newlineIsToken: true, stripTrailingCr: true });
+    let result = '';
+
+    differences.forEach((part) => {
+        if (!part.added && !part.removed) {
+            return; // Skip unchanged parts
+        }
+        // Format the output - added parts in green, removed in red
+        const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
+        const formattedText = part.value
+            .split('\n')
+            .filter((line) => line.trim() !== '')
+            .map((line) => prefix + line)
+            .join('\n');
+
+        if (formattedText) {
+            result += formattedText + '\n';
+        }
+    });
+
+    return result;
+}
 
 // Function to check if the localization bundle has changed
 const checkLocalisationBundle = async () => {
@@ -18,12 +46,14 @@ const checkLocalisationBundle = async () => {
     }
 
     // Read the existing localization bundle file
-    const bundleOld = fs.readFileSync(bundlePath, 'utf8').trim().replace(/\r\n/g, '\n');
+    const bundleOld = JSON.stringify(sortObjectByKeys(JSON.parse(fs.readFileSync(bundlePath, 'utf8'))), null, 2);
     // Serialize the merged localization data
-    const bundleNew = JSON.stringify(sortObjectByKeys(output), null, 2).trim().replace(/\r\n/g, '\n');
+    const bundleNew = JSON.stringify(sortObjectByKeys(output), null, 2);
 
     // Compare the old and new bundles to check for changes
-    if (bundleOld !== bundleNew) {
+    const strDiff = getStringDiff(bundleOld, bundleNew);
+    if (strDiff) {
+        console.log('Diff:\n' + strDiff);
         console.log('Localization file has changed. Please run "npm run l10n" to update it.');
         process.exit(1); // Exit with an error code if changes are detected
     } else {

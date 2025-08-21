@@ -7,7 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
@@ -49,18 +49,20 @@ export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDB
         return;
     }
 
-    const accountInfo = node.model.accountInfo;
-    const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
-
     try {
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .item(item.id!, partitionKeyDefinition ? extractPartitionKey(item, partitionKeyDefinition) : undefined)
-                .delete();
-            success = response.statusCode === 204;
+            await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
+                const response = await cosmosClient
+                    .database(databaseId)
+                    .container(containerId)
+                    .item(
+                        item.id!,
+                        partitionKeyDefinition ? extractPartitionKey(item, partitionKeyDefinition) : undefined,
+                    )
+                    .delete();
+                success = response.statusCode === 204;
+            });
         });
 
         if (success) {

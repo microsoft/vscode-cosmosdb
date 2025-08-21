@@ -8,8 +8,9 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
 import * as vscodeUtil from '../../utils/vscodeUtils';
-import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient } from '../getCosmosClient';
+import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export async function executeNoSqlQuery(
     _context: IActionContext,
@@ -36,16 +37,13 @@ export async function executeNoSqlQuery(
         );
     } else {
         const connection = connectedCollection as NoSqlQueryConnection;
-        const { databaseId, containerId, endpoint, credentials, isEmulator } = connection;
-        const client = getCosmosClient(endpoint, credentials, isEmulator);
+        const { databaseId, containerId } = connection;
         const options = { populateQueryMetrics };
-        const response = await client
-            .database(databaseId)
-            .container(containerId)
-            .items.query(queryText, options)
-            .fetchAll();
+        const response = await withClaimsChallengeHandling(connection, async (client) =>
+            client.database(databaseId).container(containerId).items.query(queryText, options).fetchAll(),
+        );
         const resultDocumentTitle = l10n.t('query results for {0}', containerId);
-        if (populateQueryMetrics === true) {
+        if (populateQueryMetrics) {
             await vscodeUtil.showNewFile(
                 JSON.stringify(
                     {

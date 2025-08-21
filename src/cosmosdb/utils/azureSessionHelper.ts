@@ -23,3 +23,22 @@ async function getSessionForDatabaseAccount(
     const scope = `${endpointUrl.origin}${endpointUrl.pathname}.default`;
     return await getSessionFromVSCode(scope, tenantId, { createIfNone: false });
 }
+
+export type AccessToken = { token: string; expiresOnTimestamp: number };
+
+export async function getAccessTokenForVSCode(
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+    scopes: vscode.AuthenticationSessionRequest | string[] | string,
+    tenantId: string | undefined,
+    options?: vscode.AuthenticationGetSessionOptions,
+): Promise<AccessToken | null> {
+    const session = await getSessionFromVSCode(scopes, tenantId, options);
+
+    return session?.accessToken
+        ? {
+              token: session.accessToken,
+              // TODO: VS Code session tokens have no expiration time, should we limit this to 1h?
+              expiresOnTimestamp: 0,
+          }
+        : null;
+}

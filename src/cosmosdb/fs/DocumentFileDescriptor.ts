@@ -14,7 +14,7 @@ import { extractPartitionKey } from '../../utils/document';
 import { promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
-import { getCosmosClient } from '../getCosmosClient';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export class DocumentFileDescriptor implements EditableFileSystemItem {
     public readonly cTime: number = Date.now();
@@ -63,17 +63,17 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
             throw new Error(l10n.t('The "_etag" field is required to update an item'));
         }
 
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
         const options: RequestOptions = { accessCondition: { type: 'IfMatch', condition: newData['_etag'] } };
         const partitionKeyValues = this.model.container.partitionKey
             ? extractPartitionKey(this.model.item, this.model.container.partitionKey)
             : undefined;
-        const response = await cosmosClient
-            .database(this.model.database.id)
-            .container(this.model.container.id)
-            .item(newData['id'], partitionKeyValues)
-            .replace(newData, options);
+        const response = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
+            cosmosClient
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .item(`${newData['id']}`, partitionKeyValues)
+                .replace(newData, options),
+        );
 
         if (response.resource) {
             this.model.item = response.resource;

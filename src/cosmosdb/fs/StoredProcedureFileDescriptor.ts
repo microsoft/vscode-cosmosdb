@@ -8,7 +8,7 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBStoredProcedureModel } from '../../tree/cosmosdb/models/CosmosDBStoredProcedureModel';
 import { nonNullProp } from '../../utils/nonNull';
-import { getCosmosClient } from '../getCosmosClient';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
     public readonly cTime: number = Date.now();
@@ -29,13 +29,13 @@ export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const replace = await cosmosClient
-            .database(this.model.database.id)
-            .container(this.model.container.id)
-            .scripts.storedProcedure(this.model.procedure.id)
-            .replace({ id: this.model.procedure.id, body: content });
+        const replace = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
+            cosmosClient
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .scripts.storedProcedure(this.model.procedure.id)
+                .replace({ id: this.model.procedure.id, body: content }),
+        );
         this.model.procedure = nonNullProp(replace, 'resource');
     }
 }

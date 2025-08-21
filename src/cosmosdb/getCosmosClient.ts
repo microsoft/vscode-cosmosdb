@@ -5,66 +5,67 @@
 
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
-// eslint-disable-next-line import/no-internal-modules
-import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import { merge } from 'es-toolkit';
 import * as https from 'https';
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
 import { ext } from '../extensionVariables';
-import { getPreferredAuthenticationMethod } from '../tree/cosmosdb/AccountInfo';
-import { type NoSqlQueryConnection } from './NoSqlCodeLensProvider';
+import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
+import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
+import {
+    getCosmosDBKeyCredential,
+    type CosmosDBCredential,
+    type CosmosDBEntraIdCredential,
+    type CosmosDBManagedIdentityCredential,
+} from './CosmosDBCredential';
+import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
+import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
-export enum AuthenticationMethod {
-    auto = 'auto',
-    accountKey = 'accountKey',
-    entraId = 'entraId',
-    managedIdentity = 'managedIdentity',
-}
-
-export type CosmosDBKeyCredential = {
-    type: AuthenticationMethod.accountKey;
-    key: string;
+export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
+    challenge?: string; // Optional challenge for EntraID authentication
 };
 
-export type CosmosDBEntraIdCredential = {
-    type: AuthenticationMethod.entraId;
-    tenantId: string | undefined;
-};
-
-export type CosmosDBManagedIdentityCredential = {
-    type: AuthenticationMethod.managedIdentity;
-    clientId: string | undefined;
-};
-
-export type CosmosDBCredential = CosmosDBKeyCredential | CosmosDBEntraIdCredential | CosmosDBManagedIdentityCredential;
-
-export function getCosmosDBKeyCredential(credentials: CosmosDBCredential[]): CosmosDBKeyCredential | undefined {
-    return credentials.filter(
-        (cred): cred is CosmosDBKeyCredential => cred.type === AuthenticationMethod.accountKey,
-    )[0];
-}
-
-export function getCosmosDBEntraIdCredential(credentials: CosmosDBCredential[]): CosmosDBEntraIdCredential | undefined {
-    return credentials.filter(
-        (cred): cred is CosmosDBEntraIdCredential => cred.type === AuthenticationMethod.entraId,
-    )[0];
-}
-
-export function getCosmosDBClientByConnection(
-    connection: NoSqlQueryConnection,
-    options?: Partial<CosmosClientOptions>,
-): CosmosClient {
-    return getCosmosClient(connection.endpoint, connection.credentials, connection.isEmulator, options);
-}
-
+export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
+export function getCosmosClient(accountInfo: AccountInfo, options?: GetCosmosClientOptions): CosmosClient;
 export function getCosmosClient(
     endpoint: string,
     credentials: CosmosDBCredential[],
     isEmulator: boolean,
-    options?: Partial<CosmosClientOptions>,
+    options?: GetCosmosClientOptions,
+): CosmosClient;
+export function getCosmosClient(
+    arg1: NoSqlQueryConnection | AccountInfo | string,
+    arg2?: GetCosmosClientOptions | CosmosDBCredential[],
+    arg3?: boolean,
+    arg4?: GetCosmosClientOptions,
 ): CosmosClient {
+    let endpoint: string;
+    let credentials: CosmosDBCredential[];
+    let isEmulator: boolean;
+    let options: GetCosmosClientOptions | undefined;
+    if (typeof arg1 === 'string') {
+        // If the first argument is a string, it's the endpoint
+        endpoint = arg1;
+        credentials = arg2 as CosmosDBCredential[];
+        isEmulator = arg3 ?? false;
+        options = arg4;
+    } else if (isNoSqlQueryConnection(arg1)) {
+        // Otherwise, it's a NoSqlQueryConnection object
+        const connection = arg1;
+        endpoint = connection.endpoint;
+        credentials = connection.credentials;
+        isEmulator = connection.isEmulator;
+        options = arg2 as GetCosmosClientOptions;
+    } else {
+        // Otherwise, it's an AccountInfo object
+        const accountInfo = arg1 as AccountInfo;
+        endpoint = accountInfo.endpoint;
+        credentials = accountInfo.credentials;
+        isEmulator = accountInfo.isEmulator;
+        options = arg2 as GetCosmosClientOptions;
+    }
+
     const vscodeStrictSSL: boolean | undefined = vscode.workspace
         .getConfiguration()
         .get<boolean>(ext.settingsKeys.vsCode.proxyStrictSSL);
@@ -102,13 +103,6 @@ export function getCosmosClient(
                 // Track errors for better diagnostics
                 const errors: string[] = [];
 
-                // Create reusable handler for token response formatting
-                const formatToken = (accessToken: string): { token: string; expiresOnTimestamp: number } => ({
-                    token: accessToken,
-                    // TODO: VS Code session tokens have no expiration time, should we limit this to 1h?
-                    expiresOnTimestamp: 0,
-                });
-
                 async function tryCredential(
                     credential: CosmosDBCredential,
                     forcePrompt: boolean,
@@ -120,11 +114,12 @@ export function getCosmosClient(
                                 return null;
 
                             case AuthenticationMethod.entraId: {
-                                const { tenantId } = credential as CosmosDBEntraIdCredential;
-                                const session = await getSessionFromVSCode(normalizedAuthScopes, tenantId, {
-                                    createIfNone: forcePrompt,
-                                });
-                                return session?.accessToken ? formatToken(session.accessToken) : null;
+                                const { challenge } = options || {};
+                                return getAccessTokenForVSCode(
+                                    challenge ? { scopes: normalizedAuthScopes, challenge } : normalizedAuthScopes,
+                                    (credential as CosmosDBEntraIdCredential).tenantId,
+                                    { createIfNone: forcePrompt },
+                                );
                             }
 
                             case AuthenticationMethod.managedIdentity: {

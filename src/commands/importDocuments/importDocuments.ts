@@ -11,8 +11,8 @@ import * as l10n from '@vscode/l10n';
 import { EJSON, type Document } from 'bson';
 import * as fs from 'node:fs/promises';
 import * as vscode from 'vscode';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
 import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/validateDocument';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
@@ -304,12 +304,12 @@ async function insertDocumentIntoCosmosDB(
     node: CosmosDBContainerResourceItem,
     document: ItemDefinition,
 ): Promise<{ document: ItemDefinition; error: string }> {
-    const { endpoint, credentials, isEmulator } = node.model.accountInfo;
-    const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-    const response = await cosmosClient
-        .database(node.model.database.id)
-        .container(node.model.container.id)
-        .items.create<ItemDefinition>(document);
+    const response = await withClaimsChallengeHandling(node.model.accountInfo, (cosmosClient) => {
+        return cosmosClient
+            .database(node.model.database.id)
+            .container(node.model.container.id)
+            .items.create<ItemDefinition>(document);
+    });
 
     if (response.resource) {
         return { document, error: '' };

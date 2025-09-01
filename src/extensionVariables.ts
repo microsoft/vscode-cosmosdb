@@ -17,6 +17,7 @@ import { type MongoVCoreBranchDataProvider } from './tree/azure-resources-view/d
 import { type AttachedAccountsTreeItem } from './tree/v1-legacy-api/AttachedAccountsTreeItem';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
+import { type DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
 import { type AccountsItem } from './tree/workspace-view/documentdb/AccountsItem';
 import { type ClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 
@@ -59,7 +60,9 @@ export namespace ext {
     // used for the resources tree
     export let mongoVCoreBranchDataProvider: MongoVCoreBranchDataProvider;
     // used for the workspace: these are the dedicated providers
-    export let mongoClustersWorkspaceBranchDataProvider: ClustersWorkspaceBranchDataProvider;
+    export let mongoClustersWorkspaceBranchDataProvider:
+        | ClustersWorkspaceBranchDataProvider
+        | DisabledClustersWorkspaceBranchDataProvider;
     export let mongoClusterWorkspaceBranchDataResource: AccountsItem;
 
     export namespace settingsKeys {

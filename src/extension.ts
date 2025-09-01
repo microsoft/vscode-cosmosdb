@@ -38,6 +38,7 @@ import {
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
 
 export async function activateInternal(
@@ -112,9 +113,19 @@ export async function activateInternal(
         // registerCommandsCompatibility();
 
         // init and activate mongodb RU and vCore support (branch data provider, commands, ...)
-        const clustersSupport: ClustersExtension = new ClustersExtension();
-        context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
-        await clustersSupport.activate();
+        if (isVCoreAndRUDisabled()) {
+            // If the vCore and RU features are disabled in this extension, we register a branch data provider
+            // that will inform the user to install the "DocumentDB for VS Code" extension to manage these resources.
+            ext.mongoClustersWorkspaceBranchDataProvider = new DisabledClustersWorkspaceBranchDataProvider();
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.MongoClustersDisabled,
+                ext.mongoClustersWorkspaceBranchDataProvider,
+            );
+        } else {
+            const clustersSupport: ClustersExtension = new ClustersExtension();
+            context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
+            await clustersSupport.activate();
+        }
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -158,4 +169,46 @@ export async function activateInternal(
 // this method is called when your extension is deactivated
 export function deactivateInternal(_context: vscode.ExtensionContext): void {
     // NOOP
+}
+
+/**
+ * Checks if vCore and RU features are to be disabled.
+ * This introduces changes to the behavior of the extension.
+ *
+ * This function is used to determine whether the vCore and RU features should be disabled in this extension.
+ * The result of this function depends on the version of the Azure Resources extension.
+ * When a new version of the Azure Resources extension is released with the `AzureCosmosDbForMongoDbRu` and `MongoClusters`
+ * resource types, this function will return true.
+ *
+ * This will trigger the deactivation of vCore and RU features in this extension,
+ * and users will be prompted to use the "DocumentDB for VS Code" extension for those features.
+ * This allows for a phased rollout of the new extension and a smooth transition for users.
+ *
+ * When this function returns true, the extension's behavior changes significantly:
+ * - The `ClustersExtension`, which contains all the logic for MongoDB vCore and RU support (including commands and tree data providers), will not be activated.
+ * - In the workspace view, the regular MongoDB nodes will be replaced by a special node (`DisabledClustersWorkspaceBranchDataProvider`).
+ * - This special node informs the user that the functionality has moved and prompts them to install the new "DocumentDB for VS Code" extension.
+ * - Once the "DocumentDB for VS Code" extension is installed, this prompt will be hidden to avoid clutter.
+ *
+ * @returns True if vCore and RU features are disabled, false otherwise.
+ */
+export function isVCoreAndRUDisabled(): boolean {
+    const isDisabled = 'AzureCosmosDbForMongoDbRu' in AzExtResourceType && 'MongoClusters' in AzExtResourceType;
+
+    if (!isDisabled) {
+        console.log('Azure resource types not available in this environment; VCore and RU support remains active.');
+    }
+
+    return isDisabled;
+}
+
+/**
+ * Checks if the "DocumentDB for VS Code" extension is installed.
+ * This is used to coordinate behavior between this extension and the new DocumentDB extension,
+ * for example, to avoid duplicating features or to prompt the user to install the new extension.
+ * @returns true if the extension is installed, false otherwise.
+ */
+export function isDocumentDBExtensionInstalled(): boolean {
+    const extension = vscode.extensions.getExtension('ms-azuretools.vscode-documentdb');
+    return extension !== undefined;
 }

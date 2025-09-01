@@ -18,7 +18,7 @@ export class DisabledClustersWorkspaceBranchDataProvider
         return 'mongoVCore.workspace';
     }
 
-    protected createResourceItem(_ontext: IActionContext, _resource?: WorkspaceResource): TreeElement | undefined {
+    protected createResourceItem(_context: IActionContext, _resource?: WorkspaceResource): TreeElement | undefined {
         return new DocumentDbAccountsItem();
     }
 

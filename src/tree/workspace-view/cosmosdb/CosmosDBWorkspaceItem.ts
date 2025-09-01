@@ -82,22 +82,14 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                         // Uncomment this line if Graph support is ever re-added
                         // return new GraphAccountAttachedResourceItem(accountModel, experience);
 
-                        return new CosmosDBAccountUnsupportedResourceItem(
-                            accountModel,
-                            experience,
-                            l10n.t('Deprecated account type'),
-                        );
+                        return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
                     }
 
                     if (experience?.api === API.Table) {
                         // Uncomment this line if Table support is ever re-added
                         // return new TableAccountAttachedResourceItem(accountModel, experience);
 
-                        return new CosmosDBAccountUnsupportedResourceItem(
-                            accountModel,
-                            experience,
-                            l10n.t('Deprecated account type'),
-                        );
+                        return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
                     }
 
                     // Unknown experience

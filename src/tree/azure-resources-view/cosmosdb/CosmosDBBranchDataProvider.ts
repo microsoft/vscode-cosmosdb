@@ -54,7 +54,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
 
             if (experience?.api === API.Graph) {
                 context.telemetry.properties.isGraph = 'true';
-                context.telemetry.properties.suppressedView = 'true';
+                context.telemetry.properties.deprecated = 'true';
 
                 // Uncomment this line if Graph support is ever re-added
                 // resourceItem = new GraphAccountResourceItem(accountModel, experience);
@@ -64,7 +64,7 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
 
             if (experience?.api === API.Table) {
                 context.telemetry.properties.isTable = 'true';
-                context.telemetry.properties.suppressedView = 'true';
+                context.telemetry.properties.deprecated = 'true';
 
                 // Uncomment this line if Table support is ever re-added
                 // resourceItem = new TableAccountResourceItem(accountModel, experience);

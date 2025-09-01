@@ -180,7 +180,6 @@
   "Deleting documents": "Deleting documents",
   "Deleting server \"{name}\"…": "Deleting server \"{name}\"…",
   "Deleting...": "Deleting...",
-  "Deprecated account type": "Deprecated account type",
   "Disable TLS/SSL (Not recommended)": "Disable TLS/SSL (Not recommended)",
   "Disable TLS/SSL checks when connecting to the MongoDB Emulator.": "Disable TLS/SSL checks when connecting to the MongoDB Emulator.",
   "Disconnect": "Disconnect",

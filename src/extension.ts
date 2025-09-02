@@ -193,7 +193,7 @@ export function deactivateInternal(_context: vscode.ExtensionContext): void {
  * @returns True if vCore and RU features are disabled, false otherwise.
  */
 export function isVCoreAndRUDisabled(): boolean {
-    const isDisabled = 'AzureCosmosDbForMongoDbRu' in AzExtResourceType && 'MongoClusters' in AzExtResourceType;
+    const isDisabled = 'AzureCosmosDbForMongoDbRu' in AzExtResourceType && 'AzureDocumentDb' in AzExtResourceType;
 
     if (!isDisabled) {
         console.log('Azure resource types not available in this environment; VCore and RU support remains active.');

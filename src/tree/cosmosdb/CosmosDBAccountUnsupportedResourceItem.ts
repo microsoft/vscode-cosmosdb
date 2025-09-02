@@ -10,6 +10,7 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
 
 export class CosmosDBAccountUnsupportedResourceItem
@@ -19,7 +20,7 @@ export class CosmosDBAccountUnsupportedResourceItem
     public readonly contextValue: string = 'treeItem.unsupportedAccount';
 
     constructor(
-        public readonly account: CosmosDBAccountModel,
+        public readonly account: CosmosDBAccountModel | CosmosDBAttachedAccountModel,
         public readonly experience: Experience,
         public readonly reason: string = l10n.t('Unsupported account type'),
     ) {

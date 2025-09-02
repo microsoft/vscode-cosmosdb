@@ -10,7 +10,7 @@
   "//enableDocumentDBExtensionIntegration": "Notifies Azure Databases extension to enable DocumentDB extension integration.",
   "enableDocumentDBExtensionIntegration": false,
   "engines": {
-    "vscode": "^1.94.2",
+    "vscode": "^1.103.0",
     "node": ">=20.18.0"
   },
   "galleryBanner": {

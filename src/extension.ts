@@ -30,6 +30,7 @@ import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
+import { StorageNames, StorageService } from './services/storageService';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { DatabaseResolver } from './tree/v1-legacy-api/resolver/AppResolver';
 import { DatabaseWorkspaceProvider } from './tree/v1-legacy-api/resolver/DatabaseWorkspaceProvider';
@@ -40,6 +41,17 @@ import {
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
+
+// Interface for the MongoDB connection migration API
+interface MongoConnectionMigrationApi {
+    apiVersion: string;
+    exportMongoClusterConnections(callingExtensionContext: vscode.ExtensionContext): Promise<unknown[] | undefined>;
+    renameMongoClusterConnectionStorageId(
+        callingExtensionContext: vscode.ExtensionContext,
+        oldId: string,
+        newId: string,
+    ): Promise<boolean>;
+}
 
 export async function activateInternal(
     context: vscode.ExtensionContext,
@@ -162,6 +174,96 @@ export async function activateInternal(
             pickTreeItem: () => undefined,
             revealTreeItem: () => undefined,
             apiVersion: '1.2.0',
+        },
+        /**
+         * Temporary API for migrating MongoDB cluster connections to authorized extensions.
+         * This is needed to support user data migration from the vscode-cosmosdb extension
+         * to the vscode-documentdb extension.
+         * The code is inline to keep it easy to maintain and to remove post-migration-phase.
+         */
+        <MongoConnectionMigrationApi>{
+            apiVersion: '2.0.0',
+            exportMongoClusterConnections: async (
+                callingExtensionContext: vscode.ExtensionContext,
+            ): Promise<unknown[] | undefined> => {
+                return (
+                    (await callWithTelemetryAndErrorHandling(
+                        'cosmosDB.exportMongoClusterConnections',
+                        async (context: IActionContext) => {
+                            // Get the calling extension's ID from the context - this cannot be easily spoofed
+                            const callingExtensionId = callingExtensionContext.extension.id;
+                            context.telemetry.properties.requestingExtension = callingExtensionId;
+
+                            // Only allow the "DocumentDB for VS Code" extension to access this data
+                            if (callingExtensionId !== 'ms-azuretools.vscode-documentdb') {
+                                context.telemetry.properties.authorized = 'false';
+                                return undefined;
+                            }
+
+                            context.telemetry.properties.authorized = 'true';
+
+                            const allItems = await StorageService.get(StorageNames.Workspace).getItems(
+                                WorkspaceResourceType.MongoClusters,
+                            );
+
+                            context.telemetry.measurements.exportedItemCount = allItems.length;
+
+                            // Return as unknown[] - this is intentional as only the trusted vscode-documentdb
+                            // partner extension uses this API and we know the schema/interface matches
+                            return allItems as unknown[];
+                        },
+                    )) ?? undefined
+                );
+            },
+            renameMongoClusterConnectionStorageId: async (
+                callingExtensionContext: vscode.ExtensionContext,
+                oldId: string,
+                newId: string,
+            ): Promise<boolean> => {
+                return (
+                    (await callWithTelemetryAndErrorHandling(
+                        'cosmosDB.renameMongoClusterConnectionStorageId',
+                        async (context: IActionContext) => {
+                            // Get the calling extension's ID from the context - this cannot be easily spoofed
+                            const callingExtensionId = callingExtensionContext.extension.id;
+                            context.telemetry.properties.requestingExtension = callingExtensionId;
+
+                            // Only allow the "DocumentDB for VS Code" extension to access this data
+                            if (callingExtensionId !== 'ms-azuretools.vscode-documentdb') {
+                                context.telemetry.properties.authorized = 'false';
+                                return false;
+                            }
+
+                            context.telemetry.properties.authorized = 'true';
+                            context.telemetry.properties.oldId = oldId;
+                            context.telemetry.properties.newId = newId;
+
+                            const storageService = StorageService.get(StorageNames.Workspace);
+
+                            // 1. Get all items to find the one with the old ID
+                            const allItems = await storageService.getItems(WorkspaceResourceType.MongoClusters);
+                            const itemToRename = allItems.find((item) => item.id === oldId);
+
+                            if (!itemToRename) {
+                                context.telemetry.properties.renameResult = 'item_not_found';
+                                return false;
+                            }
+
+                            // 2. Create a new item with the new ID but preserve all other properties
+                            const newItem = { ...itemToRename, id: newId };
+
+                            // 3. Save the new item first to ensure we don't lose data
+                            await storageService.push(WorkspaceResourceType.MongoClusters, newItem, true);
+
+                            // 4. Remove the old item
+                            await storageService.delete(WorkspaceResourceType.MongoClusters, oldId);
+
+                            context.telemetry.properties.renameResult = 'success';
+                            return true;
+                        },
+                    )) ?? false
+                ); // Return false if there was an error
+            },
         },
     ]);
 }

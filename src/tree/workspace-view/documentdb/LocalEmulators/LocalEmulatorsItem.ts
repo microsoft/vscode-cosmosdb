@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { MongoClustersExperience } from '../../../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../../../constants';
+import { getThemeAgnosticIconURI } from '../../../../constants';
 import { StorageNames, StorageService } from '../../../../services/storageService';
 import { type EmulatorConfiguration } from '../../../../utils/emulatorConfiguration';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
@@ -62,7 +62,7 @@ export class LocalEmulatorsItem implements TreeElement, TreeElementWithContextVa
             id: this.id,
             contextValue: this.contextValue,
             label: l10n.t('Local Emulators'),
-            iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'),
+            iconPath: getThemeAgnosticIconURI('CosmosDBAccount.svg'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

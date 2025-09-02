@@ -93,7 +93,7 @@
     "@types/react-dom": "~18.3.7",
     "@types/semver": "~7.7.0",
     "@types/uuid": "~10.0.0",
-    "@types/vscode": "1.94.0",
+    "@types/vscode": "^1.103.0",
     "@types/vscode-webview": "~1.57.5",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-cli": "~0.0.11",
@@ -1322,6 +1322,12 @@
             "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.port%"
           }
         }
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "cosmosShellMcpProvider",
+        "label": "Cosmos Shell MCP Server Provider"
       }
     ]
   }

@@ -156,3 +156,43 @@ export function isCosmosShellSupportEnabled(): boolean {
         return false;
     }
 }
+const McpServerName = 'localCosmosShellServer';
+
+export function registerMcpServer(context: vscode.ExtensionContext): void {
+    try {
+        const didChangeEmitter = new vscode.EventEmitter<void>();
+        const config = vscode.workspace.getConfiguration();
+        const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();
+
+        context.subscriptions.push(
+            vscode.lm.registerMcpServerDefinitionProvider('cosmosShellMcpProvider', {
+                onDidChangeMcpServerDefinitions: didChangeEmitter.event,
+                provideMcpServerDefinitions: () => {
+                    return [
+                        new vscode.McpHttpServerDefinition(
+                            McpServerName,
+                            vscode.Uri.parse(`http://localhost:${mcpPort}`),
+                            {
+                                API_VERSION: '1.0.0',
+                            },
+                            '1.0.0',
+                        ),
+                    ];
+                },
+                resolveMcpServerDefinition: (server: vscode.McpServerDefinition) => {
+                    if (server.label === McpServerName) {
+                        // Get the API key from the user, e.g. using vscode.window.showInputBox
+                        // Update the server definition with the API key
+                    }
+
+                    // Return undefined to indicate that the server should not be started or throw an error
+                    //twIf there is a pending toolc all, the editor will cancel it and return an error message
+                    // to the language model.
+                    return server;
+                },
+            }),
+        );
+    } catch (err) {
+        ext.outputChannel.appendLine('error while registering MCP server: ' + err);
+    }
+}

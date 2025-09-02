@@ -43,7 +43,7 @@ import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-vi
 import { globalUriHandler } from './vscodeUriHandler';
 
 // Interface for the MongoDB connection migration API
-interface MongoConnectionMigrationApi {
+interface MongoConnectionMigrationApi extends AzureExtensionApi {
     apiVersion: string;
     exportMongoClusterConnections(callingExtensionContext: vscode.ExtensionContext): Promise<unknown[] | undefined>;
     renameMongoClusterConnectionStorageId(
@@ -168,12 +168,12 @@ export async function activateInternal(
 
     // TODO: we still don't know for sure if this is needed
     //  If it is, we need to implement the logic to get the correct API version
-    return createApiProvider([
+    const exportedApis = [
         <AzureExtensionApi>{
+            apiVersion: '1.2.0',
             findTreeItem: () => undefined,
             pickTreeItem: () => undefined,
             revealTreeItem: () => undefined,
-            apiVersion: '1.2.0',
         },
         /**
          * Temporary API for migrating MongoDB cluster connections to authorized extensions.
@@ -265,7 +265,14 @@ export async function activateInternal(
                 ); // Return false if there was an error
             },
         },
-    ]);
+    ];
+
+    console.log(
+        'Registering APIs:',
+        exportedApis.map((a) => a.apiVersion),
+    );
+
+    return createApiProvider(exportedApis);
 }
 
 // this method is called when your extension is deactivated

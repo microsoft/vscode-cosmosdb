@@ -50,7 +50,7 @@ async function* retryGenerator<T>(
                 const challenges = extractChallenges(error);
                 options = {
                     ...options,
-                    challenge: challenges.join(', '),
+                    wwwAuthenticate: challenges.join(', '),
                 };
 
                 // Continue to next iteration with updated options

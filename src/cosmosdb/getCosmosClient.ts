@@ -23,7 +23,7 @@ import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryC
 import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
 export type GetCosmosClientOptions = Partial<CosmosClientOptions> & {
-    challenge?: string; // Optional challenge for EntraID authentication
+    wwwAuthenticate?: string; // Optional challenge for EntraID authentication
 };
 
 export function getCosmosClient(connection: NoSqlQueryConnection, options?: GetCosmosClientOptions): CosmosClient;
@@ -114,9 +114,11 @@ export function getCosmosClient(
                                 return null;
 
                             case AuthenticationMethod.entraId: {
-                                const { challenge } = options || {};
+                                const { wwwAuthenticate } = options || {};
                                 return getAccessTokenForVSCode(
-                                    challenge ? { scopes: normalizedAuthScopes, challenge } : normalizedAuthScopes,
+                                    wwwAuthenticate
+                                        ? { scopes: normalizedAuthScopes, wwwAuthenticate }
+                                        : normalizedAuthScopes,
                                     (credential as CosmosDBEntraIdCredential).tenantId,
                                     { createIfNone: forcePrompt },
                                 );
@@ -197,12 +199,12 @@ export function getCosmosClient(
     return new CosmosClient(merge(options ?? {}, commonProperties));
 }
 
-function normalizeCosmosScopes(scopes: string | string[]): string | string[] {
-    if (!scopes) {
-        return scopes;
+function normalizeCosmosScopes(scopes: string | string[]): string[] {
+    if (!Array.isArray(scopes)) {
+        scopes = [scopes];
     }
 
-    return Array.isArray(scopes) ? scopes.map(normalizeCosmosScope) : normalizeCosmosScope(scopes);
+    return scopes.map(normalizeCosmosScope);
 }
 
 function normalizeCosmosScope(scope: string): string {

@@ -28,7 +28,7 @@ export type AccessToken = { token: string; expiresOnTimestamp: number };
 
 export async function getAccessTokenForVSCode(
     // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-    scopes: vscode.AuthenticationSessionRequest | string[] | string,
+    scopes: vscode.AuthenticationWWWAuthenticateRequest | string[] | string,
     tenantId: string | undefined,
     options?: vscode.AuthenticationGetSessionOptions,
 ): Promise<AccessToken | null> {

@@ -13,17 +13,23 @@ declare module 'vscode' {
      *******/
 
     /**
-     * Represents parameters for creating a session based on an authentication challenge.
+     * Represents parameters for creating a session based on a WWW-Authenticate header value.
      * This is used when an API returns a 401 with a WWW-Authenticate header indicating
-     * that additional authentication steps or claims are required.
+     * that additional authentication is required. The details of which will be passed down
+     * to the authentication provider to create a session.
      */
-    export interface AuthenticationSessionRequest {
+    export interface AuthenticationWWWAuthenticateRequest {
         /**
          * The raw WWW-Authenticate header value that triggered this challenge.
          * This will be parsed by the authentication provider to extract the necessary
          * challenge information.
          */
-        readonly challenge: string;
+        readonly wwwAuthenticate: string;
+
+        /**
+         * @deprecated Use `wwwAuthenticate` instead.
+         */
+        readonly challenge?: string;
 
         /**
          * Optional scopes for the session. If not provided, the authentication provider
@@ -37,18 +43,18 @@ declare module 'vscode' {
          * Get an authentication session matching the desired scopes. Rejects if a provider with providerId is not
          * registered, or if the user does not consent to sharing authentication information with
          * the extension. If there are multiple sessions with the same scopes, the user will be shown a
-         * quickpick to select which account they would like to use.
+         * quick pick to select which account they would like to use.
          *
          * Currently, there are only two authentication providers that are contributed from built in extensions
          * to the editor that implement GitHub and Microsoft authentication: their providerId's are 'github' and 'microsoft'.
          * @param providerId The id of the provider to use
-         * @param scopes A list of scopes representing the permissions requested. These are dependent on the authentication provider
+         * @param scopeListOrRequest A list of scopes representing the permissions requested. These are dependent on the authentication provider
          * @param options The {@link AuthenticationGetSessionOptions} to use
          * @returns A thenable that resolves to an authentication session
          */
         export function getSession(
             providerId: string,
-            scopeListOrRequest: ReadonlyArray<string> | AuthenticationSessionRequest,
+            scopeListOrRequest: ReadonlyArray<string> | AuthenticationWWWAuthenticateRequest,
             options: AuthenticationGetSessionOptions & {
                 /** */ createIfNone: true | AuthenticationGetSessionPresentationOptions;
             },
@@ -58,18 +64,18 @@ declare module 'vscode' {
          * Get an authentication session matching the desired scopes. Rejects if a provider with providerId is not
          * registered, or if the user does not consent to sharing authentication information with
          * the extension. If there are multiple sessions with the same scopes, the user will be shown a
-         * quickpick to select which account they would like to use.
+         * quick pick to select which account they would like to use.
          *
          * Currently, there are only two authentication providers that are contributed from built in extensions
          * to the editor that implement GitHub and Microsoft authentication: their providerId's are 'github' and 'microsoft'.
          * @param providerId The id of the provider to use
-         * @param scopes A list of scopes representing the permissions requested. These are dependent on the authentication provider
+         * @param scopeListOrRequest A list of scopes representing the permissions requested. These are dependent on the authentication provider
          * @param options The {@link AuthenticationGetSessionOptions} to use
          * @returns A thenable that resolves to an authentication session
          */
         export function getSession(
             providerId: string,
-            scopeListOrRequest: ReadonlyArray<string> | AuthenticationSessionRequest,
+            scopeListOrRequest: ReadonlyArray<string> | AuthenticationWWWAuthenticateRequest,
             options: AuthenticationGetSessionOptions & {
                 /** literal-type defines return type */ forceNewSession:
                     | true
@@ -82,18 +88,18 @@ declare module 'vscode' {
          * Get an authentication session matching the desired scopes. Rejects if a provider with providerId is not
          * registered, or if the user does not consent to sharing authentication information with
          * the extension. If there are multiple sessions with the same scopes, the user will be shown a
-         * quickpick to select which account they would like to use.
+         * quick pick to select which account they would like to use.
          *
          * Currently, there are only two authentication providers that are contributed from built in extensions
          * to the editor that implement GitHub and Microsoft authentication: their providerId's are 'github' and 'microsoft'.
          * @param providerId The id of the provider to use
-         * @param scopes A list of scopes representing the permissions requested. These are dependent on the authentication provider
+         * @param scopeListOrRequest A list of scopes representing the permissions requested. These are dependent on the authentication provider
          * @param options The {@link AuthenticationGetSessionOptions} to use
          * @returns A thenable that resolves to an authentication session if available, or undefined if there are no sessions
          */
         export function getSession(
             providerId: string,
-            scopeListOrRequest: ReadonlyArray<string> | AuthenticationSessionRequest,
+            scopeListOrRequest: ReadonlyArray<string> | AuthenticationWWWAuthenticateRequest,
             options?: AuthenticationGetSessionOptions,
         ): Thenable<AuthenticationSession | undefined>;
     }
@@ -144,7 +150,6 @@ declare module 'vscode' {
      * This extends the base AuthenticationProvider with methods to handle authentication
      * challenges from WWW-Authenticate headers.
      *
-     * TODO: Enforce that both of these functions should be defined by creating a new AuthenticationProviderWithChallenges interface.
      * But this can be done later since this part doesn't need finalization.
      */
     export interface AuthenticationProvider {

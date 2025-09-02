@@ -128,8 +128,6 @@
   "Cosmos DB Graph extension has been retired.": "Cosmos DB Graph extension has been retired.",
   "Cosmos DB SDK limitations": "Cosmos DB SDK limitations",
   "Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.": "Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.",
-  "CosmosDB Accounts": "CosmosDB Accounts",
-  "CosmosDB SDK limitations": "CosmosDB SDK limitations",
   "Could not connect to \"{name}\": {error}": "Could not connect to \"{name}\": {error}",
   "Could not find {0}": "Could not find {0}",
   "Could not find the Azure Resource Groups extension": "Could not find the Azure Resource Groups extension",

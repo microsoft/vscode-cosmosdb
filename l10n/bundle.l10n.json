@@ -604,6 +604,7 @@
   "The \"{newContainerName}\" container has been created.": "The \"{newContainerName}\" container has been created.",
   "The \"global\" scope cannot be bound to a DOM node. It is automatically applied to the entire document.": "The \"global\" scope cannot be bound to a DOM node. It is automatically applied to the entire document.",
   "The \"id\" field is required to update an item": "The \"id\" field is required to update an item",
+  "The \"MongoDB Connections\" functionality has moved to the \"DocumentDB for VS Code\" extension.\n\nIf you had connections saved here in the past, they have been migrated to the new \"Connections View\".\n\nClick to install the new \"DocumentDB for VS Code\" extension.": "The \"MongoDB Connections\" functionality has moved to the \"DocumentDB for VS Code\" extension.\n\nIf you had connections saved here in the past, they have been migrated to the new \"Connections View\".\n\nClick to install the new \"DocumentDB for VS Code\" extension.",
   "The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).": "The Azure Cosmos DB emulator for MongoDB is only supported on Windows, Linux and MacOS (Intel).",
   "The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).": "The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).",
   "The collection \"{0}\" already exists in the database \"{1}\".": "The collection \"{0}\" already exists in the database \"{1}\".",

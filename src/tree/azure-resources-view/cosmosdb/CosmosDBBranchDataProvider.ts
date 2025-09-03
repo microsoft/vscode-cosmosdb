@@ -9,11 +9,10 @@ import { API, CoreExperience, MongoExperience, tryGetExperience } from '../../..
 import { databaseAccountType } from '../../../constants';
 import { nonNullProp } from '../../../utils/nonNull';
 import { BaseCachedBranchDataProvider } from '../../BaseCachedBranchDataProvider';
+import { CosmosDBAccountUnsupportedResourceItem } from '../../cosmosdb/CosmosDBAccountUnsupportedResourceItem';
 import { type CosmosDBAccountModel } from '../../cosmosdb/models/CosmosDBAccountModel';
 import { type ClusterModel } from '../../documentdb/ClusterModel';
-import { GraphAccountResourceItem } from '../../graph/GraphAccountResourceItem';
 import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
-import { TableAccountResourceItem } from '../../table/TableAccountResourceItem';
 import { type TreeElement } from '../../TreeElement';
 import { MongoRUResourceItem } from '../documentdb/mongo-ru/MongoRUResourceItem';
 
@@ -54,11 +53,23 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
             }
 
             if (experience?.api === API.Graph) {
-                resourceItem = new GraphAccountResourceItem(accountModel, experience);
+                context.telemetry.properties.isGraph = 'true';
+                context.telemetry.properties.deprecated = 'true';
+
+                // Uncomment this line if Graph support is ever re-added
+                // resourceItem = new GraphAccountResourceItem(accountModel, experience);
+
+                resourceItem = new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
             }
 
             if (experience?.api === API.Table) {
-                resourceItem = new TableAccountResourceItem(accountModel, experience);
+                context.telemetry.properties.isTable = 'true';
+                context.telemetry.properties.deprecated = 'true';
+
+                // Uncomment this line if Table support is ever re-added
+                // resourceItem = new TableAccountResourceItem(accountModel, experience);
+
+                resourceItem = new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
             }
 
             if (!resourceItem) {

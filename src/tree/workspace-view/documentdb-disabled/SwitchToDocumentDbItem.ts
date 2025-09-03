@@ -19,8 +19,8 @@ export class SwitchToDocumentDbItem implements TreeElement, TreeElementWithConte
     public getTreeItem(): vscode.TreeItem {
         const tooltip = new vscode.MarkdownString(
             l10n.t(
-                'The "MongoDB Connections" functionality has moved from the "Azure Databases" to the "DocumentDB for VS Code" extension.\n\n' +
-                    'Your connections will be migrated to the new extension.\n\n' +
+                'The "MongoDB Connections" functionality has moved to the "DocumentDB for VS Code" extension.\n\n' +
+                    'If you had connections saved here in the past, they have been migrated to the new "Connections View".\n\n' +
                     'Click to install the new "DocumentDB for VS Code" extension.',
             ),
         );

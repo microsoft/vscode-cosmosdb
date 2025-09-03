@@ -17,7 +17,12 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as child from 'child_process';
 import * as vscode from 'vscode';
-import { type CosmosDBKeyCredential, type CosmosDBManagedIdentityCredential } from '../cosmosdb/getCosmosClient';
+import {
+    AuthenticationMethod,
+    type CosmosDBEntraIdCredential,
+    type CosmosDBKeyCredential,
+    type CosmosDBManagedIdentityCredential,
+} from '../cosmosdb/getCosmosClient';
 import { ext } from '../extensionVariables';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 
@@ -98,17 +103,26 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     let cosmosShellCredential: string | undefined;
 
     for (const credential of node.model.accountInfo.credentials) {
-        const keyCredential = credential as CosmosDBKeyCredential;
-        if (keyCredential && keyCredential.key) {
-            cosmosShellCredential = `key=${keyCredential.key}`;
-            break;
+        switch (credential.type) {
+            case AuthenticationMethod.accountKey: {
+                const keyId = credential as CosmosDBKeyCredential;
+                cosmosShellCredential = `key=${keyId.key}`;
+                break;
+            }
+            case AuthenticationMethod.entraId: {
+                const tenantId = credential as CosmosDBEntraIdCredential;
+                cosmosShellCredential = `tenantId=${tenantId.tenantId}`;
+                break;
+            }
+            case AuthenticationMethod.managedIdentity: {
+                const clientId = credential as CosmosDBManagedIdentityCredential;
+                cosmosShellCredential = `identity=${clientId.type}`;
+                break;
+            }
+            default:
+                continue;
         }
-
-        // EntraID credentials are not supported for giving to other tools like Cosmos Shell.
-
-        const identityCredential = credential as CosmosDBManagedIdentityCredential;
-        if (identityCredential) {
-            cosmosShellCredential = `identity=${identityCredential.type}`;
+        if (cosmosShellCredential) {
             break;
         }
     }

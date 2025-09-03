@@ -50,7 +50,7 @@ export function getThemeAgnosticIconURI(iconName: string): IThemedIconURI {
         light: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
         dark: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
     };
-    assert.ok(fs.existsSync(a.light.path));
+    assert.ok(fs.existsSync(a.light.fsPath), `Icon not found: ${a.light.fsPath}`);
     return a;
 }
 

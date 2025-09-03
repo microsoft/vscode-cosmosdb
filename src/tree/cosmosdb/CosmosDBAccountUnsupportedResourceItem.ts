@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ResourceBase } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
@@ -11,6 +10,8 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
+import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
 
 export class CosmosDBAccountUnsupportedResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
@@ -19,7 +20,7 @@ export class CosmosDBAccountUnsupportedResourceItem
     public readonly contextValue: string = 'treeItem.unsupportedAccount';
 
     constructor(
-        public readonly account: ResourceBase,
+        public readonly account: CosmosDBAccountModel | CosmosDBAttachedAccountModel,
         public readonly experience: Experience,
         public readonly reason: string = l10n.t('Unsupported account type'),
     ) {
@@ -45,6 +46,11 @@ export class CosmosDBAccountUnsupportedResourceItem
             label: this.account.name,
             description: `${this.reason} (${this.experience.shortName})`,
             collapsibleState: vscode.TreeItemCollapsibleState.None,
+            command: {
+                title: l10n.t('Unsupported Account'),
+                command: 'cosmosDB.openUnsupportedAccount',
+                arguments: [this],
+            },
         };
     }
 }

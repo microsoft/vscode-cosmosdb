@@ -103,8 +103,6 @@
   "Command {name} is not registered in scope {scope}.": "Command {name} is not registered in scope {scope}.",
   "Configure firewall to connect to \"{nodeName}\"…": "Configure firewall to connect to \"{nodeName}\"…",
   "Configure TLS/SSL Security": "Configure TLS/SSL Security",
-  "Connect": "Connect",
-  "Confirm deletion": "Confirm deletion",
   "Connect to a database": "Connect to a database",
   "Connect to…": "Connect to…",
   "Connected": "Connected",

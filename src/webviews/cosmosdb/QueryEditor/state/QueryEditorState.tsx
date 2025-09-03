@@ -66,6 +66,14 @@ export type DispatchAction =
           isSurveyCandidate: boolean;
       }
     | {
+          type: 'selectBucket';
+          throughputBucket?: number;
+      }
+    | {
+          type: 'updateThroughputBuckets';
+          throughputBuckets?: boolean[];
+      }
+    | {
           type: 'setConnectionList';
           connectionList: Record<string, string[]> | undefined;
       };
@@ -93,6 +101,9 @@ export type QueryEditorState = {
     currentQueryResult: SerializedQueryResult | null;
     selectedRows: number[];
 
+    throughputBuckets?: boolean[];
+    selectedThroughputBucket?: number;
+
     tableViewMode: TableViewMode;
 };
 
@@ -118,6 +129,9 @@ export const defaultState: QueryEditorState = {
 
     currentQueryResult: null,
     selectedRows: [],
+
+    throughputBuckets: [true, true, true, true, true],
+    selectedThroughputBucket: undefined,
 
     tableViewMode: 'Table',
 };
@@ -166,6 +180,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 ...state,
                 currentQueryResult: action.result,
                 pageNumber: action.currentPage,
+                pageSize: action.result.metadata.countPerPage || DEFAULT_PAGE_SIZE,
                 isEditMode: isSelectStar(action.result?.query || state.queryValue || ''),
             };
         case 'setTableViewMode':
@@ -176,6 +191,10 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, querySelectedValue: action.selectedValue };
         case 'setIsSurveyCandidate':
             return { ...state, isSurveyCandidate: action.isSurveyCandidate };
+        case 'selectBucket':
+            return { ...state, selectedThroughputBucket: action.throughputBucket };
+        case 'updateThroughputBuckets':
+            return { ...state, throughputBuckets: action.throughputBuckets };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
     }

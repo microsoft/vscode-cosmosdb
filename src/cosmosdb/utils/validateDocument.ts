@@ -50,25 +50,17 @@ export function validatePartitionKey(
         return undefined;
     }
 
-    const errors: string[] = [];
     const partitionKeyPaths = partitionKey.paths.map((path) => (path.startsWith('/') ? path.slice(1) : path));
     const partitionKeyValues = extractPartitionKey(resource, partitionKey);
-
-    if (!partitionKeyValues) {
-        errors.push(l10n.t('Partition key is incomplete.'));
-    }
-
-    if (Array.isArray(partitionKeyValues)) {
-        partitionKeyValues
-            .map((value, index) => {
-                if (!value) {
-                    return l10n.t('Partition key {path} is invalid.', { path: partitionKeyPaths[index] });
-                }
-                return null;
-            })
-            .filter((value) => value !== null)
-            .forEach((value) => errors.push(value));
-    }
+    const values = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
+    const errors = values
+        .map((value, index) => {
+            if (!value) {
+                return l10n.t('Partition key {path} is invalid.', { path: partitionKeyPaths[index] });
+            }
+            return null;
+        })
+        .filter((value) => value !== null);
 
     return errors.length ? errors : undefined;
 }

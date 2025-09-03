@@ -61,7 +61,7 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
             {
                 resourceType: WorkspaceResourceType.AttachedAccounts,
                 id: 'vscode.cosmosdb.workspace.attachedaccounts',
-                name: l10n.t('CosmosDB Accounts'),
+                name: l10n.t('Cosmos DB Accounts'),
             },
         ];
     }

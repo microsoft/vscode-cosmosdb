@@ -9,9 +9,8 @@ import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../services/storageService';
-import { GraphAccountAttachedResourceItem } from '../../graph/GraphAccountAttachedResourceItem';
+import { CosmosDBAccountUnsupportedResourceItem } from '../../cosmosdb/CosmosDBAccountUnsupportedResourceItem';
 import { NoSqlAccountAttachedResourceItem } from '../../nosql/NoSqlAccountAttachedResourceItem';
-import { TableAccountAttachedResourceItem } from '../../table/TableAccountAttachedResourceItem';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
 import { WorkspaceResourceType } from '../../workspace-api/SharedWorkspaceResourceProvider';
@@ -47,7 +46,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
         return {
             id: this.id,
             contextValue: this.contextValue,
-            label: l10n.t('CosmosDB Accounts'),
+            label: l10n.t('Cosmos DB Accounts'),
             iconPath: new vscode.ThemeIcon('plug'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
@@ -80,11 +79,17 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                     }
 
                     if (experience?.api === API.Graph) {
-                        return new GraphAccountAttachedResourceItem(accountModel, experience);
+                        // Uncomment this line if Graph support is ever re-added
+                        // return new GraphAccountAttachedResourceItem(accountModel, experience);
+
+                        return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
                     }
 
                     if (experience?.api === API.Table) {
-                        return new TableAccountAttachedResourceItem(accountModel, experience);
+                        // Uncomment this line if Table support is ever re-added
+                        // return new TableAccountAttachedResourceItem(accountModel, experience);
+
+                        return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
                     }
 
                     // Unknown experience

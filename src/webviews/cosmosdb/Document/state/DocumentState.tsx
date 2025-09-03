@@ -49,7 +49,7 @@ export type DispatchAction =
       }
     | {
           type: 'setError';
-          error: string | undefined;
+          error: string[] | string | undefined;
       };
 
 export type DocumentState = {
@@ -69,7 +69,7 @@ export type DocumentState = {
     isReady: boolean; // Document is being initialized
 
     currentDocumentContent: string; // Current content of the document
-    error: string | undefined; // Error message
+    error: string[] | string | undefined; // Error message(s)
 };
 
 export const defaultState: DocumentState = {

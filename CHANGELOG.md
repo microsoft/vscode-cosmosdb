@@ -1,5 +1,19 @@
 # Change Log
 
+## 0.27.0
+
+### Added
+
+- Support for Bulk Deleteing selected documents from the NoSQL Query Results with confirmation and status notification (#2709).
+- Added support for different Shell environments when running the Shell (#2698)
+
+### Changed
+
+- Fixed NoSQL "Index Metrics" parsing and error handling (#2724).
+- Fixed various accessibility issues.
+- Fixed an issue with container creation where the first partition key was carried over to the next partition key entry causing confusion (#2715)
+- Minor Bugfixes, component updates and code improvements.
+
 ## 0.26.0
 
 ### Added

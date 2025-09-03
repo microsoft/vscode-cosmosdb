@@ -97,7 +97,11 @@ export const StatsTab = ({ className }: StatsTabProps) => {
                         </TableHeader>
                         <TableBody>
                             {items.map((item) => (
-                                <TableRow key={item.metric}>
+                                <TableRow
+                                    key={item.metric}
+                                    aria-label={item.tooltip + ' ' + item.formattedValue}
+                                    tabIndex={0}
+                                >
                                     <TableCell>
                                         <TableCellLayout>{item.metric}</TableCellLayout>
                                     </TableCell>

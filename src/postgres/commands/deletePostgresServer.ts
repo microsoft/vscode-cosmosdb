@@ -3,20 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext, type ITreeItemPickerContext } from '@microsoft/vscode-azext-utils';
-import { deleteDatabaseAccount } from '../../commands/deleteDatabaseAccount/deleteDatabaseAccount';
-import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
-import { ext } from '../../extensionVariables';
-import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { showPostgresOperationProhibitedError } from '../deprecation';
 
-export async function deletePostgresServer(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
-    const suppressCreateContext: ITreeItemPickerContext = context;
-    suppressCreateContext.suppressCreatePick = true;
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter],
-        });
-    }
+export async function deletePostgresServer(context: IActionContext): Promise<void> {
+    context.telemetry.properties.deprecated = 'true';
+    await showPostgresOperationProhibitedError();
 
-    await deleteDatabaseAccount(context, node);
+    return;
 }

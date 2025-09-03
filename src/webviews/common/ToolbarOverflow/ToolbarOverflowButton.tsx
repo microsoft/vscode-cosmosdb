@@ -22,6 +22,17 @@ const useStyles = makeStyles({
     },
 });
 
+// Helper function to ensure ariaLabel ends with a stop symbol
+const ensureStopSymbol = (text: string): string => {
+    text = text.trim();
+    // Check if the text already ends with a stop symbol
+    if (/[.,!?;:…]$/.test(text)) {
+        return text;
+    }
+    // Add a period if no stop symbol is present
+    return text + '.';
+};
+
 type ToolbarOverflowButtonProps = {
     ariaLabel: string;
     content: React.ReactNode | string;
@@ -43,6 +54,7 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
 ) {
     const classes = useStyles();
     const { ariaLabel, content, disabled, icon, hotkey, onClick, showButtonText, tooltip, type } = props;
+    const formattedAriaLabel = ensureStopSymbol(ariaLabel);
 
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
     const restoreFocusSourceAttribute = useRestoreFocusSource();
@@ -60,7 +72,8 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
                     {...props.toolbarButtonProps}
                     // eslint-disable-next-line @typescript-eslint/no-misused-promises
                     onClick={onClick}
-                    aria-label={ariaLabel}
+                    aria-label={formattedAriaLabel}
+                    aria-keyshortcuts={hotkey}
                     icon={icon}
                     disabled={disabled}
                     {...restoreFocusTargetAttribute}
@@ -78,7 +91,7 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 onClick={onClick}
                 secondaryContent={hotkey}
-                aria-label={ariaLabel}
+                aria-label={formattedAriaLabel}
                 icon={icon}
                 disabled={disabled}
                 {...restoreFocusSourceAttribute}

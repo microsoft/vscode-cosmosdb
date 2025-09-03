@@ -37,6 +37,7 @@ import { cosmosDBOpenGraphExplorer } from './openGraphExplorer/cosmosDBOpenGraph
 import { openNoSqlQueryEditor } from './openNoSqlQueryEditor/openNoSqlQueryEditor';
 import { cosmosDBOpenStoredProcedure } from './openStoredProcedure/openStoredProcedure';
 import { cosmosDBOpenTrigger } from './openTrigger/openTrigger';
+import { openUnsupportedAccount } from './openUnsupportedAccount/openUnsupportedAccount';
 import { refreshTreeElement } from './refreshTreeElement/refreshTreeElement';
 import { removeConnection } from './removeConnection/removeConnection';
 import { sortTreeItems } from './sortTreeItems/sortTreeItems';
@@ -84,6 +85,7 @@ export function registerAccountCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.newEmulatorConnection', newEmulatorConnection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.removeConnection', removeConnection);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', copyAzureConnectionString);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.openUnsupportedAccount', openUnsupportedAccount);
 }
 
 export function registerDatabaseCommands() {

@@ -343,6 +343,11 @@
         "title": "%cosmosdb.command.database.create%"
       },
       {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.openUnsupportedAccount",
+        "title": "%cosmosdb.command.account.unsupported%"
+      },
+      {
         "category": "Graph (Gremlin)",
         "command": "cosmosDB.createGraph",
         "title": "%cosmosdb.command.graph.create%"
@@ -1135,6 +1140,10 @@
       "commandPalette": [
         {
           "command": "azureDatabases.refresh",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.openUnsupportedAccount",
           "when": "never"
         },
         {

@@ -26,6 +26,7 @@ import {
 import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
 import { platform } from 'os';
 import * as vscode from 'vscode';
+import { CosmosDbChatParticipant } from './chat';
 import { findTreeItem } from './commands/api/findTreeItem';
 import { pickTreeItem } from './commands/api/pickTreeItem';
 import { revealTreeItem } from './commands/api/revealTreeItem';
@@ -245,6 +246,9 @@ export async function activateInternal(
                 }
             },
         );
+
+        // Initialize the CosmosDB chat participant
+        new CosmosDbChatParticipant(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

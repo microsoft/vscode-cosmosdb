@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.28.0
+
+### Breaking changes
+- PostgreSQL functionality was moved to another [extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+- Gremlin (Graph) and Table databases have been retired.
+
+### Changed
+
+- Fixed throughput buckets submenu.
+- Improved accessibility in Query Editor.
+
 ## 0.27.0
 
 ### Added

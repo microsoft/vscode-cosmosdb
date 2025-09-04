@@ -7,6 +7,7 @@ import { type TreeElementWithId } from '@microsoft/vscode-azext-utils';
 import { type WorkspaceResource, type WorkspaceResourceProvider } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
+import { isDocumentDBExtensionInstalled, isVCoreAndRURolloutEnabled } from '../../extension';
 
 /**
  * Enum representing the types of resources that can be registered in the workspace.
@@ -32,6 +33,7 @@ import type * as vscode from 'vscode';
  */
 export enum WorkspaceResourceType {
     MongoClusters = 'vscode.cosmosdb.workspace.mongoclusters-resourceType',
+    MongoClustersDisabled = 'vscode.cosmosdb.workspace.mongoclusters-disabled-resourceType',
     AttachedAccounts = 'vscode.cosmosdb.workspace.attachedaccounts-resourceType',
 }
 
@@ -51,20 +53,48 @@ export enum WorkspaceResourceType {
  * within the workspace.
  */
 export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvider {
+    // keep signature non-async; return a Thenable (ProviderResult) by returning the helper promise
     getResources(): vscode.ProviderResult<WorkspaceResource[]> {
-        return [
-            {
-                resourceType: WorkspaceResourceType.MongoClusters,
-                id: 'vscode.cosmosdb.workspace.mongoclusters',
-                name: l10n.t('MongoDB Cluster Accounts'), // this name will be displayed in the workspace view, when no WorkspaceResourceBranchDataProvider is registered
-            },
-            {
-                resourceType: WorkspaceResourceType.AttachedAccounts,
-                id: 'vscode.cosmosdb.workspace.attachedaccounts',
-                name: l10n.t('Cosmos DB Accounts'),
-            },
-        ];
+        return buildWorkspaceResources();
     }
+}
+
+/**
+ * Build the workspace resources asynchronously.
+ * Separated into a named helper to keep `getResources` non-async while still using await.
+ */
+async function buildWorkspaceResources(): Promise<WorkspaceResource[]> {
+    let mongoClustersEntry: WorkspaceResource | undefined;
+
+    const vcoreRolloutEnabled = await isVCoreAndRURolloutEnabled();
+
+    if (vcoreRolloutEnabled && isDocumentDBExtensionInstalled()) {
+        // Don't show the MongoDB entry if the DocumentDB extension is installed and vCore/RU is disabled.
+        mongoClustersEntry = undefined;
+    } else if (vcoreRolloutEnabled) {
+        // Show the disabled MongoDB entry if vCore/RU is disabled and the DocumentDB extension is not installed.
+        mongoClustersEntry = {
+            resourceType: WorkspaceResourceType.MongoClustersDisabled,
+            id: 'vscode.cosmosdb.workspace.mongoclusters-disabled',
+            name: l10n.t('MongoDB Accounts'), // this name will be displayed in the workspace view, when no WorkspaceResourceBranchDataProvider is registered
+        };
+    } else {
+        // Show the standard MongoDB entry.
+        mongoClustersEntry = {
+            resourceType: WorkspaceResourceType.MongoClusters,
+            id: 'vscode.cosmosdb.workspace.mongoclusters',
+            name: l10n.t('MongoDB Cluster Accounts'), // this name will be displayed in the workspace view, when no WorkspaceResourceBranchDataProvider is registered
+        };
+    }
+
+    return [
+        ...(mongoClustersEntry ? [mongoClustersEntry] : []),
+        {
+            resourceType: WorkspaceResourceType.AttachedAccounts,
+            id: 'vscode.cosmosdb.workspace.attachedaccounts',
+            name: l10n.t('Cosmos DB Accounts'),
+        },
+    ];
 }
 
 /**

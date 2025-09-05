@@ -9,6 +9,8 @@ import { type TreeElement } from '../TreeElement';
 import { type AccountInfo } from '../cosmosdb/AccountInfo';
 import { CosmosDBAccountResourceItem } from '../cosmosdb/CosmosDBAccountResourceItem';
 import { type CosmosDBAccountModel } from '../cosmosdb/models/CosmosDBAccountModel';
+import { makeFilterable } from '../mixins/Filterable';
+import { makeSortable } from '../mixins/Sortable';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 
 export class NoSqlAccountResourceItem extends CosmosDBAccountResourceItem {
@@ -22,12 +24,16 @@ export class NoSqlAccountResourceItem extends CosmosDBAccountResourceItem {
     ): Promise<TreeElement[]> {
         return Promise.resolve(
             databases.map((db) => {
-                return new NoSqlDatabaseResourceItem(
-                    {
-                        accountInfo: accountInfo,
-                        database: db,
-                    },
-                    this.experience,
+                return makeFilterable(
+                    makeSortable(
+                        new NoSqlDatabaseResourceItem(
+                            {
+                                accountInfo: accountInfo,
+                                database: db,
+                            },
+                            this.experience,
+                        ),
+                    ),
                 );
             }),
         );

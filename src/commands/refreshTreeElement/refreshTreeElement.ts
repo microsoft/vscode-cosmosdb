@@ -5,6 +5,7 @@
 
 import { AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
+import { BaseCachedBranchDataProvider } from '../../tree/BaseCachedBranchDataProvider';
 import { type TreeElement } from '../../tree/TreeElement';
 
 export async function refreshTreeElement(context: IActionContext, node: AzExtTreeItem | TreeElement): Promise<void> {
@@ -17,14 +18,8 @@ export async function refreshTreeElement(context: IActionContext, node: AzExtTre
         return;
     }
 
-    if (node && 'contextValue' in node && typeof node.contextValue === 'string') {
-        if (/experience[.](mongocluster)/i.test(node.contextValue)) {
-            return ext.mongoVCoreBranchDataProvider.refresh(node);
-        }
-
-        if (/experience[.](table|cassandra|core|graph|mongodb)/i.test(node.contextValue)) {
-            return ext.cosmosDBBranchDataProvider.refresh(node);
-        }
+    if (node.dataProvider && node.dataProvider instanceof BaseCachedBranchDataProvider) {
+        return node.dataProvider.refresh(node);
     }
 
     if (node && 'id' in node && typeof node.id === 'string') {

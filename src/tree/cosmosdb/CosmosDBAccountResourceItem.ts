@@ -30,8 +30,9 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         const accountInfo = await getAccountInfo(this.account);
         const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
         const databases = await this.getDatabases(accountInfo, cosmosClient);
+        const sortedDatabases = databases.sort((a, b) => a.id.localeCompare(b.id));
 
-        return this.getChildrenImpl(accountInfo, databases);
+        return this.getChildrenImpl(accountInfo, sortedDatabases);
     }
 
     public getTreeItem(): vscode.TreeItem {

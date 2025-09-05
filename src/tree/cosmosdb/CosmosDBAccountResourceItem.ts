@@ -7,9 +7,11 @@ import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azur
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { AuthenticationMethod, getCosmosClient, getCosmosDBEntraIdCredential } from '../../cosmosdb/getCosmosClient';
+import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
+import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
@@ -28,8 +30,9 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
 
     public async getChildren(): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
-        const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, false);
-        const databases = await this.getDatabases(accountInfo, cosmosClient);
+        const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
+            this.getDatabases(accountInfo, cosmosClient),
+        );
 
         return this.getChildrenImpl(accountInfo, databases);
     }

@@ -7,7 +7,7 @@ import { type ContainerDefinition, type CosmosClient, type Resource } from '@azu
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { type TreeElement } from '../TreeElement';
@@ -30,9 +30,9 @@ export abstract class CosmosDBDatabaseResourceItem
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const containers = await this.getContainers(cosmosClient);
+        const containers = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
+            this.getContainers(cosmosClient),
+        );
 
         countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Low);
         return this.getChildrenImpl(containers);

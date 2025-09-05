@@ -10,7 +10,7 @@ import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
-import { createNoSqlQueryConnection } from '../utils/NoSqlQueryConnection';
+import { createNoSqlQueryConnection } from '../NoSqlQueryConnection';
 
 export function setConnectedNoSqlContainer(node: CosmosDBContainerResourceItem): void {
     const noSqlQueryConnection = createNoSqlQueryConnection(node);

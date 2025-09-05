@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
 
@@ -56,10 +56,9 @@ export class CosmosDBDatabaseNameStep extends AzureWizardPromptStep<CreateDataba
         }
 
         try {
-            const { endpoint, credentials, isEmulator } = context.accountInfo;
-            const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-
-            const result = await cosmosClient.databases.readAll().fetchAll();
+            const result = await withClaimsChallengeHandling(context.accountInfo, async (cosmosClient) =>
+                cosmosClient.databases.readAll().fetchAll(),
+            );
 
             if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
                 return l10n.t('The database "{name}" already exists in the account.', { name });

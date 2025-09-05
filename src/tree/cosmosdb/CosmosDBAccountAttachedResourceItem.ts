@@ -7,7 +7,7 @@ import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } 
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconURI } from '../../constants';
 import { getCosmosClient, getCosmosDBEntraIdCredential } from '../../cosmosdb/getCosmosClient';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
@@ -66,7 +66,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
             tooltip: new vscode.MarkdownString(tooltipMessage),
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
-                : getThemeAgnosticIconPath('CosmosDBAccount.svg'),
+                : getThemeAgnosticIconURI('CosmosDBAccount.svg'),
         };
     }
 

@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/* eslint-disable import/no-internal-modules */
+
 /**
  * entry-point for mongoClusters-related code. Activated from ./src/extension.ts
  *
@@ -17,6 +19,13 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as child from 'child_process';
 import * as vscode from 'vscode';
+import { RevealOutputChannelOn } from 'vscode-languageclient';
+import {
+    LanguageClient,
+    TransportKind,
+    type LanguageClientOptions,
+    type ServerOptions,
+} from 'vscode-languageclient/node';
 import {
     AuthenticationMethod,
     type CosmosDBEntraIdCredential,
@@ -173,6 +182,7 @@ export function isCosmosShellSupportEnabled(): boolean {
 const McpServerName = 'localCosmosShellServer';
 
 export function registerMcpServer(context: vscode.ExtensionContext): void {
+    registerCosmosShellLanguageServer(context);
     try {
         const didChangeEmitter = new vscode.EventEmitter<void>();
         const config = vscode.workspace.getConfiguration();
@@ -209,4 +219,76 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
     } catch (err) {
         ext.outputChannel.appendLine('error while registering MCP server: ' + err);
     }
+}
+let cosmosShellLanguageClient: LanguageClient | undefined;
+
+export function registerCosmosShellLanguageServer(context: vscode.ExtensionContext) {
+    if (cosmosShellLanguageClient || !isCosmosShellSupportEnabled()) {
+        return;
+    }
+
+    // Path to your LSP server executable
+    const command = getCosmosShellCommand();
+    // Adjust argument form depending on the tool’s expectation (--lsp vs -lsp)
+    const serverArgs = ['--lsp'];
+
+    const serverOptions: ServerOptions = {
+        run: {
+            command,
+            args: serverArgs,
+            transport: TransportKind.stdio,
+        },
+        debug: {
+            command,
+            args: serverArgs,
+            transport: TransportKind.stdio,
+        },
+    };
+
+    const clientOptions: LanguageClientOptions = {
+        documentSelector: [{ scheme: 'file', language: 'cosmosshell' }],
+        synchronize: {
+            // Watch for related files (adjust pattern as needed)
+            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{csh}'),
+        },
+        revealOutputChannelOn: RevealOutputChannelOn.Never,
+        progressOnInitialization: true,
+        outputChannelName: l10n.t('Cosmos Shell Language Server'),
+        initializationOptions: {
+            // Place any feature flags or user settings you want to pass through:
+            // example: telemetry: true
+        },
+        middleware: {
+            // Add middleware hooks if needed (e.g. logging, modifications)
+        },
+    };
+
+    cosmosShellLanguageClient = new LanguageClient(
+        'cosmosShellLanguageServer',
+        l10n.t('Cosmos Shell Language Server'),
+        serverOptions,
+        clientOptions,
+    );
+
+    context.subscriptions.push({
+        dispose: async () => {
+            if (cosmosShellLanguageClient) {
+                try {
+                    await cosmosShellLanguageClient.stop();
+                } catch (error) {
+                    console.error('Failed to stop the cosmos shell language client:', error);
+                }
+                cosmosShellLanguageClient = undefined;
+            }
+        },
+    });
+
+    cosmosShellLanguageClient
+        .start()
+        .then(() => {
+            ext.outputChannel.appendLine('Cosmos Shell language server started.');
+        })
+        .catch((err) => {
+            ext.outputChannel.appendLine('Failed to start Cosmos Shell language server: ' + err);
+        });
 }

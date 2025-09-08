@@ -262,6 +262,17 @@
         "extensions": [
           ".nosql"
         ]
+      },
+      {
+        "id": "cosmosshell",
+        "aliases": [
+          "Cosmos Shell Script",
+          "cosmosshell"
+        ],
+        "extensions": [
+          ".csh"
+        ],
+        "configuration": "./src/cosmosShell/configuration.json"
       }
     ],
     "grammars": [

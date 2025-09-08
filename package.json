@@ -262,6 +262,17 @@
         "extensions": [
           ".nosql"
         ]
+      },
+      {
+        "id": "cosmosshell",
+        "aliases": [
+          "Cosmos Shell Script",
+          "cosmosshell"
+        ],
+        "extensions": [
+          ".csh"
+        ],
+        "configuration": "./src/cosmosShell/configuration.json"
       }
     ],
     "grammars": [
@@ -409,7 +420,13 @@
         "category": "NoSQL",
         "command": "cosmosDB.launchCosmosShell",
         "title": "%cosmosdb.command.cosmos_shell.launch%",
-        "when": "vscodeDatabases.cosmosShellSupportEnabled"
+        "when": "vscodeDatabases.cosmosShellSupportEnabled && !vscodeDatabases.cosmosShellTerminalOpen"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.connectCosmosShell",
+        "title": "%cosmosdb.command.cosmos_shell.connect%",
+        "when": "vscodeDatabases.cosmosShellSupportEnabled && vscodeDatabases.cosmosShellTerminalOpen"
       },
       {
         "category": "NoSQL",
@@ -926,7 +943,13 @@
         {
           "//": "[Database] Launch Cosmos Shell",
           "command": "cosmosDB.launchCosmosShell",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && !vscodeDatabases.cosmosShellTerminalOpen",
+          "group": "1@4"
+        },
+        {
+          "//": "[Database] Connect Cosmos Shell",
+          "command": "cosmosDB.connectCosmosShell",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && vscodeDatabases.cosmosShellTerminalOpen",
           "group": "1@4"
         },
         {
@@ -1148,6 +1171,10 @@
         {
           "command": "postgreSQL.executeQuery",
           "when": "editorLangId == 'postgres'"
+        },
+        {
+          "command": "cosmosDB.connectCosmosShell",
+          "when": "false"
         }
       ]
     },

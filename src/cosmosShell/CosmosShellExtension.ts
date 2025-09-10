@@ -174,6 +174,9 @@ const McpServerName = 'localCosmosShellServer';
 
 export function registerMcpServer(context: vscode.ExtensionContext): void {
     try {
+        if (!isCosmosShellSupportEnabled()) {
+            return;
+        }
         const didChangeEmitter = new vscode.EventEmitter<void>();
         const config = vscode.workspace.getConfiguration();
         const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();

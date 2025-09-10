@@ -414,7 +414,8 @@
         "category": "NoSQL",
         "command": "cosmosDB.launchCosmosShell",
         "title": "%cosmosdb.command.cosmos_shell.launch%",
-        "when": "vscodeDatabases.cosmosShellSupportEnabled"
+        "when": "vscodeDatabases.cosmosShellSupportEnabled",
+        "enablement": "vscodeDatabases.cosmosShellSupportEnabled"
       },
       {
         "category": "NoSQL",
@@ -931,7 +932,7 @@
         {
           "//": "[Database] Launch Cosmos Shell",
           "command": "cosmosDB.launchCosmosShell",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
+          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
           "group": "1@4"
         },
         {

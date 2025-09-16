@@ -3,6 +3,38 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+/**
+ * Temporary API for migrating MongoDB cluster connections to authorized extensions.
+ * This is needed to support user data migration from the vscode-cosmosdb extension
+ * to the vscode-documentdb extension.
+ * The code is inline to keep it easy to maintain and to remove post-migration-phase.
+ */
+export interface MongoConnectionMigrationApi {
+    apiVersion: string;
+
+    /**
+     * Exports MongoDB cluster connections for authorized extensions
+     * @param callingExtensionContext - The extension context of the calling extension
+     * @returns Promise resolving to connection data if authorized, undefined otherwise
+     */
+    exportMongoClusterConnections(
+        callingExtensionContext: import('vscode').ExtensionContext,
+    ): Promise<unknown[] | undefined>;
+
+    /**
+     * Renames the storage ID of a MongoDB cluster connection
+     * @param callingExtensionContext - The extension context of the calling extension
+     * @param oldId - The current storage ID of the connection
+     * @param newId - The new storage ID to assign to the connection
+     * @returns Promise<boolean> - True if successful, false if failed or not authorized
+     */
+    renameMongoClusterConnectionStorageId(
+        callingExtensionContext: import('vscode').ExtensionContext,
+        oldId: string,
+        newId: string,
+    ): Promise<boolean>;
+}
+
 export interface AzureDatabasesExtensionApi {
     apiVersion: string;
 

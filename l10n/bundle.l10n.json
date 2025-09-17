@@ -299,6 +299,8 @@
   "Failed with code \"{0}\".": "Failed with code \"{0}\".",
   "Failed: {count}": "Failed: {count}",
   "failed.": "failed.",
+  "Filter applied: {filterPattern}": "Filter applied: {filterPattern}",
+  "Filter cleared": "Filter cleared",
   "Filter pattern (e.g., \"user*\" or \"*test*\")": "Filter pattern (e.g., \"user*\" or \"*test*\")",
   "Filtered by:": "Filtered by:",
   "Find Query": "Find Query",

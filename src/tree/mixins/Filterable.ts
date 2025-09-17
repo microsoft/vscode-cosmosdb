@@ -244,9 +244,11 @@ export function makeFilterable<T extends TreeElement>(
 
         // Show feedback
         if (this.filterPattern) {
-            vscode.window.showInformationMessage(`Filter applied: ${this.filterPattern}`);
+            vscode.window.showInformationMessage(
+                l10n.t('Filter applied: {filterPattern}', { filterPattern: this.filterPattern }),
+            );
         } else {
-            vscode.window.showInformationMessage('Filter cleared');
+            vscode.window.showInformationMessage(l10n.t('Filter cleared'));
         }
     };
 

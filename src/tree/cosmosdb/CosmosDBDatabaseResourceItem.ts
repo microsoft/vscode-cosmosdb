@@ -33,9 +33,10 @@ export abstract class CosmosDBDatabaseResourceItem
         const { endpoint, credentials, isEmulator } = this.model.accountInfo;
         const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
         const containers = await this.getContainers(cosmosClient);
+        const sortedContainers = containers.sort((a, b) => a.id.localeCompare(b.id));
 
         countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Low);
-        return this.getChildrenImpl(containers);
+        return this.getChildrenImpl(sortedContainers);
     }
 
     getTreeItem(): vscode.TreeItem {

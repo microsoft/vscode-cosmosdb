@@ -768,5 +768,9 @@
   "Your database stores documents with embedded fields, allowing for hierarchical data organization.": "Your database stores documents with embedded fields, allowing for hierarchical data organization.",
   "Your IP address is already in the firewall rules.": "Your IP address is already in the firewall rules.",
   "Your item has unsaved changes. If you continue, these changes will be lost.": "Your item has unsaved changes. If you continue, these changes will be lost.",
-  "Your VS Code window must be reloaded to perform this action.": "Your VS Code window must be reloaded to perform this action."
+  "Your VS Code window must be reloaded to perform this action.": "Your VS Code window must be reloaded to perform this action.",
+  "Failed to deploy LLM instruction files: {0}": "Failed to deploy LLM instruction files: {0}",
+  "No .md files found to copy": "No .md files found to copy",
+  "Source folder not found: {0}": "Source folder not found: {0}",
+  "Successfully copied {0} .md files": "Successfully copied {0} LLM instructions (.md) files"
 }

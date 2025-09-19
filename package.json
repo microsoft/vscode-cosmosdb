@@ -624,6 +624,11 @@
         "category": "MongoDB Clusters",
         "command": "command.mongoClusters.containerView.open",
         "title": "%cosmosdb.command.mongo.collection.open%"
+      },
+      {
+        "category": "CosmosDB AI",
+        "command": "cosmosDB.ai.deployInstructionFiles",
+        "title": "%cosmosdb.command.ai.deploy_instruction_files%"
       }
     ],
     "submenus": [

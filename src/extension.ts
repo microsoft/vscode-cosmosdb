@@ -276,6 +276,8 @@ export async function activateInternal(
         exportedApis.map((a) => a.apiVersion),
     );
 
+    vscode.commands.executeCommand('cosmosDB.ai.deployInstructionFiles');
+
     return createApiProvider(exportedApis);
 }
 

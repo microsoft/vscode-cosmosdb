@@ -5,14 +5,30 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
+import { SettingsService } from '../../services/SettingsService';
 
 export function deployLLMInstructionsFiles(_: IActionContext): void {
+    const manageFiles = SettingsService.getSetting<boolean>('cosmosDB.manageLLMAssets') ?? true;
+    if (!manageFiles) {
+        // TODO: add telemetry
+        console.log('Skipping deployLLMInstructionsFiles because manageLLMAssets is disabled');
+        return;
+    }
+
     const promptFolder = getPromptFolder();
     console.log('deployLLMInstructionsFiles to', promptFolder);
+
+    const manifest: IDeploymentManifest = {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        extensionVersion: ext.context.extension.packageJSON.version as string,
+        deploymentTimestamp: Date.now(),
+        files: {},
+    };
 
     try {
         // Create prompt folder if it doesn't exist
@@ -43,8 +59,32 @@ export function deployLLMInstructionsFiles(_: IActionContext): void {
                 fs.copyFileSync(sourceFile, destinationFile);
                 copiedFiles.push(file.name);
                 console.log(`Copied ${file.name} to ${destinationFile}`);
+                // Calculate checksum
+                const content = fs.readFileSync(destinationFile, 'utf8');
+                const checksum = crypto.createHash('md5').update(content).digest('hex');
+
+                // Add file to manifest
+                manifest.files[file.name] = { checksum, status: 'deployed' };
             }
         }
+
+        // Delete the files that were deployed previously that aren't part of the current deployment
+        const previousManifest = JSON.parse(
+            ext.context.globalState.get('llm.assets.manifest') || '{}',
+        ) as IDeploymentManifest;
+        for (const fileName in previousManifest.files) {
+            if (!manifest.files[fileName]) {
+                const filePath = path.join(promptFolder, fileName);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log(`Deleted ${filePath}`);
+                }
+            }
+        }
+
+        // Save manifest file to global storage
+        ext.context.globalState.update('llm.assets.manifest', JSON.stringify(manifest, null, 2));
+        console.log(`Saved manifest file to global storage`);
 
         // Show success dialog
         const message =
@@ -69,14 +109,21 @@ const getPromptFolder = () => {
     const globalStorageUri = ext.context.globalStorageUri;
     const userFolder = path.dirname(globalStorageUri.fsPath);
     const promptFolder = path.join(userFolder, '..', 'prompts');
-
     return promptFolder;
-    // const platform = process.platform;
-    // if (platform === 'win32') {
-    //     return path.join(process.env.APPDATA!, 'Code', 'User');
-    // } else if (platform === 'darwin') {
-    //     return path.join(process.env.HOME!, 'Library', 'Application Support', 'Code', 'User');
-    // } else {
-    //     return path.join(process.env.HOME!, '.config', 'Code', 'User');
-    // }
 };
+
+/**
+ * The manifest records the last files deployment.
+ * If files in the last deployment are not part of the current deployment, they will be deleted.
+ * Keep track of the checksum of each file to determine if the file has been manually modified by the user after deployment.
+ */
+interface IDeploymentManifest {
+    extensionVersion: string;
+    deploymentTimestamp: number;
+    files: {
+        [fileName: string]: {
+            checksum: string;
+            status: 'deployed' | 'skipped';
+        };
+    };
+}

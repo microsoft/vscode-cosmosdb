@@ -1328,6 +1328,11 @@
             "type": "string",
             "default": ";",
             "markdownDescription": "%cosmosdb.configuration.csv.separator%"
+          },
+          "cosmosDB.manageLLMAssets": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
           }
         }
       }

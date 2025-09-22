@@ -39,7 +39,7 @@ export function deployLLMInstructionsFiles(_: IActionContext): void {
         const dirname = __dirname;
         console.log('dirname', dirname);
         // Get the path to the source folder
-        const sourceFolder = path.join(__dirname, 'resources', 'llm-instructions');
+        const sourceFolder = path.join(__dirname, 'resources', 'llm-assets');
 
         // Check if source folder exists
         if (!fs.existsSync(sourceFolder)) {

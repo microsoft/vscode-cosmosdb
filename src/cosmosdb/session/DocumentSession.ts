@@ -502,7 +502,7 @@ export class DocumentSession {
         });
     }
 
-    private logAndThrowError(message: string, error: unknown = undefined): Promise<never> {
+    private logAndThrowError(message: string, error: unknown = undefined): never {
         if (error) {
             //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
             // we need to parse the error message and show it in a better way in the UI

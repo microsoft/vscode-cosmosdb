@@ -6,17 +6,14 @@
 import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { DocumentCopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
-    props: ToolbarOverflowItemProps & { selectedTab: string },
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> & { selectedTab: string }) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
@@ -85,7 +82,7 @@ export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
                         withArrow
                     >
                         <ToolbarButton
-                            ref={ref}
+                            ref={props.ref}
                             aria-label={tooltipClipboardContent}
                             icon={<DocumentCopyRegular />}
                             disabled={!state.isConnected}
@@ -110,4 +107,4 @@ export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
             </MenuPopover>
         </Menu>
     );
-});
+};

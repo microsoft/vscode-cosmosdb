@@ -3,6 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export const ToolbarDividerTransparent = (): JSX.Element => {
+export const ToolbarDividerTransparent = () => {
     return <div className="toolbarDividerTransparent" />;
 };

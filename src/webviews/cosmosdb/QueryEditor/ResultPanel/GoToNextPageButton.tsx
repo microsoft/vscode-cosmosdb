@@ -5,17 +5,14 @@
 
 import { ArrowRightFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const GoToNextPageButton = forwardRef(function GoToNextPageButtonGoToNextPageButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const GoToNextPageButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const hasMoreResults = state.currentQueryResult?.hasMoreResults ?? false;
@@ -48,10 +45,10 @@ export const GoToNextPageButton = forwardRef(function GoToNextPageButtonGoToNext
             icon={<ArrowRightFilled />}
             hotkey={hotkey}
             onClick={nextPage}
-            refs={ref}
+            ref={props.ref}
             showButtonText={false}
             tooltip={l10n.t('Go to next page (Load more)')}
             type={props.type}
         />
     );
-});
+};

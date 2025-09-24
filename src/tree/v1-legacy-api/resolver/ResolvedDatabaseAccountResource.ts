@@ -3,13 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type AzExtTreeItem,
-    type IActionContext,
-    type ICreateChildImplContext,
-    type TreeItemIconPath,
-} from '@microsoft/vscode-azext-utils';
+import { type AzExtTreeItem, type IActionContext, type ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
+import type * as vscode from 'vscode';
 import { type PostgresServerTreeItem } from '../../../postgres/tree/PostgresServerTreeItem';
 
 export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {
@@ -17,8 +13,7 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     public contextValuesToAdd: string[] = [];
     public description: string | undefined;
 
-    // private _databaseTreeItem: AzExtParentTreeItem;
-    iconPath: TreeItemIconPath | undefined;
+    iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri };
     label: string;
 
     readonly childTypeLabel: string;

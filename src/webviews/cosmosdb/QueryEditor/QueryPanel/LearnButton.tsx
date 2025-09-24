@@ -15,14 +15,11 @@ import {
 } from '@fluentui/react-components';
 import { LibraryRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const LearnButton = forwardRef(function LearnButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
@@ -42,7 +39,7 @@ export const LearnButton = forwardRef(function LearnButton(
                         appearance="inverted"
                         withArrow
                     >
-                        <ToolbarButton ref={ref} aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
+                        <ToolbarButton ref={props.ref} aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
                             {l10n.t('Learn')}
                         </ToolbarButton>
                     </Tooltip>
@@ -77,4 +74,4 @@ export const LearnButton = forwardRef(function LearnButton(
             </MenuPopover>
         </Menu>
     );
-});
+};

@@ -55,13 +55,6 @@ jest.mock('@vscode/l10n', () => ({
     t: jest.fn(),
 }));
 
-jest.mock('vscode', () => ({
-    window: {
-        showInformationMessage: jest.fn(),
-        showErrorMessage: jest.fn(),
-    },
-}));
-
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -71,30 +64,49 @@ import { ext } from '../../extensionVariables';
 import { SettingsService } from '../../services/SettingsService';
 
 describe('deployLLMInstructionsFiles', () => {
-    const mockActionContext: IActionContext = {} as IActionContext;
+    const mockActionContext: IActionContext = {
+        telemetry: {
+            properties: {},
+            measurements: {},
+        },
+    } as IActionContext;
 
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Setup console mocks
-        jest.spyOn(console, 'log').mockImplementation();
-        jest.spyOn(console, 'error').mockImplementation();
+        // Reset telemetry data
+        mockActionContext.telemetry.properties = {};
+        mockActionContext.telemetry.measurements = {};
 
-        // Setup default mocks
+        // Mock fs functions
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.mkdirSync as jest.Mock).mockImplementation();
+        (fs.readdirSync as jest.Mock).mockReturnValue([]);
+        (fs.copyFileSync as jest.Mock).mockImplementation();
+        (fs.readFileSync as jest.Mock).mockReturnValue('test content');
+        (fs.unlinkSync as jest.Mock).mockImplementation();
+
+        // Mock path functions
         (path.dirname as jest.Mock).mockImplementation((p: string) => {
             if (p === 'C:\\Users\\test\\.vscode\\extensions\\storage') {
                 return 'C:\\Users\\test\\.vscode\\extensions';
             }
             return p;
         });
-
         (path.join as jest.Mock).mockImplementation((...paths: string[]) => paths.join('\\'));
-
         (path.extname as jest.Mock).mockImplementation((p: string) => {
             const lastDot = p.lastIndexOf('.');
             return lastDot >= 0 ? p.substring(lastDot) : '';
         });
 
+        // Mock crypto
+        const mockHashMethods = {
+            update: jest.fn().mockReturnThis(),
+            digest: jest.fn().mockReturnValue('mockhash123'),
+        };
+        (crypto.createHash as jest.Mock).mockReturnValue(mockHashMethods);
+
+        // Mock l10n
         (l10n.t as jest.Mock).mockImplementation((message: string, ...args: any[]) => {
             const templates: Record<string, string> = {
                 'Source folder not found: {0}': `Source folder not found: ${args[0]}`,
@@ -107,11 +119,9 @@ describe('deployLLMInstructionsFiles', () => {
             return templates[message] || message;
         });
 
-        const mockHashMethods = {
-            update: jest.fn().mockReturnThis(),
-            digest: jest.fn().mockReturnValue('mockhash123'),
-        };
-        (crypto.createHash as jest.Mock).mockReturnValue(mockHashMethods);
+        // Setup console mocks
+        jest.spyOn(console, 'log').mockImplementation();
+        jest.spyOn(console, 'error').mockImplementation();
     });
 
     afterEach(() => {

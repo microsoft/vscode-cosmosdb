@@ -302,7 +302,7 @@ export class QuerySession {
         }
     }
 
-    private async logAndThrowError(message: string, error: unknown = undefined): Promise<void> {
+    private logAndThrowError(message: string, error: unknown = undefined): never {
         if (error) {
             //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
             // we need to parse the error message and show it in a better way in the UI
@@ -319,10 +319,10 @@ export class QuerySession {
             this.showError(message);
 
             throw new Error(`${message}, ${parsedError.message}`);
-        } else {
-            vscode.window.showErrorMessage(message);
-            throw new Error(message);
         }
+
+        void vscode.window.showErrorMessage(message);
+        throw new Error(message);
     }
 
     private showError(message: string): void {

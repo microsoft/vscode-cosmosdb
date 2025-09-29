@@ -517,10 +517,10 @@ export class DocumentSession {
             this.showError(message);
 
             throw new Error(`${message}, ${parsedError.message}`);
-        } else {
-            vscode.window.showErrorMessage(message);
-            throw new Error(message);
         }
+
+        void vscode.window.showErrorMessage(message);
+        throw new Error(message);
     }
 
     private showError(message: string): void {

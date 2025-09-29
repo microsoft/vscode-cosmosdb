@@ -7,7 +7,7 @@ import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microso
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
-import { deployLLMInstructionsFiles } from './commands/deployLLMInstructionsFiles';
+import { deployLLMInstructionsFiles, removeLLMInstructionsFiles } from './commands/deployLLMInstructionsFiles';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
 import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
@@ -29,4 +29,5 @@ export function registerCosmosDBCommands(): void {
     // #endregion
 
     registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
+    registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
 }

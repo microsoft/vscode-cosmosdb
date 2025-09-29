@@ -67,6 +67,7 @@
   "cosmosdb.command.trigger.open": "Open Trigger",
   "cosmosdb.command.update": "Update to Cloud",
   "cosmosdb.command.ai.deploy_instruction_files": "Copy LLM instructions to user profile folder",
+  "cosmosdb.command.ai.remove_instruction_files": "Remove LLM instructions from user profile folder",
   "cosmosdb.configuration.batch.size": "The batch size to be used when querying Azure Database resources.",
   "cosmosdb.configuration.confirmation.style": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
   "cosmosdb.configuration.confirmation.style.button": "Button Click Confirmation",

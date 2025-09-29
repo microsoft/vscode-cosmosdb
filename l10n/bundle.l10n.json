@@ -772,5 +772,7 @@
   "Failed to deploy LLM instruction files: {0}": "Failed to deploy LLM instruction files: {0}",
   "No .md files found to copy": "No .md files found to copy",
   "Source folder not found: {0}": "Source folder not found: {0}",
-  "Successfully copied {0} .md files": "Successfully copied {0} LLM instructions (.md) files"
+  "Successfully copied {0} .md files": "Successfully copied {0} LLM instructions (.md) files",
+  "Successfully deleted {0} LLM instructions (.md) files": "Successfully deleted {0} LLM instructions (.md) files",
+  "No LLM instructions (.md) files found to delete": "No LLM instructions (.md) files found to delete"
 }

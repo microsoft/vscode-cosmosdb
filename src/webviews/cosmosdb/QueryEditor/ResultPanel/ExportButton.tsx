@@ -6,20 +6,17 @@
 import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { ArrowDownloadRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const ExportButton = forwardRef(function ExportButton(
-    props: ToolbarOverflowItemProps & { selectedTab: string },
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> & { selectedTab: string }) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const { selectedTab } = props;
+    const { selectedTab, ref } = props;
     const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
     const tooltipExportContent = hasSelection
         ? l10n.t('Export selected items')
@@ -103,4 +100,4 @@ export const ExportButton = forwardRef(function ExportButton(
             </MenuPopover>
         </Menu>
     );
-});
+};

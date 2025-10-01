@@ -160,8 +160,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             <SlickgridReact
                 gridId="myGrid"
                 ref={gridRef} // Attach the reference to SlickGrid
-                gridOptions={gridOptions}
-                columnDefinitions={gridColumns}
+                options={gridOptions}
+                columns={gridColumns}
                 dataset={dataset}
                 onDblClick={(event) => onDblClick(event.detail.args)}
                 onSelectedRowsChanged={(event: CustomEvent<{ args: OnSelectedRowsChangedEventArgs }>) =>

@@ -6,7 +6,7 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { StopRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
@@ -19,10 +19,7 @@ const useClasses = makeStyles({
     },
 });
 
-export const CancelQueryButton = forwardRef(function CancelQueryButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const CancelQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
@@ -60,11 +57,11 @@ export const CancelQueryButton = forwardRef(function CancelQueryButton(
             content={l10n.t('Cancel')}
             icon={<StopRegular className={classes.iconStop} />}
             onClick={cancelQuery}
-            refs={ref}
+            ref={props.ref}
             tooltip={l10n.t('Cancel query')}
             hotkey={cancelQueryHotkeyTooltip}
             type={props.type}
             disabled={!state.isExecuting}
         />
     );
-});
+};

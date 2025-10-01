@@ -69,8 +69,8 @@ export function DataViewPanelTable({ liveHeaders, liveData }: Props): React.JSX.
         return (
             <SlickgridReact
                 gridId="myGrid"
-                gridOptions={gridOptions}
-                columnDefinitions={gridColumns}
+                options={gridOptions}
+                columns={gridColumns}
                 dataset={liveData}
                 onReactGridCreated={() => console.debug('Grid created')}
             />

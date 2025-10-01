@@ -18,7 +18,7 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     const [isRegistered, setIsRegistered] = useState(false);
     const hotkeysRef = useRef<HotkeyMapping<Command>[]>([]);
     const ref: RefCallback<HTMLElement> = useCallback(
-        (el) => el && !commandService.getRef(scope) && commandService.setRef(scope, el),
+        (el) => void (el && !commandService.getRef(scope) && commandService.setRef(scope, el)),
         [commandService, scope],
     );
 

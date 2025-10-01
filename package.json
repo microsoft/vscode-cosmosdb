@@ -624,6 +624,16 @@
         "category": "MongoDB Clusters",
         "command": "command.mongoClusters.containerView.open",
         "title": "%cosmosdb.command.mongo.collection.open%"
+      },
+      {
+        "category": "CosmosDB AI",
+        "command": "cosmosDB.ai.deployInstructionFiles",
+        "title": "%cosmosdb.command.ai.deploy_instruction_files%"
+      },
+      {
+        "category": "CosmosDB AI",
+        "command": "cosmosDB.ai.removeInstructionFiles",
+        "title": "%cosmosdb.command.ai.remove_instruction_files%"
       }
     ],
     "submenus": [
@@ -1323,6 +1333,11 @@
             "type": "string",
             "default": ";",
             "markdownDescription": "%cosmosdb.configuration.csv.separator%"
+          },
+          "cosmosDB.manageLLMAssets": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
           }
         }
       }

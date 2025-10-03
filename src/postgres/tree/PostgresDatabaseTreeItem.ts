@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line import/no-internal-modules
 import {
     AzExtParentTreeItem,
     createContextValue,
@@ -14,9 +13,9 @@ import {
     type IParsedError,
     type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon } from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
 import { firewallNotConfiguredErrorType, invalidCredentialsErrorType } from '../postgresConstants';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
@@ -30,7 +29,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     public contextValue: string = PostgresDatabaseTreeItem.contextValue;
     public readonly childTypeLabel: string = 'Resource Type';
     public readonly databaseName: string;
-    public declare readonly parent: PostgresServerTreeItem;
+    declare public readonly parent: PostgresServerTreeItem;
     public autoSelectInTreeItemPicker: boolean = true;
     public isShowingPasswordWarning: boolean;
 
@@ -45,7 +44,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public get description(): string {
-        return ext.connectedPostgresDB?.fullId === this.fullId ? localize('connected', 'Connected') : '';
+        return ext.connectedPostgresDB?.fullId === this.fullId ? l10n.t('Connected') : '';
     }
 
     public get id(): string {
@@ -53,7 +52,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
     }
 
     public get iconPath(): TreeItemIconPath {
-        return new ThemeIcon('database');
+        return new vscode.ThemeIcon('database');
     }
 
     public hasMoreChildrenImpl(): boolean {
@@ -65,7 +64,7 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
         if (!isFirewallRuleSet) {
             const firewallTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                 contextValue: 'postgresFirewall',
-                label: localize('configureFirewall', 'Configure firewall to connect to "{0}"...', this.parent.label),
+                label: l10n.t('Configure firewall to connect to "{nodeName}"…', { nodeName: this.parent.label }),
                 commandId: 'postgreSQL.configureFirewall',
             });
             firewallTreeItem.commandArgs = [this.parent];
@@ -95,33 +94,25 @@ export class PostgresDatabaseTreeItem extends AzExtParentTreeItem {
 
             if (this.parent.azureName && parsedError.errorType === invalidCredentialsErrorType) {
                 void context.ui.showWarningMessage(
-                    localize(
-                        'couldNotConnect',
-                        'Could not connect to "{0}": {1}',
-                        this.parent.label,
-                        parsedError.message,
-                    ),
+                    l10n.t('Could not connect to "{name}": {error}', {
+                        name: this.parent.label,
+                        error: parsedError.message,
+                    }),
                     { stepName: 'loadPostgresDatabases' },
                 );
                 const credentialsTreeItem: AzExtTreeItem = new GenericTreeItem(this, {
                     contextValue: 'postgresCredentials',
-                    label: localize(
-                        'enterCredentials',
-                        'Enter server credentials to connect to "{0}"...',
-                        this.parent.label,
-                    ),
+                    label: l10n.t('Enter server credentials to connect to "{name}"…', { name: this.parent.label }),
                     commandId: 'postgreSQL.enterCredentials',
                 });
                 credentialsTreeItem.commandArgs = [this.parent];
                 return [credentialsTreeItem];
             } else if (this.parent.azureName && parsedError.errorType === firewallNotConfiguredErrorType) {
                 void context.ui.showWarningMessage(
-                    localize(
-                        'couldNotConnect',
-                        'Could not connect to "{0}": {1}',
-                        this.parent.label,
-                        parsedError.message,
-                    ),
+                    l10n.t('Could not connect to "{name}": {error}', {
+                        name: this.parent.label,
+                        error: parsedError.message,
+                    }),
                     { stepName: 'loadPostgresDatabases' },
                 );
                 return [];

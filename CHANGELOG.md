@@ -1,5 +1,98 @@
 # Change Log
 
+## 0.28.0
+
+### Breaking changes
+- PostgreSQL functionality was moved to another [extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+- Gremlin (Graph) and Table databases have been retired.
+
+### Changed
+
+- Fixed throughput buckets submenu.
+- Improved accessibility in Query Editor.
+
+## 0.27.0
+
+### Added
+
+- Support for Bulk Deleteing selected documents from the NoSQL Query Results with confirmation and status notification (#2709).
+- Added support for different Shell environments when running the Shell (#2698)
+
+### Changed
+
+- Fixed NoSQL "Index Metrics" parsing and error handling (#2724).
+- Fixed various accessibility issues.
+- Fixed an issue with container creation where the first partition key was carried over to the next partition key entry causing confusion (#2715)
+- Minor Bugfixes, component updates and code improvements.
+
+## 0.26.0
+
+### Added
+
+- New configuration setting `cosmosDB.preferredAuthenticationMethod` for the preferred authentication method for Cosmos DB accounts inside a new "Authentication" section '(deprecating the `azureDatabases.useCosmosOAuth` setting).
+- Support for Managed Identity authentication with Cosmos DB.
+- Support exporting selected rows to CSV.
+- New `cosmosDB.csvSeparator` setting to configure a custom CSV separator.
+- NoSQL Query History is now persisted for each Collection across sessions.
+- New 'Open Documents' command to Mongo 'Documents' tree node.
+- UriHandler to handle external requests to open/attach a specific account and open the Query Editor.
+
+### Changed
+
+- Fixed "Create Database"/"Create Collection" command spelling for Mongo (#2452).
+- Fixed a bug where rendering query results failed with a "Maximum call stack size exceeded" error (#2624).
+- Improved Cosmos DB Authentication logic for accounts with `databaseAccount.disableLocalAuth`.
+- Renamed "Documents" to "Items" for Cosmos DB.
+- Minor Bugfixes, component updates and code improvements.
+
+## 0.25.1
+
+### Added
+
+- A feature to Provide Feedback using a button in the query editor toolbars and a prompt, which will open a survey if you would like to share some feedback about the extension. The prompt will only be shown after the extension has been used for a while and provides an option to be reminded later or to fully opt out from being prompted again.
+
+### Changed
+
+- Fixed a performance issue when reconnecting to Mongo with incorrect auth data.
+- Improved NoSQL CSV export compatibility.
+- Moved to Node.js 20.0.
+- Minor Bugfixes.
+
+## 0.25.0
+
+### Added
+
+- Feature parity across all MongoDB API platforms.
+  - Improved Azure Cosmos DB for MongoDB (RU) interface.
+  - MongoDB Scrapbook support added for all MongoDB API-supported databases.
+- Unified context menus across all experiences.
+- Supporting TenantId for CosmosDB authentication
+- Improved support for local emulators.
+- Added support for the [Cosmos DB Emulator on Linux](https://aka.ms/CosmosVNextEmulator) and MacOS (Intel)
+
+### Changed
+
+- Optimized resource tree exploration.
+  - Time-consuming queries are now executed only when interacting with a selected cluster.
+- Migrated Tree View API from V1 to V2.
+- Create server/account command opens Azure Portal with corresponding blade instead of going through command palette wizard.
+
+## 0.24.2
+
+### Changed
+
+- Enhanced error handling.
+- Improved index metrics display.
+- Made minor adjustments.
+
+## 0.24.1
+
+### Changed
+
+- Fixed several issues around keyboard access and accessibility in general.
+- NoSQL query editor toolbar now folds to a menu to fit the window size keeping all elements accessible.
+- Fixed some minor issues.
+
 ## 0.24.0
 
 ### Added

@@ -7,68 +7,56 @@
 
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
+    apiUtils,
     callWithTelemetryAndErrorHandling,
     createApiProvider,
     createAzExtLogOutputChannel,
-    registerCommandWithTreeNodeUnwrapping,
     registerErrorHandler,
     registerEvent,
     registerReportIssueCommand,
     registerUIExtensionVariables,
     TreeElementStateManager,
-    type apiUtils,
     type AzExtParentTreeItem,
-    type AzExtTreeItem,
     type AzureExtensionApi,
     type IActionContext,
-    type ITreeItemPickerContext,
 } from '@microsoft/vscode-azext-utils';
-import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
-import { platform } from 'os';
+import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
+import {
+    AzExtResourceType,
+    getAzureResourcesExtensionApi,
+    type AzureResourcesExtensionApi,
+} from '@microsoft/vscode-azureresources-api';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant } from './chat';
-import { findTreeItem } from './commands/api/findTreeItem';
-import { pickTreeItem } from './commands/api/pickTreeItem';
-import { revealTreeItem } from './commands/api/revealTreeItem';
-import { deleteDatabaseAccount } from './commands/deleteDatabaseAccount/deleteDatabaseAccount';
-import { importDocuments } from './commands/importDocuments';
-import {
-    cosmosGremlinFilter,
-    cosmosMongoFilter,
-    cosmosTableFilter,
-    doubleClickDebounceDelay,
-    sqlFilter,
-} from './constants';
+import { registerCommands } from './commands/registerCommands';
+import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
-import { registerDocDBCommands } from './docdb/registerDocDBCommands';
-import { DocDBAccountTreeItem } from './docdb/tree/DocDBAccountTreeItem';
-import { type DocDBAccountTreeItemBase } from './docdb/tree/DocDBAccountTreeItemBase';
-import { type DocDBCollectionTreeItem } from './docdb/tree/DocDBCollectionTreeItem';
-import { DocDBDocumentTreeItem } from './docdb/tree/DocDBDocumentTreeItem';
+import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
-import { registerGraphCommands } from './graph/registerGraphCommands';
-import { GraphAccountTreeItem } from './graph/tree/GraphAccountTreeItem';
-import { registerMongoCommands } from './mongo/registerMongoCommands';
-import { setConnectedNode } from './mongo/setConnectedNode';
-import { MongoAccountTreeItem } from './mongo/tree/MongoAccountTreeItem';
-import { type MongoCollectionTreeItem } from './mongo/tree/MongoCollectionTreeItem';
-import { MongoDocumentTreeItem } from './mongo/tree/MongoDocumentTreeItem';
-import { MongoClustersExtension } from './mongoClusters/MongoClustersExtension';
-import { registerPostgresCommands } from './postgres/commands/registerPostgresCommands';
-import { DatabaseResolver } from './resolver/AppResolver';
-import { DatabaseWorkspaceProvider } from './resolver/DatabaseWorkspaceProvider';
-import { TableAccountTreeItem } from './table/tree/TableAccountTreeItem';
-import { AttachedAccountSuffix } from './tree/AttachedAccountsTreeItem';
-import { SubscriptionTreeItem } from './tree/SubscriptionTreeItem';
-import { localize } from './utils/localize';
+import { StorageNames, StorageService } from './services/storageService';
+import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { DatabaseResolver } from './tree/v1-legacy-api/resolver/AppResolver';
+import { DatabaseWorkspaceProvider } from './tree/v1-legacy-api/resolver/DatabaseWorkspaceProvider';
+import {
+    SharedWorkspaceResourceProvider,
+    WorkspaceResourceType,
+} from './tree/workspace-api/SharedWorkspaceResourceProvider';
+import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
+import { globalUriHandler } from './vscodeUriHandler';
 
-const cosmosDBTopLevelContextValues: string[] = [
-    GraphAccountTreeItem.contextValue,
-    DocDBAccountTreeItem.contextValue,
-    TableAccountTreeItem.contextValue,
-    MongoAccountTreeItem.contextValue,
-];
+// Interface for the MongoDB connection migration API
+interface MongoConnectionMigrationApi extends AzureExtensionApi {
+    apiVersion: string;
+    exportMongoClusterConnections(callingExtensionContext: vscode.ExtensionContext): Promise<unknown[] | undefined>;
+    renameMongoClusterConnectionStorageId(
+        callingExtensionContext: vscode.ExtensionContext,
+        oldId: string,
+        newId: string,
+    ): Promise<boolean>;
+}
 
 export async function activateInternal(
     context: vscode.ExtensionContext,
@@ -82,22 +70,43 @@ export async function activateInternal(
     registerUIExtensionVariables(ext);
     registerAzureUtilsExtensionVariables(ext);
 
+    if (vscode.l10n.uri) {
+        l10n.config({
+            contents: vscode.l10n.bundle ?? {},
+        });
+    }
+
     await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         ext.secretStorage = context.secrets;
 
-        ext.rgApi = await getResourceGroupsApi();
+        // Early initialization to determine whether Managed Identity is available for authentication
+        void getIsRunningOnAzure();
 
         // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
         // and is used to work with the tree view structure, as an improved alternative to the
         // AzureResourceGraph API V1 provided by the getResourceGroupsApi call above.
         // TreeElementStateManager is needed here too
         ext.state = new TreeElementStateManager();
-        ext.rgApiV2 = await getAzureResourcesExtensionApi(context, '2.0.0');
+        ext.rgApiV2 = (await getAzureResourcesExtensionApi(context, '2.0.0')) as AzureResourcesExtensionApiWithActivity;
 
-        ext.rgApi.registerApplicationResourceResolver(AzExtResourceType.AzureCosmosDb, new DatabaseResolver());
+        ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
+        ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
+        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+            AzExtResourceType.AzureCosmosDb,
+            ext.cosmosDBBranchDataProvider,
+        );
+        ext.rgApiV2.resources.registerWorkspaceResourceProvider(new SharedWorkspaceResourceProvider());
+        ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+            WorkspaceResourceType.AttachedAccounts,
+            ext.cosmosDBWorkspaceBranchDataProvider,
+        );
+
+        // V1 Legacy API for Postgres support: begin
+        ext.rgApi = await getResourceGroupsApi();
+
         ext.rgApi.registerApplicationResourceResolver(
             AzExtResourceType.PostgresqlServersStandard,
             new DatabaseResolver(),
@@ -112,129 +121,33 @@ export async function activateInternal(
         )._rootTreeItem;
         const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
         ext.rgApi.registerWorkspaceResourceProvider('AttachedDatabaseAccount', databaseWorkspaceProvider);
+        // V1 Legacy API for Postgres support: end
 
         ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
 
-        registerDocDBCommands();
-        registerGraphCommands();
-        registerPostgresCommands();
-        registerMongoCommands();
+        registerCommands();
+        // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
+        // registerCommandsCompatibility();
 
-        // init and activate mongoClusters-support (branch data provider, commands, ...)
-        const mongoClustersSupport: MongoClustersExtension = new MongoClustersExtension();
-        context.subscriptions.push(mongoClustersSupport); // to be disposed when extension is deactivated.
-        await mongoClustersSupport.activate();
+        // init and activate mongodb RU and vCore support (branch data provider, commands, ...)
+        if (await isVCoreAndRURolloutEnabled()) {
+            // If the vCore and RU features are disabled in this extension, we register a branch data provider
+            // that will inform the user to install the "DocumentDB for VS Code" extension to manage these resources.
+            ext.mongoClustersWorkspaceBranchDataProvider = new DisabledClustersWorkspaceBranchDataProvider();
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.MongoClustersDisabled,
+                ext.mongoClustersWorkspaceBranchDataProvider,
+            );
+        } else {
+            const clustersSupport: ClustersExtension = new ClustersExtension();
+            context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
+            await clustersSupport.activate();
+        }
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
         );
 
-        registerCommandWithTreeNodeUnwrapping('cosmosDB.selectSubscriptions', () =>
-            vscode.commands.executeCommand('azure-account.selectSubscriptions'),
-        );
-
-        registerCommandWithTreeNodeUnwrapping('azureDatabases.createServer', createServer);
-        registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteAccount', deleteAccount);
-        registerCommandWithTreeNodeUnwrapping(
-            'cosmosDB.attachDatabaseAccount',
-            async (actionContext: IActionContext) => {
-                await ext.attachedAccountsNode.attachNewAccount(actionContext);
-                await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-            },
-        );
-        registerCommandWithTreeNodeUnwrapping('cosmosDB.attachEmulator', async (actionContext: IActionContext) => {
-            if (platform() !== 'win32') {
-                actionContext.errorHandling.suppressReportIssue = true;
-                throw new Error(
-                    localize('emulatorNotSupported', 'The Cosmos DB emulator is only supported on Windows.'),
-                );
-            }
-
-            await ext.attachedAccountsNode.attachEmulator(actionContext);
-            await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-        });
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.refresh',
-            async (actionContext: IActionContext, node?: AzExtTreeItem) => {
-                if (node) {
-                    await node.refresh(actionContext);
-                } else {
-                    await ext.rgApi.appResourceTree.refresh(actionContext, node);
-                }
-            },
-        );
-
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.detachDatabaseAccount',
-            async (actionContext: IActionContext & ITreeItemPickerContext, node?: AzExtTreeItem) => {
-                const children = await ext.attachedAccountsNode.loadAllChildren(actionContext);
-                if (children.length < 2) {
-                    const message = localize('noAttachedAccounts', 'There are no Attached Accounts.');
-                    void vscode.window.showInformationMessage(message);
-                } else {
-                    if (!node) {
-                        node = await ext.rgApi.workspaceResourceTree.showTreeItemPicker<AzExtTreeItem>(
-                            cosmosDBTopLevelContextValues.map((val: string) => (val += AttachedAccountSuffix)),
-                            actionContext,
-                        );
-                    }
-                    if (node instanceof MongoAccountTreeItem) {
-                        if (ext.connectedMongoDB && node.fullId === ext.connectedMongoDB.parent.fullId) {
-                            setConnectedNode(undefined);
-                            await node.refresh(actionContext);
-                        }
-                    }
-                    await ext.attachedAccountsNode.detach(node);
-                    await ext.rgApi.workspaceResourceTree.refresh(actionContext, ext.attachedAccountsNode);
-                }
-            },
-        );
-        registerCommandWithTreeNodeUnwrapping(
-            'cosmosDB.importDocument',
-            async (
-                actionContext: IActionContext,
-                selectedNode: vscode.Uri | MongoCollectionTreeItem | DocDBCollectionTreeItem,
-                uris: vscode.Uri[],
-            ) => {
-                if (selectedNode instanceof vscode.Uri) {
-                    await importDocuments(actionContext, uris || [selectedNode], undefined);
-                } else {
-                    await importDocuments(actionContext, undefined, selectedNode);
-                }
-            },
-        );
-        registerCommandWithTreeNodeUnwrapping('cosmosDB.copyConnectionString', cosmosDBCopyConnectionString);
-        registerCommandWithTreeNodeUnwrapping(
-            'cosmosDB.openDocument',
-            async (actionContext: IActionContext, node?: MongoDocumentTreeItem | DocDBDocumentTreeItem) => {
-                if (!node) {
-                    node = await ext.rgApi.pickAppResource<MongoDocumentTreeItem | DocDBDocumentTreeItem>(
-                        actionContext,
-                        {
-                            filter: [cosmosMongoFilter, sqlFilter],
-                            expectedChildContextValue: [
-                                MongoDocumentTreeItem.contextValue,
-                                DocDBDocumentTreeItem.contextValue,
-                            ],
-                        },
-                    );
-                }
-
-                // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
-                ext.fileSystem.fireChangedEvent(node);
-                await ext.fileSystem.showTextDocument(node);
-            },
-            doubleClickDebounceDelay,
-        );
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.update',
-            async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
-        );
-        registerCommandWithTreeNodeUnwrapping(
-            'azureDatabases.loadMore',
-            async (actionContext: IActionContext, node: AzExtTreeItem) =>
-                await ext.rgApi.appResourceTree.loadMore(node, actionContext),
-        );
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,
@@ -250,19 +163,126 @@ export async function activateInternal(
         // Initialize the CosmosDB chat participant
         new CosmosDbChatParticipant(context);
 
+        context.subscriptions.push(
+            vscode.window.registerUriHandler({
+                handleUri: globalUriHandler,
+            }),
+        );
+
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
 
-    return createApiProvider([
+    // TODO: we still don't know for sure if this is needed
+    //  If it is, we need to implement the logic to get the correct API version
+    const exportedApis = [
         <AzureExtensionApi>{
-            findTreeItem,
-            pickTreeItem,
-            revealTreeItem,
             apiVersion: '1.2.0',
+            findTreeItem: () => undefined,
+            pickTreeItem: () => undefined,
+            revealTreeItem: () => undefined,
         },
-    ]);
+        /**
+         * Temporary API for migrating MongoDB cluster connections to authorized extensions.
+         * This is needed to support user data migration from the vscode-cosmosdb extension
+         * to the vscode-documentdb extension.
+         * The code is inline to keep it easy to maintain and to remove post-migration-phase.
+         */
+        <MongoConnectionMigrationApi>{
+            apiVersion: '2.0.0',
+            exportMongoClusterConnections: async (
+                callingExtensionContext: vscode.ExtensionContext,
+            ): Promise<unknown[] | undefined> => {
+                return (
+                    (await callWithTelemetryAndErrorHandling(
+                        'cosmosDB.exportMongoClusterConnections',
+                        async (context: IActionContext) => {
+                            // Get the calling extension's ID from the context - this cannot be easily spoofed
+                            const callingExtensionId = callingExtensionContext.extension.id;
+                            context.telemetry.properties.requestingExtension = callingExtensionId;
+
+                            // Only allow the "DocumentDB for VS Code" extension to access this data
+                            if (callingExtensionId !== 'ms-azuretools.vscode-documentdb') {
+                                context.telemetry.properties.authorized = 'false';
+                                return undefined;
+                            }
+
+                            context.telemetry.properties.authorized = 'true';
+
+                            const allItems = await StorageService.get(StorageNames.Workspace).getItems(
+                                WorkspaceResourceType.MongoClusters,
+                            );
+
+                            context.telemetry.measurements.exportedItemCount = allItems.length;
+
+                            // Return as unknown[] - this is intentional as only the trusted vscode-documentdb
+                            // partner extension uses this API and we know the schema/interface matches
+                            return allItems as unknown[];
+                        },
+                    )) ?? undefined
+                );
+            },
+            renameMongoClusterConnectionStorageId: async (
+                callingExtensionContext: vscode.ExtensionContext,
+                oldId: string,
+                newId: string,
+            ): Promise<boolean> => {
+                return (
+                    (await callWithTelemetryAndErrorHandling(
+                        'cosmosDB.renameMongoClusterConnectionStorageId',
+                        async (context: IActionContext) => {
+                            // Get the calling extension's ID from the context - this cannot be easily spoofed
+                            const callingExtensionId = callingExtensionContext.extension.id;
+                            context.telemetry.properties.requestingExtension = callingExtensionId;
+
+                            // Only allow the "DocumentDB for VS Code" extension to access this data
+                            if (callingExtensionId !== 'ms-azuretools.vscode-documentdb') {
+                                context.telemetry.properties.authorized = 'false';
+                                return false;
+                            }
+
+                            context.telemetry.properties.authorized = 'true';
+                            context.telemetry.properties.oldId = oldId;
+                            context.telemetry.properties.newId = newId;
+
+                            const storageService = StorageService.get(StorageNames.Workspace);
+
+                            // 1. Get all items to find the one with the old ID
+                            const allItems = await storageService.getItems(WorkspaceResourceType.MongoClusters);
+                            const itemToRename = allItems.find((item) => item.id === oldId);
+
+                            if (!itemToRename) {
+                                context.telemetry.properties.renameResult = 'item_not_found';
+                                return false;
+                            }
+
+                            // 2. Create a new item with the new ID but preserve all other properties
+                            const newItem = { ...itemToRename, id: newId };
+
+                            // 3. Save the new item first to ensure we don't lose data
+                            await storageService.push(WorkspaceResourceType.MongoClusters, newItem, true);
+
+                            // 4. Remove the old item
+                            await storageService.delete(WorkspaceResourceType.MongoClusters, oldId);
+
+                            context.telemetry.properties.renameResult = 'success';
+                            return true;
+                        },
+                    )) ?? false
+                ); // Return false if there was an error
+            },
+        },
+    ];
+
+    console.log(
+        'Registering APIs:',
+        exportedApis.map((a) => a.apiVersion),
+    );
+
+    vscode.commands.executeCommand('cosmosDB.ai.deployInstructionFiles');
+
+    return createApiProvider(exportedApis);
 }
 
 // this method is called when your extension is deactivated
@@ -270,40 +290,58 @@ export function deactivateInternal(_context: vscode.ExtensionContext): void {
     // NOOP
 }
 
-export async function createServer(context: IActionContext, node?: SubscriptionTreeItem): Promise<void> {
-    if (!node) {
-        node = await ext.rgApi.appResourceTree.showTreeItemPicker<SubscriptionTreeItem>(
-            SubscriptionTreeItem.contextValue,
-            context,
+/**
+ * Checks if vCore and RU features are to be enabled or disabled.
+ * This introduces multiple changes to the behavior of the extension.
+ *
+ * This function is used to determine whether the vCore and RU features should be disabled in this extension.
+ * The result of this function depends on the release of a new version of Azure Resources extension.
+ * When a new version of the Azure Resources extension is released and emits the signal to roll out the change,
+ * this function will return true.
+ *
+ * When this function returns true, the extension's behavior changes significantly:
+ * - The `ClustersExtension`, which contains all the logic for MongoDB vCore and RU support (including commands and tree data providers), will not be activated.
+ * - In the workspace view, the regular MongoDB nodes will be replaced by a special node (`DisabledClustersWorkspaceBranchDataProvider`).
+ * - This special node informs the user that the functionality has moved and prompts them to install the new "DocumentDB for VS Code" extension.
+ * - Once the "DocumentDB for VS Code" extension is installed, this prompt will be hidden to avoid clutter.
+ *
+ * @returns True if vCore and RU features are enabled, false | undefined otherwise.
+ */
+export async function isVCoreAndRURolloutEnabled(): Promise<boolean | undefined> {
+    return callWithTelemetryAndErrorHandling('isVCoreAndRURolloutEnabled', async (context: IActionContext) => {
+        // Suppress error display and don't rethrow - this is feature detection that should fail gracefully
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = false;
+
+        const azureResourcesExtensionApi = await apiUtils.getAzureExtensionApi<
+            AzureResourcesExtensionApi & { isDocumentDbExtensionSupportEnabled: () => boolean }
+        >(ext.context, 'ms-azuretools.vscode-azureresourcegroups', '3.0.0');
+
+        // Check if the feature is enabled via the API function
+        if (typeof azureResourcesExtensionApi.isDocumentDbExtensionSupportEnabled === 'function') {
+            const isEnabled = azureResourcesExtensionApi.isDocumentDbExtensionSupportEnabled();
+            context.telemetry.properties.vCoreAndRURolloutEnabled = String(isEnabled);
+            context.telemetry.properties.apiMethodAvailable = 'true';
+            return isEnabled;
+        }
+
+        // If the function doesn't exist, assume DISABLED
+        context.telemetry.properties.vCoreAndRURolloutEnabled = 'false';
+        context.telemetry.properties.apiMethodAvailable = 'false';
+        ext.outputChannel.appendLog(
+            'Expected Azure Resources API v3.0.0 is not available; VCore and RU support remains active in Azure Databases.',
         );
-    }
-
-    await SubscriptionTreeItem.createChild(context, node);
+        return false;
+    });
 }
 
-export async function deleteAccount(context: IActionContext, node?: AzExtTreeItem): Promise<void> {
-    const suppressCreateContext: ITreeItemPickerContext = context;
-    suppressCreateContext.suppressCreatePick = true;
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<AzExtTreeItem>(context, {
-            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
-        });
-    }
-
-    await deleteDatabaseAccount(context, node, false);
-}
-
-export async function cosmosDBCopyConnectionString(
-    context: IActionContext,
-    node?: MongoAccountTreeItem | DocDBAccountTreeItemBase,
-): Promise<void> {
-    const message = 'The connection string has been copied to the clipboard';
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<MongoAccountTreeItem | DocDBAccountTreeItemBase>(context, {
-            filter: [cosmosMongoFilter, cosmosTableFilter, cosmosGremlinFilter, sqlFilter],
-        });
-    }
-
-    await vscode.env.clipboard.writeText(node.connectionString);
-    void vscode.window.showInformationMessage(message);
+/**
+ * Checks if the "DocumentDB for VS Code" extension is installed.
+ * This is used to coordinate behavior between this extension and the new DocumentDB extension,
+ * for example, to avoid duplicating features or to prompt the user to install the new extension.
+ * @returns true if the extension is installed, false otherwise.
+ */
+export function isDocumentDBExtensionInstalled(): boolean {
+    const extension = vscode.extensions.getExtension('ms-azuretools.vscode-documentdb');
+    return extension !== undefined;
 }

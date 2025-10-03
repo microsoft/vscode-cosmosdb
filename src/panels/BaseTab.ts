@@ -3,10 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
 import { type Channel } from './Communication/Channel/Channel';
@@ -131,6 +132,9 @@ export class BaseTab {
 
   <body>
     <div id="root"></div>
+    <script nonce="${params.nonce}">
+      globalThis.l10n_bundle = ${JSON.stringify(vscode.l10n.bundle ?? {})};
+    </script>
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";
       render("${params.viewType}", acquireVsCodeApi());
@@ -170,7 +174,7 @@ export class BaseTab {
                 return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
 
             default:
-                throw new Error(`Unknown command: ${commandName}`);
+                throw new Error(l10n.t('Unknown command: {commandName}', { commandName }));
         }
     }
 

@@ -5,17 +5,35 @@
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { getNoSqlQueryConnection } from '../docdb/commands/connectNoSqlContainer';
-import { getCosmosClientByConnection } from '../docdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { DocumentSession } from '../docdb/session/DocumentSession';
-import { QuerySession } from '../docdb/session/QuerySession';
-import { type CosmosDbRecordIdentifier, type ResultViewMetadata } from '../docdb/types/queryResult';
+import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { DocumentSession } from '../cosmosdb/session/DocumentSession';
+import { QuerySession } from '../cosmosdb/session/QuerySession';
+import {
+    type CosmosDBRecordIdentifier,
+    type QueryMetadata,
+    type SerializedQueryResult,
+} from '../cosmosdb/types/queryResult';
+import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
+import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
+import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
+
+const QUERY_HISTORY_SIZE = 10;
+const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
+
+type HistoryItem = StorageItem & {
+    properties: {
+        history: string[];
+    };
+};
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
@@ -36,8 +54,11 @@ export class QueryEditorTab extends BaseTab {
         this.query = query;
 
         if (connection) {
-            if (connection.masterKey) {
-                this.telemetryContext.addMaskedValue(connection.masterKey);
+            if (connection.credentials) {
+                const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key;
+                if (masterKey) {
+                    this.telemetryContext.addMaskedValue(masterKey);
+                }
             }
 
             this.telemetryContext.addMaskedValue(connection.databaseId);
@@ -86,6 +107,8 @@ export class QueryEditorTab extends BaseTab {
 
         this.channel.on<void>('ready', async () => {
             await this.updateConnection(this.connection);
+            await this.updateQueryHistory();
+            await this.updateThroughputBuckets();
             if (this.query) {
                 await this.channel.postMessage({
                     type: 'event',
@@ -93,6 +116,11 @@ export class QueryEditorTab extends BaseTab {
                     params: [this.query],
                 });
             }
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'isSurveyCandidateChanged',
+                params: [!getIsSurveyDisabledGlobally()],
+            });
         });
     }
 
@@ -116,7 +144,7 @@ export class QueryEditorTab extends BaseTab {
             case 'disconnectFromDatabase':
                 return this.disconnectFromDatabase();
             case 'runQuery':
-                return this.runQuery(payload.params[0] as string, payload.params[1] as ResultViewMetadata);
+                return this.runQuery(payload.params[0] as string, payload.params[1] as QueryMetadata);
             case 'stopQuery':
                 return this.stopQuery(payload.params[0] as string);
             case 'nextPage':
@@ -126,9 +154,35 @@ export class QueryEditorTab extends BaseTab {
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
             case 'openDocument':
-                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDbRecordIdentifier);
+                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDBRecordIdentifier);
             case 'deleteDocument':
-                return this.deleteDocument(payload.params[0] as CosmosDbRecordIdentifier);
+                return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
+            case 'deleteDocuments':
+                return this.deleteDocuments(payload.params[0] as CosmosDBRecordIdentifier[]);
+            case 'provideFeedback':
+                return this.provideFeedback();
+            case 'saveCSV':
+                return this.saveCSV(
+                    payload.params[0] as string,
+                    payload.params[1] as SerializedQueryResult | null,
+                    payload.params[2] as PartitionKeyDefinition,
+                    payload.params[3] as number[],
+                );
+            case 'saveMetricsCSV':
+                return this.saveMetricsCSV(
+                    payload.params[0] as string,
+                    payload.params[1] as SerializedQueryResult | null,
+                );
+            case 'copyCSVToClipboard':
+                return this.copyCSVToClipboard(
+                    payload.params[0] as SerializedQueryResult | null,
+                    payload.params[1] as PartitionKeyDefinition,
+                    payload.params[2] as number[],
+                );
+            case 'copyMetricsCSVToClipboard':
+                return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
+            case 'updateQueryHistory':
+                return this.updateQueryHistory(payload.params[0] as string);
         }
 
         return super.getCommand(payload);
@@ -138,16 +192,17 @@ export class QueryEditorTab extends BaseTab {
         this.connection = connection;
 
         if (this.connection) {
-            const { databaseId, containerId, endpoint, masterKey } = this.connection;
+            const { databaseId, containerId, endpoint, credentials } = this.connection;
+            const masterKey = getCosmosDBKeyCredential(credentials)?.key;
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
-            const client = getCosmosClientByConnection(this.connection);
+            const client = getCosmosDBClientByConnection(this.connection);
             const container = await client.database(databaseId).container(containerId).read();
 
             if (container.resource === undefined) {
                 // Should be impossible since here we have a connection from the extension
-                throw new Error(`Container ${containerId} not found`);
+                throw new Error(l10n.t('Container {0} not found', containerId));
             }
 
             // Probably need to pass the entire container object to the webview
@@ -181,10 +236,10 @@ export class QueryEditorTab extends BaseTab {
     private async openFile(): Promise<void> {
         const options: vscode.OpenDialogOptions = {
             canSelectMany: false,
-            openLabel: 'Select',
+            openLabel: l10n.t('Select'),
             canSelectFiles: true,
             canSelectFolders: false,
-            title: 'Select query',
+            title: l10n.t('Select query'),
             filters: {
                 'Query files': ['sql', 'nosql'],
                 'Text files': ['txt'],
@@ -215,6 +270,71 @@ export class QueryEditorTab extends BaseTab {
             }
             await vscodeUtil.showNewFile(text, filename, ext);
         });
+    }
+
+    private async updateQueryHistory(query?: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.updateQueryHistory', async (context) => {
+            context.telemetry.suppressIfSuccessful = true;
+
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const storage = StorageService.get(StorageNames.Default);
+            const containerId = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const historyItems = (await storage.getItems(HISTORY_STORAGE_KEY)) as HistoryItem[];
+            const historyData = historyItems.find((item) => item.id === containerId) ?? {
+                id: containerId,
+                name: containerId,
+                properties: {
+                    history: [] as string[],
+                },
+            };
+
+            // First remove any existing occurrences of this query
+            const queryHistory = historyData.properties.history.filter((item) => item !== query);
+
+            // Add the new query to the beginning (most recent first)
+            if (query) {
+                queryHistory.unshift(query);
+            }
+
+            // Trim to max size if needed
+            if (queryHistory.length > QUERY_HISTORY_SIZE) {
+                queryHistory.length = QUERY_HISTORY_SIZE;
+            }
+
+            historyData.properties.history = queryHistory;
+            await storage.push(HISTORY_STORAGE_KEY, historyData);
+
+            // Update the webview with the new history
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'updateQueryHistory',
+                params: [historyData.properties.history],
+            });
+        });
+    }
+
+    private async updateThroughputBuckets(): Promise<void> {
+        await callWithTelemetryAndErrorHandling(
+            'cosmosDB.nosql.queryEditor.updateThroughputBuckets',
+            async (context) => {
+                context.telemetry.suppressIfSuccessful = true;
+
+                if (!this.connection) {
+                    throw new Error(l10n.t('No connection'));
+                }
+
+                // TODO: Implement logic to fetch throughput buckets
+                // For now, we will just set the buckets to true.
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'updateThroughputBuckets',
+                    params: [[true, true, true, true, true]],
+                });
+            },
+        );
     }
 
     private async duplicateTab(text: string): Promise<void> {
@@ -256,20 +376,52 @@ export class QueryEditorTab extends BaseTab {
         });
     }
 
-    private async runQuery(query: string, options: ResultViewMetadata): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.runQuery', async (context) => {
+    private async runQuery(query: string, options: QueryMetadata): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
+            }
+
+            if (options.sessionId) {
+                // Need to check if session exists in the current sessions
+                // Ask the user about losing the current session and starting a new one
+                const existingSession = this.sessions.get(options.sessionId);
+                if (existingSession) {
+                    const message =
+                        l10n.t('All loaded data will be lost. The query will be executed again in new session.') +
+                        '\n' +
+                        l10n.t('Are you sure you want to continue?');
+                    const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+                    const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
+                    const choice = await vscode.window.showWarningMessage(
+                        message,
+                        {
+                            modal: true,
+                        },
+                        continueItem,
+                        closeItem,
+                    );
+
+                    if (choice !== continueItem) {
+                        return;
+                    }
+                }
             }
 
             const session = new QuerySession(this.connection, this.channel, query, options);
 
             context.telemetry.properties.executionId = session.id;
 
+            // Need to stop and remove all previous sessions
+            this.sessions.forEach((existingSession) => existingSession.dispose());
+            this.sessions.clear();
+
             this.sessions.set(session.id, session);
 
             await session.run();
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
 
     private async stopQuery(executionId: string): Promise<void> {
@@ -278,7 +430,7 @@ export class QueryEditorTab extends BaseTab {
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.stop();
@@ -287,87 +439,110 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async nextPage(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.nextPage', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.nextPage';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.nextPage();
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private async prevPage(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.prevPage', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.prevPage';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.prevPage();
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private async firstPage(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.firstPage', async (context) => {
+        const callbackId = 'cosmosDB.nosql.queryEditor.firstPage';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             context.telemetry.properties.executionId = executionId;
 
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             const session = this.sessions.get(executionId);
             if (!session) {
-                throw new Error(`No session found for executionId: ${executionId}`);
+                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
             }
 
             await session.firstPage();
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async openDocument(mode: string, documentId?: CosmosDbRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openDocument', () => {
+    private async openDocument(mode: string, documentId?: CosmosDBRecordIdentifier): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, () => {
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             if (!documentId && mode !== 'add') {
-                throw new Error('Impossible to open a document without an id');
+                throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
             if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
-                throw new Error(`Invalid mode: ${mode}`);
+                throw new Error(l10n.t('Invalid mode: {0}', mode));
             }
 
             DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async deleteDocument(documentId: CosmosDbRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteDocument', async () => {
+    private async deleteDocument(documentId: CosmosDBRecordIdentifier): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
-                throw new Error('No connection');
+                throw new Error(l10n.t('No connection'));
             }
 
             if (!documentId) {
-                throw new Error('Impossible to open a document without an id');
+                throw new Error(l10n.t('Impossible to delete an item without an id'));
             }
 
             const session = new DocumentSession(this.connection, this.channel);
             await session.delete(documentId);
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private async deleteDocuments(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocuments';
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const session = new DocumentSession(this.connection, this.channel);
+            await session.bulkDelete(documentIds);
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
     private getNextViewColumn(): vscode.ViewColumn {
@@ -379,5 +554,39 @@ export class QueryEditorTab extends BaseTab {
         }
 
         return viewColumn;
+    }
+
+    private async provideFeedback(): Promise<void> {
+        openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
+        return Promise.resolve();
+    }
+
+    private async saveCSV(
+        name: string,
+        currentQueryResult: SerializedQueryResult | null,
+        partitionKey?: PartitionKeyDefinition,
+        selection?: number[],
+    ): Promise<void> {
+        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
+        await vscodeUtil.showNewFile(text, name, '.csv');
+    }
+
+    private async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
+        const text = await queryMetricsToCsv(currentQueryResult);
+        await vscodeUtil.showNewFile(text, name, '.csv');
+    }
+
+    private async copyCSVToClipboard(
+        currentQueryResult: SerializedQueryResult | null,
+        partitionKey?: PartitionKeyDefinition,
+        selection?: number[],
+    ): Promise<void> {
+        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
+        await vscode.env.clipboard.writeText(text);
+    }
+
+    private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
+        const text = await queryMetricsToCsv(currentQueryResult);
+        await vscode.env.clipboard.writeText(text);
     }
 }

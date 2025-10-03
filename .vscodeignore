@@ -29,6 +29,8 @@ testWorkspace/**
 .prettierrc
 .swcrc
 .travis.yml
+eslint.config.mjs
+prettier.config.mjs
 gulp*
 stats.json
 test-results.xml

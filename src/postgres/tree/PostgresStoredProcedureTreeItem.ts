@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzExtTreeItem, type TreeItemIconPath } from '@microsoft/vscode-azext-utils';
-import { ThemeIcon } from 'vscode';
+import * as vscode from 'vscode';
 import { type IPostgresProceduresQueryRow } from '../getPostgresProcedureQueryRows';
 import { runPostgresQuery } from '../runPostgresQuery';
 import { type PostgresStoredProceduresTreeItem } from './PostgresStoredProceduresTreeItem';
@@ -12,7 +12,7 @@ import { type PostgresStoredProceduresTreeItem } from './PostgresStoredProcedure
 export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     public static contextValue: string = 'postgresStoredProcedure';
     public readonly contextValue: string = PostgresStoredProcedureTreeItem.contextValue;
-    public declare readonly parent: PostgresStoredProceduresTreeItem;
+    declare public readonly parent: PostgresStoredProceduresTreeItem;
     public readonly schema: string;
     public readonly name: string;
     public readonly args: string;
@@ -39,7 +39,7 @@ export class PostgresStoredProcedureTreeItem extends AzExtTreeItem {
     }
 
     public get iconPath(): TreeItemIconPath {
-        return new ThemeIcon('server-process');
+        return new vscode.ThemeIcon('server-process');
     }
 
     public async deleteTreeItemImpl(): Promise<void> {

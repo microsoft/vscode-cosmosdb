@@ -4,8 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Link, Toast, ToastBody, ToastTitle, ToastTrigger } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import type * as React from 'react';
 import { type Channel } from '../../../panels/Communication/Channel/Channel';
+import { getErrorMessage } from '../../../panels/Communication/Channel/CommonChannel';
 
 export class BaseContextProvider {
     constructor(
@@ -29,7 +31,7 @@ export class BaseContextProvider {
                 <ToastTitle
                     action={
                         <ToastTrigger>
-                            <Link>Dismiss</Link>
+                            <Link>{l10n.t('Dismiss')}</Link>
                         </ToastTrigger>
                     }
                 >
@@ -92,7 +94,12 @@ export class BaseContextProvider {
             });
         } catch (error) {
             try {
-                await this.showErrorMessage(`Failed to execute command ${command}: ${error}`);
+                await this.showErrorMessage(
+                    l10n.t('Failed to execute command {command}: {error}', {
+                        command,
+                        error: getErrorMessage(error),
+                    }),
+                );
             } catch {
                 // Ignore
             }

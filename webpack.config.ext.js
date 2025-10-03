@@ -10,6 +10,9 @@ const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 
+const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
+const supportedLanguages = [];
+
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';
 
@@ -19,7 +22,7 @@ module.exports = (env, { mode }) => {
         node: { __filename: false, __dirname: false },
         entry: {
             // 'extension.bundle.ts': './src/extension.ts', // Is still necessary?
-            './mongo-languageServer.bundle': './src/mongo/languageServer.ts',
+            './mongo-languageServer.bundle': './src/documentdb/scrapbook/languageServer.ts',
             main: './main.ts',
         },
         output: {
@@ -58,10 +61,19 @@ module.exports = (env, { mode }) => {
             'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
             /* PG optional dependencies */
             'pg-native': 'commonjs pg-native',
+            'pg-cloudflare': 'commonjs pg-cloudflare',
         },
         resolve: {
             roots: [__dirname],
+            // conditionNames: ['import', 'require', 'node'], // Uncomment when we will use VSCode what supports modules
+            mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
+            alias: {
+                'vscode-languageserver-types': path.resolve(
+                    __dirname,
+                    'node_modules/vscode-languageserver-types/lib/esm/main.js',
+                ),
+            },
         },
         module: {
             rules: [
@@ -78,7 +90,7 @@ module.exports = (env, { mode }) => {
                             jsc: {
                                 baseUrl: path.resolve(__dirname, './'), // Set absolute path here
                                 keepClassNames: true,
-                                target: 'es2022',
+                                target: 'es2023',
                                 parser: {
                                     syntax: 'typescript',
                                     tsx: true,
@@ -109,12 +121,30 @@ module.exports = (env, { mode }) => {
                         to: 'grammar',
                     },
                     {
+                        from: 'l10n',
+                        to: 'l10n',
+                        noErrorOnMissing: true,
+                        filter: (filepath) =>
+                            new RegExp(`bundle.l10n.(${supportedLanguages.join('|')}).json`).test(filepath), // Only supported languages
+                    },
+                    {
                         from: 'resources',
                         to: 'resources',
                     },
                     {
                         from: 'package.json',
                         to: 'package.json',
+                    },
+                    {
+                        from: 'package.nls.json',
+                        to: 'package.nls.json',
+                    },
+                    {
+                        from: 'package.nls.*.json',
+                        to: '[name][ext]',
+                        noErrorOnMissing: true,
+                        filter: (filepath) =>
+                            new RegExp(`package.nls.(${supportedLanguages.join('|')}).json`).test(filepath), // Only supported languages
                     },
                     {
                         from: 'CHANGELOG.md',
@@ -131,13 +161,7 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'README.md',
                         to: 'README.md',
-                        transform(content, absoluteFrom) {
-                            let data = content.toString();
-                            return data.replace(
-                                /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis,
-                                '',
-                            );
-                        },
+                        transform: isDev ? undefined : (content) => content.toString().replace(excludeRegion, ''),
                     },
                     {
                         from: 'SECURITY.md',

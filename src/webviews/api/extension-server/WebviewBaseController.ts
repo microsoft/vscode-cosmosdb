@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable @typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call */
 import { randomBytes } from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -131,12 +130,14 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                 </head>
                     <body>
                         <div id="root"></div>
-
+                            <script nonce="${nonce}">
+                                globalThis.l10n_bundle = ${JSON.stringify(vscode.l10n.bundle ?? {})};
+                            </script>
                             <script type="module" nonce="${nonce}">
                                 window.config = {
                                     ...window.config,
                                     __initialData: '${encodeURIComponent(JSON.stringify(this.configuration))}'
-                            };
+                                };
 
                                 import { render } from "${srcUri}";
                                 render('${this._webviewName}', acquireVsCodeApi());

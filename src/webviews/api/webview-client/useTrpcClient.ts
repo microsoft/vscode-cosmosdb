@@ -4,45 +4,22 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createTRPCClient, loggerLink } from '@trpc/client';
-import { useContext, useEffect, useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
 import { type AppRouter } from '../configuration/appRouter';
-import {
-    vscodeLink,
-    type VsCodeLinkNotification,
-    type VsCodeLinkRequestMessage,
-    type VsCodeLinkResponseMessage,
-} from './vscodeLink';
+import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
 
 /**
- * Custom React hook that provides a tRPC client for communication between the webview and VSCode extension,
- * along with an event target for handling notifications from the extension.
+ * Custom React hook that provides a tRPC client for communication between the webview and VSCode extension.
  *
- * @returns An object containing the tRPC client (`trpcClient`) and an `EventTarget` (`vscodeEventTarget`)
- *          for listening to extension notifications.
+ * @returns An object containing the tRPC client (`trpcClient`)
  *
  * @example
  * // In your component:
  * import { useTrpcClient } from 'useTrpcClient';
  *
  * export const MyComponent = () => {
- *   const { trpcClient, vscodeEventTarget } = useTrpcClient();
- *
- *   // Listen for notifications from the extension
- *   useEffect(() => {
- *     const handleNotification = (event: Event) => {
- *       const customEvent = event as CustomEvent<VsCodeLinkNotification>;
- *       const notification = customEvent.detail;
- *       // Handle the notification data
- *       console.log('Received notification:', notification);
- *     };
- *
- *     vscodeEventTarget.addEventListener('VsCodeLinkNotification', handleNotification);
- *
- *     return () => {
- *       vscodeEventTarget.removeEventListener('VsCodeLinkNotification', handleNotification);
- *     };
- *   }, [vscodeEventTarget]);
+ *   const { trpcClient } = useTrpcClient();
  *
  *   // Use the tRPC client to make queries and mutations
  *   useEffect(() => {
@@ -60,9 +37,6 @@ import {
  */
 export function useTrpcClient() {
     const { vscodeApi } = useContext(WebviewContext);
-
-    // Create an EventTarget instance per webview to dispatch and listen to custom events
-    const vscodeEventTarget = useMemo(() => new EventTarget(), []);
 
     /**
      * Function to send messages to the VSCode extension.
@@ -113,36 +87,6 @@ export function useTrpcClient() {
         [vscodeApi],
     );
 
-    /**
-     * Note to code maintainers:
-     * This `useEffect` sets up a persistent listener for messages from the VSCode extension.
-     * It specifically listens for messages of type 'VSLinkNotification' and dispatches them
-     * as custom events on the `vscodeEventTarget`. This allows components to subscribe to
-     * notifications from the extension.
-     *
-     * Be careful when modifying this handler, as it needs to correctly identify and process
-     * notification messages without interfering with tRPC messages.
-     */
-    // Set up a persistent notification handler to listen for messages from the extension
-    useEffect(() => {
-        const handler = (event: MessageEvent) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            if (event.data && typeof event.data === 'object' && event.data.type === 'VSLinkNotification') {
-                // Dispatch the notification to the EventTarget
-                const customEvent = new CustomEvent('VsCodeLinkNotification', {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                    detail: event.data.payload as VsCodeLinkNotification,
-                });
-                vscodeEventTarget.dispatchEvent(customEvent);
-            }
-        };
-
-        window.addEventListener('message', handler);
-        return () => {
-            window.removeEventListener('message', handler);
-        };
-    }, [vscodeEventTarget]);
-
-    // Return the tRPC client and the event target for notifications
-    return { trpcClient: trpcClient, vscodeEventTarget };
+    // Return the tRPC client
+    return { trpcClient: trpcClient };
 }

@@ -5,10 +5,15 @@
 
 import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import vscode from 'vscode';
-import { type NoSqlQueryConnection } from '../docdb/NoSqlCodeLensProvider';
-import { DocumentSession } from '../docdb/session/DocumentSession';
-import { type CosmosDbRecordIdentifier } from '../docdb/types/queryResult';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
+import { getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { DocumentSession } from '../cosmosdb/session/DocumentSession';
+import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
+import { promptAfterActionEventually } from '../utils/survey';
+import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
+import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
@@ -20,7 +25,7 @@ export class DocumentTab extends BaseTab {
     private readonly session: DocumentSession;
 
     private connection: NoSqlQueryConnection;
-    private documentId: CosmosDbRecordIdentifier | undefined;
+    private documentId: CosmosDBRecordIdentifier | undefined;
     private _mode: DocumentTabMode = 'view';
     private isDirty = false;
 
@@ -28,7 +33,7 @@ export class DocumentTab extends BaseTab {
         panel: vscode.WebviewPanel,
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: CosmosDbRecordIdentifier,
+        documentId?: CosmosDBRecordIdentifier,
     ) {
         super(panel, DocumentTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
@@ -38,8 +43,11 @@ export class DocumentTab extends BaseTab {
         this.documentId = documentId ?? undefined;
         this._mode = mode;
 
-        if (connection.masterKey) {
-            this.telemetryContext.addMaskedValue(connection.masterKey);
+        if (connection.credentials) {
+            const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key;
+            if (masterKey) {
+                this.telemetryContext.addMaskedValue(masterKey);
+            }
         }
 
         this.telemetryContext.addMaskedValue(connection.databaseId);
@@ -51,7 +59,7 @@ export class DocumentTab extends BaseTab {
     public static render(
         connection: NoSqlQueryConnection,
         mode: DocumentTabMode,
-        documentId?: CosmosDbRecordIdentifier,
+        documentId?: CosmosDBRecordIdentifier,
         viewColumn?: vscode.ViewColumn,
     ): DocumentTab {
         const column = viewColumn ?? vscode.ViewColumn.Active;
@@ -86,7 +94,7 @@ export class DocumentTab extends BaseTab {
             }
         }
 
-        const title = `${documentId?.id ? documentId.id : 'New Document'}.json`;
+        const title = `${documentId?.id ? documentId.id : l10n.t('New Item')}.json`;
         const panel = vscode.window.createWebviewPanel(DocumentTab.viewType, title, column, {
             enableScripts: true,
             retainContextWhenHidden: true,
@@ -147,6 +155,8 @@ export class DocumentTab extends BaseTab {
                 return this.refreshDocument();
             case 'saveDocument':
                 return this.saveDocument(payload.params[0] as string);
+            case 'saveDocumentAsFile':
+                return this.saveDocumentAsFile(payload.params[0] as string);
             case 'setMode':
                 this.mode = payload.params[0] as DocumentTabMode;
                 return Promise.resolve();
@@ -160,6 +170,31 @@ export class DocumentTab extends BaseTab {
 
     private async refreshDocument(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.refreshDocument', async () => {
+            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+            const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
+            const message =
+                l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.') +
+                '\n' +
+                l10n.t('Are you sure you want to continue?');
+
+            if (this.isDirty) {
+                const confirmation = await vscode.window.showWarningMessage(
+                    message,
+                    { modal: true },
+                    continueItem,
+                    closeItem,
+                );
+
+                if (confirmation !== continueItem) {
+                    void this.channel.postMessage({
+                        type: 'event',
+                        name: 'operationAborted',
+                        params: [],
+                    });
+                    return;
+                }
+            }
+
             if (this.documentId) {
                 await this.session.read(this.documentId);
             } else {
@@ -169,11 +204,12 @@ export class DocumentTab extends BaseTab {
     }
 
     private async saveDocument(documentText: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.saveDocument', async (context) => {
+        const callbackId = 'cosmosDB.nosql.document.saveDocument';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
 
-            if (!this.isCosmosDbItemDefinition(documentContent)) {
-                throw new Error('Document is not a valid Cosmos DB item definition');
+            if (!this.isCosmosDBItemDefinition(documentContent)) {
+                throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
             }
 
             const result = this.documentId
@@ -183,16 +219,33 @@ export class DocumentTab extends BaseTab {
             if (!result) {
                 // TODO: should we show an error message notification?
                 context.errorHandling.suppressDisplay = true;
-                throw new Error('Failed to create document');
+                throw new Error(l10n.t('Failed to create item'));
             }
 
             this.documentId = result;
 
             this.panel.title = `${this.documentId.id}.json`;
         });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
 
-    private isCosmosDbItemDefinition(documentContent: unknown): documentContent is ItemDefinition {
+    private async saveDocumentAsFile(documentText: string): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.document.saveDocumentAsFile';
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+            context.telemetry.suppressIfSuccessful = true;
+
+            const documentContent: JSONValue = JSON.parse(documentText) as JSONValue;
+
+            if (!this.isCosmosDBItemDefinition(documentContent)) {
+                throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
+            }
+
+            await vscodeUtil.showNewFile(documentText, this.documentId?.id ?? documentContent.id ?? 'Unknown', '.json');
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private isCosmosDBItemDefinition(documentContent: unknown): documentContent is ItemDefinition {
         if (documentContent && typeof documentContent === 'object' && !Array.isArray(documentContent)) {
             if ('id' in documentContent) {
                 return typeof documentContent.id === 'string';

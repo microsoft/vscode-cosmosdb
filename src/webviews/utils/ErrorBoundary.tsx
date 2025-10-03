@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Link, makeStyles } from '@fluentui/react-components';
+import * as l10n from '@vscode/l10n';
 import React, { useCallback } from 'react';
-import { useQueryEditorDispatcher } from '../QueryEditor/state/QueryEditorContext';
+import { useQueryEditorDispatcher } from '../cosmosdb/QueryEditor/state/QueryEditorContext';
 import { type BaseContextProvider } from './context/BaseContextProvider';
 
 // Error boundary component must be a class component in order to catch errors (with componentDidCatch and
@@ -21,11 +22,15 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, p
     const errorHandler = useCallback(
         (message: string, stack?: string, componentStack?: string | null) => {
             // If rendering throws right away, provider.reportWebviewError might not be initialized, yet, so check first.
-            void provider.reportWebviewError(message, stack, componentStack);
+            void provider?.reportWebviewError(message, stack, componentStack);
         },
         [provider],
     );
-    return <ErrorBoundaryComponent style={style} onError={errorHandler} children={children} />;
+    return (
+        <ErrorBoundaryComponent style={style} onError={errorHandler}>
+            {children}
+        </ErrorBoundaryComponent>
+    );
 };
 
 const useStyles = makeStyles({
@@ -45,10 +50,10 @@ const ErrorDisplay: React.FC<{ message: string | undefined; details: string | nu
     const styles = useStyles();
     return (
         <div className={styles.container}>
-            <h1>An unexpected error occurred</h1>
+            <h1>{l10n.t('An unexpected error occurred')}</h1>
             <p>
-                Please try again. If the error persists, please{' '}
-                <Link onClick={() => void dispatcher.executeReportIssueCommand()}>report the issue</Link>
+                {l10n.t('Please try again. If the error persists, please')}{' '}
+                <Link onClick={() => void dispatcher.executeReportIssueCommand()}>{l10n.t('report the issue')}</Link>
             </p>
             <div className={styles.details}>
                 <pre>{message}</pre>

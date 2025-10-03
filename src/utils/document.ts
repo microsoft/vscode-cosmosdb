@@ -10,7 +10,7 @@ import {
     type PartitionKeyDefinition,
     type PrimitivePartitionKeyValue,
 } from '@azure/cosmos';
-import { type CosmosDbRecordIdentifier, type QueryResultRecord } from '../docdb/types/queryResult';
+import { type CosmosDBRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
 
 export const extractPartitionKey = (document: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
     return partitionKey.paths.map((path): PrimitivePartitionKeyValue => {
@@ -22,7 +22,7 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
-                return null; // It is not correct to return null, in other cases it should exception
+                return null; // It is not correct to return null, in other cases it should be an exception
             }
         }
         if (
@@ -39,6 +39,46 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
 };
 
 /**
+ * Extract the partition key as key/value object from a document
+ * @param document
+ * @param partitionKey
+ */
+export const extractPartitionKeyValues = (
+    document: ItemDefinition,
+    partitionKey?: PartitionKeyDefinition,
+): Record<string, PartitionKey> => {
+    const partitionKeyValue: Record<string, PartitionKey> = {};
+
+    if (!partitionKey) {
+        return partitionKeyValue;
+    }
+
+    partitionKey.paths.forEach((path) => {
+        const partitionKeyPath = path.split('/').filter((key) => key !== '');
+        let interim: JSONValue = document;
+
+        for (const prop of partitionKeyPath) {
+            if (interim && typeof interim === 'object' && interim[prop]) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                interim = interim[prop];
+            } else {
+                return; // It is not correct to return null, in other cases it should be an exception
+            }
+        }
+        if (
+            interim === null ||
+            typeof interim === 'string' ||
+            typeof interim === 'number' ||
+            typeof interim === 'boolean'
+        ) {
+            partitionKeyValue[path] = interim;
+        }
+    });
+
+    return partitionKeyValue;
+};
+
+/**
  * Get the unique id of a document only as a key for the UI (loops, tables, etc.)
  * @param document
  * @param partitionKey
@@ -46,7 +86,7 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
 export const getDocumentId = (
     document: QueryResultRecord,
     partitionKey: PartitionKeyDefinition | undefined,
-): CosmosDbRecordIdentifier | undefined => {
+): CosmosDBRecordIdentifier | undefined => {
     const documentId = {
         _rid: typeof document['_rid'] === 'string' ? document['_rid'] : undefined,
         id: document['id'],

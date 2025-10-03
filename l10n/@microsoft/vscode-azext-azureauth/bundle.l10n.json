@@ -1,0 +1,5 @@
+{
+  "Signing out programmatically is not supported. You must sign out by selecting the account in the Accounts menu and choosing Sign Out.": "Signing out programmatically is not supported. You must sign out by selecting the account in the Accounts menu and choosing Sign Out.",
+  "You are not signed in to an Azure account. Please sign in.": "You are not signed in to an Azure account. Please sign in.",
+  "The custom cloud choice is not configured. Please configure the setting `{0}.{1}`.": "The custom cloud choice is not configured. Please configure the setting `{0}.{1}`."
+}

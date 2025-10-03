@@ -4,18 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { Uri, window } from 'vscode';
+import * as vscode from 'vscode';
 import { connectedPostgresKey, postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 
 export async function connectPostgresDatabase(
     context: IActionContext,
-    treeItem?: Uri | PostgresDatabaseTreeItem,
+    treeItem?: vscode.Uri | PostgresDatabaseTreeItem,
 ): Promise<void> {
-    if (!treeItem || treeItem instanceof Uri) {
+    if (!treeItem || treeItem instanceof vscode.Uri) {
         if (treeItem) {
-            void window.showTextDocument(treeItem);
+            void vscode.window.showTextDocument(treeItem);
         }
         treeItem = await ext.rgApi.pickAppResource<PostgresDatabaseTreeItem>(context, {
             filter: [postgresSingleFilter, postgresFlexibleFilter],

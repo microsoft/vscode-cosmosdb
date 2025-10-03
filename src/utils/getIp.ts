@@ -5,8 +5,8 @@
 
 import { sendRequestWithTimeout } from '@microsoft/vscode-azext-azureutils';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { isIPv4 } from 'net';
-import { localize } from './localize';
 
 export function isIpInRanges(ip: string, ranges: { startIpAddress: string; endIpAddress: string }[]): boolean {
     const ipNum = ipToNum(ip);
@@ -35,7 +35,7 @@ export async function getPublicIpv4(context: IActionContext): Promise<string> | 
     throw lastError;
 }
 
-const failedToGetIp = localize('failedToGetIp', 'Failed to get public IP');
+const failedToGetIp = l10n.t('Failed to get public IP');
 
 function ipToNum(ip: string) {
     return Number(

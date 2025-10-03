@@ -4,27 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
-import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
-import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
-import { type PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
-import { type PostgresServerTreeItem } from '../tree/PostgresServerTreeItem';
-import { connectPostgresDatabase } from './connectPostgresDatabase';
+import { showPostgresOperationProhibitedError } from '../deprecation';
 
-export async function createPostgresDatabase(context: IActionContext, node?: PostgresServerTreeItem): Promise<void> {
-    if (!node) {
-        node = await ext.rgApi.pickAppResource<PostgresServerTreeItem>(context, {
-            filter: [postgresSingleFilter, postgresFlexibleFilter],
-        });
-    }
-    const newDatabase: PostgresDatabaseTreeItem = await node.createChild(context);
-    await connectPostgresDatabase(context, newDatabase);
-    const createMessage: string = localize(
-        'createPostgresDatabaseMsg',
-        'Successfully created database "{0}".',
-        newDatabase.databaseName,
-    );
-    void vscode.window.showInformationMessage(createMessage);
-    ext.outputChannel.appendLog(createMessage);
+export async function createPostgresDatabase(context: IActionContext): Promise<void> {
+    context.telemetry.properties.deprecated = 'true';
+    await showPostgresOperationProhibitedError();
+
+    return;
 }

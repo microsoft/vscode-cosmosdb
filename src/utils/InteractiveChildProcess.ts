@@ -4,17 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { parseError } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as cp from 'child_process';
 import * as os from 'os';
 import { isNumber } from 'util';
-import type * as vscode from 'vscode';
-import { EventEmitter, type Event } from 'vscode';
+import * as vscode from 'vscode';
 import { improveError } from './improveError';
 
 // We add these when we display to the output window
-const stdInPrefix = '> ';
-const stdErrPrefix = 'ERR> ';
-const errorPrefix = 'Error running process: ';
+const errorPrefix = l10n.t('Error running process: ');
 
 const processStartupTimeout = 60;
 
@@ -35,23 +33,23 @@ export class InteractiveChildProcess {
     private _error: unknown;
     private _isKilling: boolean;
 
-    private readonly _onStdOutEmitter: EventEmitter<string> = new EventEmitter<string>();
-    private readonly _onStdErrEmitter: EventEmitter<string> = new EventEmitter<string>();
-    private readonly _onErrorEmitter: EventEmitter<unknown> = new EventEmitter<unknown>();
+    private readonly _onStdOutEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly _onStdErrEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly _onErrorEmitter: vscode.EventEmitter<unknown> = new vscode.EventEmitter<unknown>();
 
     private constructor(options: IInteractiveChildProcessOptions) {
         this._options = options;
     }
 
-    public get onStdOut(): Event<string> {
+    public get onStdOut(): vscode.Event<string> {
         return this._onStdOutEmitter.event;
     }
 
-    public get onStdErr(): Event<string> {
+    public get onStdErr(): vscode.Event<string> {
         return this._onStdErrEmitter.event;
     }
 
-    public get onError(): Event<unknown> {
+    public get onError(): vscode.Event<unknown> {
         return this._onErrorEmitter.event;
     }
 
@@ -67,13 +65,11 @@ export class InteractiveChildProcess {
     }
 
     public writeLine(text: string): void {
-        this.writeLineToOutputChannel(text, stdInPrefix);
         this._childProc.stdin?.write(text + os.EOL);
     }
 
     private async startCore(): Promise<void> {
         this._startTime = Date.now();
-        const formattedArgs: string = this._options.args.join(' ');
 
         const workingDirectory = this._options.workingDirectory || os.tmpdir();
         const options: cp.SpawnOptions = {
@@ -85,19 +81,17 @@ export class InteractiveChildProcess {
             shell: false,
         };
 
-        this.writeLineToOutputChannel(`Starting executable: "${this._options.command}" ${formattedArgs}`);
+        this.writeLineToOutputChannel(l10n.t('Starting executable: "{command}"', { command: this._options.command }));
         this._childProc = cp.spawn(this._options.command, this._options.args, options);
 
         this._childProc.stdout?.on('data', (data: string | Buffer) => {
             const text = data.toString();
             this._onStdOutEmitter.fire(text);
-            this.writeLineToOutputChannel(text);
         });
 
         this._childProc.stderr?.on('data', (data: string | Buffer) => {
             const text = data.toString();
             this._onStdErrEmitter.fire(text);
-            this.writeLineToOutputChannel(text, stdErrPrefix);
         });
 
         this._childProc.on('error', (error: unknown) => {
@@ -111,13 +105,13 @@ export class InteractiveChildProcess {
             } else if (!this._isKilling) {
                 this.setError(`The process exited prematurely.`);
             }
+            this.writeLineToOutputChannel(l10n.t('Process exited: "{command}"', { command: this._options.command }));
         });
 
         // Wait for the process to start up
         // eslint-disable-next-line @typescript-eslint/no-misused-promises, no-async-promise-executor
         await new Promise<void>(async (resolve, reject) => {
             const started = Date.now();
-            // eslint-disable-next-line no-constant-condition
             while (true) {
                 if (!!this._error || this._isKilling) {
                     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
@@ -136,6 +130,10 @@ export class InteractiveChildProcess {
                 }
             }
         });
+
+        this.writeLineToOutputChannel(
+            l10n.t('Started executable: "{command}". Connecting to host…', { command: this._options.command }),
+        );
     }
 
     private writeLineToOutputChannel(text: string, displayPrefix?: string): void {

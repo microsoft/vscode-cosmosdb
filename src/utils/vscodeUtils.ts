@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import { type AzExtTreeItem } from '@microsoft/vscode-azext-utils';
-import * as fse from 'fs-extra';
+import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { DocDBAccountTreeItemBase } from '../docdb/tree/DocDBAccountTreeItemBase';
+import { type EditableFileSystemItem } from '../DatabasesFileSystem';
 import { ext } from '../extensionVariables';
-import { MongoAccountTreeItem } from '../mongo/tree/MongoAccountTreeItem';
-import { type IMongoDocument } from '../mongo/tree/MongoDocumentTreeItem';
+import { type TreeElement } from '../tree/TreeElement';
+import { pathExists } from './fs/pathExists';
 import { getRootPath } from './workspacUtils';
 
 export interface IDisposable {
@@ -70,35 +69,23 @@ async function getUniqueFileName(folderPath: string, fileName: string, fileExten
         const fullFileName: string = fileName + fileSuffix + fileExtension;
 
         const fullPath: string = path.join(folderPath, fullFileName);
-        const pathExists: boolean = await fse.pathExists(fullPath);
-        const editorExists: boolean =
+        const isPathExists: boolean = await pathExists(fullPath);
+        const isEditorExists: boolean =
             vscode.workspace.textDocuments.find((doc) => doc.uri.fsPath === fullPath) !== undefined;
-        if (!pathExists && !editorExists) {
+        if (!isPathExists && !isEditorExists) {
             return fullFileName;
         }
         count += 1;
     }
 
-    throw new Error('Could not find unique name for new file.');
+    throw new Error(l10n.t('Could not find unique name for new file.'));
 }
 
-export function getNodeEditorLabel(node: AzExtTreeItem): string {
-    const labels = [node.label];
-    while (node.parent) {
-        node = node.parent;
-        labels.unshift(node.label);
-        if (isAccountTreeItem(node)) {
-            break;
-        }
-    }
-    return labels.join('/');
+export function getNodeEditorLabel(node: TreeElement | EditableFileSystemItem): string {
+    return node.id;
 }
 
-function isAccountTreeItem(treeItem: AzExtTreeItem): boolean {
-    return treeItem instanceof MongoAccountTreeItem || treeItem instanceof DocDBAccountTreeItemBase;
-}
-
-export function getDocumentTreeItemLabel(document: IMongoDocument | ItemDefinition): string {
+export function getDocumentTreeItemLabel(document: ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
         // eslint-disable-next-line no-prototype-builtins
         if (document.hasOwnProperty(field)) {

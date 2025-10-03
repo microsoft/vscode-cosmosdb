@@ -20,7 +20,7 @@ const perfStats = {
 };
 
 export async function activate(ctx: vscode.ExtensionContext): Promise<apiUtils.AzureExtensionApiProvider> {
-    if (process.env['STOP_ON_ENTRY'] === "true") {
+    if (process.env['STOP_ON_ENTRY'] === 'true') {
         /**
          * It's useful to have a debugger statement here to stop the extension at the very beginning.
          * Otherwise, it's hard to attach the debugger to the extension host process before the extension starts.

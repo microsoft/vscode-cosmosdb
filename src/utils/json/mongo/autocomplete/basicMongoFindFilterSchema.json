@@ -1,161 +1,173 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "mongodb-generic-filter-schema",
-    "title": "MongoDB Generic Find Filter Schema",
-    "type": "object",
-    "additionalProperties": {
-      "oneOf": [
-        {
-          "title": "Direct Value",
-          "description": "A direct value for equality matching on any field.",
-          "examples": ["example", 42, true, null]
-        },
-        {
-          "title": "Operator-Based Query",
-          "$ref": "#/definitions/operatorObject",
-          "examples": [
-            { "$gt": 10 },
-            { "$lt": 100 },
-            { "$gte": 5 },
-            { "$lte": 50 },
-            { "$in": ["red", "blue", "green"] },
-            { "$nin": ["yellow", "purple"] },
-            { "$exists": false },
-            { "$regex": "^start.*end$" },
-            { "$gt": 10, "$lt": 20 },
-            { "$in": [1, 2, 3], "$nin": [4, 5] }
-          ]
-        }
-      ]
-    },
-    "properties": {
-      "$or": {
-        "type": "array",
-        "items": { "$ref": "#" },
-        "description": "Joins query clauses with a logical OR.",
-        "examples": [
-          [{ "status": "A" }, { "qty": { "$lt": 30 } }],
-          [{ "age": { "$gte": 18 } }, { "membership": "gold" }],
-          [{ "category": { "$in": ["electronics", "books"] } }, { "onSale": true }]
-        ]
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "mongodb-generic-filter-schema",
+  "title": "MongoDB Generic Find Filter Schema",
+  "type": "object",
+  "additionalProperties": {
+    "oneOf": [
+      {
+        "title": "Direct Value",
+        "description": "A direct value for equality matching on any field.",
+        "examples": ["example", 42, true, null]
       },
-      "$and": {
-        "type": "array",
-        "items": { "$ref": "#" },
-        "description": "Joins query clauses with a logical AND.",
-        "examples": [
-          [{ "status": "A" }, { "qty": { "$gt": 20, "$lt": 50 } }],
-          [{ "verified": true }, { "email": { "$exists": true } }],
-          [{ "price": { "$gte": 100 } }, { "stock": { "$lte": 500 } }]
-        ]
-      },
-      "$not": {
-        "oneOf": [{ "$ref": "#" }],
-        "description": "Inverts the effect of a query expression.",
-        "examples": [
-          { "price": { "$gt": 100 } },
-          { "status": { "$eq": "inactive" } },
-          { "category": { "$in": ["outdated", "discontinued"] } }
-        ]
-      },
-      "$nor": {
-        "type": "array",
-        "items": { "$ref": "#" },
-        "description": "Joins query clauses with a logical NOR.",
-        "examples": [
-          [{ "price": 1.99 }, { "qty": { "$lt": 20 } }],
-          [{ "status": "A" }, { "onSale": true }],
-          [{ "rating": { "$gte": 4.5 } }, { "reviews": { "$gt": 100 } }]
-        ]
-      }
-    },
-    "definitions": {
-      "operatorObject": {
-        "type": "object",
-        "properties": {
-          "$eq": {
-            "description": "Matches values that are equal to a specified value.",
-            "examples": ["active", 100, true]
-          },
-          "$ne": {
-            "description": "Matches all values that are not equal to a specified value.",
-            "examples": ["inactive", 0, false]
-          },
-          "$gt": {
-            "description": "Matches values that are greater than a specified value.",
-            "examples": [10, 100]
-          },
-          "$gte": {
-            "description": "Matches values that are greater than or equal to a specified value.",
-            "examples": [5, 50]
-          },
-          "$lt": {
-            "description": "Matches values that are less than a specified value.",
-            "examples": [20, 80]
-          },
-          "$lte": {
-            "description": "Matches values that are less than or equal to a specified value.",
-            "examples": [15, 75]
-          },
-          "$in": {
-            "type": "array",
-            "description": "Matches any of the values specified in an array.",
-            "examples": [["red", "green", "blue"], [1, 2, 3], ["small", "medium", "large"]]
-          },
-          "$nin": {
-            "type": "array",
-            "description": "Matches none of the values specified in an array.",
-            "examples": [["yellow", "purple"], [4, 5, 6], ["extra-large", "xxl"]]
-          },
-          "$exists": {
-            "type": "boolean",
-            "description": "Matches documents that have the specified field.",
-            "examples": [true, false]
-          },
-          "$regex": {
-            "description": "Provides regular expression capabilities for pattern matching strings.",
-            "examples": ["^start", "end$", ".*pattern.*", "^[A-Z]{3}[0-9]{2}$"]
-          },
-          "$size": {
-            "type": "integer",
-            "description": "Matches any array with the specified number of elements.",
-            "examples": [0, 5, 10]
-          },
-          "$type": {
-            "description": "Matches values based on their BSON type.",
-            "examples": [1, "string", "object"]
-          },
-          "$all": {
-            "type": "array",
-            "description": "Matches arrays that contain all elements specified in the query.",
-            "examples": [["red", "blue"], [10, 20], ["feature1", "feature2"]]
-          },
-          "$elemMatch": {
-            "type": "object",
-            "description": "Matches documents that contain an array field with at least one element that matches the specified query criteria.",
-            "examples": [
-              { "score": { "$gt": 80 } },
-              { "dimensions": { "$lt": 50, "$gt": 20 } },
-              { "attributes": { "color": "red", "size": "M" } }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "description": "An object containing MongoDB query operators and their corresponding values.",
-        "minProperties": 1,
+      {
+        "title": "Operator-Based Query",
+        "$ref": "#/definitions/operatorObject",
         "examples": [
           { "$gt": 10 },
           { "$lt": 100 },
           { "$gte": 5 },
           { "$lte": 50 },
-          { "$in": ["value1", "value2"] },
+          { "$in": ["red", "blue", "green"] },
+          { "$nin": ["yellow", "purple"] },
+          { "$exists": false },
+          { "$regex": "^start.*end$" },
           { "$gt": 10, "$lt": 20 },
-          { "$exists": true },
-          { "$regex": "^[a-z]+$" },
-          { "$in": [1, 2, 3], "$nin": [4, 5, 6] },
-          { "$elemMatch": { "score": { "$gte": 80 } } }
+          { "$in": [1, 2, 3], "$nin": [4, 5] }
         ]
       }
+    ]
+  },
+  "properties": {
+    "$or": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "Joins query clauses with a logical OR.",
+      "examples": [
+        [{ "status": "A" }, { "qty": { "$lt": 30 } }],
+        [{ "age": { "$gte": 18 } }, { "membership": "gold" }],
+        [{ "category": { "$in": ["electronics", "books"] } }, { "onSale": true }]
+      ]
     },
-    "description": "Generic schema for MongoDB find query filters without knowledge of specific fields."
-  }
+    "$and": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "Joins query clauses with a logical AND.",
+      "examples": [
+        [{ "status": "A" }, { "qty": { "$gt": 20, "$lt": 50 } }],
+        [{ "verified": true }, { "email": { "$exists": true } }],
+        [{ "price": { "$gte": 100 } }, { "stock": { "$lte": 500 } }]
+      ]
+    },
+    "$not": {
+      "oneOf": [{ "$ref": "#" }],
+      "description": "Inverts the effect of a query expression.",
+      "examples": [
+        { "price": { "$gt": 100 } },
+        { "status": { "$eq": "inactive" } },
+        { "category": { "$in": ["outdated", "discontinued"] } }
+      ]
+    },
+    "$nor": {
+      "type": "array",
+      "items": { "$ref": "#" },
+      "description": "Joins query clauses with a logical NOR.",
+      "examples": [
+        [{ "price": 1.99 }, { "qty": { "$lt": 20 } }],
+        [{ "status": "A" }, { "onSale": true }],
+        [{ "rating": { "$gte": 4.5 } }, { "reviews": { "$gt": 100 } }]
+      ]
+    }
+  },
+  "definitions": {
+    "operatorObject": {
+      "type": "object",
+      "properties": {
+        "$eq": {
+          "description": "Matches values that are equal to a specified value.",
+          "examples": ["active", 100, true]
+        },
+        "$ne": {
+          "description": "Matches all values that are not equal to a specified value.",
+          "examples": ["inactive", 0, false]
+        },
+        "$gt": {
+          "description": "Matches values that are greater than a specified value.",
+          "examples": [10, 100]
+        },
+        "$gte": {
+          "description": "Matches values that are greater than or equal to a specified value.",
+          "examples": [5, 50]
+        },
+        "$lt": {
+          "description": "Matches values that are less than a specified value.",
+          "examples": [20, 80]
+        },
+        "$lte": {
+          "description": "Matches values that are less than or equal to a specified value.",
+          "examples": [15, 75]
+        },
+        "$in": {
+          "type": "array",
+          "description": "Matches any of the values specified in an array.",
+          "examples": [
+            ["red", "green", "blue"],
+            [1, 2, 3],
+            ["small", "medium", "large"]
+          ]
+        },
+        "$nin": {
+          "type": "array",
+          "description": "Matches none of the values specified in an array.",
+          "examples": [
+            ["yellow", "purple"],
+            [4, 5, 6],
+            ["extra-large", "xxl"]
+          ]
+        },
+        "$exists": {
+          "type": "boolean",
+          "description": "Matches documents that have the specified field.",
+          "examples": [true, false]
+        },
+        "$regex": {
+          "description": "Provides regular expression capabilities for pattern matching strings.",
+          "examples": ["^start", "end$", ".*pattern.*", "^[A-Z]{3}[0-9]{2}$"]
+        },
+        "$size": {
+          "type": "integer",
+          "description": "Matches any array with the specified number of elements.",
+          "examples": [0, 5, 10]
+        },
+        "$type": {
+          "description": "Matches values based on their BSON type.",
+          "examples": [1, "string", "object"]
+        },
+        "$all": {
+          "type": "array",
+          "description": "Matches arrays that contain all elements specified in the query.",
+          "examples": [
+            ["red", "blue"],
+            [10, 20],
+            ["feature1", "feature2"]
+          ]
+        },
+        "$elemMatch": {
+          "type": "object",
+          "description": "Matches documents that contain an array field with at least one element that matches the specified query criteria.",
+          "examples": [
+            { "score": { "$gt": 80 } },
+            { "dimensions": { "$lt": 50, "$gt": 20 } },
+            { "attributes": { "color": "red", "size": "M" } }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "description": "An object containing MongoDB query operators and their corresponding values.",
+      "minProperties": 1,
+      "examples": [
+        { "$gt": 10 },
+        { "$lt": 100 },
+        { "$gte": 5 },
+        { "$lte": 50 },
+        { "$in": ["value1", "value2"] },
+        { "$gt": 10, "$lt": 20 },
+        { "$exists": true },
+        { "$regex": "^[a-z]+$" },
+        { "$in": [1, 2, 3], "$nin": [4, 5, 6] },
+        { "$elemMatch": { "score": { "$gte": 80 } } }
+      ]
+    }
+  },
+  "description": "Generic schema for MongoDB find query filters without knowledge of specific fields."
+}

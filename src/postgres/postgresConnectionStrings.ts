@@ -9,7 +9,7 @@ import { ParsedConnectionString } from '../ParsedConnectionString';
 import { nonNullProp } from '../utils/nonNull';
 
 export function parsePostgresConnectionString(connectionString: string): ParsedPostgresConnectionString {
-    const config: ConnectionOptions = parse(connectionString.trim());
+    const config: ConnectionOptions = parse(connectionString.trim(), {});
     return new ParsedPostgresConnectionString(connectionString, config);
 }
 
@@ -26,7 +26,7 @@ export function createPostgresConnectionString(
     password?: string,
     databaseName?: string,
 ): string {
-    let connectionString: string = `postgres://`;
+    let connectionString = 'postgres://';
     if (username) {
         const encodedUsername = encodeURIComponent(username);
         if (password) {
@@ -44,14 +44,14 @@ export function createPostgresConnectionString(
     return connectionString;
 }
 
-export function copyPostgresConnectionString(
+export function buildPostgresConnectionString(
     hostName: string,
     port: string = postgresDefaultPort,
     username?: string,
     password?: string,
     databaseName?: string,
 ): string {
-    let connectionString: string = `postgres://`;
+    let connectionString = 'postgres://';
     if (username) {
         const encodedUsername = encodeURIComponent(username);
         if (password) {

@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { type WebviewApi } from 'vscode-webview';
 import { isTransportMessage, type Transport, type TransportMessage } from './Transport';
 
@@ -35,7 +36,7 @@ export class WebviewTransport<StateType = unknown> implements Transport {
     private handleMessage(msg: unknown): void {
         try {
             if (!isTransportMessage(msg)) {
-                console.warn(`[WebviewTransport] Received message that is not a transport message`, msg);
+                console.warn('[WebviewTransport] Received message that is not a transport message', msg);
                 return;
             }
 
@@ -45,11 +46,11 @@ export class WebviewTransport<StateType = unknown> implements Transport {
                 try {
                     cb(message);
                 } catch (error) {
-                    console.error(`[WebviewTransport] Error occurred calling callback`, error);
+                    console.error(l10n.t('[WebviewTransport] Error occurred calling callback'), error);
                 }
             });
         } catch (error) {
-            console.error(`[WebviewTransport] Error occurred handling received message`, error);
+            console.error(l10n.t('[WebviewTransport] Error occurred handling received message'), error);
         }
     }
 }

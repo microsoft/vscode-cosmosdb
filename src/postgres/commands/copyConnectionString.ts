@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { postgresFlexibleFilter, postgresSingleFilter } from '../../constants';
 import { ext } from '../../extensionVariables';
-import { localize } from '../../utils/localize';
-import { addDatabaseToConnectionString, copyPostgresConnectionString } from '../postgresConnectionStrings';
+import { addDatabaseToConnectionString, buildPostgresConnectionString } from '../postgresConnectionStrings';
 import { PostgresDatabaseTreeItem } from '../tree/PostgresDatabaseTreeItem';
 import { checkAuthentication } from './checkAuthentication';
 
@@ -25,7 +25,7 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     let connectionString: string;
     if (node.parent.azureName) {
         const parsedCS = await node.parent.getFullConnectionString();
-        connectionString = copyPostgresConnectionString(
+        connectionString = buildPostgresConnectionString(
             parsedCS.hostName,
             parsedCS.port,
             parsedCS.username,
@@ -37,9 +37,6 @@ export async function copyConnectionString(context: IActionContext, node: Postgr
     }
 
     await vscode.env.clipboard.writeText(connectionString);
-    const message = localize(
-        'copiedPostgresConnectStringMsg',
-        'The connection string has been copied to the clipboard',
-    );
+    const message = l10n.t('The connection string has been copied to the clipboard');
     void vscode.window.showInformationMessage(message);
 }

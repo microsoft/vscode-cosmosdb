@@ -1,0 +1,43 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { createContextValue } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
+import { type Experience } from '../../AzureDBExperiences';
+import { type TreeElement } from '../TreeElement';
+import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { type TreeElementWithExperience } from '../TreeElementWithExperience';
+import { type CosmosDBStoredProcedureModel } from './models/CosmosDBStoredProcedureModel';
+
+export abstract class CosmosDBStoredProcedureResourceItem
+    implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
+{
+    public readonly id: string;
+    public readonly contextValue: string = 'treeItem.storedProcedure';
+
+    protected constructor(
+        public readonly model: CosmosDBStoredProcedureModel,
+        public readonly experience: Experience,
+    ) {
+        this.id = `${model.accountInfo.id}/${model.database.id}/${model.container.id}/storedProcedures/${model.procedure.id}`;
+        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+    }
+
+    getTreeItem(): vscode.TreeItem {
+        return {
+            id: this.id,
+            contextValue: this.contextValue,
+            iconPath: new vscode.ThemeIcon('server-process'),
+            label: this.model.procedure.id,
+            collapsibleState: vscode.TreeItemCollapsibleState.None,
+            command: {
+                title: l10n.t('Open Stored Procedure'),
+                command: 'cosmosDB.openStoredProcedure',
+                arguments: [this],
+            },
+        };
+    }
+}

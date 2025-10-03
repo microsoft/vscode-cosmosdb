@@ -3,61 +3,67 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type AzExtTreeDataProvider,
-    type AzExtTreeItem,
-    type IAzExtLogOutputChannel,
-    type TreeElementStateManager,
-} from '@microsoft/vscode-azext-utils';
+import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
+import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
 import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostapi';
-import { type AzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
-import { type ExtensionContext, type SecretStorage, type TreeView } from 'vscode';
+import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
-import { type NoSqlCodeLensProvider } from './docdb/NoSqlCodeLensProvider';
-import { type MongoDBLanguageClient } from './mongo/languageClient';
-import { type MongoCodeLensProvider } from './mongo/services/MongoCodeLensProvider';
-import { type MongoDatabaseTreeItem } from './mongo/tree/MongoDatabaseTreeItem';
-import { type MongoClustersBranchDataProvider } from './mongoClusters/tree/MongoClustersBranchDataProvider';
-import { type MongoClustersWorkspaceBranchDataProvider } from './mongoClusters/tree/workspace/MongoClustersWorkbenchBranchDataProvider';
+import { type NoSqlCodeLensProvider } from './cosmosdb/NoSqlCodeLensProvider';
+import { type MongoDBLanguageClient } from './documentdb/scrapbook/languageClient';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
-import { type AttachedAccountsTreeItem } from './tree/AttachedAccountsTreeItem';
-import { type AzureAccountTreeItemWithAttached } from './tree/AzureAccountTreeItemWithAttached';
-import { type SharedWorkspaceResourceProvider } from './tree/workspace/sharedWorkspaceResourceProvider';
+import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { type MongoVCoreBranchDataProvider } from './tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreBranchDataProvider';
+import { type AttachedAccountsTreeItem } from './tree/v1-legacy-api/AttachedAccountsTreeItem';
+import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
+import { type DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
+import { type AccountsItem } from './tree/workspace-view/documentdb/AccountsItem';
+import { type ClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
  */
 export namespace ext {
-    export let connectedMongoDB: MongoDatabaseTreeItem | undefined;
     export let connectedPostgresDB: PostgresDatabaseTreeItem | undefined;
-    export let context: ExtensionContext;
+    export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
+
+    export let context: vscode.ExtensionContext;
     export let outputChannel: IAzExtLogOutputChannel;
-    export let tree: AzExtTreeDataProvider;
-    export let treeView: TreeView<AzExtTreeItem>;
     export let attachedAccountsNode: AttachedAccountsTreeItem;
     export let isBundle: boolean | undefined;
-    export let azureAccountTreeItem: AzureAccountTreeItemWithAttached;
-    export let secretStorage: SecretStorage;
-    export let postgresCodeLensProvider: PostgresCodeLensProvider | undefined;
+    export let secretStorage: vscode.SecretStorage;
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;
-    export let mongoCodeLensProvider: MongoCodeLensProvider;
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
-    export let rgApiV2: AzureResourcesExtensionApi;
+
+    // Since the Azure Resources extension did not update API interface, but added a new interface with activity
+    // we have to use the new interface AzureResourcesExtensionApiWithActivity instead of AzureResourcesExtensionApi
+    export let rgApiV2: AzureResourcesExtensionApiWithActivity;
 
     export let state: TreeElementStateManager;
 
-    // used for the resources tree
-    export let mongoClustersBranchDataProvider: MongoClustersBranchDataProvider;
+    // TODO: To avoid these stupid variables below the rgApiV2 should have the following public fields (but they are private):
+    // - AzureResourceProviderManager,
+    // - AzureResourceBranchDataProviderManager,
+    // - WorkspaceResourceProviderManager,
+    // - WorkspaceResourceBranchDataProviderManager,
 
-    // used for the workspace: this is the general provider
-    export let workspaceDataProvider: SharedWorkspaceResourceProvider;
-
+    // used for the resources tree and the workspace tree REFRESH
+    export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
     // used for the workspace: these are the dedicated providers
-    export let mongoClustersWorkspaceBranchDataProvider: MongoClustersWorkspaceBranchDataProvider;
+    export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
+    export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
+
+    // used for the resources tree
+    export let mongoVCoreBranchDataProvider: MongoVCoreBranchDataProvider;
+    // used for the workspace: these are the dedicated providers
+    export let mongoClustersWorkspaceBranchDataProvider:
+        | ClustersWorkspaceBranchDataProvider
+        | DisabledClustersWorkspaceBranchDataProvider;
+    export let mongoClusterWorkspaceBranchDataResource: AccountsItem;
 
     export namespace settingsKeys {
         export const mongoShellPath = 'mongo.shell.path';
@@ -68,6 +74,8 @@ export namespace ext {
         export const batchSize = 'azureDatabases.batchSize';
         export const confirmationStyle = 'azureDatabases.confirmationStyle';
         export const showOperationSummaries = 'azureDatabases.showOperationSummaries';
+        export const cosmosDbAuthentication = 'azureDatabases.cosmosDB.preferredAuthenticationMethod';
+        export const authManagedIdentityClientId = 'azureDatabases.authentication.managedIdentity.clientID';
 
         export namespace vsCode {
             export const proxyStrictSSL = 'http.proxyStrictSSL';

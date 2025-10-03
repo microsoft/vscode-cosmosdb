@@ -3,16 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseError } from '@microsoft/vscode-azext-utils';
+import { nonNullProp, parseError } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
+import { ObjectId } from 'bson';
 import { Position } from 'vscode';
-import {
-    findCommandAtPosition,
-    getAllCommandsFromText,
-    nonNullProp,
-    ObjectId,
-    type MongoCommand,
-} from '../extension.bundle';
+import { findCommandAtPosition, getAllCommandsFromText, type MongoCommand } from '../extension.bundle';
 
 function expectSingleCommand(text: string): MongoCommand {
     const commands = getAllCommandsFromText(text);
@@ -238,7 +233,8 @@ suite('scrapbook parsing Tests', () => {
                 collection: 'heros',
                 name: 'find',
                 args: [],
-                firstErrorText: "mismatched input 'hello' expecting <EOF>",
+                firstErrorText:
+                    "mismatched input 'hello' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', 'db'}",
             },
         );
     });
@@ -252,7 +248,8 @@ suite('scrapbook parsing Tests', () => {
             collection: undefined,
             name: undefined,
             args: undefined,
-            firstErrorText: "mismatched input 'hello' expecting <EOF>",
+            firstErrorText:
+                "mismatched input 'hello' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', 'db'}",
         });
     });
 
@@ -318,7 +315,7 @@ suite('scrapbook parsing Tests', () => {
             collection: undefined,
             name: undefined,
             args: undefined,
-            firstErrorText: "mismatched input '.' expecting <EOF>",
+            firstErrorText: "mismatched input '.' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', 'db'}",
         });
 
         // Just make sure doesn't throw
@@ -1018,7 +1015,8 @@ suite('scrapbook parsing Tests', () => {
             collection: 'timesheets',
             name: 'sort',
             args: [{ name: 'Andy' }, { age: 1 }],
-            firstErrorText: "mismatched input 'skip' expecting <EOF>",
+            firstErrorText:
+                "mismatched input 'skip' expecting {<EOF>, SingleLineComment, MultiLineComment, ';', '.', 'db'}",
         });
     });
 

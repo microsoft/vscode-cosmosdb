@@ -238,7 +238,25 @@
         "name": "cosmosdb",
         "fullName": "CosmosDB Assistant",
         "description": "AI-powered assistant for Azure Cosmos DB help, best practices, and code examples",
-        "isSticky": true
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "connect",
+            "description": "Connect to a CosmosDB container"
+          },
+          {
+            "name": "editQuery",
+            "description": "Edit query with LLM suggestions and user confirmation"
+          },
+          {
+            "name": "info",
+            "description": "Show connection information"
+          },
+          {
+            "name": "help",
+            "description": "Show available commands and help"
+          }
+        ]
       }
     ],
     "languages": [

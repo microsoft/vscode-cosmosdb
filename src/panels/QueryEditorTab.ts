@@ -40,7 +40,7 @@ export class QueryEditorTab extends BaseTab {
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    private readonly sessions = new Map<string, QuerySession>();
+    public readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
@@ -101,6 +101,16 @@ export class QueryEditorTab extends BaseTab {
 
         super.dispose();
     }
+
+    public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
+        const activeSession = this.sessions.values().next().value as QuerySession | undefined;
+        const result = activeSession?.sessionResult;
+        return result?.getSerializedResult(1);
+    };
+
+    public getConnection = (): NoSqlQueryConnection | undefined => {
+        return this.connection;
+    };
 
     protected initController() {
         super.initController();
@@ -377,6 +387,8 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async runQuery(query: string, options: QueryMetadata): Promise<void> {
+        this.query = query;
+
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {

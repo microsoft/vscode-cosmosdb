@@ -34,7 +34,7 @@ export class QuerySession {
     private readonly endpoint: string;
     private readonly masterKey: string;
 
-    private readonly sessionResult: QuerySessionResult;
+    public readonly sessionResult: QuerySessionResult;
 
     private abortController: AbortController | null = null;
     private iterator: QueryIterator<QueryResultRecord> | null = null;

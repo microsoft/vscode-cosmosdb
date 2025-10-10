@@ -97,22 +97,12 @@ export class CosmosDbOperationsService {
     public async executeOperation(operationName: string, parameters: Record<string, unknown> = {}): Promise<string> {
         try {
             switch (operationName) {
-                case 'connect':
-                    return await this.handleConnect(parameters.target as string);
-
                 case 'editQuery':
                     return await this.handleEditQuery(
                         parameters.currentQuery as string,
                         parameters.userPrompt as string,
                         parameters.explanation as string,
                     );
-
-                case 'getConnectionInfo':
-                    return this.handleGetConnectionInfo();
-
-                case 'listDatabases':
-                    return this.handleListDatabases();
-
                 case 'explainQuery':
                     return await this.handleExplainQuery(
                         parameters.currentQuery as string,
@@ -125,39 +115,6 @@ export class CosmosDbOperationsService {
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return `❌ Error executing ${operationName}: ${errorMessage}`;
-        }
-    }
-
-    private async handleConnect(target?: string): Promise<string> {
-        // Check if there's already an active query editor with connection
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-        if (activeQueryEditors.length > 0) {
-            const connection = this.getConnectionFromQueryTab(activeQueryEditors[0]);
-            if (connection) {
-                return `✅ Already connected via active query editor:
-- **Database:** ${connection.databaseId}
-- **Container:** ${connection.containerId}
-- **Endpoint:** ${connection.endpoint}
-
-To connect to a different container, open a new query editor from the Azure extension.`;
-            }
-        }
-
-        try {
-            // Acknowledge the target if provided and invoke the connection command
-            const targetMessage = target ? ` Looking for "${target}".` : '';
-            await vscode.commands.executeCommand('cosmosDB.newConnection');
-            return `🔗 **Connection Dialog Opened**${targetMessage}
-
-Please select your CosmosDB account and container from the connection dialog that just opened. Once connected, you can use commands like \`editQuery\` to enhance your queries.`;
-        } catch (error) {
-            return `❌ **Failed to open connection dialog**
-
-Error: ${error instanceof Error ? error.message : String(error)}
-
-You can manually connect by:
-1. Opening the Command Palette (\`Ctrl+Shift+P\`)
-2. Running: \`Cosmos DB: Add Connection\`${target ? `\n\n*Looking for: "${target}"*` : ''}`;
         }
     }
 
@@ -243,7 +200,6 @@ ${suggestion}
 Would you like to apply this change?`;
 
             const acceptItem: vscode.MessageItem = { title: 'Apply Change' };
-            const rejectItem: vscode.MessageItem = { title: 'Cancel' };
             const viewBothItem: vscode.MessageItem = { title: 'Open Both Queries' };
 
             const choice = await vscode.window.showInformationMessage(
@@ -251,7 +207,6 @@ Would you like to apply this change?`;
                 { modal: true },
                 acceptItem,
                 viewBothItem,
-                rejectItem,
             );
 
             if (choice === acceptItem) {
@@ -280,46 +235,6 @@ No changes were made to your query.`;
         } catch (error) {
             throw new Error(`Failed to edit query: ${error instanceof Error ? error.message : String(error)}`);
         }
-    }
-
-    private handleGetConnectionInfo(): string {
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-        if (activeQueryEditors.length === 0) {
-            return '❌ No active query editor found. Please open a query editor first to see connection information.';
-        }
-
-        const connection = this.getConnectionFromQueryTab(activeQueryEditors[0]);
-        if (!connection) {
-            return '❌ No connection found in the active query editor. Please connect to a CosmosDB container first.';
-        }
-
-        return `✅ **Connected to:**
-- **Database:** ${connection.databaseId}
-- **Container:** ${connection.containerId}
-- **Endpoint:** ${connection.endpoint}
-- **Is Emulator:** ${connection.isEmulator ? 'Yes' : 'No'}`;
-    }
-
-    private handleListDatabases(): string {
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-        if (activeQueryEditors.length === 0) {
-            throw new Error('No active query editor found. Please open a query editor first.');
-        }
-
-        const connection = this.getConnectionFromQueryTab(activeQueryEditors[0]);
-        if (!connection) {
-            throw new Error(
-                'No connection found in the active query editor. Please connect to a CosmosDB container first.',
-            );
-        }
-
-        // This would require access to the account-level client
-        // For now, return current database info
-        return `📊 **Current Database Information:**
-- **Database ID:** ${connection.databaseId}
-- **Container ID:** ${connection.containerId}
-
-*Note: To list all databases, you would need account-level access.*`;
     }
 
     /**
@@ -580,7 +495,7 @@ Make the explanation clear and educational, suitable for developers learning Cos
         // Basic query structure analysis
         if (queryUpper.includes('SELECT')) {
             if (queryUpper.includes('SELECT *')) {
-                explanation += '• **SELECT \***: Retrieves all properties from documents\n';
+                explanation += '• **SELECT * **: Retrieves all properties from documents\n';
             } else if (queryUpper.includes('SELECT VALUE')) {
                 explanation += '• **SELECT VALUE**: Returns the raw values instead of objects\n';
             } else {

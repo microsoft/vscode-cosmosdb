@@ -147,12 +147,12 @@ export class CosmosDbChatParticipant {
 
 User request: "${originalPrompt}"
 
-Available operations: connect, editQuery, getConnectionInfo, help
+Available operations: connect, editQuery, explainQuery, help
 
 Return JSON with operation and parameters. Examples:
 - "connect to languye-nosql" → {"operation": "connect", "parameters": {"target": "languye-nosql"}}
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
-- "what am I connected to?" → {"operation": "getConnectionInfo", "parameters": {}}
+- "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
 - "help" → {"operation": "help", "parameters": {}}
 
 Only return valid JSON, no other text, no end-of-line characters:`;
@@ -349,6 +349,7 @@ Only return valid JSON, no other text:`;
             connect: ['connect', 'connection', 'database', 'container'],
             info: ['info', 'status', 'current', 'connected', 'what', 'where'],
             editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
+            explainQuery: ['explain', 'describe', 'analyze', 'breakdown', 'understand', 'what does', 'how does'],
             help: ['help', 'commands', 'what can', 'how to'],
         };
 
@@ -389,8 +390,6 @@ Only return valid JSON, no other text:`;
                     userPrompt: request.prompt, // Pass the full user prompt for LLM processing
                     explanation: 'Query optimization based on AI analysis',
                 };
-            } else if (intent.operation === 'info') {
-                operationName = 'getConnectionInfo';
             }
 
             const result = await operationsService.executeOperation(operationName, parameters);
@@ -445,6 +444,9 @@ Only return valid JSON, no other text:`;
                 case 'editQuery':
                     operationName = 'editQuery';
                     break;
+                case 'explainQuery':
+                    operationName = 'explainQuery';
+                    break;
                 case 'info':
                     operationName = 'getConnectionInfo';
                     break;
@@ -478,6 +480,11 @@ Only return valid JSON, no other text:`;
                         userPrompt: request.prompt || 'optimize this query',
                         explanation: 'Standard query improvements',
                     };
+                } else if (operationName === 'explainQuery') {
+                    parameters = {
+                        currentQuery: '', // Will be detected from active query editor
+                        userPrompt: request.prompt || 'explain this query',
+                    };
                 }
             }
             const result = await operationsService.executeOperation(operationName, parameters);
@@ -505,6 +512,7 @@ Only return valid JSON, no other text:`;
 ### **Quick Commands:**
 - \`@cosmosdb /connect\` - Connect to a CosmosDB container
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
+- \`@cosmosdb /explainQuery\` - Explain the current query with AI analysis
 - \`@cosmosdb /info\` - Show connection information
 - \`@cosmosdb /help\` - Show this help
 
@@ -513,12 +521,15 @@ You can also use natural language:
 - "connect to my database"
 - "improve my current query" (requires active query editor)
 - "optimize this query" (modifies query in active editor)
+- "explain this query" (analyzes current query in active editor)
+- "what does my query do?" (explains query purpose and components)
 - "what am I connected to?"
 - "enhance my SQL statement" (updates active query editor)
 
 ### **Current Features:**
 - 🔗 Connection management
 - 🤖 AI-powered query optimization
+- 📊 AI-powered query explanation and analysis
 - 🎯 Context-aware responses
 - 💡 Smart suggestions with user confirmation
 - 📝 Query editor integration

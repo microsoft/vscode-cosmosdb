@@ -255,6 +255,10 @@
           {
             "name": "help",
             "description": "Show available commands and help"
+          },
+          {
+            "name": "explainQuery",
+            "description": "Explain the current query with AI analysis"
           }
         ]
       }

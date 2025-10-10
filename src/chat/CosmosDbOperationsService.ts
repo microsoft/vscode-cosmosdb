@@ -70,6 +70,24 @@ export class CosmosDbOperationsService {
                 description: 'List available databases in the current account',
                 parameters: [],
             },
+            {
+                name: 'explainQuery',
+                description: 'Explain the current query from active query editor with AI analysis',
+                parameters: [
+                    {
+                        name: 'currentQuery',
+                        type: 'string',
+                        required: false,
+                        description: 'Current query to explain (auto-detected from active session)',
+                    },
+                    {
+                        name: 'userPrompt',
+                        type: 'string',
+                        required: false,
+                        description: 'Additional context or specific questions about the query',
+                    },
+                ],
+            },
         ];
     }
 
@@ -94,6 +112,12 @@ export class CosmosDbOperationsService {
 
                 case 'listDatabases':
                     return this.handleListDatabases();
+
+                case 'explainQuery':
+                    return await this.handleExplainQuery(
+                        parameters.currentQuery as string,
+                        parameters.userPrompt as string,
+                    );
 
                 default:
                     throw new Error(`Unknown operation: ${operationName}`);
@@ -407,6 +431,197 @@ Return only valid JSON, no other text:`;
         }
 
         return improvedQuery;
+    }
+
+    /**
+     * Explain the current query using LLM analysis
+     */
+    private async handleExplainQuery(currentQuery?: string, userPrompt?: string): Promise<string> {
+        // Check if there's an active query editor
+        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+        if (activeQueryEditors.length === 0) {
+            throw new Error(
+                'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+            );
+        }
+
+        const activeEditor = activeQueryEditors[0]; // Use the first active editor
+        const connection = this.getConnectionFromQueryTab(activeEditor);
+        if (!connection) {
+            throw new Error(
+                'No connection found in the active query editor. Please connect to a CosmosDB container first.',
+            );
+        }
+
+        // Get comprehensive context from the active query session
+        const currentResult = activeEditor.getCurrentQueryResults();
+        const sessionQuery = currentResult?.query;
+        const hasResults = currentResult?.documents && currentResult.documents.length > 0;
+        const requestCharge = currentResult?.requestCharge;
+        const documentCount = currentResult?.documents?.length || 0;
+
+        // Use session query as primary source, fallback to parameter
+        const actualCurrentQuery = sessionQuery || currentQuery;
+
+        if (!actualCurrentQuery) {
+            return 'There is no query to analyze';
+        }
+
+        try {
+            // Generate LLM explanation
+            const explanation = await this.generateQueryExplanationWithLLM(
+                actualCurrentQuery,
+                userPrompt || 'Explain this query',
+                connection,
+                currentResult,
+            );
+
+            // Build context for better user understanding
+            let queryContext = `## 📊 Query Analysis\n\n`;
+            queryContext += `**Database:** ${connection.databaseId}\n`;
+            queryContext += `**Container:** ${connection.containerId}\n`;
+            if (hasResults) {
+                queryContext += `**Last Execution:** ${documentCount} documents returned`;
+                if (requestCharge) {
+                    queryContext += `, ${requestCharge.toFixed(2)} RUs consumed`;
+                }
+                queryContext += `\n`;
+            }
+            queryContext += `\n`;
+
+            return `${queryContext}**Query:**\n\`\`\`sql\n${actualCurrentQuery}\n\`\`\`\n\n**Explanation:**\n${explanation}`;
+        } catch (error) {
+            console.warn('LLM query explanation failed, using fallback:', error);
+            const fallbackExplanation = this.generateFallbackExplanation(actualCurrentQuery);
+
+            let queryContext = `## 📊 Query Analysis\n\n`;
+            queryContext += `**Database:** ${connection.databaseId}\n`;
+            queryContext += `**Container:** ${connection.containerId}\n\n`;
+
+            return `${queryContext}**Query:**\n\`\`\`sql\n${actualCurrentQuery}\n\`\`\`\n\n**Basic Explanation:**\n${fallbackExplanation}\n\n*Note: Advanced AI analysis unavailable - using basic explanation.*`;
+        }
+    }
+
+    /**
+     * Generate query explanation using LLM
+     */
+    private async generateQueryExplanationWithLLM(
+        query: string,
+        userPrompt: string,
+        connection: NoSqlQueryConnection,
+        queryResult?: { documents?: unknown[]; requestCharge?: number; query?: string },
+    ): Promise<string> {
+        try {
+            // Get available language models
+            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            if (models.length === 0) {
+                throw new Error('No language model available');
+            }
+
+            const model = models[0];
+
+            // Build context for LLM
+            let contextInfo = `Database: ${connection.databaseId}, Container: ${connection.containerId}`;
+            if (queryResult?.documents) {
+                contextInfo += `, Last execution: ${queryResult.documents.length} documents`;
+                if (queryResult.requestCharge) {
+                    contextInfo += `, ${queryResult.requestCharge.toFixed(2)} RUs consumed`;
+                }
+                // Add sample document structure if available
+                if (queryResult.documents.length > 0) {
+                    const sampleDoc = queryResult.documents[0];
+                    const sampleStructure = JSON.stringify(sampleDoc, null, 2).substring(0, 300);
+                    contextInfo += `\n\nSample document structure:\n${sampleStructure}...`;
+                }
+            }
+
+            const llmPrompt = `You are a Cosmos DB query expert. Please explain the following NoSQL query in detail.
+
+**Context:** ${contextInfo}
+
+**Query to Explain:**
+\`\`\`sql
+${query}
+\`\`\`
+
+**User's Question/Context:** ${userPrompt}
+
+**Please provide a comprehensive explanation that includes:**
+1. **Purpose**: What this query does
+2. **Components**: Break down each part of the query (SELECT, FROM, WHERE, etc.)
+3. **Performance**: RU cost considerations and optimization suggestions
+4. **Results**: What kind of data this query returns
+5. **Best Practices**: Any recommendations for improvement
+
+Make the explanation clear and educational, suitable for developers learning Cosmos DB queries.`;
+
+            const messages = [vscode.LanguageModelChatMessage.User(llmPrompt)];
+            const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+
+            let explanation = '';
+            for await (const fragment of response.text) {
+                explanation += fragment;
+            }
+
+            return explanation.trim();
+        } catch (error) {
+            console.error('LLM query explanation failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate fallback explanation when LLM is unavailable
+     */
+    private generateFallbackExplanation(query: string): string {
+        const queryUpper = query.toUpperCase();
+        let explanation = '';
+
+        // Basic query structure analysis
+        if (queryUpper.includes('SELECT')) {
+            if (queryUpper.includes('SELECT *')) {
+                explanation += '• **SELECT \***: Retrieves all properties from documents\n';
+            } else if (queryUpper.includes('SELECT VALUE')) {
+                explanation += '• **SELECT VALUE**: Returns the raw values instead of objects\n';
+            } else {
+                explanation += '• **SELECT**: Retrieves specific properties from documents\n';
+            }
+        }
+
+        if (queryUpper.includes('FROM C')) {
+            explanation += '• **FROM c**: Queries from the container (c is the alias)\n';
+        }
+
+        if (queryUpper.includes('WHERE')) {
+            explanation += '• **WHERE**: Filters documents based on specified conditions\n';
+        }
+
+        if (queryUpper.includes('ORDER BY')) {
+            explanation += '• **ORDER BY**: Sorts results in ascending or descending order\n';
+        }
+
+        if (queryUpper.includes('TOP') || queryUpper.includes('OFFSET')) {
+            explanation += '• **Pagination**: Limits the number of results returned\n';
+        }
+
+        if (queryUpper.includes('COUNT')) {
+            explanation += '• **COUNT**: Aggregates the number of matching documents\n';
+        }
+
+        if (queryUpper.includes('GROUP BY')) {
+            explanation += '• **GROUP BY**: Groups results by specified properties\n';
+        }
+
+        if (queryUpper.includes('JOIN')) {
+            explanation += '• **JOIN**: Performs intra-document joins (within the same document)\n';
+        }
+
+        if (!explanation) {
+            explanation =
+                'This appears to be a custom or complex query. Consider using the AI-powered explanation for detailed analysis.';
+        }
+
+        return explanation;
     }
 
     /**

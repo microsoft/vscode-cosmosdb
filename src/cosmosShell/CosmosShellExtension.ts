@@ -264,7 +264,6 @@ export function isCosmosShellSupportEnabled(): boolean {
 const McpServerName = 'cosmosdb-shell-mcp-server';
 
 export function registerMcpServer(context: vscode.ExtensionContext): void {
-    registerCosmosShellLanguageServer(context);
     try {
         const didChangeEmitter = new vscode.EventEmitter<void>();
         const config = vscode.workspace.getConfiguration();

@@ -30,7 +30,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
-import { CosmosShellExtension } from './cosmosShell/CosmosShellExtension';
+import { CosmosShellExtension, registerCosmosShellLanguageServer } from './cosmosShell/CosmosShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
@@ -173,6 +173,7 @@ export async function activateInternal(
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
+    registerCosmosShellLanguageServer(context);
 
     // TODO: we still don't know for sure if this is needed
     //  If it is, we need to implement the logic to get the correct API version

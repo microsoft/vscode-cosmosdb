@@ -4,7 +4,7 @@ applyTo: '**'
 ## 1. Data Modeling Best Practices
 - Model your data to **minimize cross-partition queries** and joins.
 - Prefer **embedding related data** within a single item** if access patterns always retrieve them together.
-  - ⚠️ Avoid creating very large items — **Azure Cosmos DB enforces a 2 MB limit per item**.
+  - Avoid creating very large items — **Azure Cosmos DB enforces a 2 MB limit per item**.
   - If embedding makes items too large or frequently updated fields differ, consider **referencing (normalization)** instead.
 - Use **Hierarchical Partition Keys (HPK)** to:
   - **Overcome the 20 GB limit** of a single logical partition.

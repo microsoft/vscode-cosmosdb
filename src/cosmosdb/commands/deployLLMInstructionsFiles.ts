@@ -5,7 +5,6 @@
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
@@ -98,16 +97,19 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
                     const sourceFile = path.join(sourceFolder, file.name);
                     const destinationFile = path.join(promptFolder, file.name);
 
-                    // Copy each .md file
-                    fs.copyFileSync(sourceFile, destinationFile);
-                    copiedFiles.push(file.name);
-                    console.log(`Copied ${file.name} to ${destinationFile}`);
-                    // Calculate checksum
-                    const content = fs.readFileSync(destinationFile, 'utf8');
-                    const checksum = crypto.createHash('md5').update(content).digest('hex');
-
+                    // Copy each .md file only if source and destination differ.
+                    if (
+                        !fs.existsSync(destinationFile) ||
+                        fs.readFileSync(sourceFile, 'utf8') !== fs.readFileSync(destinationFile, 'utf8')
+                    ) {
+                        fs.copyFileSync(sourceFile, destinationFile);
+                        copiedFiles.push(file.name);
+                        console.log(`Copied ${file.name} to ${destinationFile}`);
+                    } else {
+                        console.log(`Skipped ${file.name} as it is unchanged`);
+                    }
                     // Add file to manifest
-                    manifest.files[file.name] = { checksum, status: 'deployed' };
+                    manifest.files[file.name] = { status: 'deployed' };
                 }
             }
 
@@ -120,7 +122,7 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
                     const filePath = path.join(promptFolder, fileName);
                     if (fs.existsSync(filePath)) {
                         fs.unlinkSync(filePath);
-                        console.log(`Deleted ${filePath}`);
+                        console.log(`Deleted obsolete ${filePath}`);
                     }
                 }
             }
@@ -161,14 +163,12 @@ const getPromptFolder = () => {
 /**
  * The manifest records the last files deployment.
  * If files in the last deployment are not part of the current deployment, they will be deleted.
- * Keep track of the checksum of each file to determine if the file has been manually modified by the user after deployment.
  */
 interface IDeploymentManifest {
     extensionVersion: string;
     deploymentTimestamp: number;
     files: {
         [fileName: string]: {
-            checksum: string;
             status: 'deployed' | 'skipped';
         };
     };

@@ -14,6 +14,20 @@ export interface CosmosDbOperation {
     parameters: { name: string; type: string; required: boolean; description: string }[];
 }
 
+export interface EditQueryResult {
+    type: 'editQuery';
+    currentQuery: string;
+    suggestedQuery: string;
+    explanation: string;
+    connection: NoSqlQueryConnection;
+    queryContext: {
+        databaseId: string;
+        containerId: string;
+        documentCount?: number;
+        requestCharge?: number;
+    };
+}
+
 export class CosmosDbOperationsService {
     private static instance: CosmosDbOperationsService;
 
@@ -89,7 +103,10 @@ export class CosmosDbOperationsService {
     /**
      * Execute a CosmosDB operation
      */
-    public async executeOperation(operationName: string, parameters: Record<string, unknown> = {}): Promise<string> {
+    public async executeOperation(
+        operationName: string,
+        parameters: Record<string, unknown> = {},
+    ): Promise<string | EditQueryResult> {
         try {
             switch (operationName) {
                 case 'editQuery':
@@ -113,7 +130,11 @@ export class CosmosDbOperationsService {
         }
     }
 
-    private async handleEditQuery(currentQuery: string, userPrompt: string, explanation?: string): Promise<string> {
+    private async handleEditQuery(
+        currentQuery: string,
+        userPrompt: string,
+        explanation?: string,
+    ): Promise<EditQueryResult> {
         // Check if there's an active query editor
         const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
         if (activeQueryEditors.length === 0) {
@@ -165,71 +186,20 @@ export class CosmosDbOperationsService {
             llmExplanation = explanation || 'Basic query optimization applied';
         }
 
-        // Build context for better user understanding
-        let queryContext = `**Current Query Context:**\n`;
-        queryContext += `- **Database:** ${connection.databaseId}\n`;
-        queryContext += `- **Container:** ${connection.containerId}\n`;
-        if (hasResults) {
-            queryContext += `- **Last Results:** ${documentCount} documents returned\n`;
-            if (requestCharge) {
-                queryContext += `- **Request Charge:** ${requestCharge.toFixed(2)} RUs\n`;
-            }
-        }
-        queryContext += `\n`;
-
-        try {
-            // Show the user what changes will be made with context
-            const explanationText = llmExplanation ? `\n\n**Explanation:** ${llmExplanation}` : '';
-            const message = `🤖 **Query Enhancement Suggestion**
-
-${queryContext}**Current Query:**
-\`\`\`sql
-${actualCurrentQuery}
-\`\`\`
-
-**Suggested Query:**
-\`\`\`sql
-${suggestion}
-\`\`\`${explanationText}
-
-Would you like to apply this change?`;
-
-            const acceptItem: vscode.MessageItem = { title: 'Apply Change' };
-            const viewBothItem: vscode.MessageItem = { title: 'Open Both Queries' };
-
-            const choice = await vscode.window.showInformationMessage(
-                message,
-                { modal: true },
-                acceptItem,
-                viewBothItem,
-            );
-
-            if (choice === acceptItem) {
-                // Open the suggested query in a new tab (safer approach)
-                QueryEditorTab.render(connection, vscode.ViewColumn.Active, false, suggestion);
-                return `✅ **Improved Query Opened**
-
-The suggested query has been opened in a new query editor tab. You can now:
-- Execute the improved query
-- Compare it with your original query
-- Make further modifications as needed
-
-*Original query remains unchanged in your previous tab.*`;
-            } else if (choice === viewBothItem) {
-                // Open suggested query in a new tab for comparison
-                QueryEditorTab.render(connection, vscode.ViewColumn.Two, false, suggestion);
-                return `🔍 **Suggested Query Opened for Comparison**
-
-The suggested query has been opened in a new tab alongside your current editor for easy comparison.`;
-            } else {
-                // User cancelled
-                return `❌ **Query Edit Cancelled**
-
-No changes were made to your query.`;
-            }
-        } catch (error) {
-            throw new Error(`Failed to edit query: ${error instanceof Error ? error.message : String(error)}`);
-        }
+        // Return structured data for the chat participant to handle
+        return {
+            type: 'editQuery',
+            currentQuery: actualCurrentQuery,
+            suggestedQuery: suggestion,
+            explanation: llmExplanation,
+            connection: connection,
+            queryContext: {
+                databaseId: connection.databaseId,
+                containerId: connection.containerId,
+                documentCount: hasResults ? documentCount : undefined,
+                requestCharge: hasResults ? requestCharge : undefined,
+            },
+        };
     }
 
     /**

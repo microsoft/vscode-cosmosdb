@@ -8,7 +8,7 @@ import { KeyValueStore } from '../KeyValueStore';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { CosmosDbOperationsService } from './CosmosDbOperationsService';
+import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 
 // Extended interface for newer ChatRequest API that includes model property
@@ -154,7 +154,8 @@ Return JSON with operation and parameters. Examples:
 - "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
 - "help" → {"operation": "help", "parameters": {}}
 
-Only return valid JSON, no other text, no end-of-line characters:`;
+Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
+** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
 
             const messages = [vscode.LanguageModelChatMessage.User(intentPrompt)];
             const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
@@ -376,7 +377,13 @@ Only return valid JSON, no other text:`;
             }
 
             const result = await operationsService.executeOperation(operationName, parameters);
-            stream.markdown(result);
+
+            // Handle editQuery results specially with buttons
+            if (typeof result === 'object' && result.type === 'editQuery') {
+                this.handleEditQueryResult(result, stream);
+            } else {
+                stream.markdown(result as string);
+            }
 
             // Add contextual suggestions
             const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection;
@@ -468,7 +475,13 @@ Only return valid JSON, no other text:`;
                 }
             }
             const result = await operationsService.executeOperation(operationName, parameters);
-            stream.markdown(result);
+
+            // Handle editQuery results specially with buttons
+            if (typeof result === 'object' && result.type === 'editQuery') {
+                this.handleEditQueryResult(result, stream);
+            } else {
+                stream.markdown(result as string);
+            }
 
             // Add suggestions for next operations
             const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection;
@@ -481,6 +494,51 @@ Only return valid JSON, no other text:`;
             stream.markdown(`❌ Command failed: ${errorMessage}`);
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }
+    }
+
+    /**
+     * Handles editQuery results by showing the query diff and action buttons
+     */
+    private handleEditQueryResult(result: EditQueryResult, stream: vscode.ChatResponseStream): void {
+        // Show query context
+        let queryContext = `**Current Query Context:**\n`;
+        queryContext += `- **Database:** ${result.queryContext.databaseId}\n`;
+        queryContext += `- **Container:** ${result.queryContext.containerId}\n`;
+        if (result.queryContext.documentCount !== undefined) {
+            queryContext += `- **Last Results:** ${result.queryContext.documentCount} documents returned\n`;
+            if (result.queryContext.requestCharge !== undefined) {
+                queryContext += `- **Request Charge:** ${result.queryContext.requestCharge.toFixed(2)} RUs\n`;
+            }
+        }
+        queryContext += `\n`;
+
+        stream.markdown(queryContext);
+
+        // Show current query
+        stream.markdown(`**Current Query:**\n\`\`\`sql\n${result.currentQuery}\n\`\`\`\n\n`);
+
+        // Show suggested query
+        stream.markdown(`**Suggested Query:**\n\`\`\`sql\n${result.suggestedQuery}\n\`\`\`\n\n`);
+
+        // Show explanation
+        if (result.explanation) {
+            stream.markdown(`**Explanation:** ${result.explanation}\n\n`);
+        }
+
+        // Add three action buttons horizontally
+        stream.button({
+            command: 'cosmosDB.applyQuerySuggestion',
+            title: '✅ Update Query',
+            arguments: [result.connection, result.suggestedQuery],
+        });
+
+        stream.button({
+            command: 'cosmosDB.openQuerySideBySide',
+            title: '🔍 Open Side-by-Side',
+            arguments: [result.connection, result.suggestedQuery],
+        });
+
+        stream.markdown('\n');
     }
 
     /**

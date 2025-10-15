@@ -8,14 +8,16 @@ import {
     registerCommand,
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
-import type vscode from 'vscode';
+import * as vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import {
     deployLLMInstructionsFiles,
     removeLLMInstructionsFiles,
 } from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { registerCosmosDBCommands } from '../cosmosdb/registerCosmosDBCommands';
 import { ext } from '../extensionVariables';
+import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { cosmosDBCreateContainer, cosmosDBCreateGraph } from './createContainer/createContainer';
@@ -82,6 +84,7 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 
     registerLLMAssetsCommands();
+    registerChatButtonCommands();
 }
 
 export function registerAccountCommands() {
@@ -137,4 +140,40 @@ export function registerTriggerCommands() {
 export function registerLLMAssetsCommands() {
     registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
     registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
+}
+
+export function registerChatButtonCommands() {
+    // Command to apply the suggested query (update current editor)
+    registerCommand(
+        'cosmosDB.applyQuerySuggestion',
+        async (_context: IActionContext, connection: NoSqlQueryConnection, suggestedQuery: string) => {
+            // Find the active query editor tab and update its query
+            const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+            const activeTab = activeQueryEditors.find(
+                (tab) =>
+                    tab.getConnection()?.endpoint === connection.endpoint &&
+                    tab.getConnection()?.databaseId === connection.databaseId &&
+                    tab.getConnection()?.containerId === connection.containerId,
+            );
+
+            if (activeTab && 'updateQuery' in activeTab) {
+                // Update the query in the existing webview
+                await activeTab.updateQuery(suggestedQuery);
+                void vscode.window.showInformationMessage('✅ Query updated successfully!');
+            } else {
+                // Fallback: create a new tab if no matching tab is found
+                QueryEditorTab.render(connection, vscode.ViewColumn.Active, false, suggestedQuery);
+                void vscode.window.showInformationMessage('✅ Query opened in new tab!');
+            }
+        },
+    );
+
+    // Command to open query side-by-side
+    registerCommand(
+        'cosmosDB.openQuerySideBySide',
+        (_context: IActionContext, connection: NoSqlQueryConnection, suggestedQuery: string) => {
+            QueryEditorTab.render(connection, vscode.ViewColumn.Two, false, suggestedQuery);
+            void vscode.window.showInformationMessage('🔍 Suggested query opened side-by-side for comparison.');
+        },
+    );
 }

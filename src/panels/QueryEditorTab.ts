@@ -112,6 +112,14 @@ export class QueryEditorTab extends BaseTab {
         return this.connection;
     };
 
+    public async updateQuery(query: string): Promise<void> {
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'fileOpened',
+            params: [query],
+        });
+    }
+
     protected initController() {
         super.initController();
 

@@ -147,10 +147,9 @@ export class CosmosDbChatParticipant {
 
 User request: "${originalPrompt}"
 
-Available operations: connect, editQuery, explainQuery, help
+Available operations: editQuery, explainQuery, help
 
 Return JSON with operation and parameters. Examples:
-- "connect to languye-nosql" → {"operation": "connect", "parameters": {"target": "languye-nosql"}}
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
 - "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
 - "help" → {"operation": "help", "parameters": {}}
@@ -187,10 +186,8 @@ Only return valid JSON, no other text, no end-of-line characters:`;
 User request: "${originalPrompt}"
 
 Return JSON with relevant parameters. Examples:
-- For "connect to languye-nosql": {"target": "languye-nosql"}
 - For "SELECT * FROM c with metrics": {"query": "SELECT * FROM c", "includeMetrics": true}
 - For "show info about mydb": {"target": "mydb"}
-- For "disconnect": {}
 
 Only return valid JSON, no other text:`;
 
@@ -219,19 +216,6 @@ Only return valid JSON, no other text:`;
         const lowercasePrompt = originalPrompt.toLowerCase();
 
         switch (operation) {
-            case 'connect': {
-                const connectMatch = originalPrompt.match(/connect\s+to\s+([^\s,]+)/i);
-                if (connectMatch) {
-                    parameters.target = connectMatch[1];
-                }
-                const simpleConnectMatch = originalPrompt.match(
-                    /connect(?:\s+(?:to|database|container))?\s+([^\s,]+)/i,
-                );
-                if (simpleConnectMatch && !parameters.target) {
-                    parameters.target = simpleConnectMatch[1];
-                }
-                break;
-            }
             case 'editQuery': {
                 // Pass the full user prompt for LLM processing
                 parameters.userPrompt = originalPrompt;
@@ -346,7 +330,6 @@ Only return valid JSON, no other text:`;
 
         // 3. Intent keywords (more semantic than parsing) with parameter extraction
         const intentKeywords = {
-            connect: ['connect', 'connection', 'database', 'container'],
             info: ['info', 'status', 'current', 'connected', 'what', 'where'],
             editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
             explainQuery: ['explain', 'describe', 'analyze', 'breakdown', 'understand', 'what does', 'how does'],
@@ -438,9 +421,6 @@ Only return valid JSON, no other text:`;
 
             // Map command to operation name
             switch (request.command) {
-                case 'connect':
-                    operationName = 'connect';
-                    break;
                 case 'editQuery':
                     operationName = 'editQuery';
                     break;
@@ -510,7 +490,6 @@ Only return valid JSON, no other text:`;
         const helpText = `## 🚀 CosmosDB Assistant Commands
 
 ### **Quick Commands:**
-- \`@cosmosdb /connect\` - Connect to a CosmosDB container
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
 - \`@cosmosdb /explainQuery\` - Explain the current query with AI analysis
 - \`@cosmosdb /info\` - Show connection information
@@ -518,7 +497,6 @@ Only return valid JSON, no other text:`;
 
 ### **Natural Language:**
 You can also use natural language:
-- "connect to my database"
 - "improve my current query" (requires active query editor)
 - "optimize this query" (modifies query in active editor)
 - "explain this query" (analyzes current query in active editor)
@@ -623,7 +601,6 @@ You help users with:
 - Cost optimization
 
 You can also perform operations like:
-- "connect" - Connect to a CosmosDB container
 - "editQuery" - Edit and improve queries with AI suggestions (uses active query session data)
 - "connection info" - Show current connection details
 - "help" - Show available commands and features

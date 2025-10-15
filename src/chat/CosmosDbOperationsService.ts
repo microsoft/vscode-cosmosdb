@@ -30,11 +30,6 @@ export class CosmosDbOperationsService {
     public getAvailableOperations(): CosmosDbOperation[] {
         return [
             {
-                name: 'connect',
-                description: 'Connect to a CosmosDB container',
-                parameters: [],
-            },
-            {
                 name: 'editQuery',
                 description:
                     'Edit query in active query editor with LLM suggestions and user confirmation using session context',

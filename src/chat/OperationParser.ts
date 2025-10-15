@@ -18,15 +18,6 @@ export class OperationParser {
     public static parseUserInput(input: string, _availableOperations: CosmosDbOperation[]): ParsedOperation | null {
         const lowerInput = input.toLowerCase().trim();
 
-        // Connection operations
-        if (this.matchesPatterns(lowerInput, ['connect', 'connect to', 'establish connection'])) {
-            return { operation: 'connect', parameters: {}, confidence: 0.9 };
-        }
-
-        if (this.matchesPatterns(lowerInput, ['disconnect', 'close connection', 'disconnect from'])) {
-            return { operation: 'disconnect', parameters: {}, confidence: 0.9 };
-        }
-
         // Query execution
         const queryMatch = this.extractQuery(lowerInput);
         if (queryMatch) {
@@ -94,14 +85,12 @@ export class OperationParser {
     public static generateSuggestions(hasConnection: boolean): string {
         if (!hasConnection) {
             return `\n\n💡 **Quick Operations:**
-- Say "connect" to connect to a CosmosDB container
 - Say "open query editor" to create a new query`;
         }
 
         return `\n\n💡 **Quick Operations:**
 - Say "execute: SELECT * FROM c" to run a query
 - Say "connection info" to see current connection details
-- Say "open query editor" to create a new query tab
-- Say "disconnect" to close the current connection`;
+- Say "open query editor" to create a new query tab`;
     }
 }

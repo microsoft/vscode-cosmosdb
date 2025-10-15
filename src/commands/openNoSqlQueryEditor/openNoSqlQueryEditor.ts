@@ -5,9 +5,10 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlCodeLensProvider';
-import { QueryEditorTab } from '../../panels/QueryEditorTab';
+import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
 import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
@@ -44,7 +45,19 @@ export async function openNoSqlQueryEditor(
         connection = nodeOrConnection;
     }
 
-    QueryEditorTab.render(connection);
+    // Create a virtual .nosql document instead of opening QueryEditorTab
+    const virtualDocumentUri = ext.noSqlVirtualDocumentProvider.createDocument(connection, 'SELECT * FROM c', null);
+
+    // Open the virtual document which will trigger QueryEditorTab
+    const document = await vscode.workspace.openTextDocument(virtualDocumentUri);
+    // Import and trigger the QueryEditorTab to open
+    const { QueryEditorTab } = await import('../../panels/QueryEditorTab');
+    await QueryEditorTab['openForVirtualDocument'](document);
+
+    await vscode.window.showTextDocument(document, {
+        viewColumn: vscode.ViewColumn.Beside,
+        preview: true,
+    });
 }
 
 // Helper function to extract connection from a container node

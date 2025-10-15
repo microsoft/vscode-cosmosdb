@@ -241,10 +241,6 @@
         "isSticky": true,
         "commands": [
           {
-            "name": "connect",
-            "description": "Connect to a CosmosDB container"
-          },
-          {
             "name": "editQuery",
             "description": "Edit query with LLM suggestions and user confirmation"
           },

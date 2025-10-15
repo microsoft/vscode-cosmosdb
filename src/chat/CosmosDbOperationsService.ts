@@ -120,7 +120,7 @@ export class CosmosDbOperationsService {
 
     private async handleEditQuery(currentQuery: string, userPrompt: string, explanation?: string): Promise<string> {
         // Check if there's an active query editor
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+        const activeQueryEditors = QueryEditorTab.getOpenTabs();
         if (activeQueryEditors.length === 0) {
             throw new Error(
                 'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
@@ -353,7 +353,7 @@ Return only valid JSON, no other text:`;
      */
     private async handleExplainQuery(currentQuery?: string, userPrompt?: string): Promise<string> {
         // Check if there's an active query editor
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+        const activeQueryEditors = QueryEditorTab.getOpenTabs();
         if (activeQueryEditors.length === 0) {
             throw new Error(
                 'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',

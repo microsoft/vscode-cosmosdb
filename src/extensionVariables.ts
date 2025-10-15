@@ -9,6 +9,7 @@ import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostap
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './cosmosdb/NoSqlCodeLensProvider';
+import { type NoSqlVirtualDocumentProvider } from './cosmosdb/NoSqlVirtualDocumentProvider';
 import { type MongoDBLanguageClient } from './documentdb/scrapbook/languageClient';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
@@ -36,6 +37,7 @@ export namespace ext {
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
+    export let noSqlVirtualDocumentProvider: NoSqlVirtualDocumentProvider;
     export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
 

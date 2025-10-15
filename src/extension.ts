@@ -30,11 +30,13 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant } from './chat';
 import { registerCommands } from './commands/registerCommands';
+import { NoSqlVirtualDocumentProvider } from './cosmosdb/NoSqlVirtualDocumentProvider';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
 import { getResourceGroupsApi } from './getExtensionApi';
+import { QueryEditorTab } from './panels/QueryEditorTab';
 import { StorageNames, StorageService } from './services/storageService';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { DatabaseResolver } from './tree/v1-legacy-api/resolver/AppResolver';
@@ -147,6 +149,18 @@ export async function activateInternal(
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
         );
+
+        // Register the NoSQL virtual document provider
+        ext.noSqlVirtualDocumentProvider = new NoSqlVirtualDocumentProvider();
+        context.subscriptions.push(
+            vscode.workspace.registerTextDocumentContentProvider(
+                NoSqlVirtualDocumentProvider.scheme,
+                ext.noSqlVirtualDocumentProvider,
+            ),
+        );
+
+        // Register the virtual document editor
+        context.subscriptions.push(QueryEditorTab.register(context));
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

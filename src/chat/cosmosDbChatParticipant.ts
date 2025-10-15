@@ -48,7 +48,7 @@ export class CosmosDbChatParticipant {
     private getQueryEditorContext(): string {
         try {
             // Get active query editor tabs
-            const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+            const activeQueryEditors = QueryEditorTab.getOpenTabs();
 
             let context = '';
 
@@ -150,12 +150,11 @@ User request: "${originalPrompt}"
 Available operations: connect, editQuery, explainQuery, help
 
 Return JSON with operation and parameters. Examples:
-- "connect to languye-nosql" → {"operation": "connect", "parameters": {"target": "languye-nosql"}}
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
 - "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
 - "help" → {"operation": "help", "parameters": {}}
 
-Only return valid JSON, no other text, no end-of-line characters:`;
+Only return valid a JSON string. ** Do not return markdown format **. Do not include any other text, nor end-of-line characters that can't be parsed with JSON.parse().`;
 
             const messages = [vscode.LanguageModelChatMessage.User(intentPrompt)];
             const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
@@ -291,7 +290,7 @@ Only return valid JSON, no other text:`;
         }
 
         // 2. Check current context (what user is working on)
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+        const activeQueryEditors = QueryEditorTab.getOpenTabs();
         if (activeQueryEditors.length > 0) {
             // User has active query editor - check for edit/improve intents
             if (
@@ -346,7 +345,6 @@ Only return valid JSON, no other text:`;
 
         // 3. Intent keywords (more semantic than parsing) with parameter extraction
         const intentKeywords = {
-            connect: ['connect', 'connection', 'database', 'container'],
             info: ['info', 'status', 'current', 'connected', 'what', 'where'],
             editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
             explainQuery: ['explain', 'describe', 'analyze', 'breakdown', 'understand', 'what does', 'how does'],

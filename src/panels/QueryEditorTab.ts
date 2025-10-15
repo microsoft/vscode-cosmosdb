@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { type NoSqlVirtualDocumentContent } from '../cosmosdb/NoSqlVirtualDocumentProvider';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
 import {
@@ -18,6 +19,7 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
@@ -38,20 +40,29 @@ type HistoryItem = StorageItem & {
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';
-    public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
+    public static readonly openTabs = new Map<string, QueryEditorTab>();
 
     public readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
+    private virtualDocumentUri: vscode.Uri | undefined;
 
-    protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
+    protected constructor(
+        panel: vscode.WebviewPanel,
+        virtualDocumentUri?: vscode.Uri,
+        connection?: NoSqlQueryConnection,
+        query?: string,
+    ) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
-        QueryEditorTab.openTabs.add(this);
-
+        this.virtualDocumentUri = virtualDocumentUri;
         this.connection = connection;
         this.query = query;
+
+        if (virtualDocumentUri) {
+            QueryEditorTab.openTabs.set(virtualDocumentUri.toString(), this);
+        }
 
         if (connection) {
             if (connection.credentials) {
@@ -66,6 +77,97 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
+    public static register(_context: vscode.ExtensionContext): vscode.Disposable {
+        // Listen for when virtual documents are opened
+        const disposable = vscode.window.onDidChangeActiveTextEditor((editor) => {
+            if (editor?.document.uri.scheme === 'nosql-virtual') {
+                void QueryEditorTab.openForVirtualDocument(editor.document);
+            }
+        });
+
+        return disposable;
+    }
+
+    public static getOpenTabs(): QueryEditorTab[] {
+        return Array.from(QueryEditorTab.openTabs.values());
+    }
+
+    public static async openForVirtualDocument(document: vscode.TextDocument): Promise<void> {
+        const uri = document.uri.toString();
+
+        // Check if we already have a tab for this document
+        if (QueryEditorTab.openTabs.has(uri)) {
+            const tab = QueryEditorTab.openTabs.get(uri)!;
+            tab.panel.reveal();
+            await tab.updateFromVirtualDocument(document);
+            return;
+        }
+
+        // Parse the document to get connection info
+        let connection: NoSqlQueryConnection | undefined;
+        let query: string | undefined;
+
+        try {
+            const content = JSON.parse(document.getText()) as NoSqlVirtualDocumentContent;
+            connection = content.connection ?? undefined;
+            query = content.query;
+        } catch {
+            // Invalid JSON, will use defaults
+        }
+
+        // Create new webview panel
+        const panel = vscode.window.createWebviewPanel(
+            QueryEditorTab.viewType,
+            QueryEditorTab.title,
+            vscode.ViewColumn.Active,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+            },
+        );
+
+        const tab = new QueryEditorTab(panel, document.uri, connection, query);
+
+        // Update webview when document changes
+        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument((e) => {
+            if (e.document.uri.toString() === uri) {
+                void tab.updateFromVirtualDocument(e.document);
+            }
+        });
+
+        // Clean up when panel is disposed
+        panel.onDidDispose(() => {
+            changeDocumentSubscription.dispose();
+        });
+    }
+
+    private async updateFromVirtualDocument(document: vscode.TextDocument): Promise<void> {
+        try {
+            const content = JSON.parse(document.getText()) as NoSqlVirtualDocumentContent;
+
+            // Update connection if it changed
+            if (content.connection && JSON.stringify(content.connection) !== JSON.stringify(this.connection)) {
+                await this.updateConnection(content.connection);
+            }
+
+            // Update query if it's in the content
+            if (content.query !== this.query) {
+                this.query = content.query;
+            }
+
+            // If there are results, update them
+            if (content.results) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryResultsUpdated',
+                    params: [content.results],
+                });
+            }
+        } catch (error) {
+            console.error('Failed to update from virtual document:', error);
+        }
+    }
+
     public static render(
         connection?: NoSqlQueryConnection,
         viewColumn = vscode.ViewColumn.Active,
@@ -73,7 +175,7 @@ export class QueryEditorTab extends BaseTab {
         query?: string,
     ): QueryEditorTab {
         if (revealTabIfExist && connection) {
-            const openTab = [...QueryEditorTab.openTabs].find(
+            const openTab = [...QueryEditorTab.openTabs.values()].find(
                 (openTab) =>
                     openTab.connection?.endpoint === connection.endpoint &&
                     openTab.connection?.databaseId === connection.databaseId &&
@@ -90,11 +192,13 @@ export class QueryEditorTab extends BaseTab {
             retainContextWhenHidden: true,
         });
 
-        return new QueryEditorTab(panel, connection, query);
+        return new QueryEditorTab(panel, undefined, connection, query);
     }
 
     public dispose(): void {
-        QueryEditorTab.openTabs.delete(this);
+        if (this.virtualDocumentUri) {
+            QueryEditorTab.openTabs.delete(this.virtualDocumentUri.toString());
+        }
 
         this.sessions.forEach((session) => session.dispose());
         this.sessions.clear();
@@ -432,6 +536,16 @@ export class QueryEditorTab extends BaseTab {
             this.sessions.set(session.id, session);
 
             await session.run();
+
+            // Update the virtual document with the query results
+            if (this.virtualDocumentUri) {
+                const results = session.sessionResult?.getSerializedResult(1);
+                ext.noSqlVirtualDocumentProvider.updateDocument(this.virtualDocumentUri, {
+                    query,
+                    results: results ?? null,
+                    timestamp: Date.now(),
+                });
+            }
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }

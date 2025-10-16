@@ -564,7 +564,6 @@ You can also use natural language:
 - "explain this query" (analyzes current query in active editor)
 - "what does my query do?" (explains query purpose and components)
 - "what am I connected to?"
-- "enhance my SQL statement" (updates active query editor)
 
 ### **Current Features:**
 - 🔗 Connection management

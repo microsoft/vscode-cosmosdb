@@ -361,6 +361,10 @@ Only return valid JSON, no other text:`;
 
         stream.markdown(`🎯 **Detected Intent:** ${intent.operation}\n\n`);
 
+        if (intent.operation === 'help') {
+            return this.handleHelpCommand(stream);
+        }
+
         try {
             // Map intent operation to actual operation
             let operationName = intent.operation;

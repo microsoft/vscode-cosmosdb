@@ -221,16 +221,23 @@ describe('LLM Instructions Files', () => {
                     'Successfully copied 2 LLM instructions (.md) files',
                     'Close',
                 );
+                expect(vscode.window.createStatusBarItem).not.toHaveBeenCalled();
                 expect(mockTelemetryContext.telemetry.properties.count).toBe('2');
             });
 
-            it('should skip identical files', async () => {
+            it('should skip identical files and show status bar', async () => {
                 // Arrange
                 (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
                 const mockFiles = [createMockDirent('test1.md', true), createMockDirent('test2.md', true)];
                 (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
                 (fs.existsSync as jest.Mock).mockReturnValue(true); // All files exist
                 (fs.readFileSync as jest.Mock).mockReturnValue('identical content'); // Same content
+                const mockStatusBar = {
+                    text: '',
+                    show: jest.fn(),
+                    dispose: jest.fn(),
+                };
+                (vscode.window.createStatusBarItem as jest.Mock).mockReturnValue(mockStatusBar);
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -239,24 +246,33 @@ describe('LLM Instructions Files', () => {
                 expect(fs.copyFileSync).not.toHaveBeenCalled(); // No files copied because they're identical
                 expect(console.log).toHaveBeenCalledWith('Skipped test1.md as it is unchanged');
                 expect(console.log).toHaveBeenCalledWith('Skipped test2.md as it is unchanged');
+                expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+                expect(vscode.window.createStatusBarItem).toHaveBeenCalled();
+                expect(mockStatusBar.text).toBe('No LLM instructions (.md) files found to copy');
                 expect(mockTelemetryContext.telemetry.properties.count).toBe('0');
             });
 
-            it('should show message when no .md files found', async () => {
+            it('should show status bar when no .md files found', async () => {
                 // Arrange
                 (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
                 const mockFiles = [createMockDirent('readme.txt', true), createMockDirent('subfolder', false)];
                 (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
+                const mockStatusBar = {
+                    text: '',
+                    show: jest.fn(),
+                    dispose: jest.fn(),
+                };
+                (vscode.window.createStatusBarItem as jest.Mock).mockReturnValue(mockStatusBar);
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
 
                 // Assert
                 expect(fs.copyFileSync).not.toHaveBeenCalled();
-                expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-                    'No LLM instructions (.md) files found to copy',
-                    'Close',
-                );
+                expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+                expect(vscode.window.createStatusBarItem).toHaveBeenCalled();
+                expect(mockStatusBar.text).toBe('No LLM instructions (.md) files found to copy');
+                expect(mockStatusBar.show).toHaveBeenCalled();
                 expect(mockTelemetryContext.telemetry.properties.count).toBe('0');
             });
 
@@ -305,6 +321,7 @@ describe('LLM Instructions Files', () => {
                     'Successfully copied 3 LLM instructions (.md) files',
                     'Close',
                 );
+                expect(vscode.window.createStatusBarItem).not.toHaveBeenCalled();
                 expect(mockTelemetryContext.telemetry.properties.count).toBe('3');
             });
 

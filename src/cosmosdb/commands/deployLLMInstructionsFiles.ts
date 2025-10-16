@@ -133,13 +133,17 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
             ext.context.globalState.update('llm.assets.manifest', JSON.stringify(manifest, null, 2));
             console.log(`Saved manifest file to global storage`);
 
-            // Show success dialog
-            const message =
-                copiedFiles.length > 0
-                    ? l10n.t('Successfully copied {0} LLM instructions (.md) files', copiedFiles.length)
-                    : l10n.t('No LLM instructions (.md) files found to copy');
-
-            void vscode.window.showInformationMessage(message, l10n.t('Close'));
+            if (copiedFiles.length > 0) {
+                void vscode.window.showInformationMessage(
+                    l10n.t('Successfully copied {0} LLM instructions (.md) files', copiedFiles.length, l10n.t('Close')),
+                );
+            } else {
+                // Show result in status bar for more discrete message
+                const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+                statusBar.text = l10n.t('No LLM instructions (.md) files found to copy');
+                statusBar.show();
+                setTimeout(() => statusBar.dispose(), 3000);
+            }
         } catch (error) {
             console.error('Error deploying AI instructions files:', error);
 

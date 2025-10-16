@@ -135,7 +135,8 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
 
             if (copiedFiles.length > 0) {
                 void vscode.window.showInformationMessage(
-                    l10n.t('Successfully copied {0} LLM instructions (.md) files', copiedFiles.length, l10n.t('Close')),
+                    l10n.t('Successfully copied {0} LLM instructions (.md) files', copiedFiles.length),
+                    l10n.t('Close'),
                 );
             } else {
                 // Show result in status bar for more discrete message

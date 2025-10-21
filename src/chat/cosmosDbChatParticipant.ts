@@ -513,6 +513,24 @@ Ask me anything about Azure Cosmos DB! 💪`;
         token: vscode.CancellationToken,
     ): Promise<vscode.ChatResult> {
         try {
+            // Check if there's an active connection or query editor
+            const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+            const hasConnection = activeQueryEditors.length > 0 || KeyValueStore.instance.get(noSqlQueryConnectionKey);
+
+            if (!hasConnection) {
+                stream.markdown('⚠️ **No Cosmos DB connection found.**\n\n');
+                stream.markdown('Please connect to a Cosmos DB container to use the chat assistant.\n\n');
+
+                // Add a button to open the query editor which will prompt for connection
+                stream.button({
+                    command: 'cosmosDB.openNoSqlQueryEditor',
+                    title: '🔌 Open Query Editor',
+                    arguments: [],
+                });
+
+                return { metadata: { command: '', result: 'No connection' } };
+            }
+
             // Check if this is a structured command request (explicit intent)
             if (request.command) {
                 return await this.handleStructuredCommand(request, stream, token);

@@ -236,8 +236,19 @@
       {
         "id": "cosmosdb",
         "name": "cosmosdb",
-        "fullName": "CosmosDB Assistant",
-        "description": "AI-powered assistant for Azure Cosmos DB help, best practices, and code examples",
+        "fullName": "Cosmos DB (NoSQL) Assistant",
+        "description": "AI-powered assistant for Azure Cosmos DB (NoSQL) help, best practices, and code examples",
+        "disambiguation": [
+          {
+            "category": "databases",
+            "description": "The user wants help with their NoSQL Cosmos DB database",
+            "examples": [
+              "Optimize my query to improve performance and cost",
+              "Explain my current query",
+              "Help me write a NoSQL query"
+            ]
+          }
+        ],
         "isSticky": true,
         "commands": [
           {

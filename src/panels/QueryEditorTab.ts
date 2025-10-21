@@ -112,6 +112,14 @@ export class QueryEditorTab extends BaseTab {
         return this.connection;
     };
 
+    public isActive(): boolean {
+        return this.panel.active;
+    }
+
+    public isVisible(): boolean {
+        return this.panel.visible;
+    }
+
     public async updateQuery(query: string): Promise<void> {
         await this.channel.postMessage({
             type: 'event',

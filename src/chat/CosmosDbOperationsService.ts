@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 export interface CosmosDbOperation {
     name: string;
@@ -36,68 +37,6 @@ export class CosmosDbOperationsService {
             CosmosDbOperationsService.instance = new CosmosDbOperationsService();
         }
         return CosmosDbOperationsService.instance;
-    }
-
-    /**
-     * Get list of available operations
-     */
-    public getAvailableOperations(): CosmosDbOperation[] {
-        return [
-            {
-                name: 'editQuery',
-                description:
-                    'Edit query in active query editor with LLM suggestions and user confirmation using session context',
-                parameters: [
-                    {
-                        name: 'currentQuery',
-                        type: 'string',
-                        required: false,
-                        description: 'Current query to edit (auto-detected from active session)',
-                    },
-                    {
-                        name: 'userPrompt',
-                        type: 'string',
-                        required: true,
-                        description: 'User prompt describing desired query changes',
-                    },
-                    { name: 'explanation', type: 'string', required: false, description: 'Explanation of the change' },
-                    {
-                        name: 'sessionContext',
-                        type: 'object',
-                        required: false,
-                        description: 'Query session context (RU consumption, result count, etc.)',
-                    },
-                ],
-            },
-            {
-                name: 'getConnectionInfo',
-                description: 'Get information about current connection',
-                parameters: [],
-            },
-            {
-                name: 'listDatabases',
-                description: 'List available databases in the current account',
-                parameters: [],
-            },
-            {
-                name: 'explainQuery',
-                description: 'Explain the current query from active query editor with AI analysis',
-                parameters: [
-                    {
-                        name: 'currentQuery',
-                        type: 'string',
-                        required: false,
-                        description: 'Current query to explain (auto-detected from active session)',
-                    },
-                    {
-                        name: 'userPrompt',
-                        type: 'string',
-                        required: false,
-                        description: 'Additional context or specific questions about the query',
-                    },
-                ],
-            },
-        ];
     }
 
     /**
@@ -143,8 +82,9 @@ export class CosmosDbOperationsService {
             );
         }
 
-        const activeEditor = activeQueryEditors[0]; // Use the first active editor
-        const connection = this.getConnectionFromQueryTab(activeEditor);
+        // Find the active or visible query editor, fallback to first if none active
+        const activeEditor = getActiveQueryEditor(activeQueryEditors);
+        const connection = getConnectionFromQueryTab(activeEditor);
         if (!connection) {
             throw new Error(
                 'No connection found in the active query editor. Please connect to a CosmosDB container first.',
@@ -325,8 +265,9 @@ Return only valid JSON, no other text:`;
             );
         }
 
-        const activeEditor = activeQueryEditors[0]; // Use the first active editor
-        const connection = this.getConnectionFromQueryTab(activeEditor);
+        // Find the active or visible query editor, fallback to first if none active
+        const activeEditor = getActiveQueryEditor(activeQueryEditors);
+        const connection = getConnectionFromQueryTab(activeEditor);
         if (!connection) {
             throw new Error(
                 'No connection found in the active query editor. Please connect to a CosmosDB container first.',
@@ -502,12 +443,5 @@ Make the explanation clear and educational, suitable for developers learning Cos
         }
 
         return explanation;
-    }
-
-    /**
-     * Helper method to get connection from a query editor tab
-     */
-    private getConnectionFromQueryTab(queryTab: QueryEditorTab): NoSqlQueryConnection | undefined {
-        return queryTab.getConnection();
     }
 }

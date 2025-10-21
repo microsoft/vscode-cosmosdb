@@ -6,10 +6,10 @@
 import * as vscode from 'vscode';
 import { KeyValueStore } from '../KeyValueStore';
 import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
-import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
+import { getActiveQueryEditor } from './chatUtils';
 
 // Extended interface for newer ChatRequest API that includes model property
 interface ExtendedChatRequest extends vscode.ChatRequest {
@@ -52,29 +52,10 @@ export class CosmosDbChatParticipant {
 
             let context = '';
 
-            // Check for active database connections
-            // if (ext.connectedMongoDB) {
-            //     context += `\n\n## Connected Database Context\n`;
-            //     context += `### MongoDB Connection: ${ext.connectedMongoDB.label}\n`;
-            //     context += `Database: ${ext.connectedMongoDB.databaseName || ext.connectedMongoDB.label}\n`;
-            //     if (ext.connectedMongoDB.connectionString) {
-            //         // Extract server info without exposing credentials
-            //         const serverInfo = ext.connectedMongoDB.connectionString.replace(/\/\/[^@]*@/, '//***@');
-            //         context += `Server: ${serverInfo}\n`;
-            //     }
-            // }
-
-            if (ext.connectedPostgresDB) {
-                if (!context) {
-                    context = '\n\n## Connected Database Context\n';
-                }
-                context += `### PostgreSQL Connection: ${ext.connectedPostgresDB.label}\n`;
-                context += `Database: ${ext.connectedPostgresDB.databaseName || ext.connectedPostgresDB.label}\n`;
-            }
-
             // Check for active query editor tabs first (priority over text editor)
             if (activeQueryEditors.length > 0) {
-                const activeQueryEditor = activeQueryEditors[0];
+                const activeQueryEditor = getActiveQueryEditor(activeQueryEditors);
+
                 const result = activeQueryEditor.getCurrentQueryResults();
 
                 if (!context) {
@@ -100,32 +81,9 @@ export class CosmosDbChatParticipant {
                     context += `### Query Metadata Available\n`;
                     context += `- Execution context and performance metrics are available for optimization\n`;
                 }
-            }
-            // Check for active text editor with relevant file types (fallback)
-            else {
-                const activeTextEditor = vscode.window.activeTextEditor;
-                if (activeTextEditor?.document) {
-                    const doc = activeTextEditor.document;
-                    const queryText = doc.getText();
-
-                    if (queryText.trim()) {
-                        // Handle NoSQL queries
-                        if (doc.languageId === 'nosql' || doc.fileName.endsWith('.nosql')) {
-                            if (!context) context = '\n\n## Query Editor Context\n';
-                            context += `\n### Current NoSQL Query (Text Editor):\n\`\`\`sql\n${queryText}\n\`\`\`\n`;
-                        }
-                        // Handle MongoDB queries
-                        else if (doc.languageId === 'mongo' || doc.fileName.endsWith('.mongo')) {
-                            if (!context) context = '\n\n## Query Editor Context\n';
-                            context += `\n### Current MongoDB Script:\n\`\`\`javascript\n${queryText}\n\`\`\`\n`;
-                        }
-                        // Handle PostgreSQL queries
-                        else if (doc.languageId === 'postgres' || doc.fileName.endsWith('.psql')) {
-                            if (!context) context = '\n\n## Query Editor Context\n';
-                            context += `\n### Current PostgreSQL Query:\n\`\`\`sql\n${queryText}\n\`\`\`\n`;
-                        }
-                    }
-                }
+            } else {
+                // No query editor active
+                return '';
             }
 
             return context;
@@ -152,7 +110,7 @@ Available operations: editQuery, explainQuery, help
 Return JSON with operation and parameters. Examples:
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
 - "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
-- "help" → {"operation": "help", "parameters": {}}
+- "help" → {"operation": "help", "parameters": { "topic": "partition key choice" }}
 
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
@@ -168,6 +126,7 @@ Only return valid a JSON string. ** Do not return markdown format such as \`\`\`
             const result = JSON.parse(jsonText.trim()) as { operation: string; parameters: Record<string, unknown> };
             return result && result.operation ? result : null;
         } catch (error) {
+            // TODO Add telemetry
             console.warn('LLM intent extraction failed, falling back to rule-based:', error);
             return null;
         }
@@ -247,35 +206,16 @@ Only return valid JSON, no other text:`;
     }
 
     /**
-     * Detects user intent based on request context, references, and prompt
+     * Detects user intent based on request context, and prompt
      */
     private detectIntent(
         request: vscode.ChatRequest,
     ): { operation: string; parameters: Record<string, unknown> } | null {
         const prompt = request.prompt.toLowerCase().trim();
 
-        // Intent detection based on context and references (not just text parsing)
+        // Intent detection based on context  (not just text parsing)
 
-        // 1. Check for file references (user selected/referenced files)
-        if (request.references.length > 0) {
-            const hasQueryFile = request.references.some(
-                (ref) =>
-                    ref.value instanceof vscode.Uri &&
-                    (ref.value.path.endsWith('.nosql') || ref.value.path.endsWith('.sql')),
-            );
-
-            if (hasQueryFile) {
-                return {
-                    operation: 'executeQuery',
-                    parameters: {
-                        query: prompt || 'SELECT * FROM c',
-                        includeMetrics: prompt.includes('metrics') || prompt.includes('performance'),
-                    },
-                };
-            }
-        }
-
-        // 2. Check current context (what user is working on)
+        // 1. Check current context (what user is working on)
         const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
         if (activeQueryEditors.length > 0) {
             // User has active query editor - check for edit/improve intents
@@ -285,18 +225,11 @@ Only return valid JSON, no other text:`;
                 prompt.includes('optimize') ||
                 prompt.includes('enhance')
             ) {
-                const activeEditor = activeQueryEditors[0];
+                const activeEditor = getActiveQueryEditor(activeQueryEditors);
                 const result = activeEditor.getCurrentQueryResults();
 
                 // Build rich context for the editQuery operation
-                let explanation = 'Query optimization based on session context';
-
-                if (result?.requestCharge && result.requestCharge > 10) {
-                    explanation += ' - High RU consumption detected';
-                }
-                if (result?.documents && result.documents.length > 100) {
-                    explanation += ' - Large result set detected';
-                }
+                const explanation = 'Query optimization based on session context';
 
                 return {
                     operation: 'editQuery',
@@ -315,21 +248,7 @@ Only return valid JSON, no other text:`;
             }
         }
 
-        const activeTextEditor = vscode.window.activeTextEditor;
-        if (activeTextEditor?.document.languageId === 'nosql') {
-            // User has NoSQL file open - check for edit intents
-            if (prompt.includes('edit') || prompt.includes('improve') || prompt.includes('optimize')) {
-                return {
-                    operation: 'editQuery',
-                    parameters: {
-                        currentQuery: activeTextEditor.document.getText() || 'SELECT * FROM c',
-                        userPrompt: prompt, // Pass the user's original prompt for LLM
-                    },
-                };
-            }
-        }
-
-        // 3. Intent keywords (more semantic than parsing) with parameter extraction
+        // 2. Intent keywords (more semantic than parsing) with parameter extraction
         const intentKeywords = {
             info: ['info', 'status', 'current', 'connected', 'what', 'where'],
             editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
@@ -529,7 +448,6 @@ Only return valid JSON, no other text:`;
             stream.markdown(`**Explanation:** ${result.explanation}\n\n`);
         }
 
-        // Add three action buttons horizontally
         stream.button({
             command: 'cosmosDB.applyQuerySuggestion',
             title: '✅ Update Query',

@@ -111,6 +111,7 @@ Return JSON with operation and parameters. Examples:
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
 - "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
 - "help" → {"operation": "help", "parameters": { "topic": "partition key choice" }}
+- if intent does not map any of the available operations: {}
 
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
@@ -121,6 +122,10 @@ Only return valid a JSON string. ** Do not return markdown format such as \`\`\`
             let jsonText = '';
             for await (const fragment of response.text) {
                 jsonText += fragment;
+            }
+
+            if (jsonText.trim() === '{}') {
+                return null;
             }
 
             const result = JSON.parse(jsonText.trim()) as { operation: string; parameters: Record<string, unknown> };

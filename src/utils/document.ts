@@ -10,6 +10,7 @@ import {
     type PartitionKeyDefinition,
     type PrimitivePartitionKeyValue,
 } from '@azure/cosmos';
+import { isEqual } from 'es-toolkit';
 import { type CosmosDBRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
 
 export const extractPartitionKey = (document: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
@@ -18,11 +19,13 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
         const partitionKeyPath = path.split('/').filter((key) => key !== '');
 
         for (const prop of partitionKeyPath) {
-            if (interim && typeof interim === 'object' && interim[prop]) {
+            // Use 'prop in interim' instead of 'interim[prop]' to check property existence
+            // This ensures empty strings are treated as valid values (truthy check would fail)
+            if (interim && typeof interim === 'object' && prop in interim) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
-                return null; // It is not correct to return null, in other cases it should be an exception
+                return null;
             }
         }
         if (
@@ -34,7 +37,7 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
             return interim;
         }
 
-        return null; // It is not correct to return null, in other cases it should be an exception
+        return null;
     });
 };
 
@@ -58,7 +61,9 @@ export const extractPartitionKeyValues = (
         let interim: JSONValue = document;
 
         for (const prop of partitionKeyPath) {
-            if (interim && typeof interim === 'object' && interim[prop]) {
+            // Use 'prop in interim' instead of 'interim[prop]' to check property existence
+            // This ensures empty strings are treated as valid values (truthy check would fail)
+            if (interim && typeof interim === 'object' && prop in interim) {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
@@ -114,4 +119,25 @@ export const getDocumentId = (
     }
 
     return undefined;
+};
+
+/**
+ * Compare two partition key values for equality
+ * @param pk1 First partition key value
+ * @param pk2 Second partition key value
+ * @returns true if partition keys are equal, false otherwise
+ */
+export const arePartitionKeysEqual = (pk1: PartitionKey | undefined, pk2: PartitionKey | undefined): boolean => {
+    // Both undefined or null
+    if (pk1 === pk2) {
+        return true;
+    }
+
+    // One is undefined/null, the other isn't
+    if (pk1 === undefined || pk2 === undefined || pk1 === null || pk2 === null) {
+        return false;
+    }
+
+    // Use deep equality for comparison (handles arrays and primitive values)
+    return isEqual(pk1, pk2);
 };

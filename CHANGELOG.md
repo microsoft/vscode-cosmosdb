@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.28.2
+
+### Added
+- Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) (#2758).
+
+## 0.28.1
+
+### Added
+- Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view (#2755).
+
 ## 0.28.0
 
 ### Breaking changes
@@ -10,10 +20,6 @@
 
 - Fixed throughput buckets submenu.
 - Improved accessibility in Query Editor.
-
-### Added
-- Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view (#2755).
-- Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) (#2758).
 
 ## 0.27.0
 

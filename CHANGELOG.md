@@ -13,7 +13,7 @@
 
 ### Added
 - Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view (#2755).
-- Deploy and manage LLM instruction files (#2758).
+- Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) (#2758).
 
 ## 0.27.0
 

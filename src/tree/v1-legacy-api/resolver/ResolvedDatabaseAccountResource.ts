@@ -17,7 +17,7 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     public contextValuesToAdd: string[] = [];
     public description: string | undefined;
 
-    // private _databaseTreeItem: AzExtParentTreeItem;
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     iconPath: TreeItemIconPath | undefined;
     label: string;
 

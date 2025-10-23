@@ -6,7 +6,8 @@
 import { ManagedIdentityCredential } from '@azure/identity';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { AuthenticationMethod, type CosmosDBManagedIdentityCredential } from '../getCosmosClient';
+import { AuthenticationMethod } from '../AuthenticationMethod';
+import { type CosmosDBManagedIdentityCredential } from '../CosmosDBCredential';
 
 let isRunningOnAzurePromise: Promise<boolean> | undefined = undefined;
 let isRunningOnAzureResult: boolean | undefined = undefined;

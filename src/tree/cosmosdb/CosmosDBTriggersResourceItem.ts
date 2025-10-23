@@ -8,7 +8,7 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -29,9 +29,9 @@ export abstract class CosmosDBTriggersResourceItem
     }
 
     public async getChildren(): Promise<TreeElement[]> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const triggers = await this.getTriggers(cosmosClient);
+        const triggers = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
+            this.getTriggers(cosmosClient),
+        );
         const sortedTriggers = triggers.sort((a, b) => a.id.localeCompare(b.id));
 
         return this.getChildrenImpl(sortedTriggers);

@@ -5,10 +5,36 @@
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
-import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
-import { pickAppResource } from '../../utils/pickItem/pickAppResource';
-import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
+import { type CosmosDBContainerResourceItem } from '../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBItemsResourceItem } from '../tree/cosmosdb/CosmosDBItemsResourceItem';
+import { pickAppResource } from '../utils/pickItem/pickAppResource';
+import { type CosmosDBCredential } from './CosmosDBCredential';
+
+export type NoSqlQueryConnection = {
+    accountId?: string; // Optional, used to identify the node in the tree
+    databaseId: string;
+    containerId: string;
+    endpoint: string;
+    credentials: CosmosDBCredential[];
+    isEmulator: boolean;
+};
+
+export function isNoSqlQueryConnection(connection: unknown): connection is NoSqlQueryConnection {
+    return (
+        !!connection &&
+        typeof connection === 'object' &&
+        'databaseId' in connection &&
+        typeof connection.databaseId === 'string' &&
+        'containerId' in connection &&
+        typeof connection.containerId === 'string' &&
+        'endpoint' in connection &&
+        typeof connection.endpoint === 'string' &&
+        'credentials' in connection &&
+        Array.isArray(connection.credentials) &&
+        'isEmulator' in connection &&
+        typeof connection.isEmulator === 'boolean'
+    );
+}
 
 export function createNoSqlQueryConnection(
     node: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,

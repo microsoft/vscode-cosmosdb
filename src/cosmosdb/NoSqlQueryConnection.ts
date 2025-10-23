@@ -11,6 +11,7 @@ import { pickAppResource } from '../utils/pickItem/pickAppResource';
 import { type CosmosDBCredential } from './CosmosDBCredential';
 
 export type NoSqlQueryConnection = {
+    accountId?: string; // Optional, used to identify the node in the tree
     databaseId: string;
     containerId: string;
     endpoint: string;

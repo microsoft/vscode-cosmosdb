@@ -32,8 +32,9 @@ export abstract class CosmosDBTriggersResourceItem
         const triggers = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
             this.getTriggers(cosmosClient),
         );
+        const sortedTriggers = triggers.sort((a, b) => a.id.localeCompare(b.id));
 
-        return this.getChildrenImpl(triggers);
+        return this.getChildrenImpl(sortedTriggers);
     }
 
     getTreeItem(): vscode.TreeItem {

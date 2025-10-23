@@ -32,8 +32,9 @@ export abstract class CosmosDBStoredProceduresResourceItem
         const storedProcedures = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
             this.getStoredProcedures(cosmosClient),
         );
+        const sortedProcedures = storedProcedures.sort((a, b) => a.id.localeCompare(b.id));
 
-        return this.getChildrenImpl(storedProcedures);
+        return this.getChildrenImpl(sortedProcedures);
     }
 
     getTreeItem(): vscode.TreeItem {

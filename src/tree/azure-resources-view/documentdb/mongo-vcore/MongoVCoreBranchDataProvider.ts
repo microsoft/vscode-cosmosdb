@@ -124,4 +124,8 @@ export class MongoVCoreBranchDataProvider extends BaseCachedBranchDataProvider<M
             },
         );
     }
+
+    protected onResourceItemRetrieved() {
+        // No additional actions needed after retrieving the resource item
+    }
 }

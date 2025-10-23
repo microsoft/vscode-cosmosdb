@@ -43,6 +43,7 @@ export function createNoSqlQueryConnection(
     const containerId = node.model.container.id;
 
     return {
+        accountId: accountInfo.id,
         databaseId: databaseId,
         containerId: containerId,
         endpoint: accountInfo.endpoint,

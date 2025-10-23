@@ -27,7 +27,6 @@ async function getSessionForDatabaseAccount(
 export type AccessToken = { token: string; expiresOnTimestamp: number };
 
 export async function getAccessTokenForVSCode(
-     
     scopes: vscode.AuthenticationWWWAuthenticateRequest | string[] | string,
     tenantId: string | undefined,
     options?: vscode.AuthenticationGetSessionOptions,

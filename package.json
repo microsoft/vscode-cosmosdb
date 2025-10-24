@@ -218,7 +218,7 @@
         {
           "command": "azureDatabases.createServer",
           "title": "%cosmosdb.command.account.create%",
-          "type": "microsoft.documentdb/databaseaccounts",
+          "type": "AzureCosmosDb",
           "detail": "%cosmosdb.command.account.create.description%"
         }
       ],

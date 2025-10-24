@@ -5,17 +5,14 @@
 
 import { ArrowPreviousFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const GoToFirstPageButton = forwardRef(function GoToFirstPageButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const GoToFirstPageButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
@@ -42,10 +39,10 @@ export const GoToFirstPageButton = forwardRef(function GoToFirstPageButton(
             icon={<ArrowPreviousFilled />}
             hotkey={hotkey}
             onClick={firstPage}
-            refs={ref}
+            ref={props.ref}
             showButtonText={false}
             tooltip={l10n.t('Go to first page')}
             type={props.type}
         />
     );
-});
+};

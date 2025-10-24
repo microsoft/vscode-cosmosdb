@@ -17,16 +17,13 @@ import {
 } from '@fluentui/react-components';
 import { PlayRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const RunQueryButton = forwardRef(function RunQueryButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const isDisabled = !state.isConnected || state.isExecuting;
@@ -83,7 +80,7 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
                             appearance="inverted"
                         >
                             <SplitButton
-                                ref={ref}
+                                ref={props.ref}
                                 aria-label={l10n.t('Execute query')}
                                 icon={<PlayRegular />}
                                 disabled={isDisabled}
@@ -171,4 +168,4 @@ export const RunQueryButton = forwardRef(function RunQueryButton(
             </MenuPopover>
         </Menu>
     );
-});
+};

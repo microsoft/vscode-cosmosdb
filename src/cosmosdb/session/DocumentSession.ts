@@ -444,21 +444,21 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, message],
             });
-            await this.logAndThrowError(l10n.t('Query failed'), error);
+            this.logAndThrowError(l10n.t('Query failed'), error);
         } else if (error instanceof TimeoutError) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, l10n.t('Query timed out')],
             });
-            await this.logAndThrowError(l10n.t('Query timed out'), error);
+            this.logAndThrowError(l10n.t('Query timed out'), error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, l10n.t('Query was aborted')],
             });
-            await this.logAndThrowError(l10n.t('Query was aborted'), error);
+            this.logAndThrowError(l10n.t('Query was aborted'), error);
         } else {
             // always force unexpected query errors to be included in report issue command
             context.errorHandling.forceIncludeInReportIssueCommand = true;
@@ -467,10 +467,8 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
-            await this.logAndThrowError(l10n.t('Query failed'), error);
+            this.logAndThrowError(l10n.t('Query failed'), error);
         }
-
-        throw error;
     }
 
     private setTelemetryProperties(context: IActionContext): void {
@@ -502,7 +500,7 @@ export class DocumentSession {
         });
     }
 
-    private async logAndThrowError(message: string, error: unknown = undefined): Promise<void> {
+    private logAndThrowError(message: string, error: unknown = undefined): never {
         if (error) {
             //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
             // we need to parse the error message and show it in a better way in the UI
@@ -519,10 +517,10 @@ export class DocumentSession {
             this.showError(message);
 
             throw new Error(`${message}, ${parsedError.message}`);
-        } else {
-            vscode.window.showErrorMessage(message);
-            throw new Error(message);
         }
+
+        void vscode.window.showErrorMessage(message);
+        throw new Error(message);
     }
 
     private showError(message: string): void {

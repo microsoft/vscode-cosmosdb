@@ -12,7 +12,7 @@ import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/T
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const NewItemButton = (props: ToolbarOverflowItemProps) => {
+export const NewItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const addNewItem = useCallback(() => dispatcher.openDocument('add'), [dispatcher]);

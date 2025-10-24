@@ -6,14 +6,11 @@
 import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { CommentCheckmarkRegular, EmojiSmileSlightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
-export const ProvideFeedbackButton = forwardRef(function ProvideFeedbackButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const ProvideFeedbackButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const dispatcher = useQueryEditorDispatcher();
 
     const provideFeedback = useCallback(() => dispatcher.provideFeedback(), [dispatcher]);
@@ -24,7 +21,7 @@ export const ProvideFeedbackButton = forwardRef(function ProvideFeedbackButton(
                 <MenuTrigger>
                     <Tooltip content={l10n.t('Provide Feedback')} relationship="label" appearance="inverted" withArrow>
                         <ToolbarButton
-                            ref={ref}
+                            ref={props.ref}
                             aria-label={l10n.t('Provide Feedback')}
                             icon={<EmojiSmileSlightRegular />}
                         />
@@ -50,4 +47,4 @@ export const ProvideFeedbackButton = forwardRef(function ProvideFeedbackButton(
             </MenuItem>
         );
     }
-});
+};

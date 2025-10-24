@@ -5,15 +5,12 @@
 
 import { Label, MenuItem } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { Timer } from '../../../Timer';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 
-export const StatusBar = forwardRef(function StatusBar(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLDivElement>,
-) {
+export const StatusBar = (props: ToolbarOverflowItemProps<HTMLDivElement>) => {
     const state = useQueryEditorState();
 
     const [time, setTime] = useState(0);
@@ -45,7 +42,7 @@ export const StatusBar = forwardRef(function StatusBar(
 
     if (props.type === 'button') {
         return (
-            <div ref={ref} style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
+            <div ref={props.ref} style={{ minWidth: '100px', maxWidth: '100px', textAlign: 'center' }}>
                 {state.isExecuting && <Timer time={time} />}
                 {!state.isExecuting && <Label weight="semibold">{recordRange}</Label>}
             </div>
@@ -58,4 +55,4 @@ export const StatusBar = forwardRef(function StatusBar(
             {!state.isExecuting && <Label weight="semibold">{recordRange}</Label>}
         </MenuItem>
     );
-});
+};

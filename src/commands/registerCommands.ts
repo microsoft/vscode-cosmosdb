@@ -10,6 +10,10 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
+import {
+    deployLLMInstructionsFiles,
+    removeLLMInstructionsFiles,
+} from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { registerCosmosDBCommands } from '../cosmosdb/registerCosmosDBCommands';
 import { ext } from '../extensionVariables';
 import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
@@ -76,6 +80,8 @@ export function registerCommands(): void {
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
+
+    registerLLMAssetsCommands();
 }
 
 export function registerAccountCommands() {
@@ -126,4 +132,9 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createTrigger', cosmosDBCreateTrigger);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', cosmosDBOpenTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
+}
+
+export function registerLLMAssetsCommands() {
+    registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
+    registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
 }

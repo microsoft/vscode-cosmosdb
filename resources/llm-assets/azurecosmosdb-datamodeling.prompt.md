@@ -407,7 +407,7 @@ The core design philosophy is the default mode of thinking when getting started.
 
 ### Strategic Co-Location
 
-Use multi-document containers to group Documnents for different Entities together if they share sample logical Partition Key and frequently accessed together as long as it can be operationally coupled. Cosmos DB provides container-level features like throughput provisioning, indexing policies, and change feed that function at the container level. Grouping too much data together couples it operationally and can limit optimization opportunities. This method usually benefit from adding discriminator attribute type per Document Entity type.
+Use multi-document containers to group Documents for different Entities together if they share same logical Partition Key and frequently accessed together as long as it can be operationally coupled. Cosmos DB provides container-level features like throughput provisioning, indexing policies, and change feed that function at the container level. Grouping too much data together couples it operationally and can limit optimization opportunities. This method usually benefit from adding discriminator attribute type per Document Entity type.
 
 **Multi-Document Container Benefits:**
 

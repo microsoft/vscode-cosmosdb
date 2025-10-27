@@ -138,7 +138,7 @@ For each pair of related containers, ask:
 
 ## Design Considerations (Subject to Change)
 - **Hot Partition Concerns**: [Analysis of high RPS patterns]
-- **Large fan-out with Many Physucal partitions based on total Datasize Concerns**: [Analysis of high number of physical partitions overhead for any cross-partition queries]
+- **Large fan-out with Many Physical partitions based on total Datasize Concerns**: [Analysis of high number of physical partitions overhead for any cross-partition queries]
 - **Cross-Partition Query Costs**: [Cost vs performance trade-offs]
 - **Indexing Strategy**: [Composite indexes, included paths, excluded paths]
 - **Multi-Document Opportunities**: [Entity pairs with 30-70% access correlation]

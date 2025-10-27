@@ -661,7 +661,7 @@ Use this decision tree to determine when data binning is required:
 
 Example:
 **Problem**: 90M individual records × 80k writes/sec would require siginificant Cosmos DB partition/size and RU scale which would become cost prohibitive.
-**Solution**: Group records into chunks (e.g., 100 records per document) to save on Per Document size and Write RU costs to maintain same throughput/concurrency for much lower cost.
+**Solution**: Group records into chunks (e.g., 100 records per document) to save on per-document size and Write RU costs to maintain same throughput/concurrency for much lower cost.
 **Result**: 90M records → 900k documents (95.7% reduction)
 
 **Implementation**:

@@ -636,7 +636,7 @@ Decision: Option 1 better for this case due to lower total RU consumption
 
 This section includes common optimizations. None of these optimizations should be considered defaults. Instead, make sure to create the initial design based on the core design philosophy and then apply relevant optimizations in this design patterns section.
 
-### Massive Scale Data Binning Pattern and Dessision Tree
+### Massive Scale Data Binning Pattern and Decision Tree
 
 When facing massive write volumes (usually > 50K/sec), **data binning/chunking** Document design can reduce write operations while maintaining query efficiency. 
 Use this decision tree to determine when data binning is required:

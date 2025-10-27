@@ -587,7 +587,7 @@ This clarity becomes critical as your application grows and new developers join.
 ### Optimize Indexing for Writes and Reads/Queries
 
 Index only properties your access patterns actually query to optimize writes. 
-Use selective indexing by including spesific attributes in Include path, and  excluding everything else (/*) to reduce RU consumption and storage costs. Include composite indexes for complex ORDER BY, equality and range filters and filter operations with more then 2 predicates . 
+Use selective indexing by including specific attributes in Include path, and  excluding everything else (/*) to reduce RU consumption and storage costs. Include composite indexes for complex ORDER BY, equality and range filters and filter operations with more than 2 predicates. 
 Reality: Automatic indexing on all properties increases write RUs and storage costs regardless of usage. 
 Validation: List specific properties each access pattern filters or sorts by. If most queries use only 2-3 properties, use selective indexing; if they use most properties, consider automatic indexing.
 

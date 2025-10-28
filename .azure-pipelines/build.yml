@@ -89,6 +89,18 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
+                        - task: OneLocBuild@3
+                          inputs:
+                              locProj: 'l10n/LocProject.json'
+                              outDir: '$(Build.ArtifactStagingDirectory)'
+                              isCreatePrSelected: true
+                              repoType: 'gitHub'
+                              prSourceBranchPrefix: 'locfiles'
+                              gitHubPrMergeMethod: 'squash'
+                              packageSourceAuth: patAuth
+                              dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
+                              patVariable: '$(System.AccessToken)'
+
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: 'Component Governance - Component Detection'
 
@@ -109,18 +121,6 @@ extends:
                           condition: succeeded()
                           inputs:
                               workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
-
-                        - task: OneLocBuild@3
-                          inputs:
-                              locProj: 'l10n/LocProject.json'
-                              outDir: '$(Build.ArtifactStagingDirectory)'
-                              isCreatePrSelected: true
-                              repoType: 'gitHub'
-                              prSourceBranchPrefix: 'locfiles'
-                              gitHubPrMergeMethod: 'squash'
-                              packageSourceAuth: patAuth
-                              dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
-                              patVariable: '$(System.AccessToken)'
 
                         - task: Npm@1
                           displayName: "\U0001F449 Install Dependencies"

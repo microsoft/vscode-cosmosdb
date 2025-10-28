@@ -102,7 +102,7 @@ extends:
                           displayName: "\U0001F449 Using Node.js"
                           inputs:
                               versionSource: fromFile
-                              versionFilePath: .nvmrc
+                              versionFilePath: '$(Build.SourcesDirectory)/.azure-pipelines/.nvmrc'
 
                         - task: npmAuthenticate@0
                           displayName: "\U0001F449 Authenticate to npm registry"

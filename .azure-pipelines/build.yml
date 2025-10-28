@@ -88,10 +88,10 @@ extends:
                         ob_sdl_codeSignValidation_excludes: '-|**\*.json;-|**\*.js;-|**\node_modules\**;'
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
-                    steps:                          
+                    steps:
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: 'Component Governance - Component Detection'
-                          
+
                         - task: notice@0
                           displayName: "\U0001F449 Generate NOTICE file"
                           inputs:
@@ -113,7 +113,7 @@ extends:
                         - task: OneLocBuild@3
                           inputs:
                               locProj: 'l10n/LocProject.json'
-                              outDir: '$(ob_outputDirectory)'
+                              outDir: '$(Build.ArtifactStagingDirectory)'
                               isCreatePrSelected: true
                               repoType: 'gitHub'
                               prSourceBranchPrefix: 'locfiles'

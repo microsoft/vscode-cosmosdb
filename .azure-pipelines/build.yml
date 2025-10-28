@@ -72,6 +72,9 @@ extends:
             linuxEsrpSigning: true
             WindowsHostVersion:
                 Version: 2022
+        git:
+            # Use the OAuth token in the Git config for localized file check-in
+            persistCredentials: true
 
         stages:
             - stage: BuildStage
@@ -85,13 +88,10 @@ extends:
                         ob_sdl_codeSignValidation_excludes: '-|**\*.json;-|**\*.js;-|**\node_modules\**;'
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
-                    steps:
-                        - checkout: self
-                          # Use the OAuth token in the Git config for localized file check-in
-                          persistCredentials: true
-                          
+                    steps:                          
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: 'Component Governance - Component Detection'
+                          
                         - task: notice@0
                           displayName: "\U0001F449 Generate NOTICE file"
                           inputs:

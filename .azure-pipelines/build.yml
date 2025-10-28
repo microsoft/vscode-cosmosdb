@@ -91,8 +91,8 @@ extends:
                         - task: notice@0
                           displayName: "\U0001F449 Generate NOTICE file"
                           inputs:
-                            outputfile: $(Build.SourcesDirectory)/NOTICE.html
-                            outputformat: html
+                              outputfile: $(Build.SourcesDirectory)/NOTICE.html
+                              outputformat: html
 
                         - task: NodeTool@0
                           displayName: "\U0001F449 Using Node.js"
@@ -105,6 +105,15 @@ extends:
                           condition: succeeded()
                           inputs:
                               workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
+
+                        - task: OneLocBuild@3
+                          inputs:
+                              locProj: 'l10n/LocProject.json'
+                              outDir: '$(ob_outputDirectory)'
+                              isCreatePrSelected: true
+                              repoType: 'gitHub'
+                              prSourceBranchPrefix: 'locfiles'
+                              gitHubPrMergeMethod: 'squash'
 
                         - task: Npm@1
                           displayName: "\U0001F449 Install Dependencies"

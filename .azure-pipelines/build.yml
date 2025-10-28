@@ -94,6 +94,8 @@ extends:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
                               isCreatePrSelected: true
+                              isAutoCompletePrSelected: false
+                              isSetAutoCompletePrSelected: true
                               repoType: 'gitHub'
                               prSourceBranchPrefix: 'locfiles'
                               gitHubPrMergeMethod: 'squash'

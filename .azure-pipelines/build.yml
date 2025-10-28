@@ -86,6 +86,10 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
+                        - checkout: self
+                          # Use the OAuth token in the Git config for localized file check-in
+                          persistCredentials: true
+                          
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: 'Component Governance - Component Detection'
                         - task: notice@0

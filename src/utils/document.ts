@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    PartitionKeyBuilder,
     type ItemDefinition,
     type JSONValue,
     type PartitionKey,
@@ -14,9 +15,12 @@ import { isEqual } from 'es-toolkit';
 import { type CosmosDBRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
 
 export const extractPartitionKey = (document: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
-    return partitionKey.paths.map((path): PrimitivePartitionKeyValue => {
+    const builder = new PartitionKeyBuilder();
+
+    for (const path of partitionKey.paths) {
         let interim: JSONValue = document;
         const partitionKeyPath = path.split('/').filter((key) => key !== '');
+        let pathNotFound = false;
 
         for (const prop of partitionKeyPath) {
             // Use 'prop in interim' instead of 'interim[prop]' to check property existence
@@ -25,20 +29,32 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
-                return null;
+                // Property not found in the path
+                pathNotFound = true;
+                break;
             }
         }
-        if (
-            interim === null ||
-            typeof interim === 'string' ||
-            typeof interim === 'number' ||
-            typeof interim === 'boolean'
-        ) {
-            return interim;
-        }
 
-        return null;
-    });
+        // Add the value to the builder based on its type
+        if (pathNotFound) {
+            builder.addNoneValue();
+        } else if (interim === undefined) {
+            builder.addNoneValue();
+        } else if (interim === null) {
+            builder.addNullValue();
+        } else if (typeof interim === 'string') {
+            builder.addValue(interim);
+        } else if (typeof interim === 'number') {
+            builder.addValue(interim);
+        } else if (typeof interim === 'boolean') {
+            builder.addValue(interim);
+        } else {
+            // For complex types, add undefined
+            builder.addNoneValue();
+        }
+    }
+
+    return builder.build();
 };
 
 /**
@@ -49,8 +65,8 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
 export const extractPartitionKeyValues = (
     document: ItemDefinition,
     partitionKey?: PartitionKeyDefinition,
-): Record<string, PartitionKey> => {
-    const partitionKeyValue: Record<string, PartitionKey> = {};
+): Record<string, PrimitivePartitionKeyValue> => {
+    const partitionKeyValue: Record<string, PrimitivePartitionKeyValue> = {};
 
     if (!partitionKey) {
         return partitionKeyValue;
@@ -59,6 +75,7 @@ export const extractPartitionKeyValues = (
     partitionKey.paths.forEach((path) => {
         const partitionKeyPath = path.split('/').filter((key) => key !== '');
         let interim: JSONValue = document;
+        let pathNotFound = false;
 
         for (const prop of partitionKeyPath) {
             // Use 'prop in interim' instead of 'interim[prop]' to check property existence
@@ -67,16 +84,28 @@ export const extractPartitionKeyValues = (
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 interim = interim[prop];
             } else {
-                return; // It is not correct to return null, in other cases it should be an exception
+                // Property not found in the path
+                pathNotFound = true;
+                break;
             }
         }
-        if (
-            interim === null ||
-            typeof interim === 'string' ||
-            typeof interim === 'number' ||
-            typeof interim === 'boolean'
-        ) {
+
+        // Store the value directly based on its type
+        if (pathNotFound) {
+            // Property doesn't exist in document - use None type (empty object)
+            partitionKeyValue[path] = {};
+        } else if (interim === undefined) {
+            // Property exists but is explicitly set to undefined - use None type
+            partitionKeyValue[path] = {};
+        } else if (interim === null) {
+            // Property exists and is explicitly set to null
+            partitionKeyValue[path] = null;
+        } else if (typeof interim === 'string' || typeof interim === 'number' || typeof interim === 'boolean') {
+            // Valid primitive partition key value
             partitionKeyValue[path] = interim;
+        } else {
+            // Complex types (objects/arrays) are not valid partition key values - use None type
+            partitionKeyValue[path] = {};
         }
     });
 

@@ -54,7 +54,7 @@ describe('extractPartitionKey', () => {
             expect(result).toEqual([true]);
         });
 
-        it('should return null for missing property', () => {
+        it('should return {} (None type) for missing property', () => {
             const document: ItemDefinition = {
                 id: '123',
                 City: 'Seattle',
@@ -62,7 +62,7 @@ describe('extractPartitionKey', () => {
 
             const result = extractPartitionKey(document, partitionKeyDef);
 
-            expect(result).toEqual([null]);
+            expect(result).toEqual([{}]);
         });
 
         it('should extract null value', () => {
@@ -96,7 +96,7 @@ describe('extractPartitionKey', () => {
             expect(result).toEqual(['98101']);
         });
 
-        it('should return null for missing nested property', () => {
+        it('should return {} (None type) for missing nested property', () => {
             const partitionKeyDef: PartitionKeyDefinition = {
                 paths: ['/address/zipCode'],
                 version: PartitionKeyDefinitionVersion.V2,
@@ -110,10 +110,10 @@ describe('extractPartitionKey', () => {
 
             const result = extractPartitionKey(document, partitionKeyDef);
 
-            expect(result).toEqual([null]);
+            expect(result).toEqual([{}]);
         });
 
-        it('should return null when parent object is missing', () => {
+        it('should return {} (None type) when parent object is missing', () => {
             const partitionKeyDef: PartitionKeyDefinition = {
                 paths: ['/address/zipCode'],
                 version: PartitionKeyDefinitionVersion.V2,
@@ -124,7 +124,7 @@ describe('extractPartitionKey', () => {
 
             const result = extractPartitionKey(document, partitionKeyDef);
 
-            expect(result).toEqual([null]);
+            expect(result).toEqual([{}]);
         });
 
         it('should handle deeply nested properties', () => {
@@ -184,7 +184,7 @@ describe('extractPartitionKey', () => {
             expect(result).toEqual(['Electronics', 2024, true]);
         });
 
-        it('should return null for missing values in hierarchical keys', () => {
+        it('should return {} (None type) for missing values in hierarchical keys', () => {
             const partitionKeyDef: PartitionKeyDefinition = {
                 paths: ['/TenantId', '/UserId', '/SessionId'],
                 version: PartitionKeyDefinitionVersion.V2,
@@ -198,7 +198,7 @@ describe('extractPartitionKey', () => {
 
             const result = extractPartitionKey(document, partitionKeyDef);
 
-            expect(result).toEqual(['Microsoft', null, '0000-11-0000-1111']);
+            expect(result).toEqual(['Microsoft', {}, '0000-11-0000-1111']);
         });
     });
 
@@ -248,7 +248,7 @@ describe('extractPartitionKey', () => {
             expect(result).toEqual(['']);
         });
 
-        it('should return null for object value (not a primitive)', () => {
+        it('should return {} (None type) for object value (not a primitive)', () => {
             const partitionKeyDef: PartitionKeyDefinition = {
                 paths: ['/data'],
                 version: PartitionKeyDefinitionVersion.V2,
@@ -260,10 +260,10 @@ describe('extractPartitionKey', () => {
 
             const result = extractPartitionKey(document, partitionKeyDef);
 
-            expect(result).toEqual([null]);
+            expect(result).toEqual([{}]);
         });
 
-        it('should return null for array value', () => {
+        it('should return {} (None type) for array value', () => {
             const partitionKeyDef: PartitionKeyDefinition = {
                 paths: ['/tags'],
                 version: PartitionKeyDefinitionVersion.V2,
@@ -275,7 +275,7 @@ describe('extractPartitionKey', () => {
 
             const result = extractPartitionKey(document, partitionKeyDef);
 
-            expect(result).toEqual([null]);
+            expect(result).toEqual([{}]);
         });
     });
 });
@@ -324,6 +324,34 @@ describe('extractPartitionKeyValues', () => {
         const result = extractPartitionKeyValues(document, undefined);
 
         expect(result).toEqual({});
+    });
+
+    it('should handle nested partition key paths', () => {
+        const partitionKeyDef: PartitionKeyDefinition = {
+            paths: ['/TenantId', '/address/zipCode', '/user/profile/name'],
+            version: PartitionKeyDefinitionVersion.V2,
+        };
+        const document: ItemDefinition = {
+            id: '123',
+            TenantId: 'Microsoft',
+            address: {
+                zipCode: '98101',
+                city: 'Seattle',
+            },
+            user: {
+                profile: {
+                    name: 'John Doe',
+                },
+            },
+        };
+
+        const result = extractPartitionKeyValues(document, partitionKeyDef);
+
+        expect(result).toEqual({
+            '/TenantId': 'Microsoft',
+            '/address/zipCode': '98101',
+            '/user/profile/name': 'John Doe',
+        });
     });
 });
 

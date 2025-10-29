@@ -13,6 +13,7 @@ import {
     type DeleteOperationInput,
     type ItemDefinition,
     type JSONObject,
+    type PartitionKey,
     type PartitionKeyDefinition,
 } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -25,7 +26,7 @@ import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
-import { extractPartitionKey } from '../../utils/document';
+import { arePartitionKeysEqual, extractPartitionKey } from '../../utils/document';
 import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
 import { getCosmosClient, getCosmosDBKeyCredential } from '../getCosmosClient';
 import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
@@ -84,8 +85,6 @@ export class DocumentSession {
             }
 
             try {
-                const partitionKey = await this.getPartitionKey();
-
                 const response = await this.client
                     .database(this.databaseId)
                     .container(this.containerId)
@@ -96,6 +95,11 @@ export class DocumentSession {
                 if (response?.resource) {
                     const record = response.resource as CosmosDBRecord;
 
+                    const containerPartitionKey = await this.getPartitionKey();
+                    const partitionKey = containerPartitionKey
+                        ? extractPartitionKey(record, containerPartitionKey)
+                        : undefined;
+
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'setDocument',
@@ -105,7 +109,7 @@ export class DocumentSession {
                     return {
                         id: record.id,
                         _rid: record._rid,
-                        partitionKey: partitionKey ? extractPartitionKey(record, partitionKey) : undefined,
+                        partitionKey: partitionKey,
                     };
                 } else {
                     await this.channel.postMessage({
@@ -165,12 +169,12 @@ export class DocumentSession {
                 }
 
                 if (result) {
-                    const partitionKey = await this.getPartitionKey();
+                    const containerPartitionKey = await this.getPartitionKey();
 
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'setDocument',
-                        params: [this.id, result, partitionKey],
+                        params: [this.id, result, containerPartitionKey],
                     });
                 } else {
                     await this.channel.postMessage({
@@ -201,35 +205,96 @@ export class DocumentSession {
             }
 
             try {
-                const response = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
-                    .replace(document, {
-                        abortSignal: this.abortController.signal,
-                    });
+                const containerPartitionKey = await this.getPartitionKey();
 
-                if (response?.resource) {
-                    const record = response.resource as CosmosDBRecord;
-                    const partitionKey = await this.getPartitionKey();
+                // Extract partition key from the updated document
+                let newPartitionKey: PartitionKey | undefined = undefined;
+                if (containerPartitionKey) {
+                    newPartitionKey = extractPartitionKey(document, containerPartitionKey);
+                }
 
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'setDocument',
-                        params: [this.id, record, partitionKey],
-                    });
+                // Check if partition key has changed
+                const partitionKeyChanged: boolean = !arePartitionKeysEqual(documentId.partitionKey, newPartitionKey);
 
-                    return {
-                        id: record.id,
-                        _rid: record._rid,
-                        partitionKey: partitionKey ? extractPartitionKey(record, partitionKey) : undefined,
-                    };
+                if (partitionKeyChanged) {
+                    // Partition key has changed - need to delete old item and create new one
+                    context.telemetry.properties.partitionKeyChanged = 'true';
+
+                    // Delete the old item
+                    await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .item(documentId.id, documentId.partitionKey)
+                        .delete({
+                            abortSignal: this.abortController.signal,
+                        });
+
+                    // Create the new item with the updated partition key
+                    const response = await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .items.create<ItemDefinition>(document, {
+                            abortSignal: this.abortController.signal,
+                        });
+
+                    if (response?.resource) {
+                        const record = response.resource as CosmosDBRecord;
+
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'setDocument',
+                            params: [this.id, record, containerPartitionKey],
+                        });
+
+                        return {
+                            id: record.id,
+                            _rid: record._rid,
+                            partitionKey: containerPartitionKey
+                                ? extractPartitionKey(record, containerPartitionKey)
+                                : undefined,
+                        };
+                    } else {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Item update with partition key change failed'],
+                        });
+                    }
                 } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Item update failed'],
-                    });
+                    // Normal update - partition key hasn't changed
+                    context.telemetry.properties.partitionKeyChanged = 'false';
+
+                    const response = await this.client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .item(documentId.id, documentId.partitionKey)
+                        .replace(document, {
+                            abortSignal: this.abortController.signal,
+                        });
+
+                    if (response?.resource) {
+                        const record = response.resource as CosmosDBRecord;
+
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'setDocument',
+                            params: [this.id, record, containerPartitionKey],
+                        });
+
+                        return {
+                            id: record.id,
+                            _rid: record._rid,
+                            partitionKey: containerPartitionKey
+                                ? extractPartitionKey(record, containerPartitionKey)
+                                : undefined,
+                        };
+                    } else {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Item update failed'],
+                        });
+                    }
                 }
             } catch (error) {
                 await this.errorHandling(error, context);
@@ -249,6 +314,16 @@ export class DocumentSession {
 
             if (documentId.id === undefined) {
                 throw new Error(l10n.t('Item id is required'));
+            }
+
+            const confirmation = await getConfirmationAsInSettings(
+                l10n.t('Delete Confirmation'),
+                l10n.t('Are you sure you want to delete the selected item?'),
+                'delete',
+            );
+
+            if (!confirmation) {
+                return;
             }
 
             try {
@@ -309,8 +384,10 @@ export class DocumentSession {
             }
 
             const confirmation = await getConfirmationAsInSettings(
-                l10n.t('Bulk Delete Confirmation'),
-                l10n.t('Are you sure you want to delete selected item(s)?'),
+                status.valid.length < 2 ? l10n.t('Delete Confirmation') : l10n.t('Bulk Delete Confirmation'),
+                status.valid.length < 2
+                    ? l10n.t('Are you sure you want to delete the selected item?')
+                    : l10n.t('Are you sure you want to delete selected items?'),
                 'delete',
             );
 
@@ -397,12 +474,12 @@ export class DocumentSession {
                     throw new Error(l10n.t('Session is disposed'));
                 }
 
-                const partitionKey = await this.getPartitionKey();
+                const containerPartitionKey = await this.getPartitionKey();
 
                 const newDocument: JSONObject = {
                     id: 'replace_with_new_document_id',
                 };
-                partitionKey?.paths.forEach((partitionKeyProperty) => {
+                containerPartitionKey?.paths.forEach((partitionKeyProperty) => {
                     let target = newDocument;
                     const keySegments = partitionKeyProperty.split('/').filter((segment) => segment.length > 0);
                     const finalSegment = keySegments.pop();
@@ -423,7 +500,7 @@ export class DocumentSession {
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'setDocument',
-                    params: [this.id, newDocument, partitionKey],
+                    params: [this.id, newDocument, containerPartitionKey],
                 });
             },
         );

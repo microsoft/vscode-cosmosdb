@@ -11,7 +11,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 
 const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
-const supportedLanguages = [];
+const supportedLanguages = ['cs', 'de', 'es', 'fr', 'it', 'ja', 'ko', 'pl', 'pt-BR', 'ru', 'tr', 'zh-Hans', 'zh-Hant']; // From VSCode L10n
 
 module.exports = (env, { mode }) => {
     const isDev = mode === 'development';

@@ -72,6 +72,9 @@ extends:
             linuxEsrpSigning: true
             WindowsHostVersion:
                 Version: 2022
+        git:
+            # Use the OAuth token in the Git config for localized file check-in
+            persistCredentials: true
 
         stages:
             - stage: BuildStage
@@ -86,19 +89,35 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
+                        - task: OneLocBuild@3
+                          displayName: "\U0001F30D Build Localized Files"
+                          inputs:
+                              locProj: 'l10n/LocProject.json'
+                              outDir: '$(Build.ArtifactStagingDirectory)'
+                              isCreatePrSelected: true
+                              isAutoCompletePrSelected: false
+                              isSetAutoCompletePrSelected: true
+                              repoType: 'gitHub'
+                              prSourceBranchPrefix: 'locfiles'
+                              gitHubPrMergeMethod: 'squash'
+                              packageSourceAuth: patAuth
+                              dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
+                              patVariable: '$(System.AccessToken)'
+
                         - task: ComponentGovernanceComponentDetection@0
-                          displayName: 'Component Governance - Component Detection'
+                          displayName: "\U0001F6E1 Component Governance - Component Detection"
+
                         - task: notice@0
                           displayName: "\U0001F449 Generate NOTICE file"
                           inputs:
-                            outputfile: $(Build.SourcesDirectory)/NOTICE.html
-                            outputformat: html
+                              outputfile: $(Build.SourcesDirectory)/NOTICE.html
+                              outputformat: html
 
                         - task: NodeTool@0
                           displayName: "\U0001F449 Using Node.js"
                           inputs:
                               versionSource: fromFile
-                              versionFilePath: .nvmrc
+                              versionFilePath: '$(Build.SourcesDirectory)/.nvmrc'
 
                         - task: npmAuthenticate@0
                           displayName: "\U0001F449 Authenticate to npm registry"
@@ -242,6 +261,14 @@ extends:
                                   **/*.tgz
                                   !**/node_modules/**
                               TargetFolder: $(ob_outputDirectory)
+                          condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+
+                        - task: CopyFiles@2
+                          displayName: "\U0001F449 Copy localisation results to staging directory"
+                          inputs:
+                              SourceFolder: '$(Build.ArtifactStagingDirectory)'
+                              Contents: loc/**
+                              TargetFolder: '$(ob_outputDirectory)'
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: Npm@1

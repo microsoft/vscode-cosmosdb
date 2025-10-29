@@ -5,6 +5,7 @@
 
 import {
     callWithTelemetryAndErrorHandling,
+    callWithTelemetryAndErrorHandlingSync,
     createContextValue,
     createGenericElement,
     type IActionContext,
@@ -75,7 +76,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      *
      * @returns A string prefix for context values (e.g., 'cosmosDB', 'cosmosDB.workspace')
      * @example
-     * protected get contexValuePrefix(): string {
+     * protected get contextValuePrefix(): string {
      *     return 'cosmosDB.workspace';
      * }
      */
@@ -86,7 +87,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      * This method is called by getResourceItem when no cached item exists.
      *
      * @param context - The action context for telemetry and error handling
-     * @param resource - The resource to create a tree item for (may be undefined)
+     * @param resource - The resource to create a tree item for (maybe undefined)
      * @returns A new tree element representing the resource, or undefined if
      * the resource couldn't be represented (which will cause an error element to be shown)
      *
@@ -272,7 +273,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     private async findAndRefreshCurrentElement(element: TreeElement): Promise<void> {
         try {
             // First try to find the current instance with this ID
-            const currentElement = await this.findNodeById(element.id!);
+            const currentElement = await this.findNodeById(element.id);
 
             // AFTER finding the element, update the cache:
             // 1. Clear the cache for this ID to remove any stale references
@@ -293,10 +294,11 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 this.onDidChangeTreeDataEmitter.fire(element);
             }
         } catch (error) {
+            // NOTE: It is impossible to fall here, but we handle it just in case
             // If anything goes wrong during the lookup, still attempt the refresh with the original element
             // and clear the cache for this ID
             console.log(`Error finding current element for refresh: ${error}`);
-            this.pruneCache(element.id!);
+            this.pruneCache(element.id);
             this.onDidChangeTreeDataEmitter.fire(element);
         }
     }
@@ -342,7 +344,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
     private processChild(child: TreeElement, parent: TreeElement): TreeElement {
         // If the child doesn't have an ID or is not part of the tree, return it as is
-        // for temporary elements created by TreeElementStateManager like "Createing XYZ"
+        // for temporary elements created by TreeElementStateManager like "Creating XYZ"
         if (!this.isAncestorOf(parent, child.id)) {
             return this.wrapElement(child);
         }
@@ -359,13 +361,27 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
     }
 
     private wrapElement(element: TreeElement): TreeElement {
-        try {
-            return ext.state.wrapItemInStateHandling(element, (item: TreeElement) => this.refresh(item)) as TreeElement;
-        } catch {
-            //TODO: log the error to telemetry
-            //context.telemetry.properties.wrapError = parseError(error).message;
-            return element; // Return unwrapped if error
-        }
+        const wrappedElement = callWithTelemetryAndErrorHandlingSync<TreeElement>(
+            `${this.providerName}.wrapElement`,
+            (context) => {
+                context.errorHandling.rethrow = false; // Do not rethrow, but log the error
+                context.errorHandling.suppressDisplay = true;
+                context.telemetry.suppressIfSuccessful = true;
+
+                try {
+                    // Set the data provider for the element
+                    element.dataProvider = this;
+                    return ext.state.wrapItemInStateHandling(element, (item: TreeElement) =>
+                        this.refresh(item),
+                    ) as TreeElement;
+                } catch (error) {
+                    context.telemetry.properties.wrapError = parseError(error).message;
+                    throw error; // Rethrow to ensure the error is logged
+                }
+            },
+        );
+
+        return wrappedElement ?? element; // Fallback to the original element if wrapping fails
     }
 
     private createErrorElement(message: string, id: string): TreeElement {

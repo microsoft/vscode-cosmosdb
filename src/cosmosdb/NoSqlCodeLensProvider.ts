@@ -10,6 +10,7 @@ import { KeyValueStore } from '../KeyValueStore';
 import { type CosmosDBCredential } from './getCosmosClient';
 
 export type NoSqlQueryConnection = {
+    accountId?: string; // Optional, used to identify the node in the tree
     databaseId: string;
     containerId: string;
     endpoint: string;

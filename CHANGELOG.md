@@ -1,10 +1,31 @@
 # Change Log
 
+## 0.28.2
+
+### Added
+- Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) (#2758).
+
+## 0.28.1
+
+### Added
+- Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view (#2755).
+
+## 0.28.0
+
+### Breaking changes
+- PostgreSQL functionality was moved to another [extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+- Gremlin (Graph) and Table databases have been retired.
+
+### Changed
+
+- Fixed throughput buckets submenu.
+- Improved accessibility in Query Editor.
+
 ## 0.27.0
 
 ### Added
 
-- Support for Bulk Deleteing selected documents from the NoSQL Query Results with confirmation and status notification (#2709).
+- Support for Bulk Deleting selected documents from the NoSQL Query Results with confirmation and status notification (#2709).
 - Added support for different Shell environments when running the Shell (#2698)
 
 ### Changed
@@ -18,7 +39,7 @@
 
 ### Added
 
-- New configuration setting `cosmosDB.preferredAuthenticationMethod` for the preferred authentication method for Cosmos DB accounts inside a new "Authentication" section '(deprecating the `azureDatabases.useCosmosOAuth` setting).
+- New configuration setting `cosmosDB.preferredAuthenticationMethod` for the preferred authentication method for Cosmos DB accounts inside a new "Authentication" section (deprecating the `azureDatabases.useCosmosOAuth` setting).
 - Support for Managed Identity authentication with Cosmos DB.
 - Support exporting selected rows to CSV.
 - New `cosmosDB.csvSeparator` setting to configure a custom CSV separator.
@@ -57,7 +78,7 @@
 - Unified context menus across all experiences.
 - Supporting TenantId for CosmosDB authentication
 - Improved support for local emulators.
-- Added support for the [Cosmos DB Emulator on Linux](https://aka.ms/CosmosVNextEmulator) and MacOS (Intel)
+- Added support for the [Cosmos DB Emulator on Linux](https://aka.ms/CosmosVNextEmulator) and macOS (Intel)
 
 ### Changed
 
@@ -87,7 +108,7 @@
 ### Added
 
 - Added support for Azure Cosmos DB for MongoDB vCore. Azure Resources now lists existing MongoDB vCore clusters.
-- Added support for universal MongoDB Cluster connectivity using a connection string (MongoDB Cluster Connections). This supports both MongoDB vCore clusters as well as other MongoDB cluster platforms.
+- Added support for universal MongoDB Cluster connectivity using a connection string (MongoDB Cluster Connections). This supports both MongoDB vCore clusters and other MongoDB cluster platforms.
 - New UI for executing queries in the NoSQL account. UI supports viewing results in a table, tree or a JSON view, showing the query stats, the RU cost and Index Metrics.
 - New UI for executing search queries in the vCore account. UI supports viewing results in a table, tree or a JSON view.
 - New UI for creating, viewing and editing documents in a separate tab.
@@ -136,7 +157,7 @@
 
 ### Changed
 
-- Fixed a bug where the azure user session cannot be auto detected for Postgres Flexible server. #2209
+- Fixed a bug where the azure user session cannot be auto-detected for Postgres Flexible server. #2209
 
 ## 0.20.0
 
@@ -221,7 +242,7 @@ We've made some large design changes to the Azure extensions for VS Code. [View 
 
 ### [Fixed](https://github.com/microsoft/vscode-cosmosdb/milestone/32?closed=1)
 
-- Fixed the ETIMEDOUT issue when signing into a PostgreSQL Flexible server on multiple machines
+- Fixed the ETIMEDOUT issue when signing in to a PostgreSQL Flexible server on multiple machines
 
 ## 0.18.0 - 2021-07-21
 
@@ -424,7 +445,7 @@ In this release, we're rebranding the Cosmos DB Extension to Azure Databases to 
   - Support for [method chaining](https://github.com/Microsoft/vscode-cosmosdb/issues/785).
   - Ability to [change timeout](https://github.com/Microsoft/vscode-cosmosdb/issues/809) for commands in scrapbook
 - Support [importing documents](https://github.com/Microsoft/vscode-cosmosdb/issues/404) into CosmosDB and Mongo databases.
-- Support for [soveriegn clouds](https://github.com/Microsoft/vscode-cosmosdb/commit/5b573f535cdeba109d7ff037b914575e0172c6bd)
+- Support for [sovereign clouds](https://github.com/Microsoft/vscode-cosmosdb/commit/5b573f535cdeba109d7ff037b914575e0172c6bd)
 - Support creation of fixed collections and graphs [#295](https://github.com/Microsoft/vscode-cosmosdb/issues/295) and [#504](https://github.com/Microsoft/vscode-cosmosdb/issues/504)
 
 ### Fixed
@@ -571,8 +592,8 @@ A big thank you to the following contributors that helped make the extension eve
 
 - Attach Cosmos DB accounts by connection string
 - Graph:
-  - Customize the color and display text of vertices through VS Code [settings](README.md#graphSettings)
-  - By default display vertex IDs and labels and choose vertex color based on label
+  - Customize the color and display text of vertices through VS Code settings
+  - By default, display vertex IDs and labels and choose vertex color based on label
   - Honor current VS Code theme
 
 ### Fixed

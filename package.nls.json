@@ -12,6 +12,7 @@
   "cosmosdb.command.database.create": "Create Database…",
   "cosmosdb.command.database.delete": "Delete Database…",
   "cosmosdb.command.document.import": "Import Document into a Container…",
+  "cosmosdb.command.filter": "Filter…",
   "cosmosdb.command.graph.create": "Create Graph…",
   "cosmosdb.command.graph.delete": "Delete Graph…",
   "cosmosdb.command.graph.explorer": "Open Graph Explorer",
@@ -56,6 +57,7 @@
   "cosmosdb.command.query.plan": "Get NoSQL Query Plan",
   "cosmosdb.command.query.scrapbook.open": "Open Query Scrapbook",
   "cosmosdb.command.refresh": "Refresh",
+  "cosmosdb.command.sort": "Sort…",
   "cosmosdb.command.stored_procedure.create": "Create Stored Procedure…",
   "cosmosdb.command.stored_procedure.delete": "Delete Stored Procedure…",
   "cosmosdb.command.stored_procedure.execute": "Execute Stored Procedure…",
@@ -64,6 +66,8 @@
   "cosmosdb.command.trigger.delete": "Delete Trigger…",
   "cosmosdb.command.trigger.open": "Open Trigger",
   "cosmosdb.command.update": "Update to Cloud",
+  "cosmosdb.command.ai.deploy_instruction_files": "Copy LLM instructions to user profile folder",
+  "cosmosdb.command.ai.remove_instruction_files": "Remove LLM instructions from user profile folder",
   "cosmosdb.configuration.batch.size": "The batch size to be used when querying Azure Database resources.",
   "cosmosdb.configuration.confirmation.style": "The behavior to use when confirming operations that cannot be undone, such as deleting resources.",
   "cosmosdb.configuration.confirmation.style.button": "Button Click Confirmation",
@@ -92,5 +96,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.entraId.description": "Sign in to VS Code using Entra ID",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity": "Managed Identity",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Only supported when running in Azure (i.e. a VM), [learn more](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
-  "cosmosdb.configuration.authentication.managedIdentity.clientID": "The Client ID of the Managed Identity to use when authenticating with Entra ID using a Usier-assigned Managed Identity."
+  "cosmosdb.configuration.authentication.managedIdentity.clientID": "The Client ID of the Managed Identity to use when authenticating with Entra ID using a User-assigned Managed Identity.",
+  "cosmosdb.configuration.manage-llm-assets": "Manage LLM assets. Allow the extension to keep LLM-related files updated."
 }

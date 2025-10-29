@@ -89,22 +89,6 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
-                        - task: OneLocBuild@3
-                          displayName: "\U0001F30D Build Localized Files"
-                          inputs:
-                              locProj: 'l10n/LocProject.json'
-                              outDir: '$(Build.ArtifactStagingDirectory)'
-                              isEnablePseudoLanguagesSelected: true
-                              isCreatePrSelected: true
-                              isAutoCompletePrSelected: false
-                              isSetAutoCompletePrSelected: true
-                              repoType: 'gitHub'
-                              prSourceBranchPrefix: 'locfiles'
-                              gitHubPrMergeMethod: 'squash'
-                              packageSourceAuth: patAuth
-                              dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
-                              patVariable: '$(System.AccessToken)'
-
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: "\U0001F6E1 Component Governance - Component Detection"
 
@@ -133,6 +117,23 @@ extends:
                               command: custom
                               customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
                               workingDir: $(Build.SourcesDirectory)
+
+                        - task: OneLocBuild@3
+                          displayName: "\U0001F30D Build Localized Files"
+                          inputs:
+                              locProj: 'l10n/LocProject.json'
+                              outDir: '$(Build.ArtifactStagingDirectory)'
+                              isEnablePseudoLanguagesSelected: true
+                              isCreatePrSelected: true
+                              isShouldReusePrSelected: true
+                              isAutoCompletePrSelected: false
+                              isSetAutoCompletePrSelected: true
+                              repoType: 'gitHub'
+                              prSourceBranchPrefix: 'locfiles'
+                              gitHubPrMergeMethod: 'squash'
+                              packageSourceAuth: patAuth
+                              dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
+                              patVariable: '$(System.AccessToken)'
 
                         - task: Npm@1
                           displayName: "\U0001F449 Build"

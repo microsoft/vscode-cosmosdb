@@ -254,36 +254,36 @@
     ],
     "commands": [
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.createServer",
         "title": "%cosmosdb.command.account.create%",
         "icon": "$(add)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.refresh",
         "title": "%cosmosdb.command.refresh%",
         "icon": "$(refresh)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.reportIssue",
         "title": "%cosmosdb.command.issue.report%"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.update",
         "title": "%cosmosdb.command.update%",
         "icon": "$(cloud-upload)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.filterTreeItems",
         "title": "%cosmosdb.command.filter%",
         "icon": "$(filter)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.sortTreeItems",
         "title": "%cosmosdb.command.sort%",
         "icon": "$(sort-precedence)"

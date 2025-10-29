@@ -94,6 +94,7 @@ extends:
                           inputs:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
+                              isEnablePseudoLanguagesSelected: true
                               isCreatePrSelected: true
                               isAutoCompletePrSelected: false
                               isSetAutoCompletePrSelected: true

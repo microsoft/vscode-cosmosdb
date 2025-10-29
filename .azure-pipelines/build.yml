@@ -243,6 +243,22 @@ extends:
                                       Write-Warning "[Warning] Could not parse exit code from vsce verify-signature output."
                                   }
 
+                        - task: PowerShell@2
+                          displayName: "\U0001F4C1 List files in source directory"
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  Write-Output "Listing files in: $(Build.SourcesDirectory)"
+                                  Get-ChildItem -Path "$(Build.SourcesDirectory)" | ForEach-Object { Write-Output $_.FullName }
+
+                        - task: PowerShell@2
+                          displayName: "\U0001F4C1 List files in staging directory"
+                          inputs:
+                              targetType: 'inline'
+                              script: |
+                                  Write-Output "Listing files in: $(Build.ArtifactStagingDirectory)"
+                                  Get-ChildItem -Path "$(Build.ArtifactStagingDirectory)" | ForEach-Object { Write-Output $_.FullName }
+
                         - task: CopyFiles@2
                           displayName: "\U0001F449 Copy packages and vsix to staging directory"
                           inputs:

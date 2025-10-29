@@ -90,6 +90,7 @@ extends:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
                         - task: OneLocBuild@3
+                          displayName: "\U0001F30D Build Localized Files"
                           inputs:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
@@ -104,7 +105,7 @@ extends:
                               patVariable: '$(System.AccessToken)'
 
                         - task: ComponentGovernanceComponentDetection@0
-                          displayName: 'Component Governance - Component Detection'
+                          displayName: "\U0001F6E1 Component Governance - Component Detection"
 
                         - task: notice@0
                           displayName: "\U0001F449 Generate NOTICE file"
@@ -243,22 +244,6 @@ extends:
                                       Write-Warning "[Warning] Could not parse exit code from vsce verify-signature output."
                                   }
 
-                        - task: PowerShell@2
-                          displayName: "\U0001F4C1 List files in source directory"
-                          inputs:
-                              targetType: 'inline'
-                              script: |
-                                  Write-Output "Listing files in: $(Build.SourcesDirectory)"
-                                  Get-ChildItem -Path "$(Build.SourcesDirectory)" | ForEach-Object { Write-Output $_.FullName }
-
-                        - task: PowerShell@2
-                          displayName: "\U0001F4C1 List files in staging directory"
-                          inputs:
-                              targetType: 'inline'
-                              script: |
-                                  Write-Output "Listing files in: $(Build.ArtifactStagingDirectory)"
-                                  Get-ChildItem -Path "$(Build.ArtifactStagingDirectory)" | ForEach-Object { Write-Output $_.FullName }
-
                         - task: CopyFiles@2
                           displayName: "\U0001F449 Copy packages and vsix to staging directory"
                           inputs:
@@ -276,6 +261,22 @@ extends:
                                   **/*.tgz
                                   !**/node_modules/**
                               TargetFolder: $(ob_outputDirectory)
+                          condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+
+                        - task: CopyFiles@2
+                          displayName: "\U0001F449 Copy localisation results to staging directory"
+                          inputs:
+                              Contents: |
+                                  OneLocBuild/**
+                              TargetFolder: '$(ob_outputDirectory)/OneLocBuild'
+                          condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+
+                        - task: CopyFiles@2
+                          displayName: "\U0001F449 Copy localisation results to staging directory"
+                          inputs:
+                              SourceFolder: '$(Build.ArtifactStagingDirectory)'
+                              Contents: loc/**
+                              TargetFolder: '$(ob_outputDirectory)/loc'
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: Npm@1

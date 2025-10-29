@@ -259,9 +259,16 @@ extends:
                                   NOTICE.html
                                   **/*.tar.gz
                                   **/*.tgz
-                                  loc/**
                                   !**/node_modules/**
                               TargetFolder: $(ob_outputDirectory)
+                          condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
+
+                        - task: CopyFiles@2
+                          displayName: "\U0001F449 Copy localisation results to staging directory"
+                          inputs:
+                              SourceFolder: '$(Build.ArtifactStagingDirectory)'
+                              Contents: loc/**
+                              TargetFolder: '$(ob_outputDirectory)'
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: Npm@1

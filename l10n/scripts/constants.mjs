@@ -23,7 +23,7 @@ export const utilsBundlePaths = [
 ];
 export const exportSourcePaths = [
     './src',
-    './node_modules/@microsoft/vscode-azext-utils/out/src',
-    './node_modules/@microsoft/vscode-azext-azureutils/out/src',
-    './node_modules/@microsoft/vscode-azext-azureauth/out/src',
+    path.join(nodeModulesPath, '@microsoft', 'vscode-azext-utils', 'out', 'src'),
+    path.join(nodeModulesPath, '@microsoft', 'vscode-azext-azureutils', 'out', 'src'),
+    path.join(nodeModulesPath, '@microsoft', 'vscode-azext-azureauth', 'out', 'src'),
 ];

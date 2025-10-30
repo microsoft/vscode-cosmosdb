@@ -24,10 +24,8 @@
   ],
   "keywords": [
     "Cosmos DB",
-    "DocumentDB",
-    "MongoDB",
-    "PostgreSQL",
-    "Database"
+    "Database",
+    "NOSQL"
   ],
   "preview": true,
   "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/main/README.md",
@@ -218,7 +216,7 @@
         {
           "command": "azureDatabases.createServer",
           "title": "%cosmosdb.command.account.create%",
-          "type": "microsoft.documentdb/databaseaccounts",
+          "type": "AzureCosmosDb",
           "detail": "%cosmosdb.command.account.create.description%"
         }
       ],
@@ -232,27 +230,6 @@
       }
     },
     "languages": [
-      {
-        "id": "mongo",
-        "aliases": [
-          "Mongo Scrapbook",
-          "mongo"
-        ],
-        "extensions": [
-          ".mongo"
-        ],
-        "firstLine": "^#!/.*\\bmongo*\\b",
-        "configuration": "./grammar/configuration.json"
-      },
-      {
-        "id": "postgres",
-        "aliases": [
-          "PostgreSQL"
-        ],
-        "extensions": [
-          ".psql"
-        ]
-      },
       {
         "id": "nosql",
         "aliases": [

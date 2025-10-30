@@ -2,7 +2,7 @@
 
 _Last update: March 24, 2025_
 
-This directory contains the tree view implementations for the Azure Databases for VS Code extension. The extension provides multiple ways to visualize and interact with CosmosDB resources.
+This directory contains the tree view implementations for the Azure Cosmos DB for VS Code extension. The extension provides multiple ways to visualize and interact with CosmosDB resources.
 
 ## View Types
 

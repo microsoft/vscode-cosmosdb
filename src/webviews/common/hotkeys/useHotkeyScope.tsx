@@ -111,7 +111,7 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     // Use react-hotkeys-hook to handle hotkeys
     // The event will always be added to the document, so we can use the scope name as a unique identifier
     useHotkeys(keysString, eventHandler, {
-        enableOnFormTags: ['textarea', 'input'],
+        enableOnFormTags: ['textarea', 'input', 'textbox'],
         enableOnContentEditable: true,
         scopes: scope, // Use the scope name as the scope identifier
     });

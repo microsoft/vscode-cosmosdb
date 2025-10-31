@@ -7,13 +7,13 @@ trigger:
 pr: none
 
 # Scheduled nightly build of `main`
-#schedules:
-#    - cron: '0 0 * * *'
-#      displayName: Nightly scheduled build
-#      always: false # Don't rebuild if there haven't been changes
-#      branches:
-#          include:
-#              - main
+schedules:
+    - cron: '0 0 * * *'
+      displayName: Nightly scheduled build
+      always: true # rebuild even if there are no code changes, required to keep localization files up to date
+      branches:
+          include:
+              - main
 
 parameters:
     - name: 'debug'

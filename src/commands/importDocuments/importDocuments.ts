@@ -236,6 +236,7 @@ async function parseAndValidateFileForCosmosDB(
 
     const validateOneDocument = (document: JSONObject): boolean => {
         let hasErrors = false;
+        // TODO: make partition key validation optional for import in UI with a prompt and set `allowNullOrUndefined` accordingly?
         const partitionKeyError = validatePartitionKey(document, partitionKey);
         if (partitionKeyError) {
             errors.push(...partitionKeyError);

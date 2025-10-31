@@ -3,6 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export type ToolbarOverflowItemProps = {
+import { type Ref } from 'react';
+
+export type ToolbarOverflowItemProps<T extends HTMLElement = HTMLElement> = {
     type: 'button' | 'menuitem';
+    ref?: Ref<T>;
 };

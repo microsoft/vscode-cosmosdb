@@ -5,8 +5,7 @@
 
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
-// eslint-disable-next-line import/no-internal-modules
-import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
+import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
 import { merge } from 'es-toolkit';
 import * as https from 'https';

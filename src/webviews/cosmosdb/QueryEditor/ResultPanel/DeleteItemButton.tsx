@@ -14,7 +14,7 @@ import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/T
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const DeleteItemButton = (props: ToolbarOverflowItemProps) => {
+export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 

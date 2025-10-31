@@ -58,25 +58,23 @@ const MessageBarWrapper = ({ visible, children, debounceTime = 0, ...props }: Me
             debounceTimerRef.current = null;
         }
 
-        if (debounceTime === 0) {
-            // Update immediately if debounceTime is 0
-            setIsVisible(visible);
-        } else {
-            // Set a new timer to delay the visibility change
-            debounceTimerRef.current = setTimeout(() => {
-                setIsVisible(visible);
-            }, debounceTime);
-        }
-    }, [visible, debounceTime]);
+        // If visibility is turning off, apply immediately (next tick)
+        // If debounceTime is 0, also apply on next tick
+        // Otherwise, delay by debounceTime
+        const delay = !visible || debounceTime === 0 ? 0 : debounceTime;
 
-    // Cleanup timer on unmount
-    useEffect(() => {
+        debounceTimerRef.current = setTimeout(() => {
+            setIsVisible(visible);
+        }, delay);
+
+        // Cleanup timer on unmount or when dependencies change
         return () => {
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
+                debounceTimerRef.current = null;
             }
         };
-    }, []);
+    }, [visible, debounceTime]);
 
     // Only render children when visible
     return isVisible ? <MessageBar {...props}>{children}</MessageBar> : null;

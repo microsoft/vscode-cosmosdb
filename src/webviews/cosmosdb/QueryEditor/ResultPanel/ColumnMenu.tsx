@@ -18,7 +18,7 @@ interface HeaderButtonClickArgs {
     };
 }
 
-export const useColumnMenu = (gridRef: React.RefObject<SlickgridReact>) => {
+export const useColumnMenu = (gridRef: React.RefObject<SlickgridReact | null>) => {
     const [resizeDialogOpen, setResizeDialogOpen] = React.useState(false);
     const [currentTarget, setCurrentTarget] = React.useState<HTMLElement | null>(null);
     const [currentColumnId, setCurrentColumnId] = React.useState<string | number>('');

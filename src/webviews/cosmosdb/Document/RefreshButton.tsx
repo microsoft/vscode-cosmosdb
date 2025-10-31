@@ -6,19 +6,17 @@
 import { ArrowClockwiseRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import type React from 'react';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ToolbarOverflowButton } from '../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
 import { type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 
-export const RefreshButton = forwardRef(function RefreshButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
+    const { ref, type } = props;
 
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== '';
@@ -53,8 +51,8 @@ export const RefreshButton = forwardRef(function RefreshButton(
     return (
         <>
             <ToolbarOverflowButton
-                type={props.type}
-                refs={ref}
+                type={type}
+                ref={ref}
                 ariaLabel={l10n.t('Reload original item from the database')}
                 onClick={onRefresh}
                 icon={<ArrowClockwiseRegular />}
@@ -65,4 +63,4 @@ export const RefreshButton = forwardRef(function RefreshButton(
             />
         </>
     );
-});
+};

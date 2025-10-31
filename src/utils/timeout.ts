@@ -31,26 +31,26 @@ export async function rejectOnTimeout<T>(
     action: () => Promise<T> | T,
     callerTimeOutMessage?: string,
 ): Promise<T> {
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises, no-async-promise-executor
-    return await new Promise<T>(async (resolve, reject) => {
+    return new Promise<T>((resolve, reject) => {
         let timer: NodeJS.Timeout | undefined = setTimeout(() => {
             timer = undefined;
             reject(new Error(callerTimeOutMessage || timedOutMessage));
         }, timeoutMs);
 
-        let value: T;
-        let error;
-
-        try {
-            value = await action();
-            clearTimeout(timer);
-            resolve(value);
-        } catch (err) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            error = err;
-            clearTimeout(timer);
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-            reject(error);
-        }
+        // Execute the action and handle the result
+        Promise.resolve()
+            .then(() => action())
+            .then((value) => {
+                if (timer !== undefined) {
+                    clearTimeout(timer);
+                    resolve(value);
+                }
+            })
+            .catch((error) => {
+                if (timer !== undefined) {
+                    clearTimeout(timer);
+                    reject(error instanceof Error ? error : new Error(String(error)));
+                }
+            });
     });
 }

@@ -46,11 +46,16 @@ export const DocumentView = (): JSX.Element => {
     const [isLoading, setIsLoading] = useState(configuration.mode !== 'add');
     const [isDirty, setIsDirty] = useState(true);
 
+    const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+    const getCurrentContent = () => editorRef.current?.getValue() || '';
+    const setContent = (newValue: string) => editorRef.current?.setValue(newValue);
+
     // a useEffect without a dependency runs only once after the first render only
     useEffect(() => {
         if (configuration.mode !== 'add') {
             const documentId: string = configuration.documentId;
 
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsLoading(true);
 
             void trpcClient.mongoClusters.documentView.getDocumentById
@@ -70,10 +75,6 @@ export const DocumentView = (): JSX.Element => {
                 });
         }
     }, [configuration, trpcClient]);
-
-    const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
-    const getCurrentContent = () => editorRef.current?.getValue() || '';
-    const setContent = (newValue: string) => editorRef.current?.setValue(newValue);
 
     const handleMonacoEditorMount = (
         editor: monacoEditor.editor.IStandaloneCodeEditor,

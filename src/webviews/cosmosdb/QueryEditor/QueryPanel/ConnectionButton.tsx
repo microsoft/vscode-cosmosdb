@@ -6,7 +6,7 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { DatabasePlugConnectedRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
@@ -17,13 +17,11 @@ const useClasses = makeStyles({
     },
 });
 
-export const ConnectionButton = forwardRef(function ConnectionButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const connectToDatabase = useCallback(() => dispatcher.connectToDatabase(), [dispatcher]);
     const disconnectFromDatabase = useCallback(() => dispatcher.disconnectFromDatabase(), [dispatcher]);
@@ -31,26 +29,26 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
     if (state.isConnected) {
         return (
             <ToolbarOverflowButton
-                type={props.type}
+                type={type}
                 ariaLabel={l10n.t('Disconnect')}
                 content={l10n.t('Disconnect')}
                 icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                 onClick={disconnectFromDatabase}
                 tooltip={l10n.t('Disconnect from the database')}
-                refs={ref}
+                ref={ref}
             />
         );
     }
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
+            type={type}
             ariaLabel={l10n.t('Connect')}
             content={l10n.t('Connect')}
             icon={<DatabasePlugConnectedRegular />}
             onClick={connectToDatabase}
             tooltip={l10n.t('Connect to the database')}
-            refs={ref}
+            ref={ref}
         />
     );
-});
+};

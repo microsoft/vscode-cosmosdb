@@ -15,16 +15,14 @@ import {
 } from '@fluentui/react-components';
 import { LibraryRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const LearnButton = forwardRef(function LearnButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
     const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
     const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
     const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
@@ -35,7 +33,7 @@ export const LearnButton = forwardRef(function LearnButton(
     return (
         <Menu>
             <MenuTrigger>
-                {props.type === 'button' ? (
+                {type === 'button' ? (
                     <Tooltip
                         content={l10n.t('Learn more about NoSQL queries')}
                         relationship="description"
@@ -77,4 +75,4 @@ export const LearnButton = forwardRef(function LearnButton(
             </MenuPopover>
         </Menu>
     );
-});
+};

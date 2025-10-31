@@ -11,7 +11,7 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBTriggerModel } from '../../tree/cosmosdb/models/CosmosDBTriggerModel';
 import { nonNullProp } from '../../utils/nonNull';
-import { getCosmosClient } from '../getCosmosClient';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export async function getTriggerType(context: IActionContext): Promise<TriggerType> {
     const options = Object.keys(TriggerType).map((type) => ({ label: type }));
@@ -48,13 +48,13 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const readResponse = await cosmosClient
-            .database(this.model.database.id)
-            .container(this.model.container.id)
-            .scripts.trigger(this.model.trigger.id)
-            .read();
+        const readResponse = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
+            cosmosClient
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .scripts.trigger(this.model.trigger.id)
+                .read(),
+        );
 
         let triggerType = readResponse.resource?.triggerType;
         let triggerOperation = readResponse.resource?.triggerOperation;
@@ -66,16 +66,18 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
             triggerOperation = await getTriggerOperation(context);
         }
 
-        const replace = await cosmosClient
-            .database(this.model.database.id)
-            .container(this.model.container.id)
-            .scripts.trigger(this.model.trigger.id)
-            .replace({
-                id: this.model.trigger.id,
-                triggerType: triggerType,
-                triggerOperation: triggerOperation,
-                body: content,
-            });
+        const replace = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
+            cosmosClient
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .scripts.trigger(this.model.trigger.id)
+                .replace({
+                    id: this.model.trigger.id,
+                    triggerType: triggerType,
+                    triggerOperation: triggerOperation,
+                    body: content,
+                }),
+        );
         this.model.trigger = nonNullProp(replace, 'resource');
     }
 }

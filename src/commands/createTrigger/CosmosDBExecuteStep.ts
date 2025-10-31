@@ -6,7 +6,7 @@
 import { type TriggerDefinition } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 
@@ -16,7 +16,6 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerWiz
     public async execute(context: CreateTriggerWizardContext): Promise<void> {
         const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { containerId, databaseId, triggerBody, triggerName, triggerOperation, triggerType, nodeId } = context;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
         return ext.state.showCreatingChild(
             nodeId,
@@ -31,12 +30,15 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerWiz
                     triggerOperation: triggerOperation!,
                 };
 
-                const response = await cosmosClient
-                    .database(databaseId)
-                    .container(containerId)
-                    .scripts.triggers.create(body);
+                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
+                    // Create the trigger using the Cosmos DB client
+                    const response = await cosmosClient
+                        .database(databaseId)
+                        .container(containerId)
+                        .scripts.triggers.create(body);
 
-                context.response = response.resource;
+                    context.response = response.resource;
+                });
             },
         );
     }

@@ -6,7 +6,7 @@
 import { PartitionKeyDefinitionVersion, PartitionKeyKind, type RequestOptions } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
@@ -17,7 +17,6 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
         const options: RequestOptions = {};
         const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { containerName, partitionKey, throughput, databaseId, nodeId } = context;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
         if (throughput !== 0) {
             options.offerThroughput = throughput;
@@ -43,7 +42,9 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
                     partitionKey: partitionKeyDefinition,
                 };
 
-                await cosmosClient.database(databaseId).containers.create(containerDefinition, options);
+                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
+                    await cosmosClient.database(databaseId).containers.create(containerDefinition, options);
+                });
             },
         );
     }

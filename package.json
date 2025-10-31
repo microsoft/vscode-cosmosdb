@@ -241,17 +241,6 @@
         ]
       }
     ],
-    "grammars": [
-      {
-        "language": "mongo",
-        "scopeName": "source.mongo.js",
-        "path": "./grammar/JavaScript.tmLanguage.json"
-      },
-      {
-        "scopeName": "source.mongo.js.regexp",
-        "path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
-      }
-    ],
     "commands": [
       {
         "category": "Azure Cosmos DB",

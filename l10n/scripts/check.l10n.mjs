@@ -5,7 +5,7 @@
 
 import { diffLines } from 'diff';
 import fs from 'node:fs';
-import { bundlePath } from './constants.mjs';
+import { bundlePath, exportSourcePaths } from './constants.mjs';
 import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
 
 /**
@@ -38,7 +38,7 @@ function getStringDiff(oldStr, newStr) {
 // Function to check if the localization bundle has changed
 const checkLocalisationBundle = async () => {
     // Extract localization strings from the source files
-    const output = await l10nExportAllStrings(['./src']);
+    const output = await l10nExportAllStrings(exportSourcePaths);
 
     if (!output) {
         console.log('No localization strings found.');

@@ -80,50 +80,60 @@ export class DocumentSession {
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.create', async (context) => {
             this.setTelemetryProperties(context);
 
-            if (this.isDisposed) {
-                throw new Error(l10n.t('Session is disposed'));
-            }
-
-            try {
-                const response = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .items.create<ItemDefinition>(document, {
-                        abortSignal: this.abortController.signal,
-                    });
-
-                if (response?.resource) {
-                    const record = response.resource as CosmosDBRecord;
-
-                    const containerPartitionKey = await this.getPartitionKey();
-                    const partitionKey = containerPartitionKey
-                        ? extractPartitionKey(record, containerPartitionKey)
-                        : undefined;
-
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'setDocument',
-                        params: [this.id, record, partitionKey],
-                    });
-
-                    return {
-                        id: record.id,
-                        _rid: record._rid,
-                        partitionKey: partitionKey,
-                    };
-                } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Item creation failed'],
-                    });
-                }
-            } catch (error) {
-                await this.errorHandling(error, context);
-            }
-
-            return undefined;
+            return this.createInternal(document, context);
         });
+    }
+
+    async createInternal(
+        document: ItemDefinition,
+        context: IActionContext,
+    ): Promise<CosmosDBRecordIdentifier | undefined> {
+        if (this.isDisposed) {
+            throw new Error(l10n.t('Session is disposed'));
+        }
+
+        if (document.id === undefined) {
+            throw new Error(l10n.t('Item id is required'));
+        }
+        try {
+            const response = await this.client
+                .database(this.databaseId)
+                .container(this.containerId)
+                .items.create<ItemDefinition>(document, {
+                    abortSignal: this.abortController.signal,
+                });
+
+            if (response?.resource) {
+                const record = response.resource as CosmosDBRecord;
+
+                const containerPartitionKey = await this.getPartitionKey();
+                const partitionKey = containerPartitionKey
+                    ? extractPartitionKey(record, containerPartitionKey)
+                    : undefined;
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'setDocument',
+                    params: [this.id, record, partitionKey],
+                });
+
+                return {
+                    id: record.id,
+                    _rid: record._rid,
+                    partitionKey: partitionKey,
+                };
+            } else {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentError',
+                    params: [this.id, 'Item creation failed'],
+                });
+            }
+        } catch (error) {
+            await this.errorHandling(error, context);
+        }
+
+        return undefined;
     }
 
     public async read(documentId: CosmosDBRecordIdentifier): Promise<void> {
@@ -220,46 +230,47 @@ export class DocumentSession {
                     // Partition key has changed - need to delete old item and create new one
                     context.telemetry.properties.partitionKeyChanged = 'true';
 
-                    // Delete the old item
-                    await this.client
-                        .database(this.databaseId)
-                        .container(this.containerId)
-                        .item(documentId.id, documentId.partitionKey)
-                        .delete({
-                            abortSignal: this.abortController.signal,
-                        });
+                    const confirmation = await getConfirmationAsInSettings(
+                        l10n.t('Partition Key changed'),
+                        l10n.t(
+                            'Are you sure you want to change the items partition key?\n\nThis will delete the old item and create a new one.',
+                        ),
+                        'change',
+                    );
 
-                    // Create the new item with the updated partition key
-                    const response = await this.client
-                        .database(this.databaseId)
-                        .container(this.containerId)
-                        .items.create<ItemDefinition>(document, {
-                            abortSignal: this.abortController.signal,
-                        });
-
-                    if (response?.resource) {
-                        const record = response.resource as CosmosDBRecord;
-
+                    if (!confirmation) {
+                        context.telemetry.properties.result = 'Canceled';
                         await this.channel.postMessage({
                             type: 'event',
-                            name: 'setDocument',
-                            params: [this.id, record, containerPartitionKey],
+                            name: 'operationAborted',
+                            params: [],
                         });
+                        return;
+                    }
 
-                        return {
-                            id: record.id,
-                            _rid: record._rid,
-                            partitionKey: containerPartitionKey
-                                ? extractPartitionKey(record, containerPartitionKey)
-                                : undefined,
-                        };
-                    } else {
+                    // Delete the old item
+                    const deleteResult = await this.deleteInternal(documentId, context);
+                    if (!deleteResult) {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Deleting old item for partition key change failed'],
+                        });
+                        // To avoid data loss, we still save the new item even if deleting the old one failed
+                        // TODO: should we abort here or prompt the user at this point if they want to create the
+                        // duplicate on the new partition even if deleting the old one failed?
+                    }
+
+                    // Create the new item with the updated partition key
+                    const newRecord = await this.createInternal(document, context);
+                    if (!newRecord) {
                         await this.channel.postMessage({
                             type: 'event',
                             name: 'documentError',
                             params: [this.id, 'Item update with partition key change failed'],
                         });
                     }
+                    return newRecord;
                 } else {
                     // Normal update - partition key hasn't changed
                     context.telemetry.properties.partitionKeyChanged = 'false';
@@ -326,32 +337,46 @@ export class DocumentSession {
                 return;
             }
 
-            try {
-                const result = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
-                    .delete({
-                        abortSignal: this.abortController.signal,
-                    });
-
-                if (result?.statusCode === 204) {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentDeleted',
-                        params: [this.id, documentId],
-                    });
-                } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Item deletion failed'],
-                    });
-                }
-            } catch (error) {
-                await this.errorHandling(error, context);
-            }
+            await this.deleteInternal(documentId, context);
         });
+    }
+
+    async deleteInternal(documentId: CosmosDBRecordIdentifier, context: IActionContext): Promise<boolean> {
+        if (this.isDisposed) {
+            throw new Error(l10n.t('Session is disposed'));
+        }
+
+        if (documentId.id === undefined) {
+            throw new Error(l10n.t('Item id is required'));
+        }
+
+        try {
+            const result = await this.client
+                .database(this.databaseId)
+                .container(this.containerId)
+                .item(documentId.id, documentId.partitionKey)
+                .delete({
+                    abortSignal: this.abortController.signal,
+                });
+
+            if (result?.statusCode === 204) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentDeleted',
+                    params: [this.id, documentId],
+                });
+                return true;
+            } else {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentError',
+                    params: [this.id, 'Item deletion failed'],
+                });
+            }
+        } catch (error) {
+            await this.errorHandling(error, context);
+        }
+        return false;
     }
 
     public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {

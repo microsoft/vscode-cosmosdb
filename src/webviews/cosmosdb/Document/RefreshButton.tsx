@@ -16,6 +16,7 @@ import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext
 export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
+    const { ref, type } = props;
 
     const inProgress = state.isSaving || state.isRefreshing;
     const hasDocumentInDB = state.documentId !== '';
@@ -50,8 +51,8 @@ export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>
     return (
         <>
             <ToolbarOverflowButton
-                type={props.type}
-                ref={props.ref}
+                type={type}
+                ref={ref}
                 ariaLabel={l10n.t('Reload original item from the database')}
                 onClick={onRefresh}
                 icon={<ArrowClockwiseRegular />}

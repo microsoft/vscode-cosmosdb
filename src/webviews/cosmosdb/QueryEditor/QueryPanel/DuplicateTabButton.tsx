@@ -15,6 +15,7 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const DuplicateTabButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const duplicateTab = useCallback(
         (event?: KeyboardEvent) => {
@@ -43,8 +44,8 @@ export const DuplicateTabButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
-            ref={props.ref}
+            type={type}
+            ref={ref}
             ariaLabel={l10n.t('Duplicate')}
             onClick={duplicateTab}
             icon={<TabDesktopMultipleRegular />}

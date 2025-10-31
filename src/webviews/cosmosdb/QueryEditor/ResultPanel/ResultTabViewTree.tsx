@@ -9,8 +9,7 @@ import { Formatters, SlickgridReact, type Column, type GridOption } from 'slickg
 import { useColumnMenu } from './ColumnMenu';
 
 type ResultTabViewTreeProps = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: Record<string, any>[];
+    data: Record<string, unknown>[];
 };
 
 interface TreeDataItem {

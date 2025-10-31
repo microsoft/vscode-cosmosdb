@@ -16,6 +16,7 @@ import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext
 export const SaveButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
+    const { ref, type } = props;
 
     const isSaveDisabled = state.isSaving || state.isRefreshing || !state.isDirty || !state.isValid;
 
@@ -62,8 +63,8 @@ export const SaveButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) =
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
-            ref={props.ref}
+            type={type}
+            ref={ref}
             ariaLabel={l10n.t('Save item to the database')}
             onClick={onSave}
             icon={<SaveRegular />}

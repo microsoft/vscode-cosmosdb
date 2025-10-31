@@ -15,6 +15,7 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const SaveToFileButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const saveToFile = useCallback(
         (event?: KeyboardEvent) => {
@@ -41,8 +42,8 @@ export const SaveToFileButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
-            ref={props.ref}
+            type={type}
+            ref={ref}
             ariaLabel={l10n.t('Save query')}
             onClick={saveToFile}
             icon={<SaveRegular />}

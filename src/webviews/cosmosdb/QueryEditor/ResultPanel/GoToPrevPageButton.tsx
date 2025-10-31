@@ -16,6 +16,7 @@ export const GoToPrevPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
+    const { ref, type } = props;
 
     const prevPage = useCallback(() => dispatcher.prevPage(state.currentExecutionId), [dispatcher, state]);
 
@@ -42,10 +43,10 @@ export const GoToPrevPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
             icon={<ArrowLeftFilled />}
             onClick={prevPage}
             hotkey={hotkey}
-            ref={props.ref}
+            ref={ref}
             showButtonText={false}
             tooltip={l10n.t('Go to previous page')}
-            type={props.type}
+            type={type}
         />
     );
 };

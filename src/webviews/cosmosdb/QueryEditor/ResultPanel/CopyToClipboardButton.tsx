@@ -17,7 +17,7 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    const { selectedTab } = props;
+    const { ref, selectedTab, type } = props;
     const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
     const tooltipClipboardContent = hasSelection
         ? l10n.t('Copy selected items to clipboard')
@@ -74,7 +74,7 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
     return (
         <Menu>
             <MenuTrigger>
-                {props.type === 'button' ? (
+                {type === 'button' ? (
                     <Tooltip
                         content={tooltipClipboardContent + copyToClipboardHotkeyTooltip}
                         relationship="label"
@@ -82,7 +82,7 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
                         withArrow
                     >
                         <ToolbarButton
-                            ref={props.ref}
+                            ref={ref}
                             aria-label={tooltipClipboardContent}
                             icon={<DocumentCopyRegular />}
                             disabled={!state.isConnected}

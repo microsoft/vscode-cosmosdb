@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line import/no-internal-modules
-import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth/out/src/getSessionFromVSCode';
+import { getSessionFromVSCode } from '@microsoft/vscode-azext-azureauth';
 import type * as vscode from 'vscode';
 
 export async function getSignedInPrincipalIdForAccountEndpoint(

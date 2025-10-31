@@ -15,6 +15,7 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const ReloadQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const isDisabled = !state.isConnected || !state.currentExecutionId;
 
@@ -47,10 +48,10 @@ export const ReloadQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
                 icon={<ArrowClockwiseFilled />}
                 hotkey={hotkey}
                 onClick={reloadData}
-                ref={props.ref}
+                ref={ref}
                 showButtonText={false}
                 tooltip={l10n.t('Reload query results')}
-                type={props.type}
+                type={type}
             />
         </>
     );

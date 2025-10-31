@@ -14,6 +14,7 @@ import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 export const OpenFileButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const openFile = useCallback(
         (event?: KeyboardEvent) => {
@@ -40,8 +41,8 @@ export const OpenFileButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
-            ref={props.ref}
+            type={type}
+            ref={ref}
             ariaLabel={l10n.t('Open')}
             onClick={openFile}
             icon={<FolderOpenRegular />}

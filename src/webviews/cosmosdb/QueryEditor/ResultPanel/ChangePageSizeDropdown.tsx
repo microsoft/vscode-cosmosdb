@@ -25,6 +25,7 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const pageSize = state.pageSize;
+    const { type, ref } = props;
 
     const changePageSize = useCallback(
         (countPerPage: number) => {
@@ -53,8 +54,8 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
 
     return (
         <>
-            {props.type === 'button' ? (
-                <div ref={props.ref as React.Ref<HTMLDivElement>} style={{ paddingLeft: '8px' }}>
+            {type === 'button' ? (
+                <div ref={ref as React.Ref<HTMLDivElement>} style={{ paddingLeft: '8px' }}>
                     <Tooltip content={l10n.t('Change page size')} relationship="label" appearance="inverted" withArrow>
                         <Dropdown
                             onOptionSelect={(_event, data) => onOptionSelect(data)}

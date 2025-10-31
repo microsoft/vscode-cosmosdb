@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import { createContext, type ReactNode, useContext, useEffect, useReducer, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer } from 'react';
 import { type WebviewApi } from 'vscode-webview';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
@@ -34,14 +34,15 @@ export const WithDocumentContext = ({
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(DocumentPanelDispatch, { ...defaultState });
-    const [provider, setProvider] = useState<DocumentContextProvider>({} as DocumentContextProvider);
+
+    const provider = useMemo(
+        () => new DocumentContextProvider(channel, dispatch, dispatchToast),
+        [channel, dispatch, dispatchToast],
+    );
 
     useEffect(() => {
-        const provider = new DocumentContextProvider(channel, dispatch, dispatchToast);
-        setProvider(provider);
-
         return () => provider.dispose();
-    }, [channel, dispatch, dispatchToast]);
+    }, [provider]);
 
     return (
         <DocumentContext.Provider value={state}>

@@ -16,6 +16,7 @@ export const GoToNextPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const hasMoreResults = state.currentQueryResult?.hasMoreResults ?? false;
+    const { ref, type } = props;
     const isDisabled =
         state.pageSize === -1 || // Disable if page size is set to 'All'
         !state.isConnected ||
@@ -45,10 +46,10 @@ export const GoToNextPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEle
             icon={<ArrowRightFilled />}
             hotkey={hotkey}
             onClick={nextPage}
-            ref={props.ref}
+            ref={ref}
             showButtonText={false}
             tooltip={l10n.t('Go to next page (Load more)')}
-            type={props.type}
+            type={type}
         />
     );
 };

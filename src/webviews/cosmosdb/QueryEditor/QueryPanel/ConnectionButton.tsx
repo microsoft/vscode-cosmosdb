@@ -21,6 +21,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
     const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const connectToDatabase = useCallback(() => dispatcher.connectToDatabase(), [dispatcher]);
     const disconnectFromDatabase = useCallback(() => dispatcher.disconnectFromDatabase(), [dispatcher]);
@@ -28,26 +29,26 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
     if (state.isConnected) {
         return (
             <ToolbarOverflowButton
-                type={props.type}
+                type={type}
                 ariaLabel={l10n.t('Disconnect')}
                 content={l10n.t('Disconnect')}
                 icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
                 onClick={disconnectFromDatabase}
                 tooltip={l10n.t('Disconnect from the database')}
-                ref={props.ref}
+                ref={ref}
             />
         );
     }
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
+            type={type}
             ariaLabel={l10n.t('Connect')}
             content={l10n.t('Connect')}
             icon={<DatabasePlugConnectedRegular />}
             onClick={connectToDatabase}
             tooltip={l10n.t('Connect to the database')}
-            ref={props.ref}
+            ref={ref}
         />
     );
 };

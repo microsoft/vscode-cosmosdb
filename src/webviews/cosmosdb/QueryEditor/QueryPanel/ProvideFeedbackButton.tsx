@@ -12,16 +12,17 @@ import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
 export const ProvideFeedbackButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const provideFeedback = useCallback(() => dispatcher.provideFeedback(), [dispatcher]);
 
-    if (props.type === 'button') {
+    if (type === 'button') {
         return (
             <Menu>
                 <MenuTrigger>
                     <Tooltip content={l10n.t('Provide Feedback')} relationship="label" appearance="inverted" withArrow>
                         <ToolbarButton
-                            ref={props.ref}
+                            ref={ref}
                             aria-label={l10n.t('Provide Feedback')}
                             icon={<EmojiSmileSlightRegular />}
                         />

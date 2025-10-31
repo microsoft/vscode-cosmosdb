@@ -72,7 +72,9 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 const data = dataset[args.row];
                 if (column && data) {
                     const value = data[column.field] || '';
-                    const announcementText = `${column.name}: ${value}`;
+                    // Safely extract column name - only use if it's a string
+                    const columnName = typeof column.name === 'string' ? column.name : 'Column';
+                    const announcementText = `${columnName}: ${value}`;
                     setAnnouncement(announcementText);
                 }
             });
@@ -94,13 +96,13 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         [dataset, dispatcher, state.isEditMode, state.partitionKey],
     );
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const onSelectedRowsChanged = useCallback(
-        // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
-        debounce((args: OnSelectedRowsChangedEventArgs) => {
-            globalThis.getSelection()?.removeAllRanges(); // Clear the selection in the browser to avoid confusion with SlickGrid selection
-            dispatcher.setSelectedRows(args.rows);
-        }, 100),
+    // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
+    const onSelectedRowsChanged = useMemo(
+        () =>
+            debounce((args: OnSelectedRowsChangedEventArgs) => {
+                globalThis.getSelection()?.removeAllRanges(); // Clear the selection in the browser to avoid confusion with SlickGrid selection
+                dispatcher.setSelectedRows(args.rows);
+            }, 100),
         [dispatcher],
     );
 

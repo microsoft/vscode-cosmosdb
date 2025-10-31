@@ -23,6 +23,7 @@ export const CancelQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
     const classes = useClasses();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
 
     const cancelQuery = useCallback(
         async (event?: KeyboardEvent) => {
@@ -57,10 +58,10 @@ export const CancelQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
             content={l10n.t('Cancel')}
             icon={<StopRegular className={classes.iconStop} />}
             onClick={cancelQuery}
-            ref={props.ref}
+            ref={ref}
             tooltip={l10n.t('Cancel query')}
             hotkey={cancelQueryHotkeyTooltip}
-            type={props.type}
+            type={type}
             disabled={!state.isExecuting}
         />
     );

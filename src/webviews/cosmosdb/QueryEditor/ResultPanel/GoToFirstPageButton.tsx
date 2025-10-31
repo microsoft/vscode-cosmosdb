@@ -16,6 +16,7 @@ export const GoToFirstPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEl
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const isDisabled = state.pageNumber === 1 || !state.isConnected || state.isExecuting || !state.currentExecutionId;
+    const { ref, type } = props;
 
     const firstPage = useCallback(() => dispatcher.firstPage(state.currentExecutionId), [dispatcher, state]);
 
@@ -39,10 +40,10 @@ export const GoToFirstPageButton = (props: ToolbarOverflowItemProps<HTMLButtonEl
             icon={<ArrowPreviousFilled />}
             hotkey={hotkey}
             onClick={firstPage}
-            ref={props.ref}
+            ref={ref}
             showButtonText={false}
             tooltip={l10n.t('Go to first page')}
-            type={props.type}
+            type={type}
         />
     );
 };

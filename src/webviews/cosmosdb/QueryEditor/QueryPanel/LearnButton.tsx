@@ -22,6 +22,7 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
     const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
     const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
     const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
@@ -32,14 +33,14 @@ export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) 
     return (
         <Menu>
             <MenuTrigger>
-                {props.type === 'button' ? (
+                {type === 'button' ? (
                     <Tooltip
                         content={l10n.t('Learn more about NoSQL queries')}
                         relationship="description"
                         appearance="inverted"
                         withArrow
                     >
-                        <ToolbarButton ref={props.ref} aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
+                        <ToolbarButton ref={ref} aria-label={l10n.t('Learn more')} icon={<LibraryRegular />}>
                             {l10n.t('Learn')}
                         </ToolbarButton>
                     </Tooltip>

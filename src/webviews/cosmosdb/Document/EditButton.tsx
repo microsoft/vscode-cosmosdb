@@ -16,6 +16,7 @@ import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext
 export const EditButton = function EditButton(props: ToolbarOverflowItemProps<HTMLButtonElement>) {
     const state = useDocumentState();
     const dispatcher = useDocumentDispatcher();
+    const { ref, type } = props;
 
     const isEditDisabled = state.mode !== 'view';
 
@@ -46,8 +47,8 @@ export const EditButton = function EditButton(props: ToolbarOverflowItemProps<HT
 
     return (
         <ToolbarOverflowButton
-            type={props.type}
-            ref={props.ref}
+            type={type}
+            ref={ref}
             ariaLabel={l10n.t('Open item for editing')}
             onClick={onEdit}
             icon={<EditRegular />}

@@ -192,13 +192,6 @@ Only return valid JSON, no other text:`;
                 }
                 break;
             }
-            case 'info': {
-                const infoMatch = originalPrompt.match(/info\s+(?:about|for)\s+([^\s,]+)/i);
-                if (infoMatch) {
-                    parameters.target = infoMatch[1];
-                }
-                break;
-            }
             default: {
                 if (lowercasePrompt.includes('metrics') || lowercasePrompt.includes('performance')) {
                     parameters.includeMetrics = true;
@@ -255,7 +248,6 @@ Only return valid JSON, no other text:`;
 
         // 2. Intent keywords (more semantic than parsing) with parameter extraction
         const intentKeywords = {
-            info: ['info', 'status', 'current', 'connected', 'what', 'where'],
             editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
             explainQuery: ['explain', 'describe', 'analyze', 'breakdown', 'understand', 'what does', 'how does'],
             help: ['help', 'commands', 'what can', 'how to'],
@@ -361,9 +353,6 @@ Only return valid JSON, no other text:`;
                     break;
                 case 'explainQuery':
                     operationName = 'explainQuery';
-                    break;
-                case 'info':
-                    operationName = 'getConnectionInfo';
                     break;
                 case 'help':
                     return await this.handleHelpCommand(stream);
@@ -477,7 +466,6 @@ Only return valid JSON, no other text:`;
 ### **Quick Commands:**
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
 - \`@cosmosdb /explainQuery\` - Explain the current query with AI analysis
-- \`@cosmosdb /info\` - Show connection information
 - \`@cosmosdb /help\` - Show this help
 
 ### **Natural Language:**
@@ -486,7 +474,6 @@ You can also use natural language:
 - "optimize this query" (modifies query in active editor)
 - "explain this query" (analyzes current query in active editor)
 - "what does my query do?" (explains query purpose and components)
-- "what am I connected to?"
 
 ### **Current Features:**
 - 🔗 Connection management
@@ -604,7 +591,6 @@ You help users with:
 
 You can also perform operations like:
 - "editQuery" - Edit and improve queries with AI suggestions (uses active query session data)
-- "connection info" - Show current connection details
 - "help" - Show available commands and features
 
 When helping with query optimization, use the provided query session context including:

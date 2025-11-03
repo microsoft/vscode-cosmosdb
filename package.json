@@ -254,10 +254,6 @@
             "description": "Edit query with LLM suggestions and user confirmation"
           },
           {
-            "name": "info",
-            "description": "Show connection information"
-          },
-          {
             "name": "help",
             "description": "Show available commands and help"
           },

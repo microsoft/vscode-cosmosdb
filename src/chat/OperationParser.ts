@@ -36,18 +36,6 @@ export class OperationParser {
             return { operation: 'openQueryEditor', parameters: {}, confidence: 0.7 };
         }
 
-        // Connection info
-        if (
-            this.matchesPatterns(lowerInput, [
-                'connection info',
-                'current connection',
-                'show connection',
-                'what am i connected to',
-            ])
-        ) {
-            return { operation: 'getConnectionInfo', parameters: {}, confidence: 0.8 };
-        }
-
         // List databases
         if (this.matchesPatterns(lowerInput, ['list databases', 'show databases', 'available databases'])) {
             return { operation: 'listDatabases', parameters: {}, confidence: 0.8 };
@@ -90,7 +78,6 @@ export class OperationParser {
 
         return `\n\n💡 **Quick Operations:**
 - Say "execute: SELECT * FROM c" to run a query
-- Say "connection info" to see current connection details
 - Say "open query editor" to create a new query tab`;
     }
 }

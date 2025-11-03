@@ -36,6 +36,15 @@ export function getThemedIconPath(iconName: string): IThemedIconPath {
     return a;
 }
 
+export function getThemedIconPathURI(iconName: string): IThemedIconURI {
+    const a = {
+        light: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'light', iconName),
+        dark: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'dark', iconName),
+    };
+    assert.ok(fs.existsSync(a.light.path[0] === '/' ? a.light.path.slice(1) : a.light.path));
+    return a;
+}
+
 export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
     const a = {
         light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
@@ -50,7 +59,7 @@ export function getThemeAgnosticIconURI(iconName: string): IThemedIconURI {
         light: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
         dark: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
     };
-    assert.ok(fs.existsSync(a.light.path));
+    assert.ok(fs.existsSync(a.light.path[0] === '/' ? a.light.path.slice(1) : a.light.path));
     return a;
 }
 

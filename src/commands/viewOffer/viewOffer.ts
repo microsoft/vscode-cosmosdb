@@ -5,7 +5,7 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
@@ -27,10 +27,10 @@ export async function cosmosDBViewDatabaseOffer(context: IActionContext, node?: 
 
     const accountInfo = node.model.accountInfo;
     const databaseId = node.model.database.id;
-    const { endpoint, credentials, isEmulator } = accountInfo;
-    const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-    const offer = await cosmosClient.database(databaseId).readOffer();
+    const offer = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
+        cosmosClient.database(databaseId).readOffer(),
+    );
     await vscodeUtil.showNewFile(JSON.stringify(offer.resource, undefined, 2), `offer of ${databaseId}`, '.json');
 }
 
@@ -51,14 +51,23 @@ export async function cosmosDBViewContainerOffer(context: IActionContext, node?:
     const accountInfo = node.model.accountInfo;
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;
-    const { endpoint, credentials, isEmulator } = accountInfo;
-    const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
-    const offer = await cosmosClient.database(databaseId).container(containerId).readOffer();
-    if (!offer.resource) {
-        const dbOffer = await cosmosClient.database(databaseId).readOffer();
-        await vscodeUtil.showNewFile(JSON.stringify(dbOffer.resource, undefined, 2), `offer of ${databaseId}`, '.json');
-    } else {
-        await vscodeUtil.showNewFile(JSON.stringify(offer.resource, undefined, 2), `offer of ${containerId}`, '.json');
-    }
+    await withClaimsChallengeHandling(accountInfo, async (cosmosClient) => {
+        const offer = await cosmosClient.database(databaseId).container(containerId).readOffer();
+
+        if (!offer.resource) {
+            const dbOffer = await cosmosClient.database(databaseId).readOffer();
+            await vscodeUtil.showNewFile(
+                JSON.stringify(dbOffer.resource, undefined, 2),
+                `offer of ${databaseId}`,
+                '.json',
+            );
+        } else {
+            await vscodeUtil.showNewFile(
+                JSON.stringify(offer.resource, undefined, 2),
+                `offer of ${containerId}`,
+                '.json',
+            );
+        }
+    });
 }

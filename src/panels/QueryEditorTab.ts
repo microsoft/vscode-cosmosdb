@@ -8,8 +8,8 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
+import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
 import {
@@ -17,7 +17,7 @@ import {
     type QueryMetadata,
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
-import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
@@ -197,8 +197,9 @@ export class QueryEditorTab extends BaseTab {
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
-            const client = getCosmosDBClientByConnection(this.connection);
-            const container = await client.database(databaseId).container(containerId).read();
+            const container = await withClaimsChallengeHandling(this.connection, async (client) =>
+                client.database(databaseId).container(containerId).read(),
+            );
 
             if (container.resource === undefined) {
                 // Should be impossible since here we have a connection from the extension

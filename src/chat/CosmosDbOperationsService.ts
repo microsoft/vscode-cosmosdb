@@ -341,18 +341,12 @@ Return only valid JSON, no other text:`;
 
             const model = models[0];
 
-            // Build context for LLM
+            // Build context for LLM with only metadata (no document content)
             let contextInfo = `Database: ${connection.databaseId}, Container: ${connection.containerId}`;
             if (queryResult?.documents) {
-                contextInfo += `, Last execution: ${queryResult.documents.length} documents`;
+                contextInfo += `, Last execution: ${queryResult.documents.length} documents returned`;
                 if (queryResult.requestCharge) {
                     contextInfo += `, ${queryResult.requestCharge.toFixed(2)} RUs consumed`;
-                }
-                // Add sample document structure if available
-                if (queryResult.documents.length > 0) {
-                    const sampleDoc = queryResult.documents[0];
-                    const sampleStructure = JSON.stringify(sampleDoc, null, 2).substring(0, 300);
-                    contextInfo += `\n\nSample document structure:\n${sampleStructure}...`;
                 }
             }
 

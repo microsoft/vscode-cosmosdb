@@ -62,6 +62,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
     public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
+        void this.sendCommand('updateQueryText', query);
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });

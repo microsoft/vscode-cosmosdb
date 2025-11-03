@@ -209,6 +209,9 @@ export class QueryEditorTab extends BaseTab {
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
             case 'updateQueryHistory':
                 return this.updateQueryHistory(payload.params[0] as string);
+            case 'updateQueryText':
+                this.updateQueryText(payload.params[0] as string);
+                return Promise.resolve();
         }
 
         return super.getCommand(payload);
@@ -616,5 +619,9 @@ export class QueryEditorTab extends BaseTab {
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         const text = await queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
+    }
+
+    private updateQueryText(query: string): void {
+        this.query = query;
     }
 }

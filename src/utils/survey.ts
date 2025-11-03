@@ -371,7 +371,7 @@ async function surveyPromptIfCandidate(
         };
 
         const button = await window.showInformationMessage(
-            l10n.t('Do you mind taking a quick feedback survey about Azure Databases for VS Code?'),
+            l10n.t('Do you mind taking a quick feedback survey about Azure Cosmos DB for VS Code?'),
             take,
             remind,
             never,

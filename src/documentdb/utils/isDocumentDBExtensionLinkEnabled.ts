@@ -11,7 +11,7 @@ import * as vscode from 'vscode';
  * It checks the package.json configuration of the vscode-cosmosdb extension to see if the
  * DocumentDB Extension integration feature flag is enabled.
  *
- * This approach enables a staged rollout of DocumentDB feature in the Azure Databases extension.
+ * This approach enables a staged rollout of DocumentDB feature in the Azure Cosmos DB extension.
  * Once the feature is fully implemented, the flag can be removed from the package.json
  *
  * @returns boolean indicating if the DocumentDB Extension integration is enabled

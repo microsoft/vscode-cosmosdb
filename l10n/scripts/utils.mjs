@@ -72,7 +72,9 @@ export const l10nExportAllStrings = async (paths) => {
     }
 
     // Log the paths of all localization files being merged
-    console.log(`Merging localization files: ${utilsBundlePaths.join(', ')}`);
+    console.log(
+        `Merging localization files: ${utilsBundlePaths.length ? utilsBundlePaths.join(', ') : 'None defined in constants.mjs'}`,
+    );
 
     // Iterate over all utility bundle paths to merge their contents
     utilsBundlePaths.forEach((filename) => {

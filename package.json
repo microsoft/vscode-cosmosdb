@@ -24,10 +24,8 @@
   ],
   "keywords": [
     "Cosmos DB",
-    "DocumentDB",
-    "MongoDB",
-    "PostgreSQL",
-    "Database"
+    "Database",
+    "NOSQL"
   ],
   "preview": true,
   "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/main/README.md",
@@ -219,7 +217,7 @@
         {
           "command": "azureDatabases.createServer",
           "title": "%cosmosdb.command.account.create%",
-          "type": "microsoft.documentdb/databaseaccounts",
+          "type": "AzureCosmosDb",
           "detail": "%cosmosdb.command.account.create.description%"
         }
       ],
@@ -272,27 +270,6 @@
     ],
     "languages": [
       {
-        "id": "mongo",
-        "aliases": [
-          "Mongo Scrapbook",
-          "mongo"
-        ],
-        "extensions": [
-          ".mongo"
-        ],
-        "firstLine": "^#!/.*\\bmongo*\\b",
-        "configuration": "./grammar/configuration.json"
-      },
-      {
-        "id": "postgres",
-        "aliases": [
-          "PostgreSQL"
-        ],
-        "extensions": [
-          ".psql"
-        ]
-      },
-      {
         "id": "nosql",
         "aliases": [
           "Cosmos NoSQL",
@@ -303,49 +280,38 @@
         ]
       }
     ],
-    "grammars": [
-      {
-        "language": "mongo",
-        "scopeName": "source.mongo.js",
-        "path": "./grammar/JavaScript.tmLanguage.json"
-      },
-      {
-        "scopeName": "source.mongo.js.regexp",
-        "path": "./grammar/Regular Expressions (JavaScript).tmLanguage"
-      }
-    ],
     "commands": [
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.createServer",
         "title": "%cosmosdb.command.account.create%",
         "icon": "$(add)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.refresh",
         "title": "%cosmosdb.command.refresh%",
         "icon": "$(refresh)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.reportIssue",
         "title": "%cosmosdb.command.issue.report%"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.update",
         "title": "%cosmosdb.command.update%",
         "icon": "$(cloud-upload)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.filterTreeItems",
         "title": "%cosmosdb.command.filter%",
         "icon": "$(filter)"
       },
       {
-        "category": "Azure Databases",
+        "category": "Azure Cosmos DB",
         "command": "azureDatabases.sortTreeItems",
         "title": "%cosmosdb.command.sort%",
         "icon": "$(sort-precedence)"

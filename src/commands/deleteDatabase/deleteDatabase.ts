@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
@@ -69,13 +69,12 @@ export async function deleteDatabase(
 }
 
 async function deleteCosmosDBDatabase(node: CosmosDBDatabaseResourceItem): Promise<boolean> {
-    const accountInfo = node.model.accountInfo;
-    const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
-
     let success = false;
     await ext.state.showDeleting(node.id, async () => {
-        const response = await client.database(node.model.database.id).delete();
-        success = response.statusCode === 204;
+        await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
+            const response = await cosmosClient.database(node.model.database.id).delete();
+            success = response.statusCode === 204;
+        });
     });
 
     return success;

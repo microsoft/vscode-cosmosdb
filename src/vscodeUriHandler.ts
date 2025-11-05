@@ -38,7 +38,7 @@ const supportedProviders = [
 ];
 
 /**
- * Global URI handler for processing external URIs related to Azure Databases.
+ * Global URI handler for processing external URIs related to Azure Cosmos DB.
  * This function handles URIs that contain either resource IDs or connection strings.
  *
  * @param uri - The VS Code URI to handle, typically from an external source
@@ -61,7 +61,7 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
             await vscode.window.withProgress(
                 {
                     location: vscode.ProgressLocation.Notification,
-                    title: l10n.t('Opening Azure Databases resource…'),
+                    title: l10n.t('Opening Azure Cosmos DB resource…'),
                     cancellable: false,
                 },
                 async () => {

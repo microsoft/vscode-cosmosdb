@@ -69,7 +69,7 @@ export async function activateInternal(
     ext.context = context;
     ext.isBundle = !!process.env.IS_BUNDLE;
 
-    ext.outputChannel = createAzExtLogOutputChannel('Azure Databases');
+    ext.outputChannel = createAzExtLogOutputChannel('Azure Cosmos DB');
     context.subscriptions.push(ext.outputChannel);
     registerUIExtensionVariables(ext);
     registerAzureUtilsExtensionVariables(ext);
@@ -285,6 +285,8 @@ export async function activateInternal(
         'Registering APIs:',
         exportedApis.map((a) => a.apiVersion),
     );
+
+    vscode.commands.executeCommand('cosmosDB.ai.deployInstructionFiles');
 
     return createApiProvider(exportedApis);
 }

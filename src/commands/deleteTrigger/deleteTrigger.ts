@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBTriggerResourceItem } from '../../tree/cosmosdb/CosmosDBTriggerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
@@ -43,18 +43,17 @@ export async function cosmosDBDeleteTrigger(context: IActionContext, node: Cosmo
         return;
     }
 
-    const accountInfo = node.model.accountInfo;
-    const client = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
-
     try {
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.trigger(triggerId)
-                .delete();
-            success = response.statusCode === 204;
+            await withClaimsChallengeHandling(node.model.accountInfo, async (client) => {
+                const response = await client
+                    .database(databaseId)
+                    .container(containerId)
+                    .scripts.trigger(triggerId)
+                    .delete();
+                success = response.statusCode === 204;
+            });
         });
 
         if (success) {

@@ -1,0 +1,19 @@
+{
+  "Projects": [
+    {
+      "LanguageSet": "VS_Main_Languages",
+      "LocItems": [
+        {
+          "SourceFile": "l10n\\bundle.l10n.json",
+          "CopyOption": "LangIDOnName",
+          "OutputPath": "l10n"
+        },
+        {
+          "SourceFile": "package.nls.json",
+          "CopyOption": "LangIDOnName",
+          "OutputPath": ".\\"
+        }
+      ]
+    }
+  ]
+}

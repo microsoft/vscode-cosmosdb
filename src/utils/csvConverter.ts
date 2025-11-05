@@ -62,7 +62,11 @@ export const queryResultToCsv = async (
                 }
 
                 const value = row[header] ?? '';
-                rowValues.push(escapeCsvValue(value));
+                if (typeof value === 'string') {
+                    rowValues.push(escapeCsvValue(value));
+                } else {
+                    rowValues.push(escapeCsvValue(JSON.stringify(value)));
+                }
             });
 
             return rowValues.join(sep);

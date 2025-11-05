@@ -8,7 +8,11 @@ import { parse as parseJson } from '@prantlf/jsonlint';
 import * as l10n from '@vscode/l10n';
 import { extractPartitionKey } from '../../utils/document';
 
-export function validateDocument(content: string, partitionKey?: PartitionKeyDefinition) {
+export function validateDocument(
+    content: string,
+    partitionKey?: PartitionKeyDefinition,
+    allowNullOrUndefinedPartitionKey: boolean = true,
+) {
     const errors: string[] = [];
 
     try {
@@ -20,7 +24,7 @@ export function validateDocument(content: string, partitionKey?: PartitionKeyDef
         }
 
         // Check partition key
-        const partitionKeyError = validatePartitionKey(resource, partitionKey);
+        const partitionKeyError = validatePartitionKey(resource, partitionKey, allowNullOrUndefinedPartitionKey);
         if (partitionKeyError) {
             errors.push(...partitionKeyError);
         }
@@ -45,8 +49,9 @@ export function validateDocument(content: string, partitionKey?: PartitionKeyDef
 export function validatePartitionKey(
     resource: JSONObject,
     partitionKey?: PartitionKeyDefinition,
+    allowNullOrUndefined: boolean = false,
 ): string[] | undefined {
-    if (!partitionKey) {
+    if (!partitionKey || allowNullOrUndefined) {
         return undefined;
     }
 

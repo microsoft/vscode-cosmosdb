@@ -138,10 +138,22 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     }
 
     const command = getCosmosShellCommand();
+    const foundTerminal = vscode.window.terminals.find((terminal) => terminal.creationOptions.name === 'Cosmos Shell');
 
+    const config = vscode.workspace.getConfiguration();
+
+    const mcpEnabled = config.get<boolean>('cosmosDB.shell.mcp.enabled') ?? true;
+    const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();
+
+    const useMcp = mcpEnabled && !foundTerminal;
+    ext.outputChannel.appendLine(`MCP enabled: ${useMcp}, MCP port: ${mcpPort}`);
     let args: string[];
     if (!node) {
-        args = [];
+        if (useMcp) {
+            args = ['--mcp', '--mcp-port', mcpPort];
+        } else {
+            args = [];
+        }
         const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, args);
         terminal.show();
         // Update context after creating terminal
@@ -156,7 +168,11 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         return;
     }
 
-    args = ['--connect', rawConnectionString];
+    if (useMcp) {
+        args = ['--mcp', '--mcp-port', mcpPort, '--connect', rawConnectionString];
+    } else {
+        args = ['--connect', rawConnectionString];
+    }
 
     const terminal: vscode.Terminal = vscode.window.createTerminal({
         name: 'Cosmos Shell',
@@ -265,6 +281,9 @@ const McpServerName = 'cosmosdb-shell-mcp-server';
 
 export function registerMcpServer(context: vscode.ExtensionContext): void {
     try {
+        if (!isCosmosShellSupportEnabled()) {
+            return;
+        }
         const didChangeEmitter = new vscode.EventEmitter<void>();
         const config = vscode.workspace.getConfiguration();
         const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();
@@ -301,6 +320,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
         ext.outputChannel.appendLine('error while registering MCP server: ' + err);
     }
 }
+
 let cosmosShellLanguageClient: LanguageClient | undefined;
 
 export function registerCosmosShellLanguageServer(context: vscode.ExtensionContext) {

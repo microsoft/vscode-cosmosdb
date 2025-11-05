@@ -1346,8 +1346,24 @@
             ],
             "description": "%cosmosdb.configuration.cosmosDB.shell.path%",
             "default": null
+          },
+          "cosmosDB.shell.MCP.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.enabled%"
+          },
+          "cosmosDB.shell.MCP.port": {
+            "type": "integer",
+            "default": 6128,
+            "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.port%"
           }
         }
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "cosmosShellMcpProvider",
+        "label": "Cosmos Shell MCP Server Provider"
       }
     ]
   }

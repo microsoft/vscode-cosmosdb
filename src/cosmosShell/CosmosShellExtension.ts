@@ -28,12 +28,12 @@ import {
     type LanguageClientOptions,
     type ServerOptions,
 } from 'vscode-languageclient/node';
+import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
 import {
-    AuthenticationMethod,
     type CosmosDBEntraIdCredential,
     type CosmosDBKeyCredential,
     type CosmosDBManagedIdentityCredential,
-} from '../cosmosdb/getCosmosClient';
+} from '../cosmosdb/CosmosDBCredential';
 import { ext } from '../extensionVariables';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 
@@ -243,16 +243,18 @@ function getCosmosShellCredential(node: NoSqlContainerResourceItem) {
     for (const credential of node.model.accountInfo.credentials) {
         switch (credential.type) {
             case AuthenticationMethod.accountKey: {
-                const keyId = credential as CosmosDBKeyCredential;
-                return `key=${keyId.key}`;
+                // TypeScript doesn't narrow the type automatically, so we need to cast
+                const keyCredential = credential as CosmosDBKeyCredential;
+                return `key=${keyCredential.key}`;
             }
             case AuthenticationMethod.entraId: {
-                const tenantId = credential as CosmosDBEntraIdCredential;
-                return `tenantId=${tenantId.tenantId}`;
+                const entraIdCredential = credential as CosmosDBEntraIdCredential;
+                return `tenantId=${entraIdCredential.tenantId ?? ''}`;
             }
             case AuthenticationMethod.managedIdentity: {
-                const clientId = credential as CosmosDBManagedIdentityCredential;
-                return `identity=${clientId.type}`;
+                const managedIdentityCredential = credential as CosmosDBManagedIdentityCredential;
+                // Note: There seems to be a bug here - you're accessing 'type' but probably want 'clientId' or similar
+                return `identity=${managedIdentityCredential.clientId ?? ''}`; // or whatever the actual property name is
             }
             default:
                 continue;

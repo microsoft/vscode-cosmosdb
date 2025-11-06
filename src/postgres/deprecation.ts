@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
+import { type PostgresServerTreeItem } from './tree/PostgresServerTreeItem';
 
 /**
  * Checks if the PostgreSQL extension is installed
@@ -37,27 +38,57 @@ async function openOrInstallPgSqlExtension(isInstalled: boolean): Promise<void> 
 }
 
 /**
- * Shows a deprecation warning for PostgreSQL functionality
+ * Opens the PostgreSQL extension with connection parameters from a PostgreSQL server tree item.
+ * Constructs a URI with server connection details including hostname, database, port, and authentication
+ * credentials. Supports both SQL Login and Azure MFA authentication types. The URI is then opened
+ * externally to trigger the PostgreSQL extension connection flow.
+ *
+ * @param pgServer - The PostgreSQL server tree item containing connection and subscription information
+ * @returns A promise that resolves when the PostgreSQL extension is opened or installed
+ *
+ * @remarks
+ * - If username and password are provided, uses SQL Login authentication
+ * - Otherwise, defaults to Azure MFA authentication
+ * - Includes Azure subscription ID, resource group, and tenant ID if available
+ * - Automatically handles installation of the PostgreSQL extension if not already installed
  */
-export async function showPostgresDeprecationWarning(): Promise<void> {
-    const isExtensionInstalled = isPgSqlExtensionInstalled();
-
-    const message =
-        l10n.t(
-            'PostgreSQL functionality is no longer supported by Azure Cosmos DB extension and has been deprecated.',
-        ) +
-        ' ' +
-        l10n.t('Please use the dedicated PostgreSQL extension instead.');
-
-    const buttonText = isExtensionInstalled
-        ? l10n.t('Open PostgreSQL Extension')
-        : l10n.t('Install PostgreSQL Extension');
-
-    const selection = await vscode.window.showWarningMessage(message, { modal: false }, { title: buttonText });
-
-    if (selection) {
-        await openOrInstallPgSqlExtension(isExtensionInstalled);
+export async function openPostgresExtension(pgServer: PostgresServerTreeItem): Promise<void> {
+    // Build URI with connection parameters
+    const params = new URLSearchParams();
+    params.append('server', pgServer.partialConnectionString.hostName);
+    if (pgServer.partialConnectionString.databaseName) {
+        params.append('database', pgServer.partialConnectionString.databaseName);
     }
+    if (pgServer.partialConnectionString.port) {
+        params.append('port', pgServer.partialConnectionString.port);
+    }
+    if (pgServer.partialConnectionString.username && pgServer.partialConnectionString.password) {
+        params.append('authenticationType', 'SqlLogin');
+        params.append('user', pgServer.partialConnectionString.username);
+        params.append('password', pgServer.partialConnectionString.password);
+    } else {
+        params.append('authenticationType', 'AzureMFA');
+    }
+    if (pgServer.subscription.subscriptionId) {
+        params.append('azureSubscriptionId', pgServer.subscription.subscriptionId);
+    }
+    if (pgServer.resourceGroup) {
+        params.append('azureResourceGroup', pgServer.resourceGroup);
+    }
+    if (pgServer.subscription.tenantId) {
+        params.append('tenantId', pgServer.subscription.tenantId);
+    }
+
+    const uri = vscode.Uri.from({
+        scheme: vscode.env.uriScheme,
+        authority: 'ms-ossdata.vscode-pgsql',
+        path: '/connect',
+        query: params.toString(),
+    });
+
+    // Open the URI using VS Code's openExternal API to trigger the PostgreSQL extension connection
+    await vscode.env.openExternal(uri);
+    await openOrInstallPgSqlExtension(isPgSqlExtensionInstalled());
 }
 
 /**

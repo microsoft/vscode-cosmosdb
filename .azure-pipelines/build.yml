@@ -133,6 +133,9 @@ extends:
                               gitHubPrMergeMethod: 'squash'
                               packageSourceAuth: patAuth
                               dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
+                              lclSource: lclFilesfromPackage
+                              lclPackageId: 'LCL-JUNO-PROD-VSCOSMOSDB'
+                              lclPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
                               patVariable: '$(System.AccessToken)'
 
                         - task: Npm@1

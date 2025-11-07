@@ -65,17 +65,18 @@ export async function openPostgresExtension(pgServer: PostgresServerTreeItem): P
     if (pgServer.partialConnectionString.username && pgServer.partialConnectionString.password) {
         params.append('authenticationType', 'SqlLogin');
         params.append('user', pgServer.partialConnectionString.username);
-        params.append('password', pgServer.partialConnectionString.password);
+        // Skippping password for security reasons since VS Code URI query params can be logged
+        //params.append('password', pgServer.partialConnectionString.password);
     } else {
         params.append('authenticationType', 'AzureMFA');
     }
-    if (pgServer.subscription.subscriptionId) {
+    if (pgServer.subscription?.subscriptionId) {
         params.append('azureSubscriptionId', pgServer.subscription.subscriptionId);
     }
     if (pgServer.resourceGroup) {
         params.append('azureResourceGroup', pgServer.resourceGroup);
     }
-    if (pgServer.subscription.tenantId) {
+    if (pgServer.subscription?.tenantId) {
         params.append('tenantId', pgServer.subscription.tenantId);
     }
 

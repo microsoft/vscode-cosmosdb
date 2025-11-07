@@ -57,8 +57,6 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     public azureId: string | undefined;
     public serverVersion: string | undefined;
 
-    private static _isFirstLoad: boolean = true;
-
     constructor(
         parent: AzExtParentTreeItem,
         connectionString: ParsedPostgresConnectionString,
@@ -118,10 +116,20 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
-        if (PostgresServerTreeItem._isFirstLoad === false) {
+        // we don't have a way to know whether the selected node is this node or not, but we can assume that
+        // with the old v1 tree API loadMoreChildrenImpl will only be called for the selected node
+        let isSelectedNode = this.contextValue === 'postgresServerAttached';
+
+        if (!isSelectedNode) {
+            // we can't rely on loadMoreChildrenImpl being called only for the selected node with the old v1 tree API
+            // in case of the Azure resource tree, since it'll prefetch children for all nodes in the view even before they're expanded
+            const selectedNode = await ext.rgApiV2.resources.getSelectedAzureNode();
+            isSelectedNode = selectedNode?.endsWith(this.id) ?? false;
+        }
+
+        if (isSelectedNode) {
             await openPostgresExtension(this);
         }
-        PostgresServerTreeItem._isFirstLoad = false;
 
         context.telemetry.properties.serverType = this.serverType;
         let dbNames: (string | undefined)[];

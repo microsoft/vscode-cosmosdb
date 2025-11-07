@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { l10n } from 'vscode';
 import { type PostgresServerTreeItem } from './tree/PostgresServerTreeItem';
@@ -53,43 +54,53 @@ async function openOrInstallPgSqlExtension(isInstalled: boolean): Promise<void> 
  * - Automatically handles installation of the PostgreSQL extension if not already installed
  */
 export async function openPostgresExtension(pgServer: PostgresServerTreeItem): Promise<void> {
-    // Build URI with connection parameters
-    const params = new URLSearchParams();
-    params.append('server', pgServer.partialConnectionString.hostName);
-    if (pgServer.partialConnectionString.databaseName) {
-        params.append('database', pgServer.partialConnectionString.databaseName);
-    }
-    if (pgServer.partialConnectionString.port) {
-        params.append('port', pgServer.partialConnectionString.port);
-    }
-    if (pgServer.partialConnectionString.username && pgServer.partialConnectionString.password) {
-        params.append('authenticationType', 'SqlLogin');
-        params.append('user', pgServer.partialConnectionString.username);
-        // Skippping password for security reasons since VS Code URI query params can be logged
-        //params.append('password', pgServer.partialConnectionString.password);
-    } else {
-        params.append('authenticationType', 'AzureMFA');
-    }
-    if (pgServer.subscription?.subscriptionId) {
-        params.append('azureSubscriptionId', pgServer.subscription.subscriptionId);
-    }
-    if (pgServer.resourceGroup) {
-        params.append('azureResourceGroup', pgServer.resourceGroup);
-    }
-    if (pgServer.subscription?.tenantId) {
-        params.append('tenantId', pgServer.subscription.tenantId);
-    }
+    return await callWithTelemetryAndErrorHandling('postgreSQL.openPostgresExtension', async (context) => {
+        // Build URI with connection parameters
+        const params = new URLSearchParams();
+        params.append('server', pgServer.partialConnectionString.hostName);
+        if (pgServer.partialConnectionString.databaseName) {
+            context.valuesToMask.push(pgServer.partialConnectionString.databaseName);
+            params.append('database', pgServer.partialConnectionString.databaseName);
+        }
+        if (pgServer.partialConnectionString.port) {
+            params.append('port', pgServer.partialConnectionString.port);
+        }
+        if (pgServer.partialConnectionString.username && pgServer.partialConnectionString.password) {
+            params.append('authenticationType', 'SqlLogin');
+            context.valuesToMask.push(pgServer.partialConnectionString.username);
+            params.append('user', pgServer.partialConnectionString.username);
+            // Skippping password for security reasons since VS Code URI query params can be logged
+            //params.append('password', pgServer.partialConnectionString.password);
+        } else {
+            params.append('authenticationType', 'AzureMFA');
+        }
+        if (pgServer.resourceGroup) {
+            params.append('azureResourceGroup', pgServer.resourceGroup);
+        }
 
-    const uri = vscode.Uri.from({
-        scheme: vscode.env.uriScheme,
-        authority: 'ms-ossdata.vscode-pgsql',
-        path: '/connect',
-        query: params.toString(),
+        try {
+            if (pgServer.subscription?.subscriptionId) {
+                params.append('azureSubscriptionId', pgServer.subscription.subscriptionId);
+            }
+            if (pgServer.subscription?.tenantId) {
+                params.append('tenantId', pgServer.subscription.tenantId);
+            }
+        } catch {
+            // Ignore errors retrieving subscription or tenant info, since pgServer.subscription getter will throw for non Azure resources
+            // This info is optional for connecting to the PostgreSQL server anyway
+        }
+
+        const uri = vscode.Uri.from({
+            scheme: vscode.env.uriScheme,
+            authority: 'ms-ossdata.vscode-pgsql',
+            path: '/connect',
+            query: params.toString(),
+        });
+
+        // Open the URI using VS Code's openExternal API to trigger the PostgreSQL extension connection
+        await vscode.env.openExternal(uri);
+        await openOrInstallPgSqlExtension(isPgSqlExtensionInstalled());
     });
-
-    // Open the URI using VS Code's openExternal API to trigger the PostgreSQL extension connection
-    await vscode.env.openExternal(uri);
-    await openOrInstallPgSqlExtension(isPgSqlExtensionInstalled());
 }
 
 /**

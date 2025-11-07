@@ -6,6 +6,7 @@
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { type CosmosDBContainerResourceItem } from '../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type CosmosDBItemResourceItem } from '../tree/cosmosdb/CosmosDBItemResourceItem';
 import { type CosmosDBItemsResourceItem } from '../tree/cosmosdb/CosmosDBItemsResourceItem';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
 import { type CosmosDBCredential } from './CosmosDBCredential';
@@ -37,7 +38,7 @@ export function isNoSqlQueryConnection(connection: unknown): connection is NoSql
 }
 
 export function createNoSqlQueryConnection(
-    node: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
+    node: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem | CosmosDBItemResourceItem,
 ): NoSqlQueryConnection {
     const accountInfo = node.model.accountInfo;
     const databaseId = node.model.database.id;

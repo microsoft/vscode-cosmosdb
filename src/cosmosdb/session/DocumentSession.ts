@@ -78,6 +78,7 @@ export class DocumentSession {
 
     public async create(document: ItemDefinition): Promise<CosmosDBRecordIdentifier | undefined> {
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.create', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             return this.createInternal(document, context);
@@ -92,9 +93,6 @@ export class DocumentSession {
             throw new Error(l10n.t('Session is disposed'));
         }
 
-        if (document.id === undefined) {
-            throw new Error(l10n.t('Item id is required'));
-        }
         try {
             const response = await withClaimsChallengeHandling(this.connection, async (client) =>
                 client.database(this.databaseId).container(this.containerId).items.create<ItemDefinition>(document, {

@@ -37,7 +37,7 @@ export const WithQueryEditorContext = ({
 
     const provider = useMemo(
         () => new QueryEditorContextProvider(channel, dispatch, dispatchToast),
-        [channel, dispatch, dispatchToast],
+        [channel, dispatchToast],
     );
 
     useEffect(() => {

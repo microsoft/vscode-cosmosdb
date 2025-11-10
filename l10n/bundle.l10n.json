@@ -97,6 +97,7 @@
   "Collection name cannot contain the null character.": "Collection name cannot contain the null character.",
   "Collection name is required.": "Collection name is required.",
   "Collection names should begin with an underscore or a letter character.": "Collection names should begin with an underscore or a letter character.",
+  "Column": "Column",
   "Column options": "Column options",
   "Column resize options": "Column resize options",
   "Column Width (px)": "Column Width (px)",

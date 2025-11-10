@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { debounce } from 'es-toolkit';
 import * as React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -73,7 +74,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 if (column && data) {
                     const value = data[column.field] || '';
                     // Safely extract column name - only use if it's a string
-                    const columnName = typeof column.name === 'string' ? column.name : 'Column';
+                    const columnName = typeof column.name === 'string' ? column.name : l10n.t('Column');
                     const announcementText = `${columnName}: ${value}`;
                     setAnnouncement(announcementText);
                 }

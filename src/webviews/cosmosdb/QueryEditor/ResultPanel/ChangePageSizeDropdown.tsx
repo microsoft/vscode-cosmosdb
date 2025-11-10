@@ -16,7 +16,6 @@ import {
 } from '@fluentui/react-components';
 import { Checkmark16Filled, NumberSymbolSquareRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import type * as React from 'react';
 import { useCallback } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
@@ -55,7 +54,7 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
     return (
         <>
             {type === 'button' ? (
-                <div ref={ref as React.Ref<HTMLDivElement>} style={{ paddingLeft: '8px' }}>
+                <div ref={ref} style={{ paddingLeft: '8px' }}>
                     <Tooltip content={l10n.t('Change page size')} relationship="label" appearance="inverted" withArrow>
                         <Dropdown
                             onOptionSelect={(_event, data) => onOptionSelect(data)}

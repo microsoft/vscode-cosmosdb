@@ -37,7 +37,7 @@ export const WithDocumentContext = ({
 
     const provider = useMemo(
         () => new DocumentContextProvider(channel, dispatch, dispatchToast),
-        [channel, dispatch, dispatchToast],
+        [channel, dispatchToast],
     );
 
     useEffect(() => {

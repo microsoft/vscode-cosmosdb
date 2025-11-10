@@ -12,8 +12,9 @@ import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
-import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../getCosmosClient';
+import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
+import { getCosmosClient } from '../getCosmosClient';
+import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
@@ -78,7 +79,8 @@ export class QuerySession {
             try {
                 this.abortController = new AbortController();
 
-                const client = getCosmosDBClientByConnection(this.connection, {
+                // TODO: This is a read operation, so it should not require claims challenge handling (need to verify)
+                const client = getCosmosClient(this.connection, {
                     connectionPolicy: {
                         requestTimeout: this.resultViewMetadata.timeout ?? DEFAULT_EXECUTION_TIMEOUT,
                     },

@@ -8,7 +8,7 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -29,9 +29,9 @@ export abstract class CosmosDBStoredProceduresResourceItem
     }
 
     public async getChildren(): Promise<TreeElement[]> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const storedProcedures = await this.getStoredProcedures(cosmosClient);
+        const storedProcedures = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
+            this.getStoredProcedures(cosmosClient),
+        );
         const sortedProcedures = storedProcedures.sort((a, b) => a.id.localeCompare(b.id));
 
         return this.getChildrenImpl(sortedProcedures);

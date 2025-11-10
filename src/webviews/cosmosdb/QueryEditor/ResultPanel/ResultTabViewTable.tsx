@@ -14,7 +14,7 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { getDocumentId, type TableData } from '../../../utils';
+import { type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { useColumnMenu } from './ColumnMenu';
 
@@ -49,6 +49,13 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                                 action: handleHeaderButtonClick,
                             },
                         ],
+                    },
+                    formatter: (_row, _cell, value) => {
+                        if (value === undefined || value === null || value === '{}') {
+                            const displayValue = value === undefined ? 'undefined' : value === null ? 'null' : '{}';
+                            return `<span style="color: var(--vscode-disabledForeground); font-style: italic;">${displayValue}</span>`;
+                        }
+                        return String(value);
                     },
                 } as Column;
             }),
@@ -89,12 +96,12 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
             // Open document in view mode
             const activeDocument = dataset[args.row];
-            const documentId = activeDocument ? getDocumentId(activeDocument, state.partitionKey) : undefined;
+            const documentId = activeDocument?.__documentId;
             if (documentId) {
                 void dispatcher.openDocument('view', documentId);
             }
         },
-        [dataset, dispatcher, state.isEditMode, state.partitionKey],
+        [dataset, dispatcher, state.isEditMode],
     );
 
     // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.

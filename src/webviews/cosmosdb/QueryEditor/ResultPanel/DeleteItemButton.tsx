@@ -31,7 +31,11 @@ export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
 
     const deleteSelectedItem = useCallback(() => {
         const selectedDocuments = getSelectedDocuments();
-        void dispatcher.deleteDocuments(selectedDocuments);
+        if (selectedDocuments.length === 1) {
+            void dispatcher.deleteDocument(selectedDocuments[0]);
+        } else {
+            void dispatcher.deleteDocuments(selectedDocuments);
+        }
     }, [dispatcher, getSelectedDocuments]);
 
     const deleteItemHotkeyTooltip = useMemo(

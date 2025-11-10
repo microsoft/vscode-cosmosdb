@@ -6,7 +6,7 @@
 import { type IActionContext, openReadOnlyJson, randomUtils } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { type CosmosDBStoredProcedureResourceItem } from '../../tree/cosmosdb/CosmosDBStoredProcedureResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
@@ -41,16 +41,16 @@ export async function cosmosDBExecuteStoredProcedure(
         }
     }
 
-    const { endpoint, credentials, isEmulator } = node.model.accountInfo;
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;
     const procedureId = node.model.procedure.id;
-    const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-    const result = await cosmosClient
-        .database(databaseId)
-        .container(containerId)
-        .scripts.storedProcedure(procedureId)
-        .execute(partitionKey, parameters);
+    const result = await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
+        return cosmosClient
+            .database(databaseId)
+            .container(containerId)
+            .scripts.storedProcedure(procedureId)
+            .execute(partitionKey, parameters);
+    });
 
     try {
         const resultFileName = `${procedureId}-result`;

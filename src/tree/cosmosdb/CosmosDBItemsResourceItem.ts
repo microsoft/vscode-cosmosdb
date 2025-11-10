@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient, type FeedOptions, type ItemDefinition, type QueryIterator } from '@azure/cosmos';
+import { type ItemDefinition } from '@azure/cosmos';
 import { createContextValue, createGenericElement, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getBatchSizeSetting } from '../../utils/workspacUtils';
@@ -36,10 +36,18 @@ export abstract class CosmosDBItemsResourceItem
     }
 
     public async getChildren(): Promise<TreeElement[]> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const iterator = this.getIterator(cosmosClient, { maxItemCount: this.batchSize });
-        const items = await this.getItems(iterator);
+        const items = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) => {
+            const iterator = cosmosClient
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .items.readAll({ maxItemCount: this.batchSize });
+
+            const result = await iterator.fetchNext();
+            const items = result.resources;
+            this.hasMoreChildren = result.hasMoreResults;
+
+            return items;
+        });
 
         const result = await this.getChildrenImpl(items);
 
@@ -77,21 +85,6 @@ export abstract class CosmosDBItemsResourceItem
             label: l10n.t('Items'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
-    }
-
-    protected getIterator(cosmosClient: CosmosClient, feedOptions: FeedOptions): QueryIterator<ItemDefinition> {
-        return cosmosClient
-            .database(this.model.database.id)
-            .container(this.model.container.id)
-            .items.readAll(feedOptions);
-    }
-
-    protected async getItems(iterator: QueryIterator<ItemDefinition>): Promise<ItemDefinition[]> {
-        const result = await iterator.fetchNext();
-        const items = result.resources;
-        this.hasMoreChildren = result.hasMoreResults;
-
-        return items;
     }
 
     protected abstract getChildrenImpl(items: ItemDefinition[]): Promise<TreeElement[]>;

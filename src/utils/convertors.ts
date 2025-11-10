@@ -10,8 +10,12 @@
 import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
-import { type QueryResultRecord, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
-import { extractPartitionKey, extractPartitionKeyValues } from './document';
+import {
+    type CosmosDBRecordIdentifier,
+    type QueryResultRecord,
+    type SerializedQueryResult,
+} from '../cosmosdb/types/queryResult';
+import { extractPartitionKey, extractPartitionKeyValues, getDocumentId } from './document';
 
 export type StatsItem = {
     metric: string;
@@ -20,13 +24,25 @@ export type StatsItem = {
     tooltip: string;
 };
 
-export type TableRecord = Record<string, string> & { __id: string };
+export type TableRecord = {
+    __id: string;
+    __documentId?: CosmosDBRecordIdentifier;
+    [key: string]: string | CosmosDBRecordIdentifier | undefined | null;
+};
+
 export type TableData = {
     headers: string[];
     dataset: TableRecord[];
 };
 
-export type TreeData = { id: string; parentId: string | null; field: string; value: string; type: string };
+export type TreeData = {
+    id: string;
+    documentId: CosmosDBRecordIdentifier | undefined;
+    parentId: string | null;
+    field: string;
+    value: string;
+    type: string;
+};
 
 export type ColumnOptions = {
     ShowPartitionKey: 'first' | 'none'; // 'first' = show id + partition key first, 'none' = the nested partition key values are hidden + partition key are shown as is (without / prefix)
@@ -43,6 +59,26 @@ type StackEntry = {
 };
 
 const MAX_TREE_LEVEL_LENGTH = 100;
+
+/**
+ * Checks if a value is a NonePartitionKey (empty object used by Cosmos DB SDK)
+ * NonePartitionKeyLiteral from @azure/cosmos is defined as {} and represents
+ * a partition key value for items without a value for partition key
+ * @param value The value to check
+ * @returns true if the value is a None partition key
+ */
+const isNonePartitionKey = (value: unknown): boolean => {
+    return isEmptyObject(value);
+};
+
+/**
+ * Checks if a value is an empty object '{}'.
+ * @param value The value to check
+ * @returns true if the value is an empty object
+ */
+const isEmptyObject = (value: unknown): boolean => {
+    return typeof value === 'object' && value !== null && Object.keys(value).length === 0;
+};
 
 /**
  * Truncates a string if it exceeds the specified maximum length.
@@ -167,6 +203,7 @@ const stackEntryToSlickGridTree = (entry: StackEntry): TreeData => {
 
     return {
         id: entry.id,
+        documentId: undefined,
         field: `${entry.key}`,
         value,
         type,
@@ -193,6 +230,7 @@ const documentToSlickGridTree = async (
     // Add the document as the root element for the tree
     tree.push({
         id: rootId,
+        documentId: getDocumentId(document, partitionKey),
         field: document['id'] ? `${document['id']}` : `${rootId} (Index number, id is missing)`,
         value: '',
         type: 'Document',
@@ -374,7 +412,10 @@ export const getTableDataset = async (
         // Process each document in the chunk
         chunk.forEach((doc) => {
             // Emulate the unique id of the document
-            const row: TableRecord = { __id: uuid() };
+            const row: TableRecord = {
+                __id: uuid(),
+                __documentId: getDocumentId(doc, partitionKey),
+            };
 
             if (partitionKey) {
                 const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) =>
@@ -382,19 +423,29 @@ export const getTableDataset = async (
                 );
                 const partitionKeyValues = extractPartitionKey(doc, partitionKey) ?? [];
                 partitionKeyPaths.forEach((path, index) => {
-                    row[path] = `${partitionKeyValues[index] ?? ''}`;
+                    const value: unknown = partitionKeyValues[index];
+                    // Check if the value is the NonePartitionKey (empty object from Cosmos DB SDK)
+                    if (isNonePartitionKey(value)) {
+                        row[path] = undefined; // represent None partition key as undefined
+                    } else {
+                        row[path] = `${value ?? ''}`;
+                    }
                 });
             }
 
             Object.entries(doc).forEach(([key, value]) => {
-                if (value instanceof Array) {
+                if (value === null || value === undefined) {
+                    row[key] = value;
+                } else if (Array.isArray(value)) {
                     row[key] = truncateValues ? `(elements: ${value.length})` : JSON.stringify(value);
-                } else if (value !== null && typeof value === 'object') {
-                    row[key] = truncateValues
-                        ? truncateString(JSON.stringify(value), options.TruncateValues)
-                        : JSON.stringify(value);
+                    return;
+                } else if (typeof value === 'object') {
+                    const jsonString = JSON.stringify(value);
+                    row[key] = truncateValues ? truncateString(jsonString, options.TruncateValues) : jsonString;
+                    return;
                 } else {
-                    row[key] = truncateValues ? truncateString(`${value}`, options.TruncateValues) : `${value}`;
+                    const stringValue = String(value);
+                    row[key] = truncateValues ? truncateString(stringValue, options.TruncateValues) : stringValue;
                 }
             });
 

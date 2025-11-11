@@ -5,6 +5,7 @@
 
 import { AzExtTreeItem, AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
 import { CosmosDBAttachAccountResourceItem } from '../../tree/workspace-view/cosmosdb/CosmosDBAttachAccountResourceItem';
 import { NewConnectionItem } from '../../tree/workspace-view/documentdb/NewConnectionItem';
@@ -51,5 +52,8 @@ export async function newConnection(
     await wizard.prompt();
     await wizard.execute();
 
-    showConfirmationAsInSettings(l10n.t('New connection has been added to your workspace.'));
+    const api = wizardContext.experience?.api;
+    if (api !== API.PostgresSingle && api !== API.PostgresFlexible) {
+        showConfirmationAsInSettings(l10n.t('New connection has been added to your workspace.'));
+    }
 }

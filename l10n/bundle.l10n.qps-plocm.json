@@ -514,7 +514,6 @@
   "Port number is required": "[الهاتفPort number is requiredעִבְרִית عل!]",
   "Port number must be a number": "[الهاتفPort number must be a numberעִבְרִית عليك!]",
   "Port number must be between 1 and 65535": "[الهاتفPort number must be between 1 and 65535עִבְרִית عليكעִבְרִ!]",
-  "PostgreSQL functionality is no longer supported by Azure Cosmos DB extension and has been deprecated.": "[الهاتفPostgreSQL functionality is no longer supported by Azure Cosmos DB extension and has been deprecated.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְ!]",
   "PostgreSQL servers": "[الهاتفPostgreSQL serversעִבְרִית !]",
   "Procedure not found: {name}": "[الهاتفProcedure not found: {name}עִבְרִית عليك!]",
   "Process exited: \"{command}\"": "[الهاتفProcess exited: \"{command}\"עִבְרִית عليك!]",

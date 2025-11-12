@@ -131,7 +131,6 @@ extends:
                           displayName: '🔢 Set Build Number'
                           name: setBuildNumberStep
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   $publishVersion = "${{ parameters.publishVersion }}"
 
@@ -147,12 +146,12 @@ extends:
                                   Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
                                   Write-Output "Build number: $newBuildNumber"
                               pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
                           displayName: '🔍 Find Publishing Files'
                           name: findPublishingFilesStep
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   $vsixFiles = Get-ChildItem -Path $(System.DefaultWorkingDirectory) -Filter *.vsix -File
 
@@ -189,12 +188,12 @@ extends:
                                   }
                                   Write-Output "✓ Signature: extension.signature.p7s"
                               pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
                           displayName: '📖 Extract Metadata from VSIX'
                           name: extractMetadataStep
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   $ErrorActionPreference = "Stop"
                                   $vsixPath = "$(System.DefaultWorkingDirectory)/$(findPublishingFilesStep.vsixFileName)"
@@ -242,11 +241,11 @@ extends:
                                   Write-Output "Version: $version (Preview: $preview)"
                                   Write-Output "Manifest Version: $manifestVer (PreRelease: $manifestPreview)"
                               pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
-                          displayName: '⚖️ Validate Publish Version'
+                          displayName: '✅ Validate Publish Version'
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   if ("${{ parameters.publishVersion }}" -ne "$(extractMetadataStep.version)") {
                                       Write-Host "##vso[task.logissue type=error]Publish version mismatch: expected '${{ parameters.publishVersion }}', got '$(extractMetadataStep.version)'"
@@ -255,9 +254,10 @@ extends:
                                   }
                                   Write-Output "✓ Publish version: $(extractMetadataStep.version)"
                               pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
-                          displayName: '⚖️ Validate VSIX Filename'
+                          displayName: '✅ Validate VSIX Filename'
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -274,9 +274,8 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '⚖️ Validate Manifest Consistency'
+                          displayName: '✅ Validate Manifest Consistency'
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   $ErrorActionPreference = "Stop"
                                   $vsixVersion = "$(extractMetadataStep.version)"
@@ -319,11 +318,11 @@ extends:
                                   Write-Output "✓ Artifact package.json matches VSIX"
                                   Write-Output "✓ All manifests consistent"
                               pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
                           displayName: '⚖️ Validate Version / Preview Alignment'
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   $version = "$(extractMetadataStep.version)"
                                   $preview = [bool]::Parse("$(extractMetadataStep.preview)")
@@ -342,8 +341,9 @@ extends:
                                       Write-Host "##vso[task.logissue type=warning]Version/preview alignment: preview=$preview but minor=$minor ($(if($minorEven){'even'}else{'odd'}))"
                                   }
 
-                                  Write-Output "✓ Version format valid: $version"
+                                  Write-Output "✓ Version format valid: $version (preview=$preview)"
                               pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
                           displayName: '🔢 Update Build Number'
@@ -357,8 +357,7 @@ extends:
                                   $newBuildNumber = "vscode-cosmosdb-$version$dryRunSuffix-$(Build.BuildNumber)"
 
                                   Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
-                                  Write-Output "Build number: $newBuildNumber"
-                              pwsh: true
+                                  Write-Output "Build number: $newBuildNumber (preview=$preview)"
 
                   - job: PublishExtension
                     displayName: '🚀 Publish Extension'

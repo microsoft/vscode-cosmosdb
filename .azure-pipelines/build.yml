@@ -93,8 +93,6 @@ extends:
                           displayName: '🔢 Set Build Number'
                           name: setBuildNumberStep
                           inputs:
-                              targetType: 'inline'
-                              pwsh: true
                               script: |
                                   try {
                                       $packageJson = Get-Content "$(Build.SourcesDirectory)/package.json" -Raw | ConvertFrom-Json
@@ -115,6 +113,8 @@ extends:
                                       Write-Host "##vso[task.logissue type=warning]Could not read package.json: $_"
                                       Write-Host "Keeping original build number: $(Build.BuildNumber)"
                                   }
+                              pwsh: true
+                              targetType: 'inline'
 
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: '🛡️ Component Governance - Component Detection'
@@ -190,7 +190,6 @@ extends:
                         - task: PowerShell@2
                           displayName: '🔍 Find VSIX File'
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   # Get all .vsix files in the current directory
                                   Write-Output "Searching for .vsix files in: $(Build.SourcesDirectory)"
@@ -212,6 +211,8 @@ extends:
                                     Write-Output "##vso[task.setvariable variable=vsixFileName]$vsixFileName"
                                     Write-Output "Found .vsix file: $vsixFileName (${vsixFileSize} MB)"
                                   }
+                              pwsh: true
+                              targetType: 'inline'
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
@@ -223,7 +224,6 @@ extends:
                           displayName: '🐈 Prepare manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   # Verify extension.manifest exists before proceeding
                                   if (-not (Test-Path "extension.manifest")) {
@@ -234,6 +234,8 @@ extends:
 
                                   Copy-Item -Path "extension.manifest" -Destination "extension.signature.p7s"
                                   Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
+                              pwsh: true
+                              targetType: 'inline'
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
                           displayName: '✍️ Sign VSIX package'
@@ -250,8 +252,6 @@ extends:
                           displayName: '🔒 Verify VSIX signature'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
-                              targetType: 'inline'
-                              failOnStderr: true
                               script: |
                                   $output = vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
                                   Write-Output $output
@@ -280,6 +280,9 @@ extends:
                                   } else {
                                       Write-Warning "[Warning] Could not parse exit code from vsce verify-signature output."
                                   }
+                              pwsh: true
+                              targetType: 'inline'
+                              failOnStderr: true
 
                         - task: CopyFiles@2
                           displayName: '📂 Copy packages and vsix to staging directory'
@@ -319,8 +322,6 @@ extends:
                         - task: PowerShell@2
                           displayName: '⚖️ Validate Version / Preview Alignment'
                           inputs:
-                              targetType: 'inline'
-                              pwsh: true
                               script: |
                                   $version = "$(setBuildNumberStep.version)"
                                   $preview = [bool]::Parse("$(setBuildNumberStep.preview)")
@@ -340,3 +341,5 @@ extends:
                                   }
 
                                   Write-Output "✓ Version format valid: $version (preview=$preview)"
+                              pwsh: true
+                              targetType: 'inline'

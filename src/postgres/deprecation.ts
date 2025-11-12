@@ -70,7 +70,7 @@ export async function openPostgresExtension(pgServer?: PostgresServerTreeItem): 
                 params.append('authenticationType', 'SqlLogin');
                 context.valuesToMask.push(pgServer.partialConnectionString.username);
                 params.append('user', pgServer.partialConnectionString.username);
-                // Skippping password for security reasons since VS Code URI query params can be logged
+                // Skipping password for security reasons since VS Code URI query params can be logged
                 //params.append('password', pgServer.partialConnectionString.password);
             } else {
                 params.append('authenticationType', 'AzureMFA');

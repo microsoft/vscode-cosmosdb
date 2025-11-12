@@ -339,4 +339,4 @@ extends:
                                       Write-Host "##vso[task.logissue type=warning]Version/preview alignment: preview=$preview but minor=$minor ($(if($minorEven){'even'}else{'odd'}))"
                                   }
 
-                                  Write-Output "✓ Version format valid: $version"
+                                  Write-Output "✓ Version format valid: $version (preview=$preview)"

@@ -28,10 +28,12 @@ jobs:
         steps:
             # Setup
             - uses: actions/checkout@v4
-            - name: Using Node.js
+
+            - name: 📦 Using Node.js
               uses: actions/setup-node@v4
               with:
                   node-version-file: .nvmrc
+                  cache: 'npm'
 
             - name: ⚖️ Validate Version / Preview Alignment
               shell: pwsh
@@ -64,24 +66,62 @@ jobs:
                       Write-Output "✅ Version/preview alignment is correct"
                   }
 
-            - run: npm ci
+            - name: ⬇️ Install Dependencies
+              run: npm ci
 
-            - name: Localize
+            - name: 🌍 Localize
               run: npm run l10n:check
 
-            - name: Lint
+            - name: 🔍 Lint
               run: npm run lint
 
-            - name: Prettier
+            - name: ✨ Prettier
               run: npm run prettier
 
-            - name: Compile
+            - name: 🔨 Compile
               run: npm run build
 
-            - name: Package
+            - name: 📦 Package
               run: npm run package
 
-            - name: Upload Artifacts
+            - name: 🔍 Verify VSIX File
+              shell: pwsh
+              run: |
+                  # Find VSIX file
+                  $vsixFiles = Get-ChildItem -Path . -Filter *.vsix -File
+
+                  if ($vsixFiles.Count -eq 0) {
+                      Write-Error "❌ No VSIX file found"
+                      exit 1
+                  } elseif ($vsixFiles.Count -gt 1) {
+                      Write-Error "❌ Multiple VSIX files found: $($vsixFiles.Name -join ', ')"
+                      exit 1
+                  }
+
+                  $vsixFile = $vsixFiles[0]
+                  $vsixFileName = $vsixFile.Name
+                  $vsixFileSize = [math]::Round($vsixFile.Length / 1MB, 2)
+
+                  Write-Output "✅ Found VSIX: $vsixFileName (${vsixFileSize} MB)"
+
+                  # Verify filename matches expected pattern
+                  $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+                  $expectedName = "$($packageJson.name)-$($packageJson.version).vsix"
+
+                  if ($vsixFileName -ne $expectedName) {
+                      Write-Error "❌ VSIX filename mismatch: expected '$expectedName', got '$vsixFileName'"
+                      exit 1
+                  }
+
+                  Write-Output "✅ VSIX filename is correct: $vsixFileName"
+
+                  # Set output for job summary
+                  echo "VSIX_FILE=$vsixFileName" >> $env:GITHUB_ENV
+                  echo "VSIX_SIZE=$vsixFileSize" >> $env:GITHUB_ENV
+                  echo "PACKAGE_VERSION=$($packageJson.version)" >> $env:GITHUB_ENV
+                  echo "PACKAGE_PREVIEW=$($packageJson.preview)" >> $env:GITHUB_ENV
+
+            - name: 📤 Upload Artifacts
               uses: actions/upload-artifact@v4
               with:
                   name: Artifacts
@@ -90,8 +130,27 @@ jobs:
                       **/*.tgz
                       !**/node_modules
 
-            - name: Unit Tests
+            - name: 🧪 Unit Tests
               run: npm run jesttest
 
-            - name: Integration Tests
+            - name: 🧪 Integration Tests
               run: xvfb-run -a npm test
+
+            - name: 📊 Generate Job Summary
+              if: always()
+              shell: pwsh
+              run: |
+                  $summary = @"
+                  # 🎉 Build Summary
+
+                  ## 📦 Package Information
+                  - **Version:** $env:PACKAGE_VERSION
+                  - **Preview:** $env:PACKAGE_PREVIEW
+                  - **VSIX File:** $env:VSIX_FILE
+                  - **VSIX Size:** $env:VSIX_SIZE MB
+
+                  ## ✅ Build Status
+                  All checks completed successfully!
+                  "@
+
+                  $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8

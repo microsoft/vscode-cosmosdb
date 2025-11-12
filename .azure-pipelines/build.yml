@@ -198,10 +198,12 @@ extends:
 
                                   # Check if more than one .vsix file is found
                                   if ($vsixFiles.Count -gt 1) {
-                                    Write-Error "[Error] More than one .vsix file found: $($vsixFiles.Name -join ', ')"
+                                    Write-Host "##vso[task.logissue type=error]More than one .vsix file found: $($vsixFiles.Name -join ', ')"
+                                    Write-Host "##vso[task.complete result=Failed;]"
                                     exit 1
                                   } elseif ($vsixFiles.Count -eq 0) {
-                                    Write-Error "[Error] No .vsix files found in $(Build.SourcesDirectory)"
+                                    Write-Host "##vso[task.logissue type=error]No .vsix files found in $(Build.SourcesDirectory)"
+                                    Write-Host "##vso[task.complete result=Failed;]"
                                     exit 1
                                   } else {
                                     # Set the pipeline variable
@@ -225,7 +227,8 @@ extends:
                               script: |
                                   # Verify extension.manifest exists before proceeding
                                   if (-not (Test-Path "extension.manifest")) {
-                                      Write-Error "[Error] extension.manifest file not found. Cannot proceed with signing."
+                                      Write-Host "##vso[task.logissue type=error]extension.manifest file not found. Cannot proceed with signing."
+                                      Write-Host "##vso[task.complete result=Failed;]"
                                       exit 1
                                   }
 
@@ -256,7 +259,8 @@ extends:
                                   # Check if the vsce command failed to execute
                                   if ($LastExitCode -ne 0)
                                   {
-                                      Write-Error "[Error] VSIX signature verification command failed with exit code $LastExitCode."
+                                      Write-Host "##vso[task.logissue type=error]VSIX signature verification command failed with exit code $LastExitCode"
+                                      Write-Host "##vso[task.complete result=Failed;]"
                                       exit 1
                                   }
 
@@ -267,7 +271,8 @@ extends:
                                       if ($exitCodeValue -eq "Success") {
                                           Write-Output "[Success] VSIX signature verification succeeded."
                                       } elseif ($exitCodeValue -eq "UnhandledException") {
-                                          Write-Error "[Error] VSIX signature verification failed with UnhandledException."
+                                          Write-Host "##vso[task.logissue type=error]VSIX signature verification failed with UnhandledException"
+                                          Write-Host "##vso[task.complete result=Failed;]"
                                           exit 1
                                       } else {
                                           Write-Warning "[Warning] VSIX signature verification completed with unexpected exit code: $exitCodeValue"
@@ -317,12 +322,13 @@ extends:
                               targetType: 'inline'
                               pwsh: true
                               script: |
-                                  $ErrorActionPreference = "Stop"
                                   $version = "$(setBuildNumberStep.version)"
                                   $preview = [bool]::Parse("$(setBuildNumberStep.preview)")
 
                                   if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
-                                      throw "Invalid semantic version: $version"
+                                      Write-Host "##vso[task.logissue type=error]Invalid semantic version: $version"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   $minor = [int]$Matches[2]

@@ -133,11 +133,12 @@ extends:
                           inputs:
                               targetType: 'inline'
                               script: |
-                                  $ErrorActionPreference = "Stop"
                                   $publishVersion = "${{ parameters.publishVersion }}"
 
                                   if ([string]::IsNullOrWhiteSpace($publishVersion)) {
-                                      throw "publishVersion parameter is required but not provided"
+                                      Write-Host "##vso[task.logissue type=error]publishVersion parameter is required but not provided"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   $dryRunSuffix = if ($${{ parameters.dryRun }}) { "-dry" } else { "" }
@@ -153,13 +154,16 @@ extends:
                           inputs:
                               targetType: 'inline'
                               script: |
-                                  $ErrorActionPreference = "Stop"
                                   $vsixFiles = Get-ChildItem -Path $(System.DefaultWorkingDirectory) -Filter *.vsix -File
 
                                   if ($vsixFiles.Count -gt 1) {
-                                      throw "Multiple .vsix files found: $($vsixFiles.Name -join ', ')"
+                                      Write-Host "##vso[task.logissue type=error]Multiple .vsix files found: $($vsixFiles.Name -join ', ')"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   } elseif ($vsixFiles.Count -eq 0) {
-                                      throw "No .vsix files found"
+                                      Write-Host "##vso[task.logissue type=error]No .vsix files found"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   $vsixFileName = $vsixFiles.Name
@@ -172,12 +176,16 @@ extends:
                                   $signaturePath = "$(System.DefaultWorkingDirectory)/extension.signature.p7s"
 
                                   if (-not (Test-Path $manifestPath)) {
-                                      throw "Manifest file not found: extension.manifest"
+                                      Write-Host "##vso[task.logissue type=error]Manifest file not found: extension.manifest"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
                                   Write-Output "✓ Manifest: extension.manifest"
 
                                   if (-not (Test-Path $signaturePath)) {
-                                      throw "Signature file not found: extension.signature.p7s"
+                                      Write-Host "##vso[task.logissue type=error]Signature file not found: extension.signature.p7s"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
                                   Write-Output "✓ Signature: extension.signature.p7s"
                               pwsh: true
@@ -196,14 +204,22 @@ extends:
 
                                   # Extract package.json
                                   $pkgEntry = $zip.Entries | Where-Object { $_.FullName -eq 'extension/package.json' } | Select-Object -First 1
-                                  if (-not $pkgEntry) { throw "extension/package.json not found in VSIX" }
+                                  if (-not $pkgEntry) {
+                                      Write-Host "##vso[task.logissue type=error]extension/package.json not found in VSIX"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
                                   $pkgReader = New-Object System.IO.StreamReader($pkgEntry.Open())
                                   $pkg = $pkgReader.ReadToEnd() | ConvertFrom-Json
                                   $pkgReader.Close()
 
                                   # Extract manifest
                                   $manifestEntry = $zip.Entries | Where-Object { $_.FullName -eq 'extension.vsixmanifest' } | Select-Object -First 1
-                                  if (-not $manifestEntry) { throw "extension.vsixmanifest not found in VSIX" }
+                                  if (-not $manifestEntry) {
+                                      Write-Host "##vso[task.logissue type=error]extension.vsixmanifest not found in VSIX"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
                                   $manifestReader = New-Object System.IO.StreamReader($manifestEntry.Open())
                                   [xml]$manifest = $manifestReader.ReadToEnd()
                                   $manifestReader.Close()
@@ -233,7 +249,9 @@ extends:
                               targetType: 'inline'
                               script: |
                                   if ("${{ parameters.publishVersion }}" -ne "$(extractMetadataStep.version)") {
-                                      throw "Publish version mismatch: expected '${{ parameters.publishVersion }}', got '$(extractMetadataStep.version)'"
+                                      Write-Host "##vso[task.logissue type=error]Publish version mismatch: expected '${{ parameters.publishVersion }}', got '$(extractMetadataStep.version)'"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
                                   Write-Output "✓ Publish version: $(extractMetadataStep.version)"
                               pwsh: true
@@ -243,12 +261,13 @@ extends:
                           inputs:
                               targetType: 'inline'
                               script: |
-                                  $ErrorActionPreference = "Stop"
                                   $expected = "$(extractMetadataStep.name)-$(extractMetadataStep.version).vsix"
                                   $actual = "$(findPublishingFilesStep.vsixFileName)"
 
                                   if ($actual -ne $expected) {
-                                      throw "VSIX filename mismatch: expected '$expected', got '$actual'"
+                                      Write-Host "##vso[task.logissue type=error]VSIX filename mismatch: expected '$expected', got '$actual'"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   Write-Output "✓ Filename valid: $actual"
@@ -267,11 +286,15 @@ extends:
 
                                   # Validate VSIX internal consistency (package.json vs vsixmanifest)
                                   if ($vsixManifestVersion -ne $vsixVersion) {
-                                      throw "VSIX internal version mismatch: package.json=$vsixVersion, vsixmanifest=$vsixManifestVersion"
+                                      Write-Host "##vso[task.logissue type=error]VSIX internal version mismatch: package.json=$vsixVersion, vsixmanifest=$vsixManifestVersion"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   if ($vsixManifestPreview -ne $vsixPreview) {
-                                      throw "VSIX internal preview mismatch: package.json=$vsixPreview, vsixmanifest=$vsixManifestPreview"
+                                      Write-Host "##vso[task.logissue type=error]VSIX internal preview mismatch: package.json=$vsixPreview, vsixmanifest=$vsixManifestPreview"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   Write-Output "✓ VSIX internal consistency verified"
@@ -282,11 +305,15 @@ extends:
                                   $artifactPreview = [bool]$artifactPackageJson.preview
 
                                   if ($artifactVersion -ne $vsixVersion) {
-                                      throw "Artifact package.json version mismatch: artifact=$artifactVersion, VSIX=$vsixVersion"
+                                      Write-Host "##vso[task.logissue type=error]Artifact package.json version mismatch: artifact=$artifactVersion, VSIX=$vsixVersion"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   if ($artifactPreview -ne $vsixPreview) {
-                                      throw "Artifact package.json preview mismatch: artifact=$artifactPreview, VSIX=$vsixPreview"
+                                      Write-Host "##vso[task.logissue type=error]Artifact package.json preview mismatch: artifact=$artifactPreview, VSIX=$vsixPreview"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   Write-Output "✓ Artifact package.json matches VSIX"
@@ -298,12 +325,13 @@ extends:
                           inputs:
                               targetType: 'inline'
                               script: |
-                                  $ErrorActionPreference = "Stop"
                                   $version = "$(extractMetadataStep.version)"
                                   $preview = [bool]::Parse("$(extractMetadataStep.preview)")
 
                                   if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
-                                      throw "Invalid semantic version: $version"
+                                      Write-Host "##vso[task.logissue type=error]Invalid semantic version: $version"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
                                   $minor = [int]$Matches[2]

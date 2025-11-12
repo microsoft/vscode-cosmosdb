@@ -89,6 +89,28 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
+                        - task: PowerShell@2
+                          displayName: "\U0001F4CB Set Build Number"
+                          inputs:
+                              targetType: 'inline'
+                              pwsh: true
+                              script: |
+                                  try {
+                                      $packageJson = Get-Content "$(Build.SourcesDirectory)/package.json" -Raw | ConvertFrom-Json
+                                      $version = $packageJson.version
+                                      if ($version) {
+                                          $buildNumber = "$version_$(Build.BuildNumber)"
+                                          Write-Host "##vso[build.updatebuildnumber]$buildNumber"
+                                          Write-Host "Build number set to: $buildNumber"
+                                      } else {
+                                          Write-Host "##vso[task.logissue type=warning]Version not found in package.json, keeping original build number"
+                                          Write-Host "Keeping original build number: $(Build.BuildNumber)"
+                                      }
+                                  } catch {
+                                      Write-Host "##vso[task.logissue type=warning]Could not read package.json: $_"
+                                      Write-Host "Keeping original build number: $(Build.BuildNumber)"
+                                  }
+
                         - task: ComponentGovernanceComponentDetection@0
                           displayName: "\U0001F6E1 Component Governance - Component Detection"
 

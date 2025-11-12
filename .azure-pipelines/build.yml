@@ -121,6 +121,7 @@ extends:
 
                         - task: notice@0
                           displayName: '📄 Generate NOTICE file'
+                          continueOnError: true # the notice@0 task is unreliable and sometimes fails the build unexpectedly due to random outages
                           inputs:
                               outputfile: $(Build.SourcesDirectory)/NOTICE.html
                               outputformat: html

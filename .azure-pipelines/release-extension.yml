@@ -110,8 +110,8 @@ extends:
               displayName: Release extension
               variables:
                   - name: ob_release_environment
-                    #value: Test # should be  Test, PPE or Production
-                    value: Production # should be  Test, PPE or Production
+                    # should be Test, PPE or Production
+                    value: ${{ eq(parameters.dryRun, true) && 'Test' || 'Production' }}
               jobs:
                   - job: ReleaseValidation
                     displayName: "\U00002713 Validate Artifacts"

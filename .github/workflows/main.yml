@@ -1,65 +1,97 @@
 name: Node PR Lint, Build and Test
 
 on:
-  # Trigger when manually run
-  workflow_dispatch:
+    # Trigger when manually run
+    workflow_dispatch:
 
-  # Trigger on pushes to `main` or `rel/*`
-  push:
-    branches:
-      - main
-      - rel/*
+    # Trigger on pushes to `main` or `rel/*`
+    push:
+        branches:
+            - main
+            - rel/*
 
-  # Trigger on pull requests to `main` or `rel/*`
-  pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/*
+    # Trigger on pull requests to `main` or `rel/*`
+    pull_request:
+        branches:
+            - main
+            - rel/*
+            - dev/*
 
 jobs:
-  Build:
-    runs-on: ubuntu-latest
+    Build:
+        runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: '.'
+        defaults:
+            run:
+                working-directory: '.'
 
-    steps:
-      # Setup
-      - uses: actions/checkout@v4
-      - name: Using Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-      - run: npm ci
+        steps:
+            # Setup
+            - uses: actions/checkout@v4
+            - name: Using Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
 
-      - name: Localize
-        run: npm run l10n:check
+            - name: ⚖️ Validate Version / Preview Alignment
+              shell: pwsh
+              run: |
+                  $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+                  $version = $packageJson.version
+                  $preview = [bool]$packageJson.preview
 
-      - name: Lint
-        run: npm run lint
+                  Write-Output "📦 Package version: $version"
+                  Write-Output "🏷️ Preview flag: $preview"
 
-      - name: Prettier
-        run: npm run prettier
+                  # Validate semantic versioning format
+                  if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+                      Write-Error "❌ Invalid semantic version format: $version"
+                      exit 1
+                  }
 
-      - name: Compile
-        run: npm run build
+                  $minor = [int]$Matches[2]
+                  $minorEven = ($minor % 2) -eq 0
 
-      - name: Package
-        run: npm run package
+                  # Check version/preview alignment
+                  # Convention: odd minor versions = preview, even minor versions = stable
+                  if ($preview -and $minorEven) {
+                      Write-Warning "⚠️ Version/preview misalignment: preview=$preview but minor version $minor is even (should be odd for preview)"
+                      Write-Warning "Convention: Odd minor versions (e.g., 1.1.x, 1.3.x) should be preview, even (e.g., 1.0.x, 1.2.x) should be stable"
+                  } elseif (-not $preview -and -not $minorEven) {
+                      Write-Warning "⚠️ Version/preview misalignment: preview=$preview but minor version $minor is odd (should be even for stable)"
+                      Write-Warning "Convention: Odd minor versions (e.g., 1.1.x, 1.3.x) should be preview, even (e.g., 1.0.x, 1.2.x) should be stable"
+                  } else {
+                      Write-Output "✅ Version/preview alignment is correct"
+                  }
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: Artifacts
-          path: |
-            **/*.vsix
-            **/*.tgz
-            !**/node_modules
+            - run: npm ci
 
-      - name: Unit Tests
-        run: npm run jesttest
+            - name: Localize
+              run: npm run l10n:check
 
-      - name: Integration Tests
-        run: xvfb-run -a npm test
+            - name: Lint
+              run: npm run lint
+
+            - name: Prettier
+              run: npm run prettier
+
+            - name: Compile
+              run: npm run build
+
+            - name: Package
+              run: npm run package
+
+            - name: Upload Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Artifacts
+                  path: |
+                      **/*.vsix
+                      **/*.tgz
+                      !**/node_modules
+
+            - name: Unit Tests
+              run: npm run jesttest
+
+            - name: Integration Tests
+              run: xvfb-run -a npm test

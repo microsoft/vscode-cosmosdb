@@ -109,7 +109,10 @@ extends:
               variables:
                   - name: ob_release_environment
                     # should be Test, PPE or Production
-                    value: ${{ eq(parameters.dryRun, true) && 'Test' || 'Production' }}
+                    ${{ if eq(parameters.dryRun, true) }}:
+                        value: 'Test'
+                    ${{ else }}:
+                        value: 'Production'
               jobs:
                   - job: ReleaseValidation
                     displayName: "\U00002713 Validate Artifacts"

@@ -91,6 +91,7 @@ extends:
                     steps:
                         - task: PowerShell@2
                           displayName: "\U0001F4CB Set Build Number"
+                          name: setBuildNumberStep
                           inputs:
                               targetType: 'inline'
                               pwsh: true
@@ -98,9 +99,13 @@ extends:
                                   try {
                                       $packageJson = Get-Content "$(Build.SourcesDirectory)/package.json" -Raw | ConvertFrom-Json
                                       $version = $packageJson.version
+                                      $preview = [bool]$packageJson.preview
+
                                       if ($version) {
-                                          $buildNumber = "$version_$(Build.BuildNumber)"
+                                          $buildNumber = "vscode-cosmosdb-$version-$(Build.BuildNumber)"
                                           Write-Host "##vso[build.updatebuildnumber]$buildNumber"
+                                          Write-Host "##vso[task.setvariable variable=version;isOutput=true]$version"
+                                          Write-Host "##vso[task.setvariable variable=preview;isOutput=true]$preview"
                                           Write-Host "Build number set to: $buildNumber"
                                       } else {
                                           Write-Host "##vso[task.logissue type=warning]Version not found in package.json, keeping original build number"
@@ -305,3 +310,27 @@ extends:
                               customCommand: test
                               workingDir: $(Build.SourcesDirectory)
                           condition: succeeded()
+
+                        - task: PowerShell@2
+                          displayName: '✓ Validate Version / Preview Alignment'
+                          inputs:
+                              targetType: 'inline'
+                              pwsh: true
+                              script: |
+                                  $ErrorActionPreference = "Stop"
+                                  $version = "$(setBuildNumberStep.version)"
+                                  $preview = [bool]::Parse("$(setBuildNumberStep.preview)")
+
+                                  if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+                                      throw "Invalid semantic version: $version"
+                                  }
+
+                                  $minor = [int]$Matches[2]
+                                  $minorEven = ($minor % 2) -eq 0
+
+                                  # Warning for version/preview alignment
+                                  if (($preview -and $minorEven) -or (-not $preview -and -not $minorEven)) {
+                                      Write-Host "##vso[task.logissue type=warning]Version/preview alignment: preview=$preview but minor=$minor ($(if($minorEven){'even'}else{'odd'}))"
+                                  }
+
+                                  Write-Output "✓ Version format valid: $version"

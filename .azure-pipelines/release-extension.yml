@@ -43,9 +43,7 @@ variables:
 extends:
     template: v2/OneBranch.Official.CrossPlat.yml@templates
 
-
     parameters:
-
         # remove for release pipeline?
         cloudvault: # https://aka.ms/obpipelines/cloudvault
             enabled: false
@@ -169,6 +167,7 @@ extends:
                         # If they don't match, this step fails
                         - task: PowerShell@2
                           displayName: "\U0001F449 Verify publish version"
+                          name: verifyPublishVersionStep
                           env:
                               publishVersion: ${{ parameters.publishVersion }}
                           inputs:
@@ -205,6 +204,14 @@ extends:
                                     Write-Error "[Error] Publish version '$publishVersion' doesn't match version found in package.json '$npmVersionString'. Cancelling release."
                                     exit 1
                                   }
+
+                                  # Extract the preview flag from package.json
+                                  $isPreview = $packageJson.preview
+                                  if ($null -eq $isPreview) {
+                                      $isPreview = $false
+                                  }
+                                  Write-Output "Package.json preview flag: $isPreview"
+                                  Write-Output "##vso[task.setvariable variable=isPreview;isOutput=true]$isPreview"
 
                         # Find the vsix to release and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
@@ -280,9 +287,10 @@ extends:
                     condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
                     dependsOn: ReleaseValidation
                     pool:
-                      type: release
+                        type: release
                     variables:
                         vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
+                        isPreview: $[ dependencies.ReleaseValidation.outputs['verifyPublishVersionStep.isPreview'] ]
                     templateContext:
                         inputs:
                             - input: pipelineArtifact
@@ -291,16 +299,16 @@ extends:
                               artifactName: drop_BuildStage_Main
                         workflow: vsce
                         vsce:
-                          serviceConnection: "CosmosDB VSCode Publishing" # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
-                          vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
-                          #preRelease: true # default false. Whether the extension is a pre-release.
-                          signaturePath: $(System.DefaultWorkingDirectory)/extension.signature.p7s # optional
-                          manifestPath: $(System.DefaultWorkingDirectory)/extension.manifest # optional
-                          useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
-                          feed:
-                            organization: msdata
-                            project: CosmosDB
-                            feedName: vscode-cosmosdb
+                            serviceConnection: 'CosmosDB VSCode Publishing' # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
+                            vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
+                            preRelease: $(isPreview) # Whether the extension is a pre-release, determined from package.json preview flag
+                            signaturePath: $(System.DefaultWorkingDirectory)/extension.signature.p7s # optional
+                            manifestPath: $(System.DefaultWorkingDirectory)/extension.manifest # optional
+                            useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
+                            feed:
+                                organization: msdata
+                                project: CosmosDB
+                                feedName: vscode-cosmosdb
                     steps:
                         # we need a noop step otherwise the vsce template won't run
                         - pwsh: Write-Output "Done"

@@ -115,7 +115,7 @@ extends:
                         value: 'Production'
               jobs:
                   - job: ReleaseValidation
-                    displayName: "\U00002713 Validate Artifacts"
+                    displayName: '⚖️ Validate Artifacts'
                     templateContext:
                         inputs:
                             - input: pipelineArtifact
@@ -128,7 +128,7 @@ extends:
                         ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
                     steps:
                         - task: PowerShell@2
-                          displayName: '📋 Set Build Number'
+                          displayName: '🔢 Set Build Number'
                           name: setBuildNumberStep
                           inputs:
                               targetType: 'inline'
@@ -149,7 +149,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '📦 Find Publishing Files'
+                          displayName: '🔍 Find Publishing Files'
                           name: findPublishingFilesStep
                           inputs:
                               targetType: 'inline'
@@ -191,7 +191,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '📋 Extract Metadata from VSIX'
+                          displayName: '📖 Extract Metadata from VSIX'
                           name: extractMetadataStep
                           inputs:
                               targetType: 'inline'
@@ -244,7 +244,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '✓ Validate Publish Version'
+                          displayName: '⚖️ Validate Publish Version'
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -257,7 +257,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '✓ Validate VSIX Filename'
+                          displayName: '⚖️ Validate VSIX Filename'
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -274,7 +274,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '✓ Validate Manifest Consistency'
+                          displayName: '⚖️ Validate Manifest Consistency'
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -321,7 +321,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '✓ Validate Version / Preview Alignment'
+                          displayName: '⚖️ Validate Version / Preview Alignment'
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -346,7 +346,7 @@ extends:
                               pwsh: true
 
                         - task: PowerShell@2
-                          displayName: '🏷️ Update Build Number'
+                          displayName: '🔢 Update Build Number'
                           name: updateBuildNumberStep
                           inputs:
                               targetType: 'inline'
@@ -361,7 +361,7 @@ extends:
                               pwsh: true
 
                   - job: PublishExtension
-                    displayName: "\U00002713 Publish Extension"
+                    displayName: '🚀 Publish Extension'
                     condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
                     dependsOn: ReleaseValidation
                     pool:
@@ -391,4 +391,4 @@ extends:
                         # we need a noop step otherwise the vsce template won't run
                         - pwsh: Write-Output "Done"
                           condition: ${{ eq(parameters.dryRun, true) }} # noop this condition is always false
-                          displayName: "\U0001F449 Post-Publishing"
+                          displayName: '📢 Post-Publishing'

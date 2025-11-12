@@ -90,7 +90,7 @@ extends:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
                         - task: PowerShell@2
-                          displayName: "\U0001F4CB Set Build Number"
+                          displayName: '🔢 Set Build Number'
                           name: setBuildNumberStep
                           inputs:
                               targetType: 'inline'
@@ -117,28 +117,28 @@ extends:
                                   }
 
                         - task: ComponentGovernanceComponentDetection@0
-                          displayName: "\U0001F6E1 Component Governance - Component Detection"
+                          displayName: '🛡️ Component Governance - Component Detection'
 
                         - task: notice@0
-                          displayName: "\U0001F449 Generate NOTICE file"
+                          displayName: '📄 Generate NOTICE file'
                           inputs:
                               outputfile: $(Build.SourcesDirectory)/NOTICE.html
                               outputformat: html
 
                         - task: NodeTool@0
-                          displayName: "\U0001F449 Using Node.js"
+                          displayName: '📦 Using Node.js'
                           inputs:
                               versionSource: fromFile
                               versionFilePath: '$(Build.SourcesDirectory)/.nvmrc'
 
                         - task: npmAuthenticate@0
-                          displayName: "\U0001F449 Authenticate to npm registry"
+                          displayName: '🔐 Authenticate to npm registry'
                           condition: succeeded()
                           inputs:
                               workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
 
                         - task: Npm@1
-                          displayName: "\U0001F449 Install Dependencies"
+                          displayName: '⬇️ Install Dependencies'
                           condition: succeeded()
                           inputs:
                               command: custom
@@ -146,7 +146,7 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
 
                         - task: OneLocBuild@3
-                          displayName: "\U0001F30D Build Localized Files"
+                          displayName: '🌍 Build Localized Files'
                           inputs:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
@@ -166,7 +166,7 @@ extends:
                               patVariable: '$(System.AccessToken)'
 
                         - task: Npm@1
-                          displayName: "\U0001F449 Build"
+                          displayName: '🔨 Build'
                           condition: succeeded()
                           inputs:
                               command: custom
@@ -174,7 +174,7 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
 
                         - task: Npm@1
-                          displayName: "\U0001F449 Package"
+                          displayName: '📦 Package'
                           condition: succeeded()
                           inputs:
                               command: custom
@@ -182,13 +182,13 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
 
                         - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
-                          displayName: "\U0001F449 Install vsce"
+                          displayName: '⬇️ Install vsce'
                           condition: succeeded()
 
                         # Find the vsix and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
-                          displayName: "\U0001F50D Find VSIX File"
+                          displayName: '🔍 Find VSIX File'
                           inputs:
                               targetType: 'inline'
                               script: |
@@ -216,11 +216,11 @@ extends:
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
                         - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
-                          displayName: "\U0001F5DD Generate extension manifest for signing"
+                          displayName: '📝 Generate extension manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
                         - task: PowerShell@2
-                          displayName: "\U0001F408 Prepare manifest for signing"
+                          displayName: '🐈 Prepare manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               targetType: 'inline'
@@ -236,7 +236,7 @@ extends:
                                   Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
-                          displayName: "\U0001F5DD Sign VSIX package"
+                          displayName: '✍️ Sign VSIX package'
                           # Only sign if isOfficialBuild is true
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
@@ -247,7 +247,7 @@ extends:
                               #use_testsign: true # Set to true for test signing for development purposes, default is false
 
                         - task: PowerShell@2
-                          displayName: "\U0001F396 Verify VSIX signature"
+                          displayName: '🔒 Verify VSIX signature'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
                               targetType: 'inline'
@@ -282,7 +282,7 @@ extends:
                                   }
 
                         - task: CopyFiles@2
-                          displayName: "\U0001F449 Copy packages and vsix to staging directory"
+                          displayName: '📂 Copy packages and vsix to staging directory'
                           inputs:
                               # Uploading the package.json so we can publish later without cloning the source
                               # Files related to signing:
@@ -301,7 +301,7 @@ extends:
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: CopyFiles@2
-                          displayName: "\U0001F449 Copy localisation results to staging directory"
+                          displayName: '🌐 Copy localisation results to staging directory'
                           inputs:
                               SourceFolder: '$(Build.ArtifactStagingDirectory)'
                               Contents: loc/**
@@ -309,7 +309,7 @@ extends:
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: Npm@1
-                          displayName: "\U0001F449 Test"
+                          displayName: '🧪 Test'
                           inputs:
                               command: custom
                               customCommand: test
@@ -317,7 +317,7 @@ extends:
                           condition: succeeded()
 
                         - task: PowerShell@2
-                          displayName: '✓ Validate Version / Preview Alignment'
+                          displayName: '⚖️ Validate Version / Preview Alignment'
                           inputs:
                               targetType: 'inline'
                               pwsh: true

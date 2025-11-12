@@ -140,8 +140,11 @@ extends:
                                       exit 1
                                   }
 
+                                  $baseBuildNumber = "$(Build.BuildNumber)"
+                                  Write-Output "##vso[task.setvariable variable=baseBuildNumber;isOutput=true]$baseBuildNumber"
+
                                   $dryRunSuffix = if ($${{ parameters.dryRun }}) { "-dry" } else { "" }
-                                  $newBuildNumber = "vscode-cosmosdb-$publishVersion$dryRunSuffix-$(Build.BuildNumber)"
+                                  $newBuildNumber = "vscode-cosmosdb-$publishVersion$dryRunSuffix-$baseBuildNumber"
 
                                   Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
                                   Write-Output "Build number: $newBuildNumber"
@@ -320,8 +323,9 @@ extends:
                           name: updateBuildNumberStep
                           inputs:
                               script: |
+                                  $baseBuildNumber = "$(setBuildNumberStep.baseBuildNumber)"
                                   $dryRunSuffix = if ($${{ parameters.dryRun }}) { "-dry" } else { "" }
-                                  $newBuildNumber = "vscode-cosmosdb-$(extractMetadataStep.version)$dryRunSuffix-$(Build.BuildNumber)"
+                                  $newBuildNumber = "vscode-cosmosdb-$(extractMetadataStep.version)$dryRunSuffix-$baseBuildNumber"
                                   Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
                                   Write-Output "Build number: $newBuildNumber (preview=$(extractMetadataStep.preview))"
                               pwsh: true

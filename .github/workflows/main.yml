@@ -134,16 +134,35 @@ jobs:
                       !**/node_modules
 
             - name: 🧪 Unit Tests
+              id: unit-tests
+              continue-on-error: true
               run: npm run jesttest
 
             - name: 🧪 Integration Tests
+              id: integration-tests
+              continue-on-error: true
               run: xvfb-run -a npm test
 
             - name: 📊 Generate Job Summary
               if: always()
               shell: pwsh
               run: |
-                  $summary = @"
+                  # Only generate summary if VSIX verification completed
+                  if ($env:PACKAGE_VERSION) {
+                      # Determine test results
+                      $unitTestResult = "${{ steps.unit-tests.outcome }}"
+                      $integrationTestResult = "${{ steps.integration-tests.outcome }}"
+
+                      $unitTestIcon = if ($unitTestResult -eq "success") { "✅" } else { "❌" }
+                      $integrationTestIcon = if ($integrationTestResult -eq "success") { "✅" } else { "❌" }
+
+                      $overallStatus = if ($unitTestResult -eq "success" -and $integrationTestResult -eq "success") {
+                          "## ✅ Build Status`nAll checks completed successfully!"
+                      } else {
+                          "## ❌ Build Status`nSome checks failed. Please review the logs."
+                      }
+
+                      $summary = @"
                   # 🎉 Build Summary
 
                   ## 📦 Package Information
@@ -152,8 +171,19 @@ jobs:
                   - **VSIX File:** $env:VSIX_FILE
                   - **VSIX Size:** $env:VSIX_SIZE MB
 
-                  ## ✅ Build Status
-                  All checks completed successfully!
+                  ## 🧪 Test Results
+                  - **Unit Tests:** $unitTestIcon $unitTestResult
+                  - **Integration Tests:** $integrationTestIcon $integrationTestResult
+
+                  $overallStatus
                   "@
 
-                  $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+                      $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+                      # Fail the job if any tests failed
+                      if ($unitTestResult -ne "success" -or $integrationTestResult -ne "success") {
+                          exit 1
+                      }
+                  } else {
+                      Write-Output "⚠️ Skipping job summary - VSIX verification did not complete"
+                  }

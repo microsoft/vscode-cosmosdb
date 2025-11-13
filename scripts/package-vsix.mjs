@@ -47,8 +47,8 @@ function executeCommand(command, description) {
         if (error.status) {
             console.error(`  Exit code: ${error.status}`);
         }
-        if (error.stderr) {
-            console.error(`  Error: ${error.stderr.toString()}`);
+        if (error.message) {
+            console.error(`  Error: ${error.message}`);
         }
         process.exit(error.status || 1);
     }

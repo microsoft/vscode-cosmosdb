@@ -53,41 +53,47 @@ async function openOrInstallPgSqlExtension(isInstalled: boolean): Promise<void> 
  * - Includes Azure subscription ID, resource group, and tenant ID if available
  * - Automatically handles installation of the PostgreSQL extension if not already installed
  */
-export async function openPostgresExtension(pgServer: PostgresServerTreeItem): Promise<void> {
+export async function openPostgresExtension(pgServer?: PostgresServerTreeItem): Promise<void> {
     return await callWithTelemetryAndErrorHandling('postgreSQL.openPostgresExtension', async (context) => {
         // Build URI with connection parameters
         const params = new URLSearchParams();
-        params.append('server', pgServer.partialConnectionString.hostName);
-        if (pgServer.partialConnectionString.databaseName) {
-            context.valuesToMask.push(pgServer.partialConnectionString.databaseName);
-            params.append('database', pgServer.partialConnectionString.databaseName);
-        }
-        if (pgServer.partialConnectionString.port) {
-            params.append('port', pgServer.partialConnectionString.port);
-        }
-        if (pgServer.partialConnectionString.username && pgServer.partialConnectionString.password) {
-            params.append('authenticationType', 'SqlLogin');
-            context.valuesToMask.push(pgServer.partialConnectionString.username);
-            params.append('user', pgServer.partialConnectionString.username);
-            // Skippping password for security reasons since VS Code URI query params can be logged
-            //params.append('password', pgServer.partialConnectionString.password);
-        } else {
-            params.append('authenticationType', 'AzureMFA');
-        }
-        if (pgServer.resourceGroup) {
-            params.append('azureResourceGroup', pgServer.resourceGroup);
-        }
+        if (pgServer) {
+            params.append('server', pgServer.partialConnectionString.hostName);
+            if (pgServer.partialConnectionString.databaseName) {
+                context.valuesToMask.push(pgServer.partialConnectionString.databaseName);
+                params.append('database', pgServer.partialConnectionString.databaseName);
+            }
+            if (pgServer.partialConnectionString.port) {
+                params.append('port', pgServer.partialConnectionString.port);
+            }
+            if (pgServer.partialConnectionString.username && pgServer.partialConnectionString.password) {
+                params.append('authenticationType', 'SqlLogin');
+                context.valuesToMask.push(pgServer.partialConnectionString.username);
+                params.append('user', pgServer.partialConnectionString.username);
+                // Skipping password for security reasons since VS Code URI query params can be logged
+                //params.append('password', pgServer.partialConnectionString.password);
+            } else {
+                params.append('authenticationType', 'AzureMFA');
+            }
+            if (pgServer.resourceGroup) {
+                params.append('azureResourceGroup', pgServer.resourceGroup);
+            }
 
-        try {
-            if (pgServer.subscription?.subscriptionId) {
-                params.append('azureSubscriptionId', pgServer.subscription.subscriptionId);
+            try {
+                if (pgServer.subscription?.subscriptionId) {
+                    params.append('azureSubscriptionId', pgServer.subscription.subscriptionId);
+                }
+                if (pgServer.subscription?.tenantId) {
+                    params.append('tenantId', pgServer.subscription.tenantId);
+                }
+            } catch {
+                // Ignore errors retrieving subscription or tenant info, since pgServer.subscription getter will throw for non Azure resources
+                // This info is optional for connecting to the PostgreSQL server anyway
             }
-            if (pgServer.subscription?.tenantId) {
-                params.append('tenantId', pgServer.subscription.tenantId);
-            }
-        } catch {
-            // Ignore errors retrieving subscription or tenant info, since pgServer.subscription getter will throw for non Azure resources
-            // This info is optional for connecting to the PostgreSQL server anyway
+        } else {
+            // No server provided, use minimal params and default to AzureMFA
+            params.append('server', 'new.connection');
+            params.append('authenticationType', 'AzureMFA');
         }
 
         const uri = vscode.Uri.from({

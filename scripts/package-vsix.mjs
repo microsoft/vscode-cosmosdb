@@ -65,7 +65,16 @@ function main() {
     const packageJson = readPackageJson();
     const { name, version, preview } = packageJson;
 
-    // Determine if this is a preview build
+    // Validate preview field if present, default to false if missing
+    if (preview !== undefined && typeof preview !== 'boolean') {
+        console.error(
+            `\n❌ Error: The "preview" field in package.json must be a boolean (true or false). ` +
+                `Found: ${typeof preview} (${JSON.stringify(preview)})`,
+        );
+        process.exit(1);
+    }
+
+    // Determine if this is a preview build (default to false if missing)
     const isPreview = preview === true;
     const preReleaseFlag = isPreview ? '--pre-release' : '';
 

@@ -214,7 +214,17 @@ extends:
 
                                   # Set output variables
                                   $version = $pkg.version
-                                  $preview = [bool]$pkg.preview
+                                  # Default preview to false if missing, validate type if present
+                                  if ($null -eq $pkg.PSObject.Properties['preview']) {
+                                      Write-Host "##vso[task.logissue type=warning]'preview' field missing in VSIX package.json, defaulting to false"
+                                      $preview = $false
+                                  } elseif ($pkg.preview -isnot [bool]) {
+                                      Write-Host "##vso[task.logissue type=error]Invalid 'preview' field in VSIX package.json. Expected boolean, got: $($pkg.preview.GetType().Name) ($($pkg.preview))"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  } else {
+                                      $preview = [bool]$pkg.preview
+                                  }
                                   $name = $pkg.name
                                   $manifestVer = $manifest.PackageManifest.Metadata.Identity.Version
                                   $preProp = $manifest.PackageManifest.Metadata.Properties.Property | Where-Object { $_.Id -eq "Microsoft.VisualStudio.Code.PreRelease" }
@@ -274,7 +284,7 @@ extends:
 
                                   $artifactPkg = Get-Content "$(System.DefaultWorkingDirectory)/package.json" -Raw | ConvertFrom-Json
                                   $artifactVersion = $artifactPkg.version
-                                  $artifactPreview = [bool]$artifactPkg.preview
+                                  $artifactPreview = if ($artifactPkg.PSObject.Properties['preview']) { [bool]$artifactPkg.preview } else { $false }
 
                                   # Validate all consistency checks
                                   $errors = @()

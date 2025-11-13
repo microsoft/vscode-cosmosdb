@@ -97,7 +97,18 @@ extends:
                                   try {
                                       $packageJson = Get-Content "$(Build.SourcesDirectory)/package.json" -Raw | ConvertFrom-Json
                                       $version = $packageJson.version
-                                      $preview = [bool]$packageJson.preview
+
+                                      # Validate preview field if present, default to false if missing
+                                      if ($null -eq $packageJson.PSObject.Properties['preview']) {
+                                          Write-Host "##vso[task.logissue type=warning]'preview' field missing in package.json, defaulting to false"
+                                          $preview = $false
+                                      } elseif ($packageJson.preview -isnot [bool]) {
+                                          Write-Host "##vso[task.logissue type=error]Invalid 'preview' field in package.json. Expected boolean (true or false), got: $($packageJson.preview.GetType().Name) ($($packageJson.preview))"
+                                          Write-Host "##vso[task.complete result=Failed;]"
+                                          exit 1
+                                      } else {
+                                          $preview = [bool]$packageJson.preview
+                                      }
 
                                       if ($version) {
                                           $buildNumber = "vscode-cosmosdb-$version-$(Build.BuildNumber)"
@@ -325,7 +336,18 @@ extends:
                           inputs:
                               script: |
                                   $version = "$(setBuildNumberStep.version)"
-                                  $preview = [bool]::Parse("$(setBuildNumberStep.preview)")
+                                  $previewRaw = "$(setBuildNumberStep.preview)"
+
+                                  # Parse preview field, default to false if empty
+                                  if ([string]::IsNullOrEmpty($previewRaw) -or $previewRaw -eq "False") {
+                                      $preview = $false
+                                  } elseif ($previewRaw -eq "True") {
+                                      $preview = $true
+                                  } else {
+                                      Write-Host "##vso[task.logissue type=error]Invalid 'preview' value: '$previewRaw'. Expected 'True' or 'False'."
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
 
                                   if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
                                       Write-Host "##vso[task.logissue type=error]Invalid semantic version: $version"

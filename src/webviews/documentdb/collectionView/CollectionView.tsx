@@ -333,6 +333,7 @@ export const CollectionView = (): JSX.Element => {
      * within various controls (query panel, paging, etc.).
      */
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCurrentContext((prev) => ({ ...prev, isLoading: true }));
 
         // 1. Run the query, this operation only acknowledges the request.

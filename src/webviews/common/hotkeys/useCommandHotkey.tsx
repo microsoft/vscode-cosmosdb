@@ -20,6 +20,9 @@ export const useCommandHotkey = <Scope extends HotkeyScope, Command extends Hotk
     const commandService = HotkeyCommandService.getInstance<Scope, Command>();
     const handlerRef = useRef<CommandHandler>(handler);
 
+    // TODO: It is really can be an issue since we do not control handler, but using useEffect is not solution either
+    //  The main point of this line is to always have the latest handler without re-registering the handler on every render
+    // eslint-disable-next-line react-hooks/refs
     handlerRef.current = handler;
 
     // Create a stable wrapper function that always calls the current handler

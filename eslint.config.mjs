@@ -110,13 +110,12 @@ export default defineConfig([
         extends: [
             ts.configs.recommendedTypeChecked,
             react.configs.flat.recommended,
-            jsxA11y.flatConfigs.recommended,
             react.configs.flat['jsx-runtime'],
-            reactHooks.configs['recommended-latest'],
+            jsxA11y.flatConfigs.recommended,
+            reactHooks.configs.flat['recommended-latest'],
         ],
 
         plugins: {
-            react: react,
             '@typescript-eslint': ts.plugin,
         },
 

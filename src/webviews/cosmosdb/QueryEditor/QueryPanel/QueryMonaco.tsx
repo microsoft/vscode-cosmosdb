@@ -3,20 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line import/no-internal-modules
-import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { MonacoEditor } from '../../../MonacoEditor';
+import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const QueryMonaco = () => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+    const editorRef = useRef<MonacoEditorType.editor.IStandaloneCodeEditor | null>(null);
 
     const cursorSelectionHandler = useCallback(
-        (event: monacoEditor.editor.ICursorSelectionChangedEvent) => {
+        (event: MonacoEditorType.editor.ICursorSelectionChangedEvent) => {
             if (!editorRef.current) {
                 return;
             }
@@ -39,7 +37,7 @@ export const QueryMonaco = () => {
         };
     }, [cursorSelectionHandler]);
 
-    const onMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
+    const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
         // Store the editor instance in ref
         editorRef.current = editor;
     };

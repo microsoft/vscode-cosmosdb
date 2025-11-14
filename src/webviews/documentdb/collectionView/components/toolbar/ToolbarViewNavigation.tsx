@@ -12,7 +12,7 @@ import { useTrpcClient } from '../../../../api/webview-client/useTrpcClient';
 import { CollectionViewContext } from '../../collectionViewContext';
 import { ToolbarDividerTransparent } from './ToolbarDividerTransparent';
 
-export const ToolbarViewNavigation = (): JSX.Element => {
+export const ToolbarViewNavigation = () => {
     /**
      * Use the `useTrpcClient` hook to get the tRPC client
      */
@@ -180,7 +180,7 @@ export const ToolbarViewNavigation = (): JSX.Element => {
                     defaultSelectedOptions={['10']}
                 >
                     <Option key="10">10</Option>
-                    <Option key="10">50</Option>
+                    <Option key="50">50</Option>
                     <Option key="100">100</Option>
                     <Option key="500">500</Option>
                 </Dropdown>

@@ -26,6 +26,10 @@ const monacoOptions = {
 export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
     const editorRef = React.useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
 
+    const handleResize = React.useCallback(() => {
+        editorRef.current?.layout();
+    }, []);
+
     React.useEffect(() => {
         // Add the debounced resize event listener
         const debouncedResizeHandler = debounce(handleResize, 200);
@@ -36,18 +40,10 @@ export const DataViewPanelJSON = ({ value }: Props): React.JSX.Element => {
 
         // Clean up on component unmount
         return () => {
-            if (editorRef.current) {
-                editorRef.current.dispose();
-            }
+            editorRef.current?.dispose();
             window.removeEventListener('resize', debouncedResizeHandler);
         };
-    }, []);
-
-    const handleResize = () => {
-        if (editorRef.current) {
-            editorRef.current.layout();
-        }
-    };
+    }, [handleResize]);
 
     return (
         <MonacoEditor

@@ -14,7 +14,6 @@ import {
     type ToolbarButtonProps,
 } from '@fluentui/react-components';
 import type React from 'react';
-import { forwardRef, type ForwardedRef } from 'react';
 
 const useStyles = makeStyles({
     tooltip: {
@@ -40,7 +39,7 @@ type ToolbarOverflowButtonProps = {
     icon?: React.ReactElement;
     hotkey?: string;
     onClick: (() => Promise<void> | void) | undefined;
-    refs?: ForwardedRef<HTMLButtonElement>;
+    ref?: React.Ref<HTMLButtonElement | HTMLAnchorElement>;
     showButtonText?: boolean;
     tooltip: string;
     type: 'button' | 'menuitem';
@@ -48,12 +47,9 @@ type ToolbarOverflowButtonProps = {
     toolbarButtonProps?: ToolbarButtonProps;
 };
 
-export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
-    props: ToolbarOverflowButtonProps,
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const ToolbarOverflowButton = function ToolbarOverflowButton(props: ToolbarOverflowButtonProps) {
     const classes = useStyles();
-    const { ariaLabel, content, disabled, icon, hotkey, onClick, showButtonText, tooltip, type } = props;
+    const { ariaLabel, content, disabled, icon, hotkey, onClick, ref, showButtonText, tooltip, type } = props;
     const formattedAriaLabel = ensureStopSymbol(ariaLabel);
 
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
@@ -68,7 +64,7 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
                 withArrow
             >
                 <ToolbarButton
-                    ref={props.refs ?? ref}
+                    ref={ref}
                     {...props.toolbarButtonProps}
                     // eslint-disable-next-line @typescript-eslint/no-misused-promises
                     onClick={onClick}
@@ -102,4 +98,4 @@ export const ToolbarOverflowButton = forwardRef(function ToolbarOverflowButton(
     }
 
     return <></>;
-});
+};

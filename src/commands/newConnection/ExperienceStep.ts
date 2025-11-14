@@ -20,9 +20,7 @@ export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardCon
         context.experience = await pickExperience(context, context.quickPickType);
     }
 
-    public async getSubWizard(
-        context: NewConnectionWizardContext,
-    ): Promise<IWizardOptions<NewConnectionWizardContext>> {
+    public getSubWizard(context: NewConnectionWizardContext): Promise<IWizardOptions<NewConnectionWizardContext>> {
         const promptSteps: AzureWizardPromptStep<NewConnectionWizardContext>[] = [];
         const executeSteps: AzureWizardExecuteStep<NewConnectionWizardContext>[] = [];
         const api = context.experience?.api;
@@ -43,7 +41,7 @@ export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardCon
             promptSteps.push(new CosmosDBConnectionStringStep());
             executeSteps.push(new CosmosDBExecuteStep());
         }
-        return { promptSteps, executeSteps };
+        return Promise.resolve({ promptSteps, executeSteps });
     }
 
     public shouldPrompt(context: NewConnectionWizardContext): boolean {

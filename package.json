@@ -11,7 +11,7 @@
   "//enableDocumentDBExtensionIntegration": "Notifies Azure Databases extension to enable DocumentDB extension integration.",
   "enableDocumentDBExtensionIntegration": false,
   "engines": {
-    "vscode": "^1.94.2",
+    "vscode": "^1.103.0",
     "node": ">=20.18.0"
   },
   "galleryBanner": {
@@ -89,7 +89,7 @@
     "@types/react-dom": "~18.3.7",
     "@types/semver": "~7.7.0",
     "@types/uuid": "~10.0.0",
-    "@types/vscode": "1.94.0",
+    "@types/vscode": "^1.103.0",
     "@types/vscode-webview": "~1.57.5",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-cli": "~0.0.11",
@@ -237,6 +237,17 @@
         "extensions": [
           ".nosql"
         ]
+      },
+      {
+        "id": "cosmosshell",
+        "aliases": [
+          "Cosmos Shell Script",
+          "cosmosshell"
+        ],
+        "extensions": [
+          ".csh"
+        ],
+        "configuration": "./src/cosmosShell/configuration.json"
       }
     ],
     "commands": [
@@ -385,6 +396,18 @@
         "category": "NoSQL",
         "command": "cosmosDB.openTrigger",
         "title": "%cosmosdb.command.trigger.open%"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.launchCosmosShell",
+        "title": "%cosmosdb.command.cosmos_shell.launch%",
+        "when": "vscodeDatabases.cosmosShellSupportEnabled && !vscodeDatabases.cosmosShellTerminalOpen"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.connectCosmosShell",
+        "title": "%cosmosdb.command.cosmos_shell.connect%",
+        "when": "vscodeDatabases.cosmosShellSupportEnabled && vscodeDatabases.cosmosShellTerminalOpen"
       },
       {
         "category": "NoSQL",
@@ -804,7 +827,7 @@
           "//": "[Functions] (Postgres) Refresh",
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunctions",
-          "group": "2@1"
+          "group": "3@1"
         },
         {
           "//": "[Stored Procedure] (Postgres) Create Stored Procedure",
@@ -919,6 +942,18 @@
           "submenu": "azureDatabases.submenus.mongo.database.scrapbook",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
           "group": "2@2"
+        },
+        {
+          "//": "[Database] Launch Cosmos Shell",
+          "command": "cosmosDB.launchCosmosShell",
+          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && !vscodeDatabases.cosmosShellTerminalOpen",
+          "group": "1@4"
+        },
+        {
+          "//": "[Database] Connect Cosmos Shell",
+          "command": "cosmosDB.connectCosmosShell",
+          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && !vscodeDatabases.cosmosShellTerminalOpen",
+          "group": "1@4"
         },
         {
           "//": "[Database] Refresh",
@@ -1143,6 +1178,10 @@
         {
           "command": "postgreSQL.executeQuery",
           "when": "editorLangId == 'postgres'"
+        },
+        {
+          "command": "cosmosDB.connectCosmosShell",
+          "when": "false"
         }
       ]
     },
@@ -1298,12 +1337,36 @@
             "default": ";",
             "markdownDescription": "%cosmosdb.configuration.csv.separator%"
           },
+          "cosmosDB.shell.path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "%cosmosdb.configuration.cosmosDB.shell.path%",
+            "default": null
+          },
+          "cosmosDB.shell.MCP.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.enabled%"
+          },
+          "cosmosDB.shell.MCP.port": {
+            "type": "integer",
+            "default": 6128,
+            "description": "%cosmosdb.configuration.cosmosDB.shell.mcp.port%"
+          },
           "cosmosDB.manageLLMAssets": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
           }
         }
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "cosmosShellMcpProvider",
+        "label": "Cosmos Shell MCP Server Provider"
       }
     ]
   }

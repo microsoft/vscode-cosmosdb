@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.30.0
+
+### Changed
+
+- Removed the Preview flag, this is the first GA release of this extension.
+
 ## 0.29.0 (Preview)
 
 ### Added

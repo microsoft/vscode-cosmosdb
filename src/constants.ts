@@ -94,7 +94,9 @@ export const defaultTrigger = `function trigger() {
 export const wellKnownEmulatorPassword =
     'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 
-export const isEmulatorSupported = isWindows || isLinux || (isMacOS && process.arch === 'x64');
+// Determine if emulator is supported on this platform, historically this was needed to disable emulator support on Silicon Macs
+// which is now supported via Docker. We still keep the check in case there are any other platform specific issues in the future.
+export const isEmulatorSupported = isWindows || isLinux || isMacOS;
 
 // https://docs.mongodb.com/manual/mongo/#working-with-the-mongo-shell
 export const testDb: string = 'test';

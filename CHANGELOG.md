@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.31.0
+
+### Fixed
+
+- Fixed an issue where the Extension Settings were missing in the Extensions Settings section (#2826).
+
 ## 0.30.0
 
 ### Changed

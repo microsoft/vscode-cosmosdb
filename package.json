@@ -1162,41 +1162,6 @@
     ],
     "configuration": [
       {
-        "title": "Authentication",
-        "properties": {
-          "azureDatabases.cosmosDB.preferredAuthenticationMethod": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "accountKey",
-              "entraId",
-              "managedIdentity"
-            ],
-            "enumItemLabels": [
-              "%cosmosdb.configuration.preferredAuthenticationMethod.auto%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity%"
-            ],
-            "markdownEnumDescriptions": [
-              "%cosmosdb.configuration.preferredAuthenticationMethod.auto.description%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId.description%",
-              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description%"
-            ],
-            "markdownDescription": "%cosmosdb.configuration.preferredAuthenticationMethod%",
-            "default": "auto",
-            "order": 0
-          },
-          "azureDatabases.authentication.managedIdentity.clientID": {
-            "type": "string",
-            "markdownDescription": "%cosmosdb.configuration.authentication.managedIdentity.clientID%",
-            "default": null,
-            "order": 1
-          }
-        }
-      },
-      {
         "title": "Azure Cosmos DB",
         "properties": {
           "mongo.shell.path": {
@@ -1302,6 +1267,41 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
+          }
+        }
+      },
+      {
+        "title": "Authentication",
+        "properties": {
+          "azureDatabases.cosmosDB.preferredAuthenticationMethod": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "accountKey",
+              "entraId",
+              "managedIdentity"
+            ],
+            "enumItemLabels": [
+              "%cosmosdb.configuration.preferredAuthenticationMethod.auto%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity%"
+            ],
+            "markdownEnumDescriptions": [
+              "%cosmosdb.configuration.preferredAuthenticationMethod.auto.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.entraId.description%",
+              "%cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description%"
+            ],
+            "markdownDescription": "%cosmosdb.configuration.preferredAuthenticationMethod%",
+            "default": "auto",
+            "order": 0
+          },
+          "azureDatabases.authentication.managedIdentity.clientID": {
+            "type": "string",
+            "markdownDescription": "%cosmosdb.configuration.authentication.managedIdentity.clientID%",
+            "default": null,
+            "order": 1
           }
         }
       }

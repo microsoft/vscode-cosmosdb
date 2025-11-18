@@ -48,9 +48,7 @@ export abstract class CosmosDBItemResourceItem
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('file'),
             label: getDocumentTreeItemLabel(this.model.item),
-            tooltip: new vscode.MarkdownString(
-                `${this.generateDocumentTooltip()}\n${this.generatePartitionKeyTooltip()}`,
-            ),
+            tooltip: new vscode.MarkdownString(this.generateCompactTooltip()),
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
                 title: l10n.t('Open Item'),
@@ -60,33 +58,103 @@ export abstract class CosmosDBItemResourceItem
         };
     }
 
-    protected generateDocumentTooltip(): string {
-        return (
-            '### Item\n' +
-            '---\n' +
-            `${this.model.item.id ? `- ID: **${this.model.item.id}**\n` : ''}` +
-            `${this.model.item._id ? `- ID (_id): **${this.model.item._id}**\n` : ''}` +
-            `${this.model.item._rid ? `- RID: **${this.model.item._rid}**\n` : ''}` +
-            `${this.model.item._self ? `- Self Link: **${this.model.item._self}**\n` : ''}` +
-            `${this.model.item._etag ? `- ETag: **${this.model.item._etag}**\n` : ''}` +
-            `${this.model.item._ts ? `- Timestamp: **${this.model.item._ts}**\n` : ''}`
-        );
-    }
+    private generateCompactTooltip(): string {
+        const doc = this.model.item ?? {};
+        const id: string = (doc.id as string | undefined) ?? (doc._id as string | undefined) ?? '<no id>';
 
-    protected generatePartitionKeyTooltip(): string {
-        if (!this.model.container.partitionKey || this.model.container.partitionKey.paths.length === 0) {
-            return '';
+        const pkPaths = this.model.container.partitionKey?.paths ?? [];
+        const pkValuesRaw = this.getPartitionKeyValuesArray(this.model);
+
+        const lines: string[] = [];
+
+        // ID section
+        lines.push(`**ID:** ${id}`);
+
+        // Partition Key section
+        if (pkPaths.length > 0) {
+            lines.push('');
+
+            if (pkPaths.length === 1) {
+                const path = pkPaths[0];
+                const raw = pkValuesRaw[0];
+                lines.push('#### Partition Key');
+                lines.push(`${path}: ${this.formatValue(raw)}`);
+            } else {
+                lines.push('#### Partition Keys');
+
+                for (let i = 0; i < pkPaths.length; i++) {
+                    const path = pkPaths[i];
+                    const raw = pkValuesRaw[i];
+                    lines.push(`  \`${path}\`: ${this.formatValue(raw)}`);
+                }
+            }
         }
 
-        const partitionKeyPaths = this.model.container.partitionKey.paths.join(', ');
-        const partitionKeyValues = this.generatePartitionKeyValue(this.model);
+        // Metadata section - system fields only
+        const metadataFields: Array<{ key: string; label: string }> = [
+            { key: '_rid', label: 'RID' },
+            { key: '_etag', label: 'ETag' },
+            { key: '_ts', label: 'TS' },
+        ];
 
-        return (
-            '### Partition Key\n' +
-            '---\n' +
-            `- Paths: **${partitionKeyPaths}**\n` +
-            `- Values: **${partitionKeyValues}**\n`
-        );
+        if (metadataFields.length > 0) {
+            lines.push(``);
+            lines.push(`| Item | Value |`);
+            lines.push(`|:---|:---|`);
+            for (const { key, label } of metadataFields) {
+                const value = doc[key] as string | number | undefined;
+                if (value !== undefined && value !== null) {
+                    lines.push(`|${label}|${value}|`);
+                }
+            }
+        }
+
+        return lines.join('\n');
+    }
+
+    private getPartitionKeyValuesArray(model: CosmosDBItemModel): unknown[] {
+        if (!model.container.partitionKey || model.container.partitionKey.paths.length === 0) {
+            return [];
+        }
+        const partitionKeyValues = extractPartitionKey(model.item, model.container.partitionKey);
+        return Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
+    }
+
+    private formatValue(value: unknown): string {
+        if (value === null) {
+            return '`null`';
+        }
+        if (value === undefined) {
+            return '`undefined`';
+        }
+        if (typeof value === 'object') {
+            try {
+                const json = JSON.stringify(value);
+                // Truncate long objects
+                if (json.length > 100) {
+                    return '`' + json.substring(0, 97) + '…`';
+                }
+                return '`' + json + '`';
+            } catch {
+                return '`[object]`';
+            }
+        }
+        if (typeof value === 'string') {
+            // Truncate long strings
+            if (value.length > 100) {
+                return `"${value.substring(0, 97)}…"`;
+            }
+            return `"${value}"`;
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+        // For any other type (symbol, function, etc.), use JSON or fallback
+        try {
+            return '`' + JSON.stringify(value) + '`';
+        } catch {
+            return '`[unknown]`';
+        }
     }
 
     /**

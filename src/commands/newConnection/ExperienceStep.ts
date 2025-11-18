@@ -13,10 +13,7 @@ import { MongoExecuteStep } from './MongoExecuteStep';
 import { MongoPasswordStep } from './MongoPasswordStep';
 import { MongoUsernameStep } from './MongoUsernameStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
-import { PostgresConnectionStringStep } from './PostgresConnectionStringStep';
 import { PostgresExecuteStep } from './PostgresExecuteStep';
-import { PostgresPasswordStep } from './PostgresPasswordStep';
-import { PostgresUsernameStep } from './PostgresUsernameStep';
 
 export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
@@ -29,11 +26,13 @@ export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardCon
         const api = context.experience?.api;
 
         if (api === API.PostgresSingle || api === API.PostgresFlexible) {
+            /* Postgres steps are now deprecated
             promptSteps.push(
                 new PostgresConnectionStringStep(),
                 new PostgresUsernameStep(),
                 new PostgresPasswordStep(),
             );
+            */
             executeSteps.push(new PostgresExecuteStep());
         } else if (api === API.MongoDB || api === API.MongoClusters) {
             promptSteps.push(new MongoConnectionStringStep(), new MongoUsernameStep(), new MongoPasswordStep());

@@ -518,7 +518,6 @@
   "Port number is required": "Port number is required",
   "Port number must be a number": "Port number must be a number",
   "Port number must be between 1 and 65535": "Port number must be between 1 and 65535",
-  "PostgreSQL functionality is no longer supported by Azure Cosmos DB extension and has been deprecated.": "PostgreSQL functionality is no longer supported by Azure Cosmos DB extension and has been deprecated.",
   "PostgreSQL servers": "PostgreSQL servers",
   "Procedure not found: {name}": "Procedure not found: {name}",
   "Process exited: \"{command}\"": "Process exited: \"{command}\"",

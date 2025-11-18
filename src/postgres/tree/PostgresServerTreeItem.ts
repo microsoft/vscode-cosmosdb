@@ -24,7 +24,7 @@ import { nonNullProp } from '../../utils/nonNull';
 import { createAbstractPostgresClient, type AbstractPostgresClient } from '../abstract/AbstractPostgresClient';
 import { PostgresServerType, type PostgresAbstractServer } from '../abstract/models';
 import { getPublicIp } from '../commands/configurePostgresFirewall';
-import { showPostgresDeprecationWarning } from '../deprecation';
+import { openPostgresExtension } from '../deprecation';
 import { type ParsedPostgresConnectionString } from '../postgresConnectionStrings';
 import { runPostgresQuery, wrapArgInQuotes } from '../runPostgresQuery';
 import { PostgresClientConfigFactory } from './ClientConfigFactory';
@@ -116,8 +116,20 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
     }
 
     public async loadMoreChildrenImpl(_clearCache: boolean, context: IActionContext): Promise<AzExtTreeItem[]> {
-        // Need show deprecation notification
-        await showPostgresDeprecationWarning();
+        // we don't have a way to know whether the selected node is this node or not, but we can assume that
+        // with the old v1 tree API loadMoreChildrenImpl will only be called for the selected node
+        let isSelectedNode = this.contextValue === 'postgresServerAttached';
+
+        if (!isSelectedNode) {
+            // we can't rely on loadMoreChildrenImpl being called only for the selected node with the old v1 tree API
+            // in case of the Azure resource tree, since it'll prefetch children for all nodes in the view even before they're expanded
+            const selectedNode = await ext.rgApiV2.resources.getSelectedAzureNode();
+            isSelectedNode = selectedNode?.endsWith(this.id) ?? false;
+        }
+
+        if (isSelectedNode) {
+            await openPostgresExtension(this);
+        }
 
         context.telemetry.properties.serverType = this.serverType;
         let dbNames: (string | undefined)[];

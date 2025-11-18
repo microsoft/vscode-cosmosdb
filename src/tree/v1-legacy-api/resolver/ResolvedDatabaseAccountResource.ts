@@ -5,7 +5,7 @@
 
 import { type AzExtTreeItem, type IActionContext, type ICreateChildImplContext } from '@microsoft/vscode-azext-utils';
 import { type AppResource, type ResolvedAppResourceBase } from '@microsoft/vscode-azext-utils/hostapi';
-import type * as vscode from 'vscode';
+import { type IconPath } from 'vscode';
 import { type PostgresServerTreeItem } from '../../../postgres/tree/PostgresServerTreeItem';
 
 export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase {
@@ -13,7 +13,7 @@ export class ResolvedDatabaseAccountResource implements ResolvedAppResourceBase 
     public contextValuesToAdd: string[] = [];
     public description: string | undefined;
 
-    iconPath?: string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri };
+    iconPath?: IconPath;
     label: string;
 
     readonly childTypeLabel: string;

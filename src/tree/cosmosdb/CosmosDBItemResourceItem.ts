@@ -78,33 +78,15 @@ export abstract class CosmosDBItemResourceItem
                 const path = pkPaths[0];
                 const raw = pkValuesRaw[0];
                 lines.push('#### Partition Key');
-                lines.push(`${path}: ${this.formatValue(raw)}`);
+                lines.push(`  \`${path}\`: ${this.formatValue(raw)}`);
             } else {
-                lines.push('#### Partition Keys');
-
+                lines.push(``);
+                lines.push(`| Partition Key | Value |`);
+                lines.push(`|---|---|`);
                 for (let i = 0; i < pkPaths.length; i++) {
                     const path = pkPaths[i];
                     const raw = pkValuesRaw[i];
-                    lines.push(`  \`${path}\`: ${this.formatValue(raw)}`);
-                }
-            }
-        }
-
-        // Metadata section - system fields only
-        const metadataFields: Array<{ key: string; label: string }> = [
-            { key: '_rid', label: 'RID' },
-            { key: '_etag', label: 'ETag' },
-            { key: '_ts', label: 'TS' },
-        ];
-
-        if (metadataFields.length > 0) {
-            lines.push(``);
-            lines.push(`| Item | Value |`);
-            lines.push(`|:---|:---|`);
-            for (const { key, label } of metadataFields) {
-                const value = doc[key] as string | number | undefined;
-                if (value !== undefined && value !== null) {
-                    lines.push(`|${label}|${value}|`);
+                    lines.push(`|${path}|${this.formatValue(raw)}|`);
                 }
             }
         }

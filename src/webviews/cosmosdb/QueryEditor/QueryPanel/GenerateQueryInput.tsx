@@ -3,30 +3,42 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Input, makeStyles } from '@fluentui/react-components';
+import { Button, Input, ProgressBar, makeStyles } from '@fluentui/react-components';
 import { SendFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 
 const useStyles = makeStyles({
     container: {
         display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '10px',
+        flexDirection: 'column',
         backgroundColor: 'transparent',
         borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)',
         borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)',
     },
+    inputRow: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '6px 8px',
+    },
     input: {
         flex: 1,
         backgroundColor: 'var(--vscode-editor-background)',
+        fontSize: '12px',
+    },
+    inputLoading: {
+        borderBottom: '2px solid var(--vscode-progressBar-background)',
     },
     button: {
-        padding: '6px 12px',
+        padding: '4px 8px',
         minWidth: 'auto',
+        fontSize: '12px',
+    },
+    progressBar: {
+        width: '100%',
     },
 });
 
@@ -37,6 +49,14 @@ export const GenerateQueryInput = () => {
     const dispatch = useQueryEditorStateDispatch();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Listen for queryGenerated event to stop loading
+    useEffect(() => {
+        const handler = () => {
+            setIsLoading(false);
+        };
+        void channel.on('queryGenerated', handler as never);
+    }, [channel]);
 
     if (!state.showGenerateInput) {
         return null;
@@ -68,7 +88,6 @@ export const GenerateQueryInput = () => {
             setInput('');
         } catch (error) {
             console.error('Failed to generate query:', error);
-        } finally {
             setIsLoading(false);
         }
     };
@@ -85,22 +104,25 @@ export const GenerateQueryInput = () => {
 
     return (
         <div className={styles.container}>
-            <Input
-                className={styles.input}
-                placeholder={l10n.t('Ask Copilot to generate the query for you')}
-                value={input}
-                onChange={(_, data) => setInput(data.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-            />
-            <Button
-                className={styles.button}
-                icon={<SendFilled />}
-                onClick={() => void handleSend()}
-                disabled={!input.trim() || isLoading}
-                title={l10n.t('Generate query')}
-                aria-label={l10n.t('Generate query')}
-            />
+            <div className={styles.inputRow}>
+                <Input
+                    className={`${styles.input} ${isLoading ? styles.inputLoading : ''}`}
+                    placeholder={l10n.t('Ask Copilot to generate the query for you')}
+                    value={input}
+                    onChange={(_, data) => setInput(data.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isLoading}
+                />
+                <Button
+                    className={styles.button}
+                    icon={<SendFilled />}
+                    onClick={() => void handleSend()}
+                    disabled={!input.trim() || isLoading}
+                    title={l10n.t('Generate query')}
+                    aria-label={l10n.t('Generate query')}
+                />
+            </div>
+            {isLoading && <ProgressBar className={styles.progressBar} />}
         </div>
     );
 };

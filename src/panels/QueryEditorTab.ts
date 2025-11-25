@@ -183,6 +183,8 @@ export class QueryEditorTab extends BaseTab {
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
             case 'updateQueryHistory':
                 return this.updateQueryHistory(payload.params[0] as string);
+            case 'generateQuery':
+                return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
         }
 
         return super.getCommand(payload);
@@ -589,5 +591,61 @@ export class QueryEditorTab extends BaseTab {
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         const text = await queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
+    }
+
+    private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
+            const systemPrompt = `You are an expert at writing NoSQL queries for Azure Cosmos DB. You help users write efficient, well-optimized queries.
+Your responses should only contain the generated query code without any explanations or markdown formatting.
+When the user provides context about what they need, generate a complete Cosmos DB NoSQL query.
+Always ensure queries are efficient and follow Cosmos DB best practices.`;
+
+            try {
+                // First, try to get the user's currently selected model
+                let models = await vscode.lm.selectChatModels();
+
+                // If no model is selected, fall back to Copilot GPT-4
+                if (models.length === 0) {
+                    models = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4' });
+                }
+
+                if (models.length === 0) {
+                    throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+                }
+
+                const model = models[0];
+                const messages = [
+                    new vscode.LanguageModelChatMessage(
+                        vscode.LanguageModelChatMessageRole.User,
+                        `${systemPrompt}\n\nCurrent query:\n${currentQuery}\n\nRequest: ${prompt}`,
+                    ),
+                ];
+
+                const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+
+                let generatedQuery = '';
+                for await (const chunk of chatResponse.text) {
+                    generatedQuery += chunk;
+                }
+
+                // Comment the original prompt and prepend the generated query
+                const finalQuery = `-- Generated from: ${prompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${currentQuery.split('\n').join('\n-- ')}`;
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [finalQuery],
+                });
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'showErrorMessage',
+                    params: [l10n.t('Failed to generate query: {0}', errorMessage)],
+                });
+            }
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 }

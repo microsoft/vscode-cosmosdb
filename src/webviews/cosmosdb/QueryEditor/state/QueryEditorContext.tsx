@@ -10,10 +10,11 @@ import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
 import { type WebviewState } from '../../../WebviewContext';
 import { QueryEditorContextProvider } from './QueryEditorContextProvider';
-import { type QueryEditorState, defaultState, dispatch as QueryEditorDispatch } from './QueryEditorState';
+import { type DispatchAction, type QueryEditorState, defaultState, dispatch as QueryEditorDispatch } from './QueryEditorState';
 
 export const QueryEditorContext = createContext<QueryEditorState>(defaultState);
 export const QueryEditorDispatcherContext = createContext<QueryEditorContextProvider>({} as QueryEditorContextProvider);
+export const QueryEditorStateDispatchContext = createContext<React.Dispatch<DispatchAction> | undefined>(undefined);
 
 export function useQueryEditorState() {
     return useContext(QueryEditorContext);
@@ -21,6 +22,15 @@ export function useQueryEditorState() {
 
 export function useQueryEditorDispatcher() {
     return useContext(QueryEditorDispatcherContext);
+}
+
+export function useQueryEditorStateDispatch(): React.Dispatch<DispatchAction> {
+    const dispatch = useContext(QueryEditorStateDispatchContext);
+    // This should never be undefined when used within WithQueryEditorContext
+    const fallback: React.Dispatch<DispatchAction> = (action) => {
+        console.error('QueryEditorStateDispatchContext not available', action);
+    };
+    return dispatch ?? fallback;
 }
 
 export const WithQueryEditorContext = ({
@@ -45,12 +55,14 @@ export const WithQueryEditorContext = ({
 
     return (
         <QueryEditorContext.Provider value={state}>
-            <QueryEditorDispatcherContext.Provider value={provider}>
-                <ErrorBoundary provider={provider}>
-                    <Toaster toasterId={toasterId} />
-                    {children}
-                </ErrorBoundary>
-            </QueryEditorDispatcherContext.Provider>
+            <QueryEditorStateDispatchContext.Provider value={dispatch}>
+                <QueryEditorDispatcherContext.Provider value={provider}>
+                    <ErrorBoundary provider={provider}>
+                        <Toaster toasterId={toasterId} />
+                        {children}
+                    </ErrorBoundary>
+                </QueryEditorDispatcherContext.Provider>
+            </QueryEditorStateDispatchContext.Provider>
         </QueryEditorContext.Provider>
     );
 };

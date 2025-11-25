@@ -22,7 +22,7 @@ const useStyles = makeStyles({
     },
     input: {
         flex: 1,
-        backgroundColor: 'var(--vscode-input-background)',
+        backgroundColor: 'var(--vscode-editor-background)',
     },
     button: {
         padding: '6px 12px',
@@ -66,8 +66,6 @@ export const GenerateQueryInput = () => {
 
             // Clear input
             setInput('');
-            // Hide input bar
-            dispatch({ type: 'toggleGenerateInput' });
         } catch (error) {
             console.error('Failed to generate query:', error);
         } finally {

@@ -47,6 +47,8 @@ module.exports = (env, { mode }) => {
         },
         cache: {
             type: 'filesystem',
+            name: `extension-build${isDev ? '-dev' : ''}`, // Unique name for this build
+            cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/webpack/extension'),
             buildDependencies: {
                 config: [__filename],
             },
@@ -91,6 +93,19 @@ module.exports = (env, { mode }) => {
                     saveReportTo: 'bundle-analysis/extension-report.html',
                     saveStatsTo: 'bundle-analysis/extension-stats.json',
                     open: false,
+                    statsOptions: {
+                        source: false, // Exclude source code to reduce file size
+                        reasons: false,
+                        chunks: true,
+                        chunkModules: true,
+                        chunkOrigins: false,
+                        modules: true,
+                        maxModules: Infinity,
+                        exclude: false,
+                        assets: true,
+                        performance: false,
+                        errorDetails: false,
+                    },
                 }),
             new webpack.EnvironmentPlugin({
                 NODE_ENV: mode,

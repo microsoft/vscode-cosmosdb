@@ -501,9 +501,9 @@ export const queryResultToTable = async (
     return { headers, dataset };
 };
 
-export const queryMetricsToTable = async (queryResult: SerializedQueryResult | null): Promise<StatsItem[]> => {
+export const queryMetricsToTable = (queryResult: SerializedQueryResult | null): Promise<StatsItem[]> => {
     if (!queryResult || queryResult?.queryMetrics === undefined) {
-        return [];
+        return Promise.resolve([]);
     }
 
     const { queryMetrics, iteration, metadata } = queryResult;
@@ -620,7 +620,7 @@ export const queryMetricsToTable = async (queryResult: SerializedQueryResult | n
         });
     }
 
-    return stats;
+    return Promise.resolve(stats);
 };
 
 export const indexMetricsToTableItem = (queryResult: SerializedQueryResult): StatsItem => {

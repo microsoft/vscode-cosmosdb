@@ -133,7 +133,10 @@ export class BaseTab {
   <body>
     <div id="root"></div>
     <script nonce="${params.nonce}">
-      globalThis.l10n_bundle = ${JSON.stringify(vscode.l10n.bundle ?? {})};
+      globalThis.l10n_bundle = ${
+          // eslint-disable-next-line no-restricted-syntax
+          JSON.stringify(vscode.l10n.bundle ?? {})
+      };
     </script>
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";

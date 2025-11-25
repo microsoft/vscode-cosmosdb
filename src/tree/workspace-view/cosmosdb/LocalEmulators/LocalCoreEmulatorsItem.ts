@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../../../constants';
-import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
+import { type StorageItem, StorageNames, StorageService } from '../../../../services/StorageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../../TreeElement';

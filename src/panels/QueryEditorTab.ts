@@ -18,7 +18,7 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
-import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
+import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';

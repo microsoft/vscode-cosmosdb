@@ -3,42 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { AzureWizard, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
-import { CosmosDBAttachAccountResourceItem } from '../../tree/workspace-view/cosmosdb/CosmosDBAttachAccountResourceItem';
-import { NewConnectionItem } from '../../tree/workspace-view/documentdb/NewConnectionItem';
+import { type CosmosDBAttachAccountResourceItem } from '../../tree/workspace-view/cosmosdb/CosmosDBAttachAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { QuickPickType } from '../../utils/pickItem/pickExperience';
 import { ExperienceStep } from './ExperienceStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
-export async function newConnection(
-    context: IActionContext,
-    node?: AzExtTreeItem | CosmosDBAttachAccountResourceItem | NewConnectionItem,
-): Promise<void> {
-    let type: QuickPickType = QuickPickType.ALL;
-    let parentId: string = '';
-
-    if (node instanceof AzExtTreeItem) {
-        type = QuickPickType.Postgres;
-        parentId = node.parent?.id ?? '';
-    }
-
-    if (node instanceof CosmosDBAttachAccountResourceItem) {
-        type = QuickPickType.Cosmos;
-        parentId = node.parentId ?? ext.cosmosDBWorkspaceBranchDataResource.id;
-    }
-
-    if (node instanceof NewConnectionItem) {
-        type = QuickPickType.Mongo;
-        parentId = node.parentId ?? ext.mongoClusterWorkspaceBranchDataResource.id;
-    }
+export async function newConnection(context: IActionContext, node?: CosmosDBAttachAccountResourceItem): Promise<void> {
+    const parentId: string = node?.parentId ?? ext.cosmosDBWorkspaceBranchDataResource.id;
 
     const wizardContext: NewConnectionWizardContext = {
         ...context,
-        quickPickType: type,
         parentId,
     };
 
@@ -52,8 +29,5 @@ export async function newConnection(
     await wizard.prompt();
     await wizard.execute();
 
-    const api = wizardContext.experience?.api;
-    if (api !== API.PostgresSingle && api !== API.PostgresFlexible) {
-        showConfirmationAsInSettings(l10n.t('New connection has been added to your workspace.'));
-    }
+    showConfirmationAsInSettings(l10n.t('New connection has been added to your workspace.'));
 }

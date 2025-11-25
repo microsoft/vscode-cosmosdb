@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
-import { l10n } from 'vscode';
-import { API, getExperienceFromApi } from '../AzureDBExperiences';
+import * as l10n from '@vscode/l10n';
+import crypto from 'crypto';
+import { getExperienceFromApi, type API } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
-import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
+import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { randomUtils } from './randomUtils';
 
 /**
  * Migrates an emulator item from the raw format where the connection string was part of the id
@@ -70,8 +70,7 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
                     secrets: [connectionString],
                 };
 
-                const workspaceType =
-                    api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters;
+                const workspaceType = WorkspaceResourceType.AttachedAccounts;
 
                 try {
                     // Store the new item, or abort if it already exists which would be unexpected at this point
@@ -101,7 +100,8 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
  */
 export function getEmulatorItemUniqueId(connectionString: string): string {
     const migratedMarker = 'emulator-';
-    return `${migratedMarker}${randomUtils.getPseudononymousStringHash(connectionString, 'hex').substring(0, 24)}`;
+    const hash = crypto.createHash('sha256').update(connectionString).digest('hex').substring(0, 24);
+    return `${migratedMarker}${hash}`;
 }
 
 /**
@@ -114,11 +114,7 @@ export function getEmulatorItemUniqueId(connectionString: string): string {
  */
 export function getEmulatorItemLabelForApi(api: API, port: string | number | undefined): string {
     const experience = getExperienceFromApi(api);
-    let label = l10n.t('{experienceName} Emulator', { experienceName: experience.shortName });
-
-    if (experience.api === API.MongoDB || experience.api === API.MongoClusters) {
-        label = l10n.t('MongoDB Emulator');
-    }
+    const label = l10n.t('{experienceName} Emulator', { experienceName: experience.shortName });
 
     const portSuffix = typeof port !== 'undefined' ? ` : ${port}` : '';
     return `${label}${portSuffix}`;

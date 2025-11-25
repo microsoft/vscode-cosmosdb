@@ -9,6 +9,7 @@ const webpack = require('webpack');
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
 
 const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
 const supportedLanguages = [
@@ -36,8 +37,6 @@ module.exports = (env, { mode }) => {
         mode: mode || 'none',
         node: { __filename: false, __dirname: false },
         entry: {
-            // 'extension.bundle.ts': './src/extension.ts', // Is still necessary?
-            './mongo-languageServer.bundle': './src/documentdb/scrapbook/languageServer.ts',
             main: './main.ts',
         },
         output: {
@@ -65,30 +64,12 @@ module.exports = (env, { mode }) => {
         externals: {
             vs: 'vs',
             vscode: 'commonjs vscode',
-            /* Mongodb optional dependencies */
-            kerberos: 'commonjs kerberos',
-            '@mongodb-js/zstd': 'commonjs @mongodb-js/zstd',
-            '@aws-sdk/credential-providers': 'commonjs @aws-sdk/credential-providers',
-            'gcp-metadata': 'commonjs gcp-metadata',
-            snappy: 'commonjs snappy',
-            socks: 'commonjs socks',
-            aws4: 'commonjs aws4',
-            'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
-            /* PG optional dependencies */
-            'pg-native': 'commonjs pg-native',
-            'pg-cloudflare': 'commonjs pg-cloudflare',
         },
         resolve: {
             roots: [__dirname],
-            // conditionNames: ['import', 'require', 'node'], // Uncomment when we will use VSCode what supports modules
+            conditionNames: ['import', 'require', 'node'],
             mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
-            alias: {
-                'vscode-languageserver-types': path.resolve(
-                    __dirname,
-                    'node_modules/vscode-languageserver-types/lib/esm/main.js',
-                ),
-            },
         },
         module: {
             rules: [
@@ -120,6 +101,12 @@ module.exports = (env, { mode }) => {
             ],
         },
         plugins: [
+            !isDev &&
+                new StatoscopeWebpackPlugin({
+                    saveReportTo: 'bundle-analysis/extension-report.html',
+                    saveStatsTo: 'bundle-analysis/extension-stats.json',
+                    open: false,
+                }),
             new webpack.EnvironmentPlugin({
                 NODE_ENV: mode,
                 IS_BUNDLE: 'true',
@@ -131,10 +118,6 @@ module.exports = (env, { mode }) => {
             // - The dist folder should be ready to be published to the marketplace and be only one working folder
             new CopyWebpackPlugin({
                 patterns: [
-                    {
-                        from: 'grammar',
-                        to: 'grammar',
-                    },
                     {
                         from: 'l10n',
                         to: 'l10n',

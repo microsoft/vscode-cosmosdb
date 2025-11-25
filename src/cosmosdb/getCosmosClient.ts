@@ -6,10 +6,10 @@
 import { CosmosClient, type CosmosClientOptions } from '@azure/cosmos';
 import { ManagedIdentityCredential } from '@azure/identity';
 import { appendExtensionUserAgent } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import { merge } from 'es-toolkit';
 import * as https from 'https';
 import * as vscode from 'vscode';
-import { l10n } from 'vscode';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';

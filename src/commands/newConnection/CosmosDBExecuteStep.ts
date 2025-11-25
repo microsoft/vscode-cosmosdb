@@ -8,7 +8,7 @@ import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../../AzureDBExperiences';
 import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { ext } from '../../extensionVariables';
-import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
+import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 

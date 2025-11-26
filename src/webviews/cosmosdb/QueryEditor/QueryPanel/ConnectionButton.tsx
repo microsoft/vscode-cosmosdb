@@ -25,7 +25,8 @@ import {
     DatabasePlugConnectedRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback } from 'react';
+import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
@@ -183,4 +184,39 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
             </MenuPopover>
         </Menu>
     );
-});
+
+export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
+    const classes = useClasses();
+    const state = useQueryEditorState();
+    const dispatcher = useQueryEditorDispatcher();
+    const { ref, type } = props;
+
+    const connectToDatabase = useCallback(() => dispatcher.connectToDatabase(), [dispatcher]);
+    const disconnectFromDatabase = useCallback(() => dispatcher.disconnectFromDatabase(), [dispatcher]);
+
+    if (state.isConnected) {
+        return (
+            <ToolbarOverflowButton
+                type={type}
+                ariaLabel={l10n.t('Disconnect')}
+                content={l10n.t('Disconnect')}
+                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
+                onClick={disconnectFromDatabase}
+                tooltip={l10n.t('Disconnect from the database')}
+                ref={ref}
+            />
+        );
+    }
+
+    return (
+        <ToolbarOverflowButton
+            type={type}
+            ariaLabel={l10n.t('Connect')}
+            content={l10n.t('Connect')}
+            icon={<DatabasePlugConnectedRegular />}
+            onClick={connectToDatabase}
+            tooltip={l10n.t('Connect to the database')}
+            ref={ref}
+        />
+    );
+};

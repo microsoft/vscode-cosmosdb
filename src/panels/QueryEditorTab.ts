@@ -8,9 +8,8 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { getThemedIconPathURI } from '../constants';
-import { getCosmosDBClientByConnection, getCosmosDBKeyCredential } from '../cosmosdb/getCosmosClient';
-import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
+import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
 import {
@@ -18,7 +17,7 @@ import {
     type QueryMetadata,
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
-import { getNoSqlQueryConnection } from '../cosmosdb/utils/NoSqlQueryConnection';
+import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
@@ -26,6 +25,7 @@ import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
+import { getCosmosDBClientByConnection } from '../cosmosdb/getCosmosClient';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
@@ -266,8 +266,9 @@ export class QueryEditorTab extends BaseTab {
 
             this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
 
-            const client = getCosmosDBClientByConnection(this.connection);
-            const container = await client.database(databaseId).container(containerId).read();
+            const container = await withClaimsChallengeHandling(this.connection, async (client) =>
+                client.database(databaseId).container(containerId).read(),
+            );
 
             if (container.resource === undefined) {
                 throw new Error(l10n.t('Container {0} not found', containerId));

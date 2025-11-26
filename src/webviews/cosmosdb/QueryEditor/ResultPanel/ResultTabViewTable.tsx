@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import { debounce } from 'es-toolkit';
 import * as React from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -13,7 +14,7 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { getDocumentId, type TableData } from '../../../utils';
+import { type TableData } from '../../../utils';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { useColumnMenu } from './ColumnMenu';
 
@@ -49,6 +50,13 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                             },
                         ],
                     },
+                    formatter: (_row, _cell, value) => {
+                        if (value === undefined || value === null || value === '{}') {
+                            const displayValue = value === undefined ? 'undefined' : value === null ? 'null' : '{}';
+                            return `<span style="color: var(--vscode-disabledForeground); font-style: italic;">${displayValue}</span>`;
+                        }
+                        return String(value);
+                    },
                 } as Column;
             }),
         [handleHeaderButtonClick, headers],
@@ -72,7 +80,9 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 const data = dataset[args.row];
                 if (column && data) {
                     const value = data[column.field] || '';
-                    const announcementText = `${column.name}: ${value}`;
+                    // Safely extract column name - only use if it's a string
+                    const columnName = typeof column.name === 'string' ? column.name : l10n.t('Column');
+                    const announcementText = `${columnName}: ${value}`;
                     setAnnouncement(announcementText);
                 }
             });
@@ -86,21 +96,21 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
             // Open document in view mode
             const activeDocument = dataset[args.row];
-            const documentId = activeDocument ? getDocumentId(activeDocument, state.partitionKey) : undefined;
+            const documentId = activeDocument?.__documentId;
             if (documentId) {
                 void dispatcher.openDocument('view', documentId);
             }
         },
-        [dataset, dispatcher, state.isEditMode, state.partitionKey],
+        [dataset, dispatcher, state.isEditMode],
     );
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const onSelectedRowsChanged = useCallback(
-        // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
-        debounce((args: OnSelectedRowsChangedEventArgs) => {
-            globalThis.getSelection()?.removeAllRanges(); // Clear the selection in the browser to avoid confusion with SlickGrid selection
-            dispatcher.setSelectedRows(args.rows);
-        }, 100),
+    // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.
+    const onSelectedRowsChanged = useMemo(
+        () =>
+            debounce((args: OnSelectedRowsChangedEventArgs) => {
+                globalThis.getSelection()?.removeAllRanges(); // Clear the selection in the browser to avoid confusion with SlickGrid selection
+                dispatcher.setSelectedRows(args.rows);
+            }, 100),
         [dispatcher],
     );
 
@@ -160,8 +170,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             <SlickgridReact
                 gridId="myGrid"
                 ref={gridRef} // Attach the reference to SlickGrid
-                gridOptions={gridOptions}
-                columnDefinitions={gridColumns}
+                options={gridOptions}
+                columns={gridColumns}
                 dataset={dataset}
                 onDblClick={(event) => onDblClick(event.detail.args)}
                 onSelectedRowsChanged={(event: CustomEvent<{ args: OnSelectedRowsChangedEventArgs }>) =>

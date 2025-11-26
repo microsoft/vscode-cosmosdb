@@ -10,57 +10,32 @@ export const isMacOS: boolean = /^darwin/.test(process.platform);
 import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
-import { Utils, type URI } from 'vscode-uri';
+import { Uri, type IconPath } from 'vscode';
 import { ext } from './extensionVariables';
 
 export namespace Links {
     export const LocalConnectionDebuggingTips: string = 'https://aka.ms/AA5zah5';
 }
 
-export interface IThemedIconPath {
-    light: string;
-    dark: string;
-}
+export function getThemedIconPath(iconName: string): IconPath {
+    const light = path.join(getResourcesPath(), 'icons', 'light', iconName);
+    const dark = path.join(getResourcesPath(), 'icons', 'dark', iconName);
 
-export interface IThemedIconURI {
-    light: URI;
-    dark: URI;
-}
+    assert.ok(fs.existsSync(light));
+    assert.ok(fs.existsSync(dark));
 
-export function getThemedIconPath(iconName: string): IThemedIconPath {
-    const a = {
-        light: path.join(getResourcesPath(), 'icons', 'light', iconName),
-        dark: path.join(getResourcesPath(), 'icons', 'dark', iconName),
+    return {
+        light: Uri.file(light),
+        dark: Uri.file(dark),
     };
-    assert.ok(fs.existsSync(a.light));
-    return a;
 }
 
-export function getThemedIconPathURI(iconName: string): IThemedIconURI {
-    const a = {
-        light: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'light', iconName),
-        dark: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'dark', iconName),
-    };
-    assert.ok(fs.existsSync(a.light.path[0] === '/' ? a.light.path.slice(1) : a.light.path));
-    return a;
-}
+export function getThemeAgnosticIconPath(iconName: string): IconPath {
+    const icon = path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName);
 
-export function getThemeAgnosticIconPath(iconName: string): IThemedIconPath {
-    const a = {
-        light: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
-        dark: path.join(getResourcesPath(), 'icons', 'theme-agnostic', iconName),
-    };
-    assert.ok(fs.existsSync(a.light));
-    return a;
-}
+    assert.ok(fs.existsSync(icon));
 
-export function getThemeAgnosticIconURI(iconName: string): IThemedIconURI {
-    const a = {
-        light: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
-        dark: Utils.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName),
-    };
-    assert.ok(fs.existsSync(a.light.path[0] === '/' ? a.light.path.slice(1) : a.light.path));
-    return a;
+    return Uri.file(icon);
 }
 
 export function getResourcesPath(): string {
@@ -103,7 +78,9 @@ export const defaultTrigger = `function trigger() {
 export const wellKnownEmulatorPassword =
     'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 
-export const isEmulatorSupported = isWindows || isLinux || (isMacOS && process.arch === 'x64');
+// Determine if emulator is supported on this platform, historically this was needed to disable emulator support on Silicon Macs
+// which is now supported via Docker. We still keep the check in case there are any other platform specific issues in the future.
+export const isEmulatorSupported = isWindows || isLinux || isMacOS;
 
 // https://docs.mongodb.com/manual/mongo/#working-with-the-mongo-shell
 export const testDb: string = 'test';

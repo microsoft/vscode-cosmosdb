@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
-import { createNoSqlQueryConnection } from '../../cosmosdb/utils/NoSqlQueryConnection';
+import { createNoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { DocumentTab } from '../../panels/DocumentTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';

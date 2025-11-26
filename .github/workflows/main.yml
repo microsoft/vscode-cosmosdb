@@ -1,65 +1,190 @@
 name: Node PR Lint, Build and Test
 
+permissions:
+    contents: read
+
 on:
-  # Trigger when manually run
-  workflow_dispatch:
+    # Trigger when manually run
+    workflow_dispatch:
 
-  # Trigger on pushes to `main` or `rel/*`
-  push:
-    branches:
-      - main
-      - rel/*
+    # Trigger on pushes to `main` or `rel/*`
+    push:
+        branches:
+            - main
+            - rel/*
 
-  # Trigger on pull requests to `main` or `rel/*`
-  pull_request:
-    branches:
-      - main
-      - rel/*
-      - dev/*
+    # Trigger on pull requests to `main` or `rel/*`
+    pull_request:
+        branches:
+            - main
+            - rel/*
+            - dev/**
 
 jobs:
-  Build:
-    runs-on: ubuntu-latest
+    Build:
+        runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: '.'
+        defaults:
+            run:
+                working-directory: '.'
 
-    steps:
-      # Setup
-      - uses: actions/checkout@v4
-      - name: Using Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-      - run: npm ci
+        steps:
+            # Setup
+            - uses: actions/checkout@v4
 
-      - name: Localize
-        run: npm run l10n:check
+            - name: 📦 Using Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+                  cache-dependency-path: '**/package-lock.json'
 
-      - name: Lint
-        run: npm run lint
+            - name: ⚖️ Validate Version / Preview Alignment
+              shell: pwsh
+              run: |
+                  $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+                  $version = $packageJson.version
+                  $preview = [bool]$packageJson.preview
 
-      - name: Prettier
-        run: npm run prettier
+                  Write-Output "📦 Package version: $version"
+                  Write-Output "🏷️ Preview flag: $preview"
 
-      - name: Compile
-        run: npm run build
+                  # Validate semantic versioning format
+                  if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+                      Write-Error "❌ Invalid semantic version format: $version"
+                      exit 1
+                  }
 
-      - name: Package
-        run: npm run package
+                  $minor = [int]$Matches[2]
+                  $minorEven = ($minor % 2) -eq 0
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: Artifacts
-          path: |
-            **/*.vsix
-            **/*.tgz
-            !**/node_modules
+                  # Check version/preview alignment
+                  # Convention: odd minor versions = preview, even minor versions = stable
+                  if ($preview -and $minorEven) {
+                      Write-Warning "⚠️ Version/preview misalignment: preview=$preview but minor version $minor is even (should be odd for preview)"
+                      Write-Warning "Convention: Odd minor versions (e.g., 1.1.x, 1.3.x) should be preview, even (e.g., 1.0.x, 1.2.x) should be stable"
+                  } elseif (-not $preview -and -not $minorEven) {
+                      Write-Warning "⚠️ Version/preview misalignment: preview=$preview but minor version $minor is odd (should be even for stable)"
+                      Write-Warning "Convention: Odd minor versions (e.g., 1.1.x, 1.3.x) should be preview, even (e.g., 1.0.x, 1.2.x) should be stable"
+                  } else {
+                      Write-Output "✅ Version/preview alignment is correct"
+                  }
 
-      - name: Unit Tests
-        run: npm run jesttest
+            - name: ⬇️ Install Dependencies
+              run: npm ci
 
-      - name: Integration Tests
-        run: xvfb-run -a npm test
+            - name: 🌍 Localize
+              run: npm run l10n:check
+
+            - name: 🔍 Lint
+              run: npm run lint
+
+            - name: ✨ Prettier
+              run: npm run prettier
+
+            - name: 🔨 Compile
+              run: npm run build
+
+            - name: 📦 Package
+              run: npm run package
+
+            - name: 🔍 Verify VSIX File
+              shell: pwsh
+              run: |
+                  # Find VSIX file
+                  $vsixFiles = Get-ChildItem -Path . -Filter *.vsix -File
+
+                  if ($vsixFiles.Count -eq 0) {
+                      Write-Error "❌ No VSIX file found"
+                      exit 1
+                  } elseif ($vsixFiles.Count -gt 1) {
+                      Write-Error "❌ Multiple VSIX files found: $($vsixFiles.Name -join ', ')"
+                      exit 1
+                  }
+
+                  $vsixFile = $vsixFiles[0]
+                  $vsixFileName = $vsixFile.Name
+                  $vsixFileSize = [math]::Round($vsixFile.Length / 1MB, 2)
+
+                  Write-Output "✅ Found VSIX: $vsixFileName (${vsixFileSize} MB)"
+
+                  # Verify filename matches expected pattern
+                  $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+                  $expectedName = "$($packageJson.name)-$($packageJson.version).vsix"
+
+                  if ($vsixFileName -ne $expectedName) {
+                      Write-Error "❌ VSIX filename mismatch: expected '$expectedName', got '$vsixFileName'"
+                      exit 1
+                  }
+
+                  Write-Output "✅ VSIX filename is correct: $vsixFileName"
+
+                  # Set output for job summary
+                  echo "VSIX_FILE=$vsixFileName" >> $env:GITHUB_ENV
+                  echo "VSIX_SIZE=$vsixFileSize" >> $env:GITHUB_ENV
+                  echo "PACKAGE_VERSION=$($packageJson.version)" >> $env:GITHUB_ENV
+                  echo "PACKAGE_PREVIEW=$($packageJson.preview)" >> $env:GITHUB_ENV
+
+            - name: 📤 Upload Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: Artifacts
+                  path: |
+                      **/*.vsix
+                      **/*.tgz
+                      !**/node_modules
+
+            - name: 🧪 Unit Tests
+              id: unit-tests
+              continue-on-error: true
+              run: npm run jesttest
+
+            - name: 🧪 Integration Tests
+              id: integration-tests
+              continue-on-error: true
+              run: xvfb-run -a npm test
+
+            - name: 📊 Generate Job Summary
+              if: always()
+              shell: pwsh
+              run: |
+                  # Only generate summary if VSIX verification completed
+                  if ($env:PACKAGE_VERSION) {
+                      # Determine test results
+                      $unitTestResult = "${{ steps.unit-tests.outcome }}"
+                      $integrationTestResult = "${{ steps.integration-tests.outcome }}"
+
+                      $unitTestIcon = if ($unitTestResult -eq "success") { "✅" } else { "❌" }
+                      $integrationTestIcon = if ($integrationTestResult -eq "success") { "✅" } else { "❌" }
+
+                      $overallStatus = if ($unitTestResult -eq "success" -and $integrationTestResult -eq "success") {
+                          "## ✅ Build Status`nAll checks completed successfully!"
+                      } else {
+                          "## ❌ Build Status`nSome checks failed. Please review the logs."
+                      }
+
+                      $summary = @"
+                  # 🎉 Build Summary
+
+                  ## 📦 Package Information
+                  - **Version:** $env:PACKAGE_VERSION
+                  - **Preview:** $env:PACKAGE_PREVIEW
+                  - **VSIX File:** $env:VSIX_FILE
+                  - **VSIX Size:** $env:VSIX_SIZE MB
+
+                  ## 🧪 Test Results
+                  - **Unit Tests:** $unitTestIcon $unitTestResult
+                  - **Integration Tests:** $integrationTestIcon $integrationTestResult
+
+                  $overallStatus
+                  "@
+
+                      $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+                      # Fail the job if any tests failed
+                      if ($unitTestResult -ne "success" -or $integrationTestResult -ne "success") {
+                          exit 1
+                      }
+                  } else {
+                      Write-Output "⚠️ Skipping job summary - VSIX verification did not complete"
+                  }

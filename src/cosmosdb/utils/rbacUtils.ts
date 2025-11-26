@@ -84,7 +84,7 @@ async function askForRbacPermissions(
 ): Promise<boolean> {
     const message =
         l10n.t(
-            "You need the 'Data Contributor' RBAC role permission to enable all Azure Databases Extension features for the selected account.",
+            "You need the 'Data Contributor' RBAC role permission to enable all Azure Cosmos DB Extension features for the selected account.",
         ) +
         '\n\n' +
         l10n.t('Account Name: {name}', { name: databaseAccount }) +

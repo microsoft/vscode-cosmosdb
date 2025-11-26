@@ -43,7 +43,7 @@ export type MonacoAdaptiveProps = EditorProps & {
 export const MonacoAdaptive = (props: MonacoAdaptiveProps) => {
     const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
 
-    const [editorHeight, setEditorHeight] = useState<number>(1 * 19); // Initial height
+    const [editorHeight, setEditorHeight] = useState<number>(19); // Initial height
     const [lastLineCount, setLastLineCount] = useState<number>(0);
 
     // Exclude adaptiveHeight prop and onExecuteRequest prop from being passed to the Monaco editor
@@ -52,6 +52,10 @@ export const MonacoAdaptive = (props: MonacoAdaptiveProps) => {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { adaptiveHeight, onExecuteRequest, onMount, ...editorProps } = props;
+
+    const handleResize = () => {
+        editorRef.current?.layout();
+    };
 
     const handleMonacoEditorMount = (
         editor: monacoEditor.editor.IStandaloneCodeEditor,
@@ -90,18 +94,10 @@ export const MonacoAdaptive = (props: MonacoAdaptiveProps) => {
 
         // Clean up on component unmount
         return () => {
-            if (editorRef.current) {
-                editorRef.current.dispose();
-            }
+            editorRef.current?.dispose();
             window.removeEventListener('resize', debouncedResizeHandler);
         };
     }, []);
-
-    const handleResize = () => {
-        if (editorRef.current) {
-            editorRef.current.layout();
-        }
-    };
 
     //Helper function to set up adaptive height behavior
     const setupAdaptiveHeight = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {

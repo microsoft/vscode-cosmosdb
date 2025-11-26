@@ -9,10 +9,10 @@ import {
     ErrorResponse,
     TimeoutError,
     type BulkOperationResult,
-    type CosmosClient,
     type DeleteOperationInput,
     type ItemDefinition,
     type JSONObject,
+    type PartitionKey,
     type PartitionKeyDefinition,
 } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
@@ -25,10 +25,11 @@ import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
-import { extractPartitionKey } from '../../utils/document';
-import { type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient, getCosmosDBKeyCredential } from '../getCosmosClient';
+import { arePartitionKeysEqual, extractPartitionKey } from '../../utils/document';
+import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
+import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 /**
  * Is more specific type for document identifiers used for deleting documents.
@@ -51,7 +52,7 @@ type DeleteStatus = {
 export class DocumentSession {
     public readonly id: string;
     private readonly channel: Channel;
-    private readonly client: CosmosClient;
+    private readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
     // For telemetry
@@ -63,11 +64,11 @@ export class DocumentSession {
     private isDisposed = false;
 
     constructor(connection: NoSqlQueryConnection, channel: Channel) {
-        const { databaseId, containerId, endpoint, credentials, isEmulator } = connection;
+        const { databaseId, containerId, endpoint, credentials } = connection;
 
         this.id = uuid();
         this.channel = channel;
-        this.client = getCosmosClient(endpoint, credentials, isEmulator);
+        this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;
         this.endpoint = endpoint;
@@ -77,49 +78,59 @@ export class DocumentSession {
 
     public async create(document: ItemDefinition): Promise<CosmosDBRecordIdentifier | undefined> {
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.create', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
-            if (this.isDisposed) {
-                throw new Error(l10n.t('Session is disposed'));
-            }
-
-            try {
-                const partitionKey = await this.getPartitionKey();
-
-                const response = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .items.create<ItemDefinition>(document, {
-                        abortSignal: this.abortController.signal,
-                    });
-
-                if (response?.resource) {
-                    const record = response.resource as CosmosDBRecord;
-
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'setDocument',
-                        params: [this.id, record, partitionKey],
-                    });
-
-                    return {
-                        id: record.id,
-                        _rid: record._rid,
-                        partitionKey: partitionKey ? extractPartitionKey(record, partitionKey) : undefined,
-                    };
-                } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Item creation failed'],
-                    });
-                }
-            } catch (error) {
-                await this.errorHandling(error, context);
-            }
-
-            return undefined;
+            return this.createInternal(document, context);
         });
+    }
+
+    async createInternal(
+        document: ItemDefinition,
+        context: IActionContext,
+    ): Promise<CosmosDBRecordIdentifier | undefined> {
+        if (this.isDisposed) {
+            throw new Error(l10n.t('Session is disposed'));
+        }
+
+        try {
+            const response = await withClaimsChallengeHandling(this.connection, async (client) =>
+                client.database(this.databaseId).container(this.containerId).items.create<ItemDefinition>(document, {
+                    abortSignal: this.abortController.signal,
+                }),
+            );
+
+            if (response?.resource) {
+                const record = response.resource as CosmosDBRecord;
+
+                const containerPartitionKey = await this.getPartitionKey();
+                const partitionKey = containerPartitionKey
+                    ? extractPartitionKey(record, containerPartitionKey)
+                    : undefined;
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'setDocument',
+                    params: [this.id, record, partitionKey],
+                });
+
+                return {
+                    id: record.id,
+                    _rid: record._rid,
+                    partitionKey: partitionKey,
+                };
+            } else {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentError',
+                    params: [this.id, 'Item creation failed'],
+                });
+            }
+        } catch (error) {
+            await this.errorHandling(error, context);
+        }
+
+        return undefined;
     }
 
     public async read(documentId: CosmosDBRecordIdentifier): Promise<void> {
@@ -136,13 +147,15 @@ export class DocumentSession {
 
             try {
                 let result: CosmosDBRecord | null = null;
-                const response = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
-                    .read<CosmosDBRecord>({
-                        abortSignal: this.abortController.signal,
-                    });
+                const response = await withClaimsChallengeHandling(this.connection, async (client) =>
+                    client
+                        .database(this.databaseId)
+                        .container(this.containerId)
+                        .item(documentId.id!, documentId.partitionKey)
+                        .read<CosmosDBRecord>({
+                            abortSignal: this.abortController.signal,
+                        }),
+                );
 
                 if (response?.resource) {
                     result = response.resource;
@@ -150,14 +163,16 @@ export class DocumentSession {
 
                 // TODO: Should we try to read the document by _rid if the above fails?
                 if (!result && documentId._rid) {
-                    const queryResult = await this.client
-                        .database(this.databaseId)
-                        .container(this.containerId)
-                        .items.query<CosmosDBRecord>(`SELECT *FROM c WHERE c._rid = "${documentId._rid}"`, {
-                            abortSignal: this.abortController.signal,
-                            bufferItems: true,
-                        })
-                        .fetchAll();
+                    const queryResult = await withClaimsChallengeHandling(this.connection, async (client) =>
+                        client
+                            .database(this.databaseId)
+                            .container(this.containerId)
+                            .items.query<CosmosDBRecord>(`SELECT *FROM c WHERE c._rid = "${documentId._rid}"`, {
+                                abortSignal: this.abortController.signal,
+                                bufferItems: true,
+                            })
+                            .fetchAll(),
+                    );
 
                     if (queryResult.resources?.length === 1) {
                         result = queryResult.resources[0];
@@ -165,12 +180,12 @@ export class DocumentSession {
                 }
 
                 if (result) {
-                    const partitionKey = await this.getPartitionKey();
+                    const containerPartitionKey = await this.getPartitionKey();
 
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'setDocument',
-                        params: [this.id, result, partitionKey],
+                        params: [this.id, result, containerPartitionKey],
                     });
                 } else {
                     await this.channel.postMessage({
@@ -201,35 +216,99 @@ export class DocumentSession {
             }
 
             try {
-                const response = await this.client
-                    .database(this.databaseId)
-                    .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
-                    .replace(document, {
-                        abortSignal: this.abortController.signal,
-                    });
+                const containerPartitionKey = await this.getPartitionKey();
 
-                if (response?.resource) {
-                    const record = response.resource as CosmosDBRecord;
-                    const partitionKey = await this.getPartitionKey();
+                // Extract partition key from the updated document
+                let newPartitionKey: PartitionKey | undefined = undefined;
+                if (containerPartitionKey) {
+                    newPartitionKey = extractPartitionKey(document, containerPartitionKey);
+                }
 
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'setDocument',
-                        params: [this.id, record, partitionKey],
-                    });
+                // Check if partition key has changed
+                const partitionKeyChanged: boolean = !arePartitionKeysEqual(documentId.partitionKey, newPartitionKey);
 
-                    return {
-                        id: record.id,
-                        _rid: record._rid,
-                        partitionKey: partitionKey ? extractPartitionKey(record, partitionKey) : undefined,
-                    };
+                if (partitionKeyChanged) {
+                    // Partition key has changed - need to delete old item and create new one
+                    context.telemetry.properties.partitionKeyChanged = 'true';
+
+                    const confirmation = await getConfirmationAsInSettings(
+                        l10n.t('Partition Key changed'),
+                        l10n.t(
+                            'Are you sure you want to change the items partition key?\n\nThis will delete the old item and create a new one.',
+                        ),
+                        'change',
+                    );
+
+                    if (!confirmation) {
+                        context.telemetry.properties.result = 'Canceled';
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'operationAborted',
+                            params: [],
+                        });
+                        return;
+                    }
+
+                    // Delete the old item
+                    const deleteResult = await this.deleteInternal(documentId, context);
+                    if (!deleteResult) {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Deleting old item for partition key change failed'],
+                        });
+                        // To avoid data loss, we still save the new item even if deleting the old one failed
+                        // TODO: should we abort here or prompt the user at this point if they want to create the
+                        // duplicate on the new partition even if deleting the old one failed?
+                    }
+
+                    // Create the new item with the updated partition key
+                    const newRecord = await this.createInternal(document, context);
+                    if (!newRecord) {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Item update with partition key change failed'],
+                        });
+                    }
+                    return newRecord;
                 } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Item update failed'],
-                    });
+                    // Normal update - partition key hasn't changed
+                    context.telemetry.properties.partitionKeyChanged = 'false';
+
+                    const response = await withClaimsChallengeHandling(this.connection, async (client) =>
+                        client
+                            .database(this.databaseId)
+                            .container(this.containerId)
+                            .item(documentId.id!, documentId.partitionKey)
+                            .replace(document, {
+                                abortSignal: this.abortController.signal,
+                            }),
+                    );
+
+                    if (response?.resource) {
+                        const record = response.resource as CosmosDBRecord;
+
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'setDocument',
+                            params: [this.id, record, containerPartitionKey],
+                        });
+
+                        return {
+                            id: record.id,
+                            _rid: record._rid,
+                            partitionKey: containerPartitionKey
+                                ? extractPartitionKey(record, containerPartitionKey)
+                                : undefined,
+                        };
+                    } else {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'documentError',
+                            params: [this.id, 'Item update failed'],
+                        });
+                    }
                 }
             } catch (error) {
                 await this.errorHandling(error, context);
@@ -251,32 +330,58 @@ export class DocumentSession {
                 throw new Error(l10n.t('Item id is required'));
             }
 
-            try {
-                const result = await this.client
+            const confirmation = await getConfirmationAsInSettings(
+                l10n.t('Delete Confirmation'),
+                l10n.t('Are you sure you want to delete the selected item?'),
+                'delete',
+            );
+
+            if (!confirmation) {
+                return;
+            }
+
+            await this.deleteInternal(documentId, context);
+        });
+    }
+
+    async deleteInternal(documentId: CosmosDBRecordIdentifier, context: IActionContext): Promise<boolean> {
+        if (this.isDisposed) {
+            throw new Error(l10n.t('Session is disposed'));
+        }
+
+        if (documentId.id === undefined) {
+            throw new Error(l10n.t('Item id is required'));
+        }
+
+        try {
+            const result = await withClaimsChallengeHandling(this.connection, async (client) =>
+                client
                     .database(this.databaseId)
                     .container(this.containerId)
-                    .item(documentId.id, documentId.partitionKey)
+                    .item(documentId.id!, documentId.partitionKey)
                     .delete({
                         abortSignal: this.abortController.signal,
-                    });
+                    }),
+            );
 
-                if (result?.statusCode === 204) {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentDeleted',
-                        params: [this.id, documentId],
-                    });
-                } else {
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, 'Item deletion failed'],
-                    });
-                }
-            } catch (error) {
-                await this.errorHandling(error, context);
+            if (result?.statusCode === 204) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentDeleted',
+                    params: [this.id, documentId],
+                });
+                return true;
+            } else {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentError',
+                    params: [this.id, 'Item deletion failed'],
+                });
             }
-        });
+        } catch (error) {
+            await this.errorHandling(error, context);
+        }
+        return false;
     }
 
     public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
@@ -309,8 +414,10 @@ export class DocumentSession {
             }
 
             const confirmation = await getConfirmationAsInSettings(
-                l10n.t('Bulk Delete Confirmation'),
-                l10n.t('Are you sure you want to delete selected item(s)?'),
+                status.valid.length < 2 ? l10n.t('Delete Confirmation') : l10n.t('Bulk Delete Confirmation'),
+                status.valid.length < 2
+                    ? l10n.t('Are you sure you want to delete the selected item?')
+                    : l10n.t('Are you sure you want to delete selected items?'),
                 'delete',
             );
 
@@ -397,12 +504,12 @@ export class DocumentSession {
                     throw new Error(l10n.t('Session is disposed'));
                 }
 
-                const partitionKey = await this.getPartitionKey();
+                const containerPartitionKey = await this.getPartitionKey();
 
                 const newDocument: JSONObject = {
                     id: 'replace_with_new_document_id',
                 };
-                partitionKey?.paths.forEach((partitionKeyProperty) => {
+                containerPartitionKey?.paths.forEach((partitionKeyProperty) => {
                     let target = newDocument;
                     const keySegments = partitionKeyProperty.split('/').filter((segment) => segment.length > 0);
                     const finalSegment = keySegments.pop();
@@ -423,7 +530,7 @@ export class DocumentSession {
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'setDocument',
-                    params: [this.id, newDocument, partitionKey],
+                    params: [this.id, newDocument, containerPartitionKey],
                 });
             },
         );
@@ -444,21 +551,21 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, message],
             });
-            await this.logAndThrowError(l10n.t('Query failed'), error);
+            this.logAndThrowError(l10n.t('Query failed'), error);
         } else if (error instanceof TimeoutError) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, l10n.t('Query timed out')],
             });
-            await this.logAndThrowError(l10n.t('Query timed out'), error);
+            this.logAndThrowError(l10n.t('Query timed out'), error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryError',
                 params: [this.id, l10n.t('Query was aborted')],
             });
-            await this.logAndThrowError(l10n.t('Query was aborted'), error);
+            this.logAndThrowError(l10n.t('Query was aborted'), error);
         } else {
             // always force unexpected query errors to be included in report issue command
             context.errorHandling.forceIncludeInReportIssueCommand = true;
@@ -467,10 +574,8 @@ export class DocumentSession {
                 name: 'queryError',
                 params: [this.id, getErrorMessage(error)],
             });
-            await this.logAndThrowError(l10n.t('Query failed'), error);
+            this.logAndThrowError(l10n.t('Query failed'), error);
         }
-
-        throw error;
     }
 
     private setTelemetryProperties(context: IActionContext): void {
@@ -490,7 +595,9 @@ export class DocumentSession {
         }
 
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.getPartitionKey', async () => {
-            const container = await this.client.database(this.databaseId).container(this.containerId).read();
+            const container = await withClaimsChallengeHandling(this.connection, async (client) =>
+                client.database(this.databaseId).container(this.containerId).read(),
+            );
 
             if (container.resource === undefined) {
                 // Should be impossible since here we have a connection from the extension
@@ -502,7 +609,7 @@ export class DocumentSession {
         });
     }
 
-    private async logAndThrowError(message: string, error: unknown = undefined): Promise<void> {
+    private logAndThrowError(message: string, error: unknown = undefined): never {
         if (error) {
             //TODO: parseError does not handle "Message : {JSON}" format coming from Cosmos DB SDK
             // we need to parse the error message and show it in a better way in the UI
@@ -519,10 +626,10 @@ export class DocumentSession {
             this.showError(message);
 
             throw new Error(`${message}, ${parsedError.message}`);
-        } else {
-            vscode.window.showErrorMessage(message);
-            throw new Error(message);
         }
+
+        void vscode.window.showErrorMessage(message);
+        throw new Error(message);
     }
 
     private showError(message: string): void {
@@ -574,37 +681,40 @@ export class DocumentSession {
 
         // Bulk can only delete 100 documents at a time
         const BULK_DELETE_LIMIT = 100;
-        const promiseArray: Promise<Array<BulkOperationResult & { documentId: DocumentId }>>[] = [];
+        const promiseArray = await withClaimsChallengeHandling(this.connection, async (client) => {
+            const promiseArray: Promise<Array<BulkOperationResult & { documentId: DocumentId }>>[] = [];
+            // Trying to delete as many documents as possible
+            while (processedDocumentIds.length > 0 && !this.isDisposed && !abortSignal.aborted) {
+                const documentIdsChunk = processedDocumentIds.splice(0, BULK_DELETE_LIMIT);
+                const operations = documentIdsChunk.map(
+                    (documentId): DeleteOperationInput => ({
+                        id: documentId.id,
+                        // bulk delete: if not partition key is specified, do not pass empty array, but undefined
+                        partitionKey:
+                            Array.isArray(documentId.partitionKey) && documentId.partitionKey.length === 0
+                                ? undefined
+                                : documentId.partitionKey,
+                        operationType: BulkOperationType.Delete,
+                    }),
+                );
 
-        // Trying to delete as many documents as possible
-        while (processedDocumentIds.length > 0 && !this.isDisposed && !abortSignal.aborted) {
-            const documentIdsChunk = processedDocumentIds.splice(0, BULK_DELETE_LIMIT);
-            const operations = documentIdsChunk.map(
-                (documentId): DeleteOperationInput => ({
-                    id: documentId.id,
-                    // bulk delete: if not partition key is specified, do not pass empty array, but undefined
-                    partitionKey:
-                        Array.isArray(documentId.partitionKey) && documentId.partitionKey.length === 0
-                            ? undefined
-                            : documentId.partitionKey,
-                    operationType: BulkOperationType.Delete,
-                }),
-            );
-
-            const promise = this.client
-                .database(this.databaseId)
-                .container(this.containerId)
-                .items.executeBulkOperations(operations, {
-                    abortSignal,
-                })
-                .then((bulkResults) => {
-                    return bulkResults.map((bulkResult, index) => {
-                        const documentId = documentIdsChunk[index];
-                        return { ...bulkResult, documentId };
+                const promise = client
+                    .database(this.databaseId)
+                    .container(this.containerId)
+                    .items.executeBulkOperations(operations, {
+                        abortSignal,
+                    })
+                    .then((bulkResults) => {
+                        return bulkResults.map((bulkResult, index) => {
+                            const documentId = documentIdsChunk[index];
+                            return { ...bulkResult, documentId };
+                        });
                     });
-                });
-            promiseArray.push(promise);
-        }
+                promiseArray.push(promise);
+            }
+
+            return promiseArray;
+        });
 
         // Wait for all delete operations to complete
         const deleteResult = (await Promise.all(promiseArray)).flat();

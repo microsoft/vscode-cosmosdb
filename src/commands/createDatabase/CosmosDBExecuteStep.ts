@@ -5,7 +5,7 @@
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
 
@@ -15,14 +15,16 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateDatabaseWi
     public async execute(context: CreateDatabaseWizardContext): Promise<void> {
         const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { databaseName, nodeId } = context;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
 
         return ext.state.showCreatingChild(
             nodeId,
             l10n.t('Creating "{nodeName}"…', { nodeName: databaseName! }),
             async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
-                await cosmosClient.databases.create({ id: databaseName });
+
+                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
+                    await cosmosClient.databases.create({ id: databaseName });
+                });
             },
         );
     }

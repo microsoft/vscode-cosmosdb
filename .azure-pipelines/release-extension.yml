@@ -43,9 +43,7 @@ variables:
 extends:
     template: v2/OneBranch.Official.CrossPlat.yml@templates
 
-
     parameters:
-
         # remove for release pipeline?
         cloudvault: # https://aka.ms/obpipelines/cloudvault
             enabled: false
@@ -110,11 +108,14 @@ extends:
               displayName: Release extension
               variables:
                   - name: ob_release_environment
-                    #value: Test # should be  Test, PPE or Production
-                    value: Production # should be  Test, PPE or Production
+                    # should be Test, PPE or Production
+                    ${{ if eq(parameters.dryRun, true) }}:
+                        value: 'Test'
+                    ${{ else }}:
+                        value: 'Production'
               jobs:
                   - job: ReleaseValidation
-                    displayName: "\U00002713 Validate Artifacts"
+                    displayName: '⚖️ Validate Artifacts'
                     templateContext:
                         inputs:
                             - input: pipelineArtifact
@@ -126,163 +127,229 @@ extends:
                     variables:
                         ob_outputDirectory: '$(Build.ArtifactStagingDirectory)' # this directory is uploaded to pipeline artifacts, reddog and cloudvault. More info at https://aka.ms/obpipelines/artifacts
                     steps:
-                        # Modify the build number to include repo name, extension version, and if dry run is true
                         - task: PowerShell@2
-                          displayName: "\U0001F449 Prepend version from package.json to build number"
-                          env:
-                              dryRun: ${{ parameters.dryRun }}
+                          displayName: '🔢 Set Build Number'
+                          name: setBuildNumberStep
                           inputs:
-                              targetType: 'inline'
                               script: |
-                                  # Get the version from package.json
-                                  $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
-                                  if (-not (Test-Path $packageJsonPath)) {
-                                      Write-Error "[Error] package.json not found at $packageJsonPath"
+                                  $publishVersion = "${{ parameters.publishVersion }}"
+
+                                  if ([string]::IsNullOrWhiteSpace($publishVersion)) {
+                                      Write-Host "##vso[task.logissue type=error]publishVersion parameter is required but not provided"
+                                      Write-Host "##vso[task.complete result=Failed;]"
                                       exit 1
                                   }
 
-                                  $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
-                                  $npmVersionString = $packageJson.version
-                                  if (-not $npmVersionString) {
-                                      Write-Error "[Error] Version not found in package.json"
-                                      exit 1
-                                  }
+                                  $baseBuildNumber = "$(Build.BuildNumber)"
+                                  Write-Output "##vso[task.setvariable variable=baseBuildNumber;isOutput=true]$baseBuildNumber"
 
-                                  $isDryRun = "$env:dryRun"
-                                  $currentBuildNumber = "$(Build.BuildId)"
+                                  $dryRunSuffix = if ($${{ parameters.dryRun }}) { "-dry" } else { "" }
+                                  $newBuildNumber = "vscode-cosmosdb-$publishVersion$dryRunSuffix-$baseBuildNumber"
 
-                                  $repoName = "$(Build.Repository.Name)"
-                                  $repoNameParts = $repoName -split '/'
-                                  $repoNameWithoutOwner = $repoNameParts[-1]
-
-                                  $dryRunSuffix = ""
-                                  if ($isDryRun -eq 'True') {
-                                    Write-Output "Dry run was set to True. Adding 'dry' to the build number."
-                                    $dryRunSuffix = "-dry"
-                                  }
-
-                                  $newBuildNumber = "$repoNameWithoutOwner-$npmVersionString$dryRunSuffix-$currentBuildNumber"
-                                  Write-Output "Setting build number to: $newBuildNumber"
                                   Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
-
-                        # For safety, verify the version in package.json matches the version to publish entered by the releaser
-                        # If they don't match, this step fails
-                        - task: PowerShell@2
-                          displayName: "\U0001F449 Verify publish version"
-                          env:
-                              publishVersion: ${{ parameters.publishVersion }}
-                          inputs:
+                                  Write-Output "Build number: $newBuildNumber"
+                              pwsh: true
                               targetType: 'inline'
-                              script: |
-                                  # Get the version from package.json
-                                  $packageJsonPath = "$(System.DefaultWorkingDirectory)/package.json"
-                                  if (-not (Test-Path $packageJsonPath)) {
-                                      Write-Error "[Error] package.json not found at $packageJsonPath"
-                                      exit 1
-                                  }
 
-                                  $packageJson = Get-Content $packageJsonPath | ConvertFrom-Json
-                                  $npmVersionString = $packageJson.version
-                                  $publishVersion = "$env:publishVersion"
-
-                                  Write-Output "Package.json version: $npmVersionString"
-                                  Write-Output "Requested publish version: $publishVersion"
-
-                                  # Validate both versions are semantic versions
-                                  $semverPattern = '^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$'
-                                  if ($npmVersionString -notmatch $semverPattern) {
-                                      Write-Error "[Error] Version in package.json ($npmVersionString) is not a valid semantic version"
-                                      exit 1
-                                  }
-                                  if ($publishVersion -notmatch $semverPattern) {
-                                      Write-Error "[Error] Publish version ($publishVersion) is not a valid semantic version"
-                                      exit 1
-                                  }
-
-                                  if ($npmVersionString -eq $publishVersion) {
-                                    Write-Output "[Success] Publish version matches package.json version. Proceeding with release."
-                                  } else {
-                                    Write-Error "[Error] Publish version '$publishVersion' doesn't match version found in package.json '$npmVersionString'. Cancelling release."
-                                    exit 1
-                                  }
-
-                        # Find the vsix to release and set the vsix file name variable
-                        # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
-                          displayName: "\U0001F449 Find and Set .vsix File Variable"
-                          name: setVsixFileNameStep
+                          displayName: '🔍 Find Publishing Files'
+                          name: findPublishingFilesStep
                           inputs:
-                              targetType: 'inline'
                               script: |
-                                  # Get all .vsix files in the current directory
-                                  Write-Output "Searching for .vsix files in: $(System.DefaultWorkingDirectory)"
-                                  Write-Output "Directory contents:"
-                                  Get-ChildItem -Path $(System.DefaultWorkingDirectory) -File | Where-Object { $_.Extension -in @('.vsix', '.json', '.p7s', '.manifest') } | Select-Object Name, Length, LastWriteTime | Format-Table
-
                                   $vsixFiles = Get-ChildItem -Path $(System.DefaultWorkingDirectory) -Filter *.vsix -File
+                                  $errors = @()
 
-                                  # Check if more than one .vsix file is found
-                                  if ($vsixFiles.Count -gt 1) {
-                                    Write-Error "[Error] More than one .vsix file found: $($vsixFiles.Name -join ', ')"
-                                    exit 1
-                                  } elseif ($vsixFiles.Count -eq 0) {
-                                    Write-Error "[Error] No .vsix files found in $(System.DefaultWorkingDirectory)"
-                                    exit 1
-                                  } else {
-                                    # Set the pipeline variable
-                                    $vsixFileName = $vsixFiles.Name
-                                    $vsixFileSize = [math]::Round($vsixFiles.Length / 1MB, 2)
-                                    Write-Output "##vso[task.setvariable variable=vsixFileName;isOutput=true]$vsixFileName"
-                                    Write-Output "[Success] Found .vsix file: $vsixFileName (${vsixFileSize} MB)"
+                                  if ($vsixFiles.Count -gt 1) { $errors += "Multiple .vsix files found: $($vsixFiles.Name -join ', ')" }
+                                  elseif ($vsixFiles.Count -eq 0) { $errors += "No .vsix files found" }
+                                  if (-not (Test-Path "$(System.DefaultWorkingDirectory)/extension.manifest")) { $errors += "Manifest file not found: extension.manifest" }
+                                  if (-not (Test-Path "$(System.DefaultWorkingDirectory)/extension.signature.p7s")) { $errors += "Signature file not found: extension.signature.p7s" }
+
+                                  if ($errors) {
+                                      $errors | ForEach-Object { Write-Host "##vso[task.logissue type=error]$_" }
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
+
+                                  $vsixFileName = $vsixFiles.Name
+                                  $vsixFileSize = [math]::Round($vsixFiles.Length / 1MB, 2)
+                                  Write-Output "##vso[task.setvariable variable=vsixFileName;isOutput=true]$vsixFileName"
+                                  Write-Output "✓ VSIX: $vsixFileName (${vsixFileSize} MB)"
+                                  Write-Output "✓ Manifest: extension.manifest"
+                                  Write-Output "✓ Signature: extension.signature.p7s"
+                              pwsh: true
+                              targetType: 'inline'
 
                         - task: PowerShell@2
-                          displayName: "\U0001F449 Verify Publishing Files"
+                          displayName: '📖 Extract Metadata from VSIX'
+                          name: extractMetadataStep
                           inputs:
-                              targetType: 'inline'
                               script: |
-                                  $vsixFileName = "$(setVsixFileNameStep.vsixFileName)"
-                                  if (-not $vsixFileName) {
-                                    Write-Error "[Error] vsixFileName variable not defined."
-                                    exit 1
+                                  $ErrorActionPreference = "Stop"
+                                  $vsixPath = "$(System.DefaultWorkingDirectory)/$(findPublishingFilesStep.vsixFileName)"
+
+                                  Add-Type -AssemblyName System.IO.Compression.FileSystem
+                                  $zip = [System.IO.Compression.ZipFile]::OpenRead($vsixPath)
+
+                                  # Extract package.json
+                                  $pkgEntry = $zip.Entries | Where-Object { $_.FullName -eq 'extension/package.json' } | Select-Object -First 1
+                                  if (-not $pkgEntry) {
+                                      Write-Host "##vso[task.logissue type=error]extension/package.json not found in VSIX"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
+                                  $pkgReader = New-Object System.IO.StreamReader($pkgEntry.Open())
+                                  $pkg = $pkgReader.ReadToEnd() | ConvertFrom-Json
+                                  $pkgReader.Close()
 
-                                  $vsixPath = "$(System.DefaultWorkingDirectory)/$vsixFileName"
-                                  $manifestPath = "$(System.DefaultWorkingDirectory)/extension.manifest"
-                                  $signaturePath = "$(System.DefaultWorkingDirectory)/extension.signature.p7s"
+                                  # Extract manifest
+                                  $manifestEntry = $zip.Entries | Where-Object { $_.FullName -eq 'extension.vsixmanifest' } | Select-Object -First 1
+                                  if (-not $manifestEntry) {
+                                      Write-Host "##vso[task.logissue type=error]extension.vsixmanifest not found in VSIX"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
+                                  $manifestReader = New-Object System.IO.StreamReader($manifestEntry.Open())
+                                  [xml]$manifest = $manifestReader.ReadToEnd()
+                                  $manifestReader.Close()
 
-                                  Write-Output "Validating required files for publishing:"
-
-                                  if (Test-Path -Path $vsixPath) {
-                                    $vsixSize = [math]::Round((Get-Item $vsixPath).Length / 1MB, 2)
-                                    Write-Output "✓ VSIX file found: $vsixFileName (${vsixSize} MB)"
+                                  # Set output variables
+                                  $version = $pkg.version
+                                  # Default preview to false if missing, validate type if present
+                                  if ($null -eq $pkg.PSObject.Properties['preview']) {
+                                      Write-Host "##vso[task.logissue type=warning]'preview' field missing in VSIX package.json, defaulting to false"
+                                      $preview = $false
+                                  } elseif ($pkg.preview -isnot [bool]) {
+                                      Write-Host "##vso[task.logissue type=error]Invalid 'preview' field in VSIX package.json. Expected boolean, got: $($pkg.preview.GetType().Name) ($($pkg.preview))"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   } else {
-                                    Write-Error "[Error] The specified VSIX file does not exist: $vsixPath"
-                                    exit 1
+                                      $preview = [bool]$pkg.preview
+                                  }
+                                  $name = $pkg.name
+                                  $manifestVer = $manifest.PackageManifest.Metadata.Identity.Version
+                                  $preProp = $manifest.PackageManifest.Metadata.Properties.Property | Where-Object { $_.Id -eq "Microsoft.VisualStudio.Code.PreRelease" }
+                                  $manifestPreview = if ($preProp) { [bool]::Parse($preProp.Value) } else { $false }
+
+                                  Write-Output "##vso[task.setvariable variable=version;isOutput=true]$version"
+                                  Write-Output "##vso[task.setvariable variable=preview;isOutput=true]$preview"
+                                  Write-Output "##vso[task.setvariable variable=name;isOutput=true]$name"
+                                  Write-Output "##vso[task.setvariable variable=manifestVersion;isOutput=true]$manifestVer"
+                                  Write-Output "##vso[task.setvariable variable=manifestPreview;isOutput=true]$manifestPreview"
+
+                                  Write-Output "Extension: $name"
+                                  Write-Output "Version: $version (Preview: $preview)"
+                                  Write-Output "Manifest Version: $manifestVer (PreRelease: $manifestPreview)"
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: PowerShell@2
+                          displayName: '✅ Validate Publish Version'
+                          inputs:
+                              script: |
+                                  if ("${{ parameters.publishVersion }}" -ne "$(extractMetadataStep.version)") {
+                                      Write-Host "##vso[task.logissue type=error]Publish version mismatch: expected '${{ parameters.publishVersion }}', got '$(extractMetadataStep.version)'"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
+                                  Write-Output "✓ Publish version: $(extractMetadataStep.version)"
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: PowerShell@2
+                          displayName: '✅ Validate VSIX Filename'
+                          inputs:
+                              script: |
+                                  $expected = "$(extractMetadataStep.name)-$(extractMetadataStep.version).vsix"
+                                  $actual = "$(findPublishingFilesStep.vsixFileName)"
+
+                                  if ($actual -ne $expected) {
+                                      Write-Host "##vso[task.logissue type=error]VSIX filename mismatch: expected '$expected', got '$actual'"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
-                                  if (Test-Path -Path $manifestPath) {
-                                    Write-Output "✓ Manifest file found: extension.manifest"
-                                  } else {
-                                    Write-Warning "[Warning] Manifest file not found: $manifestPath"
+                                  Write-Output "✓ Filename valid: $actual"
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: PowerShell@2
+                          displayName: '✅ Validate Manifest Consistency'
+                          inputs:
+                              script: |
+                                  # Get extracted metadata and artifact package.json
+                                  $vsixVersion = "$(extractMetadataStep.version)"
+                                  $vsixManifestVersion = "$(extractMetadataStep.manifestVersion)"
+                                  $vsixPreview = [bool]::Parse("$(extractMetadataStep.preview)")
+                                  $vsixManifestPreview = [bool]::Parse("$(extractMetadataStep.manifestPreview)")
+
+                                  $artifactPkg = Get-Content "$(System.DefaultWorkingDirectory)/package.json" -Raw | ConvertFrom-Json
+                                  $artifactVersion = $artifactPkg.version
+                                  $artifactPreview = if ($artifactPkg.PSObject.Properties['preview']) { [bool]$artifactPkg.preview } else { $false }
+
+                                  # Validate all consistency checks
+                                  $errors = @()
+                                  if ($vsixManifestVersion -ne $vsixVersion) { $errors += "VSIX internal version mismatch: package.json=$vsixVersion, vsixmanifest=$vsixManifestVersion" }
+                                  if ($vsixManifestPreview -ne $vsixPreview) { $errors += "VSIX internal preview mismatch: package.json=$vsixPreview, vsixmanifest=$vsixManifestPreview" }
+                                  if ($artifactVersion -ne $vsixVersion) { $errors += "Artifact version mismatch: artifact=$artifactVersion, VSIX=$vsixVersion" }
+                                  if ($artifactPreview -ne $vsixPreview) { $errors += "Artifact preview mismatch: artifact=$artifactPreview, VSIX=$vsixPreview" }
+
+                                  if ($errors) {
+                                      $errors | ForEach-Object { Write-Host "##vso[task.logissue type=error]$_" }
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
-                                  if (Test-Path -Path $signaturePath) {
-                                    Write-Output "✓ Signature file found: extension.signature.p7s"
-                                  } else {
-                                    Write-Warning "[Warning] Signature file not found: $signaturePath"
+                                  Write-Output "✓ Manifest consistency validated (version=$vsixVersion, preview=$vsixPreview)"
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: PowerShell@2
+                          displayName: '⚖️ Validate Version / Preview Alignment'
+                          inputs:
+                              script: |
+                                  $version = "$(extractMetadataStep.version)"
+                                  $preview = [bool]::Parse("$(extractMetadataStep.preview)")
+
+                                  if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+                                      Write-Host "##vso[task.logissue type=error]Invalid semantic version: $version"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
                                   }
 
-                                  Write-Output "[Success] $vsixFileName is ready for publishing."
+                                  $minor = [int]$Matches[2]
+                                  $minorEven = ($minor % 2) -eq 0
+
+                                  # Warning for version/preview alignment
+                                  if (($preview -and $minorEven) -or (-not $preview -and -not $minorEven)) {
+                                      Write-Host "##vso[task.logissue type=warning]Version/preview alignment: preview=$preview but minor=$minor ($(if($minorEven){'even'}else{'odd'}))"
+                                  }
+
+                                  Write-Output "✓ Version format valid: $version (preview=$preview)"
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: PowerShell@2
+                          displayName: '🔢 Update Build Number'
+                          name: updateBuildNumberStep
+                          inputs:
+                              script: |
+                                  $baseBuildNumber = "$(setBuildNumberStep.baseBuildNumber)"
+                                  $dryRunSuffix = if ($${{ parameters.dryRun }}) { "-dry" } else { "" }
+                                  $newBuildNumber = "vscode-cosmosdb-$(extractMetadataStep.version)$dryRunSuffix-$baseBuildNumber"
+                                  Write-Output "##vso[build.updatebuildnumber]$newBuildNumber"
+                                  Write-Output "Build number: $newBuildNumber (preview=$(extractMetadataStep.preview))"
+                              pwsh: true
+                              targetType: 'inline'
 
                   - job: PublishExtension
-                    displayName: "\U00002713 Publish Extension"
+                    displayName: '🚀 Publish Extension'
                     condition: and(succeeded(), ${{ eq(parameters.dryRun, false) }})
                     dependsOn: ReleaseValidation
                     pool:
-                      type: release
+                        type: release
                     variables:
-                        vsixFileName: $[ dependencies.ReleaseValidation.outputs['setVsixFileNameStep.vsixFileName'] ]
+                        vsixFileName: $[ dependencies.ReleaseValidation.outputs['findPublishingFilesStep.vsixFileName'] ]
+                        isPreview: $[ dependencies.ReleaseValidation.outputs['extractMetadataStep.preview'] ]
                     templateContext:
                         inputs:
                             - input: pipelineArtifact
@@ -291,18 +358,18 @@ extends:
                               artifactName: drop_BuildStage_Main
                         workflow: vsce
                         vsce:
-                          serviceConnection: "CosmosDB VSCode Publishing" # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
-                          vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
-                          #preRelease: true # default false. Whether the extension is a pre-release.
-                          signaturePath: $(System.DefaultWorkingDirectory)/extension.signature.p7s # optional
-                          manifestPath: $(System.DefaultWorkingDirectory)/extension.manifest # optional
-                          useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
-                          feed:
-                            organization: msdata
-                            project: CosmosDB
-                            feedName: vscode-cosmosdb
+                            serviceConnection: 'CosmosDB VSCode Publishing' # azureRM service connection for the managed identity used to publish the extension. Only this publishing auth method is supported.
+                            vsixPath: '$(vsixFileName)' # Path to VSIX file in artifact
+                            preRelease: $(isPreview) # Whether the extension is a pre-release, determined from package.json preview flag
+                            signaturePath: $(System.DefaultWorkingDirectory)/extension.signature.p7s # optional
+                            manifestPath: $(System.DefaultWorkingDirectory)/extension.manifest # optional
+                            useCustomVSCE: true # for the time being, you must supply a feed in your project with @vscode/vsce@3.3.2
+                            feed:
+                                organization: msdata
+                                project: CosmosDB
+                                feedName: vscode-cosmosdb
                     steps:
                         # we need a noop step otherwise the vsce template won't run
                         - pwsh: Write-Output "Done"
                           condition: ${{ eq(parameters.dryRun, true) }} # noop this condition is always false
-                          displayName: "\U0001F449 Post-Publishing"
+                          displayName: '📢 Post-Publishing'

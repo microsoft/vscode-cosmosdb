@@ -7,6 +7,7 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
+import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type TreeElement } from '../TreeElement';
@@ -27,12 +28,14 @@ export abstract class CosmosDBItemResourceItem
 {
     public readonly id: string;
     public readonly contextValue: string = 'treeItem.document';
+    public readonly documentId?: CosmosDBRecordIdentifier;
 
     protected constructor(
         public readonly model: CosmosDBItemModel,
         public readonly experience: Experience,
     ) {
-        const uniqueId = this.generateUniqueId(this.model);
+        this.documentId = getDocumentId(this.model.item, this.model.container.partitionKey);
+        const uniqueId = this.generateUniqueId();
         this.id = sanitizeId(
             `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents/${uniqueId}`,
         );
@@ -90,11 +93,10 @@ export abstract class CosmosDBItemResourceItem
      * Warning: This method is used to generate a unique ID for the document tree item.
      * It is not used to generate the actual document ID.
      */
-    protected generateUniqueId(model: CosmosDBItemModel): string {
-        const documentId = getDocumentId(model.item, model.container.partitionKey);
-        const id = documentId?.id;
-        const rid = documentId?._rid;
-        const partitionKeyValues = this.generatePartitionKeyValue(model);
+    protected generateUniqueId(): string {
+        const id = this.documentId?.id;
+        const rid = this.documentId?._rid;
+        const partitionKeyValues = this.generatePartitionKeyValue(this.model);
 
         return `${id || '<empty id>'}|${partitionKeyValues || '<empty partition key>'}|${rid || '<empty rid>'}`;
     }

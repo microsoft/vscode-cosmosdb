@@ -1,18 +1,53 @@
 # Change Log
 
+## 0.31.0
+
+### Fixed
+
+- Fixed an issue where the Extension Settings were missing in the Extensions Settings section (#2826).
+
+## 0.30.0
+
+### Changed
+
+- Removed the Preview flag, this is the first GA release of this extension.
+
+## 0.29.0 (Preview)
+
+### Added
+
+- Cosmos DB Items inside the Resources Tree will now be opened with the new DocumentTab experience from the Query Editor fixing several issues where it was not possible to change the `id` or Partition Keys of an item (#2799).
+
+### Fixed
+
+- Fixed an issue where changing Partition Key(s) of an item led to a document validation error making Partition Key changes impossible (#2764, #2787).
+- Special Partition Key values such as `None` and `null` will be correctly shown in the Query Editor results, making it easier to identify documents stored on special system partitions (#2787).
+- Fixed authentication flow with challenge-based authentication and Azure mandatory MFA (#2748, #2749).
+
+### Changed
+
+- Improved PostgreSQL deprecation scenario, selecting a PostgreSQL server from Azure Resources will now navigate to the [PostgreSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql). If the extension is not installed VS Code will ask to install it (#2800).
+
+### Breaking Changes
+
+- New PostgreSQL connections can not be attached to the Azure Workspace. Creating a new PostgreSQL connection will navigate to the [PostgreSQL extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql) where the new connection can be created (#2804).
+
 ## 0.28.2
 
 ### Added
+
 - Deploy and manage [LLM instruction files](resources/llm-assets/azurecosmosdb.instructions.md) (#2758).
 
 ## 0.28.1
 
 ### Added
+
 - Add filtering and sorting capabilities for CosmosDB resources in the Azure Resources view (#2755).
 
 ## 0.28.0
 
 ### Breaking changes
+
 - PostgreSQL functionality was moved to another [extension](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
 - Gremlin (Graph) and Table databases have been retired.
 
@@ -505,13 +540,11 @@ A big thank you to the following contributors that helped make the extension eve
 ### Added
 
 - Mongo
-
   - CodeLens support for scrapbook
   - Execute all commands in a scrapbook, allowing you to use scrapbooks as scripts
   - Support for ObjectIDs, ISODate, and extended JSON data types in document views
 
 - SQL
-
   - View, open, edit and update Stored Procedures
 
 - Miscellaneous
@@ -534,7 +567,6 @@ A big thank you to the following contributors that helped make the extension eve
 ### Added
 
 - Mongo
-
   - mongo.shell.path setting no longer required if shell is in system path
   - Allow mongo.shell.path to be specified in workspace settings as well as user settings
   - No longer asking for an id for new documents
@@ -542,7 +574,6 @@ A big thank you to the following contributors that helped make the extension eve
   - Improvements to scrapbook setup and error handling
 
 - Azure subscriptions
-
   - New "filter" button on subscription nodes
   - New "Open in Portal" menu item for subscriptions
 

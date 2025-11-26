@@ -4,13 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import fs from 'node:fs';
-import { bundlePath } from './constants.mjs';
+import { bundlePath, exportSourcePaths } from './constants.mjs';
 import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
 
 // Function to build the localization bundle
 const buildLocalisationBundle = async () => {
     // Extract localization strings from the source files
-    const output = await l10nExportAllStrings(['./src']);
+    const output = await l10nExportAllStrings(exportSourcePaths);
 
     if (!output) {
         console.log('No localization strings found.');

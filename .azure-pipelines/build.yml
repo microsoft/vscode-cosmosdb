@@ -7,13 +7,13 @@ trigger:
 pr: none
 
 # Scheduled nightly build of `main`
-#schedules:
-#    - cron: '0 0 * * *'
-#      displayName: Nightly scheduled build
-#      always: false # Don't rebuild if there haven't been changes
-#      branches:
-#          include:
-#              - main
+schedules:
+    - cron: '0 0 * * *'
+      displayName: Nightly scheduled build
+      always: true # rebuild even if there are no code changes, required to keep localization files up to date
+      branches:
+          include:
+              - main
 
 parameters:
     - name: 'debug'
@@ -89,13 +89,82 @@ extends:
                         ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
+                        - task: PowerShell@2
+                          displayName: '🔢 Set Build Number'
+                          name: setBuildNumberStep
+                          inputs:
+                              script: |
+                                  try {
+                                      $packageJson = Get-Content "$(Build.SourcesDirectory)/package.json" -Raw | ConvertFrom-Json
+                                      $version = $packageJson.version
+
+                                      # Validate preview field if present, default to false if missing
+                                      if ($null -eq $packageJson.PSObject.Properties['preview']) {
+                                          Write-Host "##vso[task.logissue type=warning]'preview' field missing in package.json, defaulting to false"
+                                          $preview = $false
+                                      } elseif ($packageJson.preview -isnot [bool]) {
+                                          Write-Host "##vso[task.logissue type=error]Invalid 'preview' field in package.json. Expected boolean (true or false), got: $($packageJson.preview.GetType().Name) ($($packageJson.preview))"
+                                          Write-Host "##vso[task.complete result=Failed;]"
+                                          exit 1
+                                      } else {
+                                          $preview = [bool]$packageJson.preview
+                                      }
+
+                                      if ($version) {
+                                          $buildNumber = "vscode-cosmosdb-$version-$(Build.BuildNumber)"
+                                          Write-Host "##vso[build.updatebuildnumber]$buildNumber"
+                                          Write-Host "##vso[task.setvariable variable=version;isOutput=true]$version"
+                                          Write-Host "##vso[task.setvariable variable=preview;isOutput=true]$preview"
+                                          Write-Host "Build number set to: $buildNumber"
+                                      } else {
+                                          Write-Host "##vso[task.logissue type=warning]Version not found in package.json, keeping original build number"
+                                          Write-Host "Keeping original build number: $(Build.BuildNumber)"
+                                      }
+                                  } catch {
+                                      Write-Host "##vso[task.logissue type=warning]Could not read package.json: $_"
+                                      Write-Host "Keeping original build number: $(Build.BuildNumber)"
+                                  }
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: ComponentGovernanceComponentDetection@0
+                          displayName: '🛡️ Component Governance - Component Detection'
+
+                        - task: notice@0
+                          displayName: '📄 Generate NOTICE file'
+                          continueOnError: true # the notice@0 task is unreliable and sometimes fails the build unexpectedly due to random outages
+                          inputs:
+                              outputfile: $(Build.SourcesDirectory)/NOTICE.html
+                              outputformat: html
+
+                        - task: NodeTool@0
+                          displayName: '📦 Using Node.js'
+                          inputs:
+                              versionSource: fromFile
+                              versionFilePath: '$(Build.SourcesDirectory)/.nvmrc'
+
+                        - task: npmAuthenticate@0
+                          displayName: '🔐 Authenticate to npm registry'
+                          condition: succeeded()
+                          inputs:
+                              workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
+
+                        - task: Npm@1
+                          displayName: '⬇️ Install Dependencies'
+                          condition: succeeded()
+                          inputs:
+                              command: custom
+                              customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                              workingDir: $(Build.SourcesDirectory)
+
                         - task: OneLocBuild@3
-                          displayName: "\U0001F30D Build Localized Files"
+                          displayName: '🌍 Build Localized Files'
                           inputs:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'
                               isEnablePseudoLanguagesSelected: true
                               isCreatePrSelected: true
+                              isShouldReusePrSelected: true
                               isAutoCompletePrSelected: false
                               isSetAutoCompletePrSelected: true
                               repoType: 'gitHub'
@@ -103,39 +172,13 @@ extends:
                               gitHubPrMergeMethod: 'squash'
                               packageSourceAuth: patAuth
                               dependencyPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
+                              lclSource: lclFilesfromPackage
+                              lclPackageId: 'LCL-JUNO-PROD-VSCOSMOSDB'
+                              lclPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
                               patVariable: '$(System.AccessToken)'
 
-                        - task: ComponentGovernanceComponentDetection@0
-                          displayName: "\U0001F6E1 Component Governance - Component Detection"
-
-                        - task: notice@0
-                          displayName: "\U0001F449 Generate NOTICE file"
-                          inputs:
-                              outputfile: $(Build.SourcesDirectory)/NOTICE.html
-                              outputformat: html
-
-                        - task: NodeTool@0
-                          displayName: "\U0001F449 Using Node.js"
-                          inputs:
-                              versionSource: fromFile
-                              versionFilePath: '$(Build.SourcesDirectory)/.nvmrc'
-
-                        - task: npmAuthenticate@0
-                          displayName: "\U0001F449 Authenticate to npm registry"
-                          condition: succeeded()
-                          inputs:
-                              workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
-
                         - task: Npm@1
-                          displayName: "\U0001F449 Install Dependencies"
-                          condition: succeeded()
-                          inputs:
-                              command: custom
-                              customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
-                              workingDir: $(Build.SourcesDirectory)
-
-                        - task: Npm@1
-                          displayName: "\U0001F449 Build"
+                          displayName: '🔨 Build'
                           condition: succeeded()
                           inputs:
                               command: custom
@@ -143,7 +186,7 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
 
                         - task: Npm@1
-                          displayName: "\U0001F449 Package"
+                          displayName: '📦 Package'
                           condition: succeeded()
                           inputs:
                               command: custom
@@ -151,15 +194,14 @@ extends:
                               workingDir: $(Build.SourcesDirectory)
 
                         - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
-                          displayName: "\U0001F449 Install vsce"
+                          displayName: '⬇️ Install vsce'
                           condition: succeeded()
 
                         # Find the vsix and set the vsix file name variable
                         # Fails with an error if more than one .vsix file is found, or if no .vsix file is found
                         - task: PowerShell@2
-                          displayName: "\U0001F50D Find VSIX File"
+                          displayName: '🔍 Find VSIX File'
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   # Get all .vsix files in the current directory
                                   Write-Output "Searching for .vsix files in: $(Build.SourcesDirectory)"
@@ -167,10 +209,12 @@ extends:
 
                                   # Check if more than one .vsix file is found
                                   if ($vsixFiles.Count -gt 1) {
-                                    Write-Error "[Error] More than one .vsix file found: $($vsixFiles.Name -join ', ')"
+                                    Write-Host "##vso[task.logissue type=error]More than one .vsix file found: $($vsixFiles.Name -join ', ')"
+                                    Write-Host "##vso[task.complete result=Failed;]"
                                     exit 1
                                   } elseif ($vsixFiles.Count -eq 0) {
-                                    Write-Error "[Error] No .vsix files found in $(Build.SourcesDirectory)"
+                                    Write-Host "##vso[task.logissue type=error]No .vsix files found in $(Build.SourcesDirectory)"
+                                    Write-Host "##vso[task.complete result=Failed;]"
                                     exit 1
                                   } else {
                                     # Set the pipeline variable
@@ -179,30 +223,34 @@ extends:
                                     Write-Output "##vso[task.setvariable variable=vsixFileName]$vsixFileName"
                                     Write-Output "Found .vsix file: $vsixFileName (${vsixFileSize} MB)"
                                   }
+                              pwsh: true
+                              targetType: 'inline'
 
                         ## Sign the extension using OneBranch signing task
                         ## see for VS Code specifics: https://aka.ms/vsm-ms-publisher-sign#cai-teams-sign-using-onebranch
                         - script: vsce generate-manifest -i $(vsixFileName) -o extension.manifest
-                          displayName: "\U0001F5DD Generate extension manifest for signing"
+                          displayName: '📝 Generate extension manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
 
                         - task: PowerShell@2
-                          displayName: "\U0001F408 Prepare manifest for signing"
+                          displayName: '🐈 Prepare manifest for signing'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
-                              targetType: 'inline'
                               script: |
                                   # Verify extension.manifest exists before proceeding
                                   if (-not (Test-Path "extension.manifest")) {
-                                      Write-Error "[Error] extension.manifest file not found. Cannot proceed with signing."
+                                      Write-Host "##vso[task.logissue type=error]extension.manifest file not found. Cannot proceed with signing."
+                                      Write-Host "##vso[task.complete result=Failed;]"
                                       exit 1
                                   }
 
                                   Copy-Item -Path "extension.manifest" -Destination "extension.signature.p7s"
                                   Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "extension.*" | ForEach-Object { Write-Output $_.FullName }
+                              pwsh: true
+                              targetType: 'inline'
 
                         - task: onebranch.pipeline.signing@1 # https://aka.ms/obpipelines/signing
-                          displayName: "\U0001F5DD Sign VSIX package"
+                          displayName: '✍️ Sign VSIX package'
                           # Only sign if isOfficialBuild is true
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
@@ -213,11 +261,9 @@ extends:
                               #use_testsign: true # Set to true for test signing for development purposes, default is false
 
                         - task: PowerShell@2
-                          displayName: "\U0001F396 Verify VSIX signature"
+                          displayName: '🔒 Verify VSIX signature'
                           condition: and(succeeded(), ${{ eq(parameters.isOfficialBuild, true) }})
                           inputs:
-                              targetType: 'inline'
-                              failOnStderr: true
                               script: |
                                   $output = vsce verify-signature -i $(vsixFileName) -m extension.manifest -s extension.signature.p7s 2>&1
                                   Write-Output $output
@@ -225,7 +271,8 @@ extends:
                                   # Check if the vsce command failed to execute
                                   if ($LastExitCode -ne 0)
                                   {
-                                      Write-Error "[Error] VSIX signature verification command failed with exit code $LastExitCode."
+                                      Write-Host "##vso[task.logissue type=error]VSIX signature verification command failed with exit code $LastExitCode"
+                                      Write-Host "##vso[task.complete result=Failed;]"
                                       exit 1
                                   }
 
@@ -236,7 +283,8 @@ extends:
                                       if ($exitCodeValue -eq "Success") {
                                           Write-Output "[Success] VSIX signature verification succeeded."
                                       } elseif ($exitCodeValue -eq "UnhandledException") {
-                                          Write-Error "[Error] VSIX signature verification failed with UnhandledException."
+                                          Write-Host "##vso[task.logissue type=error]VSIX signature verification failed with UnhandledException"
+                                          Write-Host "##vso[task.complete result=Failed;]"
                                           exit 1
                                       } else {
                                           Write-Warning "[Warning] VSIX signature verification completed with unexpected exit code: $exitCodeValue"
@@ -244,9 +292,12 @@ extends:
                                   } else {
                                       Write-Warning "[Warning] Could not parse exit code from vsce verify-signature output."
                                   }
+                              pwsh: true
+                              targetType: 'inline'
+                              failOnStderr: true
 
                         - task: CopyFiles@2
-                          displayName: "\U0001F449 Copy packages and vsix to staging directory"
+                          displayName: '📂 Copy packages and vsix to staging directory'
                           inputs:
                               # Uploading the package.json so we can publish later without cloning the source
                               # Files related to signing:
@@ -265,7 +316,7 @@ extends:
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: CopyFiles@2
-                          displayName: "\U0001F449 Copy localisation results to staging directory"
+                          displayName: '🌐 Copy localisation results to staging directory'
                           inputs:
                               SourceFolder: '$(Build.ArtifactStagingDirectory)'
                               Contents: loc/**
@@ -273,9 +324,45 @@ extends:
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
                         - task: Npm@1
-                          displayName: "\U0001F449 Test"
+                          displayName: '🧪 Test'
                           inputs:
                               command: custom
                               customCommand: test
                               workingDir: $(Build.SourcesDirectory)
                           condition: succeeded()
+
+                        - task: PowerShell@2
+                          displayName: '⚖️ Validate Version / Preview Alignment'
+                          inputs:
+                              script: |
+                                  $version = "$(setBuildNumberStep.version)"
+                                  $previewRaw = "$(setBuildNumberStep.preview)"
+
+                                  # Parse preview field, default to false if empty
+                                  if ([string]::IsNullOrEmpty($previewRaw) -or $previewRaw -eq "False") {
+                                      $preview = $false
+                                  } elseif ($previewRaw -eq "True") {
+                                      $preview = $true
+                                  } else {
+                                      Write-Host "##vso[task.logissue type=error]Invalid 'preview' value: '$previewRaw'. Expected 'True' or 'False'."
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
+
+                                  if ($version -notmatch '^(\d+)\.(\d+)\.(\d+)$') {
+                                      Write-Host "##vso[task.logissue type=error]Invalid semantic version: $version"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
+
+                                  $minor = [int]$Matches[2]
+                                  $minorEven = ($minor % 2) -eq 0
+
+                                  # Warning for version/preview alignment
+                                  if (($preview -and $minorEven) -or (-not $preview -and -not $minorEven)) {
+                                      Write-Host "##vso[task.logissue type=warning]Version/preview alignment: preview=$preview but minor=$minor ($(if($minorEven){'even'}else{'odd'}))"
+                                  }
+
+                                  Write-Output "✓ Version format valid: $version (preview=$preview)"
+                              pwsh: true
+                              targetType: 'inline'

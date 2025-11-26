@@ -102,7 +102,7 @@ export class BaseTab {
                       `form-action 'none';`,
                       `default-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                      `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}' 'unsafe-eval';`,
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
                       `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,

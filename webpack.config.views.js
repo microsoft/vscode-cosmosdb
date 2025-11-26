@@ -39,10 +39,6 @@ module.exports = (env, { mode }) => {
         experiments: {
             outputModule: true,
         },
-        externals: {
-            // Exclude Node.js packages that shouldn't be bundled for the web
-            '@azure/cosmos': 'commonjs @azure/cosmos',
-        },
         resolve: {
             roots: [__dirname],
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
@@ -50,7 +46,7 @@ module.exports = (env, { mode }) => {
             mainFields: ['browser', 'module', 'main'],
             // Use 'import' and 'default' conditions (NOT 'node') to get browser versions
             // This makes uuid use dist/index.js instead of dist-node/index.js
-            conditionNames: ['import', 'default'],
+            conditionNames: ['browser', 'import', 'default'],
         },
         optimization: {
             // Tree-shaking configuration:

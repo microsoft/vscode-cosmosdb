@@ -25,36 +25,29 @@ import {
     DatabasePlugConnectedRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback } from 'react';
-import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
+import { useCallback, useMemo } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 const ChevronRightIcon = bundleIcon(ChevronRightFilled, ChevronRightRegular);
 
-export const ConnectionButton = forwardRef(function ConnectionButton(
-    props: ToolbarOverflowItemProps,
-    ref: ForwardedRef<HTMLDivElement>,
-) {
+export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const restoreFocusTargetAttribute = useRestoreFocusTarget();
-    const [connectionList, setConnectionList] = useState(state.connectionList);
-    const [checkedValues, setCheckedValues] = useState<Record<string, string[]>>({ databaseId: [], collectionId: [] });
-    const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+    const { ref, type } = props;
 
     const currentValue = useMemo(() => {
         return state.dbName && state.collectionName ? `${state.dbName}/${state.collectionName}` : '';
     }, [state.dbName, state.collectionName]);
 
-    useEffect(() => {
-        setSelectedOptions([`${state.dbName}/${state.collectionName}`]);
-        setCheckedValues({ databaseId: [state.dbName], collectionId: [state.collectionName] });
+    const selectedOptions = useMemo(() => {
+        return [`${state.dbName}/${state.collectionName}`];
     }, [state.dbName, state.collectionName]);
 
-    useEffect(() => {
-        setConnectionList(state.connectionList);
-    }, [state.connectionList]);
+    const checkedValues = useMemo(() => {
+        return { databaseId: [state.dbName], collectionId: [state.collectionName] };
+    }, [state.dbName, state.collectionName]);
 
     const onOpenChange = useCallback(
         (_e: never, data: { open: boolean }) => {
@@ -83,7 +76,7 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
         [onSetConnection],
     );
 
-    if (props.type === 'button') {
+    if (type === 'button') {
         return (
             <div ref={ref} style={{ paddingLeft: '8px' }}>
                 <Dropdown
@@ -96,21 +89,21 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
                     onOpenChange={onOpenChange}
                     {...restoreFocusTargetAttribute}
                 >
-                    {state.isConnected && !connectionList && (
+                    {state.isConnected && !state.connectionList && (
                         <OptionGroup label={state.dbName}>
                             <Option value={currentValue} text={currentValue}>
                                 {state.collectionName}
                             </Option>
                         </OptionGroup>
                     )}
-                    {!connectionList && <Option aria-label={l10n.t('Loading…')}>{l10n.t('Loading…')}</Option>}
-                    {connectionList && Object.entries(connectionList).length === 0 && (
+                    {!state.connectionList && <Option aria-label={l10n.t('Loading…')}>{l10n.t('Loading…')}</Option>}
+                    {state.connectionList && Object.entries(state.connectionList).length === 0 && (
                         <Option disabled aria-label={l10n.t('No connections')}>
                             {l10n.t('No connections')}
                         </Option>
                     )}
-                    {connectionList &&
-                        Object.entries(connectionList).map(([databaseId, collections]) => (
+                    {state.connectionList &&
+                        Object.entries(state.connectionList).map(([databaseId, collections]) => (
                             <OptionGroup key={databaseId} label={databaseId}>
                                 {collections.length === 0 && <Option disabled>{l10n.t('No collections')}</Option>}
                                 {collections.map((collectionId) => (
@@ -138,12 +131,12 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
             </MenuTrigger>
             <MenuPopover>
                 <MenuList>
-                    {!connectionList && <MenuItem>{l10n.t('Loading…')}</MenuItem>}
-                    {connectionList && Object.entries(connectionList).length === 0 && (
+                    {!state.connectionList && <MenuItem>{l10n.t('Loading…')}</MenuItem>}
+                    {state.connectionList && Object.entries(state.connectionList).length === 0 && (
                         <MenuItem disabled>{l10n.t('No connections')}</MenuItem>
                     )}
-                    {connectionList &&
-                        Object.entries(connectionList).map(([databaseId, collections]) => (
+                    {state.connectionList &&
+                        Object.entries(state.connectionList).map(([databaseId, collections]) => (
                             <Menu key={databaseId} hasCheckmarks={true} checkedValues={checkedValues}>
                                 <MenuTrigger disableButtonEnhancement>
                                     <MenuSplitGroup>
@@ -183,40 +176,5 @@ export const ConnectionButton = forwardRef(function ConnectionButton(
                 </MenuList>
             </MenuPopover>
         </Menu>
-    );
-
-export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
-    const classes = useClasses();
-    const state = useQueryEditorState();
-    const dispatcher = useQueryEditorDispatcher();
-    const { ref, type } = props;
-
-    const connectToDatabase = useCallback(() => dispatcher.connectToDatabase(), [dispatcher]);
-    const disconnectFromDatabase = useCallback(() => dispatcher.disconnectFromDatabase(), [dispatcher]);
-
-    if (state.isConnected) {
-        return (
-            <ToolbarOverflowButton
-                type={type}
-                ariaLabel={l10n.t('Disconnect')}
-                content={l10n.t('Disconnect')}
-                icon={<DatabasePlugConnectedRegular className={classes.iconDisconnect} />}
-                onClick={disconnectFromDatabase}
-                tooltip={l10n.t('Disconnect from the database')}
-                ref={ref}
-            />
-        );
-    }
-
-    return (
-        <ToolbarOverflowButton
-            type={type}
-            ariaLabel={l10n.t('Connect')}
-            content={l10n.t('Connect')}
-            icon={<DatabasePlugConnectedRegular />}
-            onClick={connectToDatabase}
-            tooltip={l10n.t('Connect to the database')}
-            ref={ref}
-        />
     );
 };

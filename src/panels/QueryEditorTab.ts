@@ -8,7 +8,9 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
+import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
@@ -19,13 +21,13 @@ import {
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
+import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { DocumentTab } from './DocumentTab';
-import { getCosmosDBClientByConnection } from '../cosmosdb/getCosmosClient';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
@@ -54,7 +56,7 @@ export class QueryEditorTab extends BaseTab {
         this.connection = connection;
         this.query = query;
 
-        this.panel.iconPath = getThemedIconPathURI('editor.svg');
+        this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
         if (connection) {
             if (connection.credentials) {
@@ -206,7 +208,7 @@ export class QueryEditorTab extends BaseTab {
                 return;
             }
 
-            const cosmosClient = getCosmosDBClientByConnection(this.connection);
+            const cosmosClient = getCosmosClient(this.connection);
             const databases = await cosmosClient.databases.readAll().fetchAll();
             const collections = await Promise.allSettled(
                 databases.resources.map(async (database) => {
@@ -231,8 +233,7 @@ export class QueryEditorTab extends BaseTab {
                 );
 
             if (errors.length > 0) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-                context.telemetry.properties.error = errors.map((error) => error.reason).join(', ');
+                context.telemetry.properties.error = errors.map((error) => toStringUniversal(error.reason)).join(', ');
             }
 
             await this.channel.postMessage({

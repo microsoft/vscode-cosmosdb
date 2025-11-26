@@ -39,8 +39,25 @@ export abstract class CosmosDBContainerResourceItem
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('files'),
             label: this.model.container.id,
+            tooltip: new vscode.MarkdownString(this.generateTooltip()),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
+    }
+
+    private generateTooltip(): string {
+        const pkPaths = this.model.container.partitionKey?.paths ?? [];
+
+        if (pkPaths.length === 0) {
+            return 'No partition key';
+        }
+
+        const lines: string[] = [];
+        lines.push(`**Partition Keys**`);
+        lines.push('');
+        for (const path of pkPaths) {
+            lines.push(`*${path}*`);
+        }
+        return lines.join('  \n');
     }
 
     protected abstract getChildrenTriggersImpl(): Promise<TreeElement | undefined>;

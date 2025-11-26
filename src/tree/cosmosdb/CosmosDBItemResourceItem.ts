@@ -7,7 +7,9 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
+import { CosmosDBHiddenFields } from '../../constants';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
+import { truncateString } from '../../utils/convertors';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type TreeElement } from '../TreeElement';
@@ -48,7 +50,7 @@ export abstract class CosmosDBItemResourceItem
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('file'),
             label: getDocumentTreeItemLabel(this.model.item),
-            tooltip: new vscode.MarkdownString(this.generateCompactTooltip()),
+            tooltip: new vscode.MarkdownString(this.generateTooltip()),
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
                 title: l10n.t('Open Item'),
@@ -58,37 +60,48 @@ export abstract class CosmosDBItemResourceItem
         };
     }
 
-    private generateCompactTooltip(): string {
+    /**
+     * Maximum number of property rows to show in the tooltip (including ID and partition keys)
+     */
+    private static readonly MAX_TOOLTIP_ROWS = 12;
+    private static readonly MAX_VALUE_LENGTH = 50;
+
+    private generateTooltip(): string {
         const doc = this.model.item ?? {};
         const id: string = (doc.id as string | undefined) ?? (doc._id as string | undefined) ?? '<no id>';
 
         const pkPaths = this.model.container.partitionKey?.paths ?? [];
         const pkValuesRaw = this.getPartitionKeyValuesArray(this.model);
 
+        const pkFieldNames = new Set(pkPaths.map((p) => p.replace(/^\//, '')));
         const lines: string[] = [];
 
-        // ID section
-        lines.push(`**ID:** ${id}`);
+        // ID on its own line
+        lines.push(`**ID:** ${truncateString(id)}`);
+        // Table header
+        lines.push(`| | |`);
+        lines.push(`|--|--|`);
+        // Partition key rows (italic keys)
+        for (let i = 0; i < pkPaths.length; i++) {
+            const fieldName = pkPaths[i].replace(/^\//, '');
+            lines.push(
+                `|*${fieldName}*|${truncateString(this.formatValue(pkValuesRaw[i]), CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`,
+            );
+        }
 
-        // Partition Key section
-        if (pkPaths.length > 0) {
-            lines.push('');
+        // Other properties (excluding id, partition keys, and metadata)
+        const otherKeys = Object.keys(doc).filter(
+            (key) => key !== 'id' && !pkFieldNames.has(key) && !CosmosDBHiddenFields.includes(key),
+        );
 
-            if (pkPaths.length === 1) {
-                const path = pkPaths[0];
-                const raw = pkValuesRaw[0];
-                lines.push('#### Partition Key');
-                lines.push(`  \`${path}\`: ${this.formatValue(raw)}`);
-            } else {
-                lines.push(``);
-                lines.push(`| Partition Key | Value |`);
-                lines.push(`|---|---|`);
-                for (let i = 0; i < pkPaths.length; i++) {
-                    const path = pkPaths[i];
-                    const raw = pkValuesRaw[i];
-                    lines.push(`|${path}|${this.formatValue(raw)}|`);
-                }
+        for (const key of otherKeys) {
+            if (lines.length - 4 >= CosmosDBItemResourceItem.MAX_TOOLTIP_ROWS) {
+                lines.push(`|…|…|`);
+                break;
             }
+            lines.push(
+                `|${key}|${truncateString(this.formatValue(doc[key]), CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`,
+            );
         }
 
         return lines.join('\n');

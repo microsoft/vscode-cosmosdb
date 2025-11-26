@@ -8,7 +8,8 @@ import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBAttachAccountResourceItem } from '../../tree/workspace-view/cosmosdb/CosmosDBAttachAccountResourceItem';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
-import { ExperienceStep } from './ExperienceStep';
+import { CosmosDBConnectionStringStep } from './CosmosDBConnectionStringStep';
+import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export async function newConnection(context: IActionContext, node?: CosmosDBAttachAccountResourceItem): Promise<void> {
@@ -21,8 +22,8 @@ export async function newConnection(context: IActionContext, node?: CosmosDBAtta
 
     const wizard = new AzureWizard(wizardContext, {
         title: l10n.t('New Connection'),
-        promptSteps: [new ExperienceStep()],
-        executeSteps: [],
+        promptSteps: [new CosmosDBConnectionStringStep()],
+        executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,
     });
 

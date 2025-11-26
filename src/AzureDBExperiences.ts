@@ -7,13 +7,18 @@ import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 
 export enum API {
-    Graph = 'Graph',
-    Table = 'Table',
-    Cassandra = 'Cassandra',
     Core = 'Core', // Now called NoSQL
-    PostgresSingle = 'PostgresSingle',
-    PostgresFlexible = 'PostgresFlexible',
     Common = 'Common', // In case we're reporting a common event and still need to provide the value of the API
+    /** @deprecated Graph API is retired */
+    Graph = 'Graph',
+    /** @deprecated Table API is retired */
+    Table = 'Table',
+    /** @deprecated Cassandra API is retired */
+    Cassandra = 'Cassandra',
+    /** @deprecated PostgresSingle API is not supported in this extension */
+    PostgresSingle = 'PostgresSingle',
+    /** @deprecated PostgresFlexible API is not supported in this extension */
+    PostgresFlexible = 'PostgresFlexible',
 }
 
 export enum DBAccountKind {
@@ -33,7 +38,7 @@ enum Tag {
     Cassandra = 'Cassandra',
 }
 
-export type CapabilityName = 'EnableGremlin' | 'EnableTable' | 'EnableCassandra';
+export type CapabilityName = keyof typeof Capability;
 
 export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
@@ -137,7 +142,14 @@ export const PostgresFlexibleExperience: Experience = {
     shortName: 'PostgreSQLFlexible',
 };
 
-const experiencesArray: Experience[] = [CoreExperience, TableExperience, GremlinExperience, CassandraExperience];
+const experiencesArray: Experience[] = [
+    CoreExperience,
+    TableExperience,
+    GremlinExperience,
+    CassandraExperience,
+    PostgresSingleExperience,
+    PostgresFlexibleExperience,
+];
 const experiencesMap = new Map<API, Experience>(
     experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]),
 );

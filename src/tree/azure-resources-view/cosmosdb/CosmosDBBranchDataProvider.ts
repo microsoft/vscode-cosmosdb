@@ -38,12 +38,15 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
             const accountModel = resource;
             const experience = tryGetExperience(resource);
 
-            if (experience?.api === API.Cassandra) {
-                return new NoSqlAccountResourceItem(accountModel, experience);
-            }
-
             if (experience?.api === API.Core) {
                 return makeFilterable(makeSortable(new NoSqlAccountResourceItem(accountModel, experience)));
+            }
+
+            if (experience?.api === API.Cassandra) {
+                context.telemetry.properties.isCassandra = 'true';
+                context.telemetry.properties.deprecated = 'true';
+
+                return new CosmosDBAccountUnsupportedResourceItem(accountModel, experience);
             }
 
             if (experience?.api === API.Graph) {

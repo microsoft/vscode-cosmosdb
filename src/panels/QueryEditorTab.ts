@@ -8,7 +8,9 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
+import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
@@ -19,6 +21,7 @@ import {
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
+import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
@@ -52,6 +55,8 @@ export class QueryEditorTab extends BaseTab {
 
         this.connection = connection;
         this.query = query;
+
+        this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
         if (connection) {
             if (connection.credentials) {
@@ -139,6 +144,10 @@ export class QueryEditorTab extends BaseTab {
                 return this.duplicateTab(payload.params[0] as string);
             case 'copyToClipboard':
                 return this.copyToClipboard(payload.params[0] as string);
+            case 'getConnections':
+                return this.getConnections();
+            case 'setConnection':
+                return this.setConnection(payload.params[0] as string, payload.params[1] as string);
             case 'connectToDatabase':
                 return this.connectToDatabase();
             case 'disconnectFromDatabase':
@@ -188,6 +197,67 @@ export class QueryEditorTab extends BaseTab {
         return super.getCommand(payload);
     }
 
+    private async getConnections(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.getConnections', async (context) => {
+            if (!this.connection) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'setConnectionList',
+                    params: [],
+                });
+                return;
+            }
+
+            const cosmosClient = getCosmosClient(this.connection);
+            const databases = await cosmosClient.databases.readAll().fetchAll();
+            const containers = await Promise.allSettled(
+                databases.resources.map(async (database) => {
+                    const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
+
+                    return containers.resources.map((container) => [database.id, container.id] as string[]);
+                }),
+            );
+
+            const errors = containers.filter((result) => result.status === 'rejected');
+            const connections = containers
+                .filter((result) => result.status === 'fulfilled')
+                .reduce(
+                    (acc, databaseContainers) => {
+                        databaseContainers.value.forEach(([databaseId, containerId]) => {
+                            acc[databaseId] ??= [];
+                            acc[databaseId].push(containerId);
+                        });
+                        return acc;
+                    },
+                    {} as Record<string, string[]>,
+                );
+
+            if (errors.length > 0) {
+                context.telemetry.properties.error = errors.map((error) => toStringUniversal(error.reason)).join(', ');
+            }
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'setConnectionList',
+                params: [connections],
+            });
+        });
+    }
+
+    private setConnection(databaseId: string, containerId: string): Promise<void> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.setConnection', async () => {
+            if (!databaseId || !containerId) {
+                throw new Error(l10n.t('Invalid database or container id'));
+            }
+
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection to set'));
+            }
+
+            await this.updateConnection({ ...this.connection, databaseId, containerId });
+        });
+    }
+
     private async updateConnection(connection?: NoSqlQueryConnection): Promise<void> {
         this.connection = connection;
 
@@ -202,7 +272,6 @@ export class QueryEditorTab extends BaseTab {
             );
 
             if (container.resource === undefined) {
-                // Should be impossible since here we have a connection from the extension
                 throw new Error(l10n.t('Container {0} not found', containerId));
             }
 

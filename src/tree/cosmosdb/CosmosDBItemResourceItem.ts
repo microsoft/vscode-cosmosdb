@@ -77,15 +77,15 @@ export abstract class CosmosDBItemResourceItem
         const lines: string[] = [];
 
         // ID on its own line
-        lines.push(`**ID:** ${truncateString(id)}`);
         // Table header
         lines.push(`| | |`);
         lines.push(`|--|--|`);
+        lines.push(`|**id**|${truncateString(id, CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`);
         // Partition key rows (italic keys)
         for (let i = 0; i < pkPaths.length; i++) {
             const fieldName = pkPaths[i].replace(/^\//, '');
             lines.push(
-                `|*${fieldName}*|${truncateString(this.formatValue(pkValuesRaw[i]), CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`,
+                `|*/${fieldName}*|${truncateString(this.formatValue(pkValuesRaw[i]), CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`,
             );
         }
 

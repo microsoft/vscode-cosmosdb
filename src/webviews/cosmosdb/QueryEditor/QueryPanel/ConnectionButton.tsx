@@ -46,7 +46,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
     }, [state.dbName, state.collectionName]);
 
     const checkedValues = useMemo(() => {
-        return { databaseId: [state.dbName], collectionId: [state.collectionName] };
+        return { databaseId: [state.dbName], containerId: [state.collectionName] };
     }, [state.dbName, state.collectionName]);
 
     const onOpenChange = useCallback(
@@ -59,8 +59,8 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
     );
 
     const onSetConnection = useCallback(
-        (databaseId: string, collectionId: string) => {
-            void dispatcher.setConnection(databaseId, collectionId);
+        (databaseId: string, containerId: string) => {
+            void dispatcher.setConnection(databaseId, containerId);
         },
         [dispatcher],
     );
@@ -69,8 +69,8 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
         (_event: SelectionEvents, data: OptionOnSelectData) => {
             const selected = data.optionValue;
             if (selected) {
-                const [databaseId, collectionId] = selected.split('/');
-                void onSetConnection(databaseId, collectionId);
+                const [databaseId, containerId] = selected.split('/');
+                void onSetConnection(databaseId, containerId);
             }
         },
         [onSetConnection],
@@ -103,16 +103,16 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
                         </Option>
                     )}
                     {state.connectionList &&
-                        Object.entries(state.connectionList).map(([databaseId, collections]) => (
+                        Object.entries(state.connectionList).map(([databaseId, containers]) => (
                             <OptionGroup key={databaseId} label={databaseId}>
-                                {collections.length === 0 && <Option disabled>{l10n.t('No collections')}</Option>}
-                                {collections.map((collectionId) => (
+                                {containers.length === 0 && <Option disabled>{l10n.t('No containers')}</Option>}
+                                {containers.map((containerId) => (
                                     <Option
-                                        key={collectionId}
-                                        value={`${databaseId}/${collectionId}`}
-                                        text={`${databaseId}/${collectionId}`}
+                                        key={containerId}
+                                        value={`${databaseId}/${containerId}`}
+                                        text={`${databaseId}/${containerId}`}
                                     >
-                                        {collectionId}
+                                        {containerId}
                                     </Option>
                                 ))}
                             </OptionGroup>
@@ -136,7 +136,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
                         <MenuItem disabled>{l10n.t('No connections')}</MenuItem>
                     )}
                     {state.connectionList &&
-                        Object.entries(state.connectionList).map(([databaseId, collections]) => (
+                        Object.entries(state.connectionList).map(([databaseId, containers]) => (
                             <Menu key={databaseId} hasCheckmarks={true} checkedValues={checkedValues}>
                                 <MenuTrigger disableButtonEnhancement>
                                     <MenuSplitGroup>
@@ -156,17 +156,17 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
                                 </MenuTrigger>
                                 <MenuPopover>
                                     <MenuList>
-                                        {collections.length === 0 && (
-                                            <MenuItem disabled>{l10n.t('No collections')}</MenuItem>
+                                        {containers.length === 0 && (
+                                            <MenuItem disabled>{l10n.t('No containers')}</MenuItem>
                                         )}
-                                        {collections.map((collectionId) => (
+                                        {containers.map((containerId) => (
                                             <MenuItemCheckbox
-                                                key={collectionId}
-                                                name={'collectionId'}
-                                                value={collectionId}
-                                                onClick={() => void onSetConnection(databaseId, collectionId)}
+                                                key={containerId}
+                                                name={'containerId'}
+                                                value={containerId}
+                                                onClick={() => void onSetConnection(databaseId, containerId)}
                                             >
-                                                {collectionId}
+                                                {containerId}
                                             </MenuItemCheckbox>
                                         ))}
                                     </MenuList>

@@ -76,8 +76,8 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public async getConnections(): Promise<void> {
         await this.sendCommand('getConnections');
     }
-    public async setConnection(databaseId: string, collectionId: string): Promise<void> {
-        await this.sendCommand('setConnection', databaseId, collectionId);
+    public async setConnection(databaseId: string, containerId: string): Promise<void> {
+        await this.sendCommand('setConnection', databaseId, containerId);
     }
 
     public setPageSize(pageSize: number) {

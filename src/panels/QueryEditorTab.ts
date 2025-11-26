@@ -210,7 +210,7 @@ export class QueryEditorTab extends BaseTab {
 
             const cosmosClient = getCosmosClient(this.connection);
             const databases = await cosmosClient.databases.readAll().fetchAll();
-            const collections = await Promise.allSettled(
+            const containers = await Promise.allSettled(
                 databases.resources.map(async (database) => {
                     const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
 
@@ -218,8 +218,8 @@ export class QueryEditorTab extends BaseTab {
                 }),
             );
 
-            const errors = collections.filter((result) => result.status === 'rejected');
-            const connections = collections
+            const errors = containers.filter((result) => result.status === 'rejected');
+            const connections = containers
                 .filter((result) => result.status === 'fulfilled')
                 .reduce(
                     (acc, databaseContainers) => {

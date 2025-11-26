@@ -5,12 +5,11 @@
 
 import * as l10n from '@vscode/l10n';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
+import { Formatters, SlickgridReact, type Column, type GridOption } from 'slickgrid-react';
 import { useColumnMenu } from './ColumnMenu';
 
 type ResultTabViewTreeProps = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: Record<string, any>[];
+    data: Record<string, unknown>[];
 };
 
 interface TreeDataItem {
@@ -35,12 +34,12 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
                     name: 'Field',
                     field: 'field',
                     minWidth: 100,
-                    type: FieldType.string,
+                    type: 'string',
                     formatter: Formatters.tree,
                     cssClass: 'cell-title',
                     filterable: true,
                     sortable: true,
-                },
+                } as Column<string>,
                 { id: 'id_value', name: 'Value', field: 'value', minWidth: 100, filterable: true },
                 { id: 'id_type', name: 'Type', field: 'type', minWidth: 100, filterable: true },
                 { id: 'id', name: 'id', field: 'id', hidden: true },
@@ -218,8 +217,8 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             <SlickgridReact
                 gridId="myGridTree"
                 ref={gridRef} // Attach the reference to SlickGrid
-                gridOptions={gridOptions}
-                columnDefinitions={columnsDef}
+                options={gridOptions}
+                columns={columnsDef}
                 dataset={data}
             />
             {MenuElement}

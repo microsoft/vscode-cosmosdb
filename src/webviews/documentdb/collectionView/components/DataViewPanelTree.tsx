@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import type * as React from 'react';
-import { FieldType, Formatters, SlickgridReact, type GridOption } from 'slickgrid-react';
+import { Formatters, SlickgridReact, type Column, type GridOption } from 'slickgrid-react';
 
 interface Props {
     liveData: { [key: string]: unknown }[];
@@ -17,12 +17,12 @@ export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {
             name: 'Field',
             field: 'field',
             minWidth: 100,
-            type: FieldType.string,
+            type: 'string',
             formatter: Formatters.tree,
             cssClass: 'cell-title',
             filterable: true,
             sortable: true,
-        },
+        } as Column<string>,
         { id: 'id_value', name: 'Value', field: 'value', minWidth: 100, filterable: true },
         { id: 'id_type', name: 'Type', field: 'type', minWidth: 100, filterable: true },
     ];
@@ -67,7 +67,7 @@ export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {
             },
         },
         multiColumnSort: false, // multi-column sorting is not supported with Tree Data, so you need to disable it
-        // disalbing features that would require more polishing to make them production-ready
+        // disabling features that would require more polishing to make them production-ready
         enableColumnPicker: false,
         enableColumnReorder: false,
         enableContextMenu: false,
@@ -81,8 +81,8 @@ export const DataViewPanelTree = ({ liveData }: Props): React.JSX.Element => {
     return (
         <SlickgridReact
             gridId="myGridTree"
-            gridOptions={gridOptions}
-            columnDefinitions={columnsDef}
+            options={gridOptions}
+            columns={columnsDef}
             dataset={liveData}
             onReactGridCreated={() => console.log('Tree View created')}
         />

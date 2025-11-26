@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -42,6 +43,20 @@ export abstract class CosmosDBAccountAttachedResourceItem
         const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
             this.getDatabases(accountInfo, cosmosClient),
         );
+
+        if (databases.length === 0) {
+            // no databases in there:
+            return [
+                createGenericElement({
+                    contextValue: this.contextValue,
+                    id: `${this.id}/no-databases`,
+                    label: l10n.t('Create Database…'),
+                    iconPath: new vscode.ThemeIcon('plus'),
+                    commandId: 'cosmosDB.createDatabase',
+                    commandArgs: [this],
+                }) as TreeElement,
+            ];
+        }
 
         return this.getChildrenImpl(accountInfo, databases);
     }

@@ -359,7 +359,7 @@
   "Index Spec": "Index Spec",
   "Indexes": "Indexes",
   "Info from the webview: ": "Info from the webview: ",
-  "Initial throughput capacity, between {0} and {1} inclusive in increments of {2}. Enter 0 if the account doesn't support throughput.": "Initial throughput capacity, between {0} and {1} inclusive in increments of {2}. Enter 0 if the account doesn't support throughput.",
+  "Initial throughput capacity, between {0} and {1} inclusive in increments of {2}.": "Initial throughput capacity, between {0} and {1} inclusive in increments of {2}.",
   "Initializing…": "Initializing…",
   "Input must be a number": "Input must be a number",
   "Inserted {0} document(s). See output for more details.": "Inserted {0} document(s). See output for more details.",

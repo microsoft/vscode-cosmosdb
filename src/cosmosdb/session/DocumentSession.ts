@@ -391,8 +391,8 @@ export class DocumentSession {
         return false;
     }
 
-    public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.bulkDelete', async (context) => {
+    public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<DeleteStatus | void> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.bulkDelete', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -444,9 +444,8 @@ export class DocumentSession {
                         const abortController = new AbortController();
                         const abortSignal = abortController.signal;
 
-                        token.onCancellationRequested(async () => {
+                        token.onCancellationRequested(() => {
                             status.aborted = true;
-                            await sendResponse();
                             abortController.abort();
                         });
 
@@ -494,7 +493,9 @@ export class DocumentSession {
                     );
                 }
 
-                return sendResponse();
+                await sendResponse();
+
+                return status;
             } catch (error) {
                 await this.errorHandling(error, context);
             }

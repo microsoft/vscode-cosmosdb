@@ -33,6 +33,7 @@ export type TableRecord = {
 export type TableData = {
     headers: string[];
     dataset: TableRecord[];
+    deletedRows: number[];
 };
 
 export type TreeData = {
@@ -178,20 +179,13 @@ export const queryResultToJSON = (queryResult: SerializedQueryResult | null, sel
         return '';
     }
 
-    if (selection) {
-        const selectedDocs = queryResult.documents
-            .map((doc, index) => {
-                if (!selection.includes(index)) {
-                    return null;
-                }
-                return doc;
-            })
-            .filter((doc) => doc !== null);
+    const notDeletedRows = queryResult.documents
+        .map((_, index) => index)
+        .filter((index) => !queryResult.deletedDocuments.includes(index));
+    const selectedRows = selection ? notDeletedRows.filter((index) => selection.includes(index)) : notDeletedRows;
+    const selectedDocs = queryResult.documents.filter((_, index) => selectedRows.includes(index));
 
-        return JSON.stringify(selectedDocs, null, 4);
-    }
-
-    return JSON.stringify(queryResult.documents, null, 4);
+    return JSON.stringify(selectedDocs, null, 4);
 };
 
 export const queryResultToTree = async (
@@ -524,7 +518,7 @@ export const queryResultToTable = async (
     },
 ): Promise<TableData> => {
     if (!queryResult || !queryResult.documents) {
-        return { headers: [], dataset: [] };
+        return { headers: [], dataset: [], deletedRows: [] };
     }
 
     if (isSelectStar(queryResult.query ?? '')) {
@@ -536,7 +530,7 @@ export const queryResultToTable = async (
     const headers = getTableHeaders(queryResult.documents, partitionKey, options);
     const dataset = await getTableDataset(queryResult.documents, partitionKey, options);
 
-    return { headers, dataset };
+    return { headers, dataset, deletedRows: queryResult.deletedDocuments };
 };
 
 export const queryMetricsToTable = async (queryResult: SerializedQueryResult | null): Promise<StatsItem[]> => {

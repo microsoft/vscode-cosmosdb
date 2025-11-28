@@ -6,8 +6,6 @@
 import { DeleteRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
-import { getDocumentId } from '../../../../utils/document';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
@@ -18,25 +16,21 @@ export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
+    const executionId = state.currentExecutionId;
     const isEditDisabled = !state.isEditMode || state.selectedRows.length === 0 || state.isExecuting;
 
     const getSelectedDocuments = useCallback(() => {
-        return state.selectedRows
-            .map((rowIndex): CosmosDBRecordIdentifier | undefined => {
-                const document = state.currentQueryResult?.documents[rowIndex];
-                return document ? getDocumentId(document, state.partitionKey) : undefined;
-            })
-            .filter((document) => document !== undefined);
+        return state.selectedRows.filter((rowIndex) => !state.currentQueryResult?.deletedDocuments.includes(rowIndex));
     }, [state]);
 
     const deleteSelectedItem = useCallback(() => {
         const selectedDocuments = getSelectedDocuments();
         if (selectedDocuments.length === 1) {
-            void dispatcher.deleteDocument(selectedDocuments[0]);
+            void dispatcher.deleteDocument(executionId, selectedDocuments[0]);
         } else {
-            void dispatcher.deleteDocuments(selectedDocuments);
+            void dispatcher.deleteDocuments(executionId, selectedDocuments);
         }
-    }, [dispatcher, getSelectedDocuments]);
+    }, [dispatcher, executionId, getSelectedDocuments]);
 
     const deleteItemHotkeyTooltip = useMemo(
         () =>

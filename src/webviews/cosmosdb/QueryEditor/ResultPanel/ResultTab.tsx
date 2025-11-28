@@ -184,6 +184,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                         <ResultTabViewTable
                             headers={viewData.table?.headers ?? []}
                             dataset={viewData.table?.dataset ?? []}
+                            deletedRows={viewData.table?.deletedRows ?? []}
                         />
                     )}
                     {tableViewMode === 'Tree' && <ResultTabViewTree data={viewData.tree ?? []} />}

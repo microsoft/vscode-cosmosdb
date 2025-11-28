@@ -21,6 +21,7 @@ import {
     type QueryMetadata,
     type QueryResultRecord,
 } from '../types/queryResult';
+import { DocumentSession } from './DocumentSession';
 import { QuerySessionResult } from './QuerySessionResult';
 
 export class QuerySession {
@@ -234,6 +235,56 @@ export class QuerySession {
                 });
             }
         });
+    }
+
+    public getDocumentId(row: number): Promise<QueryResultRecord | undefined> {
+        const result = this.sessionResult.getResult(this.currentIteration);
+        if (!result) {
+            throw new Error('No result found for current iteration');
+        }
+
+        const document = result.documents[row];
+        if (!document) {
+            throw new Error(`No document found for row: ${row}`);
+        }
+
+        const session = new DocumentSession(this.connection, this.channel);
+        return session.getDocumentId(document);
+    }
+
+    public async deleteDocument(row: number): Promise<void> {
+        const result = this.sessionResult.getResult(this.currentIteration);
+        if (!result) {
+            throw new Error('No result found for current iteration');
+        }
+
+        const document = result.documents[row];
+        if (!document) {
+            throw new Error(`No document found for row: ${row}`);
+        }
+
+        const session = new DocumentSession(this.connection, this.channel);
+        const documentId = await session.getDocumentId(document);
+
+        if (!documentId) {
+            throw new Error('Document id not found');
+        }
+
+        const isDeleted = await session.delete(documentId);
+        if (isDeleted) {
+            result.deletedDocuments.push(row);
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'queryResults',
+                params: [this.id, this.sessionResult.getSerializedResult(this.currentIteration), this.currentIteration],
+            });
+        }
+    }
+
+    public bulkDelete(_rows: number[]): Promise<void> {
+        // TODO: implement bulk delete
+        throw new Error('Method not implemented.');
     }
 
     public dispose(): void {

@@ -16,7 +16,7 @@ export class CosmosDBThroughputStep extends AzureWizardPromptStep<CreateContaine
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {
         const prompt = l10n.t(
-            "Initial throughput capacity, between {0} and {1} inclusive in increments of {2}. Enter 0 if the account doesn't support throughput.",
+            'Initial throughput capacity, between {0} and {1} inclusive in increments of {2}.',
             minThroughput,
             maxThroughput,
             throughputStepSize,
@@ -39,10 +39,6 @@ export class CosmosDBThroughputStep extends AzureWizardPromptStep<CreateContaine
 
     public validateInput(throughput: string | undefined): string | undefined {
         throughput = throughput ? throughput.trim() : '';
-
-        if (throughput === '0') {
-            return undefined;
-        }
 
         try {
             const value = Number(throughput);

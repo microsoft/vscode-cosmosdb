@@ -3,17 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type ContainerDefinition,
-    type DatabaseDefinition,
-    type Resource,
-    type StoredProcedureDefinition,
-} from '@azure/cosmos';
 import { type AccountInfo } from '../AccountInfo';
+import { type ContainerResource, type DatabaseResource, type StoredProcedureResource } from './CosmosDBTypes';
 
 export type CosmosDBStoredProcedureModel = {
     accountInfo: AccountInfo;
-    database: DatabaseDefinition & Resource;
-    container: ContainerDefinition & Resource;
-    procedure: StoredProcedureDefinition & Resource;
+    database: DatabaseResource;
+    container: ContainerResource;
+    procedure: StoredProcedureResource;
 };

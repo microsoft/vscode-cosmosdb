@@ -71,7 +71,6 @@
   },
   "devDependencies": {
     "@eslint/js": "~9.39.1",
-    "@fluentui/react-icons-font-subsetting-webpack-plugin": "^2.0.315",
     "@pmmmwh/react-refresh-webpack-plugin": "~0.6.2",
     "@statoscope/webpack-plugin": "^5.29.0",
     "@types/jest": "~30.0.0",
@@ -144,7 +143,7 @@
     "@trpc/server": "~11.7.2",
     "@vscode/l10n": "~0.0.18",
     "es-toolkit": "~1.42.0",
-    "monaco-editor": "~0.54.0",
+    "monaco-editor": "~0.52.2",
     "react-hotkeys-hook": "~5.2.1",
     "react-resizable-panels": "~3.0.6",
     "semver": "~7.7.3",

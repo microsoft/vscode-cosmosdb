@@ -357,7 +357,7 @@ export class HotkeyCommandService<Scope extends HotkeyScope, Command extends Hot
             if (handlers && handlers.size > 0) {
                 const promises = Array.from(handlers)
                     .filter((handler) => this.isHandlerEnabled(scope, command, handler))
-                    .map((handler) => handler(event, ...params));
+                    .map(async (handler) => handler(event, ...params));
                 await Promise.all(promises);
             }
         }

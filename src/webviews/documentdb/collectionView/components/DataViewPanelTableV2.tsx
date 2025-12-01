@@ -144,8 +144,8 @@ export function DataViewPanelTableV2({ liveHeaders, liveData, handleStepIn }: Pr
             <SlickgridReact
                 gridId="myGrid"
                 ref={gridRef} // Attach the reference to SlickGrid
-                gridOptions={gridOptions}
-                columnDefinitions={gridColumns}
+                options={gridOptions}
+                columns={gridColumns}
                 dataset={liveData}
                 onDblClick={(event) => onCellDblClick(event)}
                 // debouncing here as multiple events are fired on multiselect

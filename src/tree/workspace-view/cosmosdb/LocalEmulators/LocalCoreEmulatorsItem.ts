@@ -7,7 +7,7 @@ import { nonNullValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../../../constants';
+import { getThemeAgnosticIconPath, wellKnownEmulatorPassword } from '../../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
@@ -54,7 +54,12 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                         const { id, name, properties, secrets } = await migrateRawEmulatorItemToHashed(item);
                         const api: API = nonNullValue(properties?.api, 'api') as API;
                         const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
-                        const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
+
+                        // Use stored connection string, or fallback to default emulator connection string
+                        const connectionString: string =
+                            secrets?.[0] ||
+                            `AccountEndpoint=https://localhost:8081/;AccountKey=${wellKnownEmulatorPassword};`;
+
                         const experience = getExperienceFromApi(api);
                         const accountModel: CosmosDBAttachedAccountModel = {
                             id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id

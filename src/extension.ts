@@ -308,6 +308,7 @@ export async function isVCoreAndRURolloutEnabled(): Promise<boolean | undefined>
         // Suppress error display and don't rethrow - this is feature detection that should fail gracefully
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.rethrow = false;
+        context.telemetry.properties.isActivationEvent = 'true';
 
         const azureResourcesExtensionApi = await apiUtils.getAzureExtensionApi<
             AzureResourcesExtensionApi & { isDocumentDbExtensionSupportEnabled: () => boolean }

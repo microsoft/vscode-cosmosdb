@@ -3,46 +3,30 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line import/no-internal-modules
-import type * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { MonacoEditor } from '../../../MonacoEditor';
+import { useEffect, useMemo, useRef } from 'react';
+import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const QueryMonaco = () => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    const editorRef = useRef<monacoEditor.editor.IStandaloneCodeEditor | null>(null);
+    const disposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
 
-    const cursorSelectionHandler = useCallback(
-        (event: monacoEditor.editor.ICursorSelectionChangedEvent) => {
-            if (!editorRef.current) {
-                return;
-            }
-
-            const selectedContent: string = editorRef.current.getModel()?.getValueInRange(event.selection) ?? '';
+    const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
+        // Set up cursor selection event listener
+        disposableRef.current = editor.onDidChangeCursorSelection((event) => {
+            const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
             dispatcher.setSelectedText(selectedContent);
-        },
-        [dispatcher],
-    );
+        });
+    };
 
     useEffect(() => {
-        if (!editorRef.current) {
-            return;
-        }
-
-        const disposable = editorRef.current.onDidChangeCursorSelection(cursorSelectionHandler);
-
+        // Cleanup on unmount
         return () => {
-            disposable.dispose();
+            disposableRef.current?.dispose();
         };
-    }, [cursorSelectionHandler]);
-
-    const onMount = (editor: monacoEditor.editor.IStandaloneCodeEditor) => {
-        // Store the editor instance in ref
-        editorRef.current = editor;
-    };
+    }, []);
 
     const onChange = useMemo(
         () => (newValue: string) => {

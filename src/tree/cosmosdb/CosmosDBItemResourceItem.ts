@@ -84,9 +84,7 @@ export abstract class CosmosDBItemResourceItem
         // Partition key rows (italic keys)
         for (let i = 0; i < pkPaths.length; i++) {
             const fieldName = pkPaths[i].replace(/^\//, '');
-            lines.push(
-                `|*/${fieldName}*|${truncateString(this.formatValue(pkValuesRaw[i]), CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`,
-            );
+            lines.push(`|*/${fieldName}*|${this.formatValue(pkValuesRaw[i])}|`);
         }
 
         // Other properties (excluding id, partition keys, and metadata)
@@ -99,9 +97,7 @@ export abstract class CosmosDBItemResourceItem
                 lines.push(`|…|…|`);
                 break;
             }
-            lines.push(
-                `|${key}|${truncateString(this.formatValue(doc[key]), CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`,
-            );
+            lines.push(`|${key}|${this.formatValue(doc[key])}|`);
         }
 
         return lines.join('\n');
@@ -124,22 +120,15 @@ export abstract class CosmosDBItemResourceItem
         }
         if (typeof value === 'object') {
             try {
-                const json = JSON.stringify(value);
-                // Truncate long objects
-                if (json.length > 100) {
-                    return '`' + json.substring(0, 97) + '…`';
-                }
+                const json = truncateString(JSON.stringify(value), CosmosDBItemResourceItem.MAX_VALUE_LENGTH);
                 return '`' + json + '`';
             } catch {
                 return '`[object]`';
             }
         }
         if (typeof value === 'string') {
-            // Truncate long strings
-            if (value.length > 100) {
-                return `"${value.substring(0, 97)}…"`;
-            }
-            return `"${value}"`;
+            const truncatedValue = truncateString(value, CosmosDBItemResourceItem.MAX_VALUE_LENGTH);
+            return '`' + truncatedValue + '`';
         }
         if (typeof value === 'number' || typeof value === 'boolean') {
             return String(value);

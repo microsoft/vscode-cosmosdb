@@ -60,6 +60,7 @@ export const ResultTab = ({ className }: ResultTabProps) => {
     const [viewData, setViewData] = useState<ViewData>({});
     const [isLoading, setIsLoading] = useState(false);
     const [resultCount, setResultCount] = useState<number>(0);
+    const [deletedRows, setDeletedRows] = useState<number>(0);
     const [hasPreviousData, setHasPreviousData] = useState<boolean>(false);
 
     // Remove the second useEffect entirely and modify the first one
@@ -80,8 +81,6 @@ export const ResultTab = ({ className }: ResultTabProps) => {
         setHasPreviousData(true);
         // Set loading state first
         setIsLoading(true);
-        // Update result count
-        setResultCount(currentQueryResult?.documents.length ?? -1);
 
         // Create an abort controller to cancel operations if needed
         const abortController = new AbortController();
@@ -91,10 +90,15 @@ export const ResultTab = ({ className }: ResultTabProps) => {
         const needsCalculation =
             (tableViewMode === 'Table' && !viewData.table) ||
             (tableViewMode === 'Tree' && !viewData.tree) ||
-            (tableViewMode === 'JSON' && !viewData.json);
+            (tableViewMode === 'JSON' && !viewData.json) ||
+            deletedRows !== (viewData.table?.deletedRows.length ?? 0);
 
         // Only calculate if needed
         if (needsCalculation) {
+            // Update result count
+            setResultCount(currentQueryResult?.documents.length ?? -1);
+            setDeletedRows(currentQueryResult?.deletedDocuments.length ?? 0);
+
             // Async calculation function with proper error handling
             const calculateData = async () => {
                 try {
@@ -147,7 +151,16 @@ export const ResultTab = ({ className }: ResultTabProps) => {
         return () => {
             abortController.abort();
         };
-    }, [tableViewMode, currentQueryResult, partitionKey, viewData.table, viewData.tree, viewData.json, isExecuting]);
+    }, [
+        tableViewMode,
+        currentQueryResult,
+        partitionKey,
+        viewData.table,
+        viewData.tree,
+        viewData.json,
+        isExecuting,
+        deletedRows,
+    ]);
 
     if (!currentQueryResult || currentQueryResult.documents.length === 0) {
         return (

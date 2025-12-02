@@ -6,7 +6,7 @@
 import { AzureWizardPromptStep, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
@@ -62,10 +62,9 @@ export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateConta
         }
 
         try {
-            const { endpoint, credentials, isEmulator } = context.accountInfo;
-            const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-
-            const result = await cosmosClient.database(context.databaseId).containers.readAll().fetchAll();
+            const result = await withClaimsChallengeHandling(context.accountInfo, async (cosmosClient) =>
+                cosmosClient.database(context.databaseId).containers.readAll().fetchAll(),
+            );
 
             if (result.resources && result.resources.filter((c) => c.id === name).length > 0) {
                 return l10n.t('The container "{name}" already exists in the database "{databaseId}".', {

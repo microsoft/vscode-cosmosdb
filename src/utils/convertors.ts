@@ -60,6 +60,44 @@ type StackEntry = {
 
 const MAX_TREE_LEVEL_LENGTH = 100;
 
+export const toStringUniversal = (value: unknown): string => {
+    // Handle null/undefined explicitly
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+
+    // Handle primitives
+    if (typeof value !== 'object') {
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+        return String(value);
+    }
+
+    // Handle Error objects - extract message
+    if (value instanceof Error) {
+        return value.message || value.toString();
+    }
+
+    // Try JSON.stringify for objects/arrays
+    try {
+        return JSON.stringify(value, null, 2); // Pretty print with indentation
+    } catch {
+        // Circular reference or other JSON error
+        // Try Object.prototype.toString for better type info
+        const typeString = Object.prototype.toString.call(value) as string;
+
+        // Try to get constructor name
+        try {
+            const constructor = (value as Record<string, unknown>)?.constructor?.name;
+            if (constructor && constructor !== 'Object') {
+                return `[${constructor}]`;
+            }
+        } catch {
+            // Ignore
+        }
+
+        return typeString; // e.g., "[object Array]", "[object Date]"
+    }
+};
+
 /**
  * Checks if a value is a NonePartitionKey (empty object used by Cosmos DB SDK)
  * NonePartitionKeyLiteral from @azure/cosmos is defined as {} and represents

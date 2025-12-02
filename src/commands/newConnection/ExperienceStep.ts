@@ -13,29 +13,26 @@ import { MongoExecuteStep } from './MongoExecuteStep';
 import { MongoPasswordStep } from './MongoPasswordStep';
 import { MongoUsernameStep } from './MongoUsernameStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
-import { PostgresConnectionStringStep } from './PostgresConnectionStringStep';
 import { PostgresExecuteStep } from './PostgresExecuteStep';
-import { PostgresPasswordStep } from './PostgresPasswordStep';
-import { PostgresUsernameStep } from './PostgresUsernameStep';
 
 export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
         context.experience = await pickExperience(context, context.quickPickType);
     }
 
-    public async getSubWizard(
-        context: NewConnectionWizardContext,
-    ): Promise<IWizardOptions<NewConnectionWizardContext>> {
+    public getSubWizard(context: NewConnectionWizardContext): Promise<IWizardOptions<NewConnectionWizardContext>> {
         const promptSteps: AzureWizardPromptStep<NewConnectionWizardContext>[] = [];
         const executeSteps: AzureWizardExecuteStep<NewConnectionWizardContext>[] = [];
         const api = context.experience?.api;
 
         if (api === API.PostgresSingle || api === API.PostgresFlexible) {
+            /* Postgres steps are now deprecated
             promptSteps.push(
                 new PostgresConnectionStringStep(),
                 new PostgresUsernameStep(),
                 new PostgresPasswordStep(),
             );
+            */
             executeSteps.push(new PostgresExecuteStep());
         } else if (api === API.MongoDB || api === API.MongoClusters) {
             promptSteps.push(new MongoConnectionStringStep(), new MongoUsernameStep(), new MongoPasswordStep());
@@ -44,7 +41,7 @@ export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardCon
             promptSteps.push(new CosmosDBConnectionStringStep());
             executeSteps.push(new CosmosDBExecuteStep());
         }
-        return { promptSteps, executeSteps };
+        return Promise.resolve({ promptSteps, executeSteps });
     }
 
     public shouldPrompt(context: NewConnectionWizardContext): boolean {

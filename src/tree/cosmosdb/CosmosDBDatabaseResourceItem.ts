@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ContainerDefinition, type CosmosClient, type Resource } from '@azure/cosmos';
-import { createContextValue } from '@microsoft/vscode-azext-utils';
+import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
+import { l10n } from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getCosmosClient } from '../../cosmosdb/getCosmosClient';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { type TreeElement } from '../TreeElement';
@@ -30,11 +31,24 @@ export abstract class CosmosDBDatabaseResourceItem
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const { endpoint, credentials, isEmulator } = this.model.accountInfo;
-        const cosmosClient = getCosmosClient(endpoint, credentials, isEmulator);
-        const containers = await this.getContainers(cosmosClient);
+        const containers = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
+            this.getContainers(cosmosClient),
+        );
         const sortedContainers = containers.sort((a, b) => a.id.localeCompare(b.id));
 
+        if (containers.length === 0) {
+            // no databases in there:
+            return [
+                createGenericElement({
+                    contextValue: this.contextValue,
+                    id: `${this.id}/no-containers`,
+                    label: l10n.t('Create Container…'),
+                    iconPath: new vscode.ThemeIcon('plus'),
+                    commandId: 'cosmosDB.createContainer',
+                    commandArgs: [this],
+                }) as TreeElement,
+            ];
+        }
         countExperienceUsageForSurvey(ExperienceKind.NoSQL, UsageImpact.Low);
         return this.getChildrenImpl(sortedContainers);
     }

@@ -8,8 +8,9 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { KeyValueStore } from '../../KeyValueStore';
 import * as vscodeUtil from '../../utils/vscodeUtils';
-import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../NoSqlCodeLensProvider';
-import { getCosmosClient } from '../getCosmosClient';
+import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export async function getNoSqlQueryPlan(
     _context: IActionContext,
@@ -32,10 +33,11 @@ export async function getNoSqlQueryPlan(
             l10n.t('Unable to get query plan due to missing node data. Please connect to a Cosmos DB container node.'),
         );
     } else {
-        const { databaseId, containerId, endpoint, credentials, isEmulator } =
-            connectedCollection as NoSqlQueryConnection;
-        const client = getCosmosClient(endpoint, credentials, isEmulator);
-        const response = await client.database(databaseId).container(containerId).getQueryPlan(queryText);
+        const connection = connectedCollection as NoSqlQueryConnection;
+        const { databaseId, containerId } = connection;
+        const response = await withClaimsChallengeHandling(connection, async (client) =>
+            client.database(databaseId).container(containerId).getQueryPlan(queryText),
+        );
         await vscodeUtil.showNewFile(
             JSON.stringify(response.result, undefined, 2),
             `query results for ${containerId}`,

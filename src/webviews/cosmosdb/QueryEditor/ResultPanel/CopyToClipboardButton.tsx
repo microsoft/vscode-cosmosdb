@@ -6,21 +6,18 @@
 import { Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, ToolbarButton, Tooltip } from '@fluentui/react-components';
 import { DocumentCopyRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { type ForwardedRef, forwardRef, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { queryMetricsToJSON, queryResultToJSON } from '../../../../utils/convertors';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
-export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
-    props: ToolbarOverflowItemProps & { selectedTab: string },
-    ref: ForwardedRef<HTMLButtonElement>,
-) {
+export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> & { selectedTab: string }) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
 
-    const { selectedTab } = props;
+    const { ref, selectedTab, type } = props;
     const hasSelection = state.selectedRows.length > 1; // If one document selected, it's not a selection
     const tooltipClipboardContent = hasSelection
         ? l10n.t('Copy selected items to clipboard')
@@ -77,7 +74,7 @@ export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
     return (
         <Menu>
             <MenuTrigger>
-                {props.type === 'button' ? (
+                {type === 'button' ? (
                     <Tooltip
                         content={tooltipClipboardContent + copyToClipboardHotkeyTooltip}
                         relationship="label"
@@ -110,4 +107,4 @@ export const CopyToClipboardButton = forwardRef(function CopyToClipboardButton(
             </MenuPopover>
         </Menu>
     );
-});
+};

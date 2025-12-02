@@ -7,8 +7,8 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
-import { DocumentFileDescriptor } from '../../cosmosdb/fs/DocumentFileDescriptor';
-import { ext } from '../../extensionVariables';
+import { createNoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { DocumentTab } from '../../panels/DocumentTab';
 import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
@@ -29,10 +29,19 @@ export async function cosmosDBOpenItem(context: IActionContext, node?: CosmosDBI
 
     context.telemetry.properties.experience = node.experience.api;
 
+    DocumentTab.render(
+        createNoSqlQueryConnection(node),
+        'edit',
+        node.documentId ?? node.model.item,
+        vscode.ViewColumn.Active,
+    );
+
+    /* Leaving the old implementation commented out for now in case we want to revert
     const fsNode = new DocumentFileDescriptor(node.id, node.model, node.experience);
     // Clear un-uploaded local changes to the document before opening https://github.com/microsoft/vscode-cosmosdb/issues/1619
     ext.fileSystem.fireChangedEvent(fsNode);
     await ext.fileSystem.showTextDocument(fsNode);
+    */
 
     const experienceKind = [API.MongoDB, API.MongoClusters].includes(node.experience.api)
         ? ExperienceKind.Mongo

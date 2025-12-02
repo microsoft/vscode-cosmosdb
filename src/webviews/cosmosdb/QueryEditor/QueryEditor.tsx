@@ -4,10 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from '@fluentui/react-components';
-import { Allotment } from 'allotment';
-// eslint-disable-next-line import/no-internal-modules
-import 'allotment/dist/style.css';
 import { useContext } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useHotkeyScope } from '../../common/hotkeys';
 import { WebviewContext } from '../../WebviewContext';
 import {
@@ -23,7 +21,41 @@ const useStyles = makeStyles({
     root: {
         display: 'grid',
         gridTemplateRows: '100vh',
-        // minWidth: '520px',
+    },
+    panelResizeHandle: {
+        height: '1px',
+        width: '100%',
+        position: 'relative',
+        cursor: 'row-resize',
+
+        // Expand the interactive area without affecting layout
+        '&::before': {
+            position: 'absolute',
+            content: '""',
+            width: '100%',
+            top: '-4px', // Extend 4px above
+            bottom: '-4px', // Extend 4px below (total 8px + 1px = 9px interactive area)
+            backgroundColor: 'transparent',
+            zIndex: 1,
+        },
+
+        // Visual indicator
+        '&::after': {
+            position: 'absolute',
+            content: '""',
+            width: '100%',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '1px',
+            backgroundColor: 'rgba(128, 128, 128, 0.35)',
+            pointerEvents: 'none',
+            transition: 'background-color 0.2s ease-out',
+        },
+
+        '&:hover::after': {
+            height: '4px',
+            backgroundColor: '#007fd4',
+        },
     },
 });
 
@@ -37,14 +69,15 @@ export const QueryEditor = () => {
     return (
         <div className={styles.root}>
             <WithQueryEditorContext channel={channel} vscodeApi={vscodeApi}>
-                <Allotment vertical={true} defaultSizes={[20, 80]}>
-                    <Allotment.Pane minSize={100} maxSize={800} preferredSize={'20%'}>
+                <PanelGroup direction={'vertical'}>
+                    <Panel minSize={10} maxSize={80} defaultSize={20}>
                         <QueryPanel />
-                    </Allotment.Pane>
-                    <Allotment.Pane preferredSize={'80%'}>
+                    </Panel>
+                    <PanelResizeHandle className={styles.panelResizeHandle} />
+                    <Panel defaultSize={80}>
                         <ResultPanel />
-                    </Allotment.Pane>
-                </Allotment>
+                    </Panel>
+                </PanelGroup>
             </WithQueryEditorContext>
         </div>
     );

@@ -105,7 +105,7 @@ export function makeSortable<T extends TreeElement>(
             }
 
             // For other properties we have to call getTreeItem to ensure we have the correct value
-            const promises = items.map((item) => item.getTreeItem());
+            const promises = items.map(async (item) => item.getTreeItem());
             return Promise.allSettled(promises).then((results) => {
                 return results.map((result) =>
                     result.status === 'fulfilled' && result.value

@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { API } from '../../AzureDBExperiences';
-import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';

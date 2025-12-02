@@ -4,13 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
-import { getCosmosClient, getCosmosDBEntraIdCredential } from '../../cosmosdb/getCosmosClient';
+import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { rejectOnTimeout } from '../../utils/timeout';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
@@ -38,8 +40,23 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
     public async getChildren(): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
-        const cosmosClient = getCosmosClient(accountInfo.endpoint, accountInfo.credentials, accountInfo.isEmulator);
-        const databases = await this.getDatabases(accountInfo, cosmosClient);
+        const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
+            this.getDatabases(accountInfo, cosmosClient),
+        );
+
+        if (databases.length === 0) {
+            // no databases in there:
+            return [
+                createGenericElement({
+                    contextValue: this.contextValue,
+                    id: `${this.id}/no-databases`,
+                    label: l10n.t('Create Database…'),
+                    iconPath: new vscode.ThemeIcon('plus'),
+                    commandId: 'cosmosDB.createDatabase',
+                    commandArgs: [this],
+                }) as TreeElement,
+            ];
+        }
 
         return this.getChildrenImpl(accountInfo, databases);
     }

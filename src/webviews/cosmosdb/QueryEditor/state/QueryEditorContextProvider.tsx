@@ -74,6 +74,12 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public async disconnectFromDatabase(): Promise<void> {
         await this.sendCommand('disconnectFromDatabase');
     }
+    public async getConnections(): Promise<void> {
+        await this.sendCommand('getConnections');
+    }
+    public async setConnection(databaseId: string, containerId: string): Promise<void> {
+        await this.sendCommand('setConnection', databaseId, containerId);
+    }
 
     public setPageSize(pageSize: number) {
         void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
@@ -152,6 +158,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('databaseDisconnected', () => {
             this.dispatch({ type: 'databaseDisconnected' });
+        });
+
+        this.channel.on('setConnectionList', (connectionList?: Record<string, string[]>) => {
+            this.dispatch({ type: 'setConnectionList', connectionList });
         });
 
         this.channel.on('executionStarted', (executionId: string, startExecutionTime: number) => {

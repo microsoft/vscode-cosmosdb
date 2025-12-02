@@ -193,5 +193,9 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
             this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
         });
+
+        this.channel.on('queryGenerated', (generatedQuery: string) => {
+            this.insertText(generatedQuery);
+        });
     }
 }

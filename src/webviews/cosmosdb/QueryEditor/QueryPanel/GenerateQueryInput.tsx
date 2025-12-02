@@ -3,12 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, ProgressBar, makeStyles } from '@fluentui/react-components';
+import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
 import { SendFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
+
+interface ModelInfo {
+    id: string;
+    name: string;
+    family: string;
+    vendor: string;
+}
 
 const useStyles = makeStyles({
     container: {
@@ -90,6 +97,47 @@ export const GenerateQueryInput = () => {
     const dispatch = useQueryEditorStateDispatch();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [lineCount, setLineCount] = useState(1);
+    const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+    const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+
+    // Get display name for currently selected model
+    const selectedModel = availableModels.find(m => m.id === selectedModelId) ?? availableModels[0];
+    const modelDisplayName = selectedModel?.name ?? 'Copilot';
+
+    // Calculate line count based on text content and textarea width
+    const calculateLineCount = (text: string, textarea: HTMLTextAreaElement | null) => {
+        if (!textarea || !text) {
+            return 1;
+        }
+
+        // Count explicit line breaks
+        const explicitLines = text.split('\n');
+
+        // For each line, estimate wrapped lines based on character count and textarea width
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) return explicitLines.length;
+
+        const computedStyle = window.getComputedStyle(textarea);
+        context.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+
+        const textareaWidth = textarea.clientWidth - 4; // Account for padding
+        let totalLines = 0;
+
+        for (const line of explicitLines) {
+            if (line.length === 0) {
+                totalLines += 1;
+            } else {
+                const textWidth = context.measureText(line).width;
+                const wrappedLines = Math.max(1, Math.ceil(textWidth / textareaWidth));
+                totalLines += wrappedLines;
+            }
+        }
+
+        return Math.max(1, totalLines);
+    };
 
     // Listen for queryGenerated event to stop loading
     useEffect(() => {
@@ -98,6 +146,55 @@ export const GenerateQueryInput = () => {
         };
         void channel.on('queryGenerated', handler as never);
     }, [channel]);
+
+    // Listen for availableModels event
+    useEffect(() => {
+        const handler = (models: ModelInfo[], savedModelId: string | null) => {
+            setAvailableModels(models);
+            if (savedModelId && models.some(m => m.id === savedModelId)) {
+                setSelectedModelId(savedModelId);
+            } else if (models.length > 0) {
+                setSelectedModelId(models[0].id);
+            }
+        };
+        void channel.on('availableModels', handler as never);
+    }, [channel]);
+
+    // Fetch available models when input becomes visible
+    useEffect(() => {
+        if (state.showGenerateInput) {
+            void channel.postMessage({
+                type: 'event',
+                name: 'command',
+                params: [
+                    {
+                        commandName: 'getAvailableModels',
+                        params: [],
+                    },
+                ],
+            });
+        }
+    }, [state.showGenerateInput, channel]);
+
+    // Handle model selection change
+    const handleModelChange = useCallback(
+        (data: OptionOnSelectData) => {
+            const modelId = data.optionValue as string;
+            setSelectedModelId(modelId);
+            // Persist the selection
+            void channel.postMessage({
+                type: 'event',
+                name: 'command',
+                params: [
+                    {
+                        commandName: 'setSelectedModel',
+                        params: [modelId],
+                    },
+                ],
+            });
+        },
+        [channel],
+    );
 
     if (!state.showGenerateInput) {
         return null;
@@ -147,21 +244,41 @@ export const GenerateQueryInput = () => {
         <div className={styles.container}>
             <div className={styles.chatBox}>
                 <textarea
+                    ref={textareaRef}
                     className={styles.textarea}
                     placeholder={l10n.t('Ask Copilot to generate the query for you')}
                     value={input}
                     onChange={(e) => {
-                        setInput(e.currentTarget.value);
-                        e.currentTarget.style.height = 'auto';
-                        e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
+                        const newValue = e.currentTarget.value;
+                        setInput(newValue);
+                        const lines = calculateLineCount(newValue, textareaRef.current);
+                        setLineCount(lines);
                     }}
                     onKeyDown={handleKeyDown}
                     disabled={isLoading}
                     rows={1}
+                    style={{ height: `${Math.max(1, lineCount) * 17}px` }}
                 />
                 {isLoading && <ProgressBar className={styles.progressBar} />}
                 <div className={styles.footer}>
-                    <div className={styles.modelLabel}>Copilot</div>
+                    {availableModels.length > 1 ? (
+                        <Dropdown
+                            onOptionSelect={(_event, data) => handleModelChange(data)}
+                            style={{ minWidth: '100px', maxWidth: '160px', fontSize: '11px' }}
+                            size="small"
+                            value={modelDisplayName}
+                            selectedOptions={selectedModelId ? [selectedModelId] : []}
+                            disabled={isLoading}
+                        >
+                            {availableModels.map((model) => (
+                                <Option key={model.id} value={model.id} style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}>
+                                    {model.name}
+                                </Option>
+                            ))}
+                        </Dropdown>
+                    ) : (
+                        <div className={styles.modelLabel}>{modelDisplayName}</div>
+                    )}
                     <Button
                         className={styles.button}
                         icon={<SendFilled />}

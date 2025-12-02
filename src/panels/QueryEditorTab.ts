@@ -18,6 +18,7 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
+import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
@@ -28,6 +29,7 @@ import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
+const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -185,6 +187,12 @@ export class QueryEditorTab extends BaseTab {
                 return this.updateQueryHistory(payload.params[0] as string);
             case 'generateQuery':
                 return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
+            case 'getSelectedModelName':
+                return this.getSelectedModelName();
+            case 'getAvailableModels':
+                return this.getAvailableModels();
+            case 'setSelectedModel':
+                return this.setSelectedModel(payload.params[0] as string);
         }
 
         return super.getCommand(payload);
@@ -602,19 +610,16 @@ When the user provides context about what they need, generate a complete Cosmos 
 Always ensure queries are efficient and follow Cosmos DB best practices.`;
 
             try {
-                // First, try to get the user's currently selected model
-                let models = await vscode.lm.selectChatModels();
-
-                // If no model is selected, fall back to Copilot GPT-4
-                if (models.length === 0) {
-                    models = await vscode.lm.selectChatModels({ vendor: 'copilot', family: 'gpt-4' });
-                }
+                const models = await vscode.lm.selectChatModels();
 
                 if (models.length === 0) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
                 }
 
-                const model = models[0];
+                // Use saved model selection or first available
+                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
                 const messages = [
                     new vscode.LanguageModelChatMessage(
                         vscode.LanguageModelChatMessageRole.User,
@@ -635,7 +640,7 @@ Always ensure queries are efficient and follow Cosmos DB best practices.`;
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'queryGenerated',
-                    params: [finalQuery],
+                    params: [finalQuery, model.name],
                 });
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
@@ -647,5 +652,69 @@ Always ensure queries are efficient and follow Cosmos DB best practices.`;
             }
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private async getSelectedModelName(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels();
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            // Find the saved model or use first available
+            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+            const modelName = selectedModel?.name ?? 'Copilot';
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: [modelName],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: ['Copilot'],
+            });
+        }
+    }
+
+    private async getAvailableModels(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels();
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            const modelList = models.map((m) => ({
+                id: m.id,
+                name: m.name,
+                family: m.family,
+                vendor: m.vendor,
+            }));
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [modelList, savedModelId],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [[], null],
+            });
+        }
+    }
+
+    private async setSelectedModel(modelId: string): Promise<void> {
+        await ext.context.globalState.update(SELECTED_MODEL_KEY, modelId);
+
+        // Send back confirmation with the model name
+        const models = await vscode.lm.selectChatModels();
+        const selectedModel = models.find((m) => m.id === modelId);
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'selectedModelName',
+            params: [selectedModel?.name ?? 'Copilot'],
+        });
     }
 }

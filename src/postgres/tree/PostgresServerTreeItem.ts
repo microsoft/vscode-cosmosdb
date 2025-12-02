@@ -16,6 +16,7 @@ import * as l10n from '@vscode/l10n';
 import { type ClientConfig } from 'pg';
 import { coerce, gte, type SemVer } from 'semver';
 import * as vscode from 'vscode';
+import { type IconPath } from 'vscode';
 import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { isIpInRanges } from '../../utils/getIp';
@@ -85,7 +86,7 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         }
     }
 
-    public get iconPath(): string | vscode.Uri | { light: string | vscode.Uri; dark: string | vscode.Uri } {
+    public get iconPath(): IconPath {
         return getThemeAgnosticIconPath('PostgresServer.svg');
     }
 

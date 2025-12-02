@@ -4,49 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { teamsDarkTheme, teamsHighContrastTheme, teamsLightTheme } from '@fluentui/react-components';
-import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type PropsWithChildren,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { generateAdaptiveDarkTheme, generateAdaptiveLightTheme, generateMonacoTheme } from '../themeGenerator';
 import { defaultState, type MonacoBuiltinTheme, type MonacoTheme, type ThemeState } from './ThemeState';
 
 export const ThemeContext = createContext<ThemeState>(defaultState);
-
-export const useThemeMutationObserver = (callback: (themeKind: string) => void) => {
-    const handlerRef = useRef(callback);
-
-    handlerRef.current = callback;
-
-    const observer = useMemo(
-        () =>
-            new MutationObserver((mutations) => {
-                mutations.forEach(function (mutation) {
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-vscode-theme-kind') {
-                        const newValue =
-                            (mutation.target as HTMLElement).getAttribute('data-vscode-theme-kind') ?? 'vscode-light';
-                        handlerRef.current(newValue);
-                    }
-                });
-            }),
-        [],
-    );
-
-    useEffect(() => {
-        const targetNode = document.body;
-        observer.observe(targetNode, {
-            attributes: true,
-        });
-
-        return () => observer.disconnect();
-    }, [observer]);
-};
 
 // get class value from body element
 export const getVSCodeTheme = () => {
@@ -106,7 +68,7 @@ export function useThemeState() {
 
 export const ThemeProvider = ThemeContext.Provider;
 
-export const generateThemeContext = (useAdaptive: boolean = false, themeKind: string) => {
+export const generateThemeContext = (useAdaptive: boolean, themeKind: string) => {
     return {
         fluentUI: {
             theme: getFluentUiTheme(useAdaptive, themeKind),
@@ -118,7 +80,7 @@ export const generateThemeContext = (useAdaptive: boolean = false, themeKind: st
     };
 };
 
-export const WithTheme = ({ children, useAdaptive }: PropsWithChildren<{ useAdaptive?: boolean }>) => {
+export const WithTheme = ({ children, useAdaptive = false }: PropsWithChildren<{ useAdaptive?: boolean }>) => {
     const [state, setState] = useState(generateThemeContext(useAdaptive, getVSCodeTheme()));
 
     const setThemeKind = useCallback(
@@ -126,9 +88,23 @@ export const WithTheme = ({ children, useAdaptive }: PropsWithChildren<{ useAdap
         [useAdaptive],
     );
 
-    useEffect(() => setThemeKind(getVSCodeTheme()), [setThemeKind]);
+    const observer = useMemo(
+        () =>
+            new MutationObserver((mutations) => {
+                mutations.forEach(function (mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-vscode-theme-kind') {
+                        setThemeKind(getVSCodeTheme());
+                    }
+                });
+            }),
+        [setThemeKind],
+    );
 
-    useThemeMutationObserver(setThemeKind);
+    useEffect(() => {
+        observer.observe(document.body, { attributes: true });
+
+        return () => observer.disconnect();
+    }, [observer]);
 
     return <ThemeProvider value={state}>{children}</ThemeProvider>;
 };

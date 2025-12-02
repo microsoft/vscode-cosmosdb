@@ -75,6 +75,10 @@ export type DispatchAction =
     }
     | {
         type: 'toggleGenerateInput';
+    }
+    | {
+        type: 'setConnectionList';
+        connectionList: Record<string, string[]> | undefined;
     };
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
@@ -89,7 +93,7 @@ export type QueryEditorState = {
     isEditMode: boolean; // Query or selected query is start select (select * from c)
     startExecutionTime: number; // Time when the query execution started
     endExecutionTime: number; // Time when the query execution ended
-
+    connectionList: Record<string, string[]> | undefined; // List of connections, undefined if not connected
     isSurveyCandidate: boolean; // Whether the user is a survey candidate
 
     // Result state
@@ -120,7 +124,7 @@ export const defaultState: QueryEditorState = {
     isEditMode: false,
     startExecutionTime: 0,
     endExecutionTime: 0,
-
+    connectionList: undefined,
     isSurveyCandidate: false,
 
     // Result state
@@ -198,5 +202,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, throughputBuckets: action.throughputBuckets };
         case 'toggleGenerateInput':
             return { ...state, showGenerateInput: !state.showGenerateInput };
+        case 'setConnectionList':
+            return { ...state, connectionList: action.connectionList };
     }
 }

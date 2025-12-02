@@ -18,13 +18,15 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     const [isRegistered, setIsRegistered] = useState(false);
     const hotkeysRef = useRef<HotkeyMapping<Command>[]>([]);
     const ref: RefCallback<HTMLElement> = useCallback(
-        (el) => el && !commandService.getRef(scope) && commandService.setRef(scope, el),
+        (el) => void (el && !commandService.getRef(scope) && commandService.setRef(scope, el)),
         [commandService, scope],
     );
 
     if (!isRegistered) {
         // Register the scope with the command service if not already registered
         commandService.registerScope(scope, hotkeys);
+        // TODO: investigate how to avoid this disable
+        // eslint-disable-next-line react-hooks/refs
         hotkeysRef.current = hotkeys;
         setIsRegistered(true);
     }
@@ -109,7 +111,7 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     // Use react-hotkeys-hook to handle hotkeys
     // The event will always be added to the document, so we can use the scope name as a unique identifier
     useHotkeys(keysString, eventHandler, {
-        enableOnFormTags: ['textarea', 'input'],
+        enableOnFormTags: ['textarea', 'input', 'textbox'],
         enableOnContentEditable: true,
         scopes: scope, // Use the scope name as the scope identifier
     });

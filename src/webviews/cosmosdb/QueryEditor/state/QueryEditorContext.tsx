@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import { type ReactNode, createContext, useContext, useEffect, useReducer, useState } from 'react';
+import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { type WebviewApi } from 'vscode-webview';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
@@ -44,14 +44,15 @@ export const WithQueryEditorContext = ({
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
-    const [provider, setProvider] = useState<QueryEditorContextProvider>({} as QueryEditorContextProvider);
+
+    const provider = useMemo(
+        () => new QueryEditorContextProvider(channel, dispatch, dispatchToast),
+        [channel, dispatchToast],
+    );
 
     useEffect(() => {
-        const provider = new QueryEditorContextProvider(channel, dispatch, dispatchToast);
-        setProvider(provider);
-
         return () => provider.dispose();
-    }, [channel, dispatch, dispatchToast]);
+    }, [provider]);
 
     return (
         <QueryEditorContext.Provider value={state}>

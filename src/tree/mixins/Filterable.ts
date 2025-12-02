@@ -244,9 +244,11 @@ export function makeFilterable<T extends TreeElement>(
 
         // Show feedback
         if (this.filterPattern) {
-            vscode.window.showInformationMessage(`Filter applied: ${this.filterPattern}`);
+            vscode.window.showInformationMessage(
+                l10n.t('Filter applied: {filterPattern}', { filterPattern: this.filterPattern }),
+            );
         } else {
-            vscode.window.showInformationMessage('Filter cleared');
+            vscode.window.showInformationMessage(l10n.t('Filter cleared'));
         }
     };
 
@@ -316,7 +318,7 @@ async function getPropertyValues<U extends TreeElement>(
     propertyName: TreeItemStringProps,
 ): Promise<Array<string | undefined>> {
     // For other properties we have to call getTreeItem to ensure we have the correct value
-    const promises = items.map((item) => item.getTreeItem());
+    const promises = items.map(async (item) => item.getTreeItem());
     return Promise.allSettled(promises).then((results) => {
         return results.map((result) =>
             result.status === 'fulfilled' && result.value ? getPropertyValue(result.value, propertyName) : undefined,

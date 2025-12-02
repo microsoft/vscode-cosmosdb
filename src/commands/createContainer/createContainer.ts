@@ -34,6 +34,10 @@ export async function cosmosDBCreateContainer(
     context.telemetry.properties.experience = node.experience.api;
 
     const isCore = node.experience.api === API.Core;
+    const isServerless = node.model?.accountInfo?.isServerless;
+
+    context.telemetry.properties.isServerless = isServerless?.toString();
+    context.telemetry.properties.isEmulator = node.model?.accountInfo?.isEmulator?.toString();
 
     const wizardContext: CreateContainerWizardContext = {
         ...context,
@@ -41,6 +45,7 @@ export async function cosmosDBCreateContainer(
         databaseId: node.model.database.id,
         experience: node.experience,
         nodeId: node.id,
+        throughput: isServerless ? 0 : undefined,
     };
 
     const wizard = new AzureWizard(wizardContext, {
@@ -50,7 +55,7 @@ export async function cosmosDBCreateContainer(
             new CosmosDBPartitionKeyStep('first'),
             isCore ? new CosmosDBPartitionKeyStep('second') : undefined,
             isCore ? new CosmosDBPartitionKeyStep('third') : undefined,
-            new CosmosDBThroughputStep(),
+            isServerless ? undefined : new CosmosDBThroughputStep(),
         ].filter((s) => !!s),
         executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,

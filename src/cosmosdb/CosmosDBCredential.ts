@@ -3,11 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    type CosmosDBManagementClient,
-    type DatabaseAccountGetResults,
-    type DatabaseAccountsListKeysResponse,
-} from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { RestError } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { ext } from '../extensionVariables';
@@ -148,26 +145,63 @@ async function getKeyCredentialWithARM(
     try {
         context.telemetry.properties.localAuthDisabled = localAuthDisabled.toString();
 
-        let keyResult: DatabaseAccountsListKeysResponse | undefined;
         // If the account has local auth disabled, don't even try to use key auth
-        if (!localAuthDisabled) {
-            keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
-            if (keyResult?.primaryMasterKey) {
-                keyCred = {
-                    type: AuthenticationMethod.accountKey,
-                    key: keyResult.primaryMasterKey,
-                };
-                context.valuesToMask.push(keyCred.key);
-            }
-            context.telemetry.properties.receivedKeyCreds = 'true';
-        } else {
+        if (localAuthDisabled) {
             throw new Error(l10n.t('Local auth is disabled'));
         }
-    } catch {
-        context.telemetry.properties.receivedKeyCreds = 'false';
-        logLocalAuthDisabledWarning(accountName);
+        const key: string | undefined =
+            (await getPrimaryMasterKeyWithARM(client, resourceGroup, accountName)) ||
+            (await getPrimaryReadonlyMasterKeyWithARM(client, resourceGroup, accountName));
+        if (key) {
+            keyCred = {
+                type: AuthenticationMethod.accountKey,
+                key: key,
+            };
+        }
+    } finally {
+        if (keyCred !== undefined) {
+            context.telemetry.properties.hasKeyCred = 'true';
+            context.valuesToMask.push(keyCred.key);
+        } else {
+            context.telemetry.properties.hasKeyCred = 'false';
+            logLocalAuthDisabledWarning(accountName);
+        }
     }
     return keyCred;
+}
+
+async function getPrimaryMasterKeyWithARM(
+    client: CosmosDBManagementClient,
+    resourceGroup: string,
+    accountName: string,
+): Promise<string | undefined> {
+    try {
+        const keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
+        return keyResult?.primaryMasterKey;
+    } catch (e: unknown) {
+        if (e instanceof RestError && e.statusCode === 403) {
+            return undefined;
+        } else {
+            throw e;
+        }
+    }
+}
+
+async function getPrimaryReadonlyMasterKeyWithARM(
+    client: CosmosDBManagementClient,
+    resourceGroup: string,
+    accountName: string,
+): Promise<string | undefined> {
+    try {
+        const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(resourceGroup, accountName);
+        return readonlyKeyResult?.primaryReadonlyMasterKey;
+    } catch (e: unknown) {
+        if (e instanceof RestError && e.statusCode === 403) {
+            return undefined;
+        } else {
+            throw e;
+        }
+    }
 }
 
 // Helper function for connection string based key retrieval

@@ -7,7 +7,9 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
+import { CosmosDBHiddenFields } from '../../constants';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
+import { truncateString } from '../../utils/convertors';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type TreeElement } from '../TreeElement';
@@ -48,9 +50,7 @@ export abstract class CosmosDBItemResourceItem
             contextValue: this.contextValue,
             iconPath: new vscode.ThemeIcon('file'),
             label: getDocumentTreeItemLabel(this.model.item),
-            tooltip: new vscode.MarkdownString(
-                `${this.generateDocumentTooltip()}\n${this.generatePartitionKeyTooltip()}`,
-            ),
+            tooltip: new vscode.MarkdownString(this.generateTooltip()),
             collapsibleState: vscode.TreeItemCollapsibleState.None,
             command: {
                 title: l10n.t('Open Item'),
@@ -60,33 +60,85 @@ export abstract class CosmosDBItemResourceItem
         };
     }
 
-    protected generateDocumentTooltip(): string {
-        return (
-            '### Item\n' +
-            '---\n' +
-            `${this.model.item.id ? `- ID: **${this.model.item.id}**\n` : ''}` +
-            `${this.model.item._id ? `- ID (_id): **${this.model.item._id}**\n` : ''}` +
-            `${this.model.item._rid ? `- RID: **${this.model.item._rid}**\n` : ''}` +
-            `${this.model.item._self ? `- Self Link: **${this.model.item._self}**\n` : ''}` +
-            `${this.model.item._etag ? `- ETag: **${this.model.item._etag}**\n` : ''}` +
-            `${this.model.item._ts ? `- Timestamp: **${this.model.item._ts}**\n` : ''}`
-        );
-    }
+    /**
+     * Maximum number of property rows to show in the tooltip (including ID and partition keys)
+     */
+    private static readonly MAX_TOOLTIP_ROWS = 12;
+    private static readonly MAX_VALUE_LENGTH = 50;
 
-    protected generatePartitionKeyTooltip(): string {
-        if (!this.model.container.partitionKey || this.model.container.partitionKey.paths.length === 0) {
-            return '';
+    private generateTooltip(): string {
+        const doc = this.model.item ?? {};
+        const id: string = (doc.id as string | undefined) ?? (doc._id as string | undefined) ?? '<no id>';
+
+        const pkPaths = this.model.container.partitionKey?.paths ?? [];
+        const pkValuesRaw = this.getPartitionKeyValuesArray(this.model);
+
+        const pkFieldNames = new Set(pkPaths.map((p) => p.replace(/^\//, '')));
+        const lines: string[] = [];
+
+        // ID on its own line
+        // Table header
+        lines.push(`| | |`);
+        lines.push(`|--|--|`);
+        lines.push(`|**id**|${truncateString(id, CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`);
+        // Partition key rows (italic keys)
+        for (let i = 0; i < pkPaths.length; i++) {
+            const fieldName = pkPaths[i].replace(/^\//, '');
+            lines.push(`|*/${fieldName}*|${this.formatValue(pkValuesRaw[i])}|`);
         }
 
-        const partitionKeyPaths = this.model.container.partitionKey.paths.join(', ');
-        const partitionKeyValues = this.generatePartitionKeyValue(this.model);
-
-        return (
-            '### Partition Key\n' +
-            '---\n' +
-            `- Paths: **${partitionKeyPaths}**\n` +
-            `- Values: **${partitionKeyValues}**\n`
+        // Other properties (excluding id, partition keys, and metadata)
+        const otherKeys = Object.keys(doc).filter(
+            (key) => key !== 'id' && !pkFieldNames.has(key) && !CosmosDBHiddenFields.includes(key),
         );
+
+        for (const key of otherKeys) {
+            if (lines.length - 4 >= CosmosDBItemResourceItem.MAX_TOOLTIP_ROWS) {
+                lines.push(`|…|…|`);
+                break;
+            }
+            lines.push(`|${key}|${this.formatValue(doc[key])}|`);
+        }
+
+        return lines.join('\n');
+    }
+
+    private getPartitionKeyValuesArray(model: CosmosDBItemModel): unknown[] {
+        if (!model.container.partitionKey || model.container.partitionKey.paths.length === 0) {
+            return [];
+        }
+        const partitionKeyValues = extractPartitionKey(model.item, model.container.partitionKey);
+        return Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
+    }
+
+    private formatValue(value: unknown): string {
+        if (value === null) {
+            return '`null`';
+        }
+        if (value === undefined) {
+            return '`undefined`';
+        }
+        if (typeof value === 'object') {
+            try {
+                const json = truncateString(JSON.stringify(value), CosmosDBItemResourceItem.MAX_VALUE_LENGTH);
+                return '`' + json + '`';
+            } catch {
+                return '`[object]`';
+            }
+        }
+        if (typeof value === 'string') {
+            const truncatedValue = truncateString(value, CosmosDBItemResourceItem.MAX_VALUE_LENGTH);
+            return '`' + truncatedValue + '`';
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+        // For any other type (symbol, function, etc.), use JSON or fallback
+        try {
+            return '`' + JSON.stringify(value) + '`';
+        } catch {
+            return '`[unknown]`';
+        }
     }
 
     /**

@@ -851,7 +851,7 @@
         {
           "//": "[Account] CosmosDB Sort tree items",
           "command": "azureDatabases.sortTreeItems",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspac)/ && viewItem =~ /treeitem[.](sortable)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](sortable)(?![a-z.\\/])/i",
           "group": "inline"
         },
         {

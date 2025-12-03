@@ -205,23 +205,23 @@ export class DocumentSession {
                                 reject(new Error('Fallback read operation timed out'));
                             }, timeoutMs);
                         });
-                        
+
                         let queryResult: FeedResponse<CosmosDBRecord>;
                         try {
                             queryResult = await Promise.race([queryPromise, fallbackTimeoutPromise]);
+
+                            if (queryResult?.resources?.length === 1) {
+                                result = queryResult.resources[0];
+                                ext.outputChannel.appendLog(`[DocumentSession.read] Document found via _rid query`);
+                            } else {
+                                ext.outputChannel.appendLog(
+                                    `[DocumentSession.read] _rid query returned ${queryResult.resources?.length ?? 0} results`,
+                                );
+                            }
                         } finally {
                             if (fallbackTimeoutId) {
                                 clearTimeout(fallbackTimeoutId);
                             }
-                        }
-
-                        if (queryResult?.resources?.length === 1) {
-                            result = queryResult.resources[0];
-                            ext.outputChannel.appendLog(`[DocumentSession.read] Document found via _rid query`);
-                        } else {
-                            ext.outputChannel.appendLog(
-                                `[DocumentSession.read] _rid query returned ${queryResult.resources?.length ?? 0} results`,
-                            );
                         }
                     } catch (fallbackError) {
                         ext.outputChannel.error(

@@ -103,7 +103,7 @@ export const GenerateQueryInput = () => {
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
 
     // Get display name for currently selected model
-    const selectedModel = availableModels.find(m => m.id === selectedModelId) ?? availableModels[0];
+    const selectedModel = availableModels.find((m) => m.id === selectedModelId) ?? availableModels[0];
     const modelDisplayName = selectedModel?.name ?? 'Copilot';
 
     // Calculate line count based on text content and textarea width
@@ -151,7 +151,7 @@ export const GenerateQueryInput = () => {
     useEffect(() => {
         const handler = (models: ModelInfo[], savedModelId: string | null) => {
             setAvailableModels(models);
-            if (savedModelId && models.some(m => m.id === savedModelId)) {
+            if (savedModelId && models.some((m) => m.id === savedModelId)) {
                 setSelectedModelId(savedModelId);
             } else if (models.length > 0) {
                 setSelectedModelId(models[0].id);
@@ -271,7 +271,11 @@ export const GenerateQueryInput = () => {
                             disabled={isLoading}
                         >
                             {availableModels.map((model) => (
-                                <Option key={model.id} value={model.id} style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}>
+                                <Option
+                                    key={model.id}
+                                    value={model.id}
+                                    style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
+                                >
                                     {model.name}
                                 </Option>
                             ))}

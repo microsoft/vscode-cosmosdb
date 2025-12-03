@@ -5,14 +5,17 @@
 
 import * as vscode from 'vscode';
 import { KeyValueStore } from '../KeyValueStore';
-import { noSqlQueryConnectionKey, type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { noSqlQueryConnectionKey } from '../cosmosdb/NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 import { getActiveQueryEditor } from './chatUtils';
 
-// Extended interface for newer ChatRequest API that includes model property
-interface ExtendedChatRequest extends vscode.ChatRequest {
+// Interface for ChatRequest with optional model property (for compatibility with different VS Code versions)
+interface ExtendedChatRequest {
+    prompt: string;
+    command?: string;
     model?: vscode.LanguageModelChat;
 }
 
@@ -23,11 +26,15 @@ export class CosmosDbChatParticipant {
     private participant: vscode.ChatParticipant;
 
     constructor(context: vscode.ExtensionContext) {
+        console.log('[CosmosDB Chat] Initializing chat participant...');
+
         // Create the chat participant with the ID 'cosmosdb'
         this.participant = vscode.chat.createChatParticipant(
             'cosmosdb',
             this.handleChatRequest.bind(this) as vscode.ChatRequestHandler,
         );
+
+        console.log('[CosmosDB Chat] Chat participant created with ID: cosmosdb');
 
         // Set the icon to the specific CosmosDB logo
         this.participant.iconPath = vscode.Uri.joinPath(
@@ -40,6 +47,8 @@ export class CosmosDbChatParticipant {
 
         // Add to context subscriptions for proper cleanup
         context.subscriptions.push(this.participant);
+
+        console.log('[CosmosDB Chat] Chat participant registration complete');
     }
 
     /**

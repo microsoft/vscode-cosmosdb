@@ -470,6 +470,16 @@
       },
       {
         "category": "NoSQL",
+        "command": "cosmosDB.applyQuerySuggestion",
+        "title": "Apply Query Suggestion"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.openQuerySideBySide",
+        "title": "Open Query Side-by-Side"
+      },
+      {
+        "category": "NoSQL",
         "command": "cosmosDB.importDocument",
         "title": "%cosmosdb.command.document.import%"
       },

@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 
-import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 

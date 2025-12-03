@@ -17,11 +17,7 @@ export const GenerateQueryButton = ({ type = 'button' }: ToolbarOverflowItemProp
         dispatch({ type: 'toggleGenerateInput' });
     };
 
-    const icon = state.showGenerateInput ? (
-        <Sparkle20Filled style={{ color: '#0078D4' }} />
-    ) : (
-        <Sparkle20Regular />
-    );
+    const icon = state.showGenerateInput ? <Sparkle20Filled style={{ color: '#0078D4' }} /> : <Sparkle20Regular />;
 
     return (
         <Button

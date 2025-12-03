@@ -10,7 +10,12 @@ import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
 import { type WebviewState } from '../../../WebviewContext';
 import { QueryEditorContextProvider } from './QueryEditorContextProvider';
-import { type DispatchAction, type QueryEditorState, defaultState, dispatch as QueryEditorDispatch } from './QueryEditorState';
+import {
+    type DispatchAction,
+    type QueryEditorState,
+    defaultState,
+    dispatch as QueryEditorDispatch,
+} from './QueryEditorState';
 
 export const QueryEditorContext = createContext<QueryEditorState>(defaultState);
 export const QueryEditorDispatcherContext = createContext<QueryEditorContextProvider>({} as QueryEditorContextProvider);

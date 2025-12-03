@@ -709,7 +709,7 @@ export class QueryEditorTab extends BaseTab {
         const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             const systemPrompt = `You are an expert at writing NoSQL queries for Azure Cosmos DB NoSQL. You help users write efficient, well-optimized queries.
-Your responses should only contain the generated query code without any explanations or markdown formatting.
+Your responses should only contain the generated query code WITHOUT any explanations and NO markdown formatting.
 
 Given an input question, you must create a syntactically correct Cosmos DB NoSQL query to run.
 When the user provides context about what they need, generate a complete Cosmos DB NoSQL query.

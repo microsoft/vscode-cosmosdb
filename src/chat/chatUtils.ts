@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlCodeLensProvider';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QueryEditorTab } from '../panels/QueryEditorTab';
 
 /**

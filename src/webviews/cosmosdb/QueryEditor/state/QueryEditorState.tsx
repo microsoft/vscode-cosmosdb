@@ -13,73 +13,73 @@ export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
 export type DispatchAction =
     | {
-        type: 'insertText';
-        queryValue: string;
-    }
+          type: 'insertText';
+          queryValue: string;
+      }
     | {
-        type: 'databaseConnected';
-        dbName: string;
-        collectionName: string;
-        partitionKey?: PartitionKeyDefinition;
-    }
+          type: 'databaseConnected';
+          dbName: string;
+          collectionName: string;
+          partitionKey?: PartitionKeyDefinition;
+      }
     | {
-        type: 'databaseDisconnected';
-    }
+          type: 'databaseDisconnected';
+      }
     | {
-        type: 'executionStarted';
-        executionId: string;
-        startExecutionTime: number;
-    }
+          type: 'executionStarted';
+          executionId: string;
+          startExecutionTime: number;
+      }
     | {
-        type: 'executionStopped';
-        executionId: string;
-        endExecutionTime: number;
-    }
+          type: 'executionStopped';
+          executionId: string;
+          endExecutionTime: number;
+      }
     | {
-        type: 'updateHistory';
-        queryHistory: string[];
-    }
+          type: 'updateHistory';
+          queryHistory: string[];
+      }
     | {
-        type: 'setPageSize';
-        pageSize: number;
-    }
+          type: 'setPageSize';
+          pageSize: number;
+      }
     | {
-        type: 'updateQueryResult';
-        executionId: string;
-        result: SerializedQueryResult;
-        currentPage: number;
-    }
+          type: 'updateQueryResult';
+          executionId: string;
+          result: SerializedQueryResult;
+          currentPage: number;
+      }
     | {
-        type: 'setTableViewMode';
-        mode: TableViewMode;
-    }
+          type: 'setTableViewMode';
+          mode: TableViewMode;
+      }
     | {
-        type: 'setSelectedRows';
-        selectedRows: number[];
-    }
+          type: 'setSelectedRows';
+          selectedRows: number[];
+      }
     | {
-        type: 'setQuerySelectedValue';
-        selectedValue: string;
-    }
+          type: 'setQuerySelectedValue';
+          selectedValue: string;
+      }
     | {
-        type: 'setIsSurveyCandidate';
-        isSurveyCandidate: boolean;
-    }
+          type: 'setIsSurveyCandidate';
+          isSurveyCandidate: boolean;
+      }
     | {
-        type: 'selectBucket';
-        throughputBucket?: number;
-    }
+          type: 'selectBucket';
+          throughputBucket?: number;
+      }
     | {
-        type: 'updateThroughputBuckets';
-        throughputBuckets?: boolean[];
-    }
+          type: 'updateThroughputBuckets';
+          throughputBuckets?: boolean[];
+      }
     | {
-        type: 'toggleGenerateInput';
-    }
+          type: 'toggleGenerateInput';
+      }
     | {
-        type: 'setConnectionList';
-        connectionList: Record<string, string[]> | undefined;
-    };
+          type: 'setConnectionList';
+          connectionList: Record<string, string[]> | undefined;
+      };
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)

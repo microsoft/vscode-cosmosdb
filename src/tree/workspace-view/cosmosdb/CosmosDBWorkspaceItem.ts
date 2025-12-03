@@ -10,6 +10,8 @@ import { API, getExperienceFromApi } from '../../../AzureDBExperiences';
 import { isEmulatorSupported } from '../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../services/storageService';
 import { CosmosDBAccountUnsupportedResourceItem } from '../../cosmosdb/CosmosDBAccountUnsupportedResourceItem';
+import { makeFilterable } from '../../mixins/Filterable';
+import { makeSortable } from '../../mixins/Sortable';
 import { NoSqlAccountAttachedResourceItem } from '../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../TreeElement';
 import { type TreeElementWithContextValue } from '../../TreeElementWithContextValue';
@@ -71,11 +73,15 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                     };
 
                     if (experience?.api === API.Cassandra) {
-                        return new NoSqlAccountAttachedResourceItem(accountModel, experience);
+                        return makeFilterable(
+                            makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                        );
                     }
 
                     if (experience?.api === API.Core) {
-                        return new NoSqlAccountAttachedResourceItem(accountModel, experience);
+                        return makeFilterable(
+                            makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                        );
                     }
 
                     if (experience?.api === API.Graph) {

@@ -845,7 +845,7 @@
         {
           "//": "[Account] CosmosDB Filter tree items",
           "command": "azureDatabases.filterTreeItems",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspac)/ && viewItem =~ /treeitem[.](filterable)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](filterable)(?![a-z.\\/])/i",
           "group": "inline"
         },
         {

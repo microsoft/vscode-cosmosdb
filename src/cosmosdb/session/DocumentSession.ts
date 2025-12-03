@@ -160,7 +160,7 @@ export class DocumentSession {
                 );
 
                 let result: CosmosDBRecord | undefined;
-                let timeoutId: NodeJS.Timeout;
+                let timeoutId: NodeJS.Timeout | undefined;
                 try {
                     const timeoutPromise = new Promise<never>((_, reject) => {
                         timeoutId = setTimeout(() => reject(new Error('Read operation timed out')), timeoutMs);
@@ -196,7 +196,7 @@ export class DocumentSession {
                                 .fetchAll(),
                         );
 
-                        let fallbackTimeoutId: NodeJS.Timeout;
+                        let fallbackTimeoutId: NodeJS.Timeout | undefined;
                         const fallbackTimeoutPromise = new Promise<never>((_, reject) => {
                             fallbackTimeoutId = setTimeout(() => {
                                 ext.outputChannel.error(

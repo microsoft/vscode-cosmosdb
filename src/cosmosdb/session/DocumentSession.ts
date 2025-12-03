@@ -10,6 +10,7 @@ import {
     TimeoutError,
     type BulkOperationResult,
     type DeleteOperationInput,
+    type FeedResponse,
     type ItemDefinition,
     type JSONObject,
     type PartitionKey,
@@ -159,13 +160,12 @@ export class DocumentSession {
                 );
 
                 let result: CosmosDBRecord | undefined;
+                let timeoutId: NodeJS.Timeout;
                 try {
-                    const response = await Promise.race([
-                        readPromise,
-                        new Promise<never>((_, reject) =>
-                            setTimeout(() => reject(new Error('Read operation timed out')), timeoutMs),
-                        ),
-                    ]);
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error('Read operation timed out')), timeoutMs);
+                    });
+                    const response = await Promise.race([readPromise, timeoutPromise]);
                     result = response?.resource;
                 } catch (primaryError) {
                     ext.outputChannel.error(
@@ -173,6 +173,8 @@ export class DocumentSession {
                     );
                     // Don't throw yet, try fallback if we have _rid
                     result = undefined;
+                } finally {
+                    clearTimeout(timeoutId!);
                 }
 
                 // Try to read the document by _rid if the primary read fails
@@ -192,17 +194,22 @@ export class DocumentSession {
                                 .fetchAll(),
                         );
 
-                        const queryResult = await Promise.race([
-                            queryPromise,
-                            new Promise<never>((_, reject) =>
-                                setTimeout(() => {
-                                    ext.outputChannel.error(
-                                        `[DocumentSession.read] Fallback _rid query timed out after ${timeoutMs}ms`,
-                                    );
-                                    reject(new Error('Fallback read operation timed out'));
-                                }, timeoutMs),
-                            ),
-                        ]);
+                        let fallbackTimeoutId: NodeJS.Timeout;
+                        const fallbackTimeoutPromise = new Promise<never>((_, reject) => {
+                            fallbackTimeoutId = setTimeout(() => {
+                                ext.outputChannel.error(
+                                    `[DocumentSession.read] Fallback _rid query timed out after ${timeoutMs}ms`,
+                                );
+                                reject(new Error('Fallback read operation timed out'));
+                            }, timeoutMs);
+                        });
+                        
+                        let queryResult: FeedResponse<CosmosDBRecord>;
+                        try {
+                            queryResult = await Promise.race([queryPromise, fallbackTimeoutPromise]);
+                        } finally {
+                            clearTimeout(fallbackTimeoutId!);
+                        }
 
                         if (queryResult?.resources?.length === 1) {
                             result = queryResult.resources[0];

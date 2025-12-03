@@ -174,7 +174,9 @@ export class DocumentSession {
                     // Don't throw yet, try fallback if we have _rid
                     result = undefined;
                 } finally {
-                    clearTimeout(timeoutId!);
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                    }
                 }
 
                 // Try to read the document by _rid if the primary read fails
@@ -208,7 +210,9 @@ export class DocumentSession {
                         try {
                             queryResult = await Promise.race([queryPromise, fallbackTimeoutPromise]);
                         } finally {
-                            clearTimeout(fallbackTimeoutId!);
+                            if (fallbackTimeoutId) {
+                                clearTimeout(fallbackTimeoutId);
+                            }
                         }
 
                         if (queryResult?.resources?.length === 1) {

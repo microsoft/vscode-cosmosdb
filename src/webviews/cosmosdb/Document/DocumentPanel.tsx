@@ -114,7 +114,7 @@ export const DocumentPanel = () => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
 
-    // Show loading state only if not ready AND no error to display
+    // Show loading state if not ready OR (no document content and no error to display)
     if (!state.isReady || (!state.currentDocumentContent && !state.error)) {
         return (
             <section className={classes.container} tabIndex={-1}>

@@ -192,25 +192,34 @@ export class DocumentSession {
                                 .fetchAll(),
                         );
 
-                        const queryResult = await Promise.race([
-                            queryPromise,
-                            new Promise<never>((_, reject) =>
-                                setTimeout(() => {
+                        let fallbackTimeoutId: NodeJS.Timeout;
+                        try {
+                            const timeoutPromise = new Promise<never>((_, reject) => {
+                                fallbackTimeoutId = setTimeout(() => {
                                     ext.outputChannel.error(
                                         `[DocumentSession.read] Fallback _rid query timed out after ${timeoutMs}ms`,
                                     );
                                     reject(new Error('Fallback read operation timed out'));
-                                }, timeoutMs),
-                            ),
-                        ]);
+                                }, timeoutMs);
+                            });
 
-                        if (queryResult?.resources?.length === 1) {
-                            result = queryResult.resources[0];
-                            ext.outputChannel.appendLog(`[DocumentSession.read] Document found via _rid query`);
-                        } else {
-                            ext.outputChannel.appendLog(
-                                `[DocumentSession.read] _rid query returned ${queryResult.resources?.length ?? 0} results`,
-                            );
+                            const queryResult = await Promise.race([
+                                queryPromise,
+                                timeoutPromise,
+                            ]);
+
+                            if (queryResult?.resources?.length === 1) {
+                                result = queryResult.resources[0];
+                                ext.outputChannel.appendLog(`[DocumentSession.read] Document found via _rid query`);
+                            } else {
+                                ext.outputChannel.appendLog(
+                                    `[DocumentSession.read] _rid query returned ${queryResult.resources?.length ?? 0} results`,
+                                );
+                            }
+                        } finally {
+                            if (fallbackTimeoutId) {
+                                clearTimeout(fallbackTimeoutId);
+                            }
                         }
                     } catch (fallbackError) {
                         ext.outputChannel.error(

@@ -182,7 +182,10 @@ export class DocumentSession {
                             client
                                 .database(this.databaseId)
                                 .container(this.containerId)
-                                .items.query<CosmosDBRecord>(`SELECT * FROM c WHERE c._rid = "${documentId._rid}"`, {
+                                .items.query<CosmosDBRecord>({
+                                    query: 'SELECT * FROM c WHERE c._rid = @rid',
+                                    parameters: [{ name: '@rid', value: documentId._rid }]
+                                }, {
                                     abortSignal: this.abortController.signal,
                                     bufferItems: true,
                                 })

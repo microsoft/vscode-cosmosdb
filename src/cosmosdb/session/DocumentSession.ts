@@ -192,7 +192,7 @@ export class DocumentSession {
                                 .fetchAll(),
                         );
 
-                        let fallbackTimeoutId: NodeJS.Timeout;
+                        let fallbackTimeoutId: NodeJS.Timeout | undefined = undefined;
                         try {
                             const timeoutPromise = new Promise<never>((_, reject) => {
                                 fallbackTimeoutId = setTimeout(() => {

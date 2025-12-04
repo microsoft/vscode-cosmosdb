@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { isWindows } from '../../extension.bundle';
+import { isWindows } from '../../src/constants';
 import { setEnvironmentVariables } from './setEnvironmentVariables';
 
 suite('setEnvironmentVariables (test util)', () => {

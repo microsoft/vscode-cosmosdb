@@ -9,7 +9,6 @@ import { type AzureHostExtensionApi } from '@microsoft/vscode-azext-utils/hostap
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type NoSqlCodeLensProvider } from './cosmosdb/NoSqlCodeLensProvider';
-import { type MongoDBLanguageClient } from './documentdb/scrapbook/languageClient';
 import { type PostgresCodeLensProvider } from './postgres/services/PostgresCodeLensProvider';
 import { type PostgresDatabaseTreeItem } from './postgres/tree/PostgresDatabaseTreeItem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
@@ -36,7 +35,6 @@ export namespace ext {
     export const prefix: string = 'azureDatabases';
     export let fileSystem: DatabasesFileSystem;
     export let noSqlCodeLensProvider: NoSqlCodeLensProvider;
-    export let mongoLanguageClient: MongoDBLanguageClient;
     export let rgApi: AzureHostExtensionApi;
 
     // Since the Azure Resources extension did not update API interface, but added a new interface with activity

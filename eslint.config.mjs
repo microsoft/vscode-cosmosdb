@@ -52,11 +52,24 @@ export default defineConfig([
         rules: {
             eqeqeq: ['error', 'always'],
             'import/consistent-type-specifier-style': ['error', 'prefer-inline'],
-            'import/no-internal-modules': ['error', { allow: ['antlr4ts/**', 'yaml/types'] }],
+            'import/no-internal-modules': ['error', { allow: ['yaml/types'] }],
             'no-case-declarations': 'error',
             'no-constant-condition': 'error',
             'no-inner-declarations': 'error',
-            'no-restricted-imports': ['error', { patterns: ['**/*/extension.bundle'] }],
+            'no-restricted-imports': 'error',
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: 'ImportDeclaration[source.value="vscode"] ImportSpecifier[imported.name="l10n"]',
+                    message:
+                        'Please use "import * as l10n from \'@vscode/l10n\';" instead of importing l10n from vscode.',
+                },
+                {
+                    selector: 'MemberExpression[object.name="vscode"][property.name="l10n"]',
+                    message:
+                        'Please use "import * as l10n from \'@vscode/l10n\';" and use l10n directly instead of vscode.l10n.',
+                },
+            ],
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             'no-useless-escape': 'error',
             'license-header/header': [

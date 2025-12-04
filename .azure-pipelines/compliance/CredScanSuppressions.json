@@ -1,33 +1,13 @@
 {
-    "tool": "Credential Scanner",
-    "suppressions": [
-        {
-            "folder": "node_modules\\",
-            "_justification": "No need to scan external node modules."
-        },
-        {
-            "file": "dist\\extension.bundle.js.map",
-            "_justification": "Should be covered by scanning the pre-bundled files and it's unclear why the 'map' file in particular is getting flagged."
-        },
-        {
-            "file": "test\\mongoGetCommand.test.ts",
-            "_justification": "Fake credentials used for unit tests."
-        },
-        {
-            "file": "dist\\mongo-languageServer.bundle.js.map",
-            "_justification": "Should be covered by scanning the pre-bundled files and it's unclear why the 'map' file in particular is getting flagged."
-        },
-        {
-            "file": "src\\cosmosdb\\cosmosDBConnectionStrings.test.ts",
-            "_justification": "Fake credentials used for unit tests."
-        },
-        {
-            "file": "src\\documentdb\\scrapbook\\mongoConnectionStrings.test.ts",
-            "_justification": "Fake credentials used for unit tests."
-        },
-        {
-            "file": "src\\cosmosdb\\cosmosDBConnectionStrings.test.ts",
-            "_justification": "Fake credentials used for unit tests."
-        }
-    ]
+  "tool": "Credential Scanner",
+  "suppressions": [
+    {
+      "folder": "node_modules\\",
+      "_justification": "No need to scan external node modules."
+    },
+    {
+      "file": "src\\cosmosdb\\cosmosDBConnectionStrings.test.ts",
+      "_justification": "Fake credentials used for unit tests."
+    }
+  ]
 }

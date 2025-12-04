@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
-import { l10n } from 'vscode';
+import * as l10n from '@vscode/l10n';
 import { API, getExperienceFromApi } from '../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';

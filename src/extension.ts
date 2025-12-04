@@ -16,7 +16,6 @@ import {
     registerReportIssueCommand,
     registerUIExtensionVariables,
     TreeElementStateManager,
-    type AzExtParentTreeItem,
     type AzureExtensionApi,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
@@ -31,19 +30,14 @@ import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
-import { ClustersExtension } from './documentdb/ClustersExtension';
 import { ext } from './extensionVariables';
-import { getResourceGroupsApi } from './getExtensionApi';
 import { StorageNames, StorageService } from './services/storageService';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
-import { DatabaseResolver } from './tree/v1-legacy-api/resolver/AppResolver';
-import { DatabaseWorkspaceProvider } from './tree/v1-legacy-api/resolver/DatabaseWorkspaceProvider';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
-import { DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
 
 // Interface for the MongoDB connection migration API
@@ -96,55 +90,30 @@ export async function activateInternal(
             AzExtResourceType.AzureCosmosDb,
             ext.cosmosDBBranchDataProvider,
         );
+        // Still shows PostgreSQL servers in the tree for now
+        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+            AzExtResourceType.PostgresqlServersStandard,
+            ext.cosmosDBBranchDataProvider,
+        );
+        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+            AzExtResourceType.PostgresqlServersFlexible,
+            ext.cosmosDBBranchDataProvider,
+        );
         ext.rgApiV2.resources.registerWorkspaceResourceProvider(new SharedWorkspaceResourceProvider());
         ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
             WorkspaceResourceType.AttachedAccounts,
             ext.cosmosDBWorkspaceBranchDataProvider,
         );
 
-        // V1 Legacy API for Postgres support: begin
-        ext.rgApi = await getResourceGroupsApi();
-
-        ext.rgApi.registerApplicationResourceResolver(
-            AzExtResourceType.PostgresqlServersStandard,
-            new DatabaseResolver(),
-        );
-        ext.rgApi.registerApplicationResourceResolver(
-            AzExtResourceType.PostgresqlServersFlexible,
-            new DatabaseResolver(),
-        );
-
-        const workspaceRootTreeItem = (
-            ext.rgApi.workspaceResourceTree as unknown as { _rootTreeItem: AzExtParentTreeItem }
-        )._rootTreeItem;
-        const databaseWorkspaceProvider = new DatabaseWorkspaceProvider(workspaceRootTreeItem);
-        ext.rgApi.registerWorkspaceResourceProvider('AttachedDatabaseAccount', databaseWorkspaceProvider);
-        // V1 Legacy API for Postgres support: end
-
-        ext.fileSystem = new DatabasesFileSystem(ext.rgApi.appResourceTree);
-
-        registerCommands();
-        // Old commands for old tree view. If need to be quickly returned to V1, uncomment the line below
-        // registerCommandsCompatibility();
-
-        // init and activate mongodb RU and vCore support (branch data provider, commands, ...)
-        if (await isVCoreAndRURolloutEnabled()) {
-            // If the vCore and RU features are disabled in this extension, we register a branch data provider
-            // that will inform the user to install the "DocumentDB for VS Code" extension to manage these resources.
-            ext.mongoClustersWorkspaceBranchDataProvider = new DisabledClustersWorkspaceBranchDataProvider();
-            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
-                WorkspaceResourceType.MongoClustersDisabled,
-                ext.mongoClustersWorkspaceBranchDataProvider,
-            );
-        } else {
-            const clustersSupport: ClustersExtension = new ClustersExtension();
-            context.subscriptions.push(clustersSupport); // to be disposed when extension is deactivated.
-            await clustersSupport.activate();
-        }
+        ext.fileSystem = new DatabasesFileSystem();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
         );
+
+        context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
+
+        registerCommands();
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
@@ -158,19 +127,11 @@ export async function activateInternal(
             },
         );
 
-        context.subscriptions.push(
-            vscode.window.registerUriHandler({
-                handleUri: globalUriHandler,
-            }),
-        );
-
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
 
-    // TODO: we still don't know for sure if this is needed
-    //  If it is, we need to implement the logic to get the correct API version
     const exportedApis = [
         <AzureExtensionApi>{
             apiVersion: '1.2.0',

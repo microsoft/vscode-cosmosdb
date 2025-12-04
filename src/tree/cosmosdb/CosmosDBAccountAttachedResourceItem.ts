@@ -121,7 +121,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
                     const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                     void showRbacPermissionError(this.id, principalId);
                     if (!principalId || !e.message.includes(principalId)) {
-                        // In case we're not signed in with the principal that's missing permissions, log the full errror
+                        // In case we're not signed in with the principal that's missing permissions, log the full error
                         ext.outputChannel.error(e);
                         ext.outputChannel.show();
                     }

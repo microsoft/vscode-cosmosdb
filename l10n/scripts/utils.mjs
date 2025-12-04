@@ -7,7 +7,6 @@ import { getL10nJson } from '@vscode/l10n-dev';
 import * as glob from 'glob';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { utilsBundlePaths } from './constants.mjs';
 
 const GLOB_DEFAULTS = {
     // We only want files.
@@ -70,33 +69,6 @@ export const l10nExportAllStrings = async (paths) => {
     if (!output) {
         return;
     }
-
-    // Log the paths of all localization files being merged
-    console.log(
-        `Merging localization files: ${utilsBundlePaths.length ? utilsBundlePaths.join(', ') : 'None defined in constants.mjs'}`,
-    );
-
-    // Iterate over all utility bundle paths to merge their contents
-    utilsBundlePaths.forEach((filename) => {
-        // Read and parse the contents of the current localization file
-        const contents = JSON.parse(readFileSync(filename, 'utf8'));
-
-        // Skip invalid or non-object contents
-        if (!contents || typeof contents !== 'object' || Array.isArray(contents)) {
-            return;
-        }
-
-        // Iterate over each key-value pair in the localization file
-        Object.entries(contents).forEach(([key, value]) => {
-            // Warn if a duplicate key is found and overwrite its value
-            if (output[key] && value !== output[key]) {
-                console.warn(`Duplicate key found: ${key}. Overwriting with value from ${filename}`);
-            }
-        });
-
-        // Merge the current file's contents into the output object
-        Object.assign(output, contents);
-    });
 
     // Log the total count of unique localization keys
     console.log(`Count of localization keys: ${Object.keys(output).length}`);

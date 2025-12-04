@@ -5,7 +5,7 @@
 
 import { parseError } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
-import { improveError } from '../extension.bundle';
+import { improveError } from '../src/utils/improveError';
 
 suite('improveError', () => {
     test('no change', () => {

@@ -6,7 +6,7 @@
 import { parseError } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import * as os from 'os';
-import { wrapError } from '../extension.bundle';
+import { wrapError } from '../src/utils/wrapError';
 
 suite('wrapError', () => {
     test('just outer string', () => {

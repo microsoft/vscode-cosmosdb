@@ -33,7 +33,6 @@ import { ext } from '../extensionVariables';
 import { MongoVCoreBranchDataProvider } from '../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreBranchDataProvider';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { ClustersWorkspaceBranchDataProvider } from '../tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
-import { registerScrapbookCommands } from './scrapbook/registerScrapbookCommands';
 
 export class ClustersExtension implements vscode.Disposable {
     dispose(): Promise<void> {
@@ -90,8 +89,6 @@ export class ClustersExtension implements vscode.Disposable {
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.createDocument', createMongoDocument);
 
                 registerCommandWithTreeNodeUnwrapping('command.mongoClusters.importDocuments', importDocuments);
-
-                registerScrapbookCommands();
 
                 /**
                  * Here, exporting documents is done in two ways: one is accessible from the tree view

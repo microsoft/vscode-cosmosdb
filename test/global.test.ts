@@ -5,23 +5,25 @@
 
 import { type IAzureUserInput, registerOnActionStartHandler } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { ext } from '../extension.bundle';
+import { ext } from '../src/extensionVariables';
 import { TestOutputChannel } from './TestOutputChannel';
 import { TestUserInput } from './TestUserInput';
-
-const longRunningLocalTestsEnabled: boolean = !/^(false|0)?$/i.test(
-    process.env.AzCode_EnableLongRunningTestsLocal || '',
-);
-const longRunningRemoteTestsEnabled: boolean = !/^(false|0)?$/i.test(
-    process.env.AzCode_UseAzureFederatedCredentials || '',
-);
-
-export const longRunningTestsEnabled: boolean = longRunningLocalTestsEnabled || longRunningRemoteTestsEnabled;
 
 // Runs before all tests
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     this.timeout(2 * 60 * 1000);
-    await vscode.commands.executeCommand('azureDatabases.refresh'); // activate the extension before tests begin
+
+    // Get the extension and activate it
+    const extension = vscode.extensions.getExtension('ms-azuretools.vscode-cosmosdb');
+    if (!extension) {
+        throw new Error('Extension not found');
+    }
+
+    if (!extension.isActive) {
+        await extension.activate();
+    }
+
+    // Override output channel with test version
     ext.outputChannel = new TestOutputChannel();
 
     registerOnActionStartHandler((context) => {

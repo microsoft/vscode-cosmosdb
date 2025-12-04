@@ -66,11 +66,14 @@ export async function activateInternal(
 
     ext.outputChannel = createAzExtLogOutputChannel('Azure Cosmos DB');
     context.subscriptions.push(ext.outputChannel);
+
     registerUIExtensionVariables(ext);
     registerAzureUtilsExtensionVariables(ext);
 
+    // eslint-disable-next-line no-restricted-syntax
     if (vscode.l10n.uri) {
         l10n.config({
+            // eslint-disable-next-line no-restricted-syntax
             contents: vscode.l10n.bundle ?? {},
         });
     }
@@ -84,15 +87,11 @@ export async function activateInternal(
         // Early initialization to determine whether Managed Identity is available for authentication
         void getIsRunningOnAzure();
 
-        // getAzureResourcesExtensionApi provides a way to get the Azure Resources extension's API V2
-        // and is used to work with the tree view structure, as an improved alternative to the
-        // AzureResourceGraph API V1 provided by the getResourceGroupsApi call above.
-        // TreeElementStateManager is needed here too
         ext.state = new TreeElementStateManager();
-        ext.rgApiV2 = (await getAzureResourcesExtensionApi(context, '2.0.0')) as AzureResourcesExtensionApiWithActivity;
-
         ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
+
+        ext.rgApiV2 = (await getAzureResourcesExtensionApi(context, '2.0.0')) as AzureResourcesExtensionApiWithActivity;
         ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
             AzExtResourceType.AzureCosmosDb,
             ext.cosmosDBBranchDataProvider,

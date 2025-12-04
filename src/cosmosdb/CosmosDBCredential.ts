@@ -150,8 +150,8 @@ async function getKeyCredentialWithARM(
             throw new Error(l10n.t('Local auth is disabled'));
         }
         const key: string | undefined =
-            (await getPrimaryMasterKeyWithARM(client, resourceGroup, accountName)) ||
-            (await getPrimaryReadonlyMasterKeyWithARM(client, resourceGroup, accountName));
+            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, false)) ||
+            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, true));
         if (key) {
             keyCred = {
                 type: AuthenticationMethod.accountKey,
@@ -170,31 +170,20 @@ async function getKeyCredentialWithARM(
     return keyCred;
 }
 
-async function getPrimaryMasterKeyWithARM(
+async function getPrimaryKeyWithARM(
     client: CosmosDBManagementClient,
     resourceGroup: string,
     accountName: string,
+    readOnlyKey: boolean,
 ): Promise<string | undefined> {
     try {
-        const keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
-        return keyResult?.primaryMasterKey;
-    } catch (e: unknown) {
-        if (e instanceof RestError && e.statusCode === 403) {
-            return undefined;
+        if (readOnlyKey) {
+            const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(resourceGroup, accountName);
+            return readonlyKeyResult?.primaryReadonlyMasterKey;
         } else {
-            throw e;
+            const keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
+            return keyResult?.primaryMasterKey;
         }
-    }
-}
-
-async function getPrimaryReadonlyMasterKeyWithARM(
-    client: CosmosDBManagementClient,
-    resourceGroup: string,
-    accountName: string,
-): Promise<string | undefined> {
-    try {
-        const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(resourceGroup, accountName);
-        return readonlyKeyResult?.primaryReadonlyMasterKey;
     } catch (e: unknown) {
         if (e instanceof RestError && e.statusCode === 403) {
             return undefined;

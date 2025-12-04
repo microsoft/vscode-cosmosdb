@@ -119,6 +119,10 @@ export class QueryEditorTab extends BaseTab {
         return this.connection;
     };
 
+    public getCurrentQuery = (): string | undefined => {
+        return this.query;
+    };
+
     public isActive(): boolean {
         return this.panel.active;
     }
@@ -231,6 +235,8 @@ export class QueryEditorTab extends BaseTab {
                 return this.getAvailableModels();
             case 'setSelectedModel':
                 return this.setSelectedModel(payload.params[0] as string);
+            case 'openCopilotExplainQuery':
+                return this.openCopilotExplainQuery();
         }
 
         return super.getCommand(payload);
@@ -873,6 +879,15 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
             type: 'event',
             name: 'selectedModelName',
             params: [selectedModel?.name ?? 'Copilot'],
+        });
+    }
+
+    private async openCopilotExplainQuery(): Promise<void> {
+        const query = this.query?.trim();
+        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
+
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query: chatQuery,
         });
     }
 }

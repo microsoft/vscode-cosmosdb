@@ -189,16 +189,29 @@ Only return valid JSON, no other text:`;
         const parameters: Record<string, unknown> = {};
         const lowercasePrompt = originalPrompt.toLowerCase();
 
+        // Extract query from code block if present (works for any operation)
+        const codeBlockMatch = originalPrompt.match(/```(?:sql)?\s*([\s\S]*?)```/i);
+        if (codeBlockMatch) {
+            parameters.currentQuery = codeBlockMatch[1].trim();
+        }
+
         switch (operation) {
             case 'editQuery': {
                 // Pass the full user prompt for LLM processing
                 parameters.userPrompt = originalPrompt;
 
-                // Extract current query from prompt if explicitly provided
-                const queryMatch = originalPrompt.match(/(?:query|select)\s*:?\s*(.+)/i);
-                if (queryMatch) {
-                    parameters.currentQuery = queryMatch[1].trim();
+                // Extract current query from prompt if explicitly provided (and not already from code block)
+                if (!parameters.currentQuery) {
+                    const queryMatch = originalPrompt.match(/(?:query|select)\s*:?\s*(.+)/i);
+                    if (queryMatch) {
+                        parameters.currentQuery = queryMatch[1].trim();
+                    }
                 }
+                break;
+            }
+            case 'explainQuery': {
+                // Pass the full user prompt for context
+                parameters.userPrompt = originalPrompt;
                 break;
             }
             default: {

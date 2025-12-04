@@ -277,12 +277,13 @@ Return only valid JSON, no other text:`;
         // Get comprehensive context from the active query session
         const currentResult = activeEditor.getCurrentQueryResults();
         const sessionQuery = currentResult?.query;
+        const editorQuery = activeEditor.getCurrentQuery();
         const hasResults = currentResult?.documents && currentResult.documents.length > 0;
         const requestCharge = currentResult?.requestCharge;
         const documentCount = currentResult?.documents?.length || 0;
 
-        // Use session query as primary source, fallback to parameter
-        const actualCurrentQuery = sessionQuery || currentQuery;
+        // Use session query as primary source, fallback to editor query, then to parameter
+        const actualCurrentQuery = sessionQuery || editorQuery || currentQuery;
 
         if (!actualCurrentQuery) {
             return 'There is no query to analyze';

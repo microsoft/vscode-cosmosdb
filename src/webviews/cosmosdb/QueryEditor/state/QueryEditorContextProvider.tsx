@@ -142,6 +142,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
+    public async openCopilotExplainQuery(): Promise<void> {
+        await this.sendCommand('openCopilotExplainQuery');
+    }
+
     protected initEventListeners() {
         super.initEventListeners();
 

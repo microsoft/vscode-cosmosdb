@@ -1,6 +1,6 @@
 {
-  "cosmosdb.command.account.create": "[الهاتفCreate Database Server…עִבְרִית عل!]",
-  "cosmosdb.command.account.create.description": "[الهاتفSQL or NoSQL databases for your web apps.עִבְרִית عليكעִבְרִ!]",
+  "cosmosdb.command.account.create": "[الهاتفCreate Azure Cosmos DB…עִבְרִית عل!]",
+  "cosmosdb.command.account.create.description": "[الهاتفNoSQL database for your web appsעִבְרִית عليكעִ!]",
   "cosmosdb.command.account.delete": "[الهاتفDelete Account…עִבְרִית!]",
   "cosmosdb.command.account.unsupported": "[الهاتفOpen Unsupported Accountעִבְרִית علي!]",
   "cosmosdb.command.connection.add": "[الهاتفNew Connection…עִבְרִית!]",

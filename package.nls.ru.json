@@ -1,6 +1,6 @@
 {
-  "cosmosdb.command.account.create": "Создать сервер базы данных…",
-  "cosmosdb.command.account.create.description": "Базы данных SQL или NoSQL для веб-приложений.",
+  "cosmosdb.command.account.create": "Create Azure Cosmos DB…",
+  "cosmosdb.command.account.create.description": "NoSQL database for your web apps",
   "cosmosdb.command.account.delete": "Удалить учетную запись…",
   "cosmosdb.command.account.unsupported": "Открыть неподдерживаемую учетную запись",
   "cosmosdb.command.connection.add": "Новое подключение…",

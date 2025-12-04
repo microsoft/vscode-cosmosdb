@@ -1,6 +1,6 @@
 {
-  "cosmosdb.command.account.create": "创建数据库服务器…",
-  "cosmosdb.command.account.create.description": "适用于 Web 应用的 SQL 或 NoSQL 数据库。",
+  "cosmosdb.command.account.create": "Create Azure Cosmos DB…",
+  "cosmosdb.command.account.create.description": "NoSQL database for your web apps",
   "cosmosdb.command.account.delete": "删除帐户…",
   "cosmosdb.command.account.unsupported": "打开不受支持的帐户",
   "cosmosdb.command.connection.add": "新建连接…",

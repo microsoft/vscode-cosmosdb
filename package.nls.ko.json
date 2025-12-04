@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "컨테이너 삭제…",
   "cosmosdb.command.database.create": "데이터베이스 만들기…",
   "cosmosdb.command.database.delete": "데이터베이스 삭제…",
+  "cosmosdb.command.document.import": "컨테이너로 문서 가져오기...",
   "cosmosdb.command.filter": "필터...",
   "cosmosdb.command.issue.report": "문제 보고…",
   "cosmosdb.command.document.create": "항목 만들기…",

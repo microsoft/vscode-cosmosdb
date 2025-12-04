@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "Odstranit kontejner...",
   "cosmosdb.command.database.create": "Vytvořit databázi...",
   "cosmosdb.command.database.delete": "Odstranit databázi...",
+  "cosmosdb.command.document.import": "Importovat dokument do kontejneru...",
   "cosmosdb.command.filter": "Filtrovat...",
   "cosmosdb.command.issue.report": "Nahlásit problém...",
   "cosmosdb.command.document.create": "Vytvořit položku...",

@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "[الهاتفDelete Container…עִבְרִית !]",
   "cosmosdb.command.database.create": "[الهاتفCreate Database…עִבְרִית!]",
   "cosmosdb.command.database.delete": "[الهاتفDelete Database…עִבְרִית!]",
+  "cosmosdb.command.document.import": "[الهاتفImport Document into a Container…עִבְרִית عليكעִ!]",
   "cosmosdb.command.filter": "[الهاتفFilter…עִבְרִ!]",
   "cosmosdb.command.issue.report": "[الهاتفReport Issue…עִבְרִי!]",
   "cosmosdb.command.document.create": "[الهاتفCreate Item…עִבְרִי!]",

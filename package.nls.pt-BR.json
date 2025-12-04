@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "Excluir Contêiner…",
   "cosmosdb.command.database.create": "Criar Banco de Dados…",
   "cosmosdb.command.database.delete": "Excluir Banco de Dados…",
+  "cosmosdb.command.document.import": "Importar Documento para um Contêiner…",
   "cosmosdb.command.filter": "Filtro…",
   "cosmosdb.command.issue.report": "Relatar Problema…",
   "cosmosdb.command.document.create": "Criar Item…",

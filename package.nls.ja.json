@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "コンテナーの削除…",
   "cosmosdb.command.database.create": "データベースの作成…",
   "cosmosdb.command.database.delete": "データベースの削除…",
+  "cosmosdb.command.document.import": "コンテナーへのドキュメントのインポート…",
   "cosmosdb.command.filter": "フィルター...",
   "cosmosdb.command.issue.report": "問題の報告…",
   "cosmosdb.command.document.create": "アイテムの作成…",

@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "删除容器…",
   "cosmosdb.command.database.create": "创建数据库…",
   "cosmosdb.command.database.delete": "删除数据库…",
+  "cosmosdb.command.document.import": "将文档导入容器…",
   "cosmosdb.command.filter": "筛选…",
   "cosmosdb.command.issue.report": "报告问题…",
   "cosmosdb.command.document.create": "创建项…",

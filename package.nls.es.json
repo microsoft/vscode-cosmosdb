@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "Eliminar contenedor…",
   "cosmosdb.command.database.create": "Crear base de datos…",
   "cosmosdb.command.database.delete": "Eliminar base de datos…",
+  "cosmosdb.command.document.import": "Importar documento en un contenedor…",
   "cosmosdb.command.filter": "Filtrar…",
   "cosmosdb.command.issue.report": "Notificar problema…",
   "cosmosdb.command.document.create": "Crear elemento…",

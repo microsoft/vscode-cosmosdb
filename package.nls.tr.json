@@ -11,6 +11,7 @@
   "cosmosdb.command.container.delete": "Kapsayıcıyı Sil…",
   "cosmosdb.command.database.create": "Veritabanı Oluştur…",
   "cosmosdb.command.database.delete": "Veritabanını Sil…",
+  "cosmosdb.command.document.import": "Belgeyi Kapsayıcıya aktar...",
   "cosmosdb.command.filter": "Filtrele…",
   "cosmosdb.command.issue.report": "Sorun Bildir…",
   "cosmosdb.command.document.create": "Öğe Oluştur…",

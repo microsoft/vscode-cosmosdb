@@ -28,6 +28,7 @@ import {
 } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { CosmosDbChatParticipant } from './chat';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
@@ -158,6 +159,9 @@ export async function activateInternal(
                 }
             },
         );
+
+        // Initialize the CosmosDB chat participant
+        new CosmosDbChatParticipant(context);
 
         context.subscriptions.push(
             vscode.window.registerUriHandler({

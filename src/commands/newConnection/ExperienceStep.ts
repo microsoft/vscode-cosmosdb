@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AzureWizardExecuteStep, AzureWizardPromptStep, type IWizardOptions } from '@microsoft/vscode-azext-utils';
-import { API } from '../../AzureDBExperiences';
-import { pickExperience } from '../../utils/pickItem/pickExperience';
+import { API, CoreExperience } from '../../AzureDBExperiences';
 import { CosmosDBConnectionStringStep } from './CosmosDBConnectionStringStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
 import { MongoConnectionStringStep } from './MongoConnectionStringStep';
@@ -13,11 +12,10 @@ import { MongoExecuteStep } from './MongoExecuteStep';
 import { MongoPasswordStep } from './MongoPasswordStep';
 import { MongoUsernameStep } from './MongoUsernameStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
-import { PostgresExecuteStep } from './PostgresExecuteStep';
 
 export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
-        context.experience = await pickExperience(context, context.quickPickType);
+        context.experience = CoreExperience;
     }
 
     public getSubWizard(context: NewConnectionWizardContext): Promise<IWizardOptions<NewConnectionWizardContext>> {
@@ -25,16 +23,7 @@ export class ExperienceStep extends AzureWizardPromptStep<NewConnectionWizardCon
         const executeSteps: AzureWizardExecuteStep<NewConnectionWizardContext>[] = [];
         const api = context.experience?.api;
 
-        if (api === API.PostgresSingle || api === API.PostgresFlexible) {
-            /* Postgres steps are now deprecated
-            promptSteps.push(
-                new PostgresConnectionStringStep(),
-                new PostgresUsernameStep(),
-                new PostgresPasswordStep(),
-            );
-            */
-            executeSteps.push(new PostgresExecuteStep());
-        } else if (api === API.MongoDB || api === API.MongoClusters) {
+        if (api === API.MongoDB || api === API.MongoClusters) {
             promptSteps.push(new MongoConnectionStringStep(), new MongoUsernameStep(), new MongoPasswordStep());
             executeSteps.push(new MongoExecuteStep());
         } else if (api === API.Core || api === API.Table || api === API.Graph || api === API.Cassandra) {

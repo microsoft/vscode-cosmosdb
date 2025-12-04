@@ -24,6 +24,7 @@
     "Database",
     "NOSQL"
   ],
+  "preview": true,
   "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/main/README.md",
   "bugs": {
     "url": "https://github.com/microsoft/vscode-cosmosdb/issues"
@@ -417,6 +418,31 @@
         "title": "%cosmosdb.command.document.import%"
       },
       {
+        "//": "Mongo DB|Cluster Scrapbook Connect Database",
+        "category": "MongoDB Clusters",
+        "command": "cosmosDB.connectMongoDB",
+        "title": "%cosmosdb.command.mongo.database.connect%"
+      },
+      {
+        "//": "Mongo DB|Cluster Scrapbook Execute All Commands",
+        "category": "MongoDB Clusters",
+        "command": "cosmosDB.executeAllMongoCommands",
+        "title": "%cosmosdb.command.mongo.scrapbook.execute_all%"
+      },
+      {
+        "//": "Mongo DB|Cluster Scrapbook Execute Command",
+        "category": "MongoDB Clusters",
+        "command": "cosmosDB.executeMongoCommand",
+        "title": "%cosmosdb.command.mongo.scrapbook.execute%"
+      },
+      {
+        "//": "Mongo DB|Cluster Scrapbook New Scrapbook",
+        "category": "MongoDB Clusters",
+        "command": "cosmosDB.newMongoScrapbook",
+        "title": "%cosmosdb.command.mongo.scrapbook.new%",
+        "icon": "$(new-file)"
+      },
+      {
         "category": "MongoDB Clusters",
         "command": "command.mongoClusters.dropCollection",
         "title": "%cosmosdb.command.mongo.collection.delete%"
@@ -640,12 +666,6 @@
           "group": "2@1"
         },
         {
-          "//": "[Database] Mongo DB|Cluster Scrapbook Submenu",
-          "submenu": "azureDatabases.submenus.mongo.database.scrapbook",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "2@2"
-        },
-        {
           "//": "[Database] Refresh",
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i",
@@ -722,12 +742,6 @@
           "command": "command.mongoClusters.launchShell",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
           "group": "4@1"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Scrapbook Submenu",
-          "submenu": "azureDatabases.submenus.mongo.collection.scrapbook",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "4@2"
         },
         {
           "//": "[Collection] Refresh",

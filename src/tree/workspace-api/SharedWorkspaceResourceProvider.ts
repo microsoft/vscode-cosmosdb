@@ -24,8 +24,6 @@ import type * as vscode from 'vscode';
  * ```
  */
 export enum WorkspaceResourceType {
-    MongoClusters = 'vscode.cosmosdb.workspace.mongoclusters-resourceType',
-    MongoClustersDisabled = 'vscode.cosmosdb.workspace.mongoclusters-disabled-resourceType',
     AttachedAccounts = 'vscode.cosmosdb.workspace.attachedaccounts-resourceType',
 }
 

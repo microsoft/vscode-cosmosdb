@@ -38,16 +38,16 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
     const { ref, type } = props;
 
     const currentValue = useMemo(() => {
-        return state.dbName && state.collectionName ? `${state.dbName}/${state.collectionName}` : '';
-    }, [state.dbName, state.collectionName]);
+        return state.dbName && state.containerName ? `${state.dbName}/${state.containerName}` : '';
+    }, [state.dbName, state.containerName]);
 
     const selectedOptions = useMemo(() => {
-        return [`${state.dbName}/${state.collectionName}`];
-    }, [state.dbName, state.collectionName]);
+        return [`${state.dbName}/${state.containerName}`];
+    }, [state.dbName, state.containerName]);
 
     const checkedValues = useMemo(() => {
-        return { databaseId: [state.dbName], containerId: [state.collectionName] };
-    }, [state.dbName, state.collectionName]);
+        return { databaseId: [state.dbName], containerId: [state.containerName] };
+    }, [state.dbName, state.containerName]);
 
     const onOpenChange = useCallback(
         (_e: never, data: { open: boolean }) => {
@@ -92,7 +92,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
                     {state.isConnected && !state.connectionList && (
                         <OptionGroup label={state.dbName}>
                             <Option value={currentValue} text={currentValue}>
-                                {state.collectionName}
+                                {state.containerName}
                             </Option>
                         </OptionGroup>
                     )}

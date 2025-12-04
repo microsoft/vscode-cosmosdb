@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
-import { type MongoClusterManagementClient } from '@azure/arm-mongocluster';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
@@ -30,20 +29,6 @@ export async function createCosmosDBManagementClient(
     const subContext = createSubscriptionContext(subscription);
     const { CosmosDBManagementClient } = await import('@azure/arm-cosmosdb');
     return createAzureClient([context, subContext], CosmosDBManagementClient);
-}
-
-export async function createMongoClustersManagementClient(
-    context: IActionContext,
-    subscription: AzureSubscription,
-): Promise<MongoClusterManagementClient> {
-    const subContext = createSubscriptionContext(subscription);
-    const MongoClusterManagementClient = (await import('@azure/arm-mongocluster')).MongoClusterManagementClient;
-    return createAzureClient(
-        [context, subContext],
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        MongoClusterManagementClient,
-    ) as unknown as MongoClusterManagementClient;
 }
 
 export async function createPostgreSQLClient(

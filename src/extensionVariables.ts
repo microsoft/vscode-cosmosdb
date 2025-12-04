@@ -8,12 +8,8 @@ import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-a
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
-import { type MongoVCoreBranchDataProvider } from './tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreBranchDataProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
-import { type DisabledClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb-disabled/DisabledClustersWorkspaceBranchDataProvider';
-import { type AccountsItem } from './tree/workspace-view/documentdb/AccountsItem';
-import { type ClustersWorkspaceBranchDataProvider } from './tree/workspace-view/documentdb/ClustersWorkbenchBranchDataProvider';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -41,20 +37,9 @@ export namespace ext {
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
 
-    // used for the resources tree
-    export let mongoVCoreBranchDataProvider: MongoVCoreBranchDataProvider;
-    // used for the workspace: these are the dedicated providers
-    export let mongoClustersWorkspaceBranchDataProvider:
-        | ClustersWorkspaceBranchDataProvider
-        | DisabledClustersWorkspaceBranchDataProvider;
-    export let mongoClusterWorkspaceBranchDataResource: AccountsItem;
-
     export namespace settingsKeys {
-        export const mongoShellPath = 'mongo.shell.path';
-        export const mongoShellArgs = 'mongo.shell.args';
         export const documentLabelFields = 'cosmosDB.documentLabelFields';
         export const enableEndpointDiscovery = 'cosmosDB.enableEndpointDiscovery';
-        export const mongoShellTimeout = 'mongo.shell.timeout';
         export const batchSize = 'azureDatabases.batchSize';
         export const confirmationStyle = 'azureDatabases.confirmationStyle';
         export const showOperationSummaries = 'azureDatabases.showOperationSummaries';

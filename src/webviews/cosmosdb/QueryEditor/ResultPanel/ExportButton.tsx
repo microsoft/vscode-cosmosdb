@@ -23,7 +23,7 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
         : l10n.t('Export all results from the current page');
 
     const onSaveAsCSV = useCallback(async () => {
-        const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
+        const filename = `${state.dbName}_${state.containerName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
             const selectedRows = hasSelection ? state.selectedRows : undefined;
             return dispatcher.saveCSV(`${filename}_result`, state.currentQueryResult, state.partitionKey, selectedRows);
@@ -37,7 +37,7 @@ export const ExportButton = (props: ToolbarOverflowItemProps<HTMLButtonElement> 
     }, [dispatcher, state, selectedTab, hasSelection]);
 
     const onSaveAsJSON = useCallback(async () => {
-        const filename = `${state.dbName}_${state.collectionName}_${state.currentQueryResult?.activityId ?? 'query'}`;
+        const filename = `${state.dbName}_${state.containerName}_${state.currentQueryResult?.activityId ?? 'query'}`;
         if (selectedTab === 'result__tab') {
             const selectedRows = hasSelection ? state.selectedRows : undefined;
             const json = queryResultToJSON(state.currentQueryResult, selectedRows);

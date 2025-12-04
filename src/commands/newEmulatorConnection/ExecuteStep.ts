@@ -5,11 +5,9 @@
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { API } from '../../AzureDBExperiences';
 import { ext } from '../../extensionVariables';
-import { type StorageItem, StorageNames, StorageService } from '../../services/storageService';
+import { type StorageItem, StorageNames, StorageService } from '../../services/StorageService';
 import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceResourceProvider';
-import { type EmulatorConfiguration } from '../../utils/emulatorConfiguration';
 import { getEmulatorItemLabelForApi, getEmulatorItemUniqueId } from '../../utils/emulatorUtils';
 import {
     NewEmulatorConnectionMode,
@@ -48,48 +46,21 @@ export class ExecuteStep extends AzureWizardExecuteStep<NewEmulatorConnectionWiz
             async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
-                let isEmulator: boolean = true;
-                let disableEmulatorSecurity: boolean | undefined;
-
-                switch (experience.api) {
-                    case API.MongoDB:
-                    case API.MongoClusters: {
-                        const mongoConfig = context.mongoEmulatorConfiguration as EmulatorConfiguration;
-                        isEmulator = mongoConfig?.isEmulator ?? true;
-                        disableEmulatorSecurity = mongoConfig?.disableEmulatorSecurity;
-                        break;
-                    }
-                    // Add additional cases here for APIs that require different handling
-                    default: {
-                        isEmulator = context.isCoreEmulator ?? true;
-                        break;
-                    }
-                }
-
                 const storageItem: StorageItem = {
                     id: getEmulatorItemUniqueId(connectionString), // Use hash instead of raw connection string
                     name: label,
                     properties: {
                         api: experience.api,
-                        isEmulator,
-                        ...(disableEmulatorSecurity && { disableEmulatorSecurity }),
+                        isEmulator: true,
                     },
                     secrets: [connectionString], // Connection string still stored in secrets
                 };
 
-                if (experience.api === API.MongoDB) {
-                    await StorageService.get(StorageNames.Workspace).push(
-                        WorkspaceResourceType.MongoClusters,
-                        storageItem,
-                        true,
-                    );
-                } else {
-                    await StorageService.get(StorageNames.Workspace).push(
-                        WorkspaceResourceType.AttachedAccounts,
-                        storageItem,
-                        true,
-                    );
-                }
+                await StorageService.get(StorageNames.Workspace).push(
+                    WorkspaceResourceType.AttachedAccounts,
+                    storageItem,
+                    true,
+                );
             },
         );
     }

@@ -7,15 +7,20 @@ import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type MongoClusterManagementClient } from '@azure/arm-mongocluster';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
-import { createAzureClient, type AzExtClientContext } from '@microsoft/vscode-azext-azureutils';
+import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
 // Lazy-load @azure packages to improve startup performance.
 // NOTE: The client is the only import that matters, the rest of the types disappear when compiled to JavaScript
 
-export async function createCosmosDBClient(context: AzExtClientContext): Promise<CosmosDBManagementClient> {
-    return createAzureClient(context, (await import('@azure/arm-cosmosdb')).CosmosDBManagementClient);
+export async function createCosmosDBClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<CosmosDBManagementClient> {
+    const subContext = createSubscriptionContext(subscription);
+    const { CosmosDBManagementClient } = await import('@azure/arm-cosmosdb');
+    return createAzureClient([context, subContext], CosmosDBManagementClient);
 }
 
 export async function createCosmosDBManagementClient(
@@ -23,7 +28,8 @@ export async function createCosmosDBManagementClient(
     subscription: AzureSubscription,
 ): Promise<CosmosDBManagementClient> {
     const subContext = createSubscriptionContext(subscription);
-    return createAzureClient([context, subContext], (await import('@azure/arm-cosmosdb')).CosmosDBManagementClient);
+    const { CosmosDBManagementClient } = await import('@azure/arm-cosmosdb');
+    return createAzureClient([context, subContext], CosmosDBManagementClient);
 }
 
 export async function createMongoClustersManagementClient(
@@ -40,15 +46,20 @@ export async function createMongoClustersManagementClient(
     ) as unknown as MongoClusterManagementClient;
 }
 
-export async function createPostgreSQLClient(context: AzExtClientContext): Promise<PostgreSQLManagementClient> {
-    return createAzureClient(context, (await import('@azure/arm-postgresql')).PostgreSQLManagementClient);
+export async function createPostgreSQLClient(
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<PostgreSQLManagementClient> {
+    const subContext = createSubscriptionContext(subscription);
+    const { PostgreSQLManagementClient } = await import('@azure/arm-postgresql');
+    return createAzureClient([context, subContext], PostgreSQLManagementClient);
 }
 
 export async function createPostgreSQLFlexibleClient(
-    context: AzExtClientContext,
+    context: IActionContext,
+    subscription: AzureSubscription,
 ): Promise<PostgreSQLManagementFlexibleServerClient> {
-    return createAzureClient(
-        context,
-        (await import('@azure/arm-postgresql-flexible')).PostgreSQLManagementFlexibleServerClient,
-    );
+    const subContext = createSubscriptionContext(subscription);
+    const { PostgreSQLManagementFlexibleServerClient } = await import('@azure/arm-postgresql-flexible');
+    return createAzureClient([context, subContext], PostgreSQLManagementFlexibleServerClient);
 }

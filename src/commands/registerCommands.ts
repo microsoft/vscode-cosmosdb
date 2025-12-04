@@ -16,7 +16,6 @@ import {
 } from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { registerCosmosDBCommands } from '../cosmosdb/registerCosmosDBCommands';
 import { ext } from '../extensionVariables';
-import { registerPostgresCommands } from '../postgres/commands/registerPostgresCommands';
 import { copyAzureConnectionString } from './copyConnectionString/copyConnectionString';
 import { cosmosDBCreateContainer, cosmosDBCreateGraph } from './createContainer/createContainer';
 import { createAzureDatabase } from './createDatabase/createDatabase';
@@ -68,7 +67,6 @@ export function registerCommands(): void {
 
     // old commands
     registerCosmosDBCommands();
-    registerPostgresCommands();
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.refresh', refreshTreeElement);
 

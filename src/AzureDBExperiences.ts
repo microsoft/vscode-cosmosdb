@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 
 export enum API {
@@ -98,27 +97,6 @@ export interface Experience {
 
     // The defaultExperience tag to place into the resource (has no actual effect in Azure, just imitating the portal)
     tag?: string;
-}
-
-export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getCosmosDBExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return cosmosDBExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getPostgresExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return postgresExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getMongoCoreExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return mongoCoreExperienceArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience> {
-    const exp = getExperienceFromApi(api);
-    return { label: exp.longName, description: exp.description, data: exp };
 }
 
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"

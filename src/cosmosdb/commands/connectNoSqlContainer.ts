@@ -6,7 +6,6 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { KeyValueStore } from '../../KeyValueStore';
-import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { noSqlQueryConnectionKey } from '../NoSqlCodeLensProvider';
@@ -15,7 +14,6 @@ import { createNoSqlQueryConnection } from '../NoSqlQueryConnection';
 export function setConnectedNoSqlContainer(node: CosmosDBContainerResourceItem): void {
     const noSqlQueryConnection = createNoSqlQueryConnection(node);
     KeyValueStore.instance.set(noSqlQueryConnectionKey, noSqlQueryConnection);
-    ext.noSqlCodeLensProvider.updateCodeLens();
 }
 
 export async function connectNoSqlContainer(context: IActionContext): Promise<void> {
@@ -28,5 +26,4 @@ export async function connectNoSqlContainer(context: IActionContext): Promise<vo
 
 export async function disconnectNoSqlContainer(): Promise<void> {
     KeyValueStore.instance.set(noSqlQueryConnectionKey, null);
-    ext.noSqlCodeLensProvider.updateCodeLens();
 }

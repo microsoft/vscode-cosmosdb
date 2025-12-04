@@ -4,22 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { registerCommand, registerCommandWithTreeNodeUnwrapping } from '@microsoft/vscode-azext-utils';
-import * as vscode from 'vscode';
-import { ext } from '../extensionVariables';
 import { connectNoSqlContainer } from './commands/connectNoSqlContainer';
 import { executeNoSqlQuery } from './commands/executeNoSqlQuery';
 import { getNoSqlQueryPlan } from './commands/getNoSqlQueryPlan';
 import { writeNoSqlQuery } from './commands/writeNoSqlQuery';
-import { NoSqlCodeLensProvider } from './NoSqlCodeLensProvider';
-
-const nosqlLanguageId = 'nosql';
 
 export function registerCosmosDBCommands(): void {
-    ext.noSqlCodeLensProvider = new NoSqlCodeLensProvider();
-    ext.context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider(nosqlLanguageId, ext.noSqlCodeLensProvider),
-    );
-
     // # region Scrapbook command
     registerCommandWithTreeNodeUnwrapping('cosmosDB.writeNoSqlQuery', writeNoSqlQuery);
     registerCommand('cosmosDB.connectNoSqlContainer', connectNoSqlContainer);

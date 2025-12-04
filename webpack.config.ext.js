@@ -66,13 +66,10 @@ module.exports = (env, { mode }) => {
             socks: 'commonjs socks',
             aws4: 'commonjs aws4',
             'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
-            /* PG optional dependencies */
-            'pg-native': 'commonjs pg-native',
-            'pg-cloudflare': 'commonjs pg-cloudflare',
         },
         resolve: {
             roots: [__dirname],
-            // conditionNames: ['import', 'require', 'node'], // Uncomment when we will use VSCode what supports modules
+            conditionNames: ['import', 'require', 'node'],
             mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
         },

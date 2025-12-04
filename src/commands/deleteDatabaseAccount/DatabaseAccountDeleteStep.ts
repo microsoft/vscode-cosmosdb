@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
+import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { ext } from '../../extensionVariables';
-import { CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { MongoVCoreResourceItem } from '../../tree/azure-resources-view/documentdb/mongo-vcore/MongoVCoreResourceItem';
+import { CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
 import { type DeleteWizardContext } from './DeleteWizardContext';
 import { deleteCosmosDBAccount } from './deleteCosmosDBAccount';
 import { deleteMongoClustersAccount } from './deleteMongoClustersAccount';
@@ -16,11 +16,9 @@ export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWiza
     public priority: number = 100;
 
     public async execute(context: DeleteWizardContext): Promise<void> {
-        if (context.node instanceof AzExtTreeItem) {
-            await context.node.deleteTreeItem(context);
-        } else if (context.node instanceof CosmosDBAccountResourceItemBase) {
+        if (context.node instanceof CosmosDBAccountResourceItem) {
             await ext.state.showDeleting(context.node.id, () =>
-                deleteCosmosDBAccount(context, context.node as CosmosDBAccountResourceItemBase),
+                deleteCosmosDBAccount(context, context.node as CosmosDBAccountResourceItem),
             );
             ext.cosmosDBBranchDataProvider.refresh();
         } else if (context.node instanceof MongoVCoreResourceItem) {

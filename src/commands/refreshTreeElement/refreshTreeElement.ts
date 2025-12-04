@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { AzExtTreeItem, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
 import { BaseCachedBranchDataProvider } from '../../tree/BaseCachedBranchDataProvider';
 import { type TreeElement } from '../../tree/TreeElement';
 
-export async function refreshTreeElement(context: IActionContext, node: AzExtTreeItem | TreeElement): Promise<void> {
-    if (node instanceof AzExtTreeItem) {
-        return node.refresh(context);
+export async function refreshTreeElement(context: IActionContext, node?: TreeElement): Promise<void> {
+    if (!node) {
+        return ext.cosmosDBBranchDataProvider.refresh();
     }
 
     if (node && 'refresh' in node && typeof node.refresh === 'function') {

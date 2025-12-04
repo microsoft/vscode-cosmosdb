@@ -845,13 +845,13 @@
         {
           "//": "[Account] CosmosDB Filter tree items",
           "command": "azureDatabases.filterTreeItems",
-          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.](filterable)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](filterable)(?![a-z.\\/])/i",
           "group": "inline"
         },
         {
           "//": "[Account] CosmosDB Sort tree items",
           "command": "azureDatabases.sortTreeItems",
-          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.](sortable)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](sortable)(?![a-z.\\/])/i",
           "group": "inline"
         },
         {

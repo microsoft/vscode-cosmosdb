@@ -19,7 +19,7 @@ export type DispatchAction =
     | {
           type: 'databaseConnected';
           dbName: string;
-          collectionName: string;
+          containerName: string;
           partitionKey?: PartitionKeyDefinition;
       }
     | {
@@ -80,8 +80,8 @@ export type DispatchAction =
 
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
-    collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
-    partitionKey?: PartitionKeyDefinition; // Partition key of the collection (Readonly, only server can change it)
+    containerName: string; // Container which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
+    partitionKey?: PartitionKeyDefinition; // Partition key of the container (Readonly, only server can change it)
     currentExecutionId: string; // Execution ID of the current query (Value exists on both client and server)
     queryHistory: string[];
     queryValue: string;
@@ -109,7 +109,7 @@ export type QueryEditorState = {
 
 export const defaultState: QueryEditorState = {
     dbName: '',
-    collectionName: '',
+    containerName: '',
     partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
@@ -149,11 +149,11 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 ...state,
                 isConnected: true,
                 dbName: action.dbName,
-                collectionName: action.collectionName,
+                containerName: action.containerName,
                 partitionKey: action.partitionKey,
             };
         case 'databaseDisconnected':
-            return { ...state, isConnected: false, dbName: '', collectionName: '' };
+            return { ...state, isConnected: false, dbName: '', containerName: '' };
         case 'executionStarted':
             return {
                 ...state,

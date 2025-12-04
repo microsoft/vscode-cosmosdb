@@ -8,7 +8,6 @@ import * as l10n from '@vscode/l10n';
 import {
     API,
     CoreExperience,
-    MongoExperience,
     PostgresFlexibleExperience,
     PostgresSingleExperience,
     tryGetExperience,
@@ -17,12 +16,10 @@ import { nonNullProp } from '../../../utils/nonNull';
 import { BaseCachedBranchDataProvider } from '../../BaseCachedBranchDataProvider';
 import { CosmosDBAccountUnsupportedResourceItem } from '../../cosmosdb/CosmosDBAccountUnsupportedResourceItem';
 import { type CosmosDBAccountModel } from '../../cosmosdb/models/CosmosDBAccountModel';
-import { type ClusterModel } from '../../documentdb/ClusterModel';
 import { makeFilterable } from '../../mixins/Filterable';
 import { makeSortable } from '../../mixins/Sortable';
 import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
 import { type TreeElement } from '../../TreeElement';
-import { MongoRUResourceItem } from '../documentdb/mongo-ru/MongoRUResourceItem';
 
 export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<CosmosDBAccountModel> {
     protected get contextValue(): string {
@@ -40,15 +37,6 @@ export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<Cos
         if (type.toLocaleLowerCase() === 'microsoft.documentdb/databaseaccounts') {
             const accountModel = resource;
             const experience = tryGetExperience(resource);
-
-            if (experience?.api === API.MongoDB) {
-                const clusterInfo: ClusterModel = {
-                    ...resource,
-                    dbExperience: MongoExperience,
-                } as ClusterModel;
-
-                return new MongoRUResourceItem(resource.subscription, clusterInfo);
-            }
 
             if (experience?.api === API.Core) {
                 return makeFilterable(makeSortable(new NoSqlAccountResourceItem(accountModel, experience)));

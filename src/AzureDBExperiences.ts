@@ -7,19 +7,21 @@ import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
 import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 
 export enum API {
-    MongoDB = 'MongoDB',
-    MongoClusters = 'MongoClusters',
-    Graph = 'Graph',
-    Table = 'Table',
-    Cassandra = 'Cassandra',
     Core = 'Core', // Now called NoSQL
-    PostgresSingle = 'PostgresSingle',
-    PostgresFlexible = 'PostgresFlexible',
     Common = 'Common', // In case we're reporting a common event and still need to provide the value of the API
+    /** @deprecated Graph API is retired */
+    Graph = 'Graph',
+    /** @deprecated Table API is retired */
+    Table = 'Table',
+    /** @deprecated Cassandra API is retired */
+    Cassandra = 'Cassandra',
+    /** @deprecated PostgresSingle API is not supported in this extension */
+    PostgresSingle = 'PostgresSingle',
+    /** @deprecated PostgresFlexible API is not supported in this extension */
+    PostgresFlexible = 'PostgresFlexible',
 }
 
 export enum DBAccountKind {
-    MongoDB = 'MongoDB',
     GlobalDocumentDB = 'GlobalDocumentDB',
 }
 
@@ -31,13 +33,12 @@ enum Capability {
 
 enum Tag {
     Core = 'Core (SQL)',
-    Mongo = 'Azure Cosmos DB for MongoDB API',
     Table = 'Azure Table',
     Gremlin = 'Gremlin (graph)',
     Cassandra = 'Cassandra',
 }
 
-export type CapabilityName = 'EnableGremlin' | 'EnableTable' | 'EnableCassandra';
+export type CapabilityName = keyof typeof Capability;
 
 export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
@@ -48,10 +49,6 @@ export function getExperienceFromApi(api: API): Experience {
 }
 
 export function tryGetExperience(resource: CosmosDBAccountModel | DatabaseAccountGetResults): Experience | undefined {
-    if (resource.kind === DBAccountKind.MongoDB) {
-        return MongoExperience;
-    }
-
     if ('capabilities' in resource) {
         // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
         if (resource.capabilities?.find((cap) => cap.name === Capability.EnableGremlin)) {
@@ -109,20 +106,6 @@ export const CoreExperience: Experience = {
     kind: DBAccountKind.GlobalDocumentDB,
     tag: 'Core (SQL)',
 } as const;
-export const MongoExperience: Experience = {
-    api: API.MongoDB,
-    longName: 'Cosmos DB for MongoDB',
-    shortName: 'MongoDB',
-    telemetryName: 'mongo',
-    kind: DBAccountKind.MongoDB,
-    tag: 'Azure Cosmos DB for MongoDB API',
-} as const;
-export const MongoClustersExperience: Experience = {
-    api: API.MongoClusters,
-    longName: 'Cosmos DB for MongoDB (vCore)',
-    shortName: 'MongoDB (vCore)',
-    telemetryName: 'mongoClusters',
-} as const;
 export const TableExperience: Experience = {
     api: API.Table,
     longName: 'Cosmos DB for Table',
@@ -159,13 +142,13 @@ export const PostgresFlexibleExperience: Experience = {
     shortName: 'PostgreSQLFlexible',
 };
 
-const cosmosDBExperiencesArray: Experience[] = [CoreExperience];
-const postgresExperiencesArray: Experience[] = [PostgresSingleExperience, PostgresFlexibleExperience];
-const mongoCoreExperienceArray: Experience[] = [MongoClustersExperience];
 const experiencesArray: Experience[] = [
-    ...cosmosDBExperiencesArray,
-    ...postgresExperiencesArray,
-    ...mongoCoreExperienceArray,
+    CoreExperience,
+    TableExperience,
+    GremlinExperience,
+    CassandraExperience,
+    PostgresSingleExperience,
+    PostgresFlexibleExperience,
 ];
 const experiencesMap = new Map<API, Experience>(
     experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]),

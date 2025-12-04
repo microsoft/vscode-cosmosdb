@@ -3,13 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type DatabaseDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
 import { type AccountInfo } from '../cosmosdb/AccountInfo';
 import { CosmosDBAccountAttachedResourceItem } from '../cosmosdb/CosmosDBAccountAttachedResourceItem';
-import { makeFilterable } from '../mixins/Filterable';
-import { makeSortable } from '../mixins/Sortable';
+import { type DatabaseResource } from '../cosmosdb/models/CosmosDBTypes';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 
@@ -18,18 +16,17 @@ export class NoSqlAccountAttachedResourceItem extends CosmosDBAccountAttachedRes
         super(account, experience);
     }
 
-    protected getChildrenImpl(
-        accountInfo: AccountInfo,
-        databases: (DatabaseDefinition & Resource)[],
-    ): Promise<TreeElement[]> {
+    protected getChildrenImpl(accountInfo: AccountInfo, databases: DatabaseResource[]): Promise<TreeElement[]> {
         return Promise.resolve(
-            databases.map((db) =>
-                makeFilterable(
-                    makeSortable(
-                        new NoSqlDatabaseResourceItem({ accountInfo: accountInfo, database: db }, this.experience),
-                    ),
-                ),
-            ),
+            databases.map((db) => {
+                return new NoSqlDatabaseResourceItem(
+                    {
+                        accountInfo: accountInfo,
+                        database: db,
+                    },
+                    this.experience,
+                );
+            }),
         );
     }
 }

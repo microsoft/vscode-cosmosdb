@@ -159,12 +159,15 @@ export class DocumentSession {
                 );
 
                 let result: CosmosDBRecord | undefined;
+                let primaryTimeoutId: NodeJS.Timeout | undefined = undefined;
                 try {
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        primaryTimeoutId = setTimeout(() => reject(new Error('Read operation timed out')), timeoutMs);
+                    });
+
                     const response = await Promise.race([
                         readPromise,
-                        new Promise<never>((_, reject) =>
-                            setTimeout(() => reject(new Error('Read operation timed out')), timeoutMs),
-                        ),
+                        timeoutPromise,
                     ]);
                     result = response?.resource;
                 } catch (primaryError) {
@@ -173,6 +176,10 @@ export class DocumentSession {
                     );
                     // Don't throw yet, try fallback if we have _rid
                     result = undefined;
+                } finally {
+                    if (primaryTimeoutId) {
+                        clearTimeout(primaryTimeoutId);
+                    }
                 }
 
                 // Try to read the document by _rid if the primary read fails

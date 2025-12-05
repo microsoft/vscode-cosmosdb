@@ -165,7 +165,6 @@
     "pg": "~8.16.3",
     "pg-connection-string": "~2.9.1",
     "react-hotkeys-hook": "~5.2.1",
-    "react-resizable-panels": "~3.0.6",
     "regenerator-runtime": "~0.14.1",
     "semver": "~7.7.3",
     "slickgrid-react": "~9.9.0",

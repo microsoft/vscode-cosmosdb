@@ -8,7 +8,7 @@ import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { CosmosDBTimeouts, getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
@@ -40,6 +40,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
     public async getChildren(): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
+
         const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
             this.getDatabases(accountInfo, cosmosClient),
         );
@@ -101,17 +102,21 @@ export abstract class CosmosDBAccountAttachedResourceItem
         };
 
         try {
-            // Await is required here to ensure that the error is caught in the catch block
+            // Apply timeout to prevent hanging indefinitely on unreachable hosts
             if (this.account.isEmulator) {
                 return await rejectOnTimeout(
-                    2000,
+                    CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS,
                     () => getResources(),
                     l10n.t(
                         "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
                     ),
                 );
             } else {
-                return await getResources();
+                return await rejectOnTimeout(
+                    CosmosDBTimeouts.CONNECTION_TIMEOUT_MS,
+                    () => getResources(),
+                    l10n.t('Connection timed out. Please verify the connection string and that the host is reachable.'),
+                );
             }
         } catch (e) {
             if (e instanceof Error) {
@@ -121,7 +126,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
                     const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                     void showRbacPermissionError(this.id, principalId);
                     if (!principalId || !e.message.includes(principalId)) {
-                        // In case we're not signed in with the principal that's missing permissions, log the full errror
+                        // In case we're not signed in with the principal that's missing permissions, log the full error
                         ext.outputChannel.error(e);
                         ext.outputChannel.show();
                     }

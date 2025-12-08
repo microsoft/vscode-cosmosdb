@@ -112,10 +112,22 @@ export const DocumentPanel = () => {
         void dispatcher?.notifyDirty?.(state.isDirty);
     }, [dispatcher, state.isDirty]);
 
-    if (!state.isReady || !state.currentDocumentContent) {
+    // Show loading state if not ready OR (no document content and no error to display)
+    if (!state.isReady || (!state.currentDocumentContent && !state.error)) {
         return (
             <section className={classes.container} tabIndex={-1}>
                 <ProgressBar />
+            </section>
+        );
+    }
+
+    // Show error state when there's an error and no document content (e.g., document deleted externally)
+    if (!state.currentDocumentContent && state.error) {
+        return (
+            <section className={classes.container} tabIndex={-1}>
+                <MessageBar intent="error">
+                    <Text>{Array.isArray(state.error) ? state.error.join('\n') : state.error}</Text>
+                </MessageBar>
             </section>
         );
     }

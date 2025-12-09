@@ -51,6 +51,7 @@ export type QueryResult = {
     requestCharge: number;
     roundTrips: number;
     hasMoreResults: boolean;
+    deletedDocuments: number[];
 };
 
 export type SerializedQueryMetrics = {
@@ -81,6 +82,7 @@ export type SerializedQueryResult = {
     requestCharge: number;
     roundTrips: number;
     hasMoreResults: boolean;
+    deletedDocuments: number[];
 
     query: string; // The query that was executed
 };

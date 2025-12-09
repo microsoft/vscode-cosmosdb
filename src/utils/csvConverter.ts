@@ -48,9 +48,12 @@ export const queryResultToCsv = async (
     const sep = getCsvSeparator();
     const headers = tableView.headers.map((hdr) => escapeCsvValue(hdr)).join(sep);
 
-    if (selection) {
-        tableView.dataset = tableView.dataset.filter((_, index) => selection.includes(index));
-    }
+    const notDeletedRows = tableView.dataset
+        .map((_, index) => index)
+        .filter((index) => !tableView.deletedRows.includes(index));
+    const selectedRows = selection ? notDeletedRows.filter((index) => selection.includes(index)) : notDeletedRows;
+
+    tableView.dataset = tableView.dataset.filter((_, index) => selectedRows.includes(index));
 
     const rows = tableView.dataset
         .map((row) => {

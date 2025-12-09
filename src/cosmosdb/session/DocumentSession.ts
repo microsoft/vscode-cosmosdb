@@ -25,10 +25,10 @@ import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
-import { arePartitionKeysEqual, extractPartitionKey } from '../../utils/document';
+import { arePartitionKeysEqual, extractPartitionKey, getDocumentId } from '../../utils/document';
 import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
-import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
+import { type CosmosDBRecord, type CosmosDBRecordIdentifier, type QueryResultRecord } from '../types/queryResult';
 import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 /**
@@ -318,8 +318,8 @@ export class DocumentSession {
         });
     }
 
-    public async delete(documentId: CosmosDBRecordIdentifier): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.delete', async (context) => {
+    public async delete(documentId: CosmosDBRecordIdentifier): Promise<boolean | undefined> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.delete', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -340,7 +340,14 @@ export class DocumentSession {
                 return;
             }
 
-            await this.deleteInternal(documentId, context);
+            return this.deleteInternal(documentId, context);
+        });
+    }
+
+    public async getDocumentId(document: QueryResultRecord): Promise<CosmosDBRecordIdentifier | undefined> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.getDocumentId', async () => {
+            const partitionKey = await this.getPartitionKey();
+            return getDocumentId(document, partitionKey);
         });
     }
 
@@ -384,8 +391,8 @@ export class DocumentSession {
         return false;
     }
 
-    public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.bulkDelete', async (context) => {
+    public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<DeleteStatus | void> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.bulkDelete', async (context) => {
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -437,9 +444,8 @@ export class DocumentSession {
                         const abortController = new AbortController();
                         const abortSignal = abortController.signal;
 
-                        token.onCancellationRequested(async () => {
+                        token.onCancellationRequested(() => {
                             status.aborted = true;
-                            await sendResponse();
                             abortController.abort();
                         });
 
@@ -487,7 +493,9 @@ export class DocumentSession {
                     );
                 }
 
-                return sendResponse();
+                await sendResponse();
+
+                return status;
             } catch (error) {
                 await this.errorHandling(error, context);
             }

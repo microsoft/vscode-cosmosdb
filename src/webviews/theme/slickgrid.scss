@@ -111,3 +111,8 @@ $slick-header-resizable-hover: 1px solid var(--vscode-editor-selectionBackground
     $slick-pagination-icon-color:                               $slick-icon-color,
     $slick-header-menu-display:                                 inline,
 );
+
+.slick-cell.row-is-deleted {
+    text-decoration: line-through;
+    color: var(--vscode-editor-findMatchBackground);
+}

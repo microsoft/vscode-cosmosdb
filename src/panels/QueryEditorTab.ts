@@ -12,13 +12,8 @@ import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
-import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
-import {
-    type CosmosDBRecordIdentifier,
-    type QueryMetadata,
-    type SerializedQueryResult,
-} from '../cosmosdb/types/queryResult';
+import { type QueryMetadata, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
 import { toStringUniversal } from '../utils/convertors';
@@ -163,11 +158,15 @@ export class QueryEditorTab extends BaseTab {
             case 'firstPage':
                 return this.firstPage(payload.params[0] as string);
             case 'openDocument':
-                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDBRecordIdentifier);
+                return this.openDocument(
+                    payload.params[0] as string,
+                    payload.params[1] as string,
+                    payload.params[2] as number,
+                );
             case 'deleteDocument':
-                return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
+                return this.deleteDocument(payload.params[0] as string, payload.params[1] as number);
             case 'deleteDocuments':
-                return this.deleteDocuments(payload.params[0] as CosmosDBRecordIdentifier[]);
+                return this.deleteDocuments(payload.params[0] as string, payload.params[1] as number[]);
             case 'provideFeedback':
                 return this.provideFeedback();
             case 'saveCSV':
@@ -565,14 +564,14 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async openDocument(mode: string, documentId?: CosmosDBRecordIdentifier): Promise<void> {
+    private async openDocument(executionId: string, mode: string, row?: number): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
-        await callWithTelemetryAndErrorHandling(callbackId, () => {
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }
 
-            if (!documentId && mode !== 'add') {
+            if (!row && mode !== 'add') {
                 throw new Error(l10n.t('Impossible to open an item without an id'));
             }
 
@@ -580,37 +579,52 @@ export class QueryEditorTab extends BaseTab {
                 throw new Error(l10n.t('Invalid mode: {0}', mode));
             }
 
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            const documentId = row ? await session.getDocumentId(row) : undefined;
+
             DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async deleteDocument(documentId: CosmosDBRecordIdentifier): Promise<void> {
+    private async deleteDocument(executionId: string, row: number): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }
 
-            if (!documentId) {
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            if (!row) {
                 throw new Error(l10n.t('Impossible to delete an item without an id'));
             }
 
-            const session = new DocumentSession(this.connection, this.channel);
-            await session.delete(documentId);
+            return session.deleteDocument(row);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
-    private async deleteDocuments(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
+    private async deleteDocuments(executionId: string, rows: number[]): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocuments';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }
 
-            const session = new DocumentSession(this.connection, this.channel);
-            await session.bulkDelete(documentIds);
+            const session = this.sessions.get(executionId);
+            if (!session) {
+                throw new Error(`No session found for executionId: ${executionId}`);
+            }
+
+            return session.bulkDelete(rows);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }

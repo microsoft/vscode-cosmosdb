@@ -551,7 +551,7 @@ Ask me anything about Azure Cosmos DB! 💪`;
             if (extendedReq.model) {
                 languageModel = extendedReq.model;
             } else {
-                const models = await vscode.lm.selectChatModels({
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
                 if (models.length > 0) {
                     languageModel = models[0];
                 }

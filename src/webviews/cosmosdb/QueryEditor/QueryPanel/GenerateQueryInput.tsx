@@ -273,7 +273,7 @@ export const GenerateQueryInput = () => {
                 <textarea
                     ref={textareaRef}
                     className={styles.textarea}
-                    placeholder={l10n.t('Ask Copilot to generate the query for you')}
+                    placeholder={l10n.t('Describe your query in natural language')}
                     value={input}
                     onChange={(e) => {
                         const newValue = e.currentTarget.value;

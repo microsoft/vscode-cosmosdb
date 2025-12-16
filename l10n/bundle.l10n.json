@@ -63,7 +63,7 @@
   "Are you sure you want to delete server \"{0}\" and its contents?": "Are you sure you want to delete server \"{0}\" and its contents?",
   "Are you sure you want to delete the selected item?": "Are you sure you want to delete the selected item?",
   "Are you sure?": "Are you sure?",
-  "Ask Copilot to generate the query for you": "Ask Copilot to generate the query for you",
+  "Describe your query in natural language": "Describe your query in natural language",
   "Authenticate to connect with your MongoDB cluster": "Authenticate to connect with your MongoDB cluster",
   "Automatically resize column based on content": "Automatically resize column based on content",
   "Azure Activity": "Azure Activity",

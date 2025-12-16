@@ -150,21 +150,20 @@ async function getKeyCredentialWithARM(
             throw new Error(l10n.t('Local auth is disabled'));
         }
         const key: string | undefined =
-            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, false)) ||
-            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, true));
-        if (key) {
-            keyCred = {
-                type: AuthenticationMethod.accountKey,
-                key: key,
-            };
-        }
+            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, true)) ||
+            (await getPrimaryKeyWithARM(client, resourceGroup, accountName, false));
+        keyCred = {
+            type: AuthenticationMethod.accountKey,
+            key: key!,
+        };
+    } catch {
+        logLocalAuthDisabledWarning(accountName);
     } finally {
         if (keyCred !== undefined) {
             context.telemetry.properties.hasKeyCred = 'true';
             context.valuesToMask.push(keyCred.key);
         } else {
             context.telemetry.properties.hasKeyCred = 'false';
-            logLocalAuthDisabledWarning(accountName);
         }
     }
     return keyCred;
@@ -174,18 +173,19 @@ async function getPrimaryKeyWithARM(
     client: CosmosDBManagementClient,
     resourceGroup: string,
     accountName: string,
-    readOnlyKey: boolean,
+    useWriteEnabledAndHandle403: boolean,
 ): Promise<string | undefined> {
     try {
-        if (readOnlyKey) {
-            const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(resourceGroup, accountName);
-            return readonlyKeyResult?.primaryReadonlyMasterKey;
-        } else {
+        if (useWriteEnabledAndHandle403) {
             const keyResult = await client.databaseAccounts.listKeys(resourceGroup, accountName);
-            return keyResult?.primaryMasterKey;
+            return keyResult.primaryMasterKey;
+        } else {
+            const readonlyKeyResult = await client.databaseAccounts.listReadOnlyKeys(resourceGroup, accountName);
+            return readonlyKeyResult.primaryReadonlyMasterKey;
         }
     } catch (e: unknown) {
-        if (e instanceof RestError && e.statusCode === 403) {
+        if (useWriteEnabledAndHandle403 && e instanceof RestError && e.statusCode === 403) {
+            logLocalAuthDisabledWarning(accountName);
             return undefined;
         } else {
             throw e;

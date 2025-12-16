@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
-import { SendFilled } from '@fluentui/react-icons';
+import { Dismiss12Regular, SendFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
@@ -40,6 +40,7 @@ const useStyles = makeStyles({
         flexDirection: 'column',
         gap: '6px',
         minHeight: '0',
+        position: 'relative',
     },
     inputArea: {
         display: 'flex',
@@ -87,6 +88,23 @@ const useStyles = makeStyles({
     progressBar: {
         width: '100%',
         marginTop: '0px',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: '2px',
+        right: '2px',
+        padding: '0px',
+        minWidth: '16px',
+        width: '16px',
+        height: '16px',
+        fontSize: '10px',
+        color: 'var(--vscode-descriptionForeground)',
+        backgroundColor: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
@@ -243,6 +261,15 @@ export const GenerateQueryInput = () => {
     return (
         <div className={styles.container}>
             <div className={styles.chatBox}>
+                <Button
+                    className={styles.closeButton}
+                    icon={<Dismiss12Regular />}
+                    onClick={() => dispatch({ type: 'toggleGenerateInput' })}
+                    title={l10n.t('Close')}
+                    aria-label={l10n.t('Close')}
+                    appearance="transparent"
+                    size="small"
+                />
                 <textarea
                     ref={textareaRef}
                     className={styles.textarea}

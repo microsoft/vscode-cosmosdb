@@ -153,7 +153,7 @@
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~16.0.0",
     "@trpc/client": "~11.7.1",
-    "@trpc/server": "~11.7.1",
+    "@trpc/server": "~11.8.0",
     "@vscode/l10n": "~0.0.18",
     "allotment": "^1.20.4",
     "antlr4ts": "~0.5.0-alpha.4",

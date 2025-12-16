@@ -153,7 +153,7 @@ export class CosmosDbOperationsService {
     ): Promise<{ query: string; explanation: string }> {
         try {
             // Get available language models
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const models = await vscode.lm.selectChatModels({});
             if (models.length === 0) {
                 throw new Error('No language model available');
             }
@@ -335,7 +335,7 @@ Return only valid JSON, no other text:`;
     ): Promise<string> {
         try {
             // Get available language models
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const models = await vscode.lm.selectChatModels({});
             if (models.length === 0) {
                 throw new Error('No language model available');
             }

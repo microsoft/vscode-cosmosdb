@@ -551,7 +551,7 @@ Ask me anything about Azure Cosmos DB! 💪`;
             if (extendedReq.model) {
                 languageModel = extendedReq.model;
             } else {
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+                const models = await vscode.lm.selectChatModels({
                 if (models.length > 0) {
                     languageModel = models[0];
                 }
@@ -586,9 +586,7 @@ Ask me anything about Azure Cosmos DB! 💪`;
                 model = extendedRequest.model;
             } else {
                 // Fall back to selecting available models
-                const models = await vscode.lm.selectChatModels({
-                    vendor: 'copilot',
-                });
+                const models = await vscode.lm.selectChatModels({});
 
                 if (models.length === 0) {
                     stream.markdown('❌ No language model available. Please ensure GitHub Copilot is enabled.');

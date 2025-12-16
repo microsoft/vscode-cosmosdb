@@ -9,7 +9,7 @@ import { openUrl } from '../../utils/openUrl';
 import { pickExperience, QuickPickType } from '../../utils/pickItem/pickExperience';
 
 export async function createServer(context: IActionContext): Promise<void> {
-    const experience = await pickExperience(context, QuickPickType.ALL);
+    const experience = await pickExperience(context, QuickPickType.Cosmos);
     const api = experience.api;
 
     context.telemetry.properties.experience = api;

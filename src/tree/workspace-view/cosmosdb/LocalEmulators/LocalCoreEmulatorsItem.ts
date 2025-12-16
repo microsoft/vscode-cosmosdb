@@ -10,6 +10,8 @@ import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
 import { getThemeAgnosticIconPath, wellKnownEmulatorPassword } from '../../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
+import { makeFilterable } from '../../../mixins/Filterable';
+import { makeSortable } from '../../../mixins/Sortable';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';
 import { type TreeElement } from '../../../TreeElement';
 import { type TreeElementWithContextValue } from '../../../TreeElementWithContextValue';
@@ -70,7 +72,9 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
                         };
 
                         if (experience?.api === API.Core) {
-                            return new NoSqlAccountAttachedResourceItem(accountModel, experience);
+                            return makeFilterable(
+                                makeSortable(new NoSqlAccountAttachedResourceItem(accountModel, experience)),
+                            );
                         }
 
                         // Unknown experience

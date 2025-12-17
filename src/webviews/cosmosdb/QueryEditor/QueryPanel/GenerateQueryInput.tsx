@@ -72,6 +72,42 @@ const useStyles = makeStyles({
         color: 'var(--vscode-descriptionForeground)',
         whiteSpace: 'nowrap',
     },
+    modelDropdown: {
+        minWidth: 'auto',
+        backgroundColor: 'transparent',
+        border: 'none',
+        '& button': {
+            backgroundColor: 'transparent',
+            border: 'none',
+            borderBottom: 'none',
+            padding: '0px 4px',
+            minHeight: 'auto',
+            fontSize: '11px',
+            color: 'var(--vscode-descriptionForeground)',
+            '&:hover': {
+                backgroundColor: 'transparent',
+                color: 'var(--vscode-foreground)',
+            },
+            '&:focus': {
+                borderBottom: 'none',
+                outline: 'none',
+            },
+            '&:focus-visible': {
+                borderBottom: 'none',
+                outline: 'none',
+            },
+            '&::after': {
+                display: 'none',
+                content: 'none',
+                borderBottom: 'none',
+            },
+            '&:focus-within::after': {
+                display: 'none',
+                content: 'none',
+                borderBottom: 'none',
+            },
+        },
+    },
     button: {
         padding: '2px 6px',
         minWidth: 'auto',
@@ -84,6 +120,7 @@ const useStyles = makeStyles({
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
+        marginRight: '-10px',
     },
     progressBar: {
         width: '100%',
@@ -168,11 +205,19 @@ export const GenerateQueryInput = () => {
     // Listen for availableModels event
     useEffect(() => {
         const handler = (models: ModelInfo[], savedModelId: string | null) => {
-            setAvailableModels(models);
-            if (savedModelId && models.some((m) => m.id === savedModelId)) {
+            // Sort models so "Auto" appears at the top if present
+            const sortedModels = [...models].sort((a, b) => {
+                const aIsAuto = a.name.toLowerCase() === 'auto';
+                const bIsAuto = b.name.toLowerCase() === 'auto';
+                if (aIsAuto && !bIsAuto) return -1;
+                if (!aIsAuto && bIsAuto) return 1;
+                return 0;
+            });
+            setAvailableModels(sortedModels);
+            if (savedModelId && sortedModels.some((m) => m.id === savedModelId)) {
                 setSelectedModelId(savedModelId);
-            } else if (models.length > 0) {
-                setSelectedModelId(models[0].id);
+            } else if (sortedModels.length > 0) {
+                setSelectedModelId(sortedModels[0].id);
             }
         };
         void channel.on('availableModels', handler as never);
@@ -290,9 +335,10 @@ export const GenerateQueryInput = () => {
                 <div className={styles.footer}>
                     {availableModels.length > 1 ? (
                         <Dropdown
+                            className={styles.modelDropdown}
                             onOptionSelect={(_event, data) => handleModelChange(data)}
-                            style={{ minWidth: '100px', maxWidth: '160px', fontSize: '11px' }}
                             size="small"
+                            appearance="filled-lighter"
                             value={modelDisplayName}
                             selectedOptions={selectedModelId ? [selectedModelId] : []}
                             disabled={isLoading}

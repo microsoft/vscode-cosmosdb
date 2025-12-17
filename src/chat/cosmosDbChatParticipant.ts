@@ -114,11 +114,13 @@ export class CosmosDbChatParticipant {
 
 User request: "${originalPrompt}"
 
-Available operations: editQuery, explainQuery, help
+Available operations: editQuery, explainQuery, generateQuery, help
 
 Return JSON with operation and parameters. Examples:
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
 - "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
+- "generate a query to find all active users" → {"operation": "generateQuery", "parameters": {"userPrompt": "find all active users"}}
+- "create a query for orders over $100" → {"operation": "generateQuery", "parameters": {"userPrompt": "orders over $100"}}
 - "help" → {"operation": "help", "parameters": { "topic": "partition key choice" }}
 - if intent does not map any of the available operations: {}
 
@@ -272,6 +274,7 @@ Only return valid JSON, no other text:`;
         const intentKeywords = {
             editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
             explainQuery: ['explain', 'describe', 'analyze', 'breakdown', 'understand', 'what does', 'how does'],
+            generateQuery: ['generate', 'create', 'write', 'make', 'build', 'new query', 'query for', 'query to'],
             help: ['help', 'commands', 'what can', 'how to'],
         };
 
@@ -376,6 +379,9 @@ Only return valid JSON, no other text:`;
                 case 'explainQuery':
                     operationName = 'explainQuery';
                     break;
+                case 'generateQuery':
+                    operationName = 'generateQuery';
+                    break;
                 case 'help':
                     return await this.handleHelpCommand(stream);
                 default:
@@ -410,6 +416,11 @@ Only return valid JSON, no other text:`;
                     parameters = {
                         currentQuery: '', // Will be detected from active query editor
                         userPrompt: request.prompt || 'explain this query',
+                    };
+                } else if (operationName === 'generateQuery') {
+                    parameters = {
+                        currentQuery: '', // Will be detected from active query editor
+                        userPrompt: request.prompt || '',
                     };
                 }
             }
@@ -488,6 +499,7 @@ Only return valid JSON, no other text:`;
 ### **Quick Commands:**
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
 - \`@cosmosdb /explainQuery\` - Explain the current query with AI analysis
+- \`@cosmosdb /generateQuery\` - Generate a new query from natural language description
 - \`@cosmosdb /help\` - Show this help
 
 ### **Natural Language:**
@@ -496,11 +508,13 @@ You can also use natural language:
 - "optimize this query" (modifies query in active editor)
 - "explain this query" (analyzes current query in active editor)
 - "what does my query do?" (explains query purpose and components)
+- "generate a query to find all users" (creates a new query from description)
 
 ### **Current Features:**
 - 🔗 Connection management
 - 🤖 AI-powered query optimization
 - 📊 AI-powered query explanation and analysis
+- 🔨 AI-powered query generation from natural language
 - 🎯 Context-aware responses
 - 💡 Smart suggestions with user confirmation
 - 📝 Query editor integration

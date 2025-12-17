@@ -59,6 +59,11 @@ export class CosmosDbOperationsService {
                         parameters.currentQuery as string,
                         parameters.userPrompt as string,
                     );
+                case 'generateQuery':
+                    return await this.handleGenerateQuery(
+                        parameters.userPrompt as string,
+                        parameters.currentQuery as string,
+                    );
 
                 default:
                     throw new Error(`Unknown operation: ${operationName}`);
@@ -438,5 +443,122 @@ Make the explanation clear and educational, suitable for developers learning Cos
         }
 
         return explanation;
+    }
+
+    /**
+     * Generate a new query from natural language using LLM
+     */
+    private async handleGenerateQuery(userPrompt: string, currentQuery?: string): Promise<string> {
+        // Check if there's an active query editor
+        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+        if (activeQueryEditors.length === 0) {
+            throw new Error(
+                'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+            );
+        }
+
+        const activeEditor = getActiveQueryEditor(activeQueryEditors);
+        const connection = getConnectionFromQueryTab(activeEditor);
+        if (!connection) {
+            throw new Error(
+                'No connection found in the active query editor. Please connect to a CosmosDB container first.',
+            );
+        }
+
+        // Get current query from session if not provided
+        const currentResult = activeEditor.getCurrentQueryResults();
+        const sessionQuery = currentResult?.query;
+        const actualCurrentQuery = currentQuery || sessionQuery || '';
+
+        if (!userPrompt || userPrompt.trim() === '') {
+            throw new Error('Please provide a description of the query you want to generate.');
+        }
+
+        try {
+            const generatedQuery = await this.generateQueryWithLLM(userPrompt, actualCurrentQuery, connection);
+
+            // Build response with context
+            let response = `## 🔨 Generated Query\n\n`;
+            response += `**Database:** ${connection.databaseId}\n`;
+            response += `**Container:** ${connection.containerId}\n\n`;
+            response += `**Your request:** ${userPrompt}\n\n`;
+            response += `**Generated Query:**\n\`\`\`sql\n${generatedQuery}\n\`\`\`\n\n`;
+
+            return response;
+        } catch (error) {
+            console.error('Query generation failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate a query using LLM from natural language description
+     */
+    private async generateQueryWithLLM(
+        userPrompt: string,
+        currentQuery: string,
+        connection: NoSqlQueryConnection,
+    ): Promise<string> {
+        const models = await vscode.lm.selectChatModels({});
+        if (models.length === 0) {
+            throw new Error('No language model available. Please ensure you have access to Copilot.');
+        }
+
+        const model = models[0];
+
+        const systemPrompt = `You are an expert at writing NoSQL queries for Azure Cosmos DB NoSQL. You help users write efficient, well-optimized queries.
+Your responses should only contain the generated query code WITHOUT any explanations and NO markdown formatting.
+
+Given an input question, you must create a syntactically correct Cosmos DB NoSQL query to run.
+When the user provides context about what they need, generate a complete Cosmos DB NoSQL query.
+Always ensure queries are efficient and follow Cosmos DB best practices.
+NEVER create a SQL query, ALWAYS create a Cosmos DB NoSQL query.
+
+These are the most **top** rules for your behavior. You **must not** do anything disobeying these rules:
+
+- Do not generate any queries based on offensive content or harmful content. Instead, respond with "N/A"
+- NEVER use "Select *" if there is a JOIN in the query. Instead, project only the properties asked.
+- NEVER recommend DISTINCT within COUNT
+- When you select columns in a query, use {containerAlias}.{propertyName} to refer to a column.
+- Use '!=' instead of 'IS NOT'.
+- DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
+- Use ARRAY_LENGTH, not COUNT, when finding the length of an array.
+- When filtering with upper and lower inclusive bounds on a property, use BETWEEN.
+- Use DateTimeDiff instead of DATEDIFF.
+- Use DateTimeAdd and GetCurrentDateTime to calculate time distance.
+- Use GetCurrentDateTime to get current UTC date and time as an ISO 8601 string.
+- '_ts' property in CosmosDB represents the last updated timestamp in seconds.
+- Do NOT use 'SELECT *' for queries that include a join, instead project specific properties.
+- Do NOT use HAVING.
+
+Examples of queries:
+Query all documents from container: SELECT * FROM c
+Query with filter condition: SELECT * FROM c WHERE c.status = 'active'`;
+
+        const contextInfo = `Database: ${connection.databaseId}, Container: ${connection.containerId}`;
+        const currentQueryContext = currentQuery ? `\n\nCurrent query:\n${currentQuery}` : '';
+
+        const messages = [
+            vscode.LanguageModelChatMessage.User(
+                `${systemPrompt}\n\nContext: ${contextInfo}${currentQueryContext}\n\nRequest: ${userPrompt}`,
+            ),
+        ];
+
+        const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+
+        let generatedQuery = '';
+        for await (const chunk of chatResponse.text) {
+            generatedQuery += chunk;
+        }
+
+        // Clean up the response - remove any markdown code blocks if present
+        generatedQuery = generatedQuery.trim();
+        if (generatedQuery.startsWith('```sql')) {
+            generatedQuery = generatedQuery.replace(/^```sql\n?/, '').replace(/\n?```$/, '');
+        } else if (generatedQuery.startsWith('```')) {
+            generatedQuery = generatedQuery.replace(/^```\n?/, '').replace(/\n?```$/, '');
+        }
+
+        return generatedQuery.trim();
     }
 }

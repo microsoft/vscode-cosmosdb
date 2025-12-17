@@ -3,14 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    Menu,
-    MenuButton,
-    MenuItem,
-    MenuList,
-    MenuPopover,
-    MenuTrigger,
-} from '@fluentui/react-components';
+import { Menu, MenuButton, MenuItem, MenuList, MenuPopover, MenuTrigger } from '@fluentui/react-components';
 import { ChatSparkle20Regular, PenSparkle20Regular, Sparkle20Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';

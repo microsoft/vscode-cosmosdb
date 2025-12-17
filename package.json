@@ -262,6 +262,10 @@
           {
             "name": "explainQuery",
             "description": "Explain the current query with AI analysis"
+          },
+          {
+            "name": "generateQuery",
+            "description": "Generate a new query from natural language description"
           }
         ]
       }

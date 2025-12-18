@@ -39,6 +39,9 @@ jobs:
                   cache: 'npm'
                   cache-dependency-path: '**/package-lock.json'
 
+            - name: 🗑️ Clear npm cache
+              run: npm cache clean --force
+
             - name: ⚖️ Validate Version / Preview Alignment
               shell: pwsh
               run: |
@@ -71,10 +74,10 @@ jobs:
                   }
 
             - name: ⬇️ Install Dependencies
-              run: npm ci
+              run: npm ci --force
 
             - name: 🔧 Rebuild Native Modules
-              run: npm rebuild
+              run: npm rebuild --verbose
 
             - name: 🌍 Localize
               run: npm run l10n:check

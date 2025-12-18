@@ -13,7 +13,7 @@ export const ExplainQueryButton = ({ type = 'button' }: ToolbarOverflowItemProps
     const dispatcher = useQueryEditorDispatcher();
 
     const handleClick = () => {
-        dispatcher.openCopilotExplainQuery();
+        void dispatcher.openCopilotExplainQuery();
     };
 
     if (type === 'menuitem') {

@@ -494,7 +494,7 @@ Only return valid JSON, no other text:`;
      * Handles help command requests
      */
     private handleHelpCommand(stream: vscode.ChatResponseStream): Promise<vscode.ChatResult> {
-        const helpText = `## 🚀 CosmosDB Assistant Commands
+        const helpText = `## Cosmos DB (NoSQL) Assistant Commands
 
 ### **Quick Commands:**
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
@@ -510,17 +510,12 @@ You can also use natural language:
 - "what does my query do?" (explains query purpose and components)
 - "generate a query to find all users" (creates a new query from description)
 
-### **Current Features:**
-- 🔗 Connection management
-- 🤖 AI-powered query optimization
-- 📊 AI-powered query explanation and analysis
-- 🔨 AI-powered query generation from natural language
-- 🎯 Context-aware responses
-- 💡 Smart suggestions with user confirmation
-- 📝 Query editor integration
-- ✨ LLM-enhanced query improvements
+### **Features:**
+- 🤖 AI query editing & optimization
+- 📊 Query explanation
+- ✨ AI-powered query generation from natural language
 
-Ask me anything about Azure Cosmos DB! 💪`;
+For more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).`;
 
         stream.markdown(helpText);
         return Promise.resolve({ metadata: { command: 'cosmosdb', operation: 'help' } });

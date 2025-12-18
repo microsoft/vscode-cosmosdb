@@ -26,15 +26,11 @@ export class CosmosDbChatParticipant {
     private participant: vscode.ChatParticipant;
 
     constructor(context: vscode.ExtensionContext) {
-        console.log('[CosmosDB Chat] Initializing chat participant...');
-
         // Create the chat participant with the ID 'cosmosdb'
         this.participant = vscode.chat.createChatParticipant(
             'cosmosdb',
             this.handleChatRequest.bind(this) as vscode.ChatRequestHandler,
         );
-
-        console.log('[CosmosDB Chat] Chat participant created with ID: cosmosdb');
 
         // Set the icon to the specific CosmosDB logo
         this.participant.iconPath = vscode.Uri.joinPath(
@@ -47,8 +43,6 @@ export class CosmosDbChatParticipant {
 
         // Add to context subscriptions for proper cleanup
         context.subscriptions.push(this.participant);
-
-        console.log('[CosmosDB Chat] Chat participant registration complete');
     }
 
     /**
@@ -396,13 +390,6 @@ Only return valid JSON, no other text:`;
                     stream.markdown(`🧠 **LLM Extracted Parameters:** ${JSON.stringify(parameters)}\n\n`);
                 } catch (error) {
                     console.warn('LLM parameter extraction failed, using basic extraction:', error);
-                    // Fallback to basic parameter extraction
-                    if (operationName === 'executeQuery') {
-                        parameters = {
-                            query: request.prompt || 'SELECT * FROM c',
-                            includeMetrics: request.prompt.toLowerCase().includes('metrics'),
-                        };
-                    }
                 }
             } else {
                 // Basic parameter extraction when no LLM available

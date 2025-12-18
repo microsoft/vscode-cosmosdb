@@ -9,12 +9,6 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
-export interface CosmosDbOperation {
-    name: string;
-    description: string;
-    parameters: { name: string; type: string; required: boolean; description: string }[];
-}
-
 export interface EditQueryResult {
     type: 'editQuery';
     currentQuery: string;

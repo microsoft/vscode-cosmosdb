@@ -36,6 +36,8 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version-file: .nvmrc
+                  cache: 'npm'
+                  cache-dependency-path: '**/package-lock.json'
 
             - name: ⚖️ Validate Version / Preview Alignment
               shell: pwsh
@@ -69,9 +71,7 @@ jobs:
                   }
 
             - name: ⬇️ Install Dependencies
-              run: |
-                  rm -rf node_modules
-                  npm install
+              run: npm ci
 
             - name: 🌍 Localize
               run: npm run l10n:check

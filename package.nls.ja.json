@@ -1,6 +1,6 @@
 {
-  "cosmosdb.command.account.create": "Create Azure Cosmos DB…",
-  "cosmosdb.command.account.create.description": "NoSQL database for your web apps",
+  "cosmosdb.command.account.create": "Azure Cosmos DB を作成する...",
+  "cosmosdb.command.account.create.description": "Web アプリ用の NoSQL データベース",
   "cosmosdb.command.account.delete": "アカウントの削除…",
   "cosmosdb.command.account.unsupported": "サポートされていないアカウントを開く",
   "cosmosdb.command.connection.add": "新しい接続…",

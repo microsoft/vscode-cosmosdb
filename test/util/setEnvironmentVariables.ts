@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IDisposable } from '../../src/utils/vscodeUtils';
+import { type IDisposable } from '../../src/utils/vscodeUtils.js';
 
 /**
  * Add a set of environment variables, and return to the previous values after disposing the result

@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { isWindows } from '../../src/constants';
-import { setEnvironmentVariables } from './setEnvironmentVariables';
+import { isWindows } from '../../src/constants.js';
+import { setEnvironmentVariables } from './setEnvironmentVariables.js';
 
 suite('setEnvironmentVariables (test util)', () => {
     test('restore', () => {

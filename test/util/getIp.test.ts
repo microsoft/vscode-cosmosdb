@@ -6,8 +6,8 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import assert from 'assert';
 import { isIPv4 } from 'net';
-import { getPublicIpv4, isIpInRanges } from '../../src/utils/getIp';
-import { createTestActionContext } from '../TestActionContext';
+import { getPublicIpv4, isIpInRanges } from '../../src/utils/getIp.js';
+import { createTestActionContext } from '../TestActionContext.js';
 
 suite('getPublicIpv4', () => {
     test('get IP', async () => {

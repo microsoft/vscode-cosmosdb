@@ -4,30 +4,30 @@ The Query Editor provides a set of keyboard shortcuts to enhance your productivi
 These shortcuts allow for efficient navigation, execution, and management of your queries without having to use the
 mouse.
 
-| Description            | Windows Shortcut                                 | Mac Shortcut                              |
-| ---------------------- | ------------------------------------------------ | ----------------------------------------- |
+| Description            | Windows Shortcut                                 | Mac Shortcut                             |
+| ---------------------- | ------------------------------------------------ | ---------------------------------------- |
 | Execute query          | <kbd>F5</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>F5</kbd>, <kbd>⇧</kbd>+<kbd>↩</kbd> |
-| Save query             | <kbd>Ctrl</kbd>+<kbd>S</kbd>                     | <kbd>⌘</kbd>+<kbd>S</kbd>                 |
-| Cancel query execution | <kbd>Esc</kbd>                                   | <kbd>⎋</kbd>                              |
-| Open query             | <kbd>Ctrl</kbd>+<kbd>O</kbd>                     | <kbd>⌘</kbd>+<kbd>O</kbd>                 |
-| Duplicate query        | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>     | <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>    |
+| Save query             | <kbd>Ctrl</kbd>+<kbd>S</kbd>                     | <kbd>⌘</kbd>+<kbd>S</kbd>                |
+| Cancel query execution | <kbd>Esc</kbd>                                   | <kbd>⎋</kbd>                             |
+| Open query             | <kbd>Ctrl</kbd>+<kbd>O</kbd>                     | <kbd>⌘</kbd>+<kbd>O</kbd>                |
+| Duplicate query        | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>     | <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>   |
 
 ## Result Panel Shortcuts
 
-| Description                     | Windows Shortcut                                                               | Mac Shortcut                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Create new item                 | <kbd>Alt</kbd>+<kbd>I</kbd>, <kbd>Insert</kbd>                                 | <kbd>⌥</kbd>+<kbd>I</kbd>, <kbd>Insert</kbd>                       |
-| Delete item                     | <kbd>Alt</kbd>+<kbd>D</kbd>, <kbd>Delete</kbd>                                 | <kbd>⌥</kbd>+<kbd>D</kbd>, <kbd>Delete</kbd>                       |
+| Description                     | Windows Shortcut                                                               | Mac Shortcut                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Create new item                 | <kbd>Alt</kbd>+<kbd>I</kbd>, <kbd>Insert</kbd>                                 | <kbd>⌥</kbd>+<kbd>I</kbd>, <kbd>Insert</kbd>                      |
+| Delete item                     | <kbd>Alt</kbd>+<kbd>D</kbd>, <kbd>Delete</kbd>                                 | <kbd>⌥</kbd>+<kbd>D</kbd>, <kbd>Delete</kbd>                      |
 | Edit item                       | <kbd>Alt</kbd>+<kbd>E</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>⌥</kbd>+<kbd>E</kbd>, <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>↩</kbd> |
 | View item                       | <kbd>Alt</kbd>+<kbd>V</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd>                 | <kbd>⌥</kbd>+<kbd>V</kbd>, <kbd>⇧</kbd>+<kbd>↩</kbd>              |
-| Switch to result tab            | <kbd>Alt</kbd>+<kbd>1</kbd>                                                    | <kbd>⌥</kbd>+<kbd>1</kbd>                                          |
-| Switch to stats tab             | <kbd>Alt</kbd>+<kbd>2</kbd>                                                    | <kbd>⌥</kbd>+<kbd>2</kbd>                                          |
-| Switch to first page            | <kbd>Alt</kbd>+<kbd>Home</kbd>                                                 | <kbd>⌥</kbd>+<kbd>Home</kbd>                                       |
-| Switch to next page             | <kbd>Alt</kbd>+<kbd>Right</kbd>                                                | <kbd>⌥</kbd>+<kbd>→</kbd>                                          |
-| Switch to previous page         | <kbd>Alt</kbd>+<kbd>Left</kbd>                                                 | <kbd>⌥</kbd>+<kbd>←</kbd>                                          |
-| Refresh results                 | <kbd>F5</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>                   | <kbd>F5</kbd>, <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>R</kbd>              |
-| Copy selected item to clipboard | <kbd>Ctrl</kbd>+<kbd>C</kbd>                                                   | <kbd>⌘</kbd>+<kbd>C</kbd>                                          |
-| Save selected item to disk      | <kbd>Ctrl</kbd>+<kbd>S</kbd>                                                   | <kbd>⌘</kbd>+<kbd>S</kbd>                                          |
+| Switch to result tab            | <kbd>Alt</kbd>+<kbd>1</kbd>                                                    | <kbd>⌥</kbd>+<kbd>1</kbd>                                         |
+| Switch to stats tab             | <kbd>Alt</kbd>+<kbd>2</kbd>                                                    | <kbd>⌥</kbd>+<kbd>2</kbd>                                         |
+| Switch to first page            | <kbd>Alt</kbd>+<kbd>Home</kbd>                                                 | <kbd>⌥</kbd>+<kbd>Home</kbd>                                      |
+| Switch to next page             | <kbd>Alt</kbd>+<kbd>Right</kbd>                                                | <kbd>⌥</kbd>+<kbd>→</kbd>                                         |
+| Switch to previous page         | <kbd>Alt</kbd>+<kbd>Left</kbd>                                                 | <kbd>⌥</kbd>+<kbd>←</kbd>                                         |
+| Refresh results                 | <kbd>F5</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>                   | <kbd>F5</kbd>, <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>R</kbd>             |
+| Copy selected item to clipboard | <kbd>Ctrl</kbd>+<kbd>C</kbd>                                                   | <kbd>⌘</kbd>+<kbd>C</kbd>                                         |
+| Save selected item to disk      | <kbd>Ctrl</kbd>+<kbd>S</kbd>                                                   | <kbd>⌘</kbd>+<kbd>S</kbd>                                         |
 
 ## Document Editor Shortcuts
 

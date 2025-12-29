@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ext } from '../src/extensionVariables.js';
-import { SettingsService } from '../src/services/SettingsService.js';
+import { ext } from '../src/extensionVariables';
+import { SettingsService } from '../src/services/SettingsService';
 
 export async function runWithDatabasesSetting(
     key: string,

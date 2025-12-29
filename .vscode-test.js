@@ -11,7 +11,7 @@ module.exports = defineConfig([
         label: 'Integration Tests',
         files: 'out/test/**/*.test.js',
         extensionDevelopmentPath: '.',
-        installExtensions: ['ms-vscode.azure-account', 'ms-azuretools.vscode-azureresourcegroups'],
+        installExtensions: ['ms-azuretools.vscode-azureresourcegroups'],
         env: {
             DEBUGTELEMETRY: 'v',
         },

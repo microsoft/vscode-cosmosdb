@@ -5,9 +5,9 @@
 
 import { type IAzureUserInput, registerOnActionStartHandler } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
-import { ext } from '../src/extensionVariables.js';
-import { TestOutputChannel } from './TestOutputChannel.js';
-import { TestUserInput } from './TestUserInput.js';
+import { ext } from '../src/extensionVariables';
+import { TestOutputChannel } from './TestOutputChannel';
+import { TestUserInput } from './TestUserInput';
 
 // Runs before all tests
 suiteSetup(async function (this: Mocha.Context): Promise<void> {

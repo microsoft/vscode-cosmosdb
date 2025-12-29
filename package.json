@@ -24,7 +24,6 @@
     "Database",
     "NOSQL"
   ],
-  "preview": true,
   "homepage": "https://github.com/microsoft/vscode-cosmosdb/blob/main/README.md",
   "bugs": {
     "url": "https://github.com/microsoft/vscode-cosmosdb/issues"

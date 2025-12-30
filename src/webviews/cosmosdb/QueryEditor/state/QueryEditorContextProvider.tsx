@@ -6,7 +6,6 @@
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import type * as React from 'react';
 import {
-    type CosmosDBRecordIdentifier,
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
     type QueryMetadata,
@@ -94,19 +93,19 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         this.dispatch({ type: 'setSelectedRows', selectedRows });
     }
 
-    public async openDocument(mode: OpenDocumentMode, document?: CosmosDBRecordIdentifier): Promise<void> {
-        await this.sendCommand('openDocument', mode, document);
+    public async openDocument(executionId: string, mode: OpenDocumentMode, row?: number): Promise<void> {
+        await this.sendCommand('openDocument', executionId, mode, row);
     }
-    public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        for (const document of documents) {
-            await this.openDocument(mode, document);
+    public async openDocuments(executionId: string, mode: OpenDocumentMode, rows: number[]): Promise<void> {
+        for (const row of rows) {
+            await this.openDocument(executionId, mode, row);
         }
     }
-    public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
-        await this.sendCommand('deleteDocument', document);
+    public async deleteDocument(executionId: string, row: number): Promise<void> {
+        await this.sendCommand('deleteDocument', executionId, row);
     }
-    public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        await this.sendCommand('deleteDocuments', documents);
+    public async deleteDocuments(executionId: string, rows: number[]): Promise<void> {
+        await this.sendCommand('deleteDocuments', executionId, rows);
     }
     public async provideFeedback(): Promise<void> {
         await this.sendCommand('provideFeedback');

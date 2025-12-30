@@ -50,7 +50,7 @@
     "lint-fix": "eslint . --fix",
     "prettier": "prettier -c \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
     "prettier-fix": "prettier -w \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
-    "pretest": "tsc -p tsconfig.test.json",
+    "pretest": "rimraf out && tsc -p tsconfig.test.json",
     "test": "vscode-test",
     "jesttest": "jest",
     "webpack-dev": "rimraf ./dist && npm run webpack-dev-ext && npm run webpack-dev-wv",

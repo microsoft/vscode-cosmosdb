@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { type CosmosClient } from '@azure/cosmos';
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
@@ -17,6 +17,7 @@ import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosd
 import { type TreeElement } from '../TreeElement';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
+import { type DatabaseResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourceItemBase {
     declare public readonly account: CosmosDBAccountModel;
@@ -57,7 +58,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
     protected async getDatabases(
         accountInfo: AccountInfo,
         cosmosClient: CosmosClient,
-    ): Promise<(DatabaseDefinition & Resource)[]> | never {
+    ): Promise<DatabaseResource[]> | never {
         const getResources = async () => {
             const result = await cosmosClient.databases.readAll().fetchAll();
             return result.resources;
@@ -90,8 +91,5 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         }
     }
 
-    protected abstract getChildrenImpl(
-        accountInfo: AccountInfo,
-        databases: (DatabaseDefinition & Resource)[],
-    ): Promise<TreeElement[]>;
+    protected abstract getChildrenImpl(accountInfo: AccountInfo, databases: DatabaseResource[]): Promise<TreeElement[]>;
 }

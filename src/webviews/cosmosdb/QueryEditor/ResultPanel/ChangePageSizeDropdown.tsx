@@ -14,7 +14,7 @@ import {
     Option,
     Tooltip,
 } from '@fluentui/react-components';
-import { Checkmark16Filled, NumberSymbolSquareRegular } from '@fluentui/react-icons';
+import { CheckmarkFilled, NumberSymbolSquareRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback } from 'react';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
@@ -92,7 +92,10 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
                             <MenuItem
                                 onClick={() => changePageSize(10)}
                                 icon={
-                                    <Checkmark16Filled style={{ visibility: pageSize === 10 ? 'visible' : 'hidden' }} />
+                                    <CheckmarkFilled
+                                        fontSize={16}
+                                        style={{ visibility: pageSize === 10 ? 'visible' : 'hidden' }}
+                                    />
                                 }
                             >
                                 10
@@ -100,7 +103,10 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
                             <MenuItem
                                 onClick={() => changePageSize(50)}
                                 icon={
-                                    <Checkmark16Filled style={{ visibility: pageSize === 50 ? 'visible' : 'hidden' }} />
+                                    <CheckmarkFilled
+                                        fontSize={16}
+                                        style={{ visibility: pageSize === 50 ? 'visible' : 'hidden' }}
+                                    />
                                 }
                             >
                                 50
@@ -108,7 +114,8 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
                             <MenuItem
                                 onClick={() => changePageSize(100)}
                                 icon={
-                                    <Checkmark16Filled
+                                    <CheckmarkFilled
+                                        fontSize={16}
                                         style={{ visibility: pageSize === 100 ? 'visible' : 'hidden' }}
                                     />
                                 }
@@ -118,7 +125,8 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
                             <MenuItem
                                 onClick={() => changePageSize(500)}
                                 icon={
-                                    <Checkmark16Filled
+                                    <CheckmarkFilled
+                                        fontSize={16}
                                         style={{ visibility: pageSize === 500 ? 'visible' : 'hidden' }}
                                     />
                                 }
@@ -128,7 +136,10 @@ export const ChangePageSizeDropdown = (props: ToolbarOverflowItemProps<HTMLDivEl
                             <MenuItem
                                 onClick={() => changePageSize(-1)}
                                 icon={
-                                    <Checkmark16Filled style={{ visibility: pageSize === -1 ? 'visible' : 'hidden' }} />
+                                    <CheckmarkFilled
+                                        fontSize={16}
+                                        style={{ visibility: pageSize === -1 ? 'visible' : 'hidden' }}
+                                    />
                                 }
                             >
                                 {l10n.t('All')}

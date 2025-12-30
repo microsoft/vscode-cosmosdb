@@ -10,7 +10,6 @@ import { createNoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection'
 import { DocumentTab } from '../../panels/DocumentTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
-import { type CollectionItem } from '../../tree/documentdb/CollectionItem';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function cosmosDBCreateDocument(
@@ -29,26 +28,4 @@ export async function cosmosDBCreateDocument(
     }
 
     DocumentTab.render(createNoSqlQueryConnection(node), 'add', undefined, vscode.ViewColumn.Active);
-}
-
-export async function createMongoDocument(context: IActionContext, node?: CollectionItem): Promise<void> {
-    context.telemetry.properties.experience = node?.experience.api;
-
-    if (!node) {
-        node = await pickAppResource<CollectionItem>(context, {
-            type: [AzExtResourceType.MongoClusters],
-            expectedChildContextValue: ['treeItem.collection'],
-        });
-    }
-
-    if (!node) {
-        return;
-    }
-
-    await vscode.commands.executeCommand('command.internal.mongoClusters.documentView.open', {
-        clusterId: node.cluster.id,
-        databaseName: node.databaseInfo.name,
-        collectionName: node.collectionInfo.name,
-        mode: 'add',
-    });
 }

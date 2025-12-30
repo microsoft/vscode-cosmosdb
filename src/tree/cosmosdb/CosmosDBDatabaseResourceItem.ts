@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ContainerDefinition, type CosmosClient, type Resource } from '@azure/cosmos';
+import { type CosmosClient } from '@azure/cosmos';
 import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -15,6 +15,7 @@ import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBDatabaseModel } from './models/CosmosDBDatabaseModel';
+import { type ContainerResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBDatabaseResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
@@ -63,10 +64,10 @@ export abstract class CosmosDBDatabaseResourceItem
         };
     }
 
-    protected async getContainers(cosmosClient: CosmosClient): Promise<(ContainerDefinition & Resource)[]> {
+    protected async getContainers(cosmosClient: CosmosClient): Promise<ContainerResource[]> {
         const result = await cosmosClient.database(this.model.database.id).containers.readAll().fetchAll();
         return result.resources;
     }
 
-    protected abstract getChildrenImpl(containers: (ContainerDefinition & Resource)[]): Promise<TreeElement[]>;
+    protected abstract getChildrenImpl(containers: ContainerResource[]): Promise<TreeElement[]>;
 }

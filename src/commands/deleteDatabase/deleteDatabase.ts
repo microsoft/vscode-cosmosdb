@@ -7,21 +7,19 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
-import { ClustersClient } from '../../documentdb/ClustersClient';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
-import { DatabaseItem } from '../../tree/documentdb/DatabaseItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function deleteAzureDatabase(
+export async function cosmosDBDeleteDatabase(
     context: IActionContext,
-    node?: CosmosDBDatabaseResourceItem | DatabaseItem,
+    node?: CosmosDBDatabaseResourceItem,
 ): Promise<void> {
     if (!node) {
-        node = await pickAppResource<CosmosDBDatabaseResourceItem | DatabaseItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb, AzExtResourceType.MongoClusters],
+        node = await pickAppResource<CosmosDBDatabaseResourceItem>(context, {
+            type: [AzExtResourceType.AzureCosmosDb],
             expectedChildContextValue: ['treeItem.database'],
         });
     }
@@ -30,16 +28,9 @@ export async function deleteAzureDatabase(
         return undefined;
     }
 
-    return deleteDatabase(context, node);
-}
-
-export async function deleteDatabase(
-    context: IActionContext,
-    node: CosmosDBDatabaseResourceItem | DatabaseItem,
-): Promise<void> {
     context.telemetry.properties.experience = node.experience.api;
 
-    const databaseId = node instanceof DatabaseItem ? node.databaseInfo.name : node.model.database.id;
+    const databaseId = node.model.database.id;
     const confirmed = await getConfirmationAsInSettings(
         l10n.t('Delete "{nodeName}"?', { nodeName: databaseId }),
         l10n.t('Delete database "{databaseId}" and its contents?', { databaseId }) +
@@ -53,7 +44,7 @@ export async function deleteDatabase(
     }
 
     try {
-        const success = await (node instanceof DatabaseItem ? deleteMongoDatabase(node) : deleteCosmosDBDatabase(node));
+        const success = await deleteDatabase(node);
 
         if (success) {
             showConfirmationAsInSettings(l10n.t('The "{databaseId}" database has been deleted.', { databaseId }));
@@ -68,24 +59,13 @@ export async function deleteDatabase(
     }
 }
 
-async function deleteCosmosDBDatabase(node: CosmosDBDatabaseResourceItem): Promise<boolean> {
+async function deleteDatabase(node: CosmosDBDatabaseResourceItem): Promise<boolean> {
     let success = false;
     await ext.state.showDeleting(node.id, async () => {
         await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
             const response = await cosmosClient.database(node.model.database.id).delete();
             success = response.statusCode === 204;
         });
-    });
-
-    return success;
-}
-
-async function deleteMongoDatabase(node: DatabaseItem): Promise<boolean> {
-    const client = await ClustersClient.getClient(node.cluster.id);
-
-    let success = false;
-    await ext.state.showDeleting(node.id, async () => {
-        success = await client.dropDatabase(node.databaseInfo.name);
     });
 
     return success;

@@ -53,6 +53,15 @@ module.exports = (env, { mode }) => {
                 config: [__filename],
             },
         },
+        optimization: {
+            minimize: !isDev,
+            // Tree-shaking configuration:
+            // - Set both to `true` to enable tree-shaking (slower builds, smaller bundles)
+            // - Set both to `false` for faster builds (current: optimized for speed)
+            usedExports: !isDev, // false = faster builds (+2s saved) | true = smaller bundle (-10-20%)
+            sideEffects: !isDev, // false = skip analysis (+1s saved) | true = remove unused modules
+            runtimeChunk: !isDev,
+        },
         externalsType: 'node-commonjs',
         externals: {
             vs: 'vs',
@@ -63,15 +72,6 @@ module.exports = (env, { mode }) => {
             conditionNames: ['import', 'require', 'node'],
             mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
-        },
-        optimization: {
-            // Tree-shaking configuration:
-            // - Set both to `true` to enable tree-shaking (slower builds, smaller bundles)
-            // - Set both to `false` for faster builds (current: optimized for speed)
-            usedExports: false, // false = faster builds (+2s saved) | true = smaller bundle (-10-20%)
-            sideEffects: false, // false = skip analysis (+1s saved) | true = remove unused modules
-            minimize: !isDev,
-            runtimeChunk: false,
         },
         module: {
             rules: [

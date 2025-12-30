@@ -64,6 +64,41 @@
       }
     },
     {
+      "name": "Launch Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/out/test/index",
+        "${workspaceFolder}/test/test.code-workspace"
+      ],
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "Pretest",
+      "env": {
+        "DEBUGTELEMETRY": "true",
+        "ENABLE_LONG_RUNNING_TESTS": "true"
+      }
+    },
+    {
+      "name": "Launch Tests (webpack)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/dist",
+        "--extensionTestsPath=${workspaceFolder}/out/test/index",
+        "${workspaceFolder}/test/test.code-workspace"
+      ],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "Pretest and Webpack",
+      "env": {
+        "DEBUGTELEMETRY": "true",
+        "DEBUG_WEBPACK": "1",
+        "ENABLE_LONG_RUNNING_TESTS": "true"
+      }
+    },
+    {
       "type": "node",
       "request": "attach",
       "name": "Attach to Extension Host",

@@ -28,5 +28,6 @@
       "node_modules/@types"
     ]
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json"],
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__"]
 }

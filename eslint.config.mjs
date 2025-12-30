@@ -172,6 +172,7 @@ export default defineConfig([
             '@typescript-eslint/unbound-method': 'warn',
         },
     },
+    // Jest unit tests in src/
     {
         files: ['src/**/*.test.ts', '**/__mocks__/**/*.js'],
 
@@ -193,7 +194,8 @@ export default defineConfig([
             sourceType: 'module',
 
             parserOptions: {
-                projectService: true,
+                projectService: false,
+                project: './tsconfig.jest.json',
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -207,11 +209,17 @@ export default defineConfig([
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/require-await': 'off',
+            '@typescript-eslint/unbound-method': 'off',
             'no-dupe-else-if': 'off',
             'no-empty': 'off',
+            'jest/expect-expect': 'off',
+            'jest/no-conditional-expect': 'off',
         },
     },
+    // Mocha integration tests in test/
     {
         files: ['test/**/*.ts', 'test/**/*.test.ts'],
 
@@ -233,12 +241,14 @@ export default defineConfig([
             sourceType: 'module',
 
             parserOptions: {
-                projectService: true,
+                projectService: false,
+                project: './tsconfig.test.json',
                 tsconfigRootDir: import.meta.dirname,
             },
         },
 
         rules: {
+            ...mocha.configs.recommended.rules,
             '@typescript-eslint/no-empty-function': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-floating-promises': 'off',
@@ -247,10 +257,16 @@ export default defineConfig([
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/require-await': 'off',
             'no-dupe-else-if': 'off',
             'no-empty': 'off',
             'no-restricted-imports': 'off',
+            'mocha/no-mocha-arrows': 'off',
+            'mocha/consistent-spacing-between-blocks': 'off',
+            'mocha/max-top-level-suites': 'off',
+            'mocha/handle-done-callback': 'off',
         },
     },
 ]);

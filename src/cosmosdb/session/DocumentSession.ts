@@ -146,8 +146,9 @@ export class DocumentSession {
             }
 
             try {
-                let result: CosmosDBRecord | null = null;
-                const response = await withClaimsChallengeHandling(this.connection, async (client) =>
+                const timeoutMs = 4000;
+
+                const readPromise = withClaimsChallengeHandling(this.connection, async (client) =>
                     client
                         .database(this.databaseId)
                         .container(this.containerId)
@@ -157,25 +158,77 @@ export class DocumentSession {
                         }),
                 );
 
-                if (response?.resource) {
-                    result = response.resource;
+                let result: CosmosDBRecord | undefined;
+                let primaryTimeoutId: NodeJS.Timeout | undefined = undefined;
+                try {
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        primaryTimeoutId = setTimeout(() => reject(new Error('Read operation timed out')), timeoutMs);
+                    });
+
+                    const response = await Promise.race([readPromise, timeoutPromise]);
+                    result = response?.resource;
+                } catch (primaryError) {
+                    ext.outputChannel.error(
+                        `[DocumentSession.read] Primary read failed: ${primaryError instanceof Error ? primaryError.message : String(primaryError)}`,
+                    );
+                    // Don't throw yet, try fallback if we have _rid
+                    result = undefined;
+                } finally {
+                    if (primaryTimeoutId) {
+                        clearTimeout(primaryTimeoutId);
+                    }
                 }
 
-                // TODO: Should we try to read the document by _rid if the above fails?
+                // Try to read the document by _rid if the primary read fails
                 if (!result && documentId._rid) {
-                    const queryResult = await withClaimsChallengeHandling(this.connection, async (client) =>
-                        client
-                            .database(this.databaseId)
-                            .container(this.containerId)
-                            .items.query<CosmosDBRecord>(`SELECT *FROM c WHERE c._rid = "${documentId._rid}"`, {
-                                abortSignal: this.abortController.signal,
-                                bufferItems: true,
-                            })
-                            .fetchAll(),
-                    );
+                    const rid = documentId._rid; // Capture for closure
+                    let fallbackTimeoutId: NodeJS.Timeout | undefined = undefined;
+                    try {
+                        const queryPromise = withClaimsChallengeHandling(this.connection, async (client) =>
+                            client
+                                .database(this.databaseId)
+                                .container(this.containerId)
+                                .items.query<CosmosDBRecord>(
+                                    {
+                                        query: 'SELECT * FROM c WHERE c._rid = @rid',
+                                        parameters: [{ name: '@rid', value: rid }],
+                                    },
+                                    {
+                                        abortSignal: this.abortController.signal,
+                                        bufferItems: true,
+                                    },
+                                )
+                                .fetchAll(),
+                        );
 
-                    if (queryResult.resources?.length === 1) {
-                        result = queryResult.resources[0];
+                        const timeoutPromise = new Promise<never>((_, reject) => {
+                            fallbackTimeoutId = setTimeout(() => {
+                                ext.outputChannel.error(
+                                    `[DocumentSession.read] Fallback _rid query timed out after ${timeoutMs}ms`,
+                                );
+                                reject(new Error('Fallback read operation timed out'));
+                            }, timeoutMs);
+                        });
+
+                        const queryResult = await Promise.race([queryPromise, timeoutPromise]);
+
+                        if (queryResult?.resources?.length === 1) {
+                            result = queryResult.resources[0] as CosmosDBRecord;
+                            ext.outputChannel.appendLog(`[DocumentSession.read] Document found via _rid query`);
+                        } else {
+                            ext.outputChannel.appendLog(
+                                `[DocumentSession.read] _rid query returned ${queryResult.resources?.length ?? 0} results`,
+                            );
+                        }
+                    } catch (fallbackError) {
+                        ext.outputChannel.error(
+                            `[DocumentSession.read] Fallback read failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`,
+                        );
+                        // Continue to send documentError to webview
+                    } finally {
+                        if (fallbackTimeoutId) {
+                            clearTimeout(fallbackTimeoutId);
+                        }
                     }
                 }
 
@@ -188,14 +241,24 @@ export class DocumentSession {
                         params: [this.id, result, containerPartitionKey],
                     });
                 } else {
+                    // No result - send documentError event (NOT queryError)
+                    const errorMessage = l10n.t('Item not found or request timed out');
                     await this.channel.postMessage({
                         type: 'event',
                         name: 'documentError',
-                        params: [this.id, 'Item not found'],
+                        params: [this.id, errorMessage],
                     });
                 }
             } catch (error) {
-                await this.errorHandling(error, context);
+                // Handle unexpected errors - send documentError instead of using errorHandling
+                const errorMessage = error instanceof Error ? error.message : l10n.t('An unexpected error occurred');
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'documentError',
+                    params: [this.id, errorMessage],
+                });
+                // Still log telemetry but don't use errorHandling which sends queryError
+                context.telemetry.properties.error = errorMessage;
             }
         });
     }

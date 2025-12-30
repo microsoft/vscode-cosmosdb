@@ -461,3 +461,15 @@ export class HttpStatusCodes {
      */
     public static readonly NETWORK_AUTHENTICATION_REQUIRED = 511;
 }
+
+export class CosmosDBTimeouts {
+    /**
+     * Connection timeout for emulators (shorter since they should respond quickly if running)
+     */
+    public static readonly EMULATOR_CONNECTION_TIMEOUT_MS = 1000;
+
+    /**
+     * Connection timeout for remote accounts (longer to account for network latency)
+     */
+    public static readonly CONNECTION_TIMEOUT_MS = 5000;
+}

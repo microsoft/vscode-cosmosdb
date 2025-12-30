@@ -20,6 +20,7 @@ vscode-cosmosdb/
 ## 🎯 Why Two Test Frameworks?
 
 ### Jest Tests (`src/**/*.test.ts`)
+
 - **Purpose**: Fast, isolated unit tests
 - **Location**: Colocated with source code
 - **Features**:
@@ -30,6 +31,7 @@ vscode-cosmosdb/
 - **Examples**: `survey.scoring.test.ts`, `toSlickGridTree.test.ts`
 
 ### Mocha Tests (`test/**/*.test.ts`)
+
 - **Purpose**: Integration/E2E tests with VS Code extension host
 - **Location**: Separate `test/` directory
 - **Features**:
@@ -44,22 +46,25 @@ vscode-cosmosdb/
 ## 📝 TypeScript Configurations
 
 ### 1. `tsconfig.json` (Main - Source Code Only)
+
 ```json
 {
   "compilerOptions": {
     "module": "esnext",
-    "types": ["node"],
+    "types": ["node"]
     // ... other options
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["test", "src/**/*.test.ts", "**/__mocks__"]
 }
 ```
+
 - Compiles only production source code
 - Excludes all test files
 - Used by: `npm run build`, `npm run compile`
 
 ### 2. `tsconfig.jest.json` (Jest Unit Tests)
+
 ```json
 {
   "extends": "./tsconfig.json",
@@ -71,11 +76,13 @@ vscode-cosmosdb/
   "exclude": ["test"]
 }
 ```
+
 - Compiles Jest unit tests in `src/`
 - Includes Jest type definitions
 - Used by: `npm run jesttest` (via jest.config.js)
 
 ### 3. `tsconfig.test.json` (Mocha Integration Tests)
+
 ```json
 {
   "extends": "./tsconfig.json",
@@ -87,6 +94,7 @@ vscode-cosmosdb/
   "exclude": ["src/**/*.test.ts"]
 }
 ```
+
 - Compiles Mocha integration tests in `test/`
 - Includes Mocha type definitions
 - Used by: `npm run pretest`, `npm run test`
@@ -98,6 +106,7 @@ vscode-cosmosdb/
 The `eslint.config.mjs` has **separate configurations** for each test type:
 
 ### Jest Tests Configuration
+
 ```javascript
 {
   files: ['src/**/*.test.ts', '**/__mocks__/**/*.js'],
@@ -114,6 +123,7 @@ The `eslint.config.mjs` has **separate configurations** for each test type:
 ```
 
 ### Mocha Tests Configuration
+
 ```javascript
 {
   files: ['test/**/*.ts', 'test/**/*.test.ts'],
@@ -134,19 +144,23 @@ The `eslint.config.mjs` has **separate configurations** for each test type:
 ## 🚀 Running Tests
 
 ### Jest Unit Tests (Fast)
+
 ```bash
 npm run jesttest
 ```
+
 - Runs all `src/**/*.test.ts` files
 - No VS Code extension host needed
 - Fast execution (~seconds)
 - Good for TDD/rapid development
 
 ### Mocha Integration Tests (Slow)
+
 ```bash
 npm run pretest    # Compile tests
 npm run test       # Run in VS Code test environment
 ```
+
 - Runs all `test/**/*.test.ts` files
 - Requires VS Code extension host
 - Slower execution (~minutes)
@@ -157,28 +171,30 @@ npm run test       # Run in VS Code test environment
 ## ✍️ Writing Tests
 
 ### Jest Unit Test Example
+
 ```typescript
 // src/utils/myFeature.test.ts
 import { myFunction } from './myFeature';
 
 describe('myFunction', () => {
-    test('should do something', () => {
-        expect(myFunction(42)).toBe(84);
-    });
+  test('should do something', () => {
+    expect(myFunction(42)).toBe(84);
+  });
 });
 ```
 
 ### Mocha Integration Test Example
+
 ```typescript
 // test/myIntegration.test.ts
 import assert from 'assert';
 import * as vscode from 'vscode';
 
 suite('My Integration Tests', () => {
-    test('should work with VS Code API', async () => {
-        const result = await vscode.window.showInformationMessage('Test');
-        assert.ok(result);
-    });
+  test('should work with VS Code API', async () => {
+    const result = await vscode.window.showInformationMessage('Test');
+    assert.ok(result);
+  });
 });
 ```
 
@@ -186,43 +202,46 @@ suite('My Integration Tests', () => {
 
 ## 🎯 Key Differences
 
-| Feature | Jest (`src/`) | Mocha (`test/`) |
-|---------|---------------|-----------------|
-| **Syntax** | `describe()`, `test()`, `expect()` | `suite()`, `test()`, `assert()` |
-| **Mocking** | Built-in `jest.mock()` | Manual (sinon, etc.) |
-| **Speed** | ⚡ Fast | 🐌 Slow |
-| **Environment** | Node.js | VS Code Extension Host |
-| **Purpose** | Unit tests | Integration tests |
-| **TSConfig** | `tsconfig.jest.json` | `tsconfig.test.json` |
+| Feature         | Jest (`src/`)                      | Mocha (`test/`)                 |
+| --------------- | ---------------------------------- | ------------------------------- |
+| **Syntax**      | `describe()`, `test()`, `expect()` | `suite()`, `test()`, `assert()` |
+| **Mocking**     | Built-in `jest.mock()`             | Manual (sinon, etc.)            |
+| **Speed**       | ⚡ Fast                            | 🐌 Slow                         |
+| **Environment** | Node.js                            | VS Code Extension Host          |
+| **Purpose**     | Unit tests                         | Integration tests               |
+| **TSConfig**    | `tsconfig.jest.json`               | `tsconfig.test.json`            |
 
 ---
 
 ## 📦 Configuration Files Summary
 
-| File | Purpose | Compiles |
-|------|---------|----------|
-| `tsconfig.json` | Production source | `src/**/*.ts` (excluding tests) |
-| `tsconfig.jest.json` | Jest unit tests | `src/**/*.test.ts` |
-| `tsconfig.test.json` | Mocha integration tests | `test/**/*.test.ts` |
-| `jest.config.js` | Jest configuration | References `tsconfig.jest.json` |
-| `.vscode-test.js` | VS Code test runner | References `tsconfig.test.json` |
-| `eslint.config.mjs` | Linting | Separate rules for Jest/Mocha |
+| File                 | Purpose                 | Compiles                        |
+| -------------------- | ----------------------- | ------------------------------- |
+| `tsconfig.json`      | Production source       | `src/**/*.ts` (excluding tests) |
+| `tsconfig.jest.json` | Jest unit tests         | `src/**/*.test.ts`              |
+| `tsconfig.test.json` | Mocha integration tests | `test/**/*.test.ts`             |
+| `jest.config.js`     | Jest configuration      | References `tsconfig.jest.json` |
+| `.vscode-test.js`    | VS Code test runner     | References `tsconfig.test.json` |
+| `eslint.config.mjs`  | Linting                 | Separate rules for Jest/Mocha   |
 
 ---
 
 ## 🔍 Troubleshooting
 
 ### "Cannot find name 'describe'" in Jest test
+
 - Make sure the file is in `src/**/*.test.ts`
 - Check that `tsconfig.jest.json` includes the file
 - Verify ESLint is using Jest globals for that file
 
 ### "Cannot find name 'suite'" in Mocha test
+
 - Make sure the file is in `test/**/*.test.ts`
 - Check that `tsconfig.test.json` includes the file
 - Verify ESLint is using Mocha globals for that file
 
 ### Type conflicts between Jest and Mocha
+
 - This is now resolved by separate tsconfig files
 - Each test type has its own type definitions
 - Main `tsconfig.json` excludes all test files
@@ -243,11 +262,11 @@ suite('My Integration Tests', () => {
 ## 📚 Similar Projects
 
 This pattern is used by Microsoft's official VS Code extensions:
+
 - `vscode-azureresourcegroups`
 - `vscode-docker`
 - `vscode-kubernetes-tools`
 
 ---
 
-*Last updated: 2025-12-30*
-
+_Last updated: 2025-12-30_

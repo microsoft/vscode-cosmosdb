@@ -182,7 +182,7 @@ module.exports = (env, { mode }) => {
                 },
             }),
         ].filter(Boolean),
-        devtool: isDev ? 'eval-source-map' : false,
+        devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {
             level: 'log', // enables logging required for problem matchers
         },

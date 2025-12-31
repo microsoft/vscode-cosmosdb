@@ -212,7 +212,7 @@ module.exports = (env, { mode }) => {
                 patterns: [{ from: 'src/webviews/static', to: 'static', noErrorOnMissing: true }].filter(Boolean),
             }),
         ].filter(Boolean),
-        devtool: isDev ? 'eval-source-map' : false,
+        devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {
             level: 'log', // enables logging required for problem matchers
         },

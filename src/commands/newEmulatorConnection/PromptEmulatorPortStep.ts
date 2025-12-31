@@ -5,7 +5,6 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { MongoExperience, type Experience } from '../../AzureDBExperiences';
 import { wellKnownEmulatorPassword } from '../../constants';
 import {
     NewEmulatorConnectionMode,
@@ -16,22 +15,9 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
     public hideStepCount: boolean = false;
 
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {
-        let defaultPort: string;
-        let promptText: string;
-        let placeHolder: string | undefined;
-
-        switch (context.experience) {
-            case MongoExperience:
-                defaultPort = context.port ? context.port.toString() : '10255';
-                promptText = l10n.t('Enter the port number of the Emulator');
-                placeHolder = l10n.t('The default port: 10255');
-                break;
-            default:
-                defaultPort = context.port ? context.port.toString() : '8081';
-                placeHolder = l10n.t('The default port: 8081');
-                promptText = l10n.t('Enter the port number for the Azure Cosmos DB Emulator');
-                break;
-        }
+        const defaultPort = context.port ? context.port.toString() : '8081';
+        const placeHolder = l10n.t('The default port: 8081');
+        const promptText = l10n.t('Enter the port number for the Azure Cosmos DB Emulator');
 
         const port = await context.ui.showInputBox({
             prompt: promptText,
@@ -42,12 +28,12 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
 
         if (port && context.experience) {
             context.port = Number(port);
-            context.connectionString = this.buildConnectionString(Number(port), context.experience);
+            context.connectionString = `AccountEndpoint=https://localhost:${port}/;AccountKey=${wellKnownEmulatorPassword};`;
         }
     }
 
     public shouldPrompt(context: NewEmulatorConnectionWizardContext): boolean {
-        // For Mongo and NoSQL, prompt if mode is Preconfigured
+        // For NoSQL, prompt if mode is Preconfigured
         return context.mode === NewEmulatorConnectionMode.Preconfigured;
     }
 
@@ -68,14 +54,5 @@ export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorCon
         }
 
         return undefined;
-    }
-
-    private buildConnectionString(port: number, experience: Experience): string | undefined {
-        switch (experience) {
-            case MongoExperience:
-                return `mongodb://localhost:${encodeURIComponent(wellKnownEmulatorPassword)}@localhost:${port}/?ssl=true&retrywrites=false`;
-            default:
-                return `AccountEndpoint=https://localhost:${port}/;AccountKey=${wellKnownEmulatorPassword};`;
-        }
     }
 }

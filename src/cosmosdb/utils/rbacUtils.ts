@@ -7,10 +7,8 @@ import { type SqlRoleAssignmentCreateUpdateParameters } from '@azure/arm-cosmosd
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
-    createSubscriptionContext,
     type IActionContext,
     type IAzureMessageOptions,
-    type ISubscriptionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
@@ -29,19 +27,12 @@ export async function ensureRbacPermissionV2(
             context.errorHandling.suppressDisplay = false;
             context.errorHandling.rethrow = false;
 
-            const subscriptionContext = createSubscriptionContext(subscription);
             const accountName: string = getDatabaseAccountNameFromId(fullId);
-            if (await askForRbacPermissions(accountName, subscriptionContext.subscriptionDisplayName, context)) {
+            if (await askForRbacPermissions(accountName, subscription.name, context)) {
                 context.telemetry.properties.lastStep = 'addRbacContributorPermission';
                 const resourceGroup: string = getResourceGroupFromId(fullId);
                 const start: number = Date.now();
-                await addRbacContributorPermission(
-                    accountName,
-                    principalId,
-                    resourceGroup,
-                    context,
-                    subscriptionContext,
-                );
+                await addRbacContributorPermission(accountName, principalId, resourceGroup, context, subscription);
                 //send duration of the previous call (in seconds) in addition to the duration of the whole event including user prompt
                 context.telemetry.measurements['createRoleAssignment'] = (Date.now() - start) / 1000;
 
@@ -114,7 +105,7 @@ async function addRbacContributorPermission(
     principalId: string,
     resourceGroup: string,
     context: IActionContext,
-    subscription: ISubscriptionContext,
+    subscription: AzureSubscription,
 ): Promise<string | undefined> {
     const defaultRoleId = '00000000-0000-0000-0000-000000000002'; // this is a predefined role with read and write access to data plane resources
     const fullAccountId = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${databaseAccount}`;
@@ -134,7 +125,7 @@ async function addRbacContributorPermission(
     }*/
 
     const roleAssignmentId = randomUUID();
-    const client = await createCosmosDBClient([context, subscription]);
+    const client = await createCosmosDBClient(context, subscription);
     const create = await client.sqlResources.beginCreateUpdateSqlRoleAssignmentAndWait(
         roleAssignmentId,
         resourceGroup,

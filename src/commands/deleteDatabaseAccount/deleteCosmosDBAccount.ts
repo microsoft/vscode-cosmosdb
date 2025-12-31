@@ -4,32 +4,23 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
-import { createSubscriptionContext } from '@microsoft/vscode-azext-utils';
-import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
-import { type CosmosDBAccountResourceItemBase } from '../../tree/azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
+import { type CosmosDBAccountResourceItem } from '../../tree/cosmosdb/CosmosDBAccountResourceItem';
+import { createActivityContextV2 } from '../../utils/activityUtils';
 import { createCosmosDBClient } from '../../utils/azureClients';
-import { type DeleteWizardContext } from './DeleteWizardContext';
 
-export async function deleteCosmosDBAccount(
-    context: DeleteWizardContext,
-    node: CosmosDBAccountResourceItemBase,
-): Promise<void> {
-    // Not all CosmosDBAccountResourceItemBase instances have a subscription property (attached account does not),
-    // so we need to create a subscription context
-    if (!('subscription' in node.account)) {
-        throw new Error(l10n.t('Subscription is required to delete an account.'));
-    }
-
-    const subscriptionContext = createSubscriptionContext(node.account.subscription as AzureSubscription);
-    const client = await createCosmosDBClient([context, subscriptionContext]);
+export async function deleteCosmosDBAccount(context: IActionContext, node: CosmosDBAccountResourceItem): Promise<void> {
+    const activityContext = await createActivityContextV2();
+    const client = await createCosmosDBClient({ ...context, ...activityContext }, node.account.subscription);
     const resourceGroup = getResourceGroupFromId(node.account.id);
     const accountName = node.account.name;
 
     const deletePromise = client.databaseAccounts.beginDeleteAndWait(resourceGroup, accountName);
-    if (!context.suppressNotification) {
+
+    if (!activityContext.suppressNotification) {
         const deletingMessage = l10n.t('Deleting account "{accountName}"…', { accountName });
         await vscode.window.withProgress(
             { location: vscode.ProgressLocation.Notification, title: deletingMessage },

@@ -30,7 +30,7 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
         connectionString = connectionString ? connectionString.trim() : '';
 
         if (connectionString.length === 0) {
-            // skip this for now, asyncValidationTask takes care of this case, otherwise it's only warnings the user sees..
+            // skip this for now, asyncValidationTask takes care of this case, otherwise it's only warnings the user sees.
             return undefined;
         }
 

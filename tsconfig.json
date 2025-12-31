@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "esnext",
+    "moduleResolution": "node",
     "target": "ES2023",
     "outDir": "out",
     "lib": ["ES2023", "dom", "dom.iterable", "webworker"],
     "sourceMap": true,
-    "esModuleInterop": true, // added by tnaum to help with Denque integration, happy to discuss other approaches
+    "esModuleInterop": true,
     "noImplicitThis": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
@@ -27,5 +28,6 @@
       "node_modules/@types"
     ]
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "main.ts"],
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__"]
 }

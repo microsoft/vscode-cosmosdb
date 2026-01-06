@@ -131,7 +131,10 @@ export abstract class WebviewBaseController<Configuration> implements vscode.Dis
                     <body>
                         <div id="root"></div>
                             <script nonce="${nonce}">
-                                globalThis.l10n_bundle = ${JSON.stringify(vscode.l10n.bundle ?? {})};
+                                globalThis.l10n_bundle = ${JSON.stringify(
+                                    // eslint-disable-next-line no-restricted-syntax
+                                    vscode.l10n.bundle ?? {},
+                                )};
                             </script>
                             <script type="module" nonce="${nonce}">
                                 window.config = {

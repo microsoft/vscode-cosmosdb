@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient, type Resource, type StoredProcedureDefinition } from '@azure/cosmos';
+import { type CosmosClient } from '@azure/cosmos';
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -13,6 +13,7 @@ import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBStoredProceduresModel } from './models/CosmosDBStoredProceduresModel';
+import { type StoredProcedureResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBStoredProceduresResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
@@ -47,7 +48,7 @@ export abstract class CosmosDBStoredProceduresResourceItem
         };
     }
 
-    protected async getStoredProcedures(cosmosClient: CosmosClient): Promise<(StoredProcedureDefinition & Resource)[]> {
+    protected async getStoredProcedures(cosmosClient: CosmosClient): Promise<StoredProcedureResource[]> {
         const result = await cosmosClient
             .database(this.model.database.id)
             .container(this.model.container.id)
@@ -57,7 +58,5 @@ export abstract class CosmosDBStoredProceduresResourceItem
         return result.resources;
     }
 
-    protected abstract getChildrenImpl(
-        storedProcedures: (StoredProcedureDefinition & Resource)[],
-    ): Promise<TreeElement[]>;
+    protected abstract getChildrenImpl(storedProcedures: StoredProcedureResource[]): Promise<TreeElement[]>;
 }

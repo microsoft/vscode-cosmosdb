@@ -1,61 +1,76 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "type": "npm",
-            "script": "compile",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "isBackground": true,
-            "presentation": {
-                "reveal": "always"
-            },
-            "problemMatcher": "$tsc-watch"
-        },
-        {
-            "type": "npm",
-            "script": "lint",
-            "problemMatcher": "$eslint-stylish"
-        },
-        {
-            "label": "Watch",
-            "dependsOn": ["watch:ext", "watch:views"]
-        },
-        {
-            "label": "watch:ext",
-            "type": "npm",
-            "script": "watch:ext",
-            "group": "build",
-            "isBackground": true,
-            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new",
-                "showReuseMessage": false,
-                "clear": true,
-                "group": "Cosmos DB Extension Watch"
-            }
-        },
-        {
-            "label": "watch:views",
-            "type": "npm",
-            "script": "watch:views",
-            "group": "build",
-            "isBackground": true,
-            "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new",
-                "showReuseMessage": false,
-                "clear": true,
-                "group": "Cosmos DB Extension Watch"
-            }
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "compile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": "$tsc-watch"
+    },
+    {
+      "label": "Pretest",
+      "type": "npm",
+      "script": "pretest",
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": "$tsc-watch"
+    },
+    {
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": "$eslint-stylish"
+    },
+    {
+      "label": "Watch",
+      "dependsOn": ["watch:ext", "watch:views"]
+    },
+    {
+      "label": "watch:ext",
+      "type": "npm",
+      "script": "watch:ext",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "Cosmos DB Extension Watch"
+      }
+    },
+    {
+      "label": "watch:views",
+      "type": "npm",
+      "script": "watch:views",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "Cosmos DB Extension Watch"
+      }
+    },
+    {
+      "label": "Pretest and Webpack",
+      "dependsOn": ["Pretest", "Watch"]
+    }
+  ]
 }

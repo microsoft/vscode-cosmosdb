@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ContainerDefinition, type DatabaseDefinition, type ItemDefinition, type Resource } from '@azure/cosmos';
+import { type ItemDefinition } from '@azure/cosmos';
 import { type AccountInfo } from '../AccountInfo';
+import { type ContainerResource, type DatabaseResource } from './CosmosDBTypes';
 
 export type CosmosDBItemModel = {
     accountInfo: AccountInfo;
-    database: DatabaseDefinition & Resource;
-    container: ContainerDefinition & Resource;
+    database: DatabaseResource;
+    container: ContainerResource;
     item: ItemDefinition;
 };

@@ -5,10 +5,7 @@
 
 // This file is copy of main.js. It was created to not brake the old build process, but provides the same functionality as main.js.
 // The old webpack config changes the source code of the main.js file to replace the import statements with require statements.
-// The new webpack config does not do this anymore, uses swc for transpiling and does not change the source code.
-
-// This is the extension entrypoint module, which imports extension.bundle.js, the actual extension code.
-// This is in a separate file so we can properly measure extension.bundle.js load time.
+// The new webpack config does not do this anymore, uses ts-loader for transpiling and does not change the source code.
 
 import { type apiUtils } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
@@ -40,6 +37,3 @@ export async function deactivate(ctx: vscode.ExtensionContext): Promise<void> {
 }
 
 perfStats.loadEndTime = Date.now();
-
-// Since not all unit/integration tests right now might be moved to jest, we need to export some classes/functions.
-export * from './src/utils/getIp';

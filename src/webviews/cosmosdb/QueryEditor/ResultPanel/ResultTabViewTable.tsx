@@ -118,7 +118,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         (): GridOption => ({
             autoResize: {
                 calculateAvailableSizeBy: 'container',
-                container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
+                container: '.resultsDisplayArea', // this is a selector of the parent container
                 delay: 100,
                 autoHeightRecalcRow: 1,
                 autoHeight: true,

@@ -224,9 +224,9 @@ async function getKeyCredentialWithoutARM(
             // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
             // Will try to connect to the account and catch if it fails due to local auth being disabled.
             const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator);
-            let timeout = isEmulator
+            const timeout: number = isEmulator
                 ? CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS
-                : CosmosDBTimeouts.CONNECTION_TIMEOUT_MS; // 1 second for emulator, 5 seconds for regular accounts
+                : CosmosDBTimeouts.CONNECTION_TIMEOUT_MS;
             // Apply timeout to prevent hanging indefinitely on unreachable hosts
             await rejectOnTimeout(
                 timeout,

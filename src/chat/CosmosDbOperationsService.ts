@@ -7,6 +7,11 @@ import * as vscode from 'vscode';
 
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import {
+    getSchemaFromDocument,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '../utils/json/nosql/SchemaAnalyzer';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 export interface EditQueryResult {
@@ -166,15 +171,18 @@ export class CosmosDbOperationsService {
                 if (queryResult.requestCharge) {
                     contextInfo += `, ${queryResult.requestCharge.toFixed(2)} RUs`;
                 }
-                // Add sample document structure if available
+
+                // Include inferred schema to context
                 if (queryResult.documents.length > 0) {
-                    const sampleDoc = queryResult.documents[0];
-                    const sampleStructure = JSON.stringify(sampleDoc, null, 2).substring(0, 300);
-                    contextInfo += `\n\nSample document structure:\n${sampleStructure}...`;
+                    const schema = getSchemaFromDocument(queryResult.documents[0] as NoSQLDocument);
+                    for (const document of queryResult.documents.slice(1)) {
+                        updateSchemaWithDocument(schema, document as NoSQLDocument);
+                    }
+                    contextInfo += `, Inferred schema from query result: ${JSON.stringify(schema)}`;
                 }
             }
 
-            const llmPrompt = `You are a Cosmos DB query optimization expert. Please improve the following NoSQL query based on the user's request.
+            const llmPrompt = `You are a Cosmos DB query optimization expert. Please improve the following NoSQL query based on the user's request.a
 
 **Context:** ${contextInfo}
 
@@ -307,6 +315,15 @@ Return only valid JSON, no other text:`;
                     queryContext += `, ${requestCharge.toFixed(2)} RUs consumed`;
                 }
                 queryContext += `\n`;
+
+                // Include inferred schema to context
+                if (currentResult.documents.length > 0) {
+                    const schema = getSchemaFromDocument(currentResult.documents[0] as NoSQLDocument);
+                    for (const document of currentResult.documents.slice(1)) {
+                        updateSchemaWithDocument(schema, document as NoSQLDocument);
+                    }
+                    queryContext += `=, Inferred schema from query result: ${JSON.stringify(schema)}\n`;
+                }
             }
             queryContext += `\n`;
 

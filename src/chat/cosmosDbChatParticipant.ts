@@ -158,8 +158,8 @@ User request: "${originalPrompt}"
 Return JSON with relevant parameters. Examples:
 - For "SELECT * FROM c with metrics": {"query": "SELECT * FROM c", "includeMetrics": true}
 - For "show info about mydb": {"target": "mydb"}
-
-Only return valid JSON, no other text:`;
+Only return valid JSON, no other text.
+** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
 
             const messages = [vscode.LanguageModelChatMessage.User(extractionPrompt)];
             const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);

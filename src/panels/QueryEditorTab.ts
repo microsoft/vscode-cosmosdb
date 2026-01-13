@@ -774,7 +774,7 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
 `;
 
             try {
-                const models = await vscode.lm.selectChatModels();
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
 
                 if (models.length === 0) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));

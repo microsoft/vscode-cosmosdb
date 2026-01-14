@@ -7,7 +7,7 @@ import { nonNullValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
-import { getThemeAgnosticIconPath, wellKnownEmulatorPassword } from '../../../../constants';
+import { getThemeAgnosticIconURI, wellKnownEmulatorPassword } from '../../../../constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/storageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
 import { makeFilterable } from '../../../mixins/Filterable';
@@ -42,7 +42,7 @@ export class LocalCoreEmulatorsItem implements TreeElement, TreeElementWithConte
             id: this.id,
             contextValue: this.contextValue,
             label: l10n.t('Local Emulators'),
-            iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg'),
+            iconPath: getThemeAgnosticIconURI('CosmosDBAccount.svg'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
     }

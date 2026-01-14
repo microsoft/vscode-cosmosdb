@@ -9,6 +9,134 @@ declare module 'vscode' {
     // https://github.com/microsoft/vscode/issues/260156
 
     /**********
+     * MCP Server API (Proposed)
+     * https://github.com/microsoft/vscode/blob/main/src/vscode-dts/vscode.proposed.mcpServers.d.ts
+     *******/
+
+    /**
+     * An MCP server definition.
+     */
+    export interface McpServerDefinition {
+        /**
+         * The label of the server, shown in the UI.
+         */
+        readonly label: string;
+
+        /**
+         * Optional version of the server. If this changes, the server will be
+         * restarted to pick up the new configuration.
+         */
+        readonly version?: string;
+    }
+
+    /**
+     * An MCP server that communicates over HTTP.
+     */
+    export class McpHttpServerDefinition implements McpServerDefinition {
+        /**
+         * The label of the server, shown in the UI.
+         */
+        readonly label: string;
+
+        /**
+         * The URI of the HTTP endpoint.
+         */
+        readonly uri: Uri;
+
+        /**
+         * Additional headers to send with requests.
+         */
+        readonly headers: Record<string, string>;
+
+        /**
+         * Optional version of the server.
+         */
+        readonly version?: string;
+
+        constructor(label: string, uri: Uri, headers?: Record<string, string>, version?: string);
+    }
+
+    /**
+     * An MCP server that communicates over stdio.
+     */
+    export class McpStdioServerDefinition implements McpServerDefinition {
+        /**
+         * The label of the server, shown in the UI.
+         */
+        readonly label: string;
+
+        /**
+         * The command to run.
+         */
+        readonly command: string;
+
+        /**
+         * Arguments to pass to the command.
+         */
+        readonly args: string[];
+
+        /**
+         * Environment variables to set.
+         */
+        readonly env: Record<string, string | number | null>;
+
+        /**
+         * The working directory for the command.
+         */
+        readonly cwd?: Uri;
+
+        /**
+         * Optional version of the server.
+         */
+        readonly version?: string;
+
+        constructor(
+            label: string,
+            command: string,
+            args?: string[],
+            env?: Record<string, string | number | null>,
+            version?: string,
+        );
+    }
+
+    /**
+     * A provider that supplies MCP server definitions.
+     */
+    export interface McpServerDefinitionProvider {
+        /**
+         * An optional event to signal that the MCP server definitions have changed.
+         */
+        onDidChangeMcpServerDefinitions?: Event<void>;
+
+        /**
+         * Provide the list of MCP server definitions.
+         */
+        provideMcpServerDefinitions(token: CancellationToken): ProviderResult<McpServerDefinition[]>;
+
+        /**
+         * Called when a server definition is about to be used, giving the
+         * provider a chance to resolve additional details.
+         */
+        resolveMcpServerDefinition?(
+            server: McpServerDefinition,
+            token: CancellationToken,
+        ): ProviderResult<McpServerDefinition>;
+    }
+
+    export namespace lm {
+        /**
+         * Register a provider that supplies MCP server definitions.
+         * @param id The ID of the provider.
+         * @param provider The provider.
+         * @returns A disposable that unregisters the provider.
+         */
+        export function registerMcpServerDefinitionProvider(
+            id: string,
+            provider: McpServerDefinitionProvider,
+        ): Disposable;
+    }
+
+    /**********
      * "Extension asking for auth" API
      *******/
 

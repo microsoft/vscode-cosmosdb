@@ -11,13 +11,13 @@ import {
     type AzExtTreeItem,
     type IActionContext,
     type ICreateChildImplContext,
+    type TreeItemIconPath,
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type ClientConfig } from 'pg';
 import { coerce, gte, type SemVer } from 'semver';
 import * as vscode from 'vscode';
-import { type IconPath } from 'vscode';
-import { getThemeAgnosticIconPath, postgresDefaultDatabase } from '../../constants';
+import { getThemeAgnosticIconURI, postgresDefaultDatabase } from '../../constants';
 import { ext } from '../../extensionVariables';
 import { isIpInRanges } from '../../utils/getIp';
 import { getSecretStorageKey } from '../../utils/getSecretStorageKey';
@@ -86,8 +86,8 @@ export class PostgresServerTreeItem extends AzExtParentTreeItem {
         }
     }
 
-    public get iconPath(): IconPath {
-        return getThemeAgnosticIconPath('PostgresServer.svg');
+    public get iconPath(): TreeItemIconPath {
+        return getThemeAgnosticIconURI('PostgresServer.svg');
     }
 
     public get label(): string {

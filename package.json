@@ -39,6 +39,9 @@
   },
   "main": "./main",
   "l10n": "./l10n",
+  "enabledApiProposals": [
+    "mcpServers"
+  ],
   "activationEvents": [
     "onFileSystem:azureDatabases",
     "onView:azureWorkspace",

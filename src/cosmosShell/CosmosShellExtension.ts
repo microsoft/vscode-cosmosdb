@@ -271,11 +271,55 @@ function getCosmosShellCredential(node: NoSqlContainerResourceItem) {
 export function isCosmosShellSupportEnabled(): boolean {
     const command = getCosmosShellCommand();
     try {
-        child.execFileSync(command, ['--version']);
+        child.execFileSync(command, ['--version'], {
+            windowsHide: true,
+            env: {
+                ...process.env,
+                // CosmosShell may use ANSI output libraries (e.g. Spectre.Console).
+                // When spawned by VS Code, stdio is typically redirected which can confuse
+                // terminal capability detection. Prefer a plain output mode.
+                NO_COLOR: '1',
+                CLICOLOR: '0',
+                TERM: process.env.TERM ?? 'dumb',
+            },
+        });
         return true;
     } catch (err) {
+        const anyErr = err as { stdout?: unknown; stderr?: unknown };
+        const stdout =
+            typeof anyErr?.stdout === 'string'
+                ? anyErr.stdout
+                : Buffer.isBuffer(anyErr?.stdout)
+                  ? anyErr.stdout.toString('utf8')
+                  : '';
+        const stderr =
+            typeof anyErr?.stderr === 'string'
+                ? anyErr.stderr
+                : Buffer.isBuffer(anyErr?.stderr)
+                  ? anyErr.stderr.toString('utf8')
+                  : '';
+
+        // Workaround: CosmosShell may print a valid version string but still exit non-zero
+        // when ANSI is not available. Treat that as installed.
+        const combinedOutput = `${stdout}\n${stderr}`;
+        if (/\bCosmosShell\b/i.test(combinedOutput)) {
+            ext.outputChannel.appendLine(
+                'warning: CosmosShell "--version" exited non-zero, but returned version output; treating as installed.',
+            );
+            if (stderr.trim().length > 0) {
+                ext.outputChannel.appendLine(stderr.trim());
+            }
+            return true;
+        }
+
         ext.outputChannel.appendLine('fail ' + err);
         ext.outputChannel.appendLine('while running "' + command + ' --version"');
+        if (stdout.trim().length > 0) {
+            ext.outputChannel.appendLine('stdout: ' + stdout.trim());
+        }
+        if (stderr.trim().length > 0) {
+            ext.outputChannel.appendLine('stderr: ' + stderr.trim());
+        }
         return false;
     }
 }

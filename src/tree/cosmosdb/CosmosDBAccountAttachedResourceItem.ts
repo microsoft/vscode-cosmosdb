@@ -74,7 +74,15 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
         const treeItem = super.getTreeItem();
         if (treeItem.tooltip) {
-            tooltipMessage = `${String(treeItem.tooltip)}\n${tooltipMessage}`;
+            const existingTooltip =
+                typeof treeItem.tooltip === 'string'
+                    ? treeItem.tooltip
+                    : treeItem.tooltip instanceof vscode.MarkdownString
+                      ? treeItem.tooltip.value
+                      : '';
+            if (existingTooltip) {
+                tooltipMessage = `${existingTooltip}\n${tooltipMessage}`;
+            }
         }
 
         return {
@@ -83,7 +91,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
             tooltip: new vscode.MarkdownString(tooltipMessage),
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
-                : getThemeAgnosticIconURI('CosmosDBAccount.svg'),
+                : (getThemeAgnosticIconURI('CosmosDBAccount.svg') as { light: vscode.Uri; dark: vscode.Uri }),
         };
     }
 

@@ -188,6 +188,7 @@ async function handleConnectionStringRequest(
         // Create storage item for the connection
         if (parsedConnection.api === API.Core) {
             const isEmulator = getIsEmulatorConnection(parsedConnection.connectionString);
+            const tenantId = params.tenantId || parsedConnection.connectionString.tenantId;
             const fullId = await createAttachedForConnection(
                 parsedConnection.connectionString.accountId,
                 parsedConnection.connectionString.accountName,
@@ -195,6 +196,7 @@ async function handleConnectionStringRequest(
                 params.connectionString,
                 isEmulator,
                 parsedConnection.connectionString.port,
+                tenantId,
             );
             ext.cosmosDBWorkspaceBranchDataProvider.refresh();
             await revealAttachedInWorkspaceExplorer(fullId, params.database, params.container);
@@ -216,6 +218,7 @@ async function handleConnectionStringRequest(
                 params.connectionString,
                 isEmulator,
                 parsedConnection.connectionString.port,
+                params.tenantId,
                 disableEmulatorSecurity,
             );
             ext.mongoClustersWorkspaceBranchDataProvider.refresh();
@@ -367,6 +370,7 @@ async function createAttachedForConnection(
     connectionString: string,
     isEmulator: boolean,
     emulatorPort?: string,
+    tenantId?: string,
     disableEmulatorSecurity?: boolean,
 ): Promise<string> {
     const rootId = `${api === API.Core ? WorkspaceResourceType.AttachedAccounts : WorkspaceResourceType.MongoClusters}`;
@@ -396,7 +400,12 @@ async function createAttachedForConnection(
         const storageItem: StorageItem = {
             id,
             name,
-            properties: { isEmulator, api, ...(disableEmulatorSecurity && { disableEmulatorSecurity }) },
+            properties: {
+                isEmulator,
+                api,
+                ...(tenantId && { tenantId }),
+                ...(disableEmulatorSecurity && { disableEmulatorSecurity }),
+            },
             secrets: [connectionString],
         };
 
@@ -596,7 +605,7 @@ function parseConnectionString(
 
     // All other connection strings are treated as Core API
     const parsedCS = parseCosmosDBConnectionString(connectionString);
-    [parsedCS.masterKey, parsedCS.databaseName]
+    [parsedCS.masterKey, parsedCS.databaseName, parsedCS.tenantId]
         .filter((value): value is string => Boolean(value))
         .forEach((value) => context.valuesToMask.push(value));
     return {
@@ -621,6 +630,7 @@ function extractParams(query: string): {
     subscriptionId?: string;
     resourceGroup?: string;
     connectionString?: string;
+    tenantId?: string;
     database?: string;
     container?: string;
 } {
@@ -630,6 +640,7 @@ function extractParams(query: string): {
         subscriptionId: queryParams.get('subscriptionId') ?? undefined,
         resourceGroup: queryParams.get('resourceGroup') ?? undefined,
         connectionString: queryParams.get('cs') ?? undefined,
+        tenantId: queryParams.get('tenantId') ?? undefined,
         database: queryParams.get('database') ?? undefined,
         container: queryParams.get('container') ?? undefined,
     };
@@ -649,6 +660,7 @@ interface UriParams {
     subscriptionId?: string | undefined;
     resourceGroup?: string | undefined;
     connectionString?: string | undefined;
+    tenantId?: string | undefined;
     database?: string | undefined;
     container?: string | undefined;
 }
@@ -675,6 +687,7 @@ function extractAndValidateParams(context: IActionContext, query: string): UriPa
             case 'connectionString':
             case 'database':
             case 'container':
+            case 'tenantId':
                 if (value !== undefined) {
                     context.valuesToMask.push(value);
                 }

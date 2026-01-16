@@ -80,6 +80,7 @@
   "Connection String": "Connection String",
   "Connection string cannot be empty": "Connection string cannot be empty",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"",
+  "Connection string must include \"AccountEndpoint=…\" and either \"AccountKey=…\" or \"TenantId=…\"": "Connection string must include \"AccountEndpoint=…\" and either \"AccountKey=…\" or \"TenantId=…\"",
   "Container {0} not found": "Container {0} not found",
   "Container name cannot be longer than 255 characters": "Container name cannot be longer than 255 characters",
   "Container name cannot contain the characters '\\', '/', '#', '?'": "Container name cannot contain the characters '\\', '/', '#', '?'",

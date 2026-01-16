@@ -117,6 +117,7 @@
   "Connection string cannot be empty": "Connection string cannot be empty",
   "Connection string is required.": "Connection string is required.",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"",
+  "Connection string must include \"AccountEndpoint=…\" and either \"AccountKey=…\" or \"TenantId=…\"": "Connection string must include \"AccountEndpoint=…\" and either \"AccountKey=…\" or \"TenantId=…\"",
   "Connection string must start with \"postgres://\"": "Connection string must start with \"postgres://\"",
   "Connection string not found.": "Connection string not found.",
   "Connections have moved": "Connections have moved",

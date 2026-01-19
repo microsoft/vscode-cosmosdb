@@ -716,7 +716,7 @@ export class QueryEditorTab extends BaseTab {
         const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
             try {
-                const models = await vscode.lm.selectChatModels();
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
 
                 if (models.length === 0) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));

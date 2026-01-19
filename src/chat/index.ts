@@ -4,5 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 export { CosmosDbChatParticipant } from './cosmosDbChatParticipant';
-export { CosmosDbOperationsService } from './CosmosDbOperationsService';
+export {
+    CosmosDbOperationsService,
+    type QueryExecutionEntry,
+    type QueryHistoryContext,
+} from './CosmosDbOperationsService';
 export { OperationParser } from './OperationParser';

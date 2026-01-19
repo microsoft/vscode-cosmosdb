@@ -46,47 +46,54 @@ export class CosmosDbChatParticipant {
     }
 
     /**
-     * Extracts context from active query editors including current query and results
+     * Extracts context from active query editors including current query, results, and schema.
+     * Groups query execution history for better LLM understanding.
      */
     private getQueryEditorContext(): string {
         try {
             // Get active query editor tabs
             const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
 
-            let context = '';
-
-            // Check for active query editor tabs first (priority over text editor)
-            if (activeQueryEditors.length > 0) {
-                const activeQueryEditor = getActiveQueryEditor(activeQueryEditors);
-
-                const result = activeQueryEditor.getCurrentQueryResults();
-
-                if (!context) {
-                    context = '\n\n## Query Editor Context\n';
-                }
-                context += `\n### Active Query Editor Session\n`;
-                context += `The user has an active Cosmos DB NoSQL query editor with session data.\n`;
-
-                if (result?.query) {
-                    context += `### Current Query:\n\`\`\`sql\n${result.query}\n\`\`\`\n`;
-                }
-
-                if (result?.documents && result.documents.length > 0) {
-                    context += `### Query Results Context:\n`;
-                    context += `- Documents returned: ${result.documents.length}\n`;
-                    if (result.requestCharge) {
-                        context += `- Request charge: ${result.requestCharge} RUs\n`;
-                    }
-                    context += `- Sample result structure: ${JSON.stringify(result.documents[0], null, 2).substring(0, 200)}...\n`;
-                }
-
-                if (result?.metadata) {
-                    context += `### Query Metadata Available\n`;
-                    context += `- Execution context and performance metrics are available for optimization\n`;
-                }
-            } else {
-                // No query editor active
+            if (activeQueryEditors.length === 0) {
                 return '';
+            }
+
+            const activeQueryEditor = getActiveQueryEditor(activeQueryEditors);
+            const operationsService = CosmosDbOperationsService.getInstance();
+
+            // Get grouped query history context
+            const historyContext = operationsService.getQueryHistoryContext(activeQueryEditor);
+
+            if (historyContext) {
+                // Use the service's formatted grouped context
+                let context = '\n\n## Query Editor Context\n';
+                context += `The user has an active Cosmos DB NoSQL query editor with session data.\n\n`;
+                context += operationsService.formatQueryHistoryForLLM(historyContext);
+                return context;
+            }
+
+            // Fallback to basic context if no history available
+            const result = activeQueryEditor.getCurrentQueryResults();
+            let context = '\n\n## Query Editor Context\n';
+            context += `\n### Active Query Editor Session\n`;
+            context += `The user has an active Cosmos DB NoSQL query editor with session data.\n`;
+
+            if (result?.query) {
+                context += `### Current Query:\n\`\`\`sql\n${result.query}\n\`\`\`\n`;
+            }
+
+            if (result?.documents && result.documents.length > 0) {
+                context += `### Query Results Context:\n`;
+                context += `- Documents returned: ${result.documents.length}\n`;
+                if (result.requestCharge) {
+                    context += `- Request charge: ${result.requestCharge} RUs\n`;
+                }
+                context += `- Sample result structure: ${JSON.stringify(result.documents[0], null, 2).substring(0, 200)}...\n`;
+            }
+
+            if (result?.metadata) {
+                context += `### Query Metadata Available\n`;
+                context += `- Execution context and performance metrics are available for optimization\n`;
             }
 
             return context;

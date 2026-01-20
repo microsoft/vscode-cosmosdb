@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "types": ["jest", "node"],
+    "composite": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "src/**/*.test.ts", "src/**/__mocks__/**/*.ts"],
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test"]
+}

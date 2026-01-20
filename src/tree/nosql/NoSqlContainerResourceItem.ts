@@ -7,8 +7,6 @@ import { type Experience } from '../../AzureDBExperiences';
 import { type TreeElement } from '../TreeElement';
 import { CosmosDBContainerResourceItem } from '../cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBContainerModel } from '../cosmosdb/models/CosmosDBContainerModel';
-import { makeFilterable } from '../mixins/Filterable';
-import { makeSortable } from '../mixins/Sortable';
 import { NoSqlItemsResourceItem } from './NoSqlItemsResourceItem';
 import { NoSqlQueryEditorResourceItem } from './NoSqlQueryEditorResourceItem';
 import { NoSqlStoredProceduresResourceItem } from './NoSqlStoredProceduresResourceItem';
@@ -20,7 +18,7 @@ export class NoSqlContainerResourceItem extends CosmosDBContainerResourceItem {
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const items = (await super.getChildren()).map((item) => makeFilterable(makeSortable(item)));
+        const items = await super.getChildren();
         const queryEditor = new NoSqlQueryEditorResourceItem({ ...this.model }, this.experience);
 
         return [queryEditor, ...items];

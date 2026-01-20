@@ -1,33 +1,24 @@
 {
-    "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "explicit",
-        "source.organizeImports": "explicit"
-    },
-    "editor.detectIndentation": false,
-    "editor.formatOnSave": true,
-    "editor.formatOnPaste": false,
-    "editor.insertSpaces": true,
-    "editor.tabSize": 4,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "files.insertFinalNewline": true,
-    "files.trimTrailingWhitespace": true,
-    "search.exclude": {
-        "out": true,
-        "**/node_modules": true,
-        ".vscode-test": true
-    },
-    "typescript.preferences.importModuleSpecifier": "relative",
-    "typescript.tsdk": "node_modules/typescript/lib",
-    "antlr4.generation": {
-        // Settings for "ANTLR4 grammar syntax support" extension
-        "mode": "internal",
-        "listeners": true,
-        "visitors": false
-    },
-    "vscode-nmake-tools.workspaceBuildDirectories": ["."],
-    "vscode-nmake-tools.installOsRepoRustHelperExtension": false,
-    "sarif-viewer.connectToGithubCodeScanning": "off"
-    // "eslint.workingDirectories": [
-    //     ".", "src"
-    //   ]
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.detectIndentation": false,
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "search.exclude": {
+    "out": true,
+    "**/node_modules": true,
+    ".vscode-test": true
+  },
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "vscode-nmake-tools.workspaceBuildDirectories": ["."],
+  "vscode-nmake-tools.installOsRepoRustHelperExtension": false,
+  "sarif-viewer.connectToGithubCodeScanning": "off"
 }

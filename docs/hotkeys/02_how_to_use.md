@@ -23,18 +23,18 @@ Define hotkeys as mappings between keyboard shortcuts and commands:
 
 ```typescript
 export const MyHotkeys: HotkeyMapping<MyHotkeyCommand>[] = [
-    {
-        key: 'f5',
-        command: 'ExecuteAction',
-        description: 'Execute action',
-        shortcutDisplay: { windows: 'F5', mac: 'F5' },
-    },
-    {
-        key: 'mod+s',
-        command: 'SaveAction',
-        description: 'Save changes',
-        shortcutDisplay: { windows: 'Ctrl+S', mac: '⌘S' },
-    }
+  {
+    key: 'f5',
+    command: 'ExecuteAction',
+    description: 'Execute action',
+    shortcutDisplay: { windows: 'F5', mac: 'F5' },
+  },
+  {
+    key: 'mod+s',
+    command: 'SaveAction',
+    description: 'Save changes',
+    shortcutDisplay: { windows: 'Ctrl+S', mac: '⌘S' },
+  },
 ] as const;
 ```
 
@@ -111,12 +111,9 @@ You can conditionally enable or disable hotkey handlers:
 
 ```typescript
 // Disable based on component state
-useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>(
-    'editorScope',
-    'SaveAction',
-    handleSave,
-    { disabled: !isDirty || isProcessing }
-);
+useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>('editorScope', 'SaveAction', handleSave, {
+  disabled: !isDirty || isProcessing,
+});
 ```
 
 ## Displaying Hotkeys in UI
@@ -143,18 +140,19 @@ return (
 ## Best Practices
 
 1. **Define Type Safety**:
+
    ```typescript
    export type MyHotkeyScope = 'global' | 'editorScope' | 'resultPanel';
    export type MyHotkeyCommand = 'Save' | 'Execute' | 'Cancel';
    ```
 
 2. **Organize by Component**:
-    - Keep hotkey definitions near the components that use them
-    - Group related hotkeys in the same scope
+   - Keep hotkey definitions near the components that use them
+   - Group related hotkeys in the same scope
 
 3. **Provide Consistent Experience**:
-    - Use platform-specific key displays (Windows/Mac)
-    - Follow VS Code keyboard shortcut conventions
+   - Use platform-specific key displays (Windows/Mac)
+   - Follow VS Code keyboard shortcut conventions
 
 4. **Prevent Event Propagation** when handling hotkeys to avoid triggering multiple actions
 

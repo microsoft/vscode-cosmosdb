@@ -5,7 +5,7 @@ These shortcuts allow for efficient navigation, execution, and management of you
 mouse.
 
 | Description            | Windows Shortcut                                 | Mac Shortcut                             |
-|------------------------|--------------------------------------------------|------------------------------------------|
+| ---------------------- | ------------------------------------------------ | ---------------------------------------- |
 | Execute query          | <kbd>F5</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>F5</kbd>, <kbd>⇧</kbd>+<kbd>↩</kbd> |
 | Save query             | <kbd>Ctrl</kbd>+<kbd>S</kbd>                     | <kbd>⌘</kbd>+<kbd>S</kbd>                |
 | Cancel query execution | <kbd>Esc</kbd>                                   | <kbd>⎋</kbd>                             |
@@ -15,7 +15,7 @@ mouse.
 ## Result Panel Shortcuts
 
 | Description                     | Windows Shortcut                                                               | Mac Shortcut                                                      |
-|---------------------------------|--------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| ------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
 | Create new item                 | <kbd>Alt</kbd>+<kbd>I</kbd>, <kbd>Insert</kbd>                                 | <kbd>⌥</kbd>+<kbd>I</kbd>, <kbd>Insert</kbd>                      |
 | Delete item                     | <kbd>Alt</kbd>+<kbd>D</kbd>, <kbd>Delete</kbd>                                 | <kbd>⌥</kbd>+<kbd>D</kbd>, <kbd>Delete</kbd>                      |
 | Edit item                       | <kbd>Alt</kbd>+<kbd>E</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>⌥</kbd>+<kbd>E</kbd>, <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>↩</kbd> |
@@ -32,7 +32,7 @@ mouse.
 ## Document Editor Shortcuts
 
 | Description                  | Windows Shortcut                              | Mac Shortcut                           |
-|------------------------------|-----------------------------------------------|----------------------------------------|
+| ---------------------------- | --------------------------------------------- | -------------------------------------- |
 | Save the current document    | <kbd>Ctrl</kbd>+<kbd>S</kbd>                  | <kbd>⌘</kbd>+<kbd>S</kbd>              |
 | Edit the current document    | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>E</kbd> |
 | Refresh the current document | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> | <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>R</kbd> |

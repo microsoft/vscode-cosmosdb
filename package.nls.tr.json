@@ -41,7 +41,7 @@
   "cosmosdb.configuration.confirmation.style.word": "Sözcük Girişi Onayı",
   "cosmosdb.configuration.confirmation.style.word.description": "Silme işlemini onaylamak için kaynağın adını girdiğiniz bir giriş kutusu içeren istemler.",
   "cosmosdb.configuration.document.label.fields": "Cosmos DB ve MongoDB belgelerinin ağaç görünümünde etiket olarak görüntülenecek alan değerleri, öncelik sırasına göre",
-  "cosmosdb.configuration.emulator.mongo.port": "CosmosDB Mongo Emülatör örneğine bağlanırken kullanılacak bağlantı noktası",
+  "cosmosdb.configuration.emulator.port": "CosmosDB Emülatör örneğine bağlanırken kullanılacak bağlantı noktası",
   "cosmosdb.configuration.endpoint.discovery": "Okuma/yazma işlemlerine göre isteklerin otomatik olarak yeniden yönlendirilmesini etkinleştirmek/devre dışı bırakmak için bayrak.",
   "cosmosdb.configuration.oauth.enable": "Cosmos DB NoSQL Hesaplarına bağlanırken her zaman Entra ID RBAC kullanarak kimlik doğrulaması yapın. [RBAC'yi etkinleştirin ve Roller atayın](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Ayrıntılı işlem özetlerini gösterin, veritabanı silme, belge ekleme, silme veya benzer olaylar gibi eylemler için mesajları görüntüleyin.",

@@ -1,5 +1,24 @@
 # Change Log
 
+## 0.32.0
+
+### Removed
+
+- Removed support for discontinued services:
+  - MongoDB (RU, Scrapbook)
+  - DocumentDB
+  - PostgreSQL
+  - Graph (Gremlin)
+  - Table
+  - Cassandra
+  - Grammar (Language Server)
+
+> **Note:** For MongoDB support, use the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb). For PostgreSQL support, use the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+
+### Changed
+
+- Update source map configuration for development mode (fixes debugging in VS Code).
+
 ## 0.31.0
 
 ### Added

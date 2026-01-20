@@ -80,13 +80,15 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 ## Known Issues
 
 > [!WARNING]
-> Support for previously included features such as Universal MongoDB and PostgreSQL has been moved to separate extensions. You can find the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb) and the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+> Support for previously included features such as MongoDB, PostgreSQL, Graph (Gremlin), Table, Cassandra, and the Grammar Language Server has been removed from this extension.
+>
+> - For MongoDB support, use the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb).
+> - For PostgreSQL support, use the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
 
 Here are some known issues and limitations to be aware of when using the Azure Cosmos DB extension:
 
 - **Table Viewing/Editing**: Viewing and editing tables is not currently supported by the extension.
 
-- **Escaped Characters in Scrapbooks**: Scrapbook support for escaped characters is preliminary. Use double escaping for newlines (`\\n` instead of `\n`). If you find issues, report them to [#937](https://github.com/Microsoft/vscode-cosmosdb/issues/937).
 
 <!-- region exclude-from-marketplace -->
 

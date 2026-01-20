@@ -20,7 +20,7 @@ import { useColumnMenu } from './ColumnMenu';
 
 type ResultTabViewTableProps = TableData & {};
 
-export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps) => {
+export const ResultTabViewTable = ({ headers, dataset, deletedRows }: ResultTabViewTableProps) => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const gridRef = useRef<SlickgridReact>(null);
@@ -50,16 +50,25 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                             },
                         ],
                     },
-                    formatter: (_row, _cell, value) => {
-                        if (value === undefined || value === null || value === '{}') {
-                            const displayValue = value === undefined ? 'undefined' : value === null ? 'null' : '{}';
-                            return `<span style="color: var(--vscode-disabledForeground); font-style: italic;">${displayValue}</span>`;
+                    formatter: (row, _cell, value) => {
+                        const text =
+                            value === undefined || value === null || value === '{}'
+                                ? `<span style="color: var(--vscode-disabledForeground); font-style: italic;">${value === undefined ? 'undefined' : value === null ? 'null' : '{}'}</span>`
+                                : String(value);
+
+                        if (deletedRows.includes(row)) {
+                            return {
+                                text,
+                                addClasses: 'row-is-deleted',
+                                toolTip: 'This document is deleted',
+                            };
                         }
-                        return String(value);
+
+                        return text;
                     },
                 } as Column;
             }),
-        [handleHeaderButtonClick, headers],
+        [deletedRows, handleHeaderButtonClick, headers],
     );
 
     React.useEffect(() => {
@@ -96,12 +105,11 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
             // Open document in view mode
             const activeDocument = dataset[args.row];
-            const documentId = activeDocument?.__documentId;
-            if (documentId) {
-                void dispatcher.openDocument('view', documentId);
+            if (activeDocument && !deletedRows.includes(args.row)) {
+                void dispatcher.openDocument(state.currentExecutionId, 'view', args.row);
             }
         },
-        [dataset, dispatcher, state.isEditMode],
+        [dataset, deletedRows, dispatcher, state.currentExecutionId, state.isEditMode],
     );
 
     // SlickGrid emits the event twice. First time for selecting 1 row, second time for selecting this row + all rows what were selected before.

@@ -18,9 +18,11 @@ import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
+    type CosmosDBRecordIdentifier,
     type QueryMetadata,
     type QueryResultRecord,
 } from '../types/queryResult';
+import { DocumentSession } from './DocumentSession';
 import { QuerySessionResult } from './QuerySessionResult';
 
 export class QuerySession {
@@ -231,6 +233,144 @@ export class QuerySession {
                     type: 'event',
                     name: 'executionStopped',
                     params: [this.id, Date.now()],
+                });
+            }
+        });
+    }
+
+    public async getDocumentId(row: number): Promise<QueryResultRecord | undefined> {
+        return callWithTelemetryAndErrorHandling(
+            'cosmosDB.nosql.queryEditor.session.getDocumentId',
+            async (context) => {
+                this.setTelemetryProperties(context);
+
+                if (this.isDisposed) {
+                    throw new Error(l10n.t('Session is disposed'));
+                }
+
+                if (!this.iterator) {
+                    throw new Error(l10n.t('Session is not running! Please run the session first'));
+                }
+
+                const result = this.sessionResult.getResult(this.currentIteration);
+                if (!result) {
+                    throw new Error('No result found for current iteration');
+                }
+
+                const document = result.documents[row];
+                if (!document) {
+                    throw new Error(`No document found for row: ${row}`);
+                }
+
+                const session = new DocumentSession(this.connection, this.channel);
+                return session.getDocumentId(document);
+            },
+        );
+    }
+
+    public async deleteDocument(row: number): Promise<void> {
+        return callWithTelemetryAndErrorHandling(
+            'cosmosDB.nosql.queryEditor.session.deleteDocument',
+            async (context) => {
+                this.setTelemetryProperties(context);
+
+                if (this.isDisposed) {
+                    throw new Error(l10n.t('Session is disposed'));
+                }
+
+                if (!this.iterator) {
+                    throw new Error(l10n.t('Session is not running! Please run the session first'));
+                }
+
+                const result = this.sessionResult.getResult(this.currentIteration);
+                if (!result) {
+                    throw new Error('No result found for current iteration');
+                }
+
+                const document = result.documents[row];
+                if (!document) {
+                    throw new Error(`No document found for row: ${row}`);
+                }
+
+                const session = new DocumentSession(this.connection, this.channel);
+                const documentId = await session.getDocumentId(document);
+
+                if (!documentId) {
+                    throw new Error('Document id not found');
+                }
+
+                const isDeleted = await session.delete(documentId);
+                if (isDeleted) {
+                    result.deletedDocuments.push(row);
+
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryResults',
+                        params: [
+                            this.id,
+                            this.sessionResult.getSerializedResult(this.currentIteration),
+                            this.currentIteration,
+                        ],
+                    });
+                }
+            },
+        );
+    }
+
+    public async bulkDelete(rows: number[]): Promise<void> {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.bulkDelete', async (context) => {
+            this.setTelemetryProperties(context);
+
+            if (this.isDisposed) {
+                throw new Error(l10n.t('Session is disposed'));
+            }
+
+            if (!this.iterator) {
+                throw new Error(l10n.t('Session is not running! Please run the session first'));
+            }
+
+            const result = this.sessionResult.getResult(this.currentIteration);
+            if (!result) {
+                throw new Error('No result found for current iteration');
+            }
+
+            const session = new DocumentSession(this.connection, this.channel);
+            const documents: Array<{ documentId: CosmosDBRecordIdentifier; row: number }> = [];
+
+            for (const row of rows) {
+                const document = result.documents[row];
+                if (!document) {
+                    throw new Error(`No document found for row: ${row}`);
+                }
+
+                const documentId = await session.getDocumentId(document);
+                if (!documentId) {
+                    throw new Error('Document id not found');
+                }
+
+                documents.push({ documentId, row });
+            }
+
+            const documentsToDelete = documents.map((doc) => doc.documentId);
+            const status = await session.bulkDelete(documentsToDelete);
+
+            if (status && status.deleted.length > 0) {
+                result.deletedDocuments = [
+                    ...result.deletedDocuments,
+                    ...status.deleted.map((documentId) => {
+                        const doc = documents.find((document) => document.documentId === documentId);
+                        return doc ? doc.row : -1;
+                    }),
+                ].filter((row) => row !== -1);
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryResults',
+                    params: [
+                        this.id,
+                        this.sessionResult.getSerializedResult(this.currentIteration),
+                        this.currentIteration,
+                    ],
                 });
             }
         });

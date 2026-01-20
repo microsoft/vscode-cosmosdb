@@ -85,11 +85,6 @@ Attach the Azure Cosmos DB Emulator to work with a local instance of Azure Cosmo
 > - For MongoDB support, use the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb).
 > - For PostgreSQL support, use the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
 
-Here are some known issues and limitations to be aware of when using the Azure Cosmos DB extension:
-
-- **Table Viewing/Editing**: Viewing and editing tables is not currently supported by the extension.
-
-
 <!-- region exclude-from-marketplace -->
 
 # How to Contribute

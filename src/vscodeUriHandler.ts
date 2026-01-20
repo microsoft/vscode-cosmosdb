@@ -7,6 +7,7 @@ import { parseAzureResourceId, type ParsedAzureResourceId } from '@microsoft/vsc
 import {
     callWithTelemetryAndErrorHandling,
     nonNullValue,
+    parseError,
     UserCancelledError,
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
@@ -73,6 +74,9 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
                 },
             );
         } catch (error) {
+            if (error instanceof UserCancelledError) {
+                throw error;
+            }
             const errMsg = error instanceof Error ? error.message : String(error);
             throw new Error(l10n.t('Failed to process URI: {0}', errMsg));
         }
@@ -290,39 +294,51 @@ async function revealAzureResourceInExplorer(
     container?: string,
 ): Promise<TreeElement> {
     await vscode.commands.executeCommand('azureResourceGroups.focus');
-    await ext.rgApiV2.resources.revealAzureResource(resourceId.rawId, {
-        select: true,
-        focus: true,
-        expand: true,
-    });
+    await revealAzureResourceWithAccountPrompt(context, resourceId.rawId);
 
     let fulId = resourceId.rawId;
     if (database && container) {
         fulId = `${resourceId.rawId}${database ? `/${database}${container ? `/${container}` : ''}` : ''}`;
-        await ext.rgApiV2.resources.revealAzureResource(fulId, {
-            select: true,
-            focus: true,
-            expand: true,
-        });
+        await revealAzureResourceWithAccountPrompt(context, fulId);
     }
+
+    const tryFindRevealedResource = async (): Promise<TreeElement | undefined> => {
+        const revealedId = await ext.rgApiV2.resources.getSelectedAzureNode();
+        if (revealedId) {
+            const strippedId = removeAzureTenantPrefix(revealedId);
+            return await branchDataProvider.findNodeById(strippedId);
+        }
+
+        return await branchDataProvider.findNodeById(fulId);
+    };
 
     let resource: TreeElement | undefined;
     const branchDataProvider =
         resourceId.provider === 'Microsoft.DocumentDB/mongoClusters'
             ? ext.mongoVCoreBranchDataProvider
             : ext.cosmosDBBranchDataProvider;
-    const revealedId = await ext.rgApiV2.resources.getSelectedAzureNode();
-    if (revealedId) {
-        const strippedId = removeAzureTenantPrefix(revealedId);
-        resource = await branchDataProvider.findNodeById(strippedId);
-    } else {
-        resource = await branchDataProvider.findNodeById(fulId);
-    }
+    resource = await tryFindRevealedResource();
 
     if (!resource) {
-        throw new Error(
-            l10n.t('Unable to find resource "{0}". Please ensure the resource exists and try again.', resourceId.rawId),
-        );
+        // If reveal succeeded but we can't locate the node, it's commonly because the user is signed into
+        // a different Azure account or hasn't selected the correct subscriptions.
+        await promptToFixAzureAccountAccess(context);
+
+        // Retry after the user has potentially changed their Azure sign-in/subscription selection.
+        await revealAzureResourceWithAccountPrompt(context, resourceId.rawId);
+        if (database && container) {
+            await revealAzureResourceWithAccountPrompt(context, fulId);
+        }
+
+        resource = await tryFindRevealedResource();
+        if (!resource) {
+            throw new Error(
+                l10n.t(
+                    'Unable to find resource "{0}". Please ensure the following:\n- You are signed in with the correct Azure account.\n- The subscription is selected.\n- The resource exists.',
+                    resourceId.rawId,
+                ),
+            );
+        }
     }
 
     context.telemetry.properties.experience = isTreeElementWithExperience(resource)
@@ -341,6 +357,101 @@ async function revealAzureResourceInExplorer(
         );
     }
     return resource;
+}
+
+async function promptToFixAzureAccountAccess(context: IActionContext): Promise<void> {
+    const signIn: vscode.MessageItem = { title: l10n.t('Sign in') };
+    const selectSubscriptions: vscode.MessageItem = { title: l10n.t('Select subscriptions') };
+
+    const choice = await context.ui.showWarningMessage(
+        l10n.t(
+            "This Cosmos DB resource isn't available with your current Azure sign-in. Sign in with the correct account or select the correct subscriptions and try again.",
+        ),
+        { modal: true, stepName: 'azureAccountMismatch' },
+        signIn,
+        selectSubscriptions,
+    );
+
+    if (!choice) {
+        throw new UserCancelledError('azureAccountMismatch');
+    }
+
+    if (choice.title === signIn.title) {
+        await vscode.commands.executeCommand('azure-account.login');
+    } else if (choice.title === selectSubscriptions.title) {
+        await vscode.commands.executeCommand('azure-account.selectSubscriptions');
+    }
+}
+
+async function revealAzureResourceWithAccountPrompt(context: IActionContext, azureResourceId: string): Promise<void> {
+    try {
+        await ext.rgApiV2.resources.revealAzureResource(azureResourceId, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+    } catch (error) {
+        const parsed = parseError(error);
+        if (!isSubscriptionNotFoundError(parsed.message)) {
+            throw error;
+        }
+
+        const signIn: vscode.MessageItem = { title: l10n.t('Sign in') };
+        const selectSubscriptions: vscode.MessageItem = { title: l10n.t('Select subscriptions') };
+
+        const choice = await context.ui.showWarningMessage(
+            l10n.t(
+                'The Azure subscription that contains this Cosmos DB resource is not accessible with your current Azure sign-in or selected subscriptions. Sign in with the correct account or update your subscription selection, then try again.',
+            ),
+            { modal: true, stepName: 'subscriptionNotFound' },
+            signIn,
+            selectSubscriptions,
+        );
+
+        if (!choice) {
+            throw new UserCancelledError('subscriptionNotFound');
+        }
+
+        if (choice.title === signIn.title) {
+            await vscode.commands.executeCommand('azure-account.login');
+        } else if (choice.title === selectSubscriptions.title) {
+            await vscode.commands.executeCommand('azure-account.selectSubscriptions');
+        }
+
+        // Retry once after the user action.
+        await ext.rgApiV2.resources.revealAzureResource(azureResourceId, {
+            select: true,
+            focus: true,
+            expand: true,
+        });
+    }
+}
+
+function isSubscriptionNotFoundError(message: string): boolean {
+    const msg = message.toLowerCase();
+    // NOTE: This logic intentionally inspects the error message text instead of using a richer error
+    // type or code because the originating errors come from the Azure Resources / Azure Account
+    // extensions (via `ext.rgApiV2.resources.revealAzureResource`) and do not expose a stable,
+    // programmatic identifier for "subscription not found" conditions.
+    //
+    // Typical upstream messages that we have seen include variants such as:
+    //   - "The subscription '...' could not be found."
+    //   - "The subscription '...' does not exist."
+    //   - "No subscriptions found."
+    //
+    // This helper is only used to decide when to show a specific "subscription not available with
+    // your current Azure sign-in" prompt and then retry once after the user signs in or selects
+    // subscriptions. If none of these patterns match, we rethrow the original error so that it is
+    // surfaced normally. To keep this heuristic conservative and avoid false positives, we require
+    // the presence of the word "subscription" together with a small set of "not found" phrases, or
+    // the exact "no subscriptions found" wording. If the Azure Resources / Azure Account layers
+    // change their error messages, this function may need to be updated accordingly.
+    return (
+        (msg.includes('subscription') && msg.includes('not found')) ||
+        (msg.includes('subscription') && msg.includes('could not be found')) ||
+        (msg.includes('subscription') && msg.includes('does not exist')) ||
+        msg.includes('no subscriptions found')
+    );
 }
 
 /**

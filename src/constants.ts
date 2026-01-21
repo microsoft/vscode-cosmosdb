@@ -38,6 +38,15 @@ export function getThemeAgnosticIconPath(iconName: string): IconPath {
     return Uri.file(icon);
 }
 
+export function getThemeAgnosticIconURI(iconName: string): IconPath {
+    const iconPath = Uri.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName);
+    assert.ok(fs.existsSync(iconPath.fsPath), `Icon not found: ${iconPath.fsPath}`);
+    return {
+        light: iconPath,
+        dark: iconPath,
+    };
+}
+
 export function getResourcesPath(): string {
     return ext.context.asAbsolutePath('resources');
 }

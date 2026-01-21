@@ -6,7 +6,7 @@
 import { type CosmosClient } from '@azure/cosmos';
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconURI } from '../../constants';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
@@ -40,7 +40,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
     }
 
     public getTreeItem(): vscode.TreeItem {
-        return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
+        return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconURI('CosmosDBAccount.svg') };
     }
 
     public async getConnectionString(): Promise<string | undefined> {

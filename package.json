@@ -1,15 +1,11 @@
 {
   "name": "vscode-cosmosdb",
-  "version": "0.31.0",
+  "version": "0.31.1",
   "preview": true,
   "aiKey": "0c6ae279ed8443289764825290e4f9e2-1a736e7c-1324-4338-be46-fc2a58ae4d14-7255",
   "publisher": "ms-azuretools",
   "displayName": "Azure Cosmos DB",
   "description": "Connect Azure CosmosDB databases in Azure, inspect and edit your data and run powerful queries with the visual query editor.",
-  "//enableMongoClusters": "Notifies Azure Resources extension to enable Azure Cosmos DB for MongoDB (vCore) in the tree view.",
-  "enableMongoClusters": true,
-  "//enableDocumentDBExtensionIntegration": "Notifies Azure Databases extension to enable DocumentDB extension integration.",
-  "enableDocumentDBExtensionIntegration": false,
   "engines": {
     "vscode": "^1.96.4",
     "node": ">=20.18.0"
@@ -52,12 +48,11 @@
     "package": "node scripts/package-vsix.mjs",
     "lint": "eslint --quiet .",
     "lint-fix": "eslint . --fix",
-    "prettier": "prettier -c \"(src|test|l10n|grammar|docs)/**/*.@(js|ts|jsx|tsx|json)\" \"./*.@(js|ts|jsx|tsx|json)\"",
-    "prettier-fix": "prettier -w \"(src|test|l10n|grammar|docs)/**/*.@(js|ts|jsx|tsx|json)\" \"./*.@(js|ts|jsx|tsx|json)\"",
-    "pretest": "npm run build",
+    "prettier": "prettier -c \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
+    "prettier-fix": "prettier -w \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
+    "pretest": "rimraf out && tsc -p tsconfig.test.json",
     "test": "vscode-test",
     "jesttest": "jest",
-    "update-grammar": "antlr4ts -visitor ./grammar/mongo.g4 -o src/documentdb/grammar",
     "webpack-dev": "rimraf ./dist && npm run webpack-dev-ext && npm run webpack-dev-wv",
     "webpack-prod": "rimraf ./dist && npm run webpack-prod-ext && npm run webpack-prod-wv",
     "webpack-dev-ext": "webpack --mode development --config ./webpack.config.ext.js",
@@ -76,73 +71,65 @@
   },
   "devDependencies": {
     "@eslint/js": "~9.39.1",
-    "@pmmmwh/react-refresh-webpack-plugin": "~0.6.1",
-    "@swc/cli": "~0.7.8",
-    "@swc/core": "~1.15.1",
-    "@swc/jest": "~0.2.39",
-    "@types/documentdb": "~1.10.13",
+    "@pmmmwh/react-refresh-webpack-plugin": "~0.6.2",
+    "@statoscope/webpack-plugin": "~5.29.0",
     "@types/jest": "~30.0.0",
     "@types/mocha": "~10.0.10",
     "@types/node": "~22.18.13",
-    "@types/pg": "~8.15.6",
-    "@types/react": "~19.2.2",
-    "@types/react-dom": "~19.2.2",
+    "@types/react": "~19.2.7",
+    "@types/react-dom": "~19.2.3",
     "@types/semver": "~7.7.1",
     "@types/vscode": "~1.96.0",
     "@types/vscode-webview": "~1.57.5",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-cli": "~0.0.12",
     "@vscode/test-electron": "~2.5.2",
-    "@vscode/vsce": "~3.7.0",
-    "antlr4ts-cli": "~0.5.0-alpha.4",
+    "@vscode/vsce": "~3.7.1",
     "copy-webpack-plugin": "~13.0.1",
     "cross-env": "~10.1.0",
     "css-loader": "~7.1.2",
-    "diff": "~8.0.2",
+    "diff": "~8.0.3",
     "eslint": "~9.39.1",
     "eslint-plugin-import": "~2.32.0",
-    "eslint-plugin-jest": "~29.1.0",
+    "eslint-plugin-jest": "~29.12.0",
     "eslint-plugin-jsx-a11y": "~6.10.2",
     "eslint-plugin-license-header": "~0.8.0",
     "eslint-plugin-mocha": "~11.2.0",
     "eslint-plugin-react": "~7.37.5",
     "eslint-plugin-react-hooks": "~7.0.1",
     "glob": "~12.0.0",
-    "globals": "~16.5.0",
+    "globals": "~17.0.0",
     "jest": "~30.2.0",
     "jest-mock-vscode": "~4.0.5",
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
     "mocha-multi-reporters": "~1.5.1",
     "monaco-editor-webpack-plugin": "~7.1.1",
-    "prettier": "~3.6.2",
+    "prettier": "~3.7.4",
     "prettier-plugin-organize-imports": "~4.3.0",
-    "react": "~19.2.0",
-    "react-dom": "~19.2.0",
+    "react": "~19.2.1",
+    "react-dom": "~19.2.1",
     "react-refresh": "~0.18.0",
     "rimraf": "~6.1.0",
-    "run-script-os": "~1.1.6",
-    "sass": "~1.94.1",
+    "sass": "~1.97.1",
     "sass-loader": "~16.0.6",
     "style-loader": "~4.0.0",
-    "swc-loader": "~0.2.6",
     "terser-webpack-plugin": "~5.3.14",
     "ts-jest": "~29.4.5",
+    "ts-loader": "^9.5.4",
     "ts-node": "~10.9.2",
     "typescript": "~5.9.3",
-    "typescript-eslint": "~8.47.0",
-    "webpack": "~5.103.0",
-    "webpack-bundle-analyzer": "~5.0.0",
+    "typescript-eslint": "~8.52.0",
+    "webpack": "~5.104.1",
     "webpack-cli": "~6.0.1",
     "webpack-dev-server": "~5.2.2"
   },
   "dependencies": {
     "@azure/arm-cosmosdb": "~16.4.0",
-    "@azure/arm-mongocluster": "~1.1.0",
     "@azure/arm-postgresql": "~6.1.0",
-    "@azure/arm-postgresql-flexible": "~8.0.0",
+    "@azure/arm-postgresql-flexible": "~9.0.0",
     "@azure/arm-resources": "~7.0.0",
-    "@azure/cosmos": "~4.7.0",
+    "@azure/cosmos": "~4.9.0",
     "@azure/identity": "~4.13.0",
     "@fluentui/react-components": "~9.72.3",
     "@fluentui/react-icons": "~2.0.313",
@@ -151,35 +138,28 @@
     "@microsoft/vscode-azext-utils": "~4.0.1",
     "@microsoft/vscode-azureresources-api": "~3.0.0",
     "@monaco-editor/react": "~4.7.0",
-    "@prantlf/jsonlint": "~16.0.0",
-    "@trpc/client": "~11.7.1",
-    "@trpc/server": "~11.7.1",
+    "@prantlf/jsonlint": "~17.0.0",
+    "@trpc/client": "~11.8.1",
+    "@trpc/server": "~11.8.1",
     "@vscode/l10n": "~0.0.18",
-    "antlr4ts": "~0.5.0-alpha.4",
-    "bson": "~7.0.0",
-    "denque": "~2.1.0",
-    "es-toolkit": "~1.42.0",
+    "allotment": "^1.20.4",
+    "es-toolkit": "~1.43.0",
     "monaco-editor": "~0.52.2",
-    "mongodb": "~7.0.0",
-    "pg": "~8.16.3",
-    "pg-connection-string": "~2.9.1",
     "react-hotkeys-hook": "~5.2.1",
-    "react-resizable-panels": "~3.0.6",
-    "regenerator-runtime": "~0.14.1",
     "semver": "~7.7.3",
-    "slickgrid-react": "~9.9.0",
+    "slickgrid-react": "~9.12.0",
     "uuid": "~13.0.0",
-    "vscode-json-languageservice": "~5.6.2",
-    "vscode-languageclient": "~9.0.1",
-    "vscode-languageserver": "~9.0.1",
-    "vscode-languageserver-textdocument": "~1.0.12",
     "vscode-uri": "~3.1.0",
-    "zod": "~4.1.12"
+    "zod": "~4.3.2"
   },
   "overrides": {
     "dompurify": "~3.3.0",
     "glob": "~12.0.0",
-    "test-exclude": "~7.0.1"
+    "test-exclude": "~7.0.1",
+    "use-resize-observer": {
+      "react": "~19.2.1",
+      "react-dom": "~19.2.1"
+    }
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"
@@ -196,9 +176,6 @@
           },
           {
             "type": "PostgresqlServersFlexible"
-          },
-          {
-            "type": "MongoClusters"
           }
         ]
       },
@@ -222,8 +199,7 @@
         "onResolve": [
           "microsoft.documentdb/databaseaccounts",
           "microsoft.dbforpostgresql/servers",
-          "microsoft.dbforpostgresql/flexibleservers",
-          "microsoft.documentdb/mongoclusters"
+          "microsoft.dbforpostgresql/flexibleservers"
         ]
       }
     },
@@ -312,21 +288,6 @@
         "title": "%cosmosdb.command.account.unsupported%"
       },
       {
-        "category": "Graph (Gremlin)",
-        "command": "cosmosDB.createGraph",
-        "title": "%cosmosdb.command.graph.create%"
-      },
-      {
-        "category": "Graph (Gremlin)",
-        "command": "cosmosDB.deleteGraph",
-        "title": "%cosmosdb.command.graph.delete%"
-      },
-      {
-        "category": "Graph (Gremlin)",
-        "command": "cosmosDB.openGraphExplorer",
-        "title": "%cosmosdb.command.graph.explorer%"
-      },
-      {
         "category": "NoSQL",
         "command": "cosmosDB.createContainer",
         "title": "%cosmosdb.command.container.create%"
@@ -402,33 +363,6 @@
         "title": "%cosmosdb.command.offer.database.view%"
       },
       {
-        "//": "NoSQL Scrapbook",
-        "category": "NoSQL",
-        "command": "cosmosDB.writeNoSqlQuery",
-        "title": "%cosmosdb.command.query.scrapbook.open%"
-      },
-      {
-        "//": "NoSQL Scrapbook",
-        "category": "NoSQL",
-        "command": "cosmosDB.connectNoSqlContainer",
-        "title": "%cosmosdb.command.query.container.connect%",
-        "when": "false"
-      },
-      {
-        "//": "NoSQL Scrapbook",
-        "category": "NoSQL",
-        "command": "cosmosDB.executeNoSqlQuery",
-        "title": "%cosmosdb.command.query.execute%",
-        "when": "false"
-      },
-      {
-        "//": "NoSQL Scrapbook",
-        "category": "NoSQL",
-        "command": "cosmosDB.getNoSqlQueryPlan",
-        "title": "%cosmosdb.command.query.plan%",
-        "when": "false"
-      },
-      {
         "category": "NoSQL",
         "command": "cosmosDB.openNoSqlQueryEditor",
         "title": "%cosmosdb.command.query.editor.open%"
@@ -437,157 +371,6 @@
         "category": "NoSQL",
         "command": "cosmosDB.importDocument",
         "title": "%cosmosdb.command.document.import%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.configureFirewall",
-        "title": "%cosmosdb.command.postgres.firewall.configure%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.connectDatabase",
-        "title": "%cosmosdb.command.postgres.database.connect%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.copyConnectionString",
-        "title": "%cosmosdb.command.postgres.connection.copy%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.createDatabase",
-        "title": "%cosmosdb.command.postgres.database.create%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.createFunctionQuery",
-        "title": "%cosmosdb.command.postgres.function.create%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.createStoredProcedureQuery",
-        "title": "%cosmosdb.command.postgres.stored_procedure.create%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.deleteDatabase",
-        "title": "%cosmosdb.command.postgres.database.delete%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.deleteFunction",
-        "title": "%cosmosdb.command.postgres.function.delete%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.deleteServer",
-        "title": "%cosmosdb.command.postgres.account.delete%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.detachServer",
-        "title": "%cosmosdb.command.postgres.account.detach%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.deleteStoredProcedure",
-        "title": "%cosmosdb.command.postgres.stored_procedure.delete%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.deleteTable",
-        "title": "%cosmosdb.command.postgres.table.delete%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.enterCredentials",
-        "title": "%cosmosdb.command.postgres.credentials.enter%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.executeQuery",
-        "title": "%cosmosdb.command.postgres.query.execute%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.openFunction",
-        "title": "%cosmosdb.command.postgres.function.open%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.openStoredProcedure",
-        "title": "%cosmosdb.command.postgres.stored_procedure.open%"
-      },
-      {
-        "category": "PostgreSQL",
-        "command": "postgreSQL.showPasswordlessWiki",
-        "title": "%cosmosdb.command.postgres.passwordless.wiki%",
-        "icon": "$(warning)"
-      },
-      {
-        "//": "Mongo DB|Cluster Scrapbook Connect Database",
-        "category": "MongoDB Clusters",
-        "command": "cosmosDB.connectMongoDB",
-        "title": "%cosmosdb.command.mongo.database.connect%"
-      },
-      {
-        "//": "Mongo DB|Cluster Scrapbook Execute All Commands",
-        "category": "MongoDB Clusters",
-        "command": "cosmosDB.executeAllMongoCommands",
-        "title": "%cosmosdb.command.mongo.scrapbook.execute_all%"
-      },
-      {
-        "//": "Mongo DB|Cluster Scrapbook Execute Command",
-        "category": "MongoDB Clusters",
-        "command": "cosmosDB.executeMongoCommand",
-        "title": "%cosmosdb.command.mongo.scrapbook.execute%"
-      },
-      {
-        "//": "Mongo DB|Cluster Scrapbook New Scrapbook",
-        "category": "MongoDB Clusters",
-        "command": "cosmosDB.newMongoScrapbook",
-        "title": "%cosmosdb.command.mongo.scrapbook.new%",
-        "icon": "$(new-file)"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.dropCollection",
-        "title": "%cosmosdb.command.mongo.collection.delete%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.dropDatabase",
-        "title": "%cosmosdb.command.mongo.database.delete%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.createCollection",
-        "title": "%cosmosdb.command.mongo.collection.create%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.importDocuments",
-        "title": "%cosmosdb.command.mongo.document.import%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.exportDocuments",
-        "title": "%cosmosdb.command.mongo.document.export%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.createDocument",
-        "title": "%cosmosdb.command.mongo.document.create%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.launchShell",
-        "title": "%cosmosdb.command.mongo.shell.launch%"
-      },
-      {
-        "category": "MongoDB Clusters",
-        "command": "command.mongoClusters.containerView.open",
-        "title": "%cosmosdb.command.mongo.collection.open%"
       },
       {
         "category": "CosmosDB AI",
@@ -608,14 +391,6 @@
           "dark": "resources/azurecosmosdb.png",
           "light": "resources/azurecosmosdb.png"
         }
-      },
-      {
-        "id": "azureDatabases.submenus.mongo.database.scrapbook",
-        "label": "Mongo Scrapbook"
-      },
-      {
-        "id": "azureDatabases.submenus.mongo.collection.scrapbook",
-        "label": "Mongo Scrapbook"
       }
     ],
     "menus": {
@@ -623,34 +398,6 @@
         {
           "command": "cosmosDB.newConnection",
           "group": "1_newConnection@1"
-        }
-      ],
-      "azureDatabases.submenus.mongo.database.scrapbook": [
-        {
-          "//": "[Database] Mongo DB|Cluster Scrapbook New",
-          "command": "cosmosDB.newMongoScrapbook",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Database] Mongo DB|Cluster Scrapbook Connect",
-          "command": "cosmosDB.connectMongoDB",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@2"
-        }
-      ],
-      "azureDatabases.submenus.mongo.collection.scrapbook": [
-        {
-          "//": "[Collection] Mongo DB|Cluster Scrapbook New",
-          "command": "cosmosDB.newMongoScrapbook",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Scrapbook Connect",
-          "command": "cosmosDB.connectMongoDB",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@2"
         }
       ],
       "view/title": [
@@ -663,51 +410,21 @@
       "editor/context": [
         {
           "command": "azureDatabases.update",
-          "when": "resourceFilename==cosmos-result.json"
-        },
-        {
-          "command": "azureDatabases.update",
           "when": "resourceFilename=~/(.*cosmos-document[.]json)/"
-        },
-        {
-          "command": "azureDatabases.update",
-          "when": "resourceFilename=~/(.*cosmos-collection[.]json)/"
         },
         {
           "command": "azureDatabases.update",
           "when": "resourceFilename=~/(.*cosmos-stored-procedure[.]js)/"
         },
         {
-          "command": "cosmosDB.executeAllMongoCommands",
-          "when": "resourceLangId==mongo"
-        },
-        {
-          "command": "cosmosDB.executeMongoCommand",
-          "when": "resourceLangId==mongo"
-        },
-        {
           "command": "cosmosDB.importDocument",
           "when": "resourceLangId==json"
-        },
-        {
-          "command": "postgreSQL.connectDatabase",
-          "when": "resourceLangId==postgres"
         }
       ],
       "editor/title": [
         {
           "command": "azureDatabases.update",
-          "when": "resourceFilename==cosmos-result.json",
-          "group": "navigation"
-        },
-        {
-          "command": "azureDatabases.update",
           "when": "resourceFilename=~/(.*cosmos-document[.]json)(?![a-z])/i",
-          "group": "navigation"
-        },
-        {
-          "command": "azureDatabases.update",
-          "when": "resourceFilename=~/(.*cosmos-collection[.]json)(?![a-z])/i",
           "group": "navigation"
         },
         {
@@ -719,127 +436,25 @@
       "view/item/context": [
         {
           "command": "azureDatabases.createServer",
-          "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb|PostgreSqlServers(Standard|Flexible))/i && viewItem =~ /azureResourceTypeGroup/i",
+          "when": "view == azureResourceGroups && viewItem =~ /(AzureCosmosDb)/i && viewItem =~ /azureResourceTypeGroup/i",
           "group": "1@1"
-        },
-        {
-          "//": "[Account] (Postgres) Create Database",
-          "command": "postgreSQL.createDatabase",
-          "when": "view =~ /(azureResourceGroups|Workspace|azureFocusView)/ && viewItem =~ /postgresServer(?=[a-z])/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Account] (Postgres) Delete Account",
-          "command": "postgreSQL.deleteServer",
-          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /postgresServer(?![a-z])/i",
-          "group": "1@2"
-        },
-        {
-          "//": "[Account] (Postgres) Detached Account",
-          "command": "postgreSQL.detachServer",
-          "when": "view =~ /azureWorkspace/ && viewItem == postgresServerAttached",
-          "group": "1@2"
-        },
-        {
-          "//": "[Account] (Postgres) Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azureWorkspace/ && viewItem == postgresServerAttached",
-          "group": "2@1"
-        },
-        {
-          "//": "[Database] (Postgres) Connect to Database",
-          "command": "postgreSQL.connectDatabase",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Database] (Postgres) Password warning",
-          "command": "postgreSQL.showPasswordlessWiki",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i && viewItem =~ /usesPassword/i",
-          "group": "inline"
-        },
-        {
-          "//": "[Database] (Postgres) Delete Database",
-          "command": "postgreSQL.deleteDatabase",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
-          "group": "1@2"
-        },
-        {
-          "//": "[Database] (Postgres) Copy connection string",
-          "command": "postgreSQL.copyConnectionString",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
-          "group": "2@1"
-        },
-        {
-          "//": "[Database] (Postgres) Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /postgresDatabase(?![a-z])/i",
-          "group": "3@1"
-        },
-        {
-          "//": "[Table] (Postgres) Refresh (?)",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresTables",
-          "group": "1@1"
-        },
-        {
-          "//": "[Table] (Postgres) Delete Table",
-          "command": "postgreSQL.deleteTable",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresTable",
-          "group": "1@2"
-        },
-        {
-          "//": "[Functions] (Postgres) Create Function",
-          "command": "postgreSQL.createFunctionQuery",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunctions",
-          "group": "1@1"
-        },
-        {
-          "//": "[Functions] (Postgres) Delete Function",
-          "command": "postgreSQL.deleteFunction",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunction",
-          "group": "1@2"
-        },
-        {
-          "//": "[Functions] (Postgres) Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresFunctions",
-          "group": "2@1"
-        },
-        {
-          "//": "[Stored Procedure] (Postgres) Create Stored Procedure",
-          "command": "postgreSQL.createStoredProcedureQuery",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
-          "group": "1@1"
-        },
-        {
-          "//": "[Stored Procedure] (Postgres) Delete Stored Procedure",
-          "command": "postgreSQL.deleteStoredProcedure",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedure",
-          "group": "1@2"
-        },
-        {
-          "//": "[Stored Procedure] (Postgres) Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem == postgresStoredProcedures",
-          "group": "2@1"
         },
         {
           "//": "[Account] Create account database",
           "command": "cosmosDB.createDatabase",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "1@1"
         },
         {
           "//": "[Account] Delete account",
           "command": "cosmosDB.deleteAccount",
-          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "1@2"
         },
         {
           "//": "[Account] Detach account (workspace only)",
           "command": "cosmosDB.removeConnection",
-          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "1@2"
         },
         {
@@ -855,70 +470,34 @@
           "group": "inline"
         },
         {
-          "//": "[Account] CosmosDB | MongoDB | Cluster Copy connection string",
+          "//": "[Account] CosmosDB Copy connection string",
           "command": "cosmosDB.copyConnectionString",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "2@1"
-        },
-        {
-          "//": "[Account] Mongo DB|Cluster Launch Shell",
-          "command": "command.mongoClusters.launchShell",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]mongoCluster(?![a-z.\\/])/i",
-          "group": "2@2"
         },
         {
           "//": "[Account] Refresh (workspace only)",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.](mongoCluster|account)(?![a-z.\\/])/i",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "3@1"
-        },
-        {
-          "//": "[Database] Create Graph container",
-          "command": "cosmosDB.createGraph",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](graph)/i",
-          "group": "1@1"
         },
         {
           "//": "[Database] Create NoSql container",
           "command": "cosmosDB.createContainer",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Database] Mongo DB|Cluster Create collection",
-          "command": "command.mongoClusters.createCollection",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Database] Delete database",
           "command": "cosmosDB.deleteDatabase",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core|graph)/i",
-          "group": "1@2"
-        },
-        {
-          "//": "[Database] Mongo DB|Cluster Delete database",
-          "command": "command.mongoClusters.dropDatabase",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@2"
         },
         {
           "//": "[Database] View NoSql database offer",
           "command": "cosmosDB.viewDatabaseOffer",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@3"
-        },
-        {
-          "//": "[Database] Mongo DB|Cluster Launch Shell",
-          "command": "command.mongoClusters.launchShell",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "2@1"
-        },
-        {
-          "//": "[Database] Mongo DB|Cluster Scrapbook Submenu",
-          "submenu": "azureDatabases.submenus.mongo.database.scrapbook",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "2@2"
         },
         {
           "//": "[Database] Refresh",
@@ -929,31 +508,25 @@
         {
           "//": "[Container] Open NoSql query editor",
           "command": "cosmosDB.openNoSqlQueryEditor",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Container] Import NoSql documents",
           "command": "cosmosDB.importDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
-          "group": "1@2"
-        },
-        {
-          "//": "[Container] Delete Graph container",
-          "command": "cosmosDB.deleteGraph",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](graph)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@2"
         },
         {
           "//": "[Container] Delete NoSql container",
           "command": "cosmosDB.deleteContainer",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@3"
         },
         {
           "//": "[Container] View NoSql container offer",
           "command": "cosmosDB.viewContainerOffer",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@4"
         },
         {
@@ -963,152 +536,82 @@
           "group": "2@1"
         },
         {
-          "//": "[Collection] Mongo DB|Cluster Open collection",
-          "command": "command.mongoClusters.containerView.open",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Create document",
-          "command": "command.mongoClusters.createDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@2"
-        },
-        {
-          "//": "[Collection] Import Mongo DB|Cluster documents",
-          "command": "command.mongoClusters.importDocuments",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "2@1"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Export documents",
-          "command": "command.mongoClusters.exportDocuments",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "2@2"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Drop collection",
-          "command": "command.mongoClusters.dropCollection",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "3@1"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Launch shell",
-          "command": "command.mongoClusters.launchShell",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "4@1"
-        },
-        {
-          "//": "[Collection] Mongo DB|Cluster Scrapbook Submenu",
-          "submenu": "azureDatabases.submenus.mongo.collection.scrapbook",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "4@2"
-        },
-        {
-          "//": "[Collection] Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]collection(?![a-z.\\/])/i",
-          "group": "5@1"
-        },
-        {
-          "//": "[Collection/Documents] Mongo DB|Cluster Open collection",
-          "command": "command.mongoClusters.containerView.open",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@1"
-        },
-        {
           "//": "[Stored Procedures] Create Stored Procedure",
           "command": "cosmosDB.createStoredProcedure",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Stored Procedures] Refresh",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedures(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
         },
         {
           "//": "[Stored Procedure] Execute",
           "command": "cosmosDB.executeStoredProcedure",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Stored Procedure] Delete",
           "command": "cosmosDB.deleteStoredProcedure",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]storedProcedure(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@2"
         },
         {
           "//": "[Triggers] Create Trigger",
           "command": "cosmosDB.createTrigger",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Triggers] Refresh",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]triggers(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
         },
         {
           "//": "[Trigger] Delete",
           "command": "cosmosDB.deleteTrigger",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]trigger(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]trigger(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Documents] Open NoSql query editor",
           "command": "cosmosDB.openNoSqlQueryEditor",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Documents] Create NoSql Document",
           "command": "cosmosDB.createDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@2"
         },
         {
           "//": "[Documents] Refresh",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
         },
         {
           "//": "[Document] Delete",
           "command": "cosmosDB.deleteDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "1@1"
         },
         {
           "//": "[Document] Refresh",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](graph|table|cassandra|core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
-        },
-        {
-          "//": "[Indexes] Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]indexes(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@1"
-        },
-        {
-          "//": "[Index] Refresh",
-          "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]index(?![a-z.\\/])/i && viewItem =~ /experience[.](mongocluster|mongodb)/i",
-          "group": "1@1"
         }
       ],
       "explorer/context": [
         {
           "command": "cosmosDB.importDocument",
           "when": "resourceLangId == json"
-        },
-        {
-          "command": "postgreSQL.connectDatabase",
-          "when": "resourceLangId == postgres"
         }
       ],
       "commandPalette": [
@@ -1123,70 +626,14 @@
         {
           "command": "azureDatabases.update",
           "when": "never"
-        },
-        {
-          "command": "cosmosDB.executeAllMongoCommands",
-          "when": "editorLangId == 'mongo'"
-        },
-        {
-          "command": "cosmosDB.executeMongoCommand",
-          "when": "editorLangId == 'mongo'"
-        },
-        {
-          "command": "cosmosDB.executeNoSqlQuery",
-          "when": "editorLangId == 'nosql'"
-        },
-        {
-          "command": "cosmosDB.getNoSqlQueryPlan",
-          "when": "editorLangId == 'nosql'"
-        },
-        {
-          "command": "postgreSQL.executeQuery",
-          "when": "editorLangId == 'postgres'"
         }
       ]
     },
-    "keybindings": [
-      {
-        "command": "cosmosDB.executeMongoCommand",
-        "key": "ctrl+shift+'",
-        "mac": "cmd+shift+'",
-        "when": "editorLangId == 'mongo' && editorTextFocus"
-      },
-      {
-        "command": "cosmosDB.executeAllMongoCommands",
-        "key": "ctrl+shift+;",
-        "mac": "cmd+shift+;",
-        "when": "editorLangId == 'mongo' && editorTextFocus"
-      }
-    ],
+    "keybindings": [],
     "configuration": [
       {
         "title": "Azure Cosmos DB",
         "properties": {
-          "mongo.shell.path": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "%cosmosdb.configuration.mongo.shell.path%",
-            "default": null
-          },
-          "mongo.shell.args": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "%cosmosdb.configuration.mongo.shell.args%",
-            "default": [
-              "--quiet"
-            ]
-          },
-          "mongo.shell.timeout": {
-            "type": "number",
-            "description": "%cosmosdb.configuration.mongo.shell.timeout%",
-            "default": 30
-          },
           "azureDatabases.batchSize": {
             "type": "number",
             "description": "%cosmosdb.configuration.batch.size%",
@@ -1237,11 +684,6 @@
               "uuid"
             ],
             "description": "%cosmosdb.configuration.document.label.fields%"
-          },
-          "cosmosDB.emulator.mongoPort": {
-            "type": "integer",
-            "default": 10255,
-            "description": "%cosmosdb.configuration.emulator.mongo.port%"
           },
           "cosmosDB.emulator.port": {
             "type": "integer",

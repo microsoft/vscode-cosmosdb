@@ -102,7 +102,7 @@ export class BaseTab {
                       `form-action 'none';`,
                       `default-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
-                      `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}';`,
+                      `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}' 'unsafe-eval';`,
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
                       `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
@@ -133,7 +133,10 @@ export class BaseTab {
   <body>
     <div id="root"></div>
     <script nonce="${params.nonce}">
-      globalThis.l10n_bundle = ${JSON.stringify(vscode.l10n.bundle ?? {})};
+      globalThis.l10n_bundle = ${
+          // eslint-disable-next-line no-restricted-syntax
+          JSON.stringify(vscode.l10n.bundle ?? {})
+      };
     </script>
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";

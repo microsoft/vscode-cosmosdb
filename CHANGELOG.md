@@ -1,10 +1,46 @@
 # Change Log
 
+## 0.32.0
+
+### Removed
+
+- Removed support for discontinued services:
+  - MongoDB (RU, Scrapbook)
+  - DocumentDB
+  - PostgreSQL
+  - Graph (Gremlin)
+  - Table
+  - Cassandra
+  - Grammar (Language Server)
+
+> **Note:** For MongoDB support, use the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb). For PostgreSQL support, use the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+
+### Changed
+
+- Update source map configuration for development mode (fixes debugging in VS Code).
+
 ## 0.31.0
+
+### Added
+
+- Added "Create Database" and "Create Container" nodes to NoSQL accounts and Databases (#2837).
+- Added Database/Container selection to the Query Editor toolbar and updated the Query Editor Icon (#2701).
+- Added missing filter and sort buttons to Items, Procedures, Triggers and attached Accounts (#2855).
+- Enabled Emulator support on Apple Silicon (darwin-arm64) (#2825).
+- Updated localization for 13 languages (#2860).
 
 ### Fixed
 
+- Fixed an issue where pasting text into the Query Editor was broken (#2843).
+- Fixed an issue where creating containers failed with default settings for serverless accounts (#1931).
 - Fixed an issue where the Extension Settings were missing in the Extensions Settings section (#2826).
+- Updated several dependencies to address security issues.
+
+### Changed
+
+- Updated to React 19 (#2760).
+- Improved Tooltips for single items and added tooltips showing partition keys for containers (#2835).
+- Renamed the "Create Database Server" wizard and removed MongoDB and PostgreSQL support, please use the specialized extensions instead (#2863).
 
 ## 0.30.0
 

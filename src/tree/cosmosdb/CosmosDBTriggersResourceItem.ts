@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient, type Resource, type TriggerDefinition } from '@azure/cosmos';
+import { type CosmosClient } from '@azure/cosmos';
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -13,6 +13,7 @@ import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBTriggersModel } from './models/CosmosDBTriggersModel';
+import { type TriggerResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBTriggersResourceItem
     implements TreeElement, TreeElementWithExperience, TreeElementWithContextValue
@@ -47,7 +48,7 @@ export abstract class CosmosDBTriggersResourceItem
         };
     }
 
-    protected async getTriggers(cosmosClient: CosmosClient): Promise<(TriggerDefinition & Resource)[]> {
+    protected async getTriggers(cosmosClient: CosmosClient): Promise<TriggerResource[]> {
         const result = await cosmosClient
             .database(this.model.database.id)
             .container(this.model.container.id)
@@ -56,5 +57,5 @@ export abstract class CosmosDBTriggersResourceItem
         return result.resources;
     }
 
-    protected abstract getChildrenImpl(triggers: (TriggerDefinition & Resource)[]): Promise<TreeElement[]>;
+    protected abstract getChildrenImpl(triggers: TriggerResource[]): Promise<TreeElement[]>;
 }

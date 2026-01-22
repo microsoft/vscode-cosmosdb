@@ -85,8 +85,8 @@ export async function pickWorkspaceResource<T extends TreeElement>(
     options?: PickWorkspaceResourceOptions,
 ): Promise<T> {
     options ??= {
-        type: [WorkspaceResourceType.AttachedAccounts, WorkspaceResourceType.MongoClusters],
-        expectedChildContextValue: ['treeItem.account', 'treeItem.mongoCluster'],
+        type: [WorkspaceResourceType.AttachedAccounts],
+        expectedChildContextValue: ['treeItem.account'],
     };
 
     const types = Array.isArray(options.type) ? options.type : [options.type];
@@ -98,8 +98,6 @@ export async function pickWorkspaceResource<T extends TreeElement>(
         .map((type) => {
             if (type === WorkspaceResourceType.AttachedAccounts) {
                 return ext.cosmosDBWorkspaceBranchDataResource;
-            } else if (type === WorkspaceResourceType.MongoClusters) {
-                return ext.mongoClusterWorkspaceBranchDataResource;
             }
 
             return undefined;

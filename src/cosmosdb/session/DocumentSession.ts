@@ -7,6 +7,7 @@ import {
     AbortError,
     BulkOperationType,
     ErrorResponse,
+    StatusCodes,
     TimeoutError,
     type BulkOperationResult,
     type DeleteOperationInput,
@@ -20,7 +21,7 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
-import { HttpStatusCodes } from '../../constants';
+
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
@@ -786,19 +787,19 @@ export class DocumentSession {
             const statusCode =
                 bulkDeleteResult.response?.statusCode ??
                 (typeof bulkDeleteResult?.error?.code === 'number' ? bulkDeleteResult?.error?.code : null) ??
-                HttpStatusCodes.BAD_REQUEST;
+                StatusCodes.BadRequest;
 
             const retryAfterMs =
                 (bulkDeleteResult.response?.headers?.['x-ms-retry-after-ms'] as number) ??
                 bulkDeleteResult.error?.retryAfterInMs ??
                 300;
 
-            if (statusCode === HttpStatusCodes.NO_CONTENT) {
+            if (statusCode === StatusCodes.NoContent) {
                 result.deleted.push(bulkDeleteResult.documentId);
-            } else if (statusCode === HttpStatusCodes.TOO_MANY_REQUESTS) {
+            } else if (statusCode === StatusCodes.TooManyRequests) {
                 result.retryAfterMilliseconds = Math.max(retryAfterMs, result.retryAfterMilliseconds);
                 result.throttled.push(bulkDeleteResult.documentId);
-            } else if (statusCode >= HttpStatusCodes.BAD_REQUEST) {
+            } else if (statusCode >= StatusCodes.BadRequest) {
                 ext.outputChannel.appendLog(
                     l10n.t('Failed to delete document {id} with status code {statusCode}. Error: {error}', {
                         id: bulkDeleteResult.documentId.id,

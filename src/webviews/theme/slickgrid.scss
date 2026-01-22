@@ -51,8 +51,8 @@ $slick-header-resizable-hover: 1px solid var(--vscode-editor-selectionBackground
     $slick-cell-border-left:                                    1px transparent,
     $slick-cell-even-background-color:                          var(--vscode-diffEditor-unchangedCodeBackground),
     $slick-cell-odd-background-color:                           var(--vscode-diffEditor-unchangedCodeBackground), // for striping every second row
-    $slick-cell-odd-active-background-color:                    var(--vscode-diffEditor-unchangedCodeBackground),
-    // var(--vscode-diffEditor-removedLineBackground),
+    $slick-cell-odd-active-background-color:                    var(--vscode-diffEditor-unchangedCodeBackground), // var(--vscode-diffEditor-removedLineBackground),
+    $slick-cell-selected-color:                                 var(--vscode-editor-findMatchBackground),
 
     /* row */
     $slick-row-mouse-hover-color:                               var(--vscode-diffEditor-insertedLineBackground),
@@ -111,3 +111,4 @@ $slick-header-resizable-hover: 1px solid var(--vscode-editor-selectionBackground
     $slick-pagination-icon-color:                               $slick-icon-color,
     $slick-header-menu-display:                                 inline,
 );
+

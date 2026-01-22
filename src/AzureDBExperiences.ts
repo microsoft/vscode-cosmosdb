@@ -72,6 +72,16 @@ export function tryGetExperience(resource: CosmosDBAccountModel | DatabaseAccoun
         }
     }
 
+    // Fallback to using 'kind' if capabilities/tags are not present
+    // Usually all newly created accounts used to have tags or capabilities,
+    // now newly created Serverless accounts lack the "Core (SQL)" tag as well as capabilities
+    // Let's just rely on 'kind' in that case and assume all non-SQL accounts still have capabilities/tags
+    if ('kind' in resource) {
+        if (resource.kind === DBAccountKind.GlobalDocumentDB) {
+            return CoreExperience;
+        }
+    }
+
     return undefined;
 }
 

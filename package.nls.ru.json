@@ -41,7 +41,7 @@
   "cosmosdb.configuration.confirmation.style.word": "Подтверждение ввода слова",
   "cosmosdb.configuration.confirmation.style.word.description": "Запрос с полем ввода, в котором нужно ввести имя ресурса для подтверждения удаления.",
   "cosmosdb.configuration.document.label.fields": "Значения полей, отображаемые в виде меток в представлении в виде дерева для документов Cosmos DB и MongoDB в порядке приоритета",
-  "cosmosdb.configuration.emulator.mongo.port": "Порт для подключения к экземпляру эмулятора CosmosDB Mongo",
+  "cosmosdb.configuration.emulator.port": "Порт для подключения к экземпляру эмулятора CosmosDB",
   "cosmosdb.configuration.endpoint.discovery": "Флаг для включения или отключения автоматического перенаправления запросов в зависимости от операций чтения или записи.",
   "cosmosdb.configuration.oauth.enable": "Всегда выполнять проверку подлинности с помощью RBAC Entra ID при подключении к учетным записям Cosmos DB NoSQL. [Включение RBAC и назначение ролей](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Показывать подробные сводки по операциям с отображением сообщений о действиях, таких как удаления баз данных, добавления или удаления документов, и подобных событиях.",

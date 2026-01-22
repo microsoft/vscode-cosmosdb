@@ -41,7 +41,7 @@
   "cosmosdb.configuration.confirmation.style.word": "Word 輸入確認",
   "cosmosdb.configuration.confirmation.style.word.description": "提示輸入方塊，供您輸入資源名稱以確認刪除。",
   "cosmosdb.configuration.document.label.fields": "在 Cosmos DB 和 MongoDB 文件的樹狀檢視中，依優先順序顯示為標籤的欄位值",
-  "cosmosdb.configuration.emulator.mongo.port": "連線至 CosmosDB Mongo Emulator 執行個體時使用的連接埠。",
+  "cosmosdb.configuration.emulator.port": "連線至 CosmosDB Emulator 執行個體時使用的連接埠",
   "cosmosdb.configuration.endpoint.discovery": "啟用/停用根據讀取/寫入作業時自動重新導向要求的旗標。",
   "cosmosdb.configuration.oauth.enable": "連線至 Cosmos DB NoSQL 帳戶時，一律使用 Entra ID RBAC 進行驗證。[啟用 RBAC 並指派角色](https://aka.ms/cosmos-native-rbac)。",
   "cosmosdb.configuration.operation.summaries": "顯示詳細的作業摘要，顯示如資料庫刪除、文件新增、刪除或類似事件的動作之訊息。",

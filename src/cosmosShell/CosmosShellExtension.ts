@@ -35,6 +35,7 @@ import {
     type CosmosDBManagedIdentityCredential,
 } from '../cosmosdb/CosmosDBCredential';
 import { ext } from '../extensionVariables';
+import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 
 export class CosmosShellExtension implements vscode.Disposable {
@@ -140,10 +141,8 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     const command = getCosmosShellCommand();
     const foundTerminal = vscode.window.terminals.find((terminal) => terminal.creationOptions.name === 'Cosmos Shell');
 
-    const config = vscode.workspace.getConfiguration();
-
-    const mcpEnabled = config.get<boolean>('cosmosDB.shell.mcp.enabled') ?? true;
-    const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();
+    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+    const mcpPort = (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();
 
     const useMcp = mcpEnabled && !foundTerminal;
     ext.outputChannel.appendLine(`MCP enabled: ${useMcp}, MCP port: ${mcpPort}`);
@@ -331,8 +330,8 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
             return;
         }
         const didChangeEmitter = new vscode.EventEmitter<void>();
-        const config = vscode.workspace.getConfiguration();
-        const mcpPort = (config.get<number>('cosmosDB.shell.mcp.port') ?? 6128).toString();
+
+        const mcpPort = (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();
 
         context.subscriptions.push(
             vscode.lm.registerMcpServerDefinitionProvider('cosmosShellMcpProvider', {

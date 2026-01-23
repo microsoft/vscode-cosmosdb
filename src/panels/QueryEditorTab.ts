@@ -22,7 +22,7 @@ import {
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../extensionVariables';
-import { StorageNames, StorageService, type StorageItem } from '../services/storageService';
+import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ErrorResponse, type CosmosClient } from '@azure/cosmos';
-import { l10n } from 'vscode';
+import * as l10n from '@vscode/l10n';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { type CosmosDBCredential } from './CosmosDBCredential';

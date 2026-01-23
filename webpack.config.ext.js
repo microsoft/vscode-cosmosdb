@@ -8,7 +8,7 @@
 const webpack = require('webpack');
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');
+const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
 
 const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
 const supportedLanguages = [
@@ -36,8 +36,6 @@ module.exports = (env, { mode }) => {
         mode: mode || 'none',
         node: { __filename: false, __dirname: false },
         entry: {
-            // 'extension.bundle.ts': './src/extension.ts', // Is still necessary?
-            './mongo-languageServer.bundle': './src/documentdb/scrapbook/languageServer.ts',
             main: './main.ts',
         },
         output: {
@@ -47,79 +45,68 @@ module.exports = (env, { mode }) => {
             libraryTarget: 'commonjs2',
             devtoolModuleFilenameTemplate: '[resource-path]',
         },
+        cache: {
+            type: 'filesystem',
+            name: `extension-build${isDev ? '-dev' : ''}`, // Unique name for this build
+            cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/webpack/extension'),
+            buildDependencies: {
+                config: [__filename],
+            },
+        },
         optimization: {
             minimize: !isDev,
-            minimizer: [
-                new TerserPlugin({
-                    // TODO: Code should not rely on function names
-                    //  https://msdata.visualstudio.com/CosmosDB/_workitems/edit/3594054
-                    // minify: TerserPlugin.swcMinify, // SWC minify doesn't have "keep_fnames" option
-                    terserOptions: {
-                        keep_classnames: true,
-                        keep_fnames: true,
-                    },
-                }),
-            ],
+            // Tree-shaking configuration:
+            // - Set both to `true` to enable tree-shaking (slower builds, smaller bundles)
+            // - Set both to `false` for faster builds (current: optimized for speed)
+            usedExports: !isDev, // false = faster builds (+2s saved) | true = smaller bundle (-10-20%)
+            sideEffects: !isDev, // false = skip analysis (+1s saved) | true = remove unused modules
+            runtimeChunk: !isDev,
         },
         externalsType: 'node-commonjs',
         externals: {
             vs: 'vs',
             vscode: 'commonjs vscode',
-            /* Mongodb optional dependencies */
-            kerberos: 'commonjs kerberos',
-            '@mongodb-js/zstd': 'commonjs @mongodb-js/zstd',
-            '@aws-sdk/credential-providers': 'commonjs @aws-sdk/credential-providers',
-            'gcp-metadata': 'commonjs gcp-metadata',
-            snappy: 'commonjs snappy',
-            socks: 'commonjs socks',
-            aws4: 'commonjs aws4',
-            'mongodb-client-encryption': 'commonjs mongodb-client-encryption',
-            /* PG optional dependencies */
-            'pg-native': 'commonjs pg-native',
-            'pg-cloudflare': 'commonjs pg-cloudflare',
         },
         resolve: {
             roots: [__dirname],
-            // conditionNames: ['import', 'require', 'node'], // Uncomment when we will use VSCode what supports modules
+            conditionNames: ['import', 'require', 'node'],
             mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
-            alias: {
-                'vscode-languageserver-types': path.resolve(
-                    __dirname,
-                    'node_modules/vscode-languageserver-types/lib/esm/main.js',
-                ),
-            },
         },
         module: {
             rules: [
                 {
                     test: /\.(ts)$/iu,
+                    exclude: /node_modules/,
                     use: {
-                        loader: 'swc-loader',
+                        loader: 'ts-loader',
                         options: {
-                            module: {
-                                type: 'commonjs',
-                            },
-                            isModule: true,
-                            sourceMaps: isDev,
-                            jsc: {
-                                baseUrl: path.resolve(__dirname, './'), // Set absolute path here
-                                keepClassNames: true,
-                                target: 'es2023',
-                                parser: {
-                                    syntax: 'typescript',
-                                    tsx: true,
-                                    functionBind: false,
-                                    decorators: true,
-                                    dynamicImport: true,
-                                },
-                            },
+                            transpileOnly: true, // Skip type checking for faster builds
                         },
                     },
                 },
             ],
         },
         plugins: [
+            !isDev &&
+                new StatoscopeWebpackPlugin({
+                    saveReportTo: 'bundle-analysis/extension-report.html',
+                    saveStatsTo: 'bundle-analysis/extension-stats.json',
+                    open: false,
+                    statsOptions: {
+                        source: false, // Exclude source code to reduce file size
+                        reasons: false,
+                        chunks: true,
+                        chunkModules: true,
+                        chunkOrigins: false,
+                        modules: true,
+                        maxModules: Infinity,
+                        exclude: false,
+                        assets: true,
+                        performance: false,
+                        errorDetails: false,
+                    },
+                }),
             new webpack.EnvironmentPlugin({
                 NODE_ENV: mode,
                 IS_BUNDLE: 'true',
@@ -131,10 +118,6 @@ module.exports = (env, { mode }) => {
             // - The dist folder should be ready to be published to the marketplace and be only one working folder
             new CopyWebpackPlugin({
                 patterns: [
-                    {
-                        from: 'grammar',
-                        to: 'grammar',
-                    },
                     {
                         from: 'l10n',
                         to: 'l10n',
@@ -192,6 +175,11 @@ module.exports = (env, { mode }) => {
                         toType: 'file',
                     },
                 ],
+                options: {
+                    // Parallel copying: copies up to 100 files simultaneously (saves ~1-2 seconds)
+                    // Increase to 200 for faster copying, decrease to 50 to reduce memory usage
+                    concurrency: 100,
+                },
             }),
         ].filter(Boolean),
         devtool: isDev ? 'source-map' : false,

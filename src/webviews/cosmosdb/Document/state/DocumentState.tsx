@@ -54,7 +54,7 @@ export type DispatchAction =
 
 export type DocumentState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
-    collectionName: string; // Collection which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
+    containerName: string; // Container which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
 
     documentId: string; // Id of the document (Readonly, only server can change it)
     documentContent: string; // Content of the document (Readonly, only server can change it)
@@ -74,7 +74,7 @@ export type DocumentState = {
 
 export const defaultState: DocumentState = {
     dbName: '',
-    collectionName: '',
+    containerName: '',
     documentId: '',
     documentContent: '',
     partitionKey: { paths: [] },
@@ -107,7 +107,7 @@ export function dispatch(state: DocumentState, action: DispatchAction): Document
                 mode: action.mode,
                 documentId: action.documentId,
                 dbName: action.databaseId,
-                collectionName: action.containerId,
+                containerName: action.containerId,
                 isReady: true,
             };
         case 'setDocument':

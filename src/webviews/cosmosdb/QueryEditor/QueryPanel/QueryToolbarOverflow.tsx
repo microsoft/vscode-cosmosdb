@@ -15,7 +15,7 @@ import {
     type ToolbarProps,
     useOverflowMenu,
 } from '@fluentui/react-components';
-import { MoreHorizontal20Filled } from '@fluentui/react-icons';
+import { MoreHorizontalFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { ToolbarOverflowDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowDivider';
 import { ToolbarOverflowMenuDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuDivider';
@@ -44,7 +44,7 @@ const OverflowMenu = () => {
             <MenuTrigger disableButtonEnhancement>
                 <Button
                     ref={ref}
-                    icon={<MoreHorizontal20Filled />}
+                    icon={<MoreHorizontalFilled fontSize={20} />}
                     aria-label={l10n.t('More items')}
                     appearance="subtle"
                 />

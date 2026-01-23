@@ -155,8 +155,8 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on(
             'databaseConnected',
-            (dbName: string, collectionName: string, partitionKey?: PartitionKeyDefinition) => {
-                this.dispatch({ type: 'databaseConnected', dbName, collectionName, partitionKey });
+            (dbName: string, containerName: string, partitionKey?: PartitionKeyDefinition) => {
+                this.dispatch({ type: 'databaseConnected', dbName, containerName, partitionKey });
             },
         );
 

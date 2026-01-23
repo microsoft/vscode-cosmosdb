@@ -52,11 +52,24 @@ export default defineConfig([
         rules: {
             eqeqeq: ['error', 'always'],
             'import/consistent-type-specifier-style': ['error', 'prefer-inline'],
-            'import/no-internal-modules': ['error', { allow: ['antlr4ts/**', 'yaml/types'] }],
+            'import/no-internal-modules': ['error', { allow: ['yaml/types'] }],
             'no-case-declarations': 'error',
             'no-constant-condition': 'error',
             'no-inner-declarations': 'error',
-            'no-restricted-imports': ['error', { patterns: ['**/*/extension.bundle'] }],
+            'no-restricted-imports': 'error',
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector: 'ImportDeclaration[source.value="vscode"] ImportSpecifier[imported.name="l10n"]',
+                    message:
+                        'Please use "import * as l10n from \'@vscode/l10n\';" instead of importing l10n from vscode.',
+                },
+                {
+                    selector: 'MemberExpression[object.name="vscode"][property.name="l10n"]',
+                    message:
+                        'Please use "import * as l10n from \'@vscode/l10n\';" and use l10n directly instead of vscode.l10n.',
+                },
+            ],
             'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
             'no-useless-escape': 'error',
             'license-header/header': [
@@ -159,6 +172,7 @@ export default defineConfig([
             '@typescript-eslint/unbound-method': 'warn',
         },
     },
+    // Jest unit tests in src/
     {
         files: ['src/**/*.test.ts', '**/__mocks__/**/*.js'],
 
@@ -180,7 +194,8 @@ export default defineConfig([
             sourceType: 'module',
 
             parserOptions: {
-                projectService: true,
+                projectService: false,
+                project: './tsconfig.jest.json',
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -194,11 +209,17 @@ export default defineConfig([
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/require-await': 'off',
+            '@typescript-eslint/unbound-method': 'off',
             'no-dupe-else-if': 'off',
             'no-empty': 'off',
+            'jest/expect-expect': 'off',
+            'jest/no-conditional-expect': 'off',
         },
     },
+    // Mocha integration tests in test/
     {
         files: ['test/**/*.ts', 'test/**/*.test.ts'],
 
@@ -220,12 +241,14 @@ export default defineConfig([
             sourceType: 'module',
 
             parserOptions: {
-                projectService: true,
+                projectService: false,
+                project: './tsconfig.test.json',
                 tsconfigRootDir: import.meta.dirname,
             },
         },
 
         rules: {
+            ...mocha.configs.recommended.rules,
             '@typescript-eslint/no-empty-function': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-floating-promises': 'off',
@@ -234,10 +257,16 @@ export default defineConfig([
             '@typescript-eslint/no-unsafe-assignment': 'off',
             '@typescript-eslint/no-unsafe-member-access': 'off',
             '@typescript-eslint/no-unsafe-return': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/require-await': 'off',
             'no-dupe-else-if': 'off',
             'no-empty': 'off',
             'no-restricted-imports': 'off',
+            'mocha/no-mocha-arrows': 'off',
+            'mocha/consistent-spacing-between-blocks': 'off',
+            'mocha/max-top-level-suites': 'off',
+            'mocha/handle-done-callback': 'off',
         },
     },
 ]);

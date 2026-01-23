@@ -144,6 +144,7 @@
     "@trpc/server": "~11.8.1",
     "@vscode/l10n": "~0.0.18",
     "allotment": "^1.20.4",
+    "denque": "^2.1.0",
     "es-toolkit": "~1.43.0",
     "monaco-editor": "~0.52.2",
     "react-hotkeys-hook": "~5.2.1",

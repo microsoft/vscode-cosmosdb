@@ -4,13 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { KeyValueStore } from '../KeyValueStore';
-import { noSqlQueryConnectionKey } from '../cosmosdb/NoSqlCodeLensProvider';
-import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
-import { getActiveQueryEditor } from './chatUtils';
+import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 // Interface for ChatRequest with optional model property (for compatibility with different VS Code versions)
 interface ExtendedChatRequest {
@@ -332,7 +329,9 @@ Only return valid JSON, no other text.
             }
 
             // Add contextual suggestions
-            const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection;
+            const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+            const activeEditor = activeQueryEditors.length > 0 ? getActiveQueryEditor(activeQueryEditors) : null;
+            const connection = activeEditor ? getConnectionFromQueryTab(activeEditor) : undefined;
             const suggestions = OperationParser.generateSuggestions(!!connection);
             stream.markdown(suggestions);
 
@@ -428,7 +427,10 @@ Only return valid JSON, no other text.
             }
 
             // Add suggestions for next operations
-            const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection;
+            const currentActiveEditors = Array.from(QueryEditorTab.openTabs);
+            const currentActiveEditor =
+                currentActiveEditors.length > 0 ? getActiveQueryEditor(currentActiveEditors) : null;
+            const connection = currentActiveEditor ? getConnectionFromQueryTab(currentActiveEditor) : undefined;
             const suggestions = OperationParser.generateSuggestions(!!connection);
             stream.markdown(suggestions);
 
@@ -527,7 +529,7 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
         try {
             // Check if there's an active connection or query editor
             const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-            const hasConnection = activeQueryEditors.length > 0 || KeyValueStore.instance.get(noSqlQueryConnectionKey);
+            const hasConnection = activeQueryEditors.length > 0;
 
             if (!hasConnection) {
                 stream.markdown('⚠️ **No Cosmos DB connection found.**\n\n');
@@ -650,7 +652,12 @@ Please provide helpful, accurate, and actionable responses about Cosmos DB. If a
                 }
 
                 // Add operation suggestions after LLM response
-                const connection = KeyValueStore.instance.get(noSqlQueryConnectionKey) as NoSqlQueryConnection;
+                const suggestionsActiveEditors = Array.from(QueryEditorTab.openTabs);
+                const suggestionsActiveEditor =
+                    suggestionsActiveEditors.length > 0 ? getActiveQueryEditor(suggestionsActiveEditors) : null;
+                const connection = suggestionsActiveEditor
+                    ? getConnectionFromQueryTab(suggestionsActiveEditor)
+                    : undefined;
                 const suggestions = OperationParser.generateSuggestions(!!connection);
                 stream.markdown(suggestions);
             } catch (error) {

@@ -770,7 +770,7 @@ export class QueryEditorTab extends BaseTab {
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'queryGenerated',
-                    params: [finalQuery, model.name],
+                    params: [finalQuery, model.name, prompt],
                 });
             } catch (error) {
                 // Check if it was a cancellation

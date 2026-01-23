@@ -9,6 +9,7 @@ import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
+import { usePromptHistory } from './usePromptHistory';
 
 interface ModelInfo {
     id: string;
@@ -157,6 +158,9 @@ export const GenerateQueryInput = () => {
     const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
 
+    // Prompt history for arrow up/down navigation
+    const promptHistory = usePromptHistory({ maxSize: 50 });
+
     // Get display name for currently selected model
     const selectedModel = availableModels.find((m) => m.id === selectedModelId) ?? availableModels[0];
     const modelDisplayName = selectedModel?.name ?? 'Copilot';
@@ -196,15 +200,21 @@ export const GenerateQueryInput = () => {
 
     // Listen for queryGenerated event to stop loading and clear input on success
     useEffect(() => {
-        const handler = (success: boolean) => {
+        // Parameters: generatedQuery (string on success, false on failure), modelName, submittedPrompt
+        const handler = (generatedQuery: string | false, _modelName?: string, submittedPrompt?: string) => {
             setIsLoading(false);
-            // Only clear input on successful generation
-            if (success !== false) {
+            // Only clear input and save to history on successful generation
+            if (generatedQuery !== false) {
+                // Add the submitted prompt to history
+                if (submittedPrompt) {
+                    promptHistory.addToHistory(submittedPrompt);
+                }
                 setInput('');
+                setLineCount(1);
             }
         };
         void channel.on('queryGenerated', handler as never);
-    }, [channel]);
+    }, [channel, promptHistory]);
 
     // Listen for availableModels event
     useEffect(() => {
@@ -322,6 +332,24 @@ export const GenerateQueryInput = () => {
             } else {
                 dispatch({ type: 'toggleGenerateInput' });
             }
+        } else if (e.key === 'ArrowUp') {
+            // Navigate to previous prompt in history
+            const previousPrompt = promptHistory.navigatePrevious(input);
+            if (previousPrompt !== null) {
+                e.preventDefault();
+                setInput(previousPrompt);
+                const lines = calculateLineCount(previousPrompt, textareaRef.current);
+                setLineCount(lines);
+            }
+        } else if (e.key === 'ArrowDown') {
+            // Navigate to next prompt in history
+            const nextPrompt = promptHistory.navigateNext();
+            if (nextPrompt !== null) {
+                e.preventDefault();
+                setInput(nextPrompt);
+                const lines = calculateLineCount(nextPrompt, textareaRef.current);
+                setLineCount(lines);
+            }
         }
     };
 
@@ -347,6 +375,8 @@ export const GenerateQueryInput = () => {
                         setInput(newValue);
                         const lines = calculateLineCount(newValue, textareaRef.current);
                         setLineCount(lines);
+                        // Reset history navigation when user types
+                        promptHistory.resetNavigation();
                     }}
                     onKeyDown={handleKeyDown}
                     disabled={isLoading}

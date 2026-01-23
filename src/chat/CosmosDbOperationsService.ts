@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
@@ -63,12 +65,51 @@ export interface EditQueryResult {
 
 export class CosmosDbOperationsService {
     private static instance: CosmosDbOperationsService;
+    private static extensionPath: string | undefined;
+    private static queryLanguageReference: string | undefined;
+
+    /**
+     * Initialize the service with the extension context.
+     * This must be called once during extension activation to enable loading of asset files.
+     */
+    public static initialize(context: vscode.ExtensionContext): void {
+        CosmosDbOperationsService.extensionPath = context.extensionPath;
+    }
 
     public static getInstance(): CosmosDbOperationsService {
         if (!CosmosDbOperationsService.instance) {
             CosmosDbOperationsService.instance = new CosmosDbOperationsService();
         }
         return CosmosDbOperationsService.instance;
+    }
+
+    /**
+     * Loads and caches the NoSQL query language reference for LLM context.
+     * The reference is loaded once and cached for subsequent calls.
+     */
+    private static getQueryLanguageReference(): string {
+        if (CosmosDbOperationsService.queryLanguageReference) {
+            return CosmosDbOperationsService.queryLanguageReference;
+        }
+
+        if (!CosmosDbOperationsService.extensionPath) {
+            console.warn('Extension path not initialized. Query language reference will not be available.');
+            return '';
+        }
+
+        try {
+            const referencePath = path.join(
+                CosmosDbOperationsService.extensionPath,
+                'resources',
+                'llm-assets',
+                'azurecosmosdb-nosql-query-language.md',
+            );
+            CosmosDbOperationsService.queryLanguageReference = fs.readFileSync(referencePath, 'utf-8');
+            return CosmosDbOperationsService.queryLanguageReference;
+        } catch (error) {
+            console.warn('Failed to load query language reference:', error);
+            return '';
+        }
     }
 
     /**
@@ -752,12 +793,16 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
         const historyContextStr = historyContext ? this.formatQueryHistoryForLLM(historyContext) : '';
         const currentQueryContext = currentQuery ? `\n\nCurrent query:\n${currentQuery}` : '';
 
+        // Load query language reference for comprehensive syntax guidance
+        const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
+        const languageRefContext = queryLanguageRef ? `\n\n## Query Language Reference\n${queryLanguageRef}` : '';
+
         // Build the prompt based on whether we need an explanation
         let prompt: string;
         if (withExplanation) {
-            prompt = `${CosmosDbOperationsService.QUERY_GENERATION_SYSTEM_PROMPT}${historyContextStr}${currentQueryContext}\n\nRequest: ${userPrompt}\n\n**Response Format (JSON only):**\n{\n  "query": "the generated query here",\n  "explanation": "brief explanation of the query"\n}\n\nReturn only valid JSON, no other text:`;
+            prompt = `${CosmosDbOperationsService.QUERY_GENERATION_SYSTEM_PROMPT}${languageRefContext}${historyContextStr}${currentQueryContext}\n\nRequest: ${userPrompt}\n\n**Response Format (JSON only):**\n{\n  "query": "the generated query here",\n  "explanation": "brief explanation of the query"\n}\n\nReturn only valid JSON, no other text:`;
         } else {
-            prompt = `${CosmosDbOperationsService.QUERY_GENERATION_SYSTEM_PROMPT}${historyContextStr}${currentQueryContext}\n\nRequest: ${userPrompt}`;
+            prompt = `${CosmosDbOperationsService.QUERY_GENERATION_SYSTEM_PROMPT}${languageRefContext}${historyContextStr}${currentQueryContext}\n\nRequest: ${userPrompt}`;
         }
 
         const messages = [vscode.LanguageModelChatMessage.User(prompt)];

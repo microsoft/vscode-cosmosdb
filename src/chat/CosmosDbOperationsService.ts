@@ -759,6 +759,7 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
             modelId?: string;
             historyContext?: QueryHistoryContext;
             withExplanation?: false;
+            cancellationToken?: vscode.CancellationToken;
         },
     ): Promise<string>;
     public async generateQueryWithLLM(
@@ -768,6 +769,7 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
             modelId?: string;
             historyContext?: QueryHistoryContext;
             withExplanation: true;
+            cancellationToken?: vscode.CancellationToken;
         },
     ): Promise<{ query: string; explanation: string }>;
     public async generateQueryWithLLM(
@@ -777,9 +779,10 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
             modelId?: string;
             historyContext?: QueryHistoryContext;
             withExplanation?: boolean;
+            cancellationToken?: vscode.CancellationToken;
         },
     ): Promise<string | { query: string; explanation: string }> {
-        const { modelId, historyContext, withExplanation } = options ?? {};
+        const { modelId, historyContext, withExplanation, cancellationToken } = options ?? {};
 
         const models = await vscode.lm.selectChatModels();
         if (models.length === 0) {
@@ -806,7 +809,8 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
         }
 
         const messages = [vscode.LanguageModelChatMessage.User(prompt)];
-        const chatResponse = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+        const token = cancellationToken ?? new vscode.CancellationTokenSource().token;
+        const chatResponse = await model.sendRequest(messages, {}, token);
 
         let responseText = '';
         for await (const chunk of chatResponse.text) {

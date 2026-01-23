@@ -50,6 +50,7 @@ export class QueryEditorTab extends BaseTab {
 
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
+    private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
@@ -230,6 +231,8 @@ export class QueryEditorTab extends BaseTab {
                 return Promise.resolve();
             case 'generateQuery':
                 return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
+            case 'cancelGenerateQuery':
+                return this.cancelGenerateQuery();
             case 'getSelectedModelName':
                 return this.getSelectedModelName();
             case 'getAvailableModels':
@@ -715,11 +718,27 @@ export class QueryEditorTab extends BaseTab {
     private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
         const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async () => {
+            // Cancel any existing generation
+            this.generateQueryCancellation?.cancel();
+            this.generateQueryCancellation?.dispose();
+            this.generateQueryCancellation = new vscode.CancellationTokenSource();
+            const token = this.generateQueryCancellation.token;
+
             try {
                 const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
 
                 if (models.length === 0) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+                }
+
+                // Check for cancellation
+                if (token.isCancellationRequested) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
                 }
 
                 // Use saved model selection or first available
@@ -732,7 +751,18 @@ export class QueryEditorTab extends BaseTab {
                 const generatedQuery = await service.generateQueryWithLLM(prompt, currentQuery, {
                     modelId: model.id,
                     historyContext,
+                    cancellationToken: token,
                 });
+
+                // Check for cancellation after LLM call
+                if (token.isCancellationRequested) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
 
                 // Comment the original prompt and prepend the generated query
                 const finalQuery = `-- Generated from: ${prompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${currentQuery.split('\n').join('\n-- ')}`;
@@ -743,7 +773,22 @@ export class QueryEditorTab extends BaseTab {
                     params: [finalQuery, model.name],
                 });
             } catch (error) {
+                // Check if it was a cancellation
+                if (token.isCancellationRequested) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
                 const errorMessage = error instanceof Error ? error.message : String(error);
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [false],
+                });
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'showErrorMessage',
@@ -752,6 +797,13 @@ export class QueryEditorTab extends BaseTab {
             }
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private cancelGenerateQuery(): Promise<void> {
+        this.generateQueryCancellation?.cancel();
+        this.generateQueryCancellation?.dispose();
+        this.generateQueryCancellation = undefined;
+        return Promise.resolve();
     }
 
     private async getSelectedModelName(): Promise<void> {

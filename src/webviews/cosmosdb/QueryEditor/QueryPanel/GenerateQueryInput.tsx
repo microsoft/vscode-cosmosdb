@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
-import { Dismiss12Regular, SendFilled } from '@fluentui/react-icons';
+import { Dismiss12Regular, RecordStopFilled, SendFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
@@ -194,10 +194,14 @@ export const GenerateQueryInput = () => {
         return Math.max(1, totalLines);
     };
 
-    // Listen for queryGenerated event to stop loading
+    // Listen for queryGenerated event to stop loading and clear input on success
     useEffect(() => {
-        const handler = () => {
+        const handler = (success: boolean) => {
             setIsLoading(false);
+            // Only clear input on successful generation
+            if (success !== false) {
+                setInput('');
+            }
         };
         void channel.on('queryGenerated', handler as never);
     }, [channel]);
@@ -285,12 +289,26 @@ export const GenerateQueryInput = () => {
                 ],
             });
 
-            // Clear input
-            setInput('');
+            // Input will be cleared by queryGenerated handler on success
         } catch (error) {
             console.error('Failed to generate query:', error);
             setIsLoading(false);
         }
+    };
+
+    const handleCancel = () => {
+        // Send cancel command to extension
+        void channel.postMessage({
+            type: 'event',
+            name: 'command',
+            params: [
+                {
+                    commandName: 'cancelGenerateQuery',
+                    params: [],
+                },
+            ],
+        });
+        setIsLoading(false);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -299,7 +317,11 @@ export const GenerateQueryInput = () => {
             void handleSend();
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            dispatch({ type: 'toggleGenerateInput' });
+            if (isLoading) {
+                handleCancel();
+            } else {
+                dispatch({ type: 'toggleGenerateInput' });
+            }
         }
     };
 
@@ -358,11 +380,11 @@ export const GenerateQueryInput = () => {
                     )}
                     <Button
                         className={styles.button}
-                        icon={<SendFilled />}
-                        onClick={() => void handleSend()}
-                        disabled={!input.trim() || isLoading}
-                        title={l10n.t('Generate query')}
-                        aria-label={l10n.t('Generate query')}
+                        icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
+                        onClick={isLoading ? handleCancel : () => void handleSend()}
+                        disabled={!isLoading && !input.trim()}
+                        title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                        aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
                         appearance="transparent"
                     />
                 </div>

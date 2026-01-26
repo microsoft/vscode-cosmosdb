@@ -157,6 +157,19 @@ export class CosmosDbOperationsService {
     }
 
     /**
+     * Removes SQL comment lines (starting with --) from query text.
+     * This cleans up the query before storing in history to avoid accumulating
+     * nested "Previous query:" comments.
+     */
+    private static stripQueryComments(query: string): string {
+        return query
+            .split('\n')
+            .filter((line) => !line.trim().startsWith('--'))
+            .join('\n')
+            .trim();
+    }
+
+    /**
      * Builds a query execution entry from a query result, grouping query, results, and schema together.
      */
     private buildQueryExecutionEntry(result: SerializedQueryResult): QueryExecutionEntry {
@@ -164,7 +177,7 @@ export class CosmosDbOperationsService {
         const schema = this.extractSchemaFromResults(documents);
 
         return {
-            query: result.query,
+            query: CosmosDbOperationsService.stripQueryComments(result.query),
             documentCount: documents.length,
             requestCharge: result.requestCharge,
             schema: schema,

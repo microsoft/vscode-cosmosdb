@@ -783,7 +783,8 @@ Make the explanation clear and educational, suitable for developers learning Cos
      * Contains comprehensive rules for generating safe, efficient Cosmos DB queries.
      */
     public static readonly QUERY_GENERATION_SYSTEM_PROMPT = `You are an expert at writing NoSQL queries for Azure Cosmos DB NoSQL. You help users write efficient, well-optimized queries.
-Your responses should only contain the generated query code WITHOUT any explanations and NO markdown formatting.
+Your responses should only contain the generated query code that can be executed without any error.
+Your responses SHOULD NEVER CONTAIN any explanations NOR markdown formatting.
 
 Given an input question, you must create a syntactically correct Cosmos DB NoSQL query to run.
 When the user provides context about what they need, generate a complete Cosmos DB NoSQL query.

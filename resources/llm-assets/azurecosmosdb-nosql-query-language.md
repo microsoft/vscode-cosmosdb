@@ -180,6 +180,21 @@ ORDER BY <sort_specification>
 <sort_specification> ::= <expression> [ASC | DESC] [, <expression> [ASC | DESC]]...
 ```
 
+### Key Rules
+
+- ORDER BY expressions must map to a **direct document path** (e.g., `c.propertyName`)
+- Do NOT use ORDER BY on **computed columns**, **aliases from subqueries**, or **aggregate results**
+- Do NOT use ORDER BY with subqueries in the FROM clause - the outer query cannot sort by subquery aliases
+- When you need to sort aggregated data, restructure the query to avoid subqueries or perform sorting client-side
+
+### Limitations
+
+**ORDER BY does NOT work with:**
+
+- Aliases from subqueries (e.g., `SELECT ... FROM (SELECT x AS alias ...) ORDER BY alias`)
+- Computed expressions that cannot be mapped to a document path
+- Results from GROUP BY aggregations in subqueries
+
 ### Examples
 
 **Single property sort:**
@@ -198,6 +213,41 @@ SELECT * FROM c ORDER BY c.createdAt DESC
 
 ```sql
 SELECT * FROM c ORDER BY c.category ASC, c.price DESC
+```
+
+**INCORRECT - Will fail (ORDER BY on subquery alias):**
+
+```sql
+-- This will fail with error 2206
+SELECT TOP 5 t.city, t.customerCount
+FROM (
+    SELECT a.city AS city, COUNT(1) AS customerCount
+    FROM c
+    JOIN a IN c.addresses
+    GROUP BY a.city
+) AS t
+WHERE t.customerCount > 50
+ORDER BY t.customerCount DESC
+```
+
+**CORRECT - Alternative approach (no ORDER BY on aggregated subquery):**
+
+```sql
+-- Option 1: Remove ORDER BY and sort results client-side
+SELECT t.city, t.customerCount
+FROM (
+    SELECT a.city AS city, COUNT(1) AS customerCount
+    FROM c
+    JOIN a IN c.addresses
+    GROUP BY a.city
+) AS t
+WHERE t.customerCount > 50
+
+-- Option 2: For simple aggregations without subquery, ORDER BY works on document paths
+SELECT a.city, COUNT(1) AS customerCount
+FROM c
+JOIN a IN c.addresses
+GROUP BY a.city
 ```
 
 ---
@@ -709,3 +759,4 @@ SELECT c.tags[0].value AS firstTag FROM c
 12. **Do NOT use HAVING** (not supported)
 13. **Do NOT use DISTINCT within COUNT**
 14. **Do NOT generate DML statements** (INSERT, UPDATE, DELETE, DROP)
+15. **Do NOT use ORDER BY on subquery aliases or computed columns** - ORDER BY requires direct document paths

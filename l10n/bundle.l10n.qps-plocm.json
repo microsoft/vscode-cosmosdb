@@ -267,6 +267,7 @@
   "Item id or _rid is required": "[الهاتفItem id or _rid is requiredעִבְרִית عليك!]",
   "Item is not a valid Cosmos DB item definition": "[الهاتفItem is not a valid Cosmos DB item definitionעִבְרִית عليكעִבְרִי!]",
   "Item must be an object.": "[الهاتفItem must be an object.עִבְרִית عل!]",
+  "Item not found or request timed out": "[الهاتفItem not found or request timed outעִבְרִית عليكעִבְ!]",
   "Items": "[الهاتفItemsעִבְ!]",
   "JSON": "[الهاتفJSONעִבְ!]",
   "JSON view": "[الهاتفJSON viewעִבְרִ!]",

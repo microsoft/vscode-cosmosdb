@@ -267,6 +267,7 @@
   "Item id or _rid is required": "L'identifiant de l'article ou _rid est requis",
   "Item is not a valid Cosmos DB item definition": "L'élément n'est pas une définition d'élément Cosmos DB valide",
   "Item must be an object.": "L'élément doit être un objet.",
+  "Item not found or request timed out": "Item not found or request timed out",
   "Items": "Éléments",
   "JSON": "JSON",
   "JSON view": "vue JSON",

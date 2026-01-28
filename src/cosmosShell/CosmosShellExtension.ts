@@ -38,6 +38,9 @@ import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 
+// Track the connection string associated with each open Cosmos Shell terminal
+const terminalConnectionStrings = new Map<vscode.Terminal, string>();
+
 export class CosmosShellExtension implements vscode.Disposable {
     private terminalChangeListeners: vscode.Disposable[] = [];
 
@@ -47,6 +50,7 @@ export class CosmosShellExtension implements vscode.Disposable {
             listener.dispose();
         });
         this.terminalChangeListeners = [];
+        terminalConnectionStrings.clear();
         return Promise.resolve();
     }
 
@@ -75,13 +79,15 @@ export class CosmosShellExtension implements vscode.Disposable {
                 // Check if it was a Cosmos Shell terminal
                 if (terminal.name === 'Cosmos Shell') {
                     this.updateCosmosShellTerminalContext();
+                    // Remove the connection string for this terminal
+                    terminalConnectionStrings.delete(terminal);
                 }
             });
 
             // Store listeners for disposal
             this.terminalChangeListeners.push(openListener, closeListener);
 
-            registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosShell', launchCosmosShell);
+            registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosShell', connectCosmosShell);
             registerCommandWithTreeNodeUnwrapping('cosmosDB.connectCosmosShell', connectCosmosShell);
 
             if (isCosmosShellInstalled) {
@@ -105,8 +111,7 @@ export class CosmosShellExtension implements vscode.Disposable {
 //const cosmosShellExt = new CosmosShellExtension();
 
 function getCosmosShellCommand(): string {
-    const config = vscode.workspace.getConfiguration();
-    const shellPath: string | undefined = config.get('cosmosDB.shell.path');
+    const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
     return shellPath || 'CosmosShell';
 }
 
@@ -157,6 +162,7 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         terminal.show();
         // Update context after creating terminal
         updateTerminalContext();
+        // No connection string to store when launching without a node
         return;
     }
 
@@ -183,38 +189,24 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     terminal.show();
     // Update context after creating terminal
     updateTerminalContext();
+    // Store the connection string for this terminal
+    terminalConnectionStrings.set(terminal, rawConnectionString);
 
     goToContainer(terminal, node.model.database, node.model.container);
 }
 
 function goToContainer(terminal: vscode.Terminal, database: DatabaseDefinition, container: ContainerDefinition) {
     if (container) {
-        terminal.sendText('cd "' + database.id + '/' + container.id + '"', true);
+        terminal.sendText('cd "/' + database.id + '/' + container.id + '"', true);
     } else if (database) {
-        terminal.sendText('cd "' + database.id + '"', true);
+        terminal.sendText('cd "/' + database.id + '"', true);
     }
 }
 
 export function connectCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
-    // Find an existing Cosmos Shell terminal
-    const foundTerminal = vscode.window.terminals.find((terminal) => terminal.name === 'Cosmos Shell');
-
-    if (!foundTerminal) {
-        void vscode.window
-            .showWarningMessage(
-                l10n.t('No active Cosmos Shell terminal found. Please launch Cosmos Shell first.'),
-                l10n.t('Launch Cosmos Shell'),
-            )
-            .then((selection) => {
-                if (selection === l10n.t('Launch Cosmos Shell')) {
-                    launchCosmosShell(_context, node);
-                }
-            });
-        return;
-    }
-
     if (!node) {
-        void vscode.window.showErrorMessage(l10n.t('Please select a Cosmos DB resource to connect to.'));
+        // No node selected, just launch a new shell without connection
+        launchCosmosShell(_context, node);
         return;
     }
 
@@ -224,18 +216,31 @@ export function connectCosmosShell(_context: IActionContext, node?: NoSqlContain
         return;
     }
 
-    const cosmosShellCredential = getCosmosShellCredential(node);
+    // Find an existing Cosmos Shell terminal with the same connection string
+    const existingTerminal = findTerminalByConnectionString(rawConnectionString);
 
-    foundTerminal.show();
-    foundTerminal.sendText(`connect "${rawConnectionString}"`, true);
-
-    if (cosmosShellCredential) {
-        ext.outputChannel.appendLine(
-            `Note: Credential information (${cosmosShellCredential}) needs to be set before connecting.`,
-        );
+    if (existingTerminal) {
+        // Found a terminal with the same connection string, just navigate to the container
+        existingTerminal.show();
+        goToContainer(existingTerminal, node.model.database, node.model.container);
+        return;
     }
-    goToContainer(foundTerminal, node.model.database, node.model.container);
-    void vscode.window.showInformationMessage(l10n.t('Connection command sent to Cosmos Shell terminal.'));
+
+    // No terminal with this connection string, launch a new one
+    launchCosmosShell(_context, node);
+}
+
+/**
+ * Finds an open Cosmos Shell terminal that is connected to the given connection string.
+ */
+function findTerminalByConnectionString(connectionString: string): vscode.Terminal | undefined {
+    for (const [terminal, connStr] of terminalConnectionStrings) {
+        // Verify the terminal is still open
+        if (vscode.window.terminals.includes(terminal) && connStr === connectionString) {
+            return terminal;
+        }
+    }
+    return undefined;
 }
 
 function getCosmosShellCredential(node: NoSqlContainerResourceItem) {

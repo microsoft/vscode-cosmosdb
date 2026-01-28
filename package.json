@@ -363,13 +363,7 @@
         "category": "NoSQL",
         "command": "cosmosDB.launchCosmosShell",
         "title": "%cosmosdb.command.cosmos_shell.launch%",
-        "when": "vscodeDatabases.cosmosShellSupportEnabled && !vscodeDatabases.cosmosShellTerminalOpen"
-      },
-      {
-        "category": "NoSQL",
-        "command": "cosmosDB.connectCosmosShell",
-        "title": "%cosmosdb.command.cosmos_shell.connect%",
-        "when": "vscodeDatabases.cosmosShellSupportEnabled && vscodeDatabases.cosmosShellTerminalOpen"
+        "when": "vscodeDatabases.cosmosShellSupportEnabled"
       },
       {
         "category": "NoSQL",
@@ -526,13 +520,7 @@
         {
           "//": "[Database] Launch Cosmos Shell",
           "command": "cosmosDB.launchCosmosShell",
-          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && !vscodeDatabases.cosmosShellTerminalOpen",
-          "group": "1@4"
-        },
-        {
-          "//": "[Database] Connect Cosmos Shell",
-          "command": "cosmosDB.connectCosmosShell",
-          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && vscodeDatabases.cosmosShellTerminalOpen",
+          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
           "group": "1@4"
         },
         {
@@ -662,10 +650,6 @@
         {
           "command": "azureDatabases.update",
           "when": "never"
-        },
-        {
-          "command": "cosmosDB.connectCosmosShell",
-          "when": "false"
         }
       ]
     },

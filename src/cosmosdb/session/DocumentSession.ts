@@ -136,6 +136,7 @@ export class DocumentSession {
 
     public async read(documentId: CosmosDBRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.read', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -269,6 +270,7 @@ export class DocumentSession {
         documentId: CosmosDBRecordIdentifier,
     ): Promise<CosmosDBRecordIdentifier | undefined> {
         return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.update', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -384,6 +386,7 @@ export class DocumentSession {
 
     public async delete(documentId: CosmosDBRecordIdentifier): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.delete', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -450,6 +453,7 @@ export class DocumentSession {
 
     public async bulkDelete(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.bulkDelete', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -562,6 +566,7 @@ export class DocumentSession {
         await callWithTelemetryAndErrorHandling(
             'cosmosDB.nosql.document.session.setNewDocumentTemplate',
             async (context) => {
+                context.errorHandling.rethrow = true;
                 this.setTelemetryProperties(context);
 
                 if (this.isDisposed) {
@@ -658,7 +663,8 @@ export class DocumentSession {
             return this.partitionKey;
         }
 
-        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.getPartitionKey', async () => {
+        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.session.getPartitionKey', async (context) => {
+            context.errorHandling.rethrow = true;
             const container = await withClaimsChallengeHandling(this.connection, async (client) =>
                 client.database(this.databaseId).container(this.containerId).read(),
             );

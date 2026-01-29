@@ -64,6 +64,7 @@ export class QuerySession {
 
     public async run(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.run', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -115,6 +116,7 @@ export class QuerySession {
 
     public async fetchAll(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.fetchAll', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -135,6 +137,7 @@ export class QuerySession {
 
     public async nextPage(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.nextPage', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -166,6 +169,7 @@ export class QuerySession {
 
     public async prevPage(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.prevPage', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -192,6 +196,7 @@ export class QuerySession {
 
     public async firstPage(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.firstPage', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {
@@ -210,6 +215,7 @@ export class QuerySession {
 
     public async stop(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.stop', async (context) => {
+            context.errorHandling.rethrow = true;
             this.setTelemetryProperties(context);
 
             if (this.isDisposed) {

@@ -88,7 +88,6 @@ export class CosmosShellExtension implements vscode.Disposable {
             this.terminalChangeListeners.push(openListener, closeListener);
 
             registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosShell', connectCosmosShell);
-            registerCommandWithTreeNodeUnwrapping('cosmosDB.connectCosmosShell', connectCosmosShell);
 
             if (isCosmosShellInstalled) {
                 ext.outputChannel.appendLine(`Cosmos Shell Extension: activated.`);
@@ -179,6 +178,13 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         args = ['--connect', rawConnectionString];
     }
 
+    const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
+    if (containerCommand) {
+        args.push('--k', containerCommand);
+    }
+
+    ext.outputChannel.appendLine(`Cosmos Shell args: ${args.join(' ')}`);
+
     const terminal: vscode.Terminal = vscode.window.createTerminal({
         name: 'Cosmos Shell',
         shellPath: command,
@@ -191,16 +197,15 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     updateTerminalContext();
     // Store the connection string for this terminal
     terminalConnectionStrings.set(terminal, rawConnectionString);
-
-    goToContainer(terminal, node.model.database, node.model.container);
 }
 
-function goToContainer(terminal: vscode.Terminal, database: DatabaseDefinition, container: ContainerDefinition) {
+function getGoToContainerCommand(database: DatabaseDefinition, container: ContainerDefinition): string | undefined {
     if (container) {
-        terminal.sendText('cd "/' + database.id + '/' + container.id + '"', true);
+        return `cd "/${database.id}/${container.id}"`;
     } else if (database) {
-        terminal.sendText('cd "/' + database.id + '"', true);
+        return `cd "/${database.id}"`;
     }
+    return undefined;
 }
 
 export function connectCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
@@ -222,7 +227,10 @@ export function connectCosmosShell(_context: IActionContext, node?: NoSqlContain
     if (existingTerminal) {
         // Found a terminal with the same connection string, just navigate to the container
         existingTerminal.show();
-        goToContainer(existingTerminal, node.model.database, node.model.container);
+        const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
+        if (containerCommand) {
+            existingTerminal.sendText(containerCommand, true);
+        }
         return;
     }
 

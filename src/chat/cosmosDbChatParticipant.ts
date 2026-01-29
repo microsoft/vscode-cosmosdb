@@ -8,6 +8,13 @@ import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import {
+    CHAT_PARTICIPANT_SYSTEM_PROMPT,
+    INTENT_EXTRACTION_PROMPT,
+    PARAMETER_EXTRACTION_PROMPT_TEMPLATE,
+    QUERY_EDITOR_CONTEXT_SUFFIX,
+} from './systemPrompt';
+import { buildIntentExtractionUserContent, buildParameterExtractionUserContent } from './userPayload';
 
 // Interface for ChatRequest with optional model property (for compatibility with different VS Code versions)
 interface ExtendedChatRequest {
@@ -101,32 +108,27 @@ export class CosmosDbChatParticipant {
     }
 
     /**
-     * Uses LLM for complete intent and parameter extraction - the ideal approach
+     * Uses LLM for complete intent and parameter extraction - the ideal approach.
+     * Uses separated system prompt (instructions) and user content (payload).
      */
     private async extractIntentWithLLM(
         originalPrompt: string,
         model: vscode.LanguageModelChat,
     ): Promise<{ operation: string; parameters: Record<string, unknown> } | null> {
         try {
-            const intentPrompt = `Analyze this CosmosDB user request and extract the intent and parameters.
+            // System prompt (fixed instructions) - from systemPrompt.ts
+            const systemMessage = vscode.LanguageModelChatMessage.User(INTENT_EXTRACTION_PROMPT);
 
-User request: "${originalPrompt}"
+            // User content (payload) - from userPayload.ts
+            const userContent = buildIntentExtractionUserContent({ userPrompt: originalPrompt });
+            const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
-Available operations: editQuery, explainQuery, generateQuery, help
-
-Return JSON with operation and parameters. Examples:
-- "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
-- "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
-- "generate a query to find all active users" → {"operation": "generateQuery", "parameters": {"userPrompt": "find all active users"}}
-- "create a query for orders over $100" → {"operation": "generateQuery", "parameters": {"userPrompt": "orders over $100"}}
-- "help" → {"operation": "help", "parameters": { "topic": "partition key choice" }}
-- if intent does not map any of the available operations: {}
-
-Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
-** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
-
-            const messages = [vscode.LanguageModelChatMessage.User(intentPrompt)];
-            const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+            // Keep system and user messages separate
+            const response = await model.sendRequest(
+                [systemMessage, userMessage],
+                {},
+                new vscode.CancellationTokenSource().token,
+            );
 
             let jsonText = '';
             for await (const fragment of response.text) {
@@ -147,7 +149,8 @@ Only return valid a JSON string. ** Do not return markdown format such as \`\`\`
     }
 
     /**
-     * Uses LLM to extract parameters from user prompt - much smarter than regex parsing
+     * Uses LLM to extract parameters from user prompt - much smarter than regex parsing.
+     * Uses separated system prompt (instructions) and user content (payload).
      */
     private async extractParametersWithLLM(
         operation: string,
@@ -155,18 +158,20 @@ Only return valid a JSON string. ** Do not return markdown format such as \`\`\`
         model: vscode.LanguageModelChat,
     ): Promise<Record<string, unknown>> {
         try {
-            const extractionPrompt = `Extract structured parameters from this user request for a ${operation} operation.
+            // System prompt (fixed instructions) - from systemPrompt.ts
+            const systemPromptText = PARAMETER_EXTRACTION_PROMPT_TEMPLATE.replace('{operation}', operation);
+            const systemMessage = vscode.LanguageModelChatMessage.User(systemPromptText);
 
-User request: "${originalPrompt}"
+            // User content (payload) - from userPayload.ts
+            const userContent = buildParameterExtractionUserContent(operation, originalPrompt);
+            const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
-Return JSON with relevant parameters. Examples:
-- For "SELECT * FROM c with metrics": {"query": "SELECT * FROM c", "includeMetrics": true}
-- For "show info about mydb": {"target": "mydb"}
-Only return valid JSON, no other text.
-** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
-
-            const messages = [vscode.LanguageModelChatMessage.User(extractionPrompt)];
-            const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+            // Keep system and user messages separate
+            const response = await model.sendRequest(
+                [systemMessage, userMessage],
+                {},
+                new vscode.CancellationTokenSource().token,
+            );
 
             let jsonText = '';
             for await (const fragment of response.text) {
@@ -601,42 +606,22 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
                 model = models[0];
             }
 
-            // Get query editor context if available
+            // Get query editor context if available (user content/payload)
             const queryEditorContext = this.getQueryEditorContext();
 
-            // Create system message with CosmosDB context
-            let systemPrompt = `You are a helpful assistant specialized in Azure Cosmos DB.
-You help users with:
-- CosmosDB concepts and best practices
-- Query optimization and troubleshooting (using actual query execution data when available)
-- SDK usage and code examples
-- Database design and modeling
-- Performance tuning based on RU consumption and result patterns
-- Cost optimization
+            // System prompt (fixed instructions) - from systemPrompt.ts
+            // Keep system prompt and user content architecturally separate
+            const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT);
 
-You can also perform operations like:
-- "editQuery" - Edit and improve queries with AI suggestions (uses active query session data)
-- "help" - Show available commands and features
-
-When helping with query optimization, use the provided query session context including:
-- Current query text and structure
-- Actual execution results and document counts
-- Request charge (RU) consumption
-- Sample result data structure
-- Performance metadata when available
-
-Please provide helpful, accurate, and actionable responses about Cosmos DB. If asked about something outside of Cosmos DB, politely redirect the conversation back to Cosmos DB topics.`;
-
-            // Add query editor context if available
+            // User content (dynamic payload) - query editor context + user prompt
+            let userContent = '';
             if (queryEditorContext) {
-                systemPrompt += `\n\n${queryEditorContext}`;
-                systemPrompt += `\n\nThe user may be asking about the query shown above or related query operations. Use this context to provide more relevant and specific assistance.`;
-                systemPrompt += `\n\nUse azure mcp to answer questions about cosmos db or respond I don't know`;
+                userContent += queryEditorContext;
+                userContent += QUERY_EDITOR_CONTEXT_SUFFIX;
             }
+            userContent += `\n\nUser request: ${request.prompt}`;
 
-            const systemMessage = vscode.LanguageModelChatMessage.User(systemPrompt);
-
-            const userMessage = vscode.LanguageModelChatMessage.User(request.prompt);
+            const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
             // Send request to language model
             const chatResponse = await model.sendRequest([systemMessage, userMessage], {}, token);

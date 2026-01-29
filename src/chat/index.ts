@@ -10,3 +10,9 @@ export {
     type QueryHistoryContext,
 } from './CosmosDbOperationsService';
 export { OperationParser } from './OperationParser';
+
+// System prompts (fixed, versioned instructions)
+export * from './systemPrompt';
+
+// User payload types and builders (dynamic user content)
+export * from './userPayload';

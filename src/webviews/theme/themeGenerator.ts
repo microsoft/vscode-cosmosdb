@@ -80,14 +80,14 @@ export const generateAdaptiveDarkTheme = (): Theme => {
     return {
         ...createDarkTheme(brandVSCode),
         ...{
-            colorNeutralForeground1: 'var(--vscode-button-foreground)',
-            colorNeutralForeground1Hover: 'var(--vscode-button-foreground)',
-            colorNeutralForeground1Pressed: 'var(--vscode-button-foreground)',
-            colorNeutralForeground1Selected: 'var(--vscode-button-foreground)',
-            colorNeutralForeground2: 'var(--vscode-button-secondaryForeground)',
-            colorNeutralForeground2Hover: 'var(--vscode-button-secondaryForeground)',
-            colorNeutralForeground2Pressed: 'var(--vscode-button-secondaryForeground)',
-            colorNeutralForeground2Selected: 'var(--vscode-button-secondaryForeground)',
+            colorNeutralForeground1: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground1Hover: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground1Pressed: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
+            colorNeutralForeground2: 'var(--vscode-foreground)',
+            colorNeutralForeground2Hover: 'var(--vscode-foreground)',
+            colorNeutralForeground2Pressed: 'var(--vscode-foreground)',
+            colorNeutralForeground2Selected: 'var(--vscode-foreground)',
 
             colorNeutralBackground1: 'var(--vscode-editor-background)',
         },

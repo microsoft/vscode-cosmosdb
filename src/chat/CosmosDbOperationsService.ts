@@ -125,7 +125,6 @@ export class CosmosDbOperationsService {
             const referencePath = path.join(
                 CosmosDbOperationsService.extensionPath,
                 'resources',
-                'llm-assets',
                 'azurecosmosdb-nosql-query-language.md',
             );
             CosmosDbOperationsService.queryLanguageReference = fs.readFileSync(referencePath, 'utf-8');

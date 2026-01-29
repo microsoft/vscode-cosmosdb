@@ -14,7 +14,7 @@ import {
     PARAMETER_EXTRACTION_PROMPT_TEMPLATE,
     QUERY_EDITOR_CONTEXT_SUFFIX,
 } from './systemPrompt';
-import { buildIntentExtractionUserContent, buildParameterExtractionUserContent } from './userPayload';
+import { buildIntentExtractionUserContent, buildParameterExtractionUserContent, wrapUserContent } from './userPayload';
 
 // Interface for ChatRequest with optional model property (for compatibility with different VS Code versions)
 interface ExtendedChatRequest {
@@ -614,12 +614,13 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
             const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT);
 
             // User content (dynamic payload) - query editor context + user prompt
+            // Wrap with clear delimiters to distinguish from instructions
             let userContent = '';
             if (queryEditorContext) {
-                userContent += queryEditorContext;
+                userContent += wrapUserContent(queryEditorContext, 'context');
                 userContent += QUERY_EDITOR_CONTEXT_SUFFIX;
             }
-            userContent += `\n\nUser request: ${request.prompt}`;
+            userContent += `\n\nUser request:\n${wrapUserContent(request.prompt, 'data')}`;
 
             const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 

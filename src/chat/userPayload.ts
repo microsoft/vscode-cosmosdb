@@ -10,7 +10,38 @@ import { type QueryHistoryContext } from './CosmosDbOperationsService';
  * User payload types and builders for the Cosmos DB chat participant.
  * These represent raw, dynamic user content: file text, logs, selections, diffs, diagnostics.
  * DO NOT merge with system prompts - keep them architecturally separate.
+ *
+ * All user content is wrapped with clear delimiters to make it explicit that
+ * the block is raw content, not an instruction.
  */
+
+/**
+ * Delimiters for wrapping user content to distinguish from instructions.
+ */
+export const USER_DATA_START = 'BEGIN_USER_DATA';
+export const USER_DATA_END = 'END_USER_DATA';
+export const USER_QUERY_START = 'BEGIN_USER_QUERY';
+export const USER_QUERY_END = 'END_USER_QUERY';
+export const USER_CONTEXT_START = 'BEGIN_CONTEXT';
+export const USER_CONTEXT_END = 'END_CONTEXT';
+
+/**
+ * Wraps user-provided text with delimiters to clearly mark it as raw content.
+ * @param text The user's raw text content
+ * @param type The type of content being wrapped
+ * @returns The wrapped content with clear delimiters
+ */
+export function wrapUserContent(text: string, type: 'data' | 'query' | 'context' = 'data'): string {
+    switch (type) {
+        case 'query':
+            return `${USER_QUERY_START}\n${text}\n${USER_QUERY_END}`;
+        case 'context':
+            return `${USER_CONTEXT_START}\n${text}\n${USER_CONTEXT_END}`;
+        case 'data':
+        default:
+            return `${USER_DATA_START}\n${text}\n${USER_DATA_END}`;
+    }
+}
 
 /**
  * Connection context for a Cosmos DB database/container.
@@ -170,6 +201,7 @@ function simplifySchema(schema: JSONSchema | undefined): Record<string, unknown>
 
 /**
  * Builds query generation user content (NOT system prompt).
+ * Wraps user-provided data with clear delimiters.
  */
 export function buildQueryGenerationUserContent(payload: QueryGenerationPayload): string {
     let content = '';
@@ -179,46 +211,56 @@ export function buildQueryGenerationUserContent(payload: QueryGenerationPayload)
     }
 
     if (payload.historyContext) {
-        content += formatQueryHistoryContext(payload.historyContext);
+        content += wrapUserContent(formatQueryHistoryContext(payload.historyContext), 'context');
+        content += '\n\n';
     }
 
     if (payload.currentQuery) {
-        content += `\n\nCurrent query:\n${payload.currentQuery}`;
+        content += `Current query:\n${wrapUserContent(payload.currentQuery, 'query')}`;
+        content += '\n\n';
     }
 
-    content += `\n\nRequest: ${payload.userPrompt}`;
+    content += `Request:\n${wrapUserContent(payload.userPrompt, 'data')}`;
 
     return content;
 }
 
 /**
  * Builds query explanation user content (NOT system prompt).
+ * Wraps user-provided data with clear delimiters.
  */
 export function buildExplanationUserContent(payload: QueryExplanationPayload): string {
-    const contextInfo = buildExplanationContextInfo(payload.connection, payload.resultContext);
+    const contextInfo = wrapUserContent(
+        buildExplanationContextInfo(payload.connection, payload.resultContext),
+        'context',
+    );
+
+    const queryBlock = wrapUserContent(payload.query, 'query');
+    const userQuestion = wrapUserContent(payload.userPrompt, 'data');
 
     return `${contextInfo}
 
 **Query to Explain:**
-\`\`\`sql
-${payload.query}
-\`\`\`
+${queryBlock}
 
-**User's Question/Context:** ${payload.userPrompt}`;
+**User's Question/Context:**
+${userQuestion}`;
 }
 
 /**
  * Builds intent extraction user content.
+ * Wraps user prompt with clear delimiters.
  */
 export function buildIntentExtractionUserContent(payload: IntentExtractionPayload): string {
-    return `User request: "${payload.userPrompt}"`;
+    return `User request:\n${wrapUserContent(payload.userPrompt, 'data')}`;
 }
 
 /**
  * Builds parameter extraction user content.
+ * Wraps user prompt with clear delimiters.
  * @param _operation The operation type (used by caller for context, not in user content)
  * @param userPrompt The user's original prompt
  */
 export function buildParameterExtractionUserContent(_operation: string, userPrompt: string): string {
-    return `User request: "${userPrompt}"`;
+    return `User request:\n${wrapUserContent(userPrompt, 'data')}`;
 }

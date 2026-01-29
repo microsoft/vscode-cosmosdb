@@ -1,5 +1,5 @@
 ---
-description: **CRITICAL**: Read this file FIRST before answering ANY Azure Cosmos DB-related questions or performing ANY Azure Cosmos DB operations. This file must be loaded as context whenever Azure Cosmos DB is explicitly mentioned. It provides accurate and up-to-date information about Azure Cosmos DB. **MUST** be read when user mentions: Azure Cosmos DB, Cosmos DB, Cosmos DB NoSQL. Load this instruction file ONLY for Azure Cosmos DB-related requests, NOT for generic data modeling, SDK, or developer tooling questions.
+description: **CRITICAL**: Read this file FIRST before answering ANY Azure Cosmos DB-related questions or performing ANY Azure Cosmos DB operations. This file must be loaded as context whenever Azure Cosmos DB is explicitly mentioned. It provides accurate and up-to-date information about Azure Cosmos DB. **MUST** be read when user mentions: Azure Cosmos DB, Cosmos DB, Cosmos DB NoSQL. Load this instruction file ONLY for Azure Cosmos DB-related requests.
 ---
 
 ## 1. Data Modeling Best Practices

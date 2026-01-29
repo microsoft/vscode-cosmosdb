@@ -1,5 +1,7 @@
 # Azure Cosmos DB NoSQL Query Language Reference
 
+Based on [online documentation](https://learn.microsoft.com/en-us/cosmos-db/query/overview).
+
 This document provides a comprehensive reference for the Azure Cosmos DB NoSQL query language to help generate syntactically correct queries.
 
 ## Query Structure Overview
@@ -144,7 +146,8 @@ WHERE <filter_condition>
 - Use `!=` instead of `IS NOT`
 - For string comparisons, assume NOT case sensitive unless specified
 - Use `STRINGEQUALS` for case-insensitive string equality
-- Use `BETWEEN` for inclusive range filtering instead of `>=` and `<=`
+- Use `BETWEEN` for **numeric** range filtering only (e.g., `c.price BETWEEN 10 AND 100`)
+- **Do NOT use BETWEEN with string values** (including dates stored as strings) - use `>=` and `<=` operators instead
 
 ### Examples
 
@@ -160,10 +163,16 @@ SELECT * FROM c WHERE c.status = 'active'
 SELECT * FROM c WHERE c.category = 'electronics' AND c.price > 100
 ```
 
-**Range filter with BETWEEN:**
+**Numeric range filter with BETWEEN:**
 
 ```sql
 SELECT * FROM c WHERE c.price BETWEEN 10 AND 50
+```
+
+**Date string range filter (use >= and <=, NOT BETWEEN):**
+
+```sql
+SELECT * FROM c WHERE c.orderDate >= '2014-01-01' AND c.orderDate <= '2014-06-30'
 ```
 
 ---
@@ -186,6 +195,7 @@ ORDER BY <sort_specification>
 - Do NOT use ORDER BY on **computed columns**, **aliases from subqueries**, or **aggregate results**
 - Do NOT use ORDER BY with subqueries in the FROM clause - the outer query cannot sort by subquery aliases
 - When you need to sort aggregated data, restructure the query to avoid subqueries or perform sorting client-side
+- **Composite indexes are REQUIRED** for ORDER BY on multiple properties or mixed sort directions - see Limitations below
 
 ### Limitations
 
@@ -195,9 +205,20 @@ ORDER BY <sort_specification>
 - Computed expressions that cannot be mapped to a document path
 - Results from GROUP BY aggregations in subqueries
 
+**Composite Index Requirements:**
+
+ORDER BY queries on **multiple properties** or with **mixed sort directions** (ASC and DESC) require a **composite index** to be defined in the container's indexing policy. Without the appropriate composite index, the query will fail with error: "The order by query does not have a corresponding composite index that it can be served from."
+
+- **Single property ASC**: Works with default range index (no composite index needed)
+- **Single property DESC**: May require a composite index depending on container configuration
+- **Multiple properties**: ALWAYS requires a composite index matching the exact order and direction
+- **Mixed directions** (e.g., `ORDER BY c.a ASC, c.b DESC`): ALWAYS requires a composite index
+
+When generating queries with multi-property ORDER BY, **prefer single-property ORDER BY** when possible, or note that a composite index must exist.
+
 ### Examples
 
-**Single property sort:**
+**Single property sort (works with default index):**
 
 ```sql
 SELECT * FROM c ORDER BY c.name
@@ -209,10 +230,33 @@ SELECT * FROM c ORDER BY c.name
 SELECT * FROM c ORDER BY c.createdAt DESC
 ```
 
-**Multiple property sort:**
+**Multiple property sort (REQUIRES composite index):**
 
 ```sql
+-- This query requires a composite index on (category ASC, price DESC)
+-- Without the index, it will fail
 SELECT * FROM c ORDER BY c.category ASC, c.price DESC
+```
+
+**INCORRECT - Will fail without composite index:**
+
+```sql
+-- Error: "The order by query does not have a corresponding composite index"
+-- This needs a composite index on (orderDate ASC, id DESC)
+SELECT * FROM c
+WHERE c.type = 'order'
+ORDER BY c.orderDate ASC, c.id DESC
+OFFSET 40 LIMIT 20
+```
+
+**CORRECT - Single property ORDER BY (no composite index needed):**
+
+```sql
+-- Prefer single-property ORDER BY when possible
+SELECT * FROM c
+WHERE c.type = 'order'
+ORDER BY c.orderDate ASC
+OFFSET 40 LIMIT 20
 ```
 
 **INCORRECT - Will fail (ORDER BY on subquery alias):**
@@ -386,10 +430,17 @@ JOIN (SELECT VALUE s FROM s IN p.sizes WHERE s["order"] >= 3)
 
 ### BETWEEN
 
-Evaluates whether a value is within an inclusive range.
+Evaluates whether a **numeric** value is within an inclusive range. **Only works with numeric expressions, NOT strings.**
 
 ```sql
+-- CORRECT: BETWEEN with numeric values
 SELECT * FROM c WHERE c.price BETWEEN 10 AND 100
+
+-- INCORRECT: BETWEEN with string dates will fail
+-- SELECT * FROM c WHERE c.orderDate BETWEEN '2014-01-01' AND '2014-06-30'
+
+-- CORRECT: Use >= and <= for string/date ranges
+SELECT * FROM c WHERE c.orderDate >= '2014-01-01' AND c.orderDate <= '2014-06-30'
 ```
 
 ### DISTINCT
@@ -749,7 +800,7 @@ SELECT c.tags[0].value AS firstTag FROM c
 2. **Use VALUE for single-value results** to get clean output
 3. **Use DISTINCT VALUE** (not just DISTINCT) for unique property values
 4. **Never use SELECT \* with JOIN** - project specific properties
-5. **Use BETWEEN for ranges** instead of >= and <=
+5. **Use BETWEEN for numeric ranges only** - for strings/dates use `>=` and `<=`
 6. **Use != instead of IS NOT**
 7. **Use ARRAY_LENGTH for array length**, not COUNT
 8. **Use proper date functions**: DateTimeAdd, DateTimeDiff, GetCurrentDateTime
@@ -760,3 +811,4 @@ SELECT c.tags[0].value AS firstTag FROM c
 13. **Do NOT use DISTINCT within COUNT**
 14. **Do NOT generate DML statements** (INSERT, UPDATE, DELETE, DROP)
 15. **Do NOT use ORDER BY on subquery aliases or computed columns** - ORDER BY requires direct document paths
+16. **Prefer single-property ORDER BY** - multi-property ORDER BY or mixed directions (ASC/DESC) require composite indexes which may not exist

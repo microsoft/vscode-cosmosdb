@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.30.2
+
+### Fixed
+
+- Fixed an issue where text in Fluent UI tooltips, dropdowns and tabs was invisible for certain dark themes (e.g., Nord)(#2912).
+- Fixed an issue where LLM assets were added to all Chats without relation to Cosmos DB (#2901)
+
+### Changed
+
+- Updated the link to the privacy statement in the Readme (#2913).
+
 ## 0.30.1
 
 ### Fixed

@@ -267,6 +267,7 @@
   "Item id or _rid is required": "项 ID 或 _rid 是必需的",
   "Item is not a valid Cosmos DB item definition": "项不是有效的 Cosmos DB 项定义",
   "Item must be an object.": "值必须是一个对象。",
+  "Item not found or request timed out": "Item not found or request timed out",
   "Items": "项",
   "JSON": "JSON",
   "JSON view": "JSON 视图",

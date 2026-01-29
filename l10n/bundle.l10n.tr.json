@@ -267,6 +267,7 @@
   "Item id or _rid is required": "Öğe kimliği veya _rid gerekiyor",
   "Item is not a valid Cosmos DB item definition": "Öğe geçerli bir Cosmos DB öğe tanımı değil",
   "Item must be an object.": "Öğe bir nesne olmalıdır.",
+  "Item not found or request timed out": "Item not found or request timed out",
   "Items": "Öğeler",
   "JSON": "JSON",
   "JSON view": "JSON görünümü",

@@ -267,6 +267,7 @@
   "Item id or _rid is required": "アイテム ID または _rid が必要です",
   "Item is not a valid Cosmos DB item definition": "アイテムは有効な Cosmos DB アイテム定義ではありません",
   "Item must be an object.": "アイテムはオブジェクトである必要があります。",
+  "Item not found or request timed out": "Item not found or request timed out",
   "Items": "項目",
   "JSON": "JSON",
   "JSON view": "JSON ビュー",

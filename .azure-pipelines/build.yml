@@ -159,6 +159,7 @@ extends:
 
                         - task: OneLocBuild@3
                           displayName: '🌍 Build Localized Files'
+                          condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
                           inputs:
                               locProj: 'l10n/LocProject.json'
                               outDir: '$(Build.ArtifactStagingDirectory)'

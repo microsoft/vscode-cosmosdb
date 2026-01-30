@@ -8,7 +8,7 @@ import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { getThemeAgnosticIconURI } from '../../constants';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
@@ -75,7 +75,15 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
         const treeItem = super.getTreeItem();
         if (treeItem.tooltip) {
-            tooltipMessage = `${String(treeItem.tooltip)}\n${tooltipMessage}`;
+            const existingTooltip =
+                typeof treeItem.tooltip === 'string'
+                    ? treeItem.tooltip
+                    : treeItem.tooltip instanceof vscode.MarkdownString
+                      ? treeItem.tooltip.value
+                      : '';
+            if (existingTooltip) {
+                tooltipMessage = `${existingTooltip}\n${tooltipMessage}`;
+            }
         }
 
         return {
@@ -84,7 +92,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
             tooltip: new vscode.MarkdownString(tooltipMessage),
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
-                : getThemeAgnosticIconPath('CosmosDBAccount.svg'),
+                : (getThemeAgnosticIconURI('CosmosDBAccount.svg') as { light: vscode.Uri; dark: vscode.Uri }),
         };
     }
 

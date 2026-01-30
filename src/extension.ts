@@ -25,6 +25,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import {
+    CosmosShellExtension,
+    registerCosmosShellLanguageServer,
+    registerMcpServer,
+} from './cosmosShell/CosmosShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
@@ -91,6 +96,9 @@ export async function activateInternal(
 
         ext.fileSystem = new DatabasesFileSystem();
 
+        const cosmosShellSupport: CosmosShellExtension = new CosmosShellExtension();
+        await cosmosShellSupport.activate();
+
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
         );
@@ -115,6 +123,8 @@ export async function activateInternal(
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
+    registerMcpServer(context);
+    registerCosmosShellLanguageServer(context);
 
     const exportedApis = [
         <AzureExtensionApi>{

@@ -5,6 +5,7 @@
 
 import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
+import { type IFabricExtensionServiceCollection } from '@microsoft/vscode-fabric-api';
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
@@ -36,6 +37,8 @@ export namespace ext {
     // used for the workspace: these are the dedicated providers
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
+
+    export let fabricServices: IFabricExtensionServiceCollection;
 
     export namespace settingsKeys {
         export const documentLabelFields = 'cosmosDB.documentLabelFields';

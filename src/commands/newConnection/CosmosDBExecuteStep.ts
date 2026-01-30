@@ -33,7 +33,11 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
                 const storageItem: StorageItem = {
                     id: parsedCS.accountId,
                     name: label,
-                    properties: { isEmulator: false, api },
+                    properties: {
+                        isEmulator: false,
+                        api,
+                        ...(parsedCS.tenantId && { tenantId: parsedCS.tenantId }),
+                    },
                     secrets: [connectionString],
                 };
 

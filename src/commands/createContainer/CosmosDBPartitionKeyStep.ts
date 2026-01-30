@@ -7,6 +7,8 @@ import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
+const partitionKeyLearnMoreLink = 'https://learn.microsoft.com/azure/cosmos-db/partitioning-overview';
+
 const HierarchyStep = ['first', 'second', 'third'] as const;
 export type HierarchyStep = (typeof HierarchyStep)[number];
 
@@ -40,6 +42,7 @@ export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContai
                 prompt,
                 placeHolder,
                 value: '',
+                learnMoreLink: partitionKeyLearnMoreLink,
                 validateInput: (name: string) => this.validateInput(name),
                 asyncValidationTask: (name: string) => this.validateNameAvailable(context, name),
             })
@@ -80,7 +83,11 @@ export class CosmosDBPartitionKeyStep extends AzureWizardPromptStep<CreateContai
         }
 
         if (/[^a-zA-Z0-9_/]/.test(partitionKey)) {
-            return l10n.t('Partition key cannot contain the wildcard characters');
+            return l10n.t(
+                'Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})',
+                partitionKeyLearnMoreLink,
+                '#choose-a-partition-key',
+            );
         }
 
         if (!/^\/?[^/]*$/.test(partitionKey)) {

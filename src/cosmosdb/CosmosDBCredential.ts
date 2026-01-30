@@ -7,7 +7,9 @@ import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@
 import { RestError } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { CosmosDBTimeouts } from '../constants';
 import { ext } from '../extensionVariables';
+import { rejectOnTimeout } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
 import { getCosmosClient } from './getCosmosClient';
 import { getManagedIdentityAuth } from './utils/managedIdentityUtils';
@@ -222,13 +224,28 @@ async function getKeyCredentialWithoutARM(
             // we can't get DatabaseAccountGetResults to retrieve disableLocalAuth property
             // Will try to connect to the account and catch if it fails due to local auth being disabled.
             const cosmosClient = getCosmosClient(documentEndpoint, [keyCred], isEmulator);
-            await cosmosClient.getDatabaseAccount();
+            const timeout: number = isEmulator
+                ? CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS
+                : CosmosDBTimeouts.CONNECTION_TIMEOUT_MS;
+            // Apply timeout to prevent hanging indefinitely on unreachable hosts
+            await rejectOnTimeout(
+                timeout,
+                () => cosmosClient.getDatabaseAccount(),
+                l10n.t('Connection timed out while verifying account credentials.'),
+            );
         } catch (e) {
             const error = parseError(e);
             // handle errors caused by local auth being disabled only, all other errors will be thrown
             if (error.message.includes('Local Authorization is disabled.')) {
                 context.telemetry.properties.receivedKeyCreds = 'false';
                 localAuthDisabled = true;
+            }
+            // If timeout or other connection error, log it but don't block - we'll try with the key anyway
+            // The actual connection attempt in getDatabases will fail with a proper timeout message
+            else if (error.message.includes('timed out')) {
+                ext.outputChannel.appendLog(
+                    `[getKeyCredentialWithoutARM] Credential verification timed out for ${accountName}, will retry on actual connection`,
+                );
             }
         }
     }

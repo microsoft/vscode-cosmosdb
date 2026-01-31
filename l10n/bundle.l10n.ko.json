@@ -267,7 +267,7 @@
   "Item id or _rid is required": "항목 ID 또는 _rid가 필요",
   "Item is not a valid Cosmos DB item definition": "항목이 올바른 Cosmos DB 항목 정의가 아닙니다.",
   "Item must be an object.": "항목은 개체여야 합니다.",
-  "Item not found or request timed out": "Item not found or request timed out",
+  "Item not found or request timed out": "항목을 찾을 수 없거나 요청 시간이 초과됨",
   "Items": "항목",
   "JSON": "JSON",
   "JSON view": "JSON 보기",

@@ -267,7 +267,7 @@
   "Item id or _rid is required": "需要項目識別碼或 _rid",
   "Item is not a valid Cosmos DB item definition": "項目不是有效的 Cosmos DB 項目定義",
   "Item must be an object.": "項目必須是物件。",
-  "Item not found or request timed out": "Item not found or request timed out",
+  "Item not found or request timed out": "找不到項目或要求已逾時",
   "Items": "項目",
   "JSON": "JSON",
   "JSON view": "JSON 檢視",

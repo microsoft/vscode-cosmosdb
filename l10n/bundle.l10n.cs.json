@@ -267,7 +267,7 @@
   "Item id or _rid is required": "ID položky nebo _rid je povinné.",
   "Item is not a valid Cosmos DB item definition": "Položka není platná definice položky Cosmos DB.",
   "Item must be an object.": "Položka musí být objekt.",
-  "Item not found or request timed out": "Item not found or request timed out",
+  "Item not found or request timed out": "Položka nebyla nalezena nebo vypršel časový limit žádosti",
   "Items": "Položky",
   "JSON": "JSON",
   "JSON view": "Zobrazení JSON",

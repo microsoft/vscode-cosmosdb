@@ -9,6 +9,8 @@ import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccoun
 export enum API {
     Core = 'Core', // Now called NoSQL
     Common = 'Common', // In case we're reporting a common event and still need to provide the value of the API
+    FabricNative = 'FabricNative',
+    FabricMirrored = 'FabricMirrored',
     /** @deprecated Graph API is retired */
     Graph = 'Graph',
     /** @deprecated Table API is retired */
@@ -151,6 +153,17 @@ export const PostgresFlexibleExperience: Experience = {
     longName: 'PostgreSQL Flexible Server',
     shortName: 'PostgreSQLFlexible',
 };
+export const FabricNativeExperience: Experience = {
+    api: API.FabricNative,
+    longName: 'Native Cosmos DB',
+    shortName: 'Fabric Native',
+};
+
+export const FabricMirroredExperience: Experience = {
+    api: API.FabricMirrored,
+    longName: 'Mirrored Cosmos DB',
+    shortName: 'Fabric Mirrored',
+};
 
 const experiencesArray: Experience[] = [
     CoreExperience,
@@ -159,6 +172,8 @@ const experiencesArray: Experience[] = [
     CassandraExperience,
     PostgresSingleExperience,
     PostgresFlexibleExperience,
+    FabricNativeExperience,
+    FabricMirroredExperience,
 ];
 const experiencesMap = new Map<API, Experience>(
     experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]),

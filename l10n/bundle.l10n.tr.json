@@ -347,7 +347,7 @@
   "Partition Key changed": "Bölüm Anahtarı değiştirildi",
   "Partition key is required.": "Bölüm anahtarı gereklidir.",
   "Partition key must be unique.": "Bölüm anahtarı benzersiz olmalıdır.",
-  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})",
+  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Bölüm anahtarı yolu yalnızca ASCII harfleri (a-z, A-Z), rakamlar (0-9), alt çizgi ve eğik çizgi içerebilir. [Daha fazla bilgi edinin]({0}{1})",
   "Pick \"{number}\" to confirm and continue.": "Onaylamak ve devam etmek için \"{number}\" öğesini seçin.",
   "Please confirm by re-entering the previous value.": "Lütfen önceki değeri tekrar girerek onaylayın.",
   "Please contact the account owner to get the required permissions.": "Gerekli izinleri almak için lütfen hesap sahibine başvurun.",

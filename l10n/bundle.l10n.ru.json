@@ -347,7 +347,7 @@
   "Partition Key changed": "Ключ секции изменен",
   "Partition key is required.": "Требуется ключ секции.",
   "Partition key must be unique.": "Ключ секции должен быть уникальным.",
-  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})",
+  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Путь ключа раздела может содержать только буквы ASCII (a—z, A—Z), цифры (0–9), символы подчеркивания и прямые косые черты. [Подробнее]({0}{1})",
   "Pick \"{number}\" to confirm and continue.": "Выберите \"{number}\", чтобы подтвердить и продолжить.",
   "Please confirm by re-entering the previous value.": "Подтвердите, повторно введя предыдущее значение.",
   "Please contact the account owner to get the required permissions.": "Обратитесь к владельцу учетной записи для получения необходимых разрешений.",

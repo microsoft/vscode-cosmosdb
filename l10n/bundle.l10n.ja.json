@@ -347,7 +347,7 @@
   "Partition Key changed": "パーティション キーが変更されました",
   "Partition key is required.": "パーティション キーが必要です。",
   "Partition key must be unique.": "パーティション キーは一意である必要があります。",
-  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})",
+  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "パーティション キーパスに使用できるのは、ASCII 文字 (a から z、A から Z)、数字 (0 から 9)、アンダースコア、およびスラッシュのみです。[詳細情報]({0}{1})",
   "Pick \"{number}\" to confirm and continue.": "\"{number}\" を選択して確認し、続行します。",
   "Please confirm by re-entering the previous value.": "前の値を再入力して確認してください。",
   "Please contact the account owner to get the required permissions.": "必要なアクセス許可を取得するには、アカウント所有者にお問い合わせください。",

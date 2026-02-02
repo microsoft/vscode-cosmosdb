@@ -347,7 +347,7 @@
   "Partition Key changed": "La clé de partition a été modifiée",
   "Partition key is required.": "Une clé de partition est requise.",
   "Partition key must be unique.": "La clé de partition doit être unique.",
-  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})",
+  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Le chemin de la clé de partition ne peut contenir que des lettres ASCII (a-z, A-Z), des chiffres (0-9), des traits de soulignement et des barres obliques. [Découvrir plus d’informations]({0}{1})",
   "Pick \"{number}\" to confirm and continue.": "Sélectionnez « {number} » pour confirmer et continuer.",
   "Please confirm by re-entering the previous value.": "Veuillez confirmer en saisissant à nouveau la valeur précédente.",
   "Please contact the account owner to get the required permissions.": "Veuillez contacter le propriétaire du compte pour obtenir les autorisations requises.",

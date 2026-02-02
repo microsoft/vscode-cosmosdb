@@ -347,7 +347,7 @@
   "Partition Key changed": "Klíč oddílu se změnil",
   "Partition key is required.": "Klíč oddílu je povinný.",
   "Partition key must be unique.": "Klíč oddílu musí být jedinečný.",
-  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})",
+  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Cesta ke klíči oddílu může obsahovat jenom písmena ASCII (a–z, A–Z), číslice (0–9), podtržítka a lomítka. [Další informace]({0}{1})",
   "Pick \"{number}\" to confirm and continue.": "Výběrem „{number}“ akci potvrďte a pokračujte.",
   "Please confirm by re-entering the previous value.": "Potvrďte to prosím opětovným zadáním předchozí hodnoty.",
   "Please contact the account owner to get the required permissions.": "Pokud chcete získat požadovaná oprávnění, obraťte se na vlastníka účtu.",

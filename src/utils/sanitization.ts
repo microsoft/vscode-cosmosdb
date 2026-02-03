@@ -54,9 +54,10 @@ export function escapeMarkdown(text: string): string {
  */
 export function renderAsCodeBlock(text: string, inline: boolean = true): string {
     if (inline) {
-        // For inline code, escape backticks by replacing with escaped backtick
+        // For inline code, escape backslashes first, then backticks
         // This prevents breaking out of the code block while preserving readability
-        const escaped = text.replace(/`/g, '\\`');
+        let escaped = text.replace(/\\/g, '\\\\');
+        escaped = escaped.replace(/`/g, '\\`');
         return `\`${escaped}\``;
     } else {
         // For code blocks, escape triple backticks to prevent breaking out of the code fence

@@ -63,6 +63,14 @@ describe('sanitization', () => {
             expect(renderAsCodeBlock('test`with`backticks')).toBe('`test\\`with\\`backticks`');
         });
 
+        it('should escape backslashes in inline code', () => {
+            expect(renderAsCodeBlock('test\\with\\backslashes')).toBe('`test\\\\with\\\\backslashes`');
+        });
+
+        it('should escape both backslashes and backticks in inline code', () => {
+            expect(renderAsCodeBlock('test\\`combined')).toBe('`test\\\\\\`combined`');
+        });
+
         it('should escape triple backticks in block code', () => {
             expect(renderAsCodeBlock('code with ``` inside', false)).toBe('```\ncode with ` ``  inside\n```');
         });

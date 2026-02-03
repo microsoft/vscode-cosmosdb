@@ -60,7 +60,7 @@ describe('sanitization', () => {
         });
 
         it('should escape backticks in inline code', () => {
-            expect(renderAsCodeBlock('test`with`backticks')).toBe('`test with backticks`');
+            expect(renderAsCodeBlock('test`with`backticks')).toBe('`test\\`with\\`backticks`');
         });
 
         it('should escape triple backticks in block code', () => {

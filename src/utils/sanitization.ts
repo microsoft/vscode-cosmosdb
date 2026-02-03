@@ -9,6 +9,18 @@
  */
 
 /**
+ * HTML entity map for escaping special characters.
+ * Defined as a constant to avoid recreation on every function call.
+ */
+const HTML_ESCAPE_MAP: { [key: string]: string } = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+};
+
+/**
  * Escapes HTML special characters to prevent XSS attacks.
  * Replaces &, <, >, ", and ' with their HTML entity equivalents.
  *
@@ -16,15 +28,7 @@
  * @returns The escaped text safe for HTML rendering
  */
 export function escapeHtml(text: string): string {
-    const htmlEscapeMap: { [key: string]: string } = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;',
-    };
-
-    return text.replace(/[&<>"']/g, (char) => htmlEscapeMap[char]);
+    return text.replace(/[&<>"']/g, (char) => HTML_ESCAPE_MAP[char]);
 }
 
 /**
@@ -50,12 +54,13 @@ export function escapeMarkdown(text: string): string {
  */
 export function renderAsCodeBlock(text: string, inline: boolean = true): string {
     if (inline) {
-        // For inline code, escape backticks by replacing with a space
-        // This prevents breaking out of the code block
-        const escaped = text.replace(/`/g, ' ');
+        // For inline code, escape backticks by replacing with escaped backtick
+        // This prevents breaking out of the code block while preserving readability
+        const escaped = text.replace(/`/g, '\\`');
         return `\`${escaped}\``;
     } else {
-        // For code blocks, use triple backticks and ensure no triple backticks in content
+        // For code blocks, escape triple backticks to prevent breaking out of the code fence
+        // Replaces ``` with ` `` (space breaks the sequence)
         const escaped = text.replace(/```/g, '` `` ');
         return `\`\`\`\n${escaped}\n\`\`\``;
     }
@@ -138,7 +143,8 @@ export function safeErrorDisplay(error: Error | string, prefix: string = '❌'):
  * @returns The content wrapped in a language-specific code block
  */
 export function safeCodeBlock(content: string, language: string = ''): string {
-    // Escape triple backticks in the content to prevent breaking out
+    // Escape triple backticks in the content to prevent breaking out of the code fence
+    // Replaces ``` with ` `` (space breaks the sequence)
     const escaped = content.replace(/```/g, '` `` ');
     return `\`\`\`${language}\n${escaped}\n\`\`\``;
 }

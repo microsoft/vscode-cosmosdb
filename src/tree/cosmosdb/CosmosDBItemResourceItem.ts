@@ -136,7 +136,8 @@ export abstract class CosmosDBItemResourceItem
             return renderAsCodeBlock(truncatedValue);
         }
         if (typeof value === 'number' || typeof value === 'boolean') {
-            return String(value);
+            // Wrap numbers and booleans in code blocks for consistency and security
+            return renderAsCodeBlock(String(value));
         }
         // For any other type (symbol, function, etc.), use JSON or fallback
         try {

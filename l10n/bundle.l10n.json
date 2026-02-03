@@ -94,6 +94,7 @@
   "Cosmos DB SDK limitations": "Cosmos DB SDK limitations",
   "Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.": "Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.",
   "Cosmos Shell Language Server": "Cosmos Shell Language Server",
+  "Cosmos Shell path is not found. Please configure the correct path in settings.": "Cosmos Shell path is not found. Please configure the correct path in settings.",
   "Could not find unique name for new file.": "Could not find unique name for new file.",
   "Create an Azure Account...": "Create an Azure Account...",
   "Create an Azure for Students Account...": "Create an Azure for Students Account...",

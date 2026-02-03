@@ -20,6 +20,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as child from 'child_process';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import {
     LanguageClient,
@@ -114,6 +115,25 @@ function getCosmosShellCommand(): string {
     return shellPath || 'CosmosShell';
 }
 
+function isCosmosShellPathFound(): boolean {
+    const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
+    if (!shellPath?.trim()) {
+        return false;
+    }
+
+    const trimmed = shellPath.trim();
+    const unquoted =
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))
+            ? trimmed.slice(1, -1)
+            : trimmed;
+
+    try {
+        return fs.existsSync(unquoted) && fs.statSync(unquoted).isFile();
+    } catch {
+        return false;
+    }
+}
+
 function updateTerminalContext(): void {
     const hasCosmosShellTerminal = vscode.window.terminals.some((terminal) => terminal.name === 'Cosmos Shell');
     vscode.commands.executeCommand('setContext', 'vscodeDatabases.cosmosShellTerminalOpen', hasCosmosShellTerminal);
@@ -124,21 +144,24 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
 
     if (!isCosmosShellInstalled) {
         const settings = l10n.t('Settings');
-        void vscode.window
-            .showErrorMessage(
-                l10n.t(
-                    'Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.',
-                ),
-                settings,
-            )
-            .then((selection) => {
-                if (selection === settings) {
-                    void vscode.commands.executeCommand(
-                        'vscode.open',
-                        vscode.Uri.parse('vscode://settings/cosmosDB.shell.path'),
-                    );
-                }
-            });
+
+        let msg: string;
+        if (!isCosmosShellPathFound()) {
+            msg = l10n.t('Cosmos Shell path is not found. Please configure the correct path in settings.');
+        } else {
+            msg = l10n.t(
+                'Cosmos Shell is not installed or not found in PATH. Please install Cosmos Shell or configure its path in settings.',
+            );
+        }
+
+        void vscode.window.showErrorMessage(msg, settings).then((selection) => {
+            if (selection === settings) {
+                void vscode.commands.executeCommand(
+                    'vscode.open',
+                    vscode.Uri.parse('vscode://settings/cosmosDB.shell.path'),
+                );
+            }
+        });
         return;
     }
 

@@ -12,8 +12,8 @@ const COPILOT_EXTENSION_ID = 'github.copilot';
 const COPILOT_CHAT_EXTENSION_ID = 'github.copilot-chat';
 
 /**
- * Checks if the GitHub Copilot extension is installed and active.
- * @returns true if the Copilot extension is installed and active, false otherwise
+ * Checks if the GitHub Copilot extension is installed.
+ * @returns true if the Copilot extension is installed, false otherwise
  */
 export function isCopilotExtensionInstalled(): boolean {
     const copilotExtension = vscode.extensions.getExtension(COPILOT_EXTENSION_ID);
@@ -21,8 +21,8 @@ export function isCopilotExtensionInstalled(): boolean {
 }
 
 /**
- * Checks if the GitHub Copilot Chat extension is installed and active.
- * @returns true if the Copilot Chat extension is installed and active, false otherwise
+ * Checks if the GitHub Copilot Chat extension is installed.
+ * @returns true if the Copilot Chat extension is installed, false otherwise
  */
 export function isCopilotChatExtensionInstalled(): boolean {
     const copilotChatExtension = vscode.extensions.getExtension(COPILOT_CHAT_EXTENSION_ID);

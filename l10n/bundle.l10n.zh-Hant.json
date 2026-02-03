@@ -347,7 +347,7 @@
   "Partition Key changed": "磁碟分割索引鍵已變更",
   "Partition key is required.": "需要磁碟分割索引碼。",
   "Partition key must be unique.": "磁碟分區索引鍵必須是唯一的。",
-  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})",
+  "Partition key path can only contain ASCII letters (a-z, A-Z), numbers (0-9), underscores, and forward slashes. [Learn more]({0}{1})": "分割鍵路徑只能包含 ASCII 字母 (a-z、A-Z)、數字 (0-9)、底線和斜線。[深入了解]({0}{1})",
   "Pick \"{number}\" to confirm and continue.": "挑選 “{number}” 以確認並繼續。",
   "Please confirm by re-entering the previous value.": "請重新輸入前一個值以確認。",
   "Please contact the account owner to get the required permissions.": "請連絡帳戶擁有者以取得所需的權限。",

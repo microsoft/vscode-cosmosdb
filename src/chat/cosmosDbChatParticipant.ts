@@ -15,6 +15,7 @@ import {
     QUERY_EDITOR_CONTEXT_SUFFIX,
 } from './systemPrompt';
 import { buildIntentExtractionUserContent, buildParameterExtractionUserContent, wrapUserContent } from './userPayload';
+import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 
 // Interface for ChatRequest with optional model property (for compatibility with different VS Code versions)
 interface ExtendedChatRequest {
@@ -303,7 +304,7 @@ export class CosmosDbChatParticipant {
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
-        stream.markdown(`🎯 **Detected Intent:** ${intent.operation}\n\n`);
+        stream.markdown(`🎯 **Detected Intent:** ${safeMarkdownText(intent.operation)}\n\n`);
 
         if (intent.operation === 'help') {
             return this.handleHelpCommand(stream);
@@ -342,8 +343,8 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: intent.operation, method: 'intent' } };
         } catch (error) {
+            stream.markdown(safeErrorDisplay(error, '❌ Intent-based operation failed:'));
             const errorMessage = error instanceof Error ? error.message : String(error);
-            stream.markdown(`❌ Intent-based operation failed: ${errorMessage}`);
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }
     }
@@ -358,7 +359,7 @@ export class CosmosDbChatParticipant {
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
-        stream.markdown(`🔧 **Executing Command:** ${request.command}\n\n`);
+        stream.markdown(`🔧 **Executing Command:** ${safeMarkdownText(request.command || '')}\n\n`);
 
         // Try to get language model for parameter extraction
         let languageModel: vscode.LanguageModelChat | null = null;
@@ -398,7 +399,7 @@ export class CosmosDbChatParticipant {
             if (languageModel && request.prompt.trim()) {
                 try {
                     parameters = await this.extractParametersWithLLM(operationName, request.prompt, languageModel);
-                    stream.markdown(`🧠 **LLM Extracted Parameters:** ${JSON.stringify(parameters)}\n\n`);
+                    stream.markdown(`🧠 **LLM Extracted Parameters:** ${safeJsonDisplay(parameters)}\n\n`);
                 } catch (error) {
                     console.warn('LLM parameter extraction failed, using basic extraction:', error);
                 }
@@ -441,8 +442,8 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: request.command } };
         } catch (error) {
+            stream.markdown(safeErrorDisplay(error, '❌ Command failed:'));
             const errorMessage = error instanceof Error ? error.message : String(error);
-            stream.markdown(`❌ Command failed: ${errorMessage}`);
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }
     }
@@ -451,10 +452,10 @@ export class CosmosDbChatParticipant {
      * Handles editQuery results by showing the query diff and action buttons
      */
     private handleEditQueryResult(result: EditQueryResult, stream: vscode.ChatResponseStream): void {
-        // Show query context
+        // Show query context - sanitize database and container IDs
         let queryContext = `**Current Query Context:**\n`;
-        queryContext += `- **Database:** ${result.queryContext.databaseId}\n`;
-        queryContext += `- **Container:** ${result.queryContext.containerId}\n`;
+        queryContext += `- **Database:** ${safeMarkdownText(result.queryContext.databaseId)}\n`;
+        queryContext += `- **Container:** ${safeMarkdownText(result.queryContext.containerId)}\n`;
         if (result.queryContext.documentCount !== undefined) {
             queryContext += `- **Last Results:** ${result.queryContext.documentCount} documents returned\n`;
             if (result.queryContext.requestCharge !== undefined) {
@@ -465,15 +466,15 @@ export class CosmosDbChatParticipant {
 
         stream.markdown(queryContext);
 
-        // Show current query
-        stream.markdown(`**Current Query:**\n\`\`\`sql\n${result.currentQuery}\n\`\`\`\n\n`);
+        // Show current query - use safeCodeBlock to prevent SQL injection in markdown
+        stream.markdown(`**Current Query:**\n${safeCodeBlock(result.currentQuery, 'sql')}\n\n`);
 
-        // Show suggested query
-        stream.markdown(`**Suggested Query:**\n\`\`\`sql\n${result.suggestedQuery}\n\`\`\`\n\n`);
+        // Show suggested query - use safeCodeBlock to prevent SQL injection in markdown
+        stream.markdown(`**Suggested Query:**\n${safeCodeBlock(result.suggestedQuery, 'sql')}\n\n`);
 
-        // Show explanation
+        // Show explanation - sanitize LLM-generated explanation
         if (result.explanation) {
-            stream.markdown(`**Explanation:** ${result.explanation}\n\n`);
+            stream.markdown(`**Explanation:** ${safeMarkdownText(result.explanation)}\n\n`);
         }
 
         stream.button({
@@ -571,9 +572,9 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
             if (languageModel) {
                 const llmIntent = await this.extractIntentWithLLM(request.prompt, languageModel);
                 if (llmIntent) {
-                    stream.markdown(`🧠 **LLM Detected Intent:** ${llmIntent.operation}\n`);
+                    stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
                     if (Object.keys(llmIntent.parameters).length > 0) {
-                        stream.markdown(`**Parameters:** ${JSON.stringify(llmIntent.parameters)}\n\n`);
+                        stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
                     } else {
                         stream.markdown('\n');
                     }

@@ -12,6 +12,7 @@ import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult'
 import { truncateString } from '../../utils/convertors';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { renderAsCodeBlock } from '../../utils/sanitization';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -76,11 +77,11 @@ export abstract class CosmosDBItemResourceItem
         const pkFieldNames = new Set(pkPaths.map((p) => p.replace(/^\//, '')));
         const lines: string[] = [];
 
-        // ID on its own line
+        // ID on its own line - use renderAsCodeBlock to prevent injection
         // Table header
         lines.push(`| | |`);
         lines.push(`|--|--|`);
-        lines.push(`|**id**|${truncateString(id, CosmosDBItemResourceItem.MAX_VALUE_LENGTH)}|`);
+        lines.push(`|**id**|${renderAsCodeBlock(truncateString(id, CosmosDBItemResourceItem.MAX_VALUE_LENGTH))}|`);
         // Partition key rows (italic keys)
         for (let i = 0; i < pkPaths.length; i++) {
             const fieldName = pkPaths[i].replace(/^\//, '');
@@ -111,33 +112,37 @@ export abstract class CosmosDBItemResourceItem
         return Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
     }
 
+    /**
+     * Safely formats a value for display in a markdown tooltip.
+     * Uses renderAsCodeBlock to prevent markdown injection and XSS attacks.
+     */
     private formatValue(value: unknown): string {
         if (value === null) {
-            return '`null`';
+            return renderAsCodeBlock('null');
         }
         if (value === undefined) {
-            return '`undefined`';
+            return renderAsCodeBlock('undefined');
         }
         if (typeof value === 'object') {
             try {
                 const json = truncateString(JSON.stringify(value), CosmosDBItemResourceItem.MAX_VALUE_LENGTH);
-                return '`' + json + '`';
+                return renderAsCodeBlock(json);
             } catch {
-                return '`[object]`';
+                return renderAsCodeBlock('[object]');
             }
         }
         if (typeof value === 'string') {
             const truncatedValue = truncateString(value, CosmosDBItemResourceItem.MAX_VALUE_LENGTH);
-            return '`' + truncatedValue + '`';
+            return renderAsCodeBlock(truncatedValue);
         }
         if (typeof value === 'number' || typeof value === 'boolean') {
             return String(value);
         }
         // For any other type (symbol, function, etc.), use JSON or fallback
         try {
-            return '`' + JSON.stringify(value) + '`';
+            return renderAsCodeBlock(JSON.stringify(value));
         } catch {
-            return '`[unknown]`';
+            return renderAsCodeBlock('[unknown]');
         }
     }
 

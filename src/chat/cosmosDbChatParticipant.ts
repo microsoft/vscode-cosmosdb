@@ -343,7 +343,7 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: intent.operation, method: 'intent' } };
         } catch (error) {
-            stream.markdown(safeErrorDisplay(error, '❌ Intent-based operation failed:'));
+            stream.markdown(safeErrorDisplay(error as Error | string, '❌ Intent-based operation failed:'));
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }
@@ -442,7 +442,7 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: request.command } };
         } catch (error) {
-            stream.markdown(safeErrorDisplay(error, '❌ Command failed:'));
+            stream.markdown(safeErrorDisplay(error as Error | string, '❌ Command failed:'));
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }

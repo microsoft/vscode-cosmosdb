@@ -189,16 +189,16 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     }
 
     const cosmosShellCredential = getCosmosShellCredential(node);
-    const rawConnectionString = node.model.accountInfo.endpoint;
-    if (!rawConnectionString) {
+    const rawEndpoint = node.model.accountInfo.endpoint;
+    if (!rawEndpoint) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
         return;
     }
 
     if (useMcp) {
-        args = ['--mcp', '--mcp-port', mcpPort, '--connect', rawConnectionString];
+        args = ['--mcp', '--mcp-port', mcpPort, '--connect', rawEndpoint];
     } else {
-        args = ['--connect', rawConnectionString];
+        args = ['--connect', rawEndpoint];
     }
 
     const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
@@ -219,7 +219,7 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     // Update context after creating terminal
     updateTerminalContext();
     // Store the connection string for this terminal
-    terminalConnectionStrings.set(terminal, rawConnectionString);
+    terminalConnectionStrings.set(terminal, rawEndpoint);
 }
 
 function getGoToContainerCommand(database: DatabaseDefinition, container: ContainerDefinition): string | undefined {
@@ -358,7 +358,7 @@ export function isCosmosShellSupportEnabled(): boolean {
         return false;
     }
 }
-const McpServerName = 'cosmosdb-shell-mcp-server';
+const McpServerName = 'Azure Cosmos DB Shell';
 
 export function registerMcpServer(context: vscode.ExtensionContext): void {
     try {

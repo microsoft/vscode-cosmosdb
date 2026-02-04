@@ -122,9 +122,10 @@ export async function activateInternal(
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
+
+        registerMcpServer(context);
+        registerCosmosShellLanguageServer(context);
     });
-    registerMcpServer(context);
-    registerCosmosShellLanguageServer(context);
 
     const exportedApis = [
         <AzureExtensionApi>{

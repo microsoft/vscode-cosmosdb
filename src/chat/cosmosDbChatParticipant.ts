@@ -536,7 +536,11 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
         try {
             // Check if AI features are available
             if (!(await areAIFeaturesEnabled())) {
-                stream.markdown(l10n.t('AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.'));
+                stream.markdown(
+                    l10n.t(
+                        'AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.',
+                    ),
+                );
                 return { metadata: { command: '', result: 'AI features disabled' } };
             }
 

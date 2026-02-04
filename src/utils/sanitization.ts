@@ -149,3 +149,22 @@ export function safeCodeBlock(content: string, language: string = ''): string {
     const escaped = content.replace(/```/g, '` `` ');
     return `\`\`\`${language}\n${escaped}\n\`\`\``;
 }
+
+/**
+ * Sanitizes text for safe use in SQL single-line comments (--).
+ * Prevents breaking out of comment context by escaping newlines.
+ * This is specifically for query generation where user prompts are embedded in SQL comments.
+ *
+ * @param text The text to sanitize for SQL comments
+ * @returns The sanitized text safe for use in SQL comments
+ */
+export function sanitizeSqlComment(text: string): string {
+    // Replace newlines with spaces to prevent breaking out of single-line comments
+    // Also normalize other whitespace characters that could cause issues
+    return text
+        .replace(/\r\n/g, ' ') // Windows line endings
+        .replace(/\n/g, ' ') // Unix line endings
+        .replace(/\r/g, ' ') // Mac line endings
+        .replace(/\t/g, ' ') // Tabs
+        .trim();
+}

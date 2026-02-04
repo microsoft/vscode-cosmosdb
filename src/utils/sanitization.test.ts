@@ -12,6 +12,7 @@ import {
     safeJsonDisplay,
     safeErrorDisplay,
     safeCodeBlock,
+    sanitizeSqlComment,
 } from './sanitization';
 
 describe('sanitization', () => {
@@ -194,6 +195,46 @@ describe('sanitization', () => {
             const content = 'line1\nline2\nline3';
             const result = safeCodeBlock(content, 'sql');
             expect(result).toBe('```sql\nline1\nline2\nline3\n```');
+        });
+    });
+
+    describe('sanitizeSqlComment', () => {
+        it('should replace newlines with spaces', () => {
+            const result = sanitizeSqlComment('line1\nline2\nline3');
+            expect(result).toBe('line1 line2 line3');
+        });
+
+        it('should handle Windows line endings', () => {
+            const result = sanitizeSqlComment('line1\r\nline2\r\nline3');
+            expect(result).toBe('line1 line2 line3');
+        });
+
+        it('should handle Mac line endings', () => {
+            const result = sanitizeSqlComment('line1\rline2\rline3');
+            expect(result).toBe('line1 line2 line3');
+        });
+
+        it('should replace tabs with spaces', () => {
+            const result = sanitizeSqlComment('word1\tword2\tword3');
+            expect(result).toBe('word1 word2 word3');
+        });
+
+        it('should trim leading and trailing whitespace', () => {
+            const result = sanitizeSqlComment('  text with spaces  ');
+            expect(result).toBe('text with spaces');
+        });
+
+        it('should prevent SQL comment injection', () => {
+            const malicious = 'user input\n; DROP TABLE users; --';
+            const result = sanitizeSqlComment(malicious);
+            expect(result).not.toContain('\n');
+            expect(result).toBe('user input ; DROP TABLE users; --');
+        });
+
+        it('should handle multiline prompt safely', () => {
+            const multilinePrompt = 'Show me all users\nwhere status is active\nand age > 18';
+            const result = sanitizeSqlComment(multilinePrompt);
+            expect(result).toBe('Show me all users where status is active and age > 18');
         });
     });
 

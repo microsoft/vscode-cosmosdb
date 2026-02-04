@@ -25,6 +25,7 @@ import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -785,7 +786,10 @@ export class QueryEditorTab extends BaseTab {
                 }
 
                 // Comment the original prompt and prepend the generated query
-                const finalQuery = `-- Generated from: ${prompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${currentQuery.split('\n').join('\n-- ')}`;
+                // Sanitize user inputs to prevent SQL comment injection
+                const sanitizedPrompt = sanitizeSqlComment(prompt);
+                const sanitizedCurrentQuery = currentQuery.split('\n').map(line => sanitizeSqlComment(line)).join('\n-- ');
+                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
 
                 await this.channel.postMessage({
                     type: 'event',

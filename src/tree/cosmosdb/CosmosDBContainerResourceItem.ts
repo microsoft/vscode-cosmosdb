@@ -6,7 +6,6 @@
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { escapeMarkdown } from '../../utils/sanitization';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
@@ -55,9 +54,8 @@ export abstract class CosmosDBContainerResourceItem
         const lines: string[] = [];
         lines.push(`**Partition Keys**`);
         lines.push('');
-        // Escape markdown in partition key paths to prevent injection
         for (const path of pkPaths) {
-            lines.push(`*${escapeMarkdown(path)}*`);
+            lines.push(`*${path}*`);
         }
         return lines.join('  \n');
     }

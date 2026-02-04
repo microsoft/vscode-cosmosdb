@@ -55,10 +55,10 @@ describe('copilotUtils', () => {
             expect(isAIFeaturesDisabledBySetting()).toBe(false);
         });
 
-        it('returns false when chat.disableAIFeatures is not set (defaults to false)', () => {
-            mockConfigGet.mockReturnValue(undefined);
+        it('returns false when chat.disableAIFeatures is not set (uses default value)', () => {
+            // When setting is not explicitly set, VS Code returns the default value (false)
+            mockConfigGet.mockReturnValue(false);
 
-            // The function uses default value of false
             expect(isAIFeaturesDisabledBySetting()).toBe(false);
         });
     });

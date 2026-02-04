@@ -1,6 +1,17 @@
 # Change Log
 
-## 0.32.0
+## 0.31.2
+
+### Fixed
+
+- Fixed an issue where opening a deleted Item was loading indefinitely (#2822).
+- Fixed an issue where Serverless NoSQL accounts were not loading (#2902).
+- Fixed an issue where text in Fluent UI tooltips, dropdowns and tabs was invisible for certain dark themes (e.g., Nord)(#2904).
+- Fixed an issue where LLM assets were added to all Chats without relation to Cosmos DB (#2901)
+
+### Added
+
+- Added support for connecting using Read-Only keys, if the user account doesn't have access to all account keys (#2856).
 
 ### Removed
 
@@ -18,6 +29,15 @@
 ### Changed
 
 - Update source map configuration for development mode (fixes debugging in VS Code).
+- Updated several dependencies to address vulnerabilities.
+- Updated the link to the privacy statement in the Readme (#2896).
+
+## 0.31.1
+
+### Fixed
+
+- Fixed an issue where the Query Editor didn't resize properly with it's parent Tab (#2869).
+- Added missing translations (#2878).
 
 ## 0.31.0
 

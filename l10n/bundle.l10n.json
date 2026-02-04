@@ -80,6 +80,8 @@
   "Connection String": "Connection String",
   "Connection string cannot be empty": "Connection string cannot be empty",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"",
+  "Connection timed out while verifying account credentials.": "Connection timed out while verifying account credentials.",
+  "Connection timed out. Please verify the connection string and that the host is reachable.": "Connection timed out. Please verify the connection string and that the host is reachable.",
   "Container {0} not found": "Container {0} not found",
   "Container name cannot be longer than 255 characters": "Container name cannot be longer than 255 characters",
   "Container name cannot contain the characters '\\', '/', '#', '?'": "Container name cannot contain the characters '\\', '/', '#', '?'",

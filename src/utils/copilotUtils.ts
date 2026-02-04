@@ -52,8 +52,8 @@ export async function areCopilotModelsAvailable(): Promise<boolean> {
  * 2. GitHub Copilot Chat extension is installed (required for chat participant)
  * 3. Copilot language models are available
  *
- * Note: We use areCopilotModelsAvailable() as the primary check since the main
- * GitHub.copilot extension is now built-in and not detectable via getExtension().
+ * Note: We use areCopilotModelsAvailable() as the primary check since the
+ * GitHub.copilot extension is not detectable via getExtension().
  * @returns Promise<boolean> true if all requirements are met, false otherwise
  */
 export async function areAIFeaturesEnabled(): Promise<boolean> {
@@ -90,6 +90,7 @@ async function checkAIFeaturesWithRetry(
 
     // Only retry if we're in an "enabling" scenario (extension just installed/enabled or setting just enabled).
     // Don't retry when disabling - the unavailability is intentional, not transient.
+    // Disabling or uninstalling currently requires restarting VS Code to fully take effect.
     if (shouldRetry && !isAIFeaturesDisabledBySetting() && retryCount > 0) {
         setTimeout(() => {
             void checkAIFeaturesWithRetry(callback, shouldRetry, retryCount - 1, retryDelayMs);

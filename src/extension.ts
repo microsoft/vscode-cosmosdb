@@ -114,14 +114,15 @@ export async function activateInternal(
             },
         );
 
-        // Initialize the CosmosDB chat participant only if AI features are available
+        // Initialize the CosmosDB chat participant
+        // The chat participant is always registered, but will show helpful error messages
+        // if AI features are not available (Copilot not installed, not signed in, or disabled)
         CosmosDbOperationsService.initialize(context);
-        ext.isAIFeaturesEnabled = areAIFeaturesEnabled();
+        ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
 
-        let chatParticipant: CosmosDbChatParticipant | undefined;
-        if (ext.isAIFeaturesEnabled) {
-            chatParticipant = new CosmosDbChatParticipant(context);
-        }
+        // Always create the chat participant so users can see why it's not working
+        const chatParticipant = new CosmosDbChatParticipant(context);
+        void chatParticipant; // Acknowledge the variable is intentionally unused after creation
 
         // Listen for changes to extension availability (Copilot install/uninstall)
         context.subscriptions.push(
@@ -129,12 +130,6 @@ export async function activateInternal(
                 ext.isAIFeaturesEnabled = available;
                 // Notify all open QueryEditorTabs about the change
                 void QueryEditorTab.notifyAIFeaturesChanged(available);
-                // If Copilot becomes available and we haven't created the chat participant yet, create it
-                if (available && !chatParticipant) {
-                    chatParticipant = new CosmosDbChatParticipant(context);
-                }
-                // Note: We cannot dispose the chat participant when Copilot is uninstalled
-                // because VS Code doesn't allow re-registration with the same ID
             }),
         );
 

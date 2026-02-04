@@ -3,8 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { areAIFeaturesEnabled } from '../utils/copilotUtils';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
@@ -532,6 +534,12 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
         token: vscode.CancellationToken,
     ): Promise<vscode.ChatResult> {
         try {
+            // Check if AI features are available
+            if (!(await areAIFeaturesEnabled())) {
+                stream.markdown(l10n.t('AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.'));
+                return { metadata: { command: '', result: 'AI features disabled' } };
+            }
+
             // Check if there's an active connection or query editor
             const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
             const hasConnection = activeQueryEditors.length > 0;

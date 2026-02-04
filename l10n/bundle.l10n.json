@@ -31,6 +31,7 @@
   "Add new item in separate tab": "Add new item in separate tab",
   "Advanced": "Advanced",
   "AI": "AI",
+  "AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.": "AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.",
   "All": "All",
   "All loaded data will be lost. The query will be executed again in new session.": "All loaded data will be lost. The query will be executed again in new session.",
   "Always upload": "Always upload",

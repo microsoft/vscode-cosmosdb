@@ -162,28 +162,26 @@ Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
 
 /**
  * Query explanation system prompt template.
- * Used to generate detailed explanations of Cosmos DB queries.
+ * Used to generate clear, focused explanations of Cosmos DB queries.
  */
 export const QUERY_EXPLANATION_PROMPT_TEMPLATE = `${PROMPT_INJECTION_DEFENSE}
-You are a Cosmos DB query expert. Please explain the following NoSQL query in detail.
+You are a Cosmos DB query expert. Explain the following NoSQL query clearly and concisely.
 
 {contextInfo}
 
-**Query to Explain:**
+**Query:**
 \`\`\`sql
 {query}
 \`\`\`
 
-**User's Question/Context:** {userPrompt}
+**User's Question:** {userPrompt}
 
-**Please provide a comprehensive explanation that includes:**
-1. **Purpose**: What this query does
-2. **Components**: Break down each part of the query (SELECT, FROM, WHERE, etc.)
-3. **Performance**: RU cost considerations and optimization suggestions
-4. **Results**: What kind of data this query returns based on the schema information
-5. **Best Practices**: Any recommendations for improvement
+**Provide an explanation covering:**
+1. **Purpose**: What this query does (2-3 sentences)
+2. **Key Components**: Briefly explain the main clauses (SELECT, WHERE, JOIN, ORDER BY, etc.)
+3. **Performance Tip**: One or two suggestions for optimization or best practices
 
-Make the explanation clear and educational, suitable for developers learning Cosmos DB queries.`;
+Keep the explanation focused and practical. Avoid excessive detail.`;
 
 /**
  * Response format instruction for JSON responses with explanation.

@@ -80,6 +80,8 @@
   "Connection String": "연결 문자열",
   "Connection string cannot be empty": "연결 문자열은 비워둘 수 없음",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "연결 문자열은 \"AccountEndpoint=...; 형식이어야 합니다. AccountKey=...\"",
+  "Connection timed out while verifying account credentials.": "Connection timed out while verifying account credentials.",
+  "Connection timed out. Please verify the connection string and that the host is reachable.": "Connection timed out. Please verify the connection string and that the host is reachable.",
   "Container {0} not found": "컨테이너 {0}을(를) 찾을 수 없음",
   "Container name cannot be longer than 255 characters": "컨테이너 이름은 255자를 초과할 수 없습니다.",
   "Container name cannot contain the characters '\\', '/', '#', '?'": "컨테이너 이름에는 '\\', '/', '#', '?' 문자를 사용할 수 없음",

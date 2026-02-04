@@ -80,6 +80,8 @@
   "Connection String": "[الهاتفConnection Stringעִבְרִית !]",
   "Connection string cannot be empty": "[الهاتفConnection string cannot be emptyעִבְרִית عليكעִ!]",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "[الهاتفConnection string must be of the form \"AccountEndpoint=…;AccountKey=…\"עִבְרִית عليكעִבְרִית عليكעִבְ!]",
+  "Connection timed out while verifying account credentials.": "[الهاتفConnection timed out while verifying account credentials.עִבְרִית عليكעִבְרִית علي!]",
+  "Connection timed out. Please verify the connection string and that the host is reachable.": "[الهاتفConnection timed out. Please verify the connection string and that the host is reachable.עִבְרִית عليكעִבְרִית عليكעִבְרִית علي!]",
   "Container {0} not found": "[الهاتفContainer {0} not foundעִבְרִית عل!]",
   "Container name cannot be longer than 255 characters": "[الهاتفContainer name cannot be longer than 255 charactersעִבְרִית عليكעִבְרִית !]",
   "Container name cannot contain the characters '\\', '/', '#', '?'": "[الهاتفContainer name cannot contain the characters '\\', '/', '#', '?'עִבְרִית عليكעִבְרִית عليكעִ!]",

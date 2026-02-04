@@ -7,6 +7,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { areAIFeaturesEnabled } from '../utils/copilotUtils';
+import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
@@ -305,7 +306,7 @@ export class CosmosDbChatParticipant {
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
-        stream.markdown(l10n.t('🎯 **Detected Intent:** {0}\n\n', intent.operation));
+        stream.markdown(`🎯 **Detected Intent:** ${safeMarkdownText(intent.operation)}\n\n`);
 
         if (intent.operation === 'help') {
             return this.handleHelpCommand(stream);
@@ -344,8 +345,8 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: intent.operation, method: 'intent' } };
         } catch (error) {
+            stream.markdown(safeErrorDisplay(error as Error | string, '❌ Intent-based operation failed:'));
             const errorMessage = error instanceof Error ? error.message : String(error);
-            stream.markdown(l10n.t('❌ Intent-based operation failed: {0}', errorMessage));
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }
     }
@@ -360,7 +361,7 @@ export class CosmosDbChatParticipant {
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
-        stream.markdown(l10n.t('🔧 **Executing Command:** {0}\n\n', request.command ?? ''));
+        stream.markdown(`🔧 **Executing Command:** ${safeMarkdownText(request.command || '')}\n\n`);
 
         // Try to get language model for parameter extraction
         let languageModel: vscode.LanguageModelChat | null = null;
@@ -400,7 +401,7 @@ export class CosmosDbChatParticipant {
             if (languageModel && request.prompt.trim()) {
                 try {
                     parameters = await this.extractParametersWithLLM(operationName, request.prompt, languageModel);
-                    stream.markdown(l10n.t('🧠 **LLM Extracted Parameters:** {0}\n\n', JSON.stringify(parameters)));
+                    stream.markdown(`🧠 **LLM Extracted Parameters:** ${safeJsonDisplay(parameters)}\n\n`);
                 } catch (error) {
                     console.warn('LLM parameter extraction failed, using basic extraction:', error);
                 }
@@ -443,8 +444,8 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: request.command } };
         } catch (error) {
+            stream.markdown(safeErrorDisplay(error as Error | string, '❌ Command failed:'));
             const errorMessage = error instanceof Error ? error.message : String(error);
-            stream.markdown(l10n.t('❌ Command failed: {0}', errorMessage));
             return { metadata: { command: 'cosmosdb', error: errorMessage } };
         }
     }
@@ -453,9 +454,10 @@ export class CosmosDbChatParticipant {
      * Handles editQuery results by showing the query diff and action buttons
      */
     private handleEditQueryResult(result: EditQueryResult, stream: vscode.ChatResponseStream): void {
-        let queryContext = l10n.t('**Current Query Context:**') + '\n';
-        queryContext += l10n.t('- **Database:** {0}', result.queryContext.databaseId) + '\n';
-        queryContext += l10n.t('- **Container:** {0}', result.queryContext.containerId) + '\n';
+        // Show query context - sanitize database and container IDs
+        let queryContext = `**Current Query Context:**\n`;
+        queryContext += `- **Database:** ${safeMarkdownText(result.queryContext.databaseId)}\n`;
+        queryContext += `- **Container:** ${safeMarkdownText(result.queryContext.containerId)}\n`;
         if (result.queryContext.documentCount !== undefined) {
             queryContext +=
                 l10n.t('- **Last Results:** {0} documents returned', result.queryContext.documentCount) + '\n';
@@ -468,15 +470,15 @@ export class CosmosDbChatParticipant {
 
         stream.markdown(queryContext);
 
-        // Show current query
-        stream.markdown(l10n.t('**Current Query:**') + `\n\`\`\`sql\n${result.currentQuery}\n\`\`\`\n\n`);
+        // Show current query - use safeCodeBlock to prevent SQL injection in markdown
+        stream.markdown(`**Current Query:**\n${safeCodeBlock(result.currentQuery, 'sql')}\n\n`);
 
-        // Show suggested query
-        stream.markdown(l10n.t('**Suggested Query:**') + `\n\`\`\`sql\n${result.suggestedQuery}\n\`\`\`\n\n`);
+        // Show suggested query - use safeCodeBlock to prevent SQL injection in markdown
+        stream.markdown(`**Suggested Query:**\n${safeCodeBlock(result.suggestedQuery, 'sql')}\n\n`);
 
-        // Show explanation
+        // Show explanation - sanitize LLM-generated explanation
         if (result.explanation) {
-            stream.markdown(l10n.t('**Explanation:** {0}', result.explanation) + '\n\n');
+            stream.markdown(`**Explanation:** ${safeMarkdownText(result.explanation)}\n\n`);
         }
 
         stream.button({
@@ -584,9 +586,9 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
             if (languageModel) {
                 const llmIntent = await this.extractIntentWithLLM(request.prompt, languageModel);
                 if (llmIntent) {
-                    stream.markdown(l10n.t('🧠 **LLM Detected Intent:** {0}', llmIntent.operation) + '\n');
+                    stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
                     if (Object.keys(llmIntent.parameters).length > 0) {
-                        stream.markdown(l10n.t('**Parameters:** {0}', JSON.stringify(llmIntent.parameters)) + '\n\n');
+                        stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
                     } else {
                         stream.markdown('\n');
                     }

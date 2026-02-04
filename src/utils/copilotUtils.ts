@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 
 /**
@@ -62,65 +61,6 @@ export async function areAIFeaturesEnabled(): Promise<boolean> {
         return false;
     }
     return isCopilotChatExtensionInstalled() && (await areCopilotModelsAvailable());
-}
-
-/**
- * Gets a user-friendly message explaining why AI features are disabled and how to enable them.
- * @returns An object with the reason type, reason message and instructions, or null if AI features are enabled
- */
-export async function getAIFeaturesDisabledReason(): Promise<{
-    reasonType: 'setting' | 'extension' | 'models';
-    reason: string;
-    instructions: string;
-} | null> {
-    // Check if disabled by setting first
-    if (isAIFeaturesDisabledBySetting()) {
-        return {
-            reasonType: 'setting',
-            reason: l10n.t('AI features are disabled in VS Code settings.'),
-            instructions: l10n.t(
-                'To enable AI features:\n' +
-                    '1. Open VS Code Settings (Ctrl+,)\n' +
-                    '2. Search for "chat.disableAIFeatures"\n' +
-                    '3. Uncheck the "Chat: Disable AI Features" option\n' +
-                    '4. Reload VS Code if needed',
-            ),
-        };
-    }
-
-    // Check if Copilot Chat extension is installed
-    if (!isCopilotChatExtensionInstalled()) {
-        return {
-            reasonType: 'extension',
-            reason: l10n.t('GitHub Copilot Chat extension is not installed.'),
-            instructions: l10n.t(
-                'To enable AI features:\n' +
-                    '1. Open the Extensions view (Ctrl+Shift+X)\n' +
-                    '2. Search for "GitHub Copilot Chat"\n' +
-                    '3. Install the extension\n' +
-                    '4. Sign in with your GitHub account',
-            ),
-        };
-    }
-
-    // Check if Copilot models are available
-    const modelsAvailable = await areCopilotModelsAvailable();
-    if (!modelsAvailable) {
-        return {
-            reasonType: 'models',
-            reason: l10n.t('GitHub Copilot is not active or you are not signed in.'),
-            instructions: l10n.t(
-                'To enable AI features:\n' +
-                    '1. Ensure you have an active GitHub Copilot subscription\n' +
-                    '2. Click on the Copilot icon in the status bar\n' +
-                    '3. Sign in with your GitHub account\n' +
-                    '4. If already signed in, try signing out and back in',
-            ),
-        };
-    }
-
-    // AI features are enabled
-    return null;
 }
 
 /**

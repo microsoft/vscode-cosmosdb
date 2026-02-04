@@ -7,22 +7,9 @@ import * as vscode from 'vscode';
 import {
     areAIFeaturesEnabled,
     areCopilotModelsAvailable,
-    getAIFeaturesDisabledReason,
     isAIFeaturesDisabledBySetting,
     isCopilotChatExtensionInstalled,
 } from './copilotUtils';
-
-// Mock the @vscode/l10n module
-jest.mock('@vscode/l10n', () => ({
-    t: jest.fn((str: string, ...args: unknown[]) => {
-        // Simple mock that returns the string with placeholders replaced
-        let result = str;
-        args.forEach((arg, index) => {
-            result = result.replace(`{${index}}`, String(arg));
-        });
-        return result;
-    }),
-}));
 
 // Mock the vscode module
 jest.mock('vscode', () => ({
@@ -153,54 +140,6 @@ describe('copilotUtils', () => {
             (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
-        });
-    });
-
-    describe('getAIFeaturesDisabledReason', () => {
-        it('returns settings reason when AI features are disabled by setting', async () => {
-            mockConfigGet.mockReturnValue(true); // AI features disabled by setting
-
-            const result = await getAIFeaturesDisabledReason();
-
-            expect(result).not.toBeNull();
-            expect(result?.reasonType).toBe('setting');
-            expect(result?.reason).toBeDefined();
-            expect(result?.instructions).toBeDefined();
-        });
-
-        it('returns extension reason when Copilot Chat extension is not installed', async () => {
-            mockConfigGet.mockReturnValue(false); // AI features not disabled
-            (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined); // Extension not installed
-
-            const result = await getAIFeaturesDisabledReason();
-
-            expect(result).not.toBeNull();
-            expect(result?.reasonType).toBe('extension');
-            expect(result?.reason).toBeDefined();
-            expect(result?.instructions).toBeDefined();
-        });
-
-        it('returns models reason when Copilot models are not available', async () => {
-            mockConfigGet.mockReturnValue(false); // AI features not disabled
-            (vscode.extensions.getExtension as jest.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' }); // Extension installed
-            (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([]); // No models available
-
-            const result = await getAIFeaturesDisabledReason();
-
-            expect(result).not.toBeNull();
-            expect(result?.reasonType).toBe('models');
-            expect(result?.reason).toBeDefined();
-            expect(result?.instructions).toBeDefined();
-        });
-
-        it('returns null when AI features are fully enabled', async () => {
-            mockConfigGet.mockReturnValue(false); // AI features not disabled
-            (vscode.extensions.getExtension as jest.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' }); // Extension installed
-            (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([{ id: 'model1' }]); // Models available
-
-            const result = await getAIFeaturesDisabledReason();
-
-            expect(result).toBeNull();
         });
     });
 });

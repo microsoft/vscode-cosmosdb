@@ -133,6 +133,20 @@ export class QueryEditorTab extends BaseTab {
         return this.panel.visible;
     }
 
+    /**
+     * Broadcasts AI features availability change to all open QueryEditorTabs
+     */
+    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+        const notifications = Array.from(QueryEditorTab.openTabs).map((tab) =>
+            tab.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [isAIFeaturesEnabled],
+            }),
+        );
+        await Promise.all(notifications);
+    }
+
     public async updateQuery(query: string): Promise<void> {
         await this.channel.postMessage({
             type: 'event',
@@ -159,6 +173,12 @@ export class QueryEditorTab extends BaseTab {
                 type: 'event',
                 name: 'isSurveyCandidateChanged',
                 params: [!getIsSurveyDisabledGlobally()],
+            });
+            // Send AI features availability state
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [ext.isAIFeaturesEnabled],
             });
         });
     }

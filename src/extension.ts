@@ -28,12 +28,14 @@ import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { QueryEditorTab } from './panels/QueryEditorTab';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { areAIFeaturesEnabled, onCopilotAvailabilityChanged } from './utils/copilotUtils';
 import { globalUriHandler } from './vscodeUriHandler';
 
 export async function activateInternal(
@@ -113,8 +115,23 @@ export async function activateInternal(
         );
 
         // Initialize the CosmosDB chat participant
+        // The chat participant is always registered, but will show helpful error messages
+        // if AI features are not available (Copilot not installed, not signed in, or disabled)
         CosmosDbOperationsService.initialize(context);
-        new CosmosDbChatParticipant(context);
+        ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
+
+        // Always create the chat participant so users can see why it's not working
+        const chatParticipant = new CosmosDbChatParticipant(context);
+        void chatParticipant; // Acknowledge the variable is intentionally unused after creation
+
+        // Listen for changes to extension availability (Copilot install/uninstall)
+        context.subscriptions.push(
+            onCopilotAvailabilityChanged((available) => {
+                ext.isAIFeaturesEnabled = available;
+                // Notify all open QueryEditorTabs about the change
+                void QueryEditorTab.notifyAIFeaturesChanged(available);
+            }),
+        );
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

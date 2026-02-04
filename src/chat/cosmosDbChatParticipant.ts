@@ -3,8 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { areAIFeaturesEnabled } from '../utils/copilotUtils';
+import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
@@ -15,7 +18,6 @@ import {
     QUERY_EDITOR_CONTEXT_SUFFIX,
 } from './systemPrompt';
 import { buildIntentExtractionUserContent, buildParameterExtractionUserContent, wrapUserContent } from './userPayload';
-import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 
 // Interface for ChatRequest with optional model property (for compatibility with different VS Code versions)
 interface ExtendedChatRequest {
@@ -457,12 +459,14 @@ export class CosmosDbChatParticipant {
         queryContext += `- **Database:** ${safeMarkdownText(result.queryContext.databaseId)}\n`;
         queryContext += `- **Container:** ${safeMarkdownText(result.queryContext.containerId)}\n`;
         if (result.queryContext.documentCount !== undefined) {
-            queryContext += `- **Last Results:** ${result.queryContext.documentCount} documents returned\n`;
+            queryContext +=
+                l10n.t('- **Last Results:** {0} documents returned', result.queryContext.documentCount) + '\n';
             if (result.queryContext.requestCharge !== undefined) {
-                queryContext += `- **Request Charge:** ${result.queryContext.requestCharge.toFixed(2)} RUs\n`;
+                queryContext +=
+                    l10n.t('- **Request Charge:** {0} RUs', result.queryContext.requestCharge.toFixed(2)) + '\n';
             }
         }
-        queryContext += `\n`;
+        queryContext += '\n';
 
         stream.markdown(queryContext);
 
@@ -479,13 +483,13 @@ export class CosmosDbChatParticipant {
 
         stream.button({
             command: 'cosmosDB.applyQuerySuggestion',
-            title: '✅ Update Query',
+            title: l10n.t('✅ Update Query'),
             arguments: [result.connection, result.suggestedQuery],
         });
 
         stream.button({
             command: 'cosmosDB.openQuerySideBySide',
-            title: '🔍 Open Side-by-Side',
+            title: l10n.t('🔍 Open Side-by-Side'),
             arguments: [result.connection, result.suggestedQuery],
         });
 
@@ -496,7 +500,7 @@ export class CosmosDbChatParticipant {
      * Handles help command requests
      */
     private handleHelpCommand(stream: vscode.ChatResponseStream): Promise<vscode.ChatResult> {
-        const helpText = `## Cosmos DB (NoSQL) Assistant Commands
+        const helpText = l10n.t(`## Cosmos DB (NoSQL) Assistant Commands
 
 ### **Quick Commands:**
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
@@ -517,7 +521,7 @@ You can also use natural language:
 - 📊 Query explanation
 - ✨ AI-powered query generation from natural language
 
-For more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).`;
+For more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).`);
 
         stream.markdown(helpText);
         return Promise.resolve({ metadata: { command: 'cosmosdb', operation: 'help' } });
@@ -533,18 +537,28 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
         token: vscode.CancellationToken,
     ): Promise<vscode.ChatResult> {
         try {
+            // Check if AI features are available
+            if (!(await areAIFeaturesEnabled())) {
+                stream.markdown(
+                    l10n.t(
+                        'AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.',
+                    ),
+                );
+                return { metadata: { command: '', result: 'AI features disabled' } };
+            }
+
             // Check if there's an active connection or query editor
             const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
             const hasConnection = activeQueryEditors.length > 0;
 
             if (!hasConnection) {
-                stream.markdown('⚠️ **No Cosmos DB connection found.**\n\n');
-                stream.markdown('Please connect to a Cosmos DB container to use the chat assistant.\n\n');
+                stream.markdown(l10n.t('⚠️ **No Cosmos DB connection found.**') + '\n\n');
+                stream.markdown(l10n.t('Please connect to a Cosmos DB container to use the chat assistant.') + '\n\n');
 
                 // Add a button to open the query editor which will prompt for connection
                 stream.button({
                     command: 'cosmosDB.openNoSqlQueryEditor',
-                    title: '🔌 Open Query Editor',
+                    title: l10n.t('🔌 Open Query Editor'),
                     arguments: [],
                 });
 
@@ -600,7 +614,7 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
                 const models = await vscode.lm.selectChatModels({});
 
                 if (models.length === 0) {
-                    stream.markdown('❌ No language model available. Please ensure GitHub Copilot is enabled.');
+                    stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
                     return { metadata: { command: 'cosmosdb' } };
                 }
 
@@ -658,9 +672,9 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
 
             if (error instanceof vscode.LanguageModelError) {
                 // Handle specific language model errors
-                stream.markdown('❌ Language model error: ' + error.message);
+                stream.markdown(l10n.t('❌ Language model error: {0}', error.message));
             } else {
-                stream.markdown('❌ An error occurred while processing your request. Please try again.');
+                stream.markdown(l10n.t('❌ An error occurred while processing your request. Please try again.'));
             }
 
             return { metadata: { command: 'cosmosdb', error: String(error) } };

@@ -59,9 +59,11 @@ const OverflowMenu = () => {
                         <CancelQueryButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarOverflowMenuDivider id="1" />
-                    <ToolbarOverflowMenuItem id="3">
-                        <AIButton type={'menuitem'} />
-                    </ToolbarOverflowMenuItem>
+                    {state.isAIFeaturesEnabled && (
+                        <ToolbarOverflowMenuItem id="3">
+                            <AIButton type={'menuitem'} />
+                        </ToolbarOverflowMenuItem>
+                    )}
                     <ToolbarOverflowMenuItem id="4">
                         <OpenFileButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
@@ -90,6 +92,7 @@ const OverflowMenu = () => {
 };
 
 export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
+    const state = useQueryEditorState();
     return (
         <Overflow padding={40}>
             <Toolbar aria-label={l10n.t('Default')} size={'small'} {...props}>
@@ -100,9 +103,11 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                     <CancelQueryButton type={'button'} />
                 </OverflowItem>
                 <ToolbarOverflowDivider groupId="1" />
-                <OverflowItem id={'3'} groupId={'2'}>
-                    <AIButton type={'button'} />
-                </OverflowItem>
+                {state.isAIFeaturesEnabled && (
+                    <OverflowItem id={'3'} groupId={'2'}>
+                        <AIButton type={'button'} />
+                    </OverflowItem>
+                )}
                 <OverflowItem id={'4'} groupId={'2'}>
                     <OpenFileButton type={'button'} />
                 </OverflowItem>
@@ -115,7 +120,7 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                 <OverflowItem id={'7'} groupId={'2'}>
                     <LearnButton type={'button'} />
                 </OverflowItem>
-                {useQueryEditorState().isSurveyCandidate && (
+                {state.isSurveyCandidate && (
                     <OverflowItem id={'8'} groupId={'2'}>
                         <ProvideFeedbackButton type={'button'} />
                     </OverflowItem>

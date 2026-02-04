@@ -7,11 +7,21 @@ import { Menu, MenuButton, MenuItem, MenuList, MenuPopover, MenuTrigger } from '
 import { ChatSparkle20Regular, PenSparkle20Regular, Sparkle20Regular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { useQueryEditorDispatcher, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
+import {
+    useQueryEditorDispatcher,
+    useQueryEditorState,
+    useQueryEditorStateDispatch,
+} from '../state/QueryEditorContext';
 
 export const AIButton = ({ type = 'button' }: ToolbarOverflowItemProps) => {
+    const state = useQueryEditorState();
     const dispatch = useQueryEditorStateDispatch();
     const dispatcher = useQueryEditorDispatcher();
+
+    // Don't render if AI features are disabled (Copilot not available)
+    if (!state.isAIFeaturesEnabled) {
+        return null;
+    }
 
     const handleGenerateClick = () => {
         dispatch({ type: 'toggleGenerateInput' });

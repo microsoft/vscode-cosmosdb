@@ -204,5 +204,9 @@ export class QueryEditorContextProvider extends BaseContextProvider {
                 this.insertText(generatedQuery);
             }
         });
+
+        this.channel.on('aiFeaturesEnabledChanged', (isAIFeaturesEnabled: boolean) => {
+            this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled });
+        });
     }
 }

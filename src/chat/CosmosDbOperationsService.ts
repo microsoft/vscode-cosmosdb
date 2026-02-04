@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -390,14 +391,16 @@ export class CosmosDbOperationsService {
         const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
         if (activeQueryEditors.length === 0) {
             throw new Error(
-                'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+                l10n.t(
+                    'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+                ),
             );
         }
         const activeEditor = getActiveQueryEditor(activeQueryEditors);
         const connection = getConnectionFromQueryTab(activeEditor);
         if (!connection) {
             throw new Error(
-                'No connection found in the active query editor. Please connect to a CosmosDB container first.',
+                l10n.t('No connection found in the active query editor. Please connect to a CosmosDB container first.'),
             );
         }
 
@@ -450,7 +453,7 @@ export class CosmosDbOperationsService {
 
                     const actualQuery = sessionQuery || editorQuery || (parameters.currentQuery as string);
                     if (!actualQuery) {
-                        return 'There is no query to analyze';
+                        return l10n.t('There is no query to analyze');
                     }
 
                     const currentSchema = hasResults
@@ -470,11 +473,11 @@ export class CosmosDbOperationsService {
                     );
 
                 default:
-                    throw new Error(`Unknown operation: ${operationName}`);
+                    throw new Error(l10n.t('Unknown operation: {0}', operationName));
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            return `❌ Error executing ${operationName}: ${errorMessage}`;
+            return l10n.t('❌ Error executing {0}: {1}', operationName, errorMessage);
         }
     }
 
@@ -504,12 +507,12 @@ export class CosmosDbOperationsService {
             } catch (error) {
                 console.warn('LLM query generation failed, using fallback:', error);
                 suggestion = this.generateFallbackSuggestion(currentQuery, userPrompt);
-                llmExplanation = 'Basic query optimization applied (LLM unavailable)';
+                llmExplanation = l10n.t('Basic query optimization applied (LLM unavailable)');
             }
         } else {
             // Fallback when no user prompt
             suggestion = this.generateFallbackSuggestion(currentQuery, '');
-            llmExplanation = explanation || 'Basic query optimization applied';
+            llmExplanation = explanation || l10n.t('Basic query optimization applied');
         }
 
         // Return structured data for the chat participant to handle
@@ -578,33 +581,50 @@ export class CosmosDbOperationsService {
             );
 
             // Build context header for better user understanding
-            let queryContext = `## 📊 Query Analysis\n\n`;
-            queryContext += `**Database:** ${connection.databaseId}\n`;
-            queryContext += `**Container:** ${connection.containerId}\n`;
+            let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
+            queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
+            queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
             if (resultContext.documentCount !== undefined) {
-                queryContext += `**Last Execution:** ${resultContext.documentCount} documents returned`;
+                queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
                 if (resultContext.requestCharge) {
-                    queryContext += `, ${resultContext.requestCharge.toFixed(2)} RUs consumed`;
+                    queryContext += l10n.t(', {0} RUs consumed', resultContext.requestCharge.toFixed(2));
                 }
-                queryContext += `\n`;
+                queryContext += '\n';
 
                 // Include simplified schema for user reference
                 if (resultContext.schema) {
-                    queryContext += `**Inferred Schema:** ${JSON.stringify(this.simplifySchemaForLLM(resultContext.schema))}\n`;
+                    queryContext +=
+                        l10n.t(
+                            '**Inferred Schema:** {0}',
+                            JSON.stringify(this.simplifySchemaForLLM(resultContext.schema)),
+                        ) + '\n';
                 }
             }
             queryContext += `\n`;
 
-            return `${queryContext}**Query:**\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n**Explanation:**\n${explanation}`;
+            return (
+                `${queryContext}` +
+                l10n.t('**Query:**') +
+                `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
+                l10n.t('**Explanation:**') +
+                `\n${explanation}`
+            );
         } catch (error) {
             console.warn('LLM query explanation failed, using fallback:', error);
             const fallbackExplanation = this.generateFallbackExplanation(currentQuery);
 
-            let queryContext = `## 📊 Query Analysis\n\n`;
-            queryContext += `**Database:** ${connection.databaseId}\n`;
-            queryContext += `**Container:** ${connection.containerId}\n\n`;
+            let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
+            queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
+            queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n\n';
 
-            return `${queryContext}**Query:**\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n**Basic Explanation:**\n${fallbackExplanation}\n\n*Note: Advanced AI analysis unavailable - using basic explanation.*`;
+            return (
+                `${queryContext}` +
+                l10n.t('**Query:**') +
+                `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
+                l10n.t('**Basic Explanation:**') +
+                `\n${fallbackExplanation}\n\n` +
+                l10n.t('*Note: Advanced AI analysis unavailable - using basic explanation.*')
+            );
         }
     }
 
@@ -675,45 +695,46 @@ export class CosmosDbOperationsService {
         // Basic query structure analysis
         if (queryUpper.includes('SELECT')) {
             if (queryUpper.includes('SELECT *')) {
-                explanation += '• **SELECT * **: Retrieves all properties from documents\n';
+                explanation += l10n.t('• **SELECT * **: Retrieves all properties from documents') + '\n';
             } else if (queryUpper.includes('SELECT VALUE')) {
-                explanation += '• **SELECT VALUE**: Returns the raw values instead of objects\n';
+                explanation += l10n.t('• **SELECT VALUE**: Returns the raw values instead of objects') + '\n';
             } else {
-                explanation += '• **SELECT**: Retrieves specific properties from documents\n';
+                explanation += l10n.t('• **SELECT**: Retrieves specific properties from documents') + '\n';
             }
         }
 
         if (queryUpper.includes('FROM C')) {
-            explanation += '• **FROM c**: Queries from the container (c is the alias)\n';
+            explanation += l10n.t('• **FROM c**: Queries from the container (c is the alias)') + '\n';
         }
 
         if (queryUpper.includes('WHERE')) {
-            explanation += '• **WHERE**: Filters documents based on specified conditions\n';
+            explanation += l10n.t('• **WHERE**: Filters documents based on specified conditions') + '\n';
         }
 
         if (queryUpper.includes('ORDER BY')) {
-            explanation += '• **ORDER BY**: Sorts results in ascending or descending order\n';
+            explanation += l10n.t('• **ORDER BY**: Sorts results in ascending or descending order') + '\n';
         }
 
         if (queryUpper.includes('TOP') || queryUpper.includes('OFFSET')) {
-            explanation += '• **Pagination**: Limits the number of results returned\n';
+            explanation += l10n.t('• **Pagination**: Limits the number of results returned') + '\n';
         }
 
         if (queryUpper.includes('COUNT')) {
-            explanation += '• **COUNT**: Aggregates the number of matching documents\n';
+            explanation += l10n.t('• **COUNT**: Aggregates the number of matching documents') + '\n';
         }
 
         if (queryUpper.includes('GROUP BY')) {
-            explanation += '• **GROUP BY**: Groups results by specified properties\n';
+            explanation += l10n.t('• **GROUP BY**: Groups results by specified properties') + '\n';
         }
 
         if (queryUpper.includes('JOIN')) {
-            explanation += '• **JOIN**: Performs intra-document joins (within the same document)\n';
+            explanation += l10n.t('• **JOIN**: Performs intra-document joins (within the same document)') + '\n';
         }
 
         if (!explanation) {
-            explanation =
-                'This appears to be a custom or complex query. Consider using the AI-powered explanation for detailed analysis.';
+            explanation = l10n.t(
+                'This appears to be a custom or complex query. Consider using the AI-powered explanation for detailed analysis.',
+            );
         }
 
         return explanation;
@@ -727,7 +748,9 @@ export class CosmosDbOperationsService {
         const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
         if (activeQueryEditors.length === 0) {
             throw new Error(
-                'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+                l10n.t(
+                    'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+                ),
             );
         }
 
@@ -735,7 +758,7 @@ export class CosmosDbOperationsService {
         const connection = getConnectionFromQueryTab(activeEditor);
         if (!connection) {
             throw new Error(
-                'No connection found in the active query editor. Please connect to a CosmosDB container first.',
+                l10n.t('No connection found in the active query editor. Please connect to a CosmosDB container first.'),
             );
         }
 
@@ -748,7 +771,7 @@ export class CosmosDbOperationsService {
         const historyContext = this.getQueryHistoryContext(activeEditor);
 
         if (!userPrompt || userPrompt.trim() === '') {
-            throw new Error('Please provide a description of the query you want to generate.');
+            throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
         try {
@@ -757,11 +780,11 @@ export class CosmosDbOperationsService {
             });
 
             // Build response with context
-            let response = `## 🔨 Generated Query\n\n`;
-            response += `**Database:** ${connection.databaseId}\n`;
-            response += `**Container:** ${connection.containerId}\n\n`;
-            response += `**Your request:** ${userPrompt}\n\n`;
-            response += `**Generated Query:**\n\`\`\`sql\n${generatedQuery}\n\`\`\`\n\n`;
+            let response = l10n.t('## 🔨 Generated Query') + '\n\n';
+            response += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
+            response += l10n.t('**Container:** {0}', connection.containerId) + '\n\n';
+            response += l10n.t('**Your request:** {0}', userPrompt) + '\n\n';
+            response += l10n.t('**Generated Query:**') + `\n\`\`\`sql\n${generatedQuery}\n\`\`\`\n\n`;
 
             return response;
         } catch (error) {
@@ -812,7 +835,7 @@ export class CosmosDbOperationsService {
 
         const models = await vscode.lm.selectChatModels();
         if (models.length === 0) {
-            throw new Error('No language model available. Please ensure you have access to Copilot.');
+            throw new Error(l10n.t('No language model available. Please ensure you have access to Copilot.'));
         }
 
         // Use specified model or first available
@@ -856,11 +879,11 @@ export class CosmosDbOperationsService {
             // Parse JSON response
             const result = JSON.parse(responseText) as { query: string; explanation: string };
             if (!result.query || typeof result.query !== 'string') {
-                throw new Error('Invalid LLM response: missing query');
+                throw new Error(l10n.t('Invalid LLM response: missing query'));
             }
             return {
                 query: this.cleanupQueryResponse(result.query),
-                explanation: result.explanation || 'Query generated by AI',
+                explanation: result.explanation || l10n.t('Query generated by AI'),
             };
         }
 

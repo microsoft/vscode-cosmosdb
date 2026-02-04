@@ -8,6 +8,7 @@ import {
     registerCommand,
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
@@ -143,7 +144,7 @@ export function registerChatButtonCommands() {
                 console.log('[CosmosDB Chat] applyQuerySuggestion called', { connection, suggestedQuery });
 
                 if (!connection || !suggestedQuery) {
-                    void vscode.window.showErrorMessage('Missing connection or query data');
+                    void vscode.window.showErrorMessage(l10n.t('Missing connection or query data'));
                     return;
                 }
 
@@ -159,11 +160,11 @@ export function registerChatButtonCommands() {
                 if (activeTab && 'updateQuery' in activeTab) {
                     // Update the query in the existing webview
                     await activeTab.updateQuery(suggestedQuery);
-                    void vscode.window.showInformationMessage('✅ Query updated successfully!');
+                    void vscode.window.showInformationMessage(l10n.t('✅ Query updated successfully!'));
                 } else {
                     // Fallback: create a new tab if no matching tab is found
                     QueryEditorTab.render(connection, vscode.ViewColumn.Active, false, suggestedQuery);
-                    void vscode.window.showInformationMessage('✅ Query opened in new tab!');
+                    void vscode.window.showInformationMessage(l10n.t('✅ Query opened in new tab!'));
                 }
             },
         ),
@@ -177,12 +178,14 @@ export function registerChatButtonCommands() {
                 console.log('[CosmosDB Chat] openQuerySideBySide called', { connection, suggestedQuery });
 
                 if (!connection || !suggestedQuery) {
-                    void vscode.window.showErrorMessage('Missing connection or query data');
+                    void vscode.window.showErrorMessage(l10n.t('Missing connection or query data'));
                     return;
                 }
 
                 QueryEditorTab.render(connection, vscode.ViewColumn.Two, false, suggestedQuery);
-                void vscode.window.showInformationMessage('🔍 Suggested query opened side-by-side for comparison.');
+                void vscode.window.showInformationMessage(
+                    l10n.t('🔍 Suggested query opened side-by-side for comparison.'),
+                );
             },
         ),
     );

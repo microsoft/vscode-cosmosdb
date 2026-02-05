@@ -7,11 +7,11 @@ import {
     escapeHtml,
     escapeMarkdown,
     renderAsCodeBlock,
-    sanitizeCommandUri,
-    safeMarkdownText,
-    safeJsonDisplay,
-    safeErrorDisplay,
     safeCodeBlock,
+    safeErrorDisplay,
+    safeJsonDisplay,
+    safeMarkdownText,
+    sanitizeCommandUri,
     sanitizeSqlComment,
 } from './sanitization';
 
@@ -21,7 +21,7 @@ describe('sanitization', () => {
             expect(escapeHtml('<script>alert("xss")</script>')).toBe(
                 '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
             );
-            expect(escapeHtml("test & 'quotes' and \"double\"")).toBe(
+            expect(escapeHtml('test & \'quotes\' and "double"')).toBe(
                 'test &amp; &#39;quotes&#39; and &quot;double&quot;',
             );
         });

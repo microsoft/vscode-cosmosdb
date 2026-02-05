@@ -788,7 +788,10 @@ export class QueryEditorTab extends BaseTab {
                 // Comment the original prompt and prepend the generated query
                 // Sanitize user inputs to prevent SQL comment injection
                 const sanitizedPrompt = sanitizeSqlComment(prompt);
-                const sanitizedCurrentQuery = currentQuery.split('\n').map(line => sanitizeSqlComment(line)).join('\n-- ');
+                const sanitizedCurrentQuery = currentQuery
+                    .split('\n')
+                    .map((line) => sanitizeSqlComment(line))
+                    .join('\n-- ');
                 const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
 
                 await this.channel.postMessage({

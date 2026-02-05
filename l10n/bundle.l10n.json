@@ -80,6 +80,7 @@
   "Connection String": "Connection String",
   "Connection string cannot be empty": "Connection string cannot be empty",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"",
+  "Connection string must include \"AccountEndpoint=…\" and either \"AccountKey=…\" or \"TenantId=…\"": "Connection string must include \"AccountEndpoint=…\" and either \"AccountKey=…\" or \"TenantId=…\"",
   "Connection timed out while verifying account credentials.": "Connection timed out while verifying account credentials.",
   "Connection timed out. Please verify the connection string and that the host is reachable.": "Connection timed out. Please verify the connection string and that the host is reachable.",
   "Container {0} not found": "Container {0} not found",

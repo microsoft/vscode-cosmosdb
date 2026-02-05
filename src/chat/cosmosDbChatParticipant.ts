@@ -10,7 +10,7 @@ import { areAIFeaturesEnabled } from '../utils/copilotUtils';
 import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import {
     CHAT_PARTICIPANT_SYSTEM_PROMPT,
     INTENT_EXTRACTION_PROMPT,
@@ -126,9 +126,11 @@ export class CosmosDbChatParticipant {
             const userContent = buildIntentExtractionUserContent({ userPrompt: originalPrompt });
             const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
-            // Keep system and user messages separate
-            const response = await model.sendRequest(
-                [systemMessage, userMessage],
+            // Use utility to ensure instruction message is always first
+            const response = await sendChatRequest(
+                model,
+                systemMessage,
+                userMessage,
                 {},
                 new vscode.CancellationTokenSource().token,
             );
@@ -169,9 +171,11 @@ export class CosmosDbChatParticipant {
             const userContent = buildParameterExtractionUserContent(operation, originalPrompt);
             const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
-            // Keep system and user messages separate
-            const response = await model.sendRequest(
-                [systemMessage, userMessage],
+            // Use utility to ensure instruction message is always first
+            const response = await sendChatRequest(
+                model,
+                systemMessage,
+                userMessage,
                 {},
                 new vscode.CancellationTokenSource().token,
             );
@@ -639,8 +643,8 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
 
             const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
-            // Send request to language model
-            const chatResponse = await model.sendRequest([systemMessage, userMessage], {}, token);
+            // Send request to language model using utility to ensure instruction message is always first
+            const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token);
 
             // Stream the response
             try {

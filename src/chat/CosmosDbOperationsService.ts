@@ -18,7 +18,7 @@ import {
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
 import { sanitizeSqlComment } from '../utils/sanitization';
-import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
+import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import {
     JSON_RESPONSE_FORMAT_WITH_EXPLANATION,
     QUERY_EXPLANATION_PROMPT_TEMPLATE,
@@ -518,7 +518,7 @@ export class CosmosDbOperationsService {
 
         // Format the suggested query with comments (like generateQuery does)
         // Comment out the original query and add the prompt that generated the update
-        const sanitizedPrompt = sanitizeSqlComment(userPrompt || 'optimize query');
+        const sanitizedPrompt = sanitizeSqlComment(userPrompt);
         const sanitizedCurrentQuery = currentQuery
             .split('\n')
             .map((line) => sanitizeSqlComment(line))
@@ -679,9 +679,15 @@ export class CosmosDbOperationsService {
                 .replace('{query}', query)
                 .replace('{userPrompt}', userPrompt);
 
-            // Keep system and user messages separate
+            // Use utility to ensure instruction message is always first
             const systemMessage = vscode.LanguageModelChatMessage.User(systemPrompt);
-            const response = await model.sendRequest([systemMessage], {}, new vscode.CancellationTokenSource().token);
+            const response = await sendChatRequest(
+                model,
+                systemMessage,
+                undefined,
+                {},
+                new vscode.CancellationTokenSource().token,
+            );
 
             let explanation = '';
             for await (const fragment of response.text) {
@@ -865,7 +871,7 @@ export class CosmosDbOperationsService {
 
         // System prompt (fixed instructions) - from systemPrompt.ts
         // User content (dynamic payload) - built from userPayload.ts
-        // Keep them separate: system message + user message
+        // Use utility to ensure instruction message is always first
         const systemMessage = vscode.LanguageModelChatMessage.User(QUERY_GENERATION_SYSTEM_PROMPT);
         let userMessage: vscode.LanguageModelChatMessage;
         if (withExplanation) {
@@ -874,12 +880,11 @@ export class CosmosDbOperationsService {
             userMessage = vscode.LanguageModelChatMessage.User(userContent);
         }
 
-        const messages = [systemMessage, userMessage];
         const token = cancellationToken ?? new vscode.CancellationTokenSource().token;
-        // System prompt and user message are sent together as there is no api to set system instructions separately.
-        // The best practice is to set system prompt as first message as it will be recognized by the LLM as such.
-        // Some models may have specific options to send the system prompt, but the option would be specific to the model.
-        const chatResponse = await model.sendRequest(messages, {}, token);
+        // Use sendChatRequest utility which ensures instruction message is always first.
+        // The VS Code Language Model API doesn't support system messages, so we send
+        // instructions as the first User message per VS Code documentation.
+        const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token);
 
         let responseText = '';
         for await (const chunk of chatResponse.text) {

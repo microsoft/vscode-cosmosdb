@@ -17,6 +17,7 @@ import {
     updateSchemaWithDocument,
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
+import { sanitizeSqlComment } from '../utils/sanitization';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 import {
     JSON_RESPONSE_FORMAT_WITH_EXPLANATION,
@@ -515,11 +516,20 @@ export class CosmosDbOperationsService {
             llmExplanation = explanation || l10n.t('Basic query optimization applied');
         }
 
+        // Format the suggested query with comments (like generateQuery does)
+        // Comment out the original query and add the prompt that generated the update
+        const sanitizedPrompt = sanitizeSqlComment(userPrompt || 'optimize query');
+        const sanitizedCurrentQuery = currentQuery
+            .split('\n')
+            .map((line) => sanitizeSqlComment(line))
+            .join('\n-- ');
+        const formattedSuggestion = `-- Updated from: ${sanitizedPrompt}\n${suggestion.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+
         // Return structured data for the chat participant to handle
         return {
             type: 'editQuery',
             currentQuery: currentQuery,
-            suggestedQuery: suggestion,
+            suggestedQuery: formattedSuggestion,
             explanation: llmExplanation,
             connection: connection,
             queryContext: {
@@ -866,6 +876,9 @@ export class CosmosDbOperationsService {
 
         const messages = [systemMessage, userMessage];
         const token = cancellationToken ?? new vscode.CancellationTokenSource().token;
+        // System prompt and user message are sent together as there is no api to set system instructions separately.
+        // The best practice is to set system prompt as first message as it will be recognized by the LLM as such.
+        // Some models may have specific options to send the system prompt, but the option would be specific to the model.
         const chatResponse = await model.sendRequest(messages, {}, token);
 
         let responseText = '';

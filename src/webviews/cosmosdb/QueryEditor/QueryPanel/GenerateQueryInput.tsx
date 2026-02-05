@@ -383,7 +383,7 @@ export const GenerateQueryInput = () => {
                     rows={1}
                     style={{ height: `${Math.max(1, lineCount) * 17}px` }}
                 />
-                {isLoading && <ProgressBar className={styles.progressBar} />}
+                {isLoading ? <ProgressBar className={styles.progressBar} /> : <div style={{ height: '2px' }} />}
                 <div className={styles.footer}>
                     {availableModels.length > 1 ? (
                         <Dropdown

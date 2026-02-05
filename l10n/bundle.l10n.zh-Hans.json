@@ -80,6 +80,8 @@
   "Connection String": "连接字符串",
   "Connection string cannot be empty": "连接字符串不能为空",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "连接字符串必须采用 \"AccountEndpoint=...;AccountKey=...\" 格式",
+  "Connection timed out while verifying account credentials.": "Connection timed out while verifying account credentials.",
+  "Connection timed out. Please verify the connection string and that the host is reachable.": "Connection timed out. Please verify the connection string and that the host is reachable.",
   "Container {0} not found": "未找到容器 {0}",
   "Container name cannot be longer than 255 characters": "容器名称不能超过 255 个字符",
   "Container name cannot contain the characters '\\', '/', '#', '?'": "容器名称不能包含字符 \"\\\"、\"/\"、\"#\"、\"?\"",

@@ -80,6 +80,8 @@
   "Connection String": "Строка подключения",
   "Connection string cannot be empty": "Строка подключения не может быть пустой",
   "Connection string must be of the form \"AccountEndpoint=…;AccountKey=…\"": "Строка подключения должна иметь вид \"AccountEndpoint=…;AccountKey=…\"",
+  "Connection timed out while verifying account credentials.": "Connection timed out while verifying account credentials.",
+  "Connection timed out. Please verify the connection string and that the host is reachable.": "Connection timed out. Please verify the connection string and that the host is reachable.",
   "Container {0} not found": "Контейнер {0} не найден",
   "Container name cannot be longer than 255 characters": "Длина имени контейнера не должна превышать 255 символов",
   "Container name cannot contain the characters '\\', '/', '#', '?'": "Имя контейнера не может содержать символы \"\\\", \"/\", \"#\", \"?\"",

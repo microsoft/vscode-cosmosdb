@@ -19,6 +19,7 @@ import {
 } from '../utils/json/nosql/SchemaAnalyzer';
 import { sanitizeSqlComment } from '../utils/sanitization';
 import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
+import { buildQueryOneShotMessages } from './queryOneShotExamples';
 import {
     JSON_RESPONSE_FORMAT_WITH_EXPLANATION,
     QUERY_EXPLANATION_PROMPT_TEMPLATE,
@@ -880,11 +881,16 @@ export class CosmosDbOperationsService {
             userMessage = vscode.LanguageModelChatMessage.User(userContent);
         }
 
+        // Build one-shot example messages (User/Assistant pairs) for few-shot learning.
+        // Per VS Code API, these use LanguageModelChatMessage.User() and .Assistant().
+        const oneShotMessages = buildQueryOneShotMessages(vscode.LanguageModelChatMessage);
+
         const token = cancellationToken ?? new vscode.CancellationTokenSource().token;
         // Use sendChatRequest utility which ensures instruction message is always first.
         // The VS Code Language Model API doesn't support system messages, so we send
         // instructions as the first User message per VS Code documentation.
-        const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token);
+        // Message order: [system instruction] → [one-shot examples] → [user request]
+        const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token, oneShotMessages);
 
         let responseText = '';
         for await (const chunk of chatResponse.text) {

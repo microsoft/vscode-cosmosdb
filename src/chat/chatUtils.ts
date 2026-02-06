@@ -16,9 +16,11 @@ import { type QueryEditorTab } from '../panels/QueryEditorTab';
  *
  * @param model The language model to send the request to
  * @param instructionMessage The instruction/context message (placed first)
- * @param userMessage Optional user message with the actual request (placed second)
+ * @param userMessage Optional user message with the actual request (placed last)
  * @param options Options for the request
  * @param token Cancellation token
+ * @param intermediateMessages Optional messages inserted between instruction and user
+ *   message, e.g. one-shot User/Assistant example pairs
  * @returns The chat response from the model
  */
 export async function sendChatRequest(
@@ -27,9 +29,10 @@ export async function sendChatRequest(
     userMessage: vscode.LanguageModelChatMessage | undefined,
     options: vscode.LanguageModelChatRequestOptions,
     token: vscode.CancellationToken,
+    intermediateMessages?: vscode.LanguageModelChatMessage[],
 ): Promise<vscode.LanguageModelChatResponse> {
     // Build messages array with instruction message always first
-    const messages = buildChatMessages(instructionMessage, userMessage);
+    const messages = buildChatMessages(instructionMessage, userMessage, intermediateMessages);
     return model.sendRequest(messages, options, token);
 }
 
@@ -37,15 +40,27 @@ export async function sendChatRequest(
  * Builds the messages array for a chat request, ensuring instruction message is always first.
  * This is exported separately to enable unit testing without mocking the model.
  *
+ * Message ordering: [instruction] → [intermediateMessages...] → [userMessage]
+ *
+ * Intermediate messages are typically one-shot User/Assistant example pairs that
+ * demonstrate expected query patterns. Per VS Code LanguageModelChatMessage API,
+ * these use LanguageModelChatMessage.User() and LanguageModelChatMessage.Assistant().
+ *
  * @param instructionMessage The instruction/context message (placed first)
- * @param userMessage Optional user message with the actual request (placed second)
+ * @param userMessage Optional user message with the actual request (placed last)
+ * @param intermediateMessages Optional messages between instruction and user message,
+ *   e.g. one-shot example pairs
  * @returns Array of messages with instruction first
  */
 export function buildChatMessages(
     instructionMessage: vscode.LanguageModelChatMessage,
     userMessage?: vscode.LanguageModelChatMessage,
+    intermediateMessages?: vscode.LanguageModelChatMessage[],
 ): vscode.LanguageModelChatMessage[] {
     const messages: vscode.LanguageModelChatMessage[] = [instructionMessage];
+    if (intermediateMessages) {
+        messages.push(...intermediateMessages);
+    }
     if (userMessage) {
         messages.push(userMessage);
     }

@@ -26,7 +26,7 @@ const useStyles = makeStyles({
         borderRadius: '6px',
         padding: '8px 12px 4px 12px',
         border: '1px solid rgba(135, 206, 235, 0.3)',
-        margin: '8px 4px',
+        margin: '8px 8px',
         boxSizing: 'border-box',
         gap: '6px',
         minHeight: '0',

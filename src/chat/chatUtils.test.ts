@@ -17,6 +17,14 @@ function createMockUserMessage(content: string): vscode.LanguageModelChatMessage
     } as unknown as vscode.LanguageModelChatMessage;
 }
 
+function createMockAssistantMessage(content: string): vscode.LanguageModelChatMessage {
+    return {
+        role: vscode.LanguageModelChatMessageRole?.Assistant ?? 2, // 2 = Assistant role
+        content: content,
+        name: undefined,
+    } as unknown as vscode.LanguageModelChatMessage;
+}
+
 describe('chatUtils', () => {
     describe('buildChatMessages', () => {
         it('should place instruction message first when both messages provided', () => {
@@ -104,6 +112,56 @@ describe('chatUtils', () => {
 
             // Additional verification: check content if needed
             expect(result[0].content).toContain('INSTRUCTION');
+        });
+
+        it('should insert intermediate messages between instruction and user message', () => {
+            const instruction = createMockUserMessage('INSTRUCTION');
+            const user = createMockUserMessage('USER');
+            const oneShotUser = createMockUserMessage('example question');
+            const oneShotAssistant = createMockAssistantMessage('example query');
+
+            const result = buildChatMessages(instruction, user, [oneShotUser, oneShotAssistant]);
+
+            expect(result).toHaveLength(4);
+            expect(result[0]).toBe(instruction);
+            expect(result[1]).toBe(oneShotUser);
+            expect(result[2]).toBe(oneShotAssistant);
+            expect(result[3]).toBe(user);
+        });
+
+        it('should handle intermediate messages with no user message', () => {
+            const instruction = createMockUserMessage('INSTRUCTION');
+            const oneShotUser = createMockUserMessage('example question');
+            const oneShotAssistant = createMockAssistantMessage('example query');
+
+            const result = buildChatMessages(instruction, undefined, [oneShotUser, oneShotAssistant]);
+
+            expect(result).toHaveLength(3);
+            expect(result[0]).toBe(instruction);
+            expect(result[1]).toBe(oneShotUser);
+            expect(result[2]).toBe(oneShotAssistant);
+        });
+
+        it('should handle empty intermediate messages array', () => {
+            const instruction = createMockUserMessage('INSTRUCTION');
+            const user = createMockUserMessage('USER');
+
+            const result = buildChatMessages(instruction, user, []);
+
+            expect(result).toHaveLength(2);
+            expect(result[0]).toBe(instruction);
+            expect(result[1]).toBe(user);
+        });
+
+        it('should handle undefined intermediate messages (backward compatible)', () => {
+            const instruction = createMockUserMessage('INSTRUCTION');
+            const user = createMockUserMessage('USER');
+
+            const result = buildChatMessages(instruction, user, undefined);
+
+            expect(result).toHaveLength(2);
+            expect(result[0]).toBe(instruction);
+            expect(result[1]).toBe(user);
         });
     });
 });

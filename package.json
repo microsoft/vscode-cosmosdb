@@ -39,7 +39,8 @@
     "onFileSystem:azureDatabases",
     "onView:azureWorkspace",
     "onView:azureResourceGroups",
-    "onUri"
+    "onUri",
+    "onChatParticipant:cosmosdb"
   ],
   "scripts": {
     "build": "tsc",
@@ -143,6 +144,7 @@
     "@trpc/server": "~11.8.1",
     "@vscode/l10n": "~0.0.18",
     "allotment": "^1.20.4",
+    "denque": "^2.1.0",
     "es-toolkit": "~1.43.0",
     "monaco-editor": "~0.52.2",
     "react-hotkeys-hook": "~5.2.1",
@@ -203,6 +205,44 @@
         ]
       }
     },
+    "chatParticipants": [
+      {
+        "id": "cosmosdb",
+        "name": "cosmosdb",
+        "fullName": "Cosmos DB (NoSQL) Assistant",
+        "description": "AI-powered assistant for Azure Cosmos DB (NoSQL) help, best practices, and code examples",
+        "disambiguation": [
+          {
+            "category": "databases",
+            "description": "The user wants help with their NoSQL Cosmos DB database",
+            "examples": [
+              "Optimize my query to improve performance and cost",
+              "Explain my current query",
+              "Help me write a NoSQL query"
+            ]
+          }
+        ],
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "editQuery",
+            "description": "Edit query with LLM suggestions and user confirmation"
+          },
+          {
+            "name": "help",
+            "description": "Show available commands and help"
+          },
+          {
+            "name": "explainQuery",
+            "description": "Explain the current query with AI analysis"
+          },
+          {
+            "name": "generateQuery",
+            "description": "Generate a new query from natural language description"
+          }
+        ]
+      }
+    ],
     "languages": [
       {
         "id": "nosql",
@@ -366,6 +406,16 @@
         "category": "NoSQL",
         "command": "cosmosDB.openNoSqlQueryEditor",
         "title": "%cosmosdb.command.query.editor.open%"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.applyQuerySuggestion",
+        "title": "Apply Query Suggestion"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.openQuerySideBySide",
+        "title": "Open Query Side-by-Side"
       },
       {
         "category": "NoSQL",

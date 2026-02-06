@@ -165,7 +165,7 @@
   "Enter filter pattern or leave empty to clear filtration": "Pokud chcete vymazat filtrování, zadejte vzor filtru nebo ho nechte prázdný.",
   "Enter the connection string for your database account": "Zadejte připojovací řetězec pro váš databázový účet.",
   "Enter the connection string of your Emulator": "Zadejte připojovací řetězec emulátoru.",
-  "Enter the partition key for the container {0}": "Zadejte klíč oddílu pro kontejner {0}.",
+  "Enter the partition key for the container {0}": "Zadejte klíč oddílu pro kontejner {0}",
   "Enter the port number for the Azure Cosmos DB Emulator": "Zadejte číslo portu emulátoru Azure Cosmos DB.",
   "Error creating resource: {0}": "Chyba při vytváření prostředku: {0}",
   "Error occurred handling received message: {errorMessage}": "Při zpracování přijaté zprávy došlo k chybě: {errorMessage}",

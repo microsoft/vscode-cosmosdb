@@ -22,25 +22,15 @@ const useStyles = makeStyles({
     container: {
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'transparent',
-        borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)',
-        borderBottom: '1px solid var(--vscode-sideBarSectionHeader-border)',
-        padding: '8px 0px',
-        gap: '0px',
-        flexShrink: 0,
-    },
-    chatBox: {
         backgroundColor: 'rgba(135, 206, 235, 0.1)',
         borderRadius: '6px',
-        padding: '8px 12px',
+        padding: '8px 12px 4px 12px',
         border: '1px solid rgba(135, 206, 235, 0.3)',
-        margin: '8px 12px',
-        width: 'calc(100% - 24px)',
+        margin: '8px 4px',
         boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
         gap: '6px',
         minHeight: '0',
+        flexShrink: 0,
         position: 'relative',
     },
     inputArea: {
@@ -129,8 +119,8 @@ const useStyles = makeStyles({
     },
     closeButton: {
         position: 'absolute',
-        top: '2px',
-        right: '2px',
+        top: '4px',
+        right: '4px',
         padding: '0px',
         minWidth: '16px',
         width: '16px',
@@ -355,69 +345,67 @@ export const GenerateQueryInput = () => {
 
     return (
         <div className={styles.container}>
-            <div className={styles.chatBox}>
+            <Button
+                className={styles.closeButton}
+                icon={<Dismiss12Regular />}
+                onClick={() => dispatch({ type: 'toggleGenerateInput' })}
+                title={l10n.t('Close')}
+                aria-label={l10n.t('Close')}
+                appearance="transparent"
+                size="small"
+            />
+            <textarea
+                ref={textareaRef}
+                className={styles.textarea}
+                placeholder={l10n.t('Describe your query in natural language')}
+                value={input}
+                onChange={(e) => {
+                    const newValue = e.currentTarget.value;
+                    setInput(newValue);
+                    const lines = calculateLineCount(newValue, textareaRef.current);
+                    setLineCount(lines);
+                    // Reset history navigation when user types
+                    promptHistory.resetNavigation();
+                }}
+                onKeyDown={handleKeyDown}
+                disabled={isLoading}
+                rows={1}
+                style={{ height: `${Math.max(1, lineCount) * 17}px` }}
+            />
+            {isLoading ? <ProgressBar className={styles.progressBar} /> : <div style={{ height: '2px' }} />}
+            <div className={styles.footer}>
+                {availableModels.length > 1 ? (
+                    <Dropdown
+                        className={styles.modelDropdown}
+                        onOptionSelect={(_event, data) => handleModelChange(data)}
+                        size="small"
+                        appearance="filled-lighter"
+                        value={modelDisplayName}
+                        selectedOptions={selectedModelId ? [selectedModelId] : []}
+                        disabled={isLoading}
+                    >
+                        {availableModels.map((model) => (
+                            <Option
+                                key={model.id}
+                                value={model.id}
+                                style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
+                            >
+                                {model.name}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                ) : (
+                    <div className={styles.modelLabel}>{modelDisplayName}</div>
+                )}
                 <Button
-                    className={styles.closeButton}
-                    icon={<Dismiss12Regular />}
-                    onClick={() => dispatch({ type: 'toggleGenerateInput' })}
-                    title={l10n.t('Close')}
-                    aria-label={l10n.t('Close')}
+                    className={styles.button}
+                    icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
+                    onClick={isLoading ? handleCancel : () => void handleSend()}
+                    disabled={!isLoading && !input.trim()}
+                    title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                    aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
                     appearance="transparent"
-                    size="small"
                 />
-                <textarea
-                    ref={textareaRef}
-                    className={styles.textarea}
-                    placeholder={l10n.t('Describe your query in natural language')}
-                    value={input}
-                    onChange={(e) => {
-                        const newValue = e.currentTarget.value;
-                        setInput(newValue);
-                        const lines = calculateLineCount(newValue, textareaRef.current);
-                        setLineCount(lines);
-                        // Reset history navigation when user types
-                        promptHistory.resetNavigation();
-                    }}
-                    onKeyDown={handleKeyDown}
-                    disabled={isLoading}
-                    rows={1}
-                    style={{ height: `${Math.max(1, lineCount) * 17}px` }}
-                />
-                {isLoading ? <ProgressBar className={styles.progressBar} /> : <div style={{ height: '2px' }} />}
-                <div className={styles.footer}>
-                    {availableModels.length > 1 ? (
-                        <Dropdown
-                            className={styles.modelDropdown}
-                            onOptionSelect={(_event, data) => handleModelChange(data)}
-                            size="small"
-                            appearance="filled-lighter"
-                            value={modelDisplayName}
-                            selectedOptions={selectedModelId ? [selectedModelId] : []}
-                            disabled={isLoading}
-                        >
-                            {availableModels.map((model) => (
-                                <Option
-                                    key={model.id}
-                                    value={model.id}
-                                    style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
-                                >
-                                    {model.name}
-                                </Option>
-                            ))}
-                        </Dropdown>
-                    ) : (
-                        <div className={styles.modelLabel}>{modelDisplayName}</div>
-                    )}
-                    <Button
-                        className={styles.button}
-                        icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
-                        onClick={isLoading ? handleCancel : () => void handleSend()}
-                        disabled={!isLoading && !input.trim()}
-                        title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                        aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                        appearance="transparent"
-                    />
-                </div>
             </div>
         </div>
     );

@@ -342,7 +342,7 @@
   "Output document size": "Tamanho do documento de saída",
   "Parameters": "Parâmetros",
   "partition key": "chave de partição",
-  "Partition Key": "Chave de partição",
+  "Partition Key": "Chave de Partição",
   "Partition key {path} is invalid.": "A chave de partição {path} é inválida.",
   "Partition key can only start with a forward slash (/)": "A chave de partição só pode começar com uma barra (/)",
   "Partition key cannot be longer than 255 characters": "A chave de partição não pode ter mais de 255 caracteres",

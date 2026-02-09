@@ -266,7 +266,7 @@ export class CosmosDbChatParticipant {
                 return {
                     operation: 'editQuery',
                     parameters: {
-                        currentQuery: result?.query || 'SELECT * FROM c',
+                        currentQuery: result?.query,
                         userPrompt: prompt, // Pass the user's original prompt for LLM
                         explanation,
                         // Pass session context for LLM

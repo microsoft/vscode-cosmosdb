@@ -434,7 +434,7 @@ export class CosmosDbOperationsService {
                     const { activeEditor, connection, currentResult, sessionQuery, hasResults } =
                         this.getActiveQueryEditorContext();
 
-                    const actualQuery = sessionQuery || (parameters.currentQuery as string) || 'SELECT * FROM c';
+                    const actualQuery = sessionQuery || (parameters.currentQuery as string);
                     const historyContext = this.getQueryHistoryContext(activeEditor);
 
                     return await this.handleEditQuery(

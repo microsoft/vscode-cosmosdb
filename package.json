@@ -222,7 +222,7 @@
             ]
           }
         ],
-        "isSticky": true,
+        "isSticky": false,
         "commands": [
           {
             "name": "editQuery",

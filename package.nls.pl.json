@@ -43,7 +43,7 @@
   "cosmosdb.configuration.document.label.fields": "Wartości pól do wyświetlenia jako etykiety w widoku drzewa dla dokumentów usług Cosmos DB i MongoDB, w kolejności priorytetów",
   "cosmosdb.configuration.emulator.port": "Port do użycia podczas łączenia się z wystąpieniem emulatora CosmosDB",
   "cosmosdb.configuration.endpoint.discovery": "Flaga umożliwiająca włączenie/wyłączenie automatycznego przekierowywania żądań na podstawie operacji odczytu/zapisu.",
-  "cosmosdb.configuration.oauth.enable": "Łącząc się z kontami Cosmos DB NoSQL, zawsze uwierzytelniaj się przy użyciu kontroli dostępu na podstawie ról dla usługi Tożsamość Entra. [Włącz kontrolę dostępu na podstawie ról i przypisz role](https://aka.ms/cosmos-native-rbac).",
+  "cosmosdb.configuration.oauth.enable": "Łącząc się z kontami Cosmos DB NoSQL, zawsze uwierzytelniaj się przy użyciu kontroli dostępu na podstawie ról dla usługi Entra ID. [Włącz kontrolę dostępu na podstawie ról i przypisz role](https://aka.ms/cosmos-native-rbac).",
   "cosmosdb.configuration.operation.summaries": "Pokaż szczegółowe podsumowania operacji, wyświetlając komunikaty o działaniach, takich jak usuwanie bazy danych, dodawanie lub usuwanie dokumentów oraz podobne zdarzenia.",
   "cosmosdb.configuration.save.prompt": "Pokaż okno dialogowe z ostrzeżeniem podczas przesyłania dokumentu do chmury.",
   "cosmosdb.configuration.csv.separator": "Separator używany podczas eksportowania danych do pliku CSV (np. `;`, | lub `,`).",
@@ -52,10 +52,10 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "Wybiera najlepszą metodę uwierzytelniania na podstawie konfiguracji konta",
   "cosmosdb.configuration.preferredAuthenticationMethod.accountKey": "Klucz konta",
   "cosmosdb.configuration.preferredAuthenticationMethod.accountKey.description": "Należy włączyć opcję [LocalAuth](https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-disable-key-based-authentication). Nie jest to zalecane w środowiskach produkcyjnych",
-  "cosmosdb.configuration.preferredAuthenticationMethod.entraId": "Usługa Tożsamość Entra dla programu VS Code",
-  "cosmosdb.configuration.preferredAuthenticationMethod.entraId.description": "Zaloguj się do programu VS Code za pomocą usługi Tożsamość Entra",
+  "cosmosdb.configuration.preferredAuthenticationMethod.entraId": "Usługa Entra ID dla programu VS Code",
+  "cosmosdb.configuration.preferredAuthenticationMethod.entraId.description": "Zaloguj się do programu VS Code za pomocą usługi Entra ID",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity": "Tożsamość zarządzana",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Obsługiwane tylko w przypadku uruchamiania na platformie Azure (tj. na maszynie wirtualnej), [dowiedz się więcej](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
-  "cosmosdb.configuration.authentication.managedIdentity.clientID": "Identyfikator klienta tożsamości zarządzanej, który należy wykorzystać podczas uwierzytelniania w usłudze Tożsamość Entra przy użyciu tożsamości zarządzanej przypisanej przez użytkownika.",
+  "cosmosdb.configuration.authentication.managedIdentity.clientID": "Identyfikator klienta tożsamości zarządzanej, który należy wykorzystać podczas uwierzytelniania w usłudze Entra ID przy użyciu tożsamości zarządzanej przypisanej przez użytkownika.",
   "cosmosdb.configuration.manage-llm-assets": "Zarządzaj zasobami modelu LLM. Zezwalaj rozszerzeniu na aktualizowanie plików związanych z modelem LLM."
 }

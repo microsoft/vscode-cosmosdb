@@ -345,7 +345,7 @@
   "Partition Key": "Clave de partición",
   "Partition key {path} is invalid.": "La clave de partición {path} no es válida.",
   "Partition key can only start with a forward slash (/)": "La clave de partición solo puede comenzar con una barra diagonal (/)",
-  "Partition key cannot be longer than 255 characters": "La clave de la partición no puede superar los 255 caracteres",
+  "Partition key cannot be longer than 255 characters": "La clave de partición no puede superar los 255 caracteres",
   "Partition Key changed": "Clave de partición cambiada",
   "Partition key is required.": "Se requiere una clave de partición.",
   "Partition key must be unique.": "La clave de partición debe ser única.",

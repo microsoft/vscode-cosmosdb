@@ -165,7 +165,7 @@
   "Enter filter pattern or leave empty to clear filtration": "Immettere il criterio di filtro o lasciare vuoto per cancellare l'applicazione del filtro",
   "Enter the connection string for your database account": "Immettere la stringa di connessione per l'account di database",
   "Enter the connection string of your Emulator": "Immettere la stringa di connessione dell'emulatore",
-  "Enter the partition key for the container {0}": "Immettere la chiave di partizione per il contenitore {0}",
+  "Enter the partition key for the container {0}": "Immetti la chiave di partizione per il contenitore {0}",
   "Enter the port number for the Azure Cosmos DB Emulator": "Immettere il numero di porta per l'emulatore Azure Cosmos DB",
   "Error creating resource: {0}": "Errore durante la creazione della risorsa: {0}",
   "Error occurred handling received message: {errorMessage}": "Si è verificato un errore durante la gestione del messaggio ricevuto: {errorMessage}",

@@ -5,6 +5,7 @@
 
 import type * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../extensionVariables';
 import { type QueryEditorTab } from '../panels/QueryEditorTab';
 
 /**
@@ -33,6 +34,22 @@ export async function sendChatRequest(
 ): Promise<vscode.LanguageModelChatResponse> {
     // Build messages array with instruction message always first
     const messages = buildChatMessages(instructionMessage, userMessage, intermediateMessages);
+
+    // Count tokens for all messages and log usage info
+    try {
+        const tokenCounts = await Promise.all(messages.map((msg) => model.countTokens(msg, token)));
+        const totalTokens = tokenCounts.reduce((sum, count) => sum + count, 0);
+        const maxTokens = model.maxInputTokens;
+        const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
+        ext.outputChannel.info(
+            `[Chat Request] model="${model.name}" (${model.family}), ` +
+                `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
+                `usage=${ratio}%`,
+        );
+    } catch {
+        // Token counting is best-effort; don't block the request
+    }
+
     return model.sendRequest(messages, options, token);
 }
 

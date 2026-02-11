@@ -219,65 +219,49 @@ export class CosmosDbChatParticipant {
     }
 
     /**
-     * Detects user intent based on request context, and prompt
+     * Handles free-form conversation requests as a general Cosmos DB assistant.
+     * Used when no structured intent (editQuery, explainQuery, etc.) is detected.
      */
-    private detectIntent(
+    private async handleFreeformChat(
         request: vscode.ChatRequest,
-    ): { operation: string; parameters: Record<string, unknown> } | null {
-        const prompt = request.prompt.toLowerCase().trim();
+        model: vscode.LanguageModelChat,
+        stream: vscode.ChatResponseStream,
+        token: vscode.CancellationToken,
+    ): Promise<vscode.ChatResult> {
+        // Get query editor context if available (user content/payload)
+        const queryEditorContext = this.getQueryEditorContext();
 
-        // Intent detection based on context  (not just text parsing)
+        // System prompt (fixed instructions) - from systemPrompt.ts
+        const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT);
 
-        // 1. Check current context (what user is working on)
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-        if (activeQueryEditors.length > 0) {
-            // User has active query editor - check for edit/improve intents
-            if (
-                prompt.includes('edit') ||
-                prompt.includes('improve') ||
-                prompt.includes('optimize') ||
-                prompt.includes('enhance')
-            ) {
-                const activeEditor = getActiveQueryEditor(activeQueryEditors);
-                const result = activeEditor.getCurrentQueryResults();
+        // User content (dynamic payload) - query editor context + user prompt
+        let userContent = '';
+        if (queryEditorContext) {
+            userContent += wrapUserContent(queryEditorContext, 'context');
+            userContent += QUERY_EDITOR_CONTEXT_SUFFIX;
+        }
+        userContent += `\n\nUser request:\n${wrapUserContent(request.prompt, 'data')}`;
 
-                // Build rich context for the editQuery operation
-                const explanation = 'Query optimization based on session context';
+        const userMessage = vscode.LanguageModelChatMessage.User(userContent);
 
-                return {
-                    operation: 'editQuery',
-                    parameters: {
-                        currentQuery: result?.query,
-                        userPrompt: prompt, // Pass the user's original prompt for LLM
-                        explanation,
-                        // Pass session context for LLM
-                        sessionContext: {
-                            documentCount: result?.documents?.length || 0,
-                            requestCharge: result?.requestCharge || 0,
-                            hasResults: !!(result?.documents && result.documents.length > 0),
-                        },
-                    },
-                };
+        const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token);
+
+        for await (const fragment of chatResponse.text) {
+            stream.markdown(fragment);
+
+            if (token.isCancellationRequested) {
+                break;
             }
         }
 
-        // 2. Intent keywords (more semantic than parsing) with parameter extraction
-        const intentKeywords = {
-            editQuery: ['edit', 'improve', 'optimize', 'enhance', 'suggest', 'modify', 'update', 'query'],
-            explainQuery: ['explain', 'describe', 'analyze', 'breakdown', 'understand', 'what does', 'how does'],
-            generateQuery: ['generate', 'create', 'write', 'make', 'build', 'new query', 'query for', 'query to'],
-            help: ['help', 'commands', 'what can', 'how to'],
-        };
+        // Add operation suggestions after LLM response
+        const activeEditors = Array.from(QueryEditorTab.openTabs);
+        const activeEditor = activeEditors.length > 0 ? getActiveQueryEditor(activeEditors) : null;
+        const connection = activeEditor ? getConnectionFromQueryTab(activeEditor) : undefined;
+        const suggestions = OperationParser.generateSuggestions(!!connection);
+        stream.markdown(suggestions);
 
-        for (const [operation, keywords] of Object.entries(intentKeywords)) {
-            if (keywords.some((keyword) => prompt.includes(keyword))) {
-                // Extract parameters based on operation type using regex (LLM extraction happens at higher level)
-                const parameters = this.extractParametersWithRegex(operation, request.prompt);
-                return { operation, parameters };
-            }
-        }
-
-        return null;
+        return { metadata: { command: 'cosmosdb' } };
     }
 
     /**
@@ -562,102 +546,33 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
                 return await this.handleStructuredCommand(request, stream, token);
             }
 
-            // Try to get a language model for LLM-based intent detection
-            let languageModel: vscode.LanguageModelChat | null = null;
-            const extendedReq = request as ExtendedChatRequest;
-            if (extendedReq.model) {
-                languageModel = extendedReq.model;
-            } else {
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-                if (models.length > 0) {
-                    languageModel = models[0];
-                }
-            }
-
-            // First try LLM-based intent detection (most intelligent approach)
-            if (languageModel) {
-                const llmIntent = await this.extractIntentWithLLM(request.prompt, languageModel);
-                if (llmIntent) {
-                    stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
-                    if (Object.keys(llmIntent.parameters).length > 0) {
-                        stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
-                    } else {
-                        stream.markdown('\n');
-                    }
-                    return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
-                }
-            }
-
-            // Fallback: Check for intent based on context and references
-            const intent = this.detectIntent(request);
-            if (intent) {
-                return await this.handleIntentBasedRequest(request, intent, stream, token);
-            }
-
-            // Try to use the model from the request if available, otherwise fall back to selecting one
+            // Get the language model from the request or select one
             let model: vscode.LanguageModelChat;
-
-            // Check if the request has a model property (newer API)
             const extendedRequest = request as ExtendedChatRequest;
             if (extendedRequest.model) {
                 model = extendedRequest.model;
             } else {
-                // Fall back to selecting available models
-                const models = await vscode.lm.selectChatModels({});
-
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
                 if (models.length === 0) {
                     stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
                     return { metadata: { command: 'cosmosdb' } };
                 }
-
                 model = models[0];
             }
 
-            // Get query editor context if available (user content/payload)
-            const queryEditorContext = this.getQueryEditorContext();
-
-            // System prompt (fixed instructions) - from systemPrompt.ts
-            // Keep system prompt and user content architecturally separate
-            const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT);
-
-            // User content (dynamic payload) - query editor context + user prompt
-            // Wrap with clear delimiters to distinguish from instructions
-            let userContent = '';
-            if (queryEditorContext) {
-                userContent += wrapUserContent(queryEditorContext, 'context');
-                userContent += QUERY_EDITOR_CONTEXT_SUFFIX;
-            }
-            userContent += `\n\nUser request:\n${wrapUserContent(request.prompt, 'data')}`;
-
-            const userMessage = vscode.LanguageModelChatMessage.User(userContent);
-
-            // Send request to language model using utility to ensure instruction message is always first
-            const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token);
-
-            // Stream the response
-            try {
-                for await (const fragment of chatResponse.text) {
-                    stream.markdown(fragment);
-
-                    if (token.isCancellationRequested) {
-                        break;
-                    }
+            // First try LLM-based intent detection (most intelligent approach)
+            const llmIntent = await this.extractIntentWithLLM(request.prompt, model);
+            if (llmIntent) {
+                stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
+                if (Object.keys(llmIntent.parameters).length > 0) {
+                    stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
+                } else {
+                    stream.markdown('\n');
                 }
-
-                // Add operation suggestions after LLM response
-                const suggestionsActiveEditors = Array.from(QueryEditorTab.openTabs);
-                const suggestionsActiveEditor =
-                    suggestionsActiveEditors.length > 0 ? getActiveQueryEditor(suggestionsActiveEditors) : null;
-                const connection = suggestionsActiveEditor
-                    ? getConnectionFromQueryTab(suggestionsActiveEditor)
-                    : undefined;
-                const suggestions = OperationParser.generateSuggestions(!!connection);
-                stream.markdown(suggestions);
-            } catch (error) {
-                console.error('Error streaming chat response:', error);
+                return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
             }
 
-            return { metadata: { command: 'cosmosdb' } };
+            return await this.handleFreeformChat(request, model, stream, token);
         } catch (error) {
             // Handle errors gracefully
             console.error('CosmosDB chat participant error:', error);

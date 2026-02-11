@@ -477,9 +477,12 @@ export class CosmosDbOperationsService {
                         activeEditor: genEditor,
                         connection: genConnection,
                         currentResult: genResult,
+                        sessionQuery: genSessionQuery,
+                        editorQuery: genEditorQuery,
                         hasResults: genHasResults,
                     } = this.getActiveQueryEditorContext();
                     const genHistoryContext = this.getQueryHistoryContext(genEditor);
+                    const genCurrentQuery = genSessionQuery || genEditorQuery;
 
                     return await this.handleEditQuery(
                         parameters.userPrompt as string,
@@ -489,6 +492,8 @@ export class CosmosDbOperationsService {
                             documentCount: genHasResults ? genResult?.documents?.length : undefined,
                             requestCharge: genHasResults ? genResult?.requestCharge : undefined,
                         },
+                        genCurrentQuery,
+                        false,
                     );
                 }
 
@@ -510,15 +515,23 @@ export class CosmosDbOperationsService {
             requestCharge?: number;
         },
         currentQuery?: string,
+        /** Whether to include currentQuery as LLM context for editing.
+         *  When false, currentQuery is only used to comment out the previous query in the output.
+         *  Set to false for generateQuery, which creates a fresh query independent of the existing one. */
+        sendCurrentQueryToLLM: boolean = true,
     ): Promise<EditQueryResult> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
-        const llmSuggestion = await this.generateQueryWithLLM(userPrompt, currentQuery || '', {
-            historyContext,
-            withExplanation: true,
-        });
+        const llmSuggestion = await this.generateQueryWithLLM(
+            userPrompt,
+            sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
+            {
+                historyContext,
+                withExplanation: true,
+            },
+        );
         const suggestion = llmSuggestion.query;
         const llmExplanation = llmSuggestion.explanation;
 

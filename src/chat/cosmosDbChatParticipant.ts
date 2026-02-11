@@ -79,31 +79,7 @@ export class CosmosDbChatParticipant {
                 return context;
             }
 
-            // Fallback to basic context if no history available
-            const result = activeQueryEditor.getCurrentQueryResults();
-            let context = '\n\n## Query Editor Context\n';
-            context += `\n### Active Query Editor Session\n`;
-            context += `The user has an active Cosmos DB NoSQL query editor with session data.\n`;
-
-            if (result?.query) {
-                context += `### Current Query:\n\`\`\`sql\n${result.query}\n\`\`\`\n`;
-            }
-
-            if (result?.documents && result.documents.length > 0) {
-                context += `### Query Results Context:\n`;
-                context += `- Documents returned: ${result.documents.length}\n`;
-                if (result.requestCharge) {
-                    context += `- Request charge: ${result.requestCharge} RUs\n`;
-                }
-                context += `- Sample result structure: ${JSON.stringify(result.documents[0], null, 2).substring(0, 200)}...\n`;
-            }
-
-            if (result?.metadata) {
-                context += `### Query Metadata Available\n`;
-                context += `- Execution context and performance metrics are available for optimization\n`;
-            }
-
-            return context;
+            return '';
         } catch (error) {
             console.error('Error getting query editor context:', error);
             return '';

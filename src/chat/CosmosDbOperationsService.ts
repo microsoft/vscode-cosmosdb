@@ -444,7 +444,6 @@ export class CosmosDbOperationsService {
 
                     return await this.handleEditQuery(
                         parameters.userPrompt as string,
-                        parameters.explanation as string,
                         connection,
                         historyContext,
                         {
@@ -484,7 +483,6 @@ export class CosmosDbOperationsService {
 
                     return await this.handleEditQuery(
                         parameters.userPrompt as string,
-                        parameters.explanation as string,
                         genConnection,
                         genHistoryContext,
                         {
@@ -505,7 +503,6 @@ export class CosmosDbOperationsService {
 
     private async handleEditQuery(
         userPrompt: string,
-        explanation: string | undefined,
         connection: NoSqlQueryConnection,
         historyContext: QueryHistoryContext | undefined,
         resultContext: {
@@ -514,34 +511,16 @@ export class CosmosDbOperationsService {
         },
         currentQuery?: string,
     ): Promise<EditQueryResult> {
-        // Generate LLM suggestion if userPrompt is provided
-        let suggestion: string;
-        let llmExplanation: string = explanation || '';
-
-        if (userPrompt && userPrompt.trim() !== '') {
-            try {
-                const llmSuggestion = await this.generateQueryWithLLM(userPrompt, currentQuery || '', {
-                    historyContext,
-                    withExplanation: true,
-                });
-                suggestion = llmSuggestion.query;
-                llmExplanation = llmSuggestion.explanation;
-            } catch (error) {
-                if (currentQuery) {
-                    console.warn('LLM query generation failed, using fallback:', error);
-                    suggestion = this.generateFallbackSuggestion(currentQuery, userPrompt);
-                    llmExplanation = l10n.t('Basic query optimization applied (LLM unavailable)');
-                } else {
-                    throw error;
-                }
-            }
-        } else if (currentQuery) {
-            // Fallback when no user prompt but there is a current query
-            suggestion = this.generateFallbackSuggestion(currentQuery, '');
-            llmExplanation = explanation || l10n.t('Basic query optimization applied');
-        } else {
+        if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
+
+        const llmSuggestion = await this.generateQueryWithLLM(userPrompt, currentQuery || '', {
+            historyContext,
+            withExplanation: true,
+        });
+        const suggestion = llmSuggestion.query;
+        const llmExplanation = llmSuggestion.explanation;
 
         // Format the suggested query with comments
         const sanitizedPrompt = sanitizeSqlComment(userPrompt);
@@ -570,33 +549,6 @@ export class CosmosDbOperationsService {
                 requestCharge: resultContext.requestCharge,
             },
         };
-    }
-
-    /**
-     * Generate fallback suggestion when LLM is unavailable
-     */
-    private generateFallbackSuggestion(currentQuery: string, userPrompt: string): string {
-        // Basic query improvements
-        let improvedQuery = currentQuery;
-
-        // Add basic optimizations based on common patterns
-        if (userPrompt.toLowerCase().includes('limit') || userPrompt.toLowerCase().includes('top')) {
-            if (!improvedQuery.toUpperCase().includes('TOP')) {
-                improvedQuery = improvedQuery.replace(/SELECT\s+/i, 'SELECT TOP 100 ');
-            }
-        }
-
-        if (userPrompt.toLowerCase().includes('order') || userPrompt.toLowerCase().includes('sort')) {
-            if (!improvedQuery.toUpperCase().includes('ORDER BY')) {
-                improvedQuery += ' ORDER BY c._ts DESC';
-            }
-        }
-
-        if (userPrompt.toLowerCase().includes('count')) {
-            improvedQuery = 'SELECT VALUE COUNT(1) FROM c';
-        }
-
-        return improvedQuery;
     }
 
     /**
@@ -651,20 +603,11 @@ export class CosmosDbOperationsService {
                 `\n${explanation}`
             );
         } catch (error) {
-            console.warn('LLM query explanation failed, using fallback:', error);
-            const fallbackExplanation = this.generateFallbackExplanation(currentQuery);
-
-            let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
-            queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
-            queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n\n';
-
-            return (
-                `${queryContext}` +
-                l10n.t('**Query:**') +
-                `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
-                l10n.t('**Basic Explanation:**') +
-                `\n${fallbackExplanation}\n\n` +
-                l10n.t('*Note: Advanced AI analysis unavailable - using basic explanation.*')
+            console.warn('LLM query explanation failed:', error);
+            throw new Error(
+                l10n.t(
+                    'AI query analysis is currently unavailable. For query syntax reference, visit the [Azure Cosmos DB SQL query documentation](https://learn.microsoft.com/azure/cosmos-db/nosql/query/).',
+                ),
             );
         }
     }
@@ -730,61 +673,6 @@ export class CosmosDbOperationsService {
             console.error('LLM query explanation failed:', error);
             throw error;
         }
-    }
-
-    /**
-     * Generate fallback explanation when LLM is unavailable
-     */
-    private generateFallbackExplanation(query: string): string {
-        const queryUpper = query.toUpperCase();
-        let explanation = '';
-
-        // Basic query structure analysis
-        if (queryUpper.includes('SELECT')) {
-            if (queryUpper.includes('SELECT *')) {
-                explanation += l10n.t('• **SELECT * **: Retrieves all properties from documents') + '\n';
-            } else if (queryUpper.includes('SELECT VALUE')) {
-                explanation += l10n.t('• **SELECT VALUE**: Returns the raw values instead of objects') + '\n';
-            } else {
-                explanation += l10n.t('• **SELECT**: Retrieves specific properties from documents') + '\n';
-            }
-        }
-
-        if (queryUpper.includes('FROM C')) {
-            explanation += l10n.t('• **FROM c**: Queries from the container (c is the alias)') + '\n';
-        }
-
-        if (queryUpper.includes('WHERE')) {
-            explanation += l10n.t('• **WHERE**: Filters documents based on specified conditions') + '\n';
-        }
-
-        if (queryUpper.includes('ORDER BY')) {
-            explanation += l10n.t('• **ORDER BY**: Sorts results in ascending or descending order') + '\n';
-        }
-
-        if (queryUpper.includes('TOP') || queryUpper.includes('OFFSET')) {
-            explanation += l10n.t('• **Pagination**: Limits the number of results returned') + '\n';
-        }
-
-        if (queryUpper.includes('COUNT')) {
-            explanation += l10n.t('• **COUNT**: Aggregates the number of matching documents') + '\n';
-        }
-
-        if (queryUpper.includes('GROUP BY')) {
-            explanation += l10n.t('• **GROUP BY**: Groups results by specified properties') + '\n';
-        }
-
-        if (queryUpper.includes('JOIN')) {
-            explanation += l10n.t('• **JOIN**: Performs intra-document joins (within the same document)') + '\n';
-        }
-
-        if (!explanation) {
-            explanation = l10n.t(
-                'This appears to be a custom or complex query. Consider using the AI-powered explanation for detailed analysis.',
-            );
-        }
-
-        return explanation;
     }
 
     /**

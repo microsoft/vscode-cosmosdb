@@ -344,7 +344,7 @@
   "partition key": "파티션 키",
   "Partition Key": "파티션 키",
   "Partition key {path} is invalid.": "파티션 키 {path}이(가) 잘못되었습니다.",
-  "Partition key can only start with a forward slash (/)": "파티션 키는 반드시 슬래시(/)로 시작",
+  "Partition key can only start with a forward slash (/)": "파티션 키는 반드시 슬래시(/)로 시작합니다.",
   "Partition key cannot be longer than 255 characters": "파티션 키는 255자를 초과할 수 없습니다.",
   "Partition Key changed": "파티션 키가 변경됨",
   "Partition key is required.": "파티션 키가 필요합니다.",

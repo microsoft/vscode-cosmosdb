@@ -194,9 +194,5 @@ export const JSON_RESPONSE_FORMAT_WITH_EXPLANATION = `
   "explanation": "brief explanation of the query"
 }
 
-Return only valid JSON, no other text:`;
-
-/**
- * Prompt version for tracking changes.
- */
-export const PROMPT_VERSION = '1.0.0';
+Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
+** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;

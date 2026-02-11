@@ -226,6 +226,11 @@ export class CosmosDbChatParticipant {
                 parameters.userPrompt = originalPrompt;
                 break;
             }
+            case 'generateQuery': {
+                // Pass the full user prompt for LLM query generation
+                parameters.userPrompt = originalPrompt;
+                break;
+            }
             default: {
                 if (lowercasePrompt.includes('metrics') || lowercasePrompt.includes('performance')) {
                     parameters.includeMetrics = true;
@@ -429,6 +434,11 @@ export class CosmosDbChatParticipant {
                     };
                 }
             }
+
+            // Ensure userPrompt is always populated from the original request
+            if (!parameters.userPrompt && request.prompt.trim()) {
+                parameters.userPrompt = request.prompt;
+            }
             const result = await operationsService.executeOperation(operationName, parameters);
 
             // Handle editQuery results specially with buttons
@@ -459,7 +469,7 @@ export class CosmosDbChatParticipant {
      */
     private handleEditQueryResult(result: EditQueryResult, stream: vscode.ChatResponseStream): void {
         // Show query context - sanitize database and container IDs
-        let queryContext = `**Current Query Context:**\n`;
+        let queryContext = `**Query Context:**\n`;
         queryContext += `- **Database:** ${safeMarkdownText(result.queryContext.databaseId)}\n`;
         queryContext += `- **Container:** ${safeMarkdownText(result.queryContext.containerId)}\n`;
         if (result.queryContext.documentCount !== undefined) {
@@ -474,8 +484,10 @@ export class CosmosDbChatParticipant {
 
         stream.markdown(queryContext);
 
-        // Show current query - use safeCodeBlock to prevent SQL injection in markdown
-        stream.markdown(`**Current Query:**\n${safeCodeBlock(result.currentQuery, 'sql')}\n\n`);
+        // Show current query only if present (not for generateQuery)
+        if (result.currentQuery) {
+            stream.markdown(`**Current Query:**\n${safeCodeBlock(result.currentQuery, 'sql')}\n\n`);
+        }
 
         // Show suggested query - use safeCodeBlock to prevent SQL injection in markdown
         stream.markdown(`**Suggested Query:**\n${safeCodeBlock(result.suggestedQuery, 'sql')}\n\n`);

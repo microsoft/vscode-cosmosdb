@@ -62,7 +62,7 @@ export interface QueryHistoryContext {
 
 export interface EditQueryResult {
     type: 'editQuery';
-    currentQuery: string;
+    currentQuery?: string;
     suggestedQuery: string;
     explanation: string;
     connection: NoSqlQueryConnection;
@@ -443,7 +443,6 @@ export class CosmosDbOperationsService {
                     const historyContext = this.getQueryHistoryContext(activeEditor);
 
                     return await this.handleEditQuery(
-                        actualQuery,
                         parameters.userPrompt as string,
                         parameters.explanation as string,
                         connection,
@@ -452,6 +451,7 @@ export class CosmosDbOperationsService {
                             documentCount: hasResults ? currentResult?.documents?.length : undefined,
                             requestCharge: hasResults ? currentResult?.requestCharge : undefined,
                         },
+                        actualQuery,
                     );
                 }
                 case 'explainQuery': {
@@ -473,11 +473,26 @@ export class CosmosDbOperationsService {
                         schema: currentSchema,
                     });
                 }
-                case 'generateQuery':
-                    return await this.handleGenerateQuery(
+                case 'generateQuery': {
+                    const {
+                        activeEditor: genEditor,
+                        connection: genConnection,
+                        currentResult: genResult,
+                        hasResults: genHasResults,
+                    } = this.getActiveQueryEditorContext();
+                    const genHistoryContext = this.getQueryHistoryContext(genEditor);
+
+                    return await this.handleEditQuery(
                         parameters.userPrompt as string,
-                        parameters.currentQuery as string,
+                        parameters.explanation as string,
+                        genConnection,
+                        genHistoryContext,
+                        {
+                            documentCount: genHasResults ? genResult?.documents?.length : undefined,
+                            requestCharge: genHasResults ? genResult?.requestCharge : undefined,
+                        },
                     );
+                }
 
                 default:
                     throw new Error(l10n.t('Unknown operation: {0}', operationName));
@@ -489,7 +504,6 @@ export class CosmosDbOperationsService {
     }
 
     private async handleEditQuery(
-        currentQuery: string,
         userPrompt: string,
         explanation: string | undefined,
         connection: NoSqlQueryConnection,
@@ -498,6 +512,7 @@ export class CosmosDbOperationsService {
             documentCount?: number;
             requestCharge?: number;
         },
+        currentQuery?: string,
     ): Promise<EditQueryResult> {
         // Generate LLM suggestion if userPrompt is provided
         let suggestion: string;
@@ -505,31 +520,41 @@ export class CosmosDbOperationsService {
 
         if (userPrompt && userPrompt.trim() !== '') {
             try {
-                const llmSuggestion = await this.generateQueryWithLLM(userPrompt, currentQuery, {
+                const llmSuggestion = await this.generateQueryWithLLM(userPrompt, currentQuery || '', {
                     historyContext,
                     withExplanation: true,
                 });
                 suggestion = llmSuggestion.query;
                 llmExplanation = llmSuggestion.explanation;
             } catch (error) {
-                console.warn('LLM query generation failed, using fallback:', error);
-                suggestion = this.generateFallbackSuggestion(currentQuery, userPrompt);
-                llmExplanation = l10n.t('Basic query optimization applied (LLM unavailable)');
+                if (currentQuery) {
+                    console.warn('LLM query generation failed, using fallback:', error);
+                    suggestion = this.generateFallbackSuggestion(currentQuery, userPrompt);
+                    llmExplanation = l10n.t('Basic query optimization applied (LLM unavailable)');
+                } else {
+                    throw error;
+                }
             }
-        } else {
-            // Fallback when no user prompt
+        } else if (currentQuery) {
+            // Fallback when no user prompt but there is a current query
             suggestion = this.generateFallbackSuggestion(currentQuery, '');
             llmExplanation = explanation || l10n.t('Basic query optimization applied');
+        } else {
+            throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
-        // Format the suggested query with comments (like generateQuery does)
-        // Comment out the original query and add the prompt that generated the update
+        // Format the suggested query with comments
         const sanitizedPrompt = sanitizeSqlComment(userPrompt);
-        const sanitizedCurrentQuery = currentQuery
-            .split('\n')
-            .map((line) => sanitizeSqlComment(line))
-            .join('\n-- ');
-        const formattedSuggestion = `-- Updated from: ${sanitizedPrompt}\n${suggestion.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+        let formattedSuggestion: string;
+        if (currentQuery) {
+            const sanitizedCurrentQuery = currentQuery
+                .split('\n')
+                .map((line) => sanitizeSqlComment(line))
+                .join('\n-- ');
+            formattedSuggestion = `-- Updated from: ${sanitizedPrompt}\n${suggestion.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+        } else {
+            formattedSuggestion = `-- Generated from: ${sanitizedPrompt}\n${suggestion.trim()}`;
+        }
 
         // Return structured data for the chat participant to handle
         return {
@@ -763,59 +788,6 @@ export class CosmosDbOperationsService {
     }
 
     /**
-     * Generate a new query from natural language using LLM
-     */
-    private async handleGenerateQuery(userPrompt: string, currentQuery?: string): Promise<string> {
-        // Check if there's an active query editor
-        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-        if (activeQueryEditors.length === 0) {
-            throw new Error(
-                l10n.t(
-                    'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
-                ),
-            );
-        }
-
-        const activeEditor = getActiveQueryEditor(activeQueryEditors);
-        const connection = getConnectionFromQueryTab(activeEditor);
-        if (!connection) {
-            throw new Error(
-                l10n.t('No connection found in the active query editor. Please connect to a CosmosDB container first.'),
-            );
-        }
-
-        // Get current query from session if not provided
-        const currentResult = activeEditor.getCurrentQueryResults();
-        const sessionQuery = currentResult?.query;
-        const actualCurrentQuery = currentQuery || sessionQuery || '';
-
-        // Get query history context for better LLM understanding
-        const historyContext = this.getQueryHistoryContext(activeEditor);
-
-        if (!userPrompt || userPrompt.trim() === '') {
-            throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
-        }
-
-        try {
-            const generatedQuery = await this.generateQueryWithLLM(userPrompt, actualCurrentQuery, {
-                historyContext,
-            });
-
-            // Build response with context
-            let response = l10n.t('## 🔨 Generated Query') + '\n\n';
-            response += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
-            response += l10n.t('**Container:** {0}', connection.containerId) + '\n\n';
-            response += l10n.t('**Your request:** {0}', userPrompt) + '\n\n';
-            response += l10n.t('**Generated Query:**') + `\n\`\`\`sql\n${generatedQuery}\n\`\`\`\n\n`;
-
-            return response;
-        } catch (error) {
-            console.error('Query generation failed:', error);
-            throw error;
-        }
-    }
-
-    /**
      * Generate a query using LLM from natural language description.
      * This is the main method for query generation, used by both the chat participant and the query editor.
      * @param userPrompt The user's natural language description of the desired query
@@ -903,6 +875,14 @@ export class CosmosDbOperationsService {
         }
 
         responseText = responseText.trim();
+
+        // Strip markdown code block fences if the LLM wrapped the response
+        if (responseText.startsWith('```')) {
+            responseText = responseText
+                .replace(/^```(?:json)?\n?/, '')
+                .replace(/\n?```$/, '')
+                .trim();
+        }
 
         if (withExplanation) {
             // Parse JSON response

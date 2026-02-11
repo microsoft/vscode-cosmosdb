@@ -322,6 +322,12 @@ export class CosmosDbChatParticipant {
         const suggestions = OperationParser.generateSuggestions(!!connection);
         stream.markdown(suggestions);
 
+        stream.markdown(
+            l10n.t(
+                '\n\nFor more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).',
+            ),
+        );
+
         return { metadata: { command: 'cosmosdb' } };
     }
 

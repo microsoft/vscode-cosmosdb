@@ -543,9 +543,9 @@ export class CosmosDbOperationsService {
                 .split('\n')
                 .map((line) => sanitizeSqlComment(line))
                 .join('\n-- ');
-            formattedSuggestion = `-- Updated from: ${sanitizedPrompt}\n${suggestion.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+            formattedSuggestion = `-- ${l10n.t('Updated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}\n\n-- ${l10n.t('Previous query:')}\n-- ${sanitizedCurrentQuery}`;
         } else {
-            formattedSuggestion = `-- Generated from: ${sanitizedPrompt}\n${suggestion.trim()}`;
+            formattedSuggestion = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}`;
         }
 
         // Return structured data for the chat participant to handle

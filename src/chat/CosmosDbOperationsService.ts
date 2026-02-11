@@ -431,10 +431,15 @@ export class CosmosDbOperationsService {
         try {
             switch (operationName) {
                 case 'editQuery': {
-                    const { activeEditor, connection, currentResult, sessionQuery, hasResults } =
+                    const { activeEditor, connection, currentResult, sessionQuery, editorQuery, hasResults } =
                         this.getActiveQueryEditorContext();
 
-                    const actualQuery = sessionQuery || (parameters.currentQuery as string);
+                    const actualQuery = sessionQuery || editorQuery || (parameters.currentQuery as string);
+                    if (!actualQuery) {
+                        return l10n.t(
+                            'No query found to edit. Please write or execute a query in the query editor first.',
+                        );
+                    }
                     const historyContext = this.getQueryHistoryContext(activeEditor);
 
                     return await this.handleEditQuery(

@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { areAIFeaturesEnabled } from '../utils/copilotUtils';
@@ -31,8 +33,13 @@ interface ExtendedChatRequest {
  */
 export class CosmosDbChatParticipant {
     private participant: vscode.ChatParticipant;
+    private extensionPath: string;
+    private cosmosDbInstructions: string | undefined;
+    private dataModelingPrompt: string | undefined;
 
     constructor(context: vscode.ExtensionContext) {
+        this.extensionPath = context.extensionPath;
+
         // Create the chat participant with the ID 'cosmosdb'
         this.participant = vscode.chat.createChatParticipant(
             'cosmosdb',
@@ -50,6 +57,44 @@ export class CosmosDbChatParticipant {
 
         // Add to context subscriptions for proper cleanup
         context.subscriptions.push(this.participant);
+    }
+
+    /**
+     * Loads and caches the Cosmos DB LLM reference assets (instructions and data modeling prompt).
+     * These are included in the system prompt for free-form chat to provide domain knowledge.
+     */
+    private getCosmosDbReferenceContext(): string {
+        if (this.cosmosDbInstructions === undefined) {
+            try {
+                this.cosmosDbInstructions = fs.readFileSync(
+                    path.join(this.extensionPath, 'resources', 'llm-assets', 'azurecosmosdb.instructions.md'),
+                    'utf-8',
+                );
+            } catch (error) {
+                console.warn('Failed to load Cosmos DB instructions:', error);
+                this.cosmosDbInstructions = '';
+            }
+        }
+        if (this.dataModelingPrompt === undefined) {
+            try {
+                this.dataModelingPrompt = fs.readFileSync(
+                    path.join(this.extensionPath, 'resources', 'llm-assets', 'azurecosmosdb-datamodeling.prompt.md'),
+                    'utf-8',
+                );
+            } catch (error) {
+                console.warn('Failed to load data modeling prompt:', error);
+                this.dataModelingPrompt = '';
+            }
+        }
+
+        let reference = '';
+        if (this.cosmosDbInstructions) {
+            reference += `\n\n## Azure Cosmos DB Reference\n${this.cosmosDbInstructions}`;
+        }
+        if (this.dataModelingPrompt) {
+            reference += `\n\n## Data Modeling Reference\n${this.dataModelingPrompt}`;
+        }
+        return reference;
     }
 
     /**
@@ -219,6 +264,19 @@ export class CosmosDbChatParticipant {
     }
 
     /**
+     * Resolves the language model from the request or by selecting one.
+     * Returns null if no model is available.
+     */
+    private async getLanguageModel(request: vscode.ChatRequest): Promise<vscode.LanguageModelChat | null> {
+        const extReq = request as ExtendedChatRequest;
+        if (extReq.model) {
+            return extReq.model;
+        }
+        const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+        return models.length > 0 ? models[0] : null;
+    }
+
+    /**
      * Handles free-form conversation requests as a general Cosmos DB assistant.
      * Used when no structured intent (editQuery, explainQuery, etc.) is detected.
      */
@@ -231,8 +289,11 @@ export class CosmosDbChatParticipant {
         // Get query editor context if available (user content/payload)
         const queryEditorContext = this.getQueryEditorContext();
 
-        // System prompt (fixed instructions) - from systemPrompt.ts
-        const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT);
+        // Load Cosmos DB reference assets for domain knowledge
+        const referenceContext = this.getCosmosDbReferenceContext();
+
+        // System prompt (fixed instructions) - from systemPrompt.ts, enriched with reference docs
+        const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT + referenceContext);
 
         // User content (dynamic payload) - query editor context + user prompt
         let userContent = '';
@@ -482,6 +543,7 @@ export class CosmosDbChatParticipant {
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
 - \`@cosmosdb /explainQuery\` - Explain the current query with AI analysis
 - \`@cosmosdb /generateQuery\` - Generate a new query from natural language description
+- \`@cosmosdb /question\` - Ask a general question about Azure Cosmos DB
 - \`@cosmosdb /help\` - Show this help
 
 ### **Natural Language:**
@@ -491,11 +553,13 @@ You can also use natural language:
 - "explain this query" (analyzes current query in active editor)
 - "what does my query do?" (explains query purpose and components)
 - "generate a query to find all users" (creates a new query from description)
+- "what is a partition key?" (general Cosmos DB question)
 
 ### **Features:**
 - 🤖 AI query editing & optimization
 - 📊 Query explanation
 - ✨ AI-powered query generation from natural language
+- ❓ General Azure Cosmos DB knowledge and best practices
 
 For more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).`);
 
@@ -523,11 +587,39 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
                 return { metadata: { command: '', result: 'AI features disabled' } };
             }
 
+            // Handle commands that don't require an active connection
+            if (request.command === 'question') {
+                const questionModel = await this.getLanguageModel(request);
+                if (!questionModel) {
+                    stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
+                    return { metadata: { command: 'cosmosdb' } };
+                }
+                return await this.handleFreeformChat(request, questionModel, stream, token);
+            }
+            if (request.command === 'help') {
+                return await this.handleHelpCommand(stream);
+            }
+
             // Check if there's an active connection or query editor
             const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
             const hasConnection = activeQueryEditors.length > 0;
 
             if (!hasConnection) {
+                // For natural language requests, check if this is a general question
+                // that doesn't need a connection
+                if (!request.command) {
+                    const noConnModel = await this.getLanguageModel(request);
+                    if (noConnModel) {
+                        const llmIntent = await this.extractIntentWithLLM(request.prompt, noConnModel);
+                        if (!llmIntent || llmIntent.operation === 'generalQuestion') {
+                            return await this.handleFreeformChat(request, noConnModel, stream, token);
+                        }
+                        if (llmIntent.operation === 'help') {
+                            return await this.handleHelpCommand(stream);
+                        }
+                    }
+                }
+
                 stream.markdown(l10n.t('⚠️ **No Cosmos DB connection found.**') + '\n\n');
                 stream.markdown(l10n.t('Please connect to a Cosmos DB container to use the chat assistant.') + '\n\n');
 
@@ -547,22 +639,15 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
             }
 
             // Get the language model from the request or select one
-            let model: vscode.LanguageModelChat;
-            const extendedRequest = request as ExtendedChatRequest;
-            if (extendedRequest.model) {
-                model = extendedRequest.model;
-            } else {
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-                if (models.length === 0) {
-                    stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
-                    return { metadata: { command: 'cosmosdb' } };
-                }
-                model = models[0];
+            const model = await this.getLanguageModel(request);
+            if (!model) {
+                stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
+                return { metadata: { command: 'cosmosdb' } };
             }
 
             // First try LLM-based intent detection (most intelligent approach)
             const llmIntent = await this.extractIntentWithLLM(request.prompt, model);
-            if (llmIntent) {
+            if (llmIntent && llmIntent.operation !== 'generalQuestion') {
                 stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
                 if (Object.keys(llmIntent.parameters).length > 0) {
                     stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
@@ -572,6 +657,7 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
                 return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
             }
 
+            // No structured intent or general question — handle as free-form conversation
             return await this.handleFreeformChat(request, model, stream, token);
         } catch (error) {
             // Handle errors gracefully

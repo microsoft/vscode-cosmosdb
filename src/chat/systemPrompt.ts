@@ -62,7 +62,7 @@ When helping with query optimization, use the provided query session context inc
 - Sample result data structure
 - Performance metadata when available
 
-Please provide helpful, accurate, and actionable responses about Cosmos DB. If asked about something outside of Cosmos DB, politely redirect the conversation back to Cosmos DB topics.`;
+Please provide helpful, accurate, and actionable responses about Cosmos DB. Use the reference documentation provided below to give accurate answers. When appropriate, refer users to the official Azure Cosmos DB documentation at https://learn.microsoft.com/azure/cosmos-db/ for more detailed information. If asked about something outside of Cosmos DB, politely redirect the conversation back to Cosmos DB topics.`;
 
 /**
  * Query editor context suffix added when query editor is active.
@@ -79,7 +79,7 @@ Use azure mcp to answer questions about cosmos db or respond I don't know`;
 export const INTENT_EXTRACTION_PROMPT = `${SYSTEM_DEFENSE_RULES}
 Analyze this CosmosDB user request and extract the intent and parameters.
 
-Available operations: editQuery, explainQuery, generateQuery, help
+Available operations: editQuery, explainQuery, generateQuery, generalQuestion, help
 
 Return JSON with operation and parameters. Examples:
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
@@ -87,6 +87,7 @@ Return JSON with operation and parameters. Examples:
 - "generate a query to find all active users" → {"operation": "generateQuery", "parameters": {"userPrompt": "find all active users"}}
 - "create a query for orders over $100" → {"operation": "generateQuery", "parameters": {"userPrompt": "orders over $100"}}
 - "help" → {"operation": "help", "parameters": { "topic": "partition key choice" }}
+- "what is the best way to model my data?" → {"operation": "generalQuestion", "parameters": {"userPrompt": "best way to model my data"}}
 - if intent does not map any of the available operations: {}
 
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.

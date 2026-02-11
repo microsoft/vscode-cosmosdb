@@ -37,12 +37,16 @@ export async function sendChatRequest(
 
     // Count tokens for all messages and log usage info
     try {
-        const tokenCounts = await Promise.all(messages.map((msg) => model.countTokens(msg, token)));
-        const totalTokens = tokenCounts.reduce((sum, count) => sum + count, 0);
+        const [instructionTokens, userTokens] = await Promise.all([
+            model.countTokens(instructionMessage, token),
+            userMessage ? model.countTokens(userMessage, token) : Promise.resolve(0),
+        ]);
+        const totalTokens = instructionTokens + userTokens;
         const maxTokens = model.maxInputTokens;
         const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
         ext.outputChannel.info(
             `[Chat Request] model="${model.name}" (${model.family}), ` +
+                `instructionTokens=${instructionTokens}, userTokens=${userTokens}, ` +
                 `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
                 `usage=${ratio}%`,
         );

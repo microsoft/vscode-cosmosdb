@@ -20,7 +20,12 @@ import {
     type IActionContext,
 } from '@microsoft/vscode-azext-utils';
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
-import { AzExtResourceType, getAzureResourcesExtensionApi } from '@microsoft/vscode-azureresources-api';
+import {
+    AzExtResourceType,
+    prepareAzureResourcesApiRequest,
+    type AzureResourcesApiRequestContext,
+    type AzureResourcesExtensionApi,
+} from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
@@ -56,7 +61,7 @@ export async function activateInternal(
         });
     }
 
-    await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
@@ -68,26 +73,6 @@ export async function activateInternal(
         ext.state = new TreeElementStateManager();
         ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
-
-        ext.rgApiV2 = (await getAzureResourcesExtensionApi(context, '2.0.0')) as AzureResourcesExtensionApiWithActivity;
-        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
-            AzExtResourceType.AzureCosmosDb,
-            ext.cosmosDBBranchDataProvider,
-        );
-        // Still shows PostgreSQL servers in the tree for now
-        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
-            AzExtResourceType.PostgresqlServersStandard,
-            ext.cosmosDBBranchDataProvider,
-        );
-        ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
-            AzExtResourceType.PostgresqlServersFlexible,
-            ext.cosmosDBBranchDataProvider,
-        );
-        ext.rgApiV2.resources.registerWorkspaceResourceProvider(new SharedWorkspaceResourceProvider());
-        ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
-            WorkspaceResourceType.AttachedAccounts,
-            ext.cosmosDBWorkspaceBranchDataProvider,
-        );
 
         ext.fileSystem = new DatabasesFileSystem();
 
@@ -116,20 +101,50 @@ export async function activateInternal(
         registerReportIssueCommand('azureDatabases.reportIssue');
     });
 
-    const exportedApis = [
-        <AzureExtensionApi>{
-            apiVersion: '1.2.0',
-        },
-    ];
+    const exportedApi: AzureExtensionApi = { apiVersion: '1.2.0' };
+    const v2: string = '^2.0.0';
+    const requestContext: AzureResourcesApiRequestContext = {
+        azureResourcesApiVersions: [v2],
+        clientExtensionId: 'ms-azuretools.vscode-cosmosdb',
 
-    console.log(
-        'Registering APIs:',
-        exportedApis.map((a) => a.apiVersion),
-    );
+        // Successful retrieval of Azure Resources APIs will be returned here
+        onDidReceiveAzureResourcesApis: (azureResourcesApis: (AzureResourcesExtensionApi | undefined)[]) => {
+            const [rgApiV2] = azureResourcesApis;
+            if (!rgApiV2) {
+                throw new Error(l10n.t('Failed to find a matching Azure Resources API for version "{0}".', v2));
+            }
+
+            ext.rgApiV2 = rgApiV2 as AzureResourcesExtensionApiWithActivity;
+
+            ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+                AzExtResourceType.AzureCosmosDb,
+                ext.cosmosDBBranchDataProvider,
+            );
+            // Still shows PostgreSQL servers in the tree for now
+            ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+                AzExtResourceType.PostgresqlServersStandard,
+                ext.cosmosDBBranchDataProvider,
+            );
+            ext.rgApiV2.resources.registerAzureResourceBranchDataProvider(
+                AzExtResourceType.PostgresqlServersFlexible,
+                ext.cosmosDBBranchDataProvider,
+            );
+            ext.rgApiV2.resources.registerWorkspaceResourceProvider(new SharedWorkspaceResourceProvider());
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.AttachedAccounts,
+                ext.cosmosDBWorkspaceBranchDataProvider,
+            );
+        },
+    };
+    const { clientApi, requestResourcesApis } = prepareAzureResourcesApiRequest(requestContext, exportedApi);
+
+    requestResourcesApis();
+
+    console.log(`Registering APIs: ${exportedApi.apiVersion}, Azure Resources API ${clientApi.apiVersion}`);
 
     vscode.commands.executeCommand('cosmosDB.ai.deployInstructionFiles');
 
-    return createApiProvider(exportedApis);
+    return createApiProvider([clientApi]);
 }
 
 // this method is called when your extension is deactivated

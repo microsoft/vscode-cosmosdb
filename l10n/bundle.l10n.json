@@ -197,6 +197,7 @@
   "Failed to deploy LLM instruction files: {0}": "Failed to deploy LLM instruction files: {0}",
   "Failed to execute command {command}: {error}": "Failed to execute command {command}: {error}",
   "Failed to extract the connection string from the selected account.": "Failed to extract the connection string from the selected account.",
+  "Failed to find a matching Azure Resources API for version \"{0}\".": "Failed to find a matching Azure Resources API for version \"{0}\".",
   "Failed to find commandId on generic tree item.": "Failed to find commandId on generic tree item.",
   "Failed to parse index metrics: {error}": "Failed to parse index metrics: {error}",
   "Failed to parse secrets for key {0}:": "Failed to parse secrets for key {0}:",

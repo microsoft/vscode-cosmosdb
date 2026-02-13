@@ -73,6 +73,9 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             const gridElement = grid.getContainerNode();
             gridElement?.setAttribute('role', 'grid');
             gridElement?.setAttribute('aria-label', 'Query results data grid');
+            // Since slickgrid renders only visible rows the number of rows and probably columns might change
+            gridElement?.setAttribute('aria-colcount', headers.length.toString());
+            gridElement?.setAttribute('aria-rowcount', dataset.length.toString());
 
             // Announce cell values on navigation using ARIA live region
             grid.onActiveCellChanged.subscribe((_e, args) => {

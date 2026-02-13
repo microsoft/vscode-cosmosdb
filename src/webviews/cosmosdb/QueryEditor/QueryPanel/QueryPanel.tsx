@@ -6,6 +6,7 @@
 import { makeStyles } from '@fluentui/react-components';
 import { useHotkeyScope } from '../../../common/hotkeys';
 import { type QueryEditorHotkeyCommand, QueryEditorHotkeys, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { GenerateQueryInput } from './GenerateQueryInput';
 import { QueryMonaco } from './QueryMonaco';
 import { QueryToolbarOverflow } from './QueryToolbarOverflow';
 
@@ -35,6 +36,7 @@ export const QueryPanel = () => {
     return (
         <section className={classes.container} ref={editorRef} tabIndex={-1}>
             <QueryToolbarOverflow />
+            <GenerateQueryInput />
             <section className={classes.monacoContainer}>
                 <QueryMonaco />
             </section>

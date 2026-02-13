@@ -8,6 +8,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import { CosmosDbOperationsService } from '../chat/CosmosDbOperationsService';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
@@ -20,9 +21,11 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
+import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -31,6 +34,7 @@ import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
+const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -43,10 +47,11 @@ export class QueryEditorTab extends BaseTab {
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    private readonly sessions = new Map<string, QuerySession>();
+    public readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
+    private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
@@ -107,6 +112,50 @@ export class QueryEditorTab extends BaseTab {
         super.dispose();
     }
 
+    public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
+        const activeSession = this.sessions.values().next().value as QuerySession | undefined;
+        const result = activeSession?.sessionResult;
+        return result?.getSerializedResult(1);
+    };
+
+    public getConnection = (): NoSqlQueryConnection | undefined => {
+        return this.connection;
+    };
+
+    public getCurrentQuery = (): string | undefined => {
+        return this.query;
+    };
+
+    public isActive(): boolean {
+        return this.panel.active;
+    }
+
+    public isVisible(): boolean {
+        return this.panel.visible;
+    }
+
+    /**
+     * Broadcasts AI features availability change to all open QueryEditorTabs
+     */
+    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+        const notifications = Array.from(QueryEditorTab.openTabs).map((tab) =>
+            tab.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [isAIFeaturesEnabled],
+            }),
+        );
+        await Promise.all(notifications);
+    }
+
+    public async updateQuery(query: string): Promise<void> {
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'fileOpened',
+            params: [query],
+        });
+    }
+
     protected initController() {
         super.initController();
 
@@ -125,6 +174,12 @@ export class QueryEditorTab extends BaseTab {
                 type: 'event',
                 name: 'isSurveyCandidateChanged',
                 params: [!getIsSurveyDisabledGlobally()],
+            });
+            // Send AI features availability state
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [ext.isAIFeaturesEnabled],
             });
         });
     }
@@ -192,6 +247,21 @@ export class QueryEditorTab extends BaseTab {
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
             case 'updateQueryHistory':
                 return this.updateQueryHistory(payload.params[0] as string);
+            case 'updateQueryText':
+                this.updateQueryText(payload.params[0] as string);
+                return Promise.resolve();
+            case 'generateQuery':
+                return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
+            case 'cancelGenerateQuery':
+                return this.cancelGenerateQuery();
+            case 'getSelectedModelName':
+                return this.getSelectedModelName();
+            case 'getAvailableModels':
+                return this.getAvailableModels();
+            case 'setSelectedModel':
+                return this.setSelectedModel(payload.params[0] as string);
+            case 'openCopilotExplainQuery':
+                return this.openCopilotExplainQuery();
         }
 
         return super.getCommand(payload);
@@ -447,6 +517,8 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async runQuery(query: string, options: QueryMetadata): Promise<void> {
+        this.query = query;
+
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
@@ -658,5 +730,179 @@ export class QueryEditorTab extends BaseTab {
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         const text = await queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
+    }
+
+    private updateQueryText(query: string): void {
+        this.query = query;
+    }
+
+    private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
+        await callWithTelemetryAndErrorHandling(callbackId, async () => {
+            // Cancel any existing generation
+            this.generateQueryCancellation?.cancel();
+            this.generateQueryCancellation?.dispose();
+            this.generateQueryCancellation = new vscode.CancellationTokenSource();
+            const token = this.generateQueryCancellation.token;
+
+            try {
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+
+                if (models.length === 0) {
+                    throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+                }
+
+                // Check for cancellation
+                if (token.isCancellationRequested) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                // Use saved model selection or first available
+                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+                // Use the shared service for query generation
+                const service = CosmosDbOperationsService.getInstance();
+                const historyContext = service.getQueryHistoryContext(this);
+                const generatedQuery = await service.generateQueryWithLLM(prompt, currentQuery, {
+                    modelId: model.id,
+                    historyContext,
+                    cancellationToken: token,
+                });
+
+                // Check for cancellation after LLM call
+                if (token.isCancellationRequested) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                // Comment the original prompt and prepend the generated query
+                // Sanitize user inputs to prevent SQL comment injection
+                const sanitizedPrompt = sanitizeSqlComment(prompt);
+                const sanitizedCurrentQuery = currentQuery
+                    .split('\n')
+                    .map((line) => sanitizeSqlComment(line))
+                    .join('\n-- ');
+                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [finalQuery, model.name, prompt],
+                });
+            } catch (error) {
+                // Check if it was a cancellation
+                if (token.isCancellationRequested) {
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [false],
+                });
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'showErrorMessage',
+                    params: [l10n.t('Failed to generate query: {0}', errorMessage)],
+                });
+            }
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private cancelGenerateQuery(): Promise<void> {
+        this.generateQueryCancellation?.cancel();
+        this.generateQueryCancellation?.dispose();
+        this.generateQueryCancellation = undefined;
+        return Promise.resolve();
+    }
+
+    private async getSelectedModelName(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels();
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            // Find the saved model or use first available
+            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+            const modelName = selectedModel?.name ?? 'Copilot';
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: [modelName],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: ['Copilot'],
+            });
+        }
+    }
+
+    private async getAvailableModels(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            const modelList = models.map((m) => ({
+                id: m.id,
+                name: m.name,
+                family: m.family,
+                vendor: m.vendor,
+            }));
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [modelList, savedModelId],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [[], null],
+            });
+        }
+    }
+
+    private async setSelectedModel(modelId: string): Promise<void> {
+        await ext.context.globalState.update(SELECTED_MODEL_KEY, modelId);
+
+        // Send back confirmation with the model name
+        const models = await vscode.lm.selectChatModels();
+        const selectedModel = models.find((m) => m.id === modelId);
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'selectedModelName',
+            params: [selectedModel?.name ?? 'Copilot'],
+        });
+    }
+
+    private async openCopilotExplainQuery(): Promise<void> {
+        const query = this.query?.trim();
+        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
+
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query: chatQuery,
+        });
     }
 }

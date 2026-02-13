@@ -21,6 +21,7 @@ import { ToolbarOverflowDivider } from '../../../common/ToolbarOverflow/ToolbarO
 import { ToolbarOverflowMenuDivider } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuDivider';
 import { ToolbarOverflowMenuItem } from '../../../common/ToolbarOverflow/ToolbarOverflowMenuItem';
 import { useQueryEditorState } from '../state/QueryEditorContext';
+import { AIButton } from './AIButton';
 import { CancelQueryButton } from './CancelQueryButton';
 import { ConnectionButton } from './ConnectionButton';
 import { DuplicateTabButton } from './DuplicateTabButton';
@@ -58,25 +59,30 @@ const OverflowMenu = () => {
                         <CancelQueryButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     <ToolbarOverflowMenuDivider id="1" />
-                    <ToolbarOverflowMenuItem id="3">
+                    {state.isAIFeaturesEnabled && (
+                        <ToolbarOverflowMenuItem id="3">
+                            <AIButton type={'menuitem'} />
+                        </ToolbarOverflowMenuItem>
+                    )}
+                    <ToolbarOverflowMenuItem id="4">
                         <OpenFileButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
-                    <ToolbarOverflowMenuItem id="4">
+                    <ToolbarOverflowMenuItem id="5">
                         <SaveToFileButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
-                    <ToolbarOverflowMenuItem id="5">
+                    <ToolbarOverflowMenuItem id="6">
                         <DuplicateTabButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
-                    <ToolbarOverflowMenuItem id="6">
+                    <ToolbarOverflowMenuItem id="7">
                         <LearnButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                     {state.isSurveyCandidate && (
-                        <ToolbarOverflowMenuItem id="7">
+                        <ToolbarOverflowMenuItem id="8">
                             <ProvideFeedbackButton type={'menuitem'} />
                         </ToolbarOverflowMenuItem>
                     )}
                     <ToolbarOverflowMenuDivider id="2" />
-                    <ToolbarOverflowMenuItem id="8">
+                    <ToolbarOverflowMenuItem id="9">
                         <ConnectionButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                 </MenuList>
@@ -86,6 +92,7 @@ const OverflowMenu = () => {
 };
 
 export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
+    const state = useQueryEditorState();
     return (
         <Overflow padding={40}>
             <Toolbar aria-label={l10n.t('Default')} size={'small'} {...props}>
@@ -96,25 +103,30 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                     <CancelQueryButton type={'button'} />
                 </OverflowItem>
                 <ToolbarOverflowDivider groupId="1" />
-                <OverflowItem id={'3'} groupId={'2'}>
+                {state.isAIFeaturesEnabled && (
+                    <OverflowItem id={'3'} groupId={'2'}>
+                        <AIButton type={'button'} />
+                    </OverflowItem>
+                )}
+                <OverflowItem id={'4'} groupId={'2'}>
                     <OpenFileButton type={'button'} />
                 </OverflowItem>
-                <OverflowItem id={'4'} groupId={'2'}>
+                <OverflowItem id={'5'} groupId={'2'}>
                     <SaveToFileButton type={'button'} />
                 </OverflowItem>
-                <OverflowItem id={'5'} groupId={'2'}>
+                <OverflowItem id={'6'} groupId={'2'}>
                     <DuplicateTabButton type={'button'} />
                 </OverflowItem>
-                <OverflowItem id={'6'} groupId={'2'}>
+                <OverflowItem id={'7'} groupId={'2'}>
                     <LearnButton type={'button'} />
                 </OverflowItem>
-                {useQueryEditorState().isSurveyCandidate && (
-                    <OverflowItem id={'7'} groupId={'2'}>
+                {state.isSurveyCandidate && (
+                    <OverflowItem id={'8'} groupId={'2'}>
                         <ProvideFeedbackButton type={'button'} />
                     </OverflowItem>
                 )}
                 <ToolbarOverflowDivider groupId="2" />
-                <OverflowItem id={'8'} groupId={'3'}>
+                <OverflowItem id={'9'} groupId={'3'}>
                     <ConnectionButton type={'button'} />
                 </OverflowItem>
                 <OverflowMenu />

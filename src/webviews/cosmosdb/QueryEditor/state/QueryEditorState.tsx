@@ -74,10 +74,16 @@ export type DispatchAction =
           throughputBuckets?: boolean[];
       }
     | {
+          type: 'toggleGenerateInput';
+      }
+    | {
           type: 'setConnectionList';
           connectionList: Record<string, string[]> | undefined;
+      }
+    | {
+          type: 'setAIFeaturesEnabled';
+          isAIFeaturesEnabled: boolean;
       };
-
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     containerName: string; // Container which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
@@ -105,6 +111,9 @@ export type QueryEditorState = {
     selectedThroughputBucket?: number;
 
     tableViewMode: TableViewMode;
+
+    showGenerateInput: boolean; // Whether to show the LLM query generation input
+    isAIFeaturesEnabled: boolean; // Whether AI features (AI button, etc.) are enabled (Copilot available)
 };
 
 export const defaultState: QueryEditorState = {
@@ -134,6 +143,8 @@ export const defaultState: QueryEditorState = {
     selectedThroughputBucket: undefined,
 
     tableViewMode: 'Table',
+    showGenerateInput: false,
+    isAIFeaturesEnabled: false, // Default to false, will be updated from extension when Copilot is available
 };
 
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
@@ -195,7 +206,11 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, selectedThroughputBucket: action.throughputBucket };
         case 'updateThroughputBuckets':
             return { ...state, throughputBuckets: action.throughputBuckets };
+        case 'toggleGenerateInput':
+            return { ...state, showGenerateInput: !state.showGenerateInput };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
+        case 'setAIFeaturesEnabled':
+            return { ...state, isAIFeaturesEnabled: action.isAIFeaturesEnabled };
     }
 }

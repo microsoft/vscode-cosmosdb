@@ -8,13 +8,16 @@ import {
     registerCommand,
     registerCommandWithTreeNodeUnwrapping,
 } from '@microsoft/vscode-azext-utils';
-import type vscode from 'vscode';
+import * as l10n from '@vscode/l10n';
+import * as vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import {
     deployLLMInstructionsFiles,
     removeLLMInstructionsFiles,
 } from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { ext } from '../extensionVariables';
+import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { copyConnectionString } from './copyConnectionString/copyConnectionString';
 import { cosmosDBCreateContainer } from './createContainer/createContainer';
 import { cosmosDBCreateDatabase } from './createDatabase/createDatabase';
@@ -75,6 +78,7 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 
     registerLLMAssetsCommands();
+    registerChatButtonCommands();
 }
 
 export function registerAccountCommands() {
@@ -127,4 +131,62 @@ export function registerTriggerCommands() {
 export function registerLLMAssetsCommands() {
     registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
     registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
+}
+
+export function registerChatButtonCommands() {
+    // Command to apply the suggested query (update current editor)
+    // Note: Chat buttons pass arguments directly, so we use vscode.commands.registerCommand
+    // to avoid the IActionContext injection from registerCommand
+    ext.context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'cosmosDB.applyQuerySuggestion',
+            async (connection: NoSqlQueryConnection, suggestedQuery: string) => {
+                console.log('[CosmosDB Chat] applyQuerySuggestion called', { connection, suggestedQuery });
+
+                if (!connection || !suggestedQuery) {
+                    void vscode.window.showErrorMessage(l10n.t('Missing connection or query data'));
+                    return;
+                }
+
+                // Find the active query editor tab and update its query
+                const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+                const activeTab = activeQueryEditors.find(
+                    (tab) =>
+                        tab.getConnection()?.endpoint === connection.endpoint &&
+                        tab.getConnection()?.databaseId === connection.databaseId &&
+                        tab.getConnection()?.containerId === connection.containerId,
+                );
+
+                if (activeTab && 'updateQuery' in activeTab) {
+                    // Update the query in the existing webview
+                    await activeTab.updateQuery(suggestedQuery);
+                    void vscode.window.showInformationMessage(l10n.t('✅ Query updated successfully!'));
+                } else {
+                    // Fallback: create a new tab if no matching tab is found
+                    QueryEditorTab.render(connection, vscode.ViewColumn.Active, false, suggestedQuery);
+                    void vscode.window.showInformationMessage(l10n.t('✅ Query opened in new tab!'));
+                }
+            },
+        ),
+    );
+
+    // Command to open query side-by-side
+    ext.context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'cosmosDB.openQuerySideBySide',
+            (connection: NoSqlQueryConnection, suggestedQuery: string) => {
+                console.log('[CosmosDB Chat] openQuerySideBySide called', { connection, suggestedQuery });
+
+                if (!connection || !suggestedQuery) {
+                    void vscode.window.showErrorMessage(l10n.t('Missing connection or query data'));
+                    return;
+                }
+
+                QueryEditorTab.render(connection, vscode.ViewColumn.Two, false, suggestedQuery);
+                void vscode.window.showInformationMessage(
+                    l10n.t('🔍 Suggested query opened side-by-side for comparison.'),
+                );
+            },
+        ),
+    );
 }

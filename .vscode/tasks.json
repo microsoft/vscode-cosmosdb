@@ -71,6 +71,22 @@
     {
       "label": "Pretest and Webpack",
       "dependsOn": ["Pretest", "Watch"]
+    },
+    {
+      "label": "CosmosDB Emulator",
+      "type": "shell",
+      "command": "docker-compose up; docker-compose down",
+      "windows": {
+        "command": "try { docker-compose up } finally { docker-compose down }"
+      },
+      "group": "none",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": false
+      },
+      "problemMatcher": []
     }
   ]
 }

@@ -38,10 +38,10 @@ docker-compose down -v
 
 Every request made against the emulator must be authenticated using a key over TLS/SSL. The emulator ships with a single account configured to use a well-known authentication key.
 
-| Setting           | Value                                                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Endpoint          | `localhost:8081`                                                                                                   |
-| Key               | `C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==`                         |
+| Setting           | Value                                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Endpoint          | `localhost:8081`                                                                                                                               |
+| Key               | `C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==`                                                     |
 | Connection String | `AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;` |
 
 ## Differences Between the Emulator and Cloud Service
@@ -62,4 +62,3 @@ The emulator provides an environment on your developer workspace that isn't capa
 
 - [Linux Emulator Documentation](https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux)
 - [Azure Cosmos DB Emulator Overview](https://learn.microsoft.com/en-us/azure/cosmos-db/emulator)
-

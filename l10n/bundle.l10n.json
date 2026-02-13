@@ -92,6 +92,7 @@
   "Copy to clipboard": "Copy to clipboard",
   "Cosmos DB Accounts": "Cosmos DB Accounts",
   "Cosmos DB SDK limitations": "Cosmos DB SDK limitations",
+  "Could not find Azure extension API for extension \"{0}\".": "Could not find Azure extension API for extension \"{0}\".",
   "Could not find unique name for new file.": "Could not find unique name for new file.",
   "Create an Azure Account...": "Create an Azure Account...",
   "Create an Azure for Students Account...": "Create an Azure for Students Account...",

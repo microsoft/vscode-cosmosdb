@@ -162,7 +162,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
         }
     }
 
-    async getResourceItem(resource?: T): Promise<TreeElement> {
+    async getResourceItem(resource: T): Promise<TreeElement> {
         return (
             (await callWithTelemetryAndErrorHandling(
                 `${this.providerName}.getResourceItem`,

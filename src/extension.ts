@@ -43,7 +43,9 @@ import {
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { globalUriHandler } from './vscodeUriHandler';
 
-export async function activateInternal(context: vscode.ExtensionContext): Promise<apiUtils.AzureExtensionApiProvider> {
+export async function activateInternal(
+    context: vscode.ExtensionContext,
+): Promise<apiUtils.AzureExtensionApiProvider | undefined> {
     const startTime = performance.now();
 
     // Initialize Azure utils ext variables
@@ -58,7 +60,7 @@ export async function activateInternal(context: vscode.ExtensionContext): Promis
     registerUIExtensionVariables(ext);
     registerAzureUtilsExtensionVariables(ext);
 
-    await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
+    return callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.startTime = startTime;
 
@@ -74,28 +76,44 @@ export async function activateInternal(context: vscode.ExtensionContext): Promis
             activateContext.telemetry.measurements.l10nLoadTime = performance.now() - l10nStartTime;
         }
 
-        const all = vscode.extensions.all;
-        const active = vscode.extensions.all.filter((ext) => ext.isActive);
+        // Early initialization to determine whether Managed Identity is available for authentication
+        // Requires ext.outputChannel to be set
+        void getIsRunningOnAzure();
 
-        console.log(`There are ${all.length} extensions installed, of which ${active.length} are active`);
+        ext.secretStorage = context.secrets;
+        ext.state = new TreeElementStateManager();
+        ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
+        ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
+        ext.fileSystem = new DatabasesFileSystem();
+
+        context.subscriptions.push(
+            vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
+        );
+
+        context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
+
+        // Register common commands
+        registerCommands();
+
+        registerEvent(
+            'cosmosDB.onDidChangeConfiguration',
+            vscode.workspace.onDidChangeConfiguration,
+            async (actionContext: IActionContext, event: vscode.ConfigurationChangeEvent) => {
+                actionContext.telemetry.properties.isActivationEvent = 'true';
+                actionContext.errorHandling.suppressDisplay = true;
+                if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
+                    await vscode.commands.executeCommand('azureDatabases.refresh');
+                }
+            },
+        );
+
+        // Suppress "Report an Issue" button for all errors in favor of the command
+        registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
+        registerReportIssueCommand('azureDatabases.reportIssue');
 
         const fabricCore = vscode.extensions.getExtension<fabric.IFabricExtensionManager>('fabric.vscode-fabric');
         if (fabricCore) {
             const fabricStartTime = performance.now();
-
-            if (!fabricCore.isActive) {
-                try {
-                    await fabricCore.activate();
-                } catch (error) {
-                    // Won't fail activation if fabric fails to activate
-                    vscode.window.showWarningMessage(
-                        l10n.t(
-                            'Azure Cosmos DB extension could not activate Fabric API extension. Some Fabric-related features may not work as expected. Error: {0}',
-                            String(error),
-                        ),
-                    );
-                }
-            }
 
             await registerFabricProviders(context, fabricCore.exports);
 
@@ -103,25 +121,12 @@ export async function activateInternal(context: vscode.ExtensionContext): Promis
         }
 
         // The user can turn off Azure Resources extension. Or do not have it at all, only Fabric.
+        let apiProvider: apiUtils.AzureExtensionApiProvider | undefined = undefined;
         const azureResources = vscode.extensions.getExtension('ms-azuretools.vscode-azureresourcegroups');
         if (azureResources) {
             const azureResourcesStartTime = performance.now();
 
-            if (!azureResources.isActive) {
-                try {
-                    await azureResources.activate();
-                } catch (error) {
-                    // Won't fail activation if Azure Resources fails to activate
-                    vscode.window.showWarningMessage(
-                        l10n.t(
-                            'Azure Cosmos DB extension could not activate Azure Resources extension. Some Azure Resources-related features may not work as expected. Error: {0}',
-                            String(error),
-                        ),
-                    );
-                }
-            }
-
-            await registerAzureResourcesProviders(context);
+            apiProvider = registerAzureResourcesProviders(context);
 
             activateContext.telemetry.measurements.azureResourcesApiLoadTime =
                 performance.now() - azureResourcesStartTime;
@@ -132,46 +137,12 @@ export async function activateInternal(context: vscode.ExtensionContext): Promis
         const endTime = performance.now();
         activateContext.telemetry.measurements.endTime = endTime;
         activateContext.telemetry.measurements.totalActivationTime = endTime - startTime;
+
+        return apiProvider;
     });
-
-
 }
 
-async function registerAzureResourcesProviders(context: vscode.ExtensionContext): Promise<void> {
-    // Early initialization to determine whether Managed Identity is available for authentication
-    // Requires ext.outputChannel to be set
-    void getIsRunningOnAzure();
-
-    ext.secretStorage = context.secrets;
-
-    ext.state = new TreeElementStateManager();
-    ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
-    ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
-
-    ext.fileSystem = new DatabasesFileSystem();
-
-    context.subscriptions.push(vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem));
-
-    context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
-
-    registerCommands();
-
-    registerEvent(
-        'cosmosDB.onDidChangeConfiguration',
-        vscode.workspace.onDidChangeConfiguration,
-        async (actionContext: IActionContext, event: vscode.ConfigurationChangeEvent) => {
-            actionContext.telemetry.properties.isActivationEvent = 'true';
-            actionContext.errorHandling.suppressDisplay = true;
-            if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
-                await vscode.commands.executeCommand('azureDatabases.refresh');
-            }
-        },
-    );
-
-    // Suppress "Report an Issue" button for all errors in favor of the command
-    registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
-    registerReportIssueCommand('azureDatabases.reportIssue');
-
+function registerAzureResourcesProviders(_context: vscode.ExtensionContext): apiUtils.AzureExtensionApiProvider {
     const exportedApi: AzureExtensionApi = { apiVersion: '1.2.0' };
     const v2: string = '^2.0.0';
     const requestContext: AzureResourcesApiRequestContext = {
@@ -224,7 +195,7 @@ function registerFabricProviders(
     // Register Fabric providers and commands
     const extension: fabric.IFabricExtension = {
         identity: context.extension.id,
-        apiVersion: fabric.apiVersion,
+        apiVersion: String(fabric.apiVersion),
         artifactTypes: [FabricArtifactType.NATIVE, FabricArtifactType.MIRRORED],
         treeNodeProviders: [new FabricNativeTreeNodeProvider(context)],
         localProjectTreeNodeProviders: [],

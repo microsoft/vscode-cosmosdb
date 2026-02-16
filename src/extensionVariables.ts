@@ -22,22 +22,13 @@ export namespace ext {
     export let isBundle: boolean | undefined;
     export let secretStorage: vscode.SecretStorage;
     export let fileSystem: DatabasesFileSystem;
-    export let rgApiV2: AzureResourcesExtensionApiWithActivity;
-
     export let state: TreeElementStateManager;
-
-    // TODO: To avoid these three below variables below the rgApiV2 should have the following public fields (but they are private):
-    // - AzureResourceProviderManager,
-    // - AzureResourceBranchDataProviderManager,
-    // - WorkspaceResourceProviderManager,
-    // - WorkspaceResourceBranchDataProviderManager,
-
-    // used for the resources tree and the workspace tree REFRESH
     export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
-    // used for the workspace: these are the dedicated providers
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
 
+    // Services what different extensions return
+    export let rgApiV2: AzureResourcesExtensionApiWithActivity;
     export let fabricServices: IFabricExtensionServiceCollection;
 
     export namespace settingsKeys {

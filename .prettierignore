@@ -1,3 +1,4 @@
 package-lock.json
 package.nls.*.json
 l10n/bundle.l10n.*.json
+.cosmosdb-data/

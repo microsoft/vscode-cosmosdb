@@ -86,10 +86,8 @@ export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
 
 export const CosmosDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
 
-export enum FabricArtifactType {
-    MIRRORED = 'MirroredDatabase', //MountedRelationalDatabase
-    NATIVE = 'CosmosDBDatabase',
-}
+const FabricArtifactType = ['CosmosDBDatabase', 'MirroredDatabase' /*MountedRelationalDatabase*/] as const;
+export type FabricArtifactType = (typeof FabricArtifactType)[number];
 
 export class CosmosDBTimeouts {
     /**

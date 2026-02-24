@@ -23,6 +23,7 @@ import { ext } from '../extensionVariables';
 import { type TreeElement } from './TreeElement';
 import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
+import { type FabricArtifact } from './fabric/models/FabricArtifact';
 
 /**
  * Abstract base class that implements a cached tree data provider for Visual Studio Code extensions.
@@ -50,7 +51,7 @@ import { isTreeElementWithExperience } from './TreeElementWithExperience';
  * @extends vscode.Disposable
  * @implements {BranchDataProvider<T, TreeElement>}
  */
-export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource>
+export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource | FabricArtifact>
     extends vscode.Disposable
     implements BranchDataProvider<T, TreeElement>
 {
@@ -125,7 +126,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                             context.telemetry.properties.experience = element.experience?.api ?? API.Common;
                         }
                         context.telemetry.properties.parentNodeContext =
-                            (await element.getTreeItem()).contextValue ?? 'unknown';
+                            element.getTreeItem().contextValue ?? 'unknown';
 
                         context.telemetry.properties.view = this.contextValue;
 

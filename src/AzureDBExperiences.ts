@@ -158,7 +158,6 @@ export const FabricNativeExperience: Experience = {
     longName: 'Native Cosmos DB',
     shortName: 'Fabric Native',
 };
-
 export const FabricMirroredExperience: Experience = {
     api: API.FabricMirrored,
     longName: 'Mirrored Cosmos DB',

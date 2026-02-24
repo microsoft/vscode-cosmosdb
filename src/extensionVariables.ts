@@ -9,6 +9,7 @@ import { type IFabricExtensionServiceCollection } from '@microsoft/vscode-fabric
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { type FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
 
@@ -26,6 +27,8 @@ export namespace ext {
     export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
+    export let fabricNativeTreeNodeProvider: FabricTreeNodeProvider;
+    export let fabricMirroredTreeNodeProvider: FabricTreeNodeProvider;
 
     // Services what different extensions return
     export let rgApiV2: AzureResourcesExtensionApiWithActivity;

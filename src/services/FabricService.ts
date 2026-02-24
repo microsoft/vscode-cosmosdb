@@ -1,0 +1,226 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { type IApiClientResponse, type IArtifact, type IWorkspace } from '@microsoft/vscode-fabric-api';
+import { UserCancelledError } from '@microsoft/vscode-fabric-util';
+import * as l10n from '@vscode/l10n';
+import vscode from 'vscode';
+import { type FabricArtifactType } from '../constants';
+import { parseCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
+import { getCosmosDBCredentials } from '../cosmosdb/CosmosDBCredential';
+import { ext } from '../extensionVariables';
+import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
+
+export const CosmosDbArtifactType = ['NATIVE', 'MIRRORED_KEY', 'MIRRORED_AAD'] as const;
+export type CosmosDbArtifactType = (typeof CosmosDbArtifactType)[number];
+
+export type ExtendedProperties = {
+    accountEndpoint: string;
+    databaseName: string;
+    connectionId?: string;
+    resourceTokens?: Record<string, string>;
+};
+
+export type ArtifactConnectionInfo = {
+    type: CosmosDbArtifactType;
+
+    accountInfo: AccountInfo;
+    databaseName: string;
+    accountEndpoint: string;
+
+    // Optional. Mirrored DB might show only a subset of collections, so this is used to store the visible collections information
+    // TODO: At this moment Public API does not expose these properties, however, Data Explorer supports them
+    connectionId?: string; // Connection ID, might be different with endpoint
+    resourceTokens?: Record<string, string>; // Information about visible collections
+    isReadOnly?: boolean;
+};
+
+/**
+ * Fabric service what works with public API
+ */
+export interface IFabricService {
+    /**
+     * Retrieves connection information for artifact
+     * @param artifact
+     */
+    getArtifactConnectionInfo(artifact: IArtifact): Promise<ArtifactConnectionInfo>;
+}
+
+class FabricServiceImpl implements IFabricService {
+    /**
+     * Retrieves connection information for artifact
+     * @param artifact
+     */
+    public async getArtifactConnectionInfo(
+        artifact: IArtifact & { type: FabricArtifactType },
+    ): Promise<ArtifactConnectionInfo> | never {
+        if (!ext.fabricServices) {
+            throw new Error(l10n.t('Fabric Service is not initialized'));
+        }
+
+        const credentialType = await this.getCredentialType(artifact);
+        const fullArtifact = await this.getFullArtifact(artifact);
+
+        // TODO: implement Public API and required extended properties
+        const extendedProperties = (fullArtifact.extendedProperties ?? {}) as ExtendedProperties;
+        const accountEndpoint = `${extendedProperties?.accountEndpoint ?? ''}`;
+        const databaseName = `${extendedProperties?.databaseName ?? ''}`;
+        const connectionId = extendedProperties?.connectionId;
+        const resourceTokens = extendedProperties?.resourceTokens;
+
+        const accountInfo = await this.getAccountInfo(artifact, credentialType, accountEndpoint);
+
+        return {
+            type: credentialType,
+
+            accountInfo,
+            databaseName,
+            accountEndpoint,
+            connectionId,
+            resourceTokens,
+            isReadOnly: true, // TODO: should get this from server
+        };
+    }
+
+    public async getWorkspace(artifact: IArtifact): Promise<IWorkspace> {
+        if (!ext.fabricServices) {
+            throw new Error(l10n.t('Fabric Service is not initialized'));
+        }
+
+        const workspace = await ext.fabricServices.workspaceManager.getWorkspaceById(artifact.workspaceId);
+        if (!workspace) {
+            throw new Error(l10n.t('Workspace not found for id {0}', artifact.workspaceId));
+        }
+
+        return workspace;
+    }
+
+    public isArtifact(artifact: unknown): artifact is IArtifact {
+        return (
+            typeof artifact === 'object' &&
+            artifact !== null &&
+            'id' in artifact &&
+            typeof artifact.id === 'string' &&
+            'displayName' in artifact &&
+            typeof artifact.displayName === 'string' &&
+            'type' in artifact &&
+            typeof artifact.type === 'string' &&
+            'workspaceId' in artifact &&
+            typeof artifact.workspaceId === 'string' &&
+            'fabricEnvironment' in artifact &&
+            typeof artifact.fabricEnvironment === 'string'
+        );
+    }
+
+    public async getFullArtifact(artifact: IArtifact): Promise<IArtifact & Record<string, unknown>> {
+        if (!ext.fabricServices) {
+            throw new Error(l10n.t('Fabric Service is not initialized'));
+        }
+
+        const response = await ext.fabricServices?.artifactManager.getArtifact(artifact);
+        if (response.status !== 200) {
+            throw new Error(
+                this.formatErrorResponse(
+                    l10n.t('Error getting item for workspace {0}', artifact.workspaceId),
+                    response,
+                ),
+            );
+        }
+
+        const fullArtifact: unknown = response.parsedBody;
+        if (!this.isArtifact(fullArtifact)) {
+            throw new Error(l10n.t('Artifact not found for id {0}', artifact.id));
+        }
+
+        return fullArtifact as IArtifact & Record<string, unknown>;
+    }
+
+    protected async getAccountInfo(
+        artifact: IArtifact & { type: FabricArtifactType },
+        credentialType: CosmosDbArtifactType,
+        accountEndpoint: string,
+    ): Promise<AccountInfo> {
+        if (!ext.fabricServices) {
+            throw new Error(l10n.t('Fabric Service is not initialized'));
+        }
+
+        const connectionString = parseCosmosDBConnectionString(`AccountEndpoint=${accountEndpoint}`);
+
+        let tenantId: string | undefined;
+        let masterKey: string | undefined;
+
+        if (credentialType === 'MIRRORED_KEY') {
+            // Since probably we don't know does Fabric store KEY somewhere or not
+            // Use quickInput for manual tenant entry when no tenants are available
+            const KEY = await vscode.window.showInputBox({
+                prompt: l10n.t('Enter a master key'),
+                title: l10n.t('Enter a master key...'),
+            });
+
+            if (!KEY || KEY.trim() === '') {
+                throw new UserCancelledError(
+                    'masterKeyEntry',
+                    l10n.t('Master key was not entered. Connection will be interrupted.'),
+                );
+            }
+
+            masterKey = KEY.trim();
+        }
+
+        if (credentialType === 'NATIVE' || credentialType === 'MIRRORED_AAD') {
+            // FIXME: using private service
+            tenantId =
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+                ((await ext.fabricServices.apiClient.auth.getCurrentTenant())?.tenantId as string) || undefined;
+        }
+
+        const credentials = await getCosmosDBCredentials({
+            accountName: connectionString.accountName,
+            documentEndpoint: connectionString.documentEndpoint,
+            isEmulator: false,
+            tenantId,
+            masterKey,
+        });
+
+        return {
+            credentials,
+            id: artifact.id,
+            endpoint: connectionString.documentEndpoint,
+            name: connectionString.accountName,
+            isEmulator: false,
+            isServerless: false,
+        };
+    }
+
+    protected async getCredentialType(
+        artifact: IArtifact & { type: FabricArtifactType },
+    ): Promise<CosmosDbArtifactType> | never {
+        if (artifact.type === 'CosmosDBDatabase') {
+            return 'NATIVE';
+        }
+
+        // TODO: Fabric web page has internal url to figure out what type of credential it is,
+        //  we might need to expose something in Public API to avoid hardcoding the logic here
+        if (artifact.type === 'MirroredDatabase') {
+            return 'MIRRORED_AAD';
+        }
+
+        throw new Error(l10n.t(`Unable to get credential type for artifact type ${artifact.type}`));
+    }
+
+    /**
+     * Generates a formatted message for the given error code and message
+     * @param operation The operation that was attempted
+     * @param response The result of a failed API call
+     */
+    protected formatErrorResponse(operation: string, response: IApiClientResponse): string {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+        const msg = response.parsedBody?.message ?? response.parsedBody?.errorCode ?? response.status;
+        // Only include status in the message if it's not already the fallback
+        return typeof msg === 'number' ? `${operation} (${msg})` : `${operation} (${response.status}): ${msg}`;
+    }
+}
+
+export const FabricService = new FabricServiceImpl();

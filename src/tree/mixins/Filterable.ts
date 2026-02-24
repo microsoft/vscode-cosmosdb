@@ -123,9 +123,9 @@ export function makeFilterable<T extends TreeElement>(
             .map(({ item, match }) => {
                 // Substitute the item getTreeItem method to highlight the matched property
                 if (item.getTreeItem && propertyName === 'label' && match) {
-                    const originalGetTreeItem = item.getTreeItem.bind(item) as () => Promise<vscode.TreeItem>;
-                    item.getTreeItem = async function (): Promise<vscode.TreeItem> {
-                        const treeItem = await originalGetTreeItem();
+                    const originalGetTreeItem = item.getTreeItem.bind(item) as () => vscode.TreeItem;
+                    item.getTreeItem = function (): vscode.TreeItem {
+                        const treeItem = originalGetTreeItem();
                         const propertyValue = getPropertyValue(treeItem, propertyName);
 
                         // If the property value matches the filter pattern, highlight it
@@ -151,9 +151,9 @@ export function makeFilterable<T extends TreeElement>(
     };
 
     // Store the original getTreeItem method to call it from our enhanced version
-    const originalGetTreeItem = enhanced.getTreeItem.bind(enhanced) as () => Promise<vscode.TreeItem>;
-    enhanced.getTreeItem = async function (): Promise<vscode.TreeItem> {
-        const treeItem = await originalGetTreeItem();
+    const originalGetTreeItem = enhanced.getTreeItem.bind(enhanced) as () => vscode.TreeItem;
+    enhanced.getTreeItem = function (): vscode.TreeItem {
+        const treeItem = originalGetTreeItem();
 
         if (this.filterPattern) {
             // Add * to label to indicate filtering is applied

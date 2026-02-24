@@ -30,12 +30,12 @@ import * as fabric from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
-import { FabricArtifactType } from './constants';
+import { type FabricArtifactType } from './constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
-import { FabricNativeTreeNodeProvider } from './tree/fabric/FabricNativeTreeNodeProvider';
+import { FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
@@ -192,12 +192,15 @@ function registerFabricProviders(
     context: vscode.ExtensionContext,
     fabricApi: fabric.IFabricExtensionManager,
 ): Promise<void> {
+    ext.fabricNativeTreeNodeProvider = new FabricTreeNodeProvider(context, 'CosmosDBDatabase');
+    ext.fabricMirroredTreeNodeProvider = new FabricTreeNodeProvider(context, 'MirroredDatabase');
+
     // Register Fabric providers and commands
-    const extension: fabric.IFabricExtension = {
+    const extension: fabric.IFabricExtension & { artifactTypes: FabricArtifactType[] } = {
         identity: context.extension.id,
         apiVersion: String(fabric.apiVersion),
-        artifactTypes: [FabricArtifactType.NATIVE, FabricArtifactType.MIRRORED],
-        treeNodeProviders: [new FabricNativeTreeNodeProvider(context)],
+        artifactTypes: ['CosmosDBDatabase', 'MirroredDatabase'],
+        treeNodeProviders: [ext.fabricNativeTreeNodeProvider, ext.fabricMirroredTreeNodeProvider],
         localProjectTreeNodeProviders: [],
         artifactHandlers: [],
     };

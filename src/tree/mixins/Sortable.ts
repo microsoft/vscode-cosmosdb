@@ -139,9 +139,9 @@ export function makeSortable<T extends TreeElement>(
     };
 
     // Store the original getTreeItem method to call it from our enhanced version
-    const originalGetTreeItem = enhanced.getTreeItem.bind(enhanced) as () => Promise<vscode.TreeItem>;
-    enhanced.getTreeItem = async function (): Promise<vscode.TreeItem> {
-        const treeItem = await originalGetTreeItem();
+    const originalGetTreeItem = enhanced.getTreeItem.bind(enhanced) as () => vscode.TreeItem;
+    enhanced.getTreeItem = function (): vscode.TreeItem {
+        const treeItem = originalGetTreeItem();
 
         if (this.sortProperty) {
             // Update tooltip to show sorting info

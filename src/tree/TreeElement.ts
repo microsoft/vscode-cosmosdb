@@ -8,6 +8,6 @@ import type * as vscode from 'vscode';
 
 export interface TreeElement extends TreeElementWithId {
     getChildren?(): vscode.ProviderResult<TreeElement[]>;
-    getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
+    getTreeItem(): vscode.TreeItem; // Narrowed to non-async return type
     dataProvider?: vscode.TreeDataProvider<TreeElement>; // Optional, each data provider should set this property by itself
 }

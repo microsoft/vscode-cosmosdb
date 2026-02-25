@@ -15,6 +15,7 @@ import { FabricMirroredArtifactResourceItem } from '../fabric/mirrored/FabricMir
 import { type FabricArtifact } from '../fabric/models/FabricArtifact';
 import { FabricNativeArtifactResourceItem } from '../fabric/native/FabricNativeArtifactResourceItem';
 import { FabricArtifactTreeNodeProxy } from '../fabric/proxy/FabricArtifactTreeNodeProxy';
+import { bindTreeElement } from '../mixins/toTreeItem';
 import { type TreeElement } from '../TreeElement';
 
 export class FabricTreeNodeProvider
@@ -30,7 +31,9 @@ export class FabricTreeNodeProvider
 
     public async createArtifactTreeNode(artifact: FabricArtifact): Promise<ArtifactTreeNode> {
         const treeElement = await this.getResourceItem(artifact);
-        return new FabricArtifactTreeNodeProxy(this.context, artifact, treeElement);
+        const fabricNode = new FabricArtifactTreeNodeProxy(this.context, artifact, treeElement);
+
+        return await bindTreeElement(fabricNode, treeElement);
     }
 
     protected get contextValue(): string {

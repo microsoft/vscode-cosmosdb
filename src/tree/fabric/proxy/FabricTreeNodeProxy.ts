@@ -6,46 +6,31 @@
 import { FabricTreeNode } from '@microsoft/vscode-fabric-api';
 import type vscode from 'vscode';
 import { TreeItemCollapsibleState } from 'vscode';
-import { ext } from '../../../extensionVariables';
 import { type TreeElement } from '../../TreeElement';
-import { type FabricTreeElement } from '../../fabric-resources-view/FabricTreeElement';
-import { toTreeItem } from '../../mixins/toTreeItem';
+import { bindTreeElement } from '../../mixins/toTreeItem';
 
 /**
  * This Proxy acquire the TreeElement properties and methods, and implement the FabricTreeNode interface to be used in the fabric tree view.
  */
-export class FabricTreeNodeProxy extends FabricTreeNode implements FabricTreeElement {
+export class FabricTreeNodeProxy extends FabricTreeNode {
     declare public id: string;
 
-    constructor(private readonly element: TreeElement) {
-        super(ext.context, 'FabricTreeNodeProxy', TreeItemCollapsibleState.None);
-
-        return this.mapTreeElementToTreeItem();
+    constructor(
+        protected readonly context: vscode.ExtensionContext,
+        private readonly element: TreeElement,
+    ) {
+        super(context, 'FabricTreeNodeProxy', TreeItemCollapsibleState.None);
     }
 
     public async getChildNodes(): Promise<FabricTreeNode[]> {
         // If data provider attached we have to use it to take into consideration internal implementation of telemetry, cache and etc
-        if (this.element.dataProvider) {
-            const nodes = (await this.element.dataProvider.getChildren(this.element)) ?? [];
-            return nodes.map((node) => new FabricTreeNodeProxy(node));
-        }
+        const nodes =
+            (this.element.dataProvider
+                ? await this.element.dataProvider.getChildren(this.element)
+                : this.element.getChildren
+                  ? await this.element.getChildren()
+                  : []) ?? [];
 
-        // If no, try to call getChildren from element
-        if (this.element.getChildren) {
-            const nodes = (await this.element.getChildren()) ?? [];
-            return nodes.map((node) => new FabricTreeNodeProxy(node));
-        }
-
-        return [];
-    }
-
-    public getTreeItem(): vscode.TreeItem {
-        return this.element.getTreeItem();
-    }
-
-    private mapTreeElementToTreeItem(): this & vscode.TreeItem {
-        const treeItem = this.getTreeItem();
-
-        return toTreeItem(this, treeItem);
+        return Promise.all(nodes.map((node) => bindTreeElement(new FabricTreeNodeProxy(this.context, node), node)));
     }
 }

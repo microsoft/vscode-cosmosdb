@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IApiClientResponse, type IArtifact, type IWorkspace } from '@microsoft/vscode-fabric-api';
-import { UserCancelledError } from '@microsoft/vscode-fabric-util';
 import * as l10n from '@vscode/l10n';
 import vscode from 'vscode';
 import { type FabricArtifactType } from '../constants';
@@ -65,8 +64,8 @@ class FabricServiceImpl implements IFabricService {
 
         // TODO: implement Public API and required extended properties
         const extendedProperties = (fullArtifact.extendedProperties ?? {}) as ExtendedProperties;
-        const accountEndpoint = `${extendedProperties?.accountEndpoint ?? ''}`;
-        const databaseName = `${extendedProperties?.databaseName ?? ''}`;
+        const accountEndpoint = `${extendedProperties?.accountEndpoint ?? ''}`; // https://0f25df82-0725-4a14-8706-651561309e4c.z0f.msit-sql.cosmos.fabric.microsoft.com:443/
+        const databaseName = `${extendedProperties?.databaseName ?? ''}`; // languye-02-16
         const connectionId = extendedProperties?.connectionId;
         const resourceTokens = extendedProperties?.resourceTokens;
 
@@ -160,10 +159,7 @@ class FabricServiceImpl implements IFabricService {
             });
 
             if (!KEY || KEY.trim() === '') {
-                throw new UserCancelledError(
-                    'masterKeyEntry',
-                    l10n.t('Master key was not entered. Connection will be interrupted.'),
-                );
+                throw new Error(l10n.t('Master key was not entered. Connection will be interrupted.'));
             }
 
             masterKey = KEY.trim();
@@ -172,6 +168,7 @@ class FabricServiceImpl implements IFabricService {
         if (credentialType === 'NATIVE' || credentialType === 'MIRRORED_AAD') {
             // FIXME: using private service
             tenantId =
+                // @ts-expect-error Using private method
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 ((await ext.fabricServices.apiClient.auth.getCurrentTenant())?.tenantId as string) || undefined;
         }

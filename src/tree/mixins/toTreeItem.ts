@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import type * as vscode from 'vscode';
+import { type TreeElement } from '../TreeElement';
 
 /**
  * TreeItem interface property keys as defined in VS Code API
@@ -21,6 +22,68 @@ const treeItemPropertyKeys: Set<keyof vscode.TreeItem> = new Set([
     'accessibilityInformation',
     'checkboxState',
 ]);
+
+/**
+ * Symbol used to store the bound TreeElement reference
+ */
+const treeElementBoundSymbol = Symbol('treeElementBound');
+
+/**
+ * Type for objects that have the bound TreeElement
+ */
+type TreeElementBoundHolder = {
+    [treeElementBoundSymbol]: TreeElement;
+};
+
+/**
+ * Checks if an object already has the TreeElement binding applied
+ */
+export function hasTreeElementBinding(obj: object): obj is TreeElementBoundHolder {
+    return treeElementBoundSymbol in obj;
+}
+
+/**
+ * Gets the bound TreeElement from an object, if any
+ */
+export function getBoundTreeElement(obj: object): TreeElement | undefined {
+    if (hasTreeElementBinding(obj)) {
+        return obj[treeElementBoundSymbol];
+    }
+    return undefined;
+}
+
+export async function bindTreeElement<T extends object>(to: T, from: TreeElement): Promise<T & vscode.TreeItem> {
+    const treeItem = await from.getTreeItem();
+
+    const result = toTreeItem(to, treeItem);
+
+    // If binding was already applied, just update the TreeElement reference and TreeItem
+    if (hasTreeElementBinding(to)) {
+        (to as TreeElementBoundHolder)[treeElementBoundSymbol] = from;
+        return result;
+    }
+
+    // Store the TreeElement reference (writable so it can be updated)
+    Object.defineProperty(to, treeElementBoundSymbol, {
+        value: from,
+        writable: true,
+        enumerable: false,
+        configurable: false,
+    });
+
+    if (from.getTreeItem) {
+        const originalGetTreeItem = from.getTreeItem.bind(from) as () => Promise<vscode.TreeItem>;
+        from.getTreeItem = async function (): Promise<vscode.TreeItem> {
+            const treeItem = await originalGetTreeItem();
+
+            toTreeItem(to, treeItem);
+
+            return treeItem;
+        };
+    }
+
+    return result;
+}
 
 /**
  * Symbol used to store the TreeItem reference

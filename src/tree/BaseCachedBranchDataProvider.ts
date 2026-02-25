@@ -126,7 +126,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                             context.telemetry.properties.experience = element.experience?.api ?? API.Common;
                         }
                         context.telemetry.properties.parentNodeContext =
-                            element.getTreeItem().contextValue ?? 'unknown';
+                            (await element.getTreeItem()).contextValue ?? 'unknown';
 
                         context.telemetry.properties.view = this.contextValue;
 

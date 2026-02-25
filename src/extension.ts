@@ -114,6 +114,9 @@ export async function activateInternal(
         const fabricCore = vscode.extensions.getExtension<fabric.IFabricExtensionManager>('fabric.vscode-fabric');
         if (fabricCore) {
             const fabricStartTime = performance.now();
+            if (!fabricCore.isActive) {
+                await fabricCore.activate();
+            }
 
             await registerFabricProviders(context, fabricCore.exports);
 
@@ -125,6 +128,9 @@ export async function activateInternal(
         const azureResources = vscode.extensions.getExtension('ms-azuretools.vscode-azureresourcegroups');
         if (azureResources) {
             const azureResourcesStartTime = performance.now();
+            if (!azureResources.isActive) {
+                await azureResources.activate();
+            }
 
             apiProvider = registerAzureResourcesProviders(context);
 

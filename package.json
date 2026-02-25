@@ -7,7 +7,7 @@
   "displayName": "Azure Cosmos DB",
   "description": "Connect Azure CosmosDB databases in Azure, inspect and edit your data and run powerful queries with the visual query editor.",
   "engines": {
-    "vscode": "^1.105.0",
+    "vscode": "^1.109.0",
     "node": ">=22.18.0"
   },
   "galleryBanner": {
@@ -80,7 +80,7 @@
     "@types/react": "~19.2.7",
     "@types/react-dom": "~19.2.3",
     "@types/semver": "~7.7.1",
-    "@types/vscode": "~1.105.0",
+    "@types/vscode": "~1.109.0",
     "@types/vscode-webview": "~1.57.5",
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-cli": "~0.0.12",
@@ -165,6 +165,11 @@
     "ms-azuretools.vscode-azureresourcegroups"
   ],
   "contributes": {
+    "chatSkills": [
+      {
+        "path": "./skills/cosmosdb-best-practices"
+      }
+    ],
     "x-azResources": {
       "azure": {
         "branches": [

@@ -1,5 +1,22 @@
 # Change Log
 
+## 0.31.3
+
+### Added
+
+- Added a `chatSkills` contribution, enabling GitHub Copilot to provide contextual Azure Cosmos DB best practices guidance, replacing the previous instructions files. The old deprecated files can be removed using the `CosmosDB AI: Remove LLM instructions from user profile folder` command. (#2937)
+- Added information about Partition Key naming restrictions with a help button and a "Learn more" link to the Partition Key prompt during Container creation. (#2920)
+
+### Fixed
+
+- Fixed an issue where Document and Query session errors were neither logged nor surfaced in the UI. (#2803)
+- Improved timout handling and timeout error messages. (#2871)
+
+### Changed
+
+- Updated the minimum required VS Code version to 1.109.0.
+- Updated several dependencies to address vulnerabilities.
+
 ## 0.31.2
 
 ### Fixed

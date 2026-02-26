@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
-import { type ArtifactTreeNode, type IFabricTreeNodeProvider } from '@microsoft/vscode-fabric-api';
+import { type ArtifactTreeNode, type IArtifact, type IFabricTreeNodeProvider } from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import type vscode from 'vscode';
 import { FabricMirroredExperience, FabricNativeExperience } from '../../AzureDBExperiences';
@@ -29,9 +29,10 @@ export class FabricTreeNodeProvider
         super();
     }
 
-    public async createArtifactTreeNode(artifact: FabricArtifact): Promise<ArtifactTreeNode> {
-        const treeElement = await this.getResourceItem(artifact);
-        const fabricNode = new FabricArtifactTreeNodeProxy(this.context, artifact, treeElement);
+    public async createArtifactTreeNode(artifact: IArtifact): Promise<ArtifactTreeNode> {
+        const fabricArtifact = this.toFabricArtifact(artifact);
+        const treeElement = await this.getResourceItem(fabricArtifact);
+        const fabricNode = new FabricArtifactTreeNodeProxy(this.context, fabricArtifact, treeElement);
 
         return await bindTreeElement(fabricNode, treeElement);
     }
@@ -48,11 +49,11 @@ export class FabricTreeNodeProvider
         context.valuesToMask.push(id);
         context.valuesToMask.push(name);
 
-        if (type.toLocaleLowerCase() === 'CosmosDBDatabase'.toLocaleLowerCase()) {
+        if (type === 'CosmosDBDatabase') {
             return new FabricNativeArtifactResourceItem(this.context, resource, FabricNativeExperience);
         }
 
-        if (type.toLocaleLowerCase() === 'MirroredDatabase'.toLocaleLowerCase()) {
+        if (type === 'MirroredDatabase') {
             return new FabricMirroredArtifactResourceItem(this.context, resource, FabricMirroredExperience);
         }
 
@@ -61,5 +62,18 @@ export class FabricTreeNodeProvider
 
     protected onResourceItemRetrieved() {
         // No additional actions needed after retrieving the resource item
+    }
+
+    protected toFabricArtifact(artifact: IArtifact): FabricArtifact {
+        if (artifact.type !== 'CosmosDBDatabase' && artifact.type !== 'MirroredDatabase') {
+            throw new Error(l10n.t('Unsupported artifact type'));
+        }
+
+        return {
+            ...artifact,
+            id: nonNullProp(artifact, 'id'),
+            name: nonNullProp(artifact, 'displayName'),
+            type: nonNullProp(artifact, 'type') as FabricArtifactType,
+        };
     }
 }

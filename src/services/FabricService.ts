@@ -66,7 +66,7 @@ class FabricServiceImpl implements IFabricService {
         const extendedProperties = (fullArtifact.extendedProperties ?? {}) as ExtendedProperties;
         const accountEndpoint = `${extendedProperties?.accountEndpoint ?? ''}`; // https://0f25df82-0725-4a14-8706-651561309e4c.z0f.msit-sql.cosmos.fabric.microsoft.com:443/
         const databaseName = `${extendedProperties?.databaseName ?? ''}`; // languye-02-16
-        const connectionId = extendedProperties?.connectionId;
+        const connectionId = extendedProperties?.connectionId; // 68a5afec-e417-4851-bf28-e0724cfdb939
         const resourceTokens = extendedProperties?.resourceTokens;
 
         const accountInfo = await this.getAccountInfo(artifact, credentialType, accountEndpoint);
@@ -107,9 +107,7 @@ class FabricServiceImpl implements IFabricService {
             'type' in artifact &&
             typeof artifact.type === 'string' &&
             'workspaceId' in artifact &&
-            typeof artifact.workspaceId === 'string' &&
-            'fabricEnvironment' in artifact &&
-            typeof artifact.fabricEnvironment === 'string'
+            typeof artifact.workspaceId === 'string'
         );
     }
 
@@ -133,7 +131,7 @@ class FabricServiceImpl implements IFabricService {
             throw new Error(l10n.t('Artifact not found for id {0}', artifact.id));
         }
 
-        return fullArtifact as IArtifact & Record<string, unknown>;
+        return { ...artifact, ...fullArtifact } as IArtifact & Record<string, unknown>;
     }
 
     protected async getAccountInfo(
@@ -194,6 +192,10 @@ class FabricServiceImpl implements IFabricService {
     protected async getCredentialType(
         artifact: IArtifact & { type: FabricArtifactType },
     ): Promise<CosmosDbArtifactType> | never {
+        if (!ext.fabricServices) {
+            throw new Error(l10n.t('Fabric Service is not initialized'));
+        }
+
         if (artifact.type === 'CosmosDBDatabase') {
             return 'NATIVE';
         }
@@ -201,7 +203,38 @@ class FabricServiceImpl implements IFabricService {
         // TODO: Fabric web page has internal url to figure out what type of credential it is,
         //  we might need to expose something in Public API to avoid hardcoding the logic here
         if (artifact.type === 'MirroredDatabase') {
-            return 'MIRRORED_AAD';
+            const credentialType: string = 'OAuth2';
+            // This code uses internal powerbi API endpoint what requires "user_impersonation" scope
+            // const connectionId =
+            //     ((artifact.extendedProperties ?? {}) as ExtendedProperties)?.connectionId;
+            // const pathTemplate = `/v1/connections/${connectionId}`;
+            // const options: IApiClientRequestOptions = {
+            //     method: 'GET',
+            //     url: 'https://api.powerbi.com',
+            //     pathTemplate: pathTemplate,
+            //     headers: { 'x-ms-originatingapp': 'vscodefabric' },
+            // };
+            // const response = await ext.fabricServices.apiClient.sendRequest(options);
+            //
+            // if (response?.status !== 200) {
+            //     throw new Error(
+            //         l10n.t(
+            //             "Error getting Artifact data for '{0}' Status = {1} {2}",
+            //             artifact.displayName,
+            //             response.status,
+            //             response.response?.bodyAsText ?? '',
+            //         ),
+            //     );
+            // }
+            //
+            // // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+            // const credentialType = response.parsedBody?.credentialDetails?.credentialType;
+
+            return credentialType === 'Key'
+                ? 'MIRRORED_KEY'
+                : credentialType === 'OAuth2'
+                  ? 'MIRRORED_AAD'
+                  : 'MIRRORED_AAD';
         }
 
         throw new Error(l10n.t(`Unable to get credential type for artifact type ${artifact.type}`));

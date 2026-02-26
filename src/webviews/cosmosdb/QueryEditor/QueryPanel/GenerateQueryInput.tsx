@@ -7,16 +7,10 @@ import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectD
 import { Dismiss12Regular, RecordStopFilled, SendFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { resolveSelectedModelId, sortModelsAutoFirst, type ModelInfo } from '../../../../utils/modelUtils';
 import { WebviewContext } from '../../../WebviewContext';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 import { usePromptHistory } from './usePromptHistory';
-
-interface ModelInfo {
-    id: string;
-    name: string;
-    family: string;
-    vendor: string;
-}
 
 const useStyles = makeStyles({
     container: {
@@ -209,20 +203,9 @@ export const GenerateQueryInput = () => {
     // Listen for availableModels event
     useEffect(() => {
         const handler = (models: ModelInfo[], savedModelId: string | null) => {
-            // Sort models so "Auto" appears at the top if present
-            const sortedModels = [...models].sort((a, b) => {
-                const aIsAuto = a.name.toLowerCase() === 'auto';
-                const bIsAuto = b.name.toLowerCase() === 'auto';
-                if (aIsAuto && !bIsAuto) return -1;
-                if (!aIsAuto && bIsAuto) return 1;
-                return 0;
-            });
+            const sortedModels = sortModelsAutoFirst(models);
             setAvailableModels(sortedModels);
-            if (savedModelId && sortedModels.some((m) => m.id === savedModelId)) {
-                setSelectedModelId(savedModelId);
-            } else if (sortedModels.length > 0) {
-                setSelectedModelId(sortedModels[0].id);
-            }
+            setSelectedModelId(resolveSelectedModelId(sortedModels, savedModelId));
         };
         void channel.on('availableModels', handler as never);
     }, [channel]);

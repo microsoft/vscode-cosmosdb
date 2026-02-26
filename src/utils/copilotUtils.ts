@@ -135,5 +135,11 @@ export function onCopilotAvailabilityChanged(callback: (available: boolean) => v
         }
     });
 
-    return vscode.Disposable.from(extensionListener, configListener);
+    // Listen for language model changes (e.g., Copilot models becoming available after startup).
+    // This covers the case where the panel opens before Copilot has fully initialized.
+    const modelListener = vscode.lm.onDidChangeChatModels(() => {
+        void checkAIFeaturesWithRetry(callback, true);
+    });
+
+    return vscode.Disposable.from(extensionListener, configListener, modelListener);
 }

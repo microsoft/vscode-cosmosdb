@@ -10,6 +10,8 @@ import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
+import { type MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
+import { type MigrationWorkspaceItem } from './tree/workspace-view/migration/MigrationWorkspaceItem';
 
 /**
  * Namespace for common variables used throughout the extension. They must be initialized in the activate() method of extension.ts
@@ -36,6 +38,8 @@ export namespace ext {
     // used for the workspace: these are the dedicated providers
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
+    export let migrationWorkspaceBranchDataProvider: MigrationWorkspaceBranchDataProvider;
+    export let migrationWorkspaceBranchDataResource: MigrationWorkspaceItem;
 
     // Tracks whether AI features (chat participant, AI button) are enabled
     // This is set to true when GitHub Copilot and Copilot Chat extensions are installed

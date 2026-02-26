@@ -33,6 +33,7 @@ import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import {
@@ -40,6 +41,7 @@ import {
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
 import { areAIFeaturesEnabled, onCopilotAvailabilityChanged } from './utils/copilotUtils';
 import { globalUriHandler } from './vscodeUriHandler';
 
@@ -76,6 +78,7 @@ export async function activateInternal(
         ext.state = new TreeElementStateManager();
         ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
+        ext.migrationWorkspaceBranchDataProvider = new MigrationWorkspaceBranchDataProvider();
 
         ext.fileSystem = new DatabasesFileSystem();
 
@@ -86,6 +89,9 @@ export async function activateInternal(
         context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
 
         registerCommands();
+
+        // Auto-detect migration projects in the workspace
+        void MigrationAssistantTab.promptToReopen();
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
@@ -115,6 +121,7 @@ export async function activateInternal(
                 ext.isAIFeaturesEnabled = available;
                 // Notify all open QueryEditorTabs about the change
                 void QueryEditorTab.notifyAIFeaturesChanged(available);
+                void MigrationAssistantTab.notifyAIFeaturesChanged(available);
             }),
         );
 
@@ -155,6 +162,10 @@ export async function activateInternal(
             ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
                 WorkspaceResourceType.AttachedAccounts,
                 ext.cosmosDBWorkspaceBranchDataProvider,
+            );
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.Migrations,
+                ext.migrationWorkspaceBranchDataProvider,
             );
         },
     };

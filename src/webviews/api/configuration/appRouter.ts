@@ -13,6 +13,7 @@ import { type API } from '../../../AzureDBExperiences';
 import { openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import { publicProcedure, router } from '../extension-server/trpc';
+import { migrationRouter } from './migrationRouter';
 
 /**
  * You can read more about tRPC here:
@@ -297,6 +298,7 @@ const commonRouter = router({
 
 export const appRouter = router({
     common: commonRouter,
+    migration: migrationRouter,
 });
 
 // Export type router type signature, this is used by the client.

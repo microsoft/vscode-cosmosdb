@@ -25,6 +25,7 @@ import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
@@ -34,7 +35,6 @@ import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
-const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 
 type HistoryItem = StorageItem & {
     properties: {

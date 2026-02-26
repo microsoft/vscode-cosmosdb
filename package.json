@@ -40,7 +40,8 @@
     "onView:azureWorkspace",
     "onView:azureResourceGroups",
     "onUri",
-    "onChatParticipant:cosmosdb"
+    "onChatParticipant:cosmosdb",
+    "workspaceContains:.cosmosdb-migration"
   ],
   "scripts": {
     "build": "tsc",
@@ -143,6 +144,7 @@
     "@trpc/client": "~11.10.0",
     "@trpc/server": "~11.10.0",
     "@vscode/l10n": "~0.0.18",
+    "@vscode/prompt-tsx": "^0.4.0-alpha.7",
     "allotment": "^1.20.4",
     "denque": "^2.1.0",
     "es-toolkit": "~1.44.0",
@@ -438,6 +440,22 @@
         "category": "CosmosDB AI",
         "command": "cosmosDB.ai.removeInstructionFiles",
         "title": "%cosmosdb.command.ai.remove_instruction_files%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.migration.open",
+        "title": "%cosmosdb.command.migration.open%",
+        "icon": "$(add)"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.migration.openExisting",
+        "title": "%cosmosdb.command.migration.openExisting%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.migration.remove",
+        "title": "%cosmosdb.command.migration.remove%"
       }
     ],
     "submenus": [
@@ -663,6 +681,12 @@
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
+        },
+        {
+          "//": "[Migration] Remove migration",
+          "command": "cosmosDB.migration.remove",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]migration(?![a-z.\\/])/i",
+          "group": "1@1"
         }
       ],
       "explorer/context": [
@@ -682,6 +706,14 @@
         },
         {
           "command": "azureDatabases.update",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.migration.openExisting",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.migration.remove",
           "when": "never"
         }
       ]

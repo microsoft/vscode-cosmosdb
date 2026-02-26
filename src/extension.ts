@@ -32,6 +32,7 @@ import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { QueryEditorTab } from './panels/QueryEditorTab';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import {
     SharedWorkspaceResourceProvider,
@@ -92,6 +93,12 @@ export async function activateInternal(
                 actionContext.errorHandling.suppressDisplay = true;
                 if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
                     await vscode.commands.executeCommand('azureDatabases.refresh');
+                }
+
+                if (event.affectsConfiguration('telemetry.feedback.enabled')) {
+                    await Promise.all(
+                        Array.from(QueryEditorTab.openTabs).map((tab) => tab.refreshSurveyFeedbackVisibility()),
+                    );
                 }
             },
         );

@@ -46,6 +46,14 @@ jest.mock('vscode', () => ({
     Uri: {
         parse: jest.fn((url) => ({ toString: () => url })),
     },
+    workspace: {
+        getConfiguration: jest.fn(() => ({
+            get: jest.fn().mockReturnValue(true),
+            has: jest.fn(),
+            inspect: jest.fn(),
+            update: jest.fn(),
+        })),
+    },
 }));
 
 // Using non-null assertion as we're making sure getSurveyConfig and getSurveyState return values in test env
@@ -63,6 +71,13 @@ describe('Survey Scoring', () => {
 
         // Clear mock calls between tests
         jest.clearAllMocks();
+
+        jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: jest.fn().mockReturnValue(true),
+            has: jest.fn(),
+            inspect: jest.fn(),
+            update: jest.fn(),
+        });
     });
 
     afterEach(() => {
@@ -104,17 +119,17 @@ describe('Survey Scoring', () => {
             expect(surveyState.usageScoreByExperience[ExperienceKind.Mongo]).toBe(0);
         });
 
-        test('should not increment score if DISABLE_SURVEY is true', () => {
-            // Save original value to restore later
-            const originalDisableSurvey = surveyConfig.settings.DISABLE_SURVEY;
-            surveyConfig.settings.DISABLE_SURVEY = true;
+        test('should not increment score if telemetry.feedback.enabled is false', () => {
+            jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+                get: jest.fn().mockReturnValue(false),
+                has: jest.fn(),
+                inspect: jest.fn(),
+                update: jest.fn(),
+            });
 
             countExperienceUsageForSurvey(ExperienceKind.NoSQL, 40);
 
             expect(surveyState.usageScoreByExperience[ExperienceKind.NoSQL]).toBe(0);
-
-            // Restore original value
-            surveyConfig.settings.DISABLE_SURVEY = originalDisableSurvey;
         });
 
         test('should handle negative score values by treating them as zero', () => {

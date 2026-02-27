@@ -82,26 +82,7 @@ export const wellKnownEmulatorPassword =
 // which is now supported via Docker. We still keep the check in case there are any other platform specific issues in the future.
 export const isEmulatorSupported = isWindows || isLinux || isMacOS;
 
-// https://docs.mongodb.com/manual/mongo/#working-with-the-mongo-shell
-export const testDb: string = 'test';
-
-export const connectedPostgresKey: string = 'ms-azuretools.vscode-azuredatabases.connectedPostgresDB';
-export const postgresLanguageId: string = 'postgres';
-export const postgresFileExtension: string = '.psql';
-export const postgresBaseFileName: string = 'query';
-export const postgresDefaultPort = '5432';
-export const postgresDefaultDatabase = 'postgres';
 export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
-
-export const databaseAccountType = 'Microsoft.DocumentDB/databaseAccounts';
-
-export const postgresFlexibleFilter = {
-    type: 'Microsoft.DBforPostgreSQL/flexibleServers',
-};
-
-export const postgresSingleFilter = {
-    type: 'Microsoft.DBForPostgreSQL/servers',
-};
 
 export const CosmosDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
 
@@ -460,4 +441,16 @@ export class HttpStatusCodes {
      * The 511 status code indicates that the client needs to authenticate to gain network access.
      */
     public static readonly NETWORK_AUTHENTICATION_REQUIRED = 511;
+}
+
+export class CosmosDBTimeouts {
+    /**
+     * Connection timeout for emulators (shorter since they should respond quickly if running)
+     */
+    public static readonly EMULATOR_CONNECTION_TIMEOUT_MS = 1000;
+
+    /**
+     * Connection timeout for remote accounts (longer to account for network latency)
+     */
+    public static readonly CONNECTION_TIMEOUT_MS = 5000;
 }

@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ContainerDefinition, type Resource } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
 import { CosmosDBDatabaseResourceItem } from '../cosmosdb/CosmosDBDatabaseResourceItem';
 import { type CosmosDBDatabaseModel } from '../cosmosdb/models/CosmosDBDatabaseModel';
+import { type ContainerResource } from '../cosmosdb/models/CosmosDBTypes';
 import { NoSqlContainerResourceItem } from './NoSqlContainerResourceItem';
 
 export class NoSqlDatabaseResourceItem extends CosmosDBDatabaseResourceItem {
@@ -14,7 +14,7 @@ export class NoSqlDatabaseResourceItem extends CosmosDBDatabaseResourceItem {
         super(model, experience);
     }
 
-    protected getChildrenImpl(containers: (ContainerDefinition & Resource)[]): Promise<NoSqlContainerResourceItem[]> {
+    protected getChildrenImpl(containers: ContainerResource[]): Promise<NoSqlContainerResourceItem[]> {
         return Promise.resolve(
             containers.map(
                 (container) => new NoSqlContainerResourceItem({ ...this.model, container }, this.experience),

@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type Resource, type TriggerDefinition, type TriggerOperation, type TriggerType } from '@azure/cosmos';
+import { type TriggerOperation, type TriggerType } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { type TriggerResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
 
 export interface CreateTriggerWizardContext extends IActionContext {
     accountInfo: AccountInfo;
@@ -18,5 +19,5 @@ export interface CreateTriggerWizardContext extends IActionContext {
     triggerOperation?: TriggerOperation;
     triggerBody?: string;
 
-    response?: TriggerDefinition & Resource;
+    response?: TriggerResource;
 }

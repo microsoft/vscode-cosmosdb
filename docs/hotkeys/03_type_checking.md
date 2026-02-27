@@ -11,11 +11,7 @@ While the hotkey system works with plain strings, defining proper TypeScript typ
 export type MyHotkeyScope = 'global' | 'editor' | 'resultPanel';
 
 // Define type-safe commands
-export type MyHotkeyCommand =
-    | 'Execute'
-    | 'Save'
-    | 'Cancel'
-    | 'Refresh';
+export type MyHotkeyCommand = 'Execute' | 'Save' | 'Cancel' | 'Refresh';
 ```
 
 ## Benefits of Typed Hotkeys
@@ -34,13 +30,13 @@ import { type HotkeyMapping } from '../../common/hotkeys';
 
 // Apply command type to hotkey mappings
 export const EditorHotkeys: HotkeyMapping<MyHotkeyCommand>[] = [
-    {
-        key: 'f5',
-        command: 'Execute', // Autocomplete works here
-        description: 'Execute action',
-        shortcutDisplay: { windows: 'F5', mac: 'F5' },
-    },
-    // More hotkeys...
+  {
+    key: 'f5',
+    command: 'Execute', // Autocomplete works here
+    description: 'Execute action',
+    shortcutDisplay: { windows: 'F5', mac: 'F5' },
+  },
+  // More hotkeys...
 ] as const;
 ```
 
@@ -51,17 +47,17 @@ Pass your types to hooks to enable type checking:
 ```typescript
 // Register a typed scope
 useHotkeyScope<MyHotkeyScope, MyHotkeyCommand>(
-    'editor', // IDE validates this is a valid scope
-    EditorHotkeys
+  'editor', // IDE validates this is a valid scope
+  EditorHotkeys,
 );
 
 // Register a typed command handler
 useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>(
-    'editor', // Valid scope autocompleted
-    'Execute', // Valid command autocompleted
-    (event) => {
-        // Handle command
-    }
+  'editor', // Valid scope autocompleted
+  'Execute', // Valid command autocompleted
+  (event) => {
+    // Handle command
+  },
 );
 ```
 
@@ -121,11 +117,7 @@ With proper typing, TypeScript will catch these errors:
 useHotkeyScope<EditorHotkeyScope, EditorHotkeyCommand>('nonexistentScope', GlobalHotkeys);
 
 // Error: 'NonExistentCommand' is not assignable to type 'EditorHotkeyCommand'
-useCommandHotkey<EditorHotkeyScope, EditorHotkeyCommand>(
-    'global',
-    'NonExistentCommand',
-    () => {}
-);
+useCommandHotkey<EditorHotkeyScope, EditorHotkeyCommand>('global', 'NonExistentCommand', () => {});
 ```
 
 ## Type Safety for Shortcut Display
@@ -134,10 +126,10 @@ Use types to safely access shortcut displays:
 
 ```typescript
 const saveShortcut = useMemo(() => {
-    const service = HotkeyCommandService.getInstance<MyHotkeyScope, MyHotkeyCommand>();
-    // Type-checked - IDE suggests valid scopes and commands
-    const shortcut = service.getShortcutDisplay('global', 'Save');
-    return shortcut ? ` (${shortcut})` : '';
+  const service = HotkeyCommandService.getInstance<MyHotkeyScope, MyHotkeyCommand>();
+  // Type-checked - IDE suggests valid scopes and commands
+  const shortcut = service.getShortcutDisplay('global', 'Save');
+  return shortcut ? ` (${shortcut})` : '';
 }, []);
 ```
 

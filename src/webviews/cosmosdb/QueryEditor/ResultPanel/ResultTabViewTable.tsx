@@ -73,6 +73,9 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             const gridElement = grid.getContainerNode();
             gridElement?.setAttribute('role', 'grid');
             gridElement?.setAttribute('aria-label', 'Query results data grid');
+            // Since slickgrid renders only visible rows the number of rows and probably columns might change
+            gridElement?.setAttribute('aria-colcount', headers.length.toString());
+            gridElement?.setAttribute('aria-rowcount', dataset.length.toString());
 
             // Announce cell values on navigation using ARIA live region
             grid.onActiveCellChanged.subscribe((_e, args) => {
@@ -118,7 +121,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         (): GridOption => ({
             autoResize: {
                 calculateAvailableSizeBy: 'container',
-                container: '.resultsDisplayArea', // this is a selector of the parent container, in this case it's the collectionView.tsx and the class is "resultsDisplayArea"
+                container: '.resultsDisplayArea', // this is a selector of the parent container
                 delay: 100,
                 autoHeightRecalcRow: 1,
                 autoHeight: true,

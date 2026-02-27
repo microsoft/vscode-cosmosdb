@@ -1,5 +1,61 @@
 # Change Log
 
+## 0.31.3
+
+### Added
+
+- Added a `chatSkills` contribution, enabling GitHub Copilot to provide contextual Azure Cosmos DB best practices guidance, replacing the previous instructions files. The old deprecated files can be removed using the `CosmosDB AI: Remove LLM instructions from user profile folder` command. (#2937)
+- Added information about Partition Key naming restrictions with a help button and a "Learn more" link to the Partition Key prompt during Container creation. (#2920)
+
+### Fixed
+
+- Fixed an issue where Document and Query session errors were neither logged nor surfaced in the UI. (#2803)
+- Improved timout handling and timeout error messages. (#2871)
+
+### Changed
+
+- Updated the minimum required VS Code version to 1.109.0.
+- Updated several dependencies to address vulnerabilities.
+
+## 0.31.2
+
+### Fixed
+
+- Fixed an issue where opening a deleted Item was loading indefinitely (#2822).
+- Fixed an issue where Serverless NoSQL accounts were not loading (#2902).
+- Fixed an issue where text in Fluent UI tooltips, dropdowns and tabs was invisible for certain dark themes (e.g., Nord)(#2904).
+- Fixed an issue where LLM assets were added to all Chats without relation to Cosmos DB (#2901)
+
+### Added
+
+- Added support for connecting using Read-Only keys, if the user account doesn't have access to all account keys (#2856).
+
+### Removed
+
+- Removed support for discontinued services:
+  - MongoDB (RU, Scrapbook)
+  - DocumentDB
+  - PostgreSQL
+  - Graph (Gremlin)
+  - Table
+  - Cassandra
+  - Grammar (Language Server)
+
+> **Note:** For MongoDB support, use the [DocumentDB Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-documentdb). For PostgreSQL support, use the [PostgreSQL Extension for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-ossdata.vscode-pgsql).
+
+### Changed
+
+- Update source map configuration for development mode (fixes debugging in VS Code).
+- Updated several dependencies to address vulnerabilities.
+- Updated the link to the privacy statement in the Readme (#2896).
+
+## 0.31.1
+
+### Fixed
+
+- Fixed an issue where the Query Editor didn't resize properly with it's parent Tab (#2869).
+- Added missing translations (#2878).
+
 ## 0.31.0
 
 ### Added

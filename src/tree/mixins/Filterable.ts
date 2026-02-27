@@ -94,7 +94,7 @@ export function makeFilterable<T extends TreeElement>(
             return items;
         }
 
-        const escapedPattern = escapeSpecialCharacters(pattern);
+        const escapedPattern = escapeSpecialCharacters(removeDiacritics(pattern));
         const regex = new RegExp(`(${escapedPattern})`, 'gim');
         const propertyValues = await getPropertyValues(items, propertyName);
 

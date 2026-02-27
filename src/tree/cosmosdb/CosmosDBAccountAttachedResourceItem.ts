@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { RestError, type CosmosClient, type DatabaseDefinition, type Resource } from '@azure/cosmos';
+import { RestError, type CosmosClient } from '@azure/cosmos';
 import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { getThemeAgnosticIconPath } from '../../constants';
+import { CosmosDBTimeouts, getThemeAgnosticIconPath } from '../../constants';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
@@ -20,6 +20,7 @@ import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithStorageId } from '../TreeElementWithStorageId';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { getAccountInfo, type AccountInfo } from './AccountInfo';
+import { type DatabaseResource } from './models/CosmosDBTypes';
 
 export abstract class CosmosDBAccountAttachedResourceItem
     extends CosmosDBAccountResourceItemBase
@@ -40,6 +41,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
 
     public async getChildren(): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
+
         const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
             this.getDatabases(accountInfo, cosmosClient),
         );
@@ -94,24 +96,28 @@ export abstract class CosmosDBAccountAttachedResourceItem
     protected async getDatabases(
         accountInfo: AccountInfo,
         cosmosClient: CosmosClient,
-    ): Promise<(DatabaseDefinition & Resource)[]> | never {
+    ): Promise<DatabaseResource[]> | never {
         const getResources = async () => {
             const result = await cosmosClient.databases.readAll().fetchAll();
             return result.resources;
         };
 
         try {
-            // Await is required here to ensure that the error is caught in the catch block
+            // Apply timeout to prevent hanging indefinitely on unreachable hosts
             if (this.account.isEmulator) {
                 return await rejectOnTimeout(
-                    2000,
+                    CosmosDBTimeouts.EMULATOR_CONNECTION_TIMEOUT_MS,
                     () => getResources(),
                     l10n.t(
                         "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
                     ),
                 );
             } else {
-                return await getResources();
+                return await rejectOnTimeout(
+                    CosmosDBTimeouts.CONNECTION_TIMEOUT_MS,
+                    () => getResources(),
+                    l10n.t('Connection timed out. Please verify the connection string and that the host is reachable.'),
+                );
             }
         } catch (e) {
             if (e instanceof Error) {
@@ -121,7 +127,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
                     const principalId = await getSignedInPrincipalIdForAccountEndpoint(accountInfo.endpoint, tenantId);
                     void showRbacPermissionError(this.id, principalId);
                     if (!principalId || !e.message.includes(principalId)) {
-                        // In case we're not signed in with the principal that's missing permissions, log the full errror
+                        // In case we're not signed in with the principal that's missing permissions, log the full error
                         ext.outputChannel.error(e);
                         ext.outputChannel.show();
                     }
@@ -146,8 +152,5 @@ export abstract class CosmosDBAccountAttachedResourceItem
         }
     }
 
-    protected abstract getChildrenImpl(
-        accountInfo: AccountInfo,
-        databases: (DatabaseDefinition & Resource)[],
-    ): Promise<TreeElement[]>;
+    protected abstract getChildrenImpl(accountInfo: AccountInfo, databases: DatabaseResource[]): Promise<TreeElement[]>;
 }

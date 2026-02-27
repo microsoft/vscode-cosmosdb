@@ -4,23 +4,24 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
-import { type IAzureQuickPickItem } from '@microsoft/vscode-azext-utils';
 import { type CosmosDBAccountModel } from './tree/cosmosdb/models/CosmosDBAccountModel';
 
 export enum API {
-    MongoDB = 'MongoDB',
-    MongoClusters = 'MongoClusters',
-    Graph = 'Graph',
-    Table = 'Table',
-    Cassandra = 'Cassandra',
     Core = 'Core', // Now called NoSQL
-    PostgresSingle = 'PostgresSingle',
-    PostgresFlexible = 'PostgresFlexible',
     Common = 'Common', // In case we're reporting a common event and still need to provide the value of the API
+    /** @deprecated Graph API is retired */
+    Graph = 'Graph',
+    /** @deprecated Table API is retired */
+    Table = 'Table',
+    /** @deprecated Cassandra API is retired */
+    Cassandra = 'Cassandra',
+    /** @deprecated PostgresSingle API is not supported in this extension */
+    PostgresSingle = 'PostgresSingle',
+    /** @deprecated PostgresFlexible API is not supported in this extension */
+    PostgresFlexible = 'PostgresFlexible',
 }
 
 export enum DBAccountKind {
-    MongoDB = 'MongoDB',
     GlobalDocumentDB = 'GlobalDocumentDB',
 }
 
@@ -32,13 +33,12 @@ enum Capability {
 
 enum Tag {
     Core = 'Core (SQL)',
-    Mongo = 'Azure Cosmos DB for MongoDB API',
     Table = 'Azure Table',
     Gremlin = 'Gremlin (graph)',
     Cassandra = 'Cassandra',
 }
 
-export type CapabilityName = 'EnableGremlin' | 'EnableTable' | 'EnableCassandra';
+export type CapabilityName = keyof typeof Capability;
 
 export function getExperienceFromApi(api: API): Experience {
     let info = experiencesMap.get(api);
@@ -49,10 +49,6 @@ export function getExperienceFromApi(api: API): Experience {
 }
 
 export function tryGetExperience(resource: CosmosDBAccountModel | DatabaseAccountGetResults): Experience | undefined {
-    if (resource.kind === DBAccountKind.MongoDB) {
-        return MongoExperience;
-    }
-
     if ('capabilities' in resource) {
         // defaultExperience in the resource doesn't really mean anything, we can't depend on its value for determining resource type
         if (resource.capabilities?.find((cap) => cap.name === Capability.EnableGremlin)) {
@@ -72,6 +68,16 @@ export function tryGetExperience(resource: CosmosDBAccountModel | DatabaseAccoun
         } else if (resource.tags?.defaultExperience === Tag.Cassandra) {
             return CassandraExperience;
         } else if (resource.tags?.defaultExperience === Tag.Core) {
+            return CoreExperience;
+        }
+    }
+
+    // Fallback to using 'kind' if capabilities/tags are not present
+    // Usually all newly created accounts used to have tags or capabilities,
+    // now newly created Serverless accounts lack the "Core (SQL)" tag as well as capabilities
+    // Let's just rely on 'kind' in that case and assume all non-SQL accounts still have capabilities/tags
+    if ('kind' in resource) {
+        if (resource.kind === DBAccountKind.GlobalDocumentDB) {
             return CoreExperience;
         }
     }
@@ -100,27 +106,6 @@ export interface Experience {
     tag?: string;
 }
 
-export function getExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return experiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getCosmosDBExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return cosmosDBExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getPostgresExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return postgresExperiencesArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getMongoCoreExperienceQuickPicks(): IAzureQuickPickItem<Experience>[] {
-    return mongoCoreExperienceArray.map((exp) => getExperienceQuickPick(exp.api));
-}
-
-export function getExperienceQuickPick(api: API): IAzureQuickPickItem<Experience> {
-    const exp = getExperienceFromApi(api);
-    return { label: exp.longName, description: exp.description, data: exp };
-}
-
 // Mongo is distinguished by having kind="MongoDB". All others have kind="GlobalDocumentDB"
 // Table and Gremlin are distinguished from SQL by their capabilities
 // Tags reflect the defaultExperience tag in the portal and should not be changed unless they are changed in the portal
@@ -130,20 +115,6 @@ export const CoreExperience: Experience = {
     shortName: 'NoSQL',
     kind: DBAccountKind.GlobalDocumentDB,
     tag: 'Core (SQL)',
-} as const;
-export const MongoExperience: Experience = {
-    api: API.MongoDB,
-    longName: 'Cosmos DB for MongoDB',
-    shortName: 'MongoDB',
-    telemetryName: 'mongo',
-    kind: DBAccountKind.MongoDB,
-    tag: 'Azure Cosmos DB for MongoDB API',
-} as const;
-export const MongoClustersExperience: Experience = {
-    api: API.MongoClusters,
-    longName: 'Cosmos DB for MongoDB (vCore)',
-    shortName: 'MongoDB (vCore)',
-    telemetryName: 'mongoClusters',
 } as const;
 export const TableExperience: Experience = {
     api: API.Table,
@@ -181,13 +152,13 @@ export const PostgresFlexibleExperience: Experience = {
     shortName: 'PostgreSQLFlexible',
 };
 
-const cosmosDBExperiencesArray: Experience[] = [CoreExperience];
-const postgresExperiencesArray: Experience[] = [PostgresSingleExperience, PostgresFlexibleExperience];
-const mongoCoreExperienceArray: Experience[] = [MongoClustersExperience];
 const experiencesArray: Experience[] = [
-    ...cosmosDBExperiencesArray,
-    ...postgresExperiencesArray,
-    ...mongoCoreExperienceArray,
+    CoreExperience,
+    TableExperience,
+    GremlinExperience,
+    CassandraExperience,
+    PostgresSingleExperience,
+    PostgresFlexibleExperience,
 ];
 const experiencesMap = new Map<API, Experience>(
     experiencesArray.map((info: Experience): [API, Experience] => [info.api, info]),

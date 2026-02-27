@@ -302,6 +302,11 @@ async function revealAzureResourceInExplorer(
         await revealAzureResourceWithAccountPrompt(context, fulId);
     }
 
+    const branchDataProvider =
+        resourceId.provider === 'Microsoft.DocumentDB/mongoClusters'
+            ? ext.mongoVCoreBranchDataProvider
+            : ext.cosmosDBBranchDataProvider;
+
     const tryFindRevealedResource = async (): Promise<TreeElement | undefined> => {
         const revealedId = await ext.rgApiV2.resources.getSelectedAzureNode();
         if (revealedId) {
@@ -312,12 +317,7 @@ async function revealAzureResourceInExplorer(
         return await branchDataProvider.findNodeById(fulId);
     };
 
-    let resource: TreeElement | undefined;
-    const branchDataProvider =
-        resourceId.provider === 'Microsoft.DocumentDB/mongoClusters'
-            ? ext.mongoVCoreBranchDataProvider
-            : ext.cosmosDBBranchDataProvider;
-    resource = await tryFindRevealedResource();
+    let resource: TreeElement | undefined = await tryFindRevealedResource();
 
     if (!resource) {
         // If reveal succeeded but we can't locate the node, it's commonly because the user is signed into

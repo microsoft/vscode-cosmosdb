@@ -99,10 +99,7 @@ suite('vscodeUriHandler - Open in VS Code', () => {
         // UserCancelledError, which globalUriHandler must handle silently (no wrapped error notification).
         const disposable = registerOnActionStartHandler((context) => {
             if (context.callbackId === 'handleExternalUri') {
-                context.ui = {
-                    ...context.ui,
-                    showWarningMessage: async () => undefined as unknown as vscode.MessageItem,
-                };
+                (context.ui as any).showWarningMessage = async () => undefined as unknown as vscode.MessageItem;
             }
         });
 

@@ -103,6 +103,11 @@ VS Code collects usage data and sends it to Microsoft to help improve our produc
 
 **Data Collection.** The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft’s privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=521839. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
 
+**AI Features**
+
+This extension includes AI-powered features — **Natural Language to Query** and **Data Migration Assistant** — that use GitHub Copilot to process your inputs and generate outputs. When you use these features, your prompts (including query text, schema metadata, and migration context) are sent to GitHub Copilot for processing. GitHub Copilot does not use your data to train its models and does not retain prompts or suggestions from IDE-based interactions. By signing in to GitHub, you have already agreed to the applicable [GitHub Copilot privacy terms](https://copilot.github.trust.page/faq#privacy). For full details on how your data is handled, see the [GitHub Copilot Trust Center](https://copilot.github.trust.page/).
+
+
 # License
 
 [MIT](LICENSE.md)

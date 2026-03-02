@@ -7,17 +7,18 @@ import { FabricTreeNode } from '@microsoft/vscode-fabric-api';
 import type vscode from 'vscode';
 import { TreeItemCollapsibleState } from 'vscode';
 import { type TreeElement } from '../../TreeElement';
+import { type FabricTreeElement } from '../../fabric-resources-view/FabricTreeElement';
 import { bindTreeElement } from '../../mixins/toTreeItem';
 
 /**
  * This Proxy acquire the TreeElement properties and methods, and implement the FabricTreeNode interface to be used in the fabric tree view.
  */
-export class FabricTreeNodeProxy extends FabricTreeNode {
+export class FabricTreeNodeProxy extends FabricTreeNode implements FabricTreeElement {
     declare public id: string;
 
     constructor(
         protected readonly context: vscode.ExtensionContext,
-        private readonly element: TreeElement,
+        public readonly element: TreeElement,
     ) {
         super(context, 'FabricTreeNodeProxy', TreeItemCollapsibleState.None);
     }

@@ -8,7 +8,7 @@ import { type Experience } from '../../../AzureDBExperiences';
 import { FabricTriggerResourceItem } from '../FabricTriggerResourceItem';
 import { type FabricTriggerModel } from '../models/FabricTriggerModel';
 
-export class FabricNativeTriggerResourceItem extends FabricTriggerResourceItem {
+export class FabricMirroredTriggerResourceItem extends FabricTriggerResourceItem {
     constructor(context: vscode.ExtensionContext, model: FabricTriggerModel, experience: Experience) {
         super(context, model, experience);
     }

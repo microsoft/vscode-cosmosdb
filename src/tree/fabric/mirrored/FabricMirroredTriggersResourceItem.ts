@@ -9,9 +9,9 @@ import { type TriggerResource } from '../../cosmosdb/models/CosmosDBTypes';
 import { type TreeElement } from '../../TreeElement';
 import { FabricTriggersResourceItem } from '../FabricTriggersResourceItem';
 import { type FabricTriggersModel } from '../models/FabricTriggersModel';
-import { FabricNativeTriggerResourceItem } from './FabricNativeTriggerResourceItem';
+import { FabricMirroredTriggerResourceItem } from './FabricMirroredTriggerResourceItem';
 
-export class FabricNativeTriggersResourceItem extends FabricTriggersResourceItem {
+export class FabricMirroredTriggersResourceItem extends FabricTriggersResourceItem {
     constructor(context: vscode.ExtensionContext, model: FabricTriggersModel, experience: Experience) {
         super(context, model, experience);
     }
@@ -20,7 +20,7 @@ export class FabricNativeTriggersResourceItem extends FabricTriggersResourceItem
         return Promise.resolve(
             triggers.map(
                 (trigger) =>
-                    new FabricNativeTriggerResourceItem(this.context, { ...this.model, trigger }, this.experience),
+                    new FabricMirroredTriggerResourceItem(this.context, { ...this.model, trigger }, this.experience),
             ),
         );
     }

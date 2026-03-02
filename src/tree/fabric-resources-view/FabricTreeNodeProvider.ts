@@ -15,6 +15,8 @@ import { FabricMirroredArtifactResourceItem } from '../fabric/mirrored/FabricMir
 import { type FabricArtifact } from '../fabric/models/FabricArtifact';
 import { FabricNativeArtifactResourceItem } from '../fabric/native/FabricNativeArtifactResourceItem';
 import { FabricArtifactTreeNodeProxy } from '../fabric/proxy/FabricArtifactTreeNodeProxy';
+import { makeFilterable } from '../mixins/Filterable';
+import { makeSortable } from '../mixins/Sortable';
 import { bindTreeElement } from '../mixins/toTreeItem';
 import { type TreeElement } from '../TreeElement';
 
@@ -31,7 +33,7 @@ export class FabricTreeNodeProvider
 
     public async createArtifactTreeNode(artifact: IArtifact): Promise<ArtifactTreeNode> {
         const fabricArtifact = this.toFabricArtifact(artifact);
-        const treeElement = await this.getResourceItem(fabricArtifact);
+        const treeElement = makeFilterable(makeSortable(await this.getResourceItem(fabricArtifact)));
         const fabricNode = new FabricArtifactTreeNodeProxy(this.context, fabricArtifact, treeElement);
 
         return await bindTreeElement(fabricNode, treeElement);

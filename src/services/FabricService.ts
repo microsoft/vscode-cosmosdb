@@ -237,7 +237,9 @@ class FabricServiceImpl implements IFabricService {
                   : 'MIRRORED_AAD';
         }
 
-        throw new Error(l10n.t(`Unable to get credential type for artifact type ${artifact.type}`));
+        throw new Error(
+            l10n.t('Unable to get credential type for artifact type {artifactType}', { artifactType: artifact.type }),
+        );
     }
 
     /**

@@ -14,12 +14,16 @@ import { validateDocumentId, validatePartitionKey } from '../../cosmosdb/utils/v
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 import { getRootPath } from '../../utils/workspacUtils';
 
 export async function importDocuments(
     context: IActionContext,
-    selectedItem: vscode.Uri | CosmosDBContainerResourceItem | undefined,
+    selectedItem: vscode.Uri | TreeElement | FabricTreeElement | undefined,
     uris: vscode.Uri[] | undefined,
 ): Promise<void> {
     if (selectedItem instanceof vscode.Uri) {
@@ -51,24 +55,34 @@ export async function importDocuments(
         ext.outputChannel.show();
     }
 
-    if (!selectedItem) {
-        selectedItem = await pickAppResource<CosmosDBContainerResourceItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.container'],
-        });
-    }
+    const element: TreeElement | undefined = isFabricTreeElement(selectedItem)
+        ? selectedItem?.element
+        : isTreeElement(selectedItem)
+          ? selectedItem
+          : await pickAppResource<CosmosDBContainerResourceItem>(context, {
+                type: [AzExtResourceType.AzureCosmosDb],
+                expectedChildContextValue: ['treeItem.container'],
+            });
 
-    if (!selectedItem) {
+    if (!element) {
         return undefined;
     }
 
-    context.telemetry.properties.experience = selectedItem.experience.api;
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
+    }
 
-    await ext.state.runWithTemporaryDescription(selectedItem.id, l10n.t('Importing…'), async () => {
-        await importDocumentsWithProgress(selectedItem, uris);
-    });
+    if (
+        isTreeElementWithContextValue(element) &&
+        (element.contextValue.includes('treeItem.container') || element.contextValue.includes('treeItem.items'))
+    ) {
+        const containerElement = element as CosmosDBContainerResourceItem;
+        await ext.state.runWithTemporaryDescription(containerElement.id, l10n.t('Importing…'), async () => {
+            await importDocumentsWithProgress(containerElement, uris);
+        });
 
-    ext.state.notifyChildrenChanged(selectedItem.id);
+        ext.state.notifyChildrenChanged(containerElement.id);
+    }
 }
 
 export async function importDocumentsWithProgress(

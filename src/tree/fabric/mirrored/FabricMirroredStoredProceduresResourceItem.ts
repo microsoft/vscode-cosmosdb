@@ -9,9 +9,9 @@ import { type StoredProcedureResource } from '../../cosmosdb/models/CosmosDBType
 import { type TreeElement } from '../../TreeElement';
 import { FabricStoredProceduresResourceItem } from '../FabricStoredProceduresResourceItem';
 import { type FabricStoredProceduresModel } from '../models/FabricStoredProceduresModel';
-import { FabricNativeStoredProcedureResourceItem } from './FabricNativeStoredProcedureResourceItem';
+import { FabricMirroredStoredProcedureResourceItem } from './FabricMirroredStoredProcedureResourceItem';
 
-export class FabricNativeStoredProceduresResourceItem extends FabricStoredProceduresResourceItem {
+export class FabricMirroredStoredProceduresResourceItem extends FabricStoredProceduresResourceItem {
     constructor(context: vscode.ExtensionContext, model: FabricStoredProceduresModel, experience: Experience) {
         super(context, model, experience);
     }
@@ -20,7 +20,7 @@ export class FabricNativeStoredProceduresResourceItem extends FabricStoredProced
         return Promise.resolve(
             storedProcedures.map(
                 (procedure) =>
-                    new FabricNativeStoredProcedureResourceItem(
+                    new FabricMirroredStoredProcedureResourceItem(
                         this.context,
                         { ...this.model, procedure },
                         this.experience,

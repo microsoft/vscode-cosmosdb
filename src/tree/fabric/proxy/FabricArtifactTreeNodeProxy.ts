@@ -5,6 +5,7 @@
 
 import { ArtifactTreeNode, type FabricTreeNode } from '@microsoft/vscode-fabric-api';
 import type vscode from 'vscode';
+import { type FabricTreeElement } from '../../fabric-resources-view/FabricTreeElement';
 import { bindTreeElement } from '../../mixins/toTreeItem';
 import { type TreeElement } from '../../TreeElement';
 import { type FabricArtifact } from '../models/FabricArtifact';
@@ -13,13 +14,13 @@ import { FabricTreeNodeProxy } from './FabricTreeNodeProxy';
 /**
  * This Proxy acquire the TreeElement properties and methods, and implement the FabricTreeNode interface to be used in the fabric tree view.
  */
-export class FabricArtifactTreeNodeProxy extends ArtifactTreeNode {
+export class FabricArtifactTreeNodeProxy extends ArtifactTreeNode implements FabricTreeElement {
     declare public id: string;
 
     constructor(
         protected readonly context: vscode.ExtensionContext,
         public readonly artifact: FabricArtifact,
-        private readonly element: TreeElement,
+        public readonly element: TreeElement,
     ) {
         super(context, artifact);
     }

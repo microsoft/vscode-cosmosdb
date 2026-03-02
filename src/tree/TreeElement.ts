@@ -11,3 +11,14 @@ export interface TreeElement extends TreeElementWithId {
     getTreeItem(): vscode.TreeItem | Thenable<vscode.TreeItem>;
     dataProvider?: vscode.TreeDataProvider<TreeElement>; // Optional, each data provider should set this property by itself
 }
+
+export function isTreeElement(node: unknown): node is TreeElement {
+    return (
+        typeof node === 'object' &&
+        node !== null &&
+        'id' in node &&
+        typeof node.id === 'string' &&
+        'getTreeItem' in node &&
+        typeof node.getTreeItem === 'function'
+    );
+}

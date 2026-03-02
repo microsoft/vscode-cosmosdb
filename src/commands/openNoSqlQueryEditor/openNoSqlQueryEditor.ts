@@ -5,57 +5,67 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { API } from '../../AzureDBExperiences';
-import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import * as l10n from '@vscode/l10n';
+import { isNoSqlQueryConnection, type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function openNoSqlQueryEditor(
     context: IActionContext,
-    nodeOrConnection?: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem | NoSqlQueryConnection,
+    nodeOrConnection?: TreeElement | FabricTreeElement | NoSqlQueryConnection, //CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
 ): Promise<void> {
     let connection: NoSqlQueryConnection;
 
-    if (!nodeOrConnection) {
-        // Case 1: No input provided, prompt user to select a container
-        const node = await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
-            type: AzExtResourceType.AzureCosmosDb,
-            expectedChildContextValue: ['treeItem.container', 'treeItem.items'],
-        });
+    if (isNoSqlQueryConnection(nodeOrConnection)) {
+        // Input is already a connection
+        connection = nodeOrConnection;
+    } else {
+        const element: TreeElement | undefined = isFabricTreeElement(nodeOrConnection)
+            ? nodeOrConnection.element
+            : isTreeElement(nodeOrConnection)
+              ? nodeOrConnection
+              : await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
+                    type: AzExtResourceType.AzureCosmosDb,
+                    expectedChildContextValue: ['treeItem.container'],
+                });
 
-        if (!node) {
-            return;
+        if (!element) {
+            return undefined;
         }
 
-        context.telemetry.properties.experience = node.experience.api;
-        connection = getConnectionFromNode(node);
-    } else if (isTreeElementWithExperience(nodeOrConnection)) {
-        // Case 2: Input is a container node (using proper type guard)
-        context.telemetry.properties.experience = nodeOrConnection.experience.api;
-        connection = getConnectionFromNode(
-            nodeOrConnection as CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
-        );
-    } else {
-        // Case 3: Input is already a connection
-        context.telemetry.properties.experience = API.Core;
-        connection = nodeOrConnection;
+        if (isTreeElementWithExperience(element)) {
+            context.telemetry.properties.experience = element.experience.api;
+        }
+
+        if (
+            isTreeElementWithContextValue(element) &&
+            (element.contextValue.includes('treeItem.container') ||
+                element.contextValue.includes('treeItem.items') ||
+                element.contextValue.includes('treeItem.queryEditor'))
+        ) {
+            const containerNode = element as CosmosDBContainerResourceItem;
+
+            connection = {
+                databaseId: containerNode.model.database.id,
+                containerId: containerNode.model.container.id,
+                endpoint: containerNode.model.accountInfo.endpoint,
+                credentials: containerNode.model.accountInfo.credentials,
+                isEmulator: containerNode.model.accountInfo.isEmulator,
+            };
+        } else {
+            throw new Error(l10n.t('The selected item is not a Cosmos DB container.'));
+        }
+    }
+
+    if (!connection) {
+        throw new Error(l10n.t('Failed to determine connection information for the selected item.'));
     }
 
     QueryEditorTab.render(connection);
-}
-
-// Helper function to extract connection from a container node
-function getConnectionFromNode(node: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem): NoSqlQueryConnection {
-    const accountInfo = node.model.accountInfo;
-
-    return {
-        databaseId: node.model.database.id,
-        containerId: node.model.container.id,
-        endpoint: accountInfo.endpoint,
-        credentials: accountInfo.credentials,
-        isEmulator: accountInfo.isEmulator,
-    };
 }

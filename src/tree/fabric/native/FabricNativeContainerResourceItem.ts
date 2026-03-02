@@ -10,8 +10,6 @@ import { FabricContainerResourceItem } from '../FabricContainerResourceItem';
 import { type FabricContainerModel } from '../models/FabricContainerModel';
 import { FabricNativeItemsResourceItem } from './FabricNativeItemsResourceItem';
 import { FabricNativeQueryEditorResourceItem } from './FabricNativeQueryEditorResourceItem';
-import { FabricNativeStoredProceduresResourceItem } from './FabricNativeStoredProceduresResourceItem';
-import { FabricNativeTriggersResourceItem } from './FabricNativeTriggersResourceItem';
 
 export class FabricNativeContainerResourceItem extends FabricContainerResourceItem {
     public constructor(context: vscode.ExtensionContext, model: FabricContainerModel, experience: Experience) {
@@ -26,13 +24,11 @@ export class FabricNativeContainerResourceItem extends FabricContainerResourceIt
     }
 
     protected getChildrenTriggersImpl(): Promise<TreeElement | undefined> {
-        return Promise.resolve(new FabricNativeTriggersResourceItem(this.context, { ...this.model }, this.experience));
+        return Promise.resolve(undefined);
     }
 
     protected getChildrenStoredProceduresImpl(): Promise<TreeElement | undefined> {
-        return Promise.resolve(
-            new FabricNativeStoredProceduresResourceItem(this.context, { ...this.model }, this.experience),
-        );
+        return Promise.resolve(undefined);
     }
 
     protected getChildrenItemsImpl(): Promise<TreeElement | undefined> {

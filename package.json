@@ -101,7 +101,7 @@
     "glob": "~12.0.0",
     "globals": "~17.3.0",
     "jest": "~30.2.0",
-    "jest-mock-vscode": "~4.9.5",
+    "jest-mock-vscode": "~4.11.0",
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
     "mocha-multi-reporters": "~1.5.1",
@@ -155,6 +155,9 @@
     "zod": "~4.3.2"
   },
   "overrides": {
+    "@prantlf/jsonlint": {
+      "ajv": "~8.18.0"
+    },
     "glob": "~12.0.0",
     "mocha": {
       "diff": "~8.0.3"
@@ -465,19 +468,19 @@
         {
           "//": "[Account] CosmosDB Filter tree items",
           "command": "azureDatabases.filterTreeItems",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](filterable)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)|vscode-fabric.view/ && viewItem =~ /treeitem[.](filterable)(?![a-z.\\/])/i",
           "group": "inline"
         },
         {
           "//": "[Account] CosmosDB Sort tree items",
           "command": "azureDatabases.sortTreeItems",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.](sortable)(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)|vscode-fabric.view/ && viewItem =~ /treeitem[.](sortable)(?![a-z.\\/])/i",
           "group": "inline"
         },
         {
           "//": "[Account] CosmosDB Copy connection string",
           "command": "cosmosDB.copyConnectionString",
-          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
+          "when": "view =~ /azure(ResourceGroups|FocusView|Workspace)|vscode-fabric.view/ && viewItem =~ /treeitem[.]account(?![a-z.\\/])/i",
           "group": "2@1"
         },
         {
@@ -489,7 +492,7 @@
         {
           "//": "[Database] Create NoSql container",
           "command": "cosmosDB.createContainer",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]database(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@1"
         },
         {
@@ -513,19 +516,19 @@
         {
           "//": "[Container] Open NoSql query editor",
           "command": "cosmosDB.openNoSqlQueryEditor",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@1"
         },
         {
-          "//": "[Container] Import NoSql documents",
+          "//": "[Container] Import NoSql items",
           "command": "cosmosDB.importDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@2"
         },
         {
           "//": "[Container] Delete NoSql container",
           "command": "cosmosDB.deleteContainer",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]container(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@3"
         },
         {
@@ -585,31 +588,31 @@
         {
           "//": "[Documents] Open NoSql query editor",
           "command": "cosmosDB.openNoSqlQueryEditor",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]items(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@1"
         },
         {
           "//": "[Documents] Create NoSql Document",
           "command": "cosmosDB.createDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]items(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@2"
         },
         {
           "//": "[Documents] Refresh",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]documents(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]items(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
         },
         {
           "//": "[Document] Delete",
           "command": "cosmosDB.deleteDocument",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)|vscode-fabric.view/ && viewItem =~ /treeitem[.]item(?![a-z.\\/])/i && viewItem =~ /experience[.](core|fabric)/i",
           "group": "1@1"
         },
         {
           "//": "[Document] Refresh",
           "command": "azureDatabases.refresh",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]item(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
         }
       ],

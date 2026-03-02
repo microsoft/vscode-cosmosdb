@@ -8,7 +8,7 @@ import { type Experience } from '../../../AzureDBExperiences';
 import { FabricStoredProcedureResourceItem } from '../FabricStoredProcedureResourceItem';
 import { type FabricStoredProcedureModel } from '../models/FabricStoredProcedureModel';
 
-export class FabricNativeStoredProcedureResourceItem extends FabricStoredProcedureResourceItem {
+export class FabricMirroredStoredProcedureResourceItem extends FabricStoredProcedureResourceItem {
     constructor(context: vscode.ExtensionContext, model: FabricStoredProcedureModel, experience: Experience) {
         super(context, model, experience);
     }

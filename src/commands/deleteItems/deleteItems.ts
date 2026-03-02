@@ -9,30 +9,46 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { extractPartitionKey } from '../../utils/document';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDBItemResourceItem): Promise<void> {
-    context.telemetry.properties.experience = node.experience.api;
+export async function cosmosDBDeleteItem(
+    context: IActionContext,
+    node?: TreeElement | FabricTreeElement,
+): Promise<void> {
+    const element: TreeElement | undefined = isFabricTreeElement(node)
+        ? node?.element
+        : isTreeElement(node)
+          ? node
+          : await pickAppResource<CosmosDBItemResourceItem>(context, {
+                type: [AzExtResourceType.AzureCosmosDb],
+                expectedChildContextValue: ['treeItem.item'],
+            });
 
-    if (!node) {
-        node = await pickAppResource<CosmosDBItemResourceItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.item'],
-        });
-    }
-
-    if (!node) {
+    if (!element) {
         return undefined;
     }
 
-    const databaseId = node.model.database.id;
-    const containerId = node.model.container.id;
-    const partitionKeyDefinition = node.model.container.partitionKey;
-    const item = node.model.item;
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
+    }
+
+    if (!isTreeElementWithContextValue(element) || !element.contextValue.includes('treeItem.item')) {
+        return undefined;
+    }
+
+    const itemNode = element as CosmosDBItemResourceItem;
+    const databaseId = itemNode.model.database.id;
+    const containerId = itemNode.model.container.id;
+    const partitionKeyDefinition = itemNode.model.container.partitionKey;
+    const item = itemNode.model.item;
 
     if (item.id === undefined) {
         vscode.window.showErrorMessage(l10n.t('Item id is required'));
@@ -51,8 +67,8 @@ export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDB
 
     try {
         let success = false;
-        await ext.state.showDeleting(node.id, async () => {
-            await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
+        await ext.state.showDeleting(itemNode.id, async () => {
+            await withClaimsChallengeHandling(itemNode.model.accountInfo, async (cosmosClient) => {
                 const response = await cosmosClient
                     .database(databaseId)
                     .container(containerId)
@@ -71,8 +87,8 @@ export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDB
             );
         }
     } finally {
-        const lastSlashIndex = node.id.lastIndexOf('/');
-        let parentId = node.id;
+        const lastSlashIndex = itemNode.id.lastIndexOf('/');
+        let parentId = itemNode.id;
         if (lastSlashIndex !== -1) {
             parentId = parentId.substring(0, lastSlashIndex);
         }

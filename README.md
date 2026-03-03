@@ -105,8 +105,11 @@ VS Code collects usage data and sends it to Microsoft to help improve our produc
 
 **AI Features**
 
-This extension includes AI-powered features — **Natural Language to Query** and **Data Migration Assistant** — that use GitHub Copilot to process your inputs and generate outputs. When you use these features, your prompts (including query text, schema metadata, and migration context) are sent to GitHub Copilot for processing. GitHub Copilot does not use your data to train its models and does not retain prompts or suggestions from IDE-based interactions. By signing in to GitHub, you have already agreed to the applicable [GitHub Copilot privacy terms](https://copilot.github.trust.page/faq#privacy). For full details on how your data is handled, see the [GitHub Copilot Trust Center](https://copilot.github.trust.page/).
+### AI Features & Privacy
 
+This extension includes AI-powered features that use GitHub Copilot to process your inputs and generate outputs. When you use these features, your prompts (including query text, schema metadata, and other context) are sent to GitHub Copilot for processing. GitHub Copilot does not use your data to train its models and does not retain prompts or suggestions from IDE-based interactions. By signing in to GitHub, you have already agreed to the applicable [GitHub Copilot privacy terms](https://copilot.github.trust.page/faq#privacy). For full details on how your data is handled, see the [GitHub Copilot Trust Center](https://copilot.github.trust.page/).
+
+If you prefer not to use AI-powered features, you can disable them by turning off the GitHub Copilot extension or setting `"chat.agent.enabled": false` in your VS Code settings.
 
 # License
 

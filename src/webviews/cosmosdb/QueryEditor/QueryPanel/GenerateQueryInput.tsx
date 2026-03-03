@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
-import { Dismiss12Regular, RecordStopFilled, SendFilled } from '@fluentui/react-icons';
+import { CheckmarkFilled, Dismiss12Regular, DismissFilled, RecordStopFilled, SendFilled } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
@@ -134,6 +134,30 @@ const useStyles = makeStyles({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    confirmBanner: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '6px 10px',
+        backgroundColor: 'var(--vscode-editorWidget-background)',
+        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-contrastBorder, rgba(135, 206, 235, 0.3)))',
+        borderRadius: '4px',
+        fontSize: '12px',
+        color: 'var(--vscode-editor-foreground)',
+    },
+    confirmMessage: {
+        flex: 1,
+    },
+    confirmButtons: {
+        display: 'flex',
+        gap: '4px',
+        flexShrink: 0,
+    },
+    confirmButton: {
+        padding: '2px 8px',
+        minWidth: 'auto',
+        fontSize: '11px',
+    },
 });
 
 export const GenerateQueryInput = () => {
@@ -147,6 +171,7 @@ export const GenerateQueryInput = () => {
     const [lineCount, setLineCount] = useState(1);
     const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+    const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
 
     // Prompt history for arrow up/down navigation
     const promptHistory = usePromptHistory({ maxSize: 50 });
@@ -193,6 +218,7 @@ export const GenerateQueryInput = () => {
         // Parameters: generatedQuery (string on success, false on failure), modelName, submittedPrompt
         const handler = (generatedQuery: string | false, _modelName?: string, submittedPrompt?: string) => {
             setIsLoading(false);
+            setConfirmMessage(null);
             // Only clear input and save to history on successful generation
             if (generatedQuery !== false) {
                 // Add the submitted prompt to history
@@ -205,6 +231,14 @@ export const GenerateQueryInput = () => {
         };
         void channel.on('queryGenerated', handler as never);
     }, [channel, promptHistory]);
+
+    // Listen for tool invocation confirmation requests from the extension
+    useEffect(() => {
+        const handler = (message: string) => {
+            setConfirmMessage(message);
+        };
+        void channel.on('confirmToolInvocation', handler as never);
+    }, [channel]);
 
     // Listen for availableModels event
     useEffect(() => {
@@ -315,7 +349,22 @@ export const GenerateQueryInput = () => {
                 },
             ],
         });
+        setConfirmMessage(null);
         setIsLoading(false);
+    };
+
+    const handleConfirmResponse = (confirmed: boolean) => {
+        setConfirmMessage(null);
+        void channel.postMessage({
+            type: 'event',
+            name: 'command',
+            params: [
+                {
+                    commandName: 'confirmToolInvocationResponse',
+                    params: [confirmed],
+                },
+            ],
+        });
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -380,40 +429,67 @@ export const GenerateQueryInput = () => {
                 style={{ height: `${Math.max(1, lineCount) * 17}px` }}
             />
             {isLoading ? <ProgressBar className={styles.progressBar} /> : <div style={{ height: '2px' }} />}
-            <div className={styles.footer}>
-                {availableModels.length > 1 ? (
-                    <Dropdown
-                        className={styles.modelDropdown}
-                        onOptionSelect={(_event, data) => handleModelChange(data)}
-                        size="small"
-                        appearance="filled-lighter"
-                        value={modelDisplayName}
-                        selectedOptions={selectedModelId ? [selectedModelId] : []}
-                        disabled={isLoading}
-                    >
-                        {availableModels.map((model) => (
-                            <Option
-                                key={model.id}
-                                value={model.id}
-                                style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
-                            >
-                                {model.name}
-                            </Option>
-                        ))}
-                    </Dropdown>
-                ) : (
-                    <div className={styles.modelLabel}>{modelDisplayName}</div>
-                )}
-                <Button
-                    className={styles.button}
-                    icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
-                    onClick={isLoading ? handleCancel : () => void handleSend()}
-                    disabled={!isLoading && !input.trim()}
-                    title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                    aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                    appearance="transparent"
-                />
-            </div>
+            {confirmMessage ? (
+                <div className={styles.confirmBanner}>
+                    <span className={styles.confirmMessage}>{confirmMessage}</span>
+                    <div className={styles.confirmButtons}>
+                        <Button
+                            className={styles.confirmButton}
+                            icon={<CheckmarkFilled />}
+                            appearance="primary"
+                            size="small"
+                            onClick={() => handleConfirmResponse(true)}
+                        >
+                            {l10n.t('Allow')}
+                        </Button>
+                        <Button
+                            className={styles.confirmButton}
+                            icon={<DismissFilled />}
+                            appearance="subtle"
+                            size="small"
+                            onClick={() => handleConfirmResponse(false)}
+                        >
+                            {l10n.t('Deny')}
+                        </Button>
+                    </div>
+                </div>
+            ) : null}
+            {!confirmMessage && (
+                <div className={styles.footer}>
+                    {availableModels.length > 1 ? (
+                        <Dropdown
+                            className={styles.modelDropdown}
+                            onOptionSelect={(_event, data) => handleModelChange(data)}
+                            size="small"
+                            appearance="filled-lighter"
+                            value={modelDisplayName}
+                            selectedOptions={selectedModelId ? [selectedModelId] : []}
+                            disabled={isLoading}
+                        >
+                            {availableModels.map((model) => (
+                                <Option
+                                    key={model.id}
+                                    value={model.id}
+                                    style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
+                                >
+                                    {model.name}
+                                </Option>
+                            ))}
+                        </Dropdown>
+                    ) : (
+                        <div className={styles.modelLabel}>{modelDisplayName}</div>
+                    )}
+                    <Button
+                        className={styles.button}
+                        icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
+                        onClick={isLoading ? handleCancel : () => void handleSend()}
+                        disabled={!isLoading && !input.trim()}
+                        title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                        aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                        appearance="transparent"
+                    />
+                </div>
+            )}
         </div>
     );
 };

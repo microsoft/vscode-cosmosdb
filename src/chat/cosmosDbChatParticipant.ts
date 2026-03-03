@@ -363,7 +363,19 @@ export class CosmosDbChatParticipant {
                 };
             }
 
-            const result = await operationsService.executeOperation(operationName, parameters);
+            const result = await operationsService.executeOperation(
+                operationName,
+                parameters,
+                (message) => stream.progress(message),
+                async (message) => {
+                    const answer = await vscode.window.showInformationMessage(
+                        message,
+                        { modal: true },
+                        l10n.t('Allow'),
+                    );
+                    return answer === l10n.t('Allow');
+                },
+            );
 
             // Handle editQuery results specially with buttons
             if (typeof result === 'object' && result.type === 'editQuery') {
@@ -466,7 +478,20 @@ export class CosmosDbChatParticipant {
             if (!parameters.userPrompt && request.prompt.trim()) {
                 parameters.userPrompt = request.prompt;
             }
-            const result = await operationsService.executeOperation(operationName, parameters);
+
+            const result = await operationsService.executeOperation(
+                operationName,
+                parameters,
+                (message) => stream.progress(message),
+                async (message) => {
+                    const answer = await vscode.window.showInformationMessage(
+                        message,
+                        { modal: true },
+                        l10n.t('Allow'),
+                    );
+                    return answer === l10n.t('Allow');
+                },
+            );
 
             // Handle editQuery results specially with buttons
             if (typeof result === 'object' && result.type === 'editQuery') {

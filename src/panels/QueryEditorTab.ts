@@ -52,6 +52,7 @@ export class QueryEditorTab extends BaseTab {
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
     private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
+    private pendingConfirmResolve: ((confirmed: boolean) => void) | undefined;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
@@ -261,6 +262,10 @@ export class QueryEditorTab extends BaseTab {
                 return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
             case 'cancelGenerateQuery':
                 return this.cancelGenerateQuery();
+            case 'confirmToolInvocationResponse':
+                this.pendingConfirmResolve?.(payload.params[0] as boolean);
+                this.pendingConfirmResolve = undefined;
+                return Promise.resolve();
             case 'getSelectedModelName':
                 return this.getSelectedModelName();
             case 'getAvailableModels':
@@ -776,10 +781,21 @@ export class QueryEditorTab extends BaseTab {
                 // Use the shared service for query generation
                 const service = CosmosDbOperationsService.getInstance();
                 const historyContext = service.getQueryHistoryContext(this);
+
                 const generatedQuery = await service.generateQueryWithLLM(prompt, currentQuery, {
                     modelId: model.id,
                     historyContext,
                     cancellationToken: token,
+                    onConfirm: async (message: string) => {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'confirmToolInvocation',
+                            params: [message],
+                        });
+                        return new Promise<boolean>((resolve) => {
+                            this.pendingConfirmResolve = resolve;
+                        });
+                    },
                 });
 
                 // Check for cancellation after LLM call
@@ -834,6 +850,8 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private cancelGenerateQuery(): Promise<void> {
+        this.pendingConfirmResolve?.(false);
+        this.pendingConfirmResolve = undefined;
         this.generateQueryCancellation?.cancel();
         this.generateQueryCancellation?.dispose();
         this.generateQueryCancellation = undefined;

@@ -19,8 +19,15 @@ import {
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
 import { sanitizeSqlComment } from '../utils/sanitization';
-import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
+import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
+import {
+    SAMPLE_DATA_CONFIRMATION_MESSAGE,
+    SAMPLE_DATA_TOOL_DESCRIPTION,
+    SAMPLE_DATA_TOOL_INPUT_SCHEMA,
+    SAMPLE_DATA_TOOL_NAME,
+    sampleContainerSchema,
+} from './sampleDataTool';
 import {
     JSON_RESPONSE_FORMAT_WITH_EXPLANATION,
     QUERY_EXPLANATION_PROMPT_TEMPLATE,
@@ -42,6 +49,8 @@ export interface QueryExecutionEntry {
     requestCharge?: number;
     /** Inferred schema from the query results (structure only, no actual data) */
     schema?: JSONSchema;
+    /** Pre-simplified schema from tool sampling (already in compact form) */
+    simplifiedSchema?: Record<string, unknown>;
     /** Timestamp when the query was executed */
     timestamp?: number;
 }
@@ -261,6 +270,46 @@ export class CosmosDbOperationsService {
     }
 
     /**
+     * Records a sampled schema result into the query history store.
+     * This allows subsequent LLM calls to see the schema without re-sampling.
+     */
+    public recordSampledSchema(
+        accountId: string | undefined,
+        databaseId: string,
+        containerId: string,
+        sampleQuery: string,
+        documentCount: number,
+        simplifiedSchema: Record<string, unknown>,
+        requestCharge?: number,
+    ): void {
+        const key = CosmosDbOperationsService.getQueryHistoryKey(accountId, databaseId, containerId);
+
+        let history = this.queryHistoryStore.get(key);
+        if (!history) {
+            history = [];
+            this.queryHistoryStore.set(key, history);
+        }
+
+        // Remove any previous schema sampling entry
+        const existingIndex = history.findIndex((e) => e.query === sampleQuery);
+        if (existingIndex !== -1) {
+            history.splice(existingIndex, 1);
+        }
+
+        history.unshift({
+            query: sampleQuery,
+            documentCount,
+            requestCharge,
+            simplifiedSchema,
+            timestamp: Date.now(),
+        });
+
+        if (history.length > MAX_QUERY_HISTORY_PER_CONTAINER) {
+            history.length = MAX_QUERY_HISTORY_PER_CONTAINER;
+        }
+    }
+
+    /**
      * Clears the query history for a specific container.
      */
     public clearQueryHistory(accountId: string | undefined, databaseId: string, containerId: string): void {
@@ -313,7 +362,9 @@ export class CosmosDbOperationsService {
             formatted += `\n`;
 
             // Include schema information (structure only, no actual user data)
-            if (execution.schema) {
+            if (execution.simplifiedSchema) {
+                formatted += `**Inferred Schema:**\n\`\`\`json\n${JSON.stringify(execution.simplifiedSchema, null, 2)}\n\`\`\`\n`;
+            } else if (execution.schema) {
                 formatted += `**Inferred Schema:**\n\`\`\`json\n${JSON.stringify(this.simplifySchemaForLLM(execution.schema), null, 2)}\n\`\`\`\n`;
             }
 
@@ -423,11 +474,25 @@ export class CosmosDbOperationsService {
     }
 
     /**
+     * Gets the active NoSQL connection from an open query editor tab, if available.
+     */
+    private getActiveConnection(): NoSqlQueryConnection | undefined {
+        const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+        if (activeQueryEditors.length === 0) {
+            return undefined;
+        }
+        const activeEditor = getActiveQueryEditor(activeQueryEditors);
+        return getConnectionFromQueryTab(activeEditor);
+    }
+
+    /**
      * Execute a CosmosDB operation
      */
     public async executeOperation(
         operationName: string,
         parameters: Record<string, unknown> = {},
+        onProgress?: (message: string) => void,
+        onConfirm?: (message: string) => Promise<boolean>,
     ): Promise<string | EditQueryResult> {
         try {
             switch (operationName) {
@@ -452,6 +517,9 @@ export class CosmosDbOperationsService {
                             requestCharge: hasResults ? currentResult?.requestCharge : undefined,
                         },
                         actualQuery,
+                        true,
+                        onProgress,
+                        onConfirm,
                     );
                 }
                 case 'explainQuery': {
@@ -495,6 +563,8 @@ export class CosmosDbOperationsService {
                         },
                         genCurrentQuery,
                         false,
+                        onProgress,
+                        onConfirm,
                     );
                 }
 
@@ -520,6 +590,8 @@ export class CosmosDbOperationsService {
          *  When false, currentQuery is only used to comment out the previous query in the output.
          *  Set to false for generateQuery, which creates a fresh query independent of the existing one. */
         sendCurrentQueryToLLM: boolean = true,
+        onProgress?: (message: string) => void,
+        onConfirm?: (message: string) => Promise<boolean>,
     ): Promise<EditQueryResult> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
@@ -531,6 +603,8 @@ export class CosmosDbOperationsService {
             {
                 historyContext,
                 withExplanation: true,
+                onProgress,
+                onConfirm,
             },
         );
         const suggestion = llmSuggestion.query;
@@ -705,6 +779,8 @@ export class CosmosDbOperationsService {
             historyContext?: QueryHistoryContext;
             withExplanation?: false;
             cancellationToken?: vscode.CancellationToken;
+            onProgress?: (message: string) => void;
+            onConfirm?: (message: string) => Promise<boolean>;
         },
     ): Promise<string>;
     public async generateQueryWithLLM(
@@ -715,6 +791,8 @@ export class CosmosDbOperationsService {
             historyContext?: QueryHistoryContext;
             withExplanation: true;
             cancellationToken?: vscode.CancellationToken;
+            onProgress?: (message: string) => void;
+            onConfirm?: (message: string) => Promise<boolean>;
         },
     ): Promise<{ query: string; explanation: string }>;
     public async generateQueryWithLLM(
@@ -725,9 +803,11 @@ export class CosmosDbOperationsService {
             historyContext?: QueryHistoryContext;
             withExplanation?: boolean;
             cancellationToken?: vscode.CancellationToken;
+            onProgress?: (message: string) => void;
+            onConfirm?: (message: string) => Promise<boolean>;
         },
     ): Promise<string | { query: string; explanation: string }> {
-        const { modelId, historyContext, withExplanation, cancellationToken } = options ?? {};
+        const { modelId, historyContext, withExplanation, cancellationToken, onProgress, onConfirm } = options ?? {};
 
         const models = await vscode.lm.selectChatModels();
         if (models.length === 0) {
@@ -765,17 +845,148 @@ export class CosmosDbOperationsService {
         const oneShotMessages = buildQueryOneShotMessages(vscode.LanguageModelChatMessage);
 
         const token = cancellationToken ?? new vscode.CancellationTokenSource().token;
-        // Use sendChatRequest utility which ensures instruction message is always first.
-        // The VS Code Language Model API doesn't support system messages, so we send
-        // instructions as the first User message per VS Code documentation.
-        // Message order: [system instruction] → [one-shot examples] → [user request]
-        const chatResponse = await sendChatRequest(model, systemMessage, userMessage, {}, token, oneShotMessages);
+
+        // Build the tool list so the LLM can decide to sample schema if needed.
+        // We construct the tool definition directly rather than looking up via vscode.lm.tools,
+        // because the extension's own tools may not appear there during development.
+        const tools: vscode.LanguageModelChatTool[] = [
+            {
+                name: SAMPLE_DATA_TOOL_NAME,
+                description: SAMPLE_DATA_TOOL_DESCRIPTION,
+                inputSchema: SAMPLE_DATA_TOOL_INPUT_SCHEMA,
+            },
+        ];
+
+        // Build messages: [system instruction] → [one-shot examples] → [user request]
+        const messages = buildChatMessages(systemMessage, userMessage, oneShotMessages);
+        const requestOptions: vscode.LanguageModelChatRequestOptions = { tools };
 
         ext.outputChannel.info('[Generate Query] LLM response:');
+        onProgress?.(l10n.t('Generating query\u2026'));
         let responseText = '';
-        for await (const chunk of chatResponse.text) {
-            responseText += chunk;
-            ext.outputChannel.append(chunk);
+
+        // Agentic loop: let the LLM decide whether to call the schema sampling tool
+        const MAX_TOOL_ROUNDS = 3;
+        for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+            const response = await model.sendRequest(messages, requestOptions, token);
+
+            const textParts: string[] = [];
+            const toolCallParts: vscode.LanguageModelToolCallPart[] = [];
+
+            for await (const part of response.stream) {
+                if (part instanceof vscode.LanguageModelTextPart) {
+                    textParts.push(part.value);
+                    ext.outputChannel.append(part.value);
+                } else if (part instanceof vscode.LanguageModelToolCallPart) {
+                    toolCallParts.push(part);
+                }
+            }
+
+            if (toolCallParts.length === 0) {
+                // No tool calls — LLM produced the final answer
+                responseText = textParts.join('');
+                break;
+            }
+
+            // LLM requested tool call(s) — invoke and feed results back
+            ext.outputChannel.info(
+                `[Generate Query] Tool call round ${round + 1}: ${toolCallParts.map((t) => t.name).join(', ')}`,
+            );
+
+            // Add assistant message with the tool call parts
+            messages.push(vscode.LanguageModelChatMessage.Assistant(toolCallParts));
+
+            // Invoke each tool and add results as user messages
+            for (const toolCall of toolCallParts) {
+                ext.outputChannel.info(`[Generate Query] Invoking tool: ${toolCall.name}...`);
+
+                if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
+                    onProgress?.(l10n.t('Analyzing container schema…'));
+                }
+
+                let toolResult: vscode.LanguageModelToolResult;
+
+                // Handle our own tool directly to avoid the "not contributed" error
+                // from vscode.lm.invokeTool(). When onConfirm is provided (query editor),
+                // show inline confirmation UI first. When not provided (chat participant),
+                // invoke directly without confirmation.
+                if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
+                    const connection = this.getActiveConnection();
+                    if (connection) {
+                        if (onConfirm) {
+                            const confirmed = await onConfirm(l10n.t(SAMPLE_DATA_CONFIRMATION_MESSAGE));
+                            if (!confirmed) {
+                                toolResult = new vscode.LanguageModelToolResult([
+                                    new vscode.LanguageModelTextPart(
+                                        l10n.t('User declined to sample the container schema.'),
+                                    ),
+                                ]);
+                                messages.push(
+                                    vscode.LanguageModelChatMessage.User([
+                                        new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
+                                    ]),
+                                );
+                                continue;
+                            }
+                        }
+                        const result = await sampleContainerSchema(connection);
+                        toolResult = new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
+                        ]);
+
+                        // Cache the sampled schema in query history so subsequent
+                        // LLM calls won't need to re-sample.
+                        this.recordSampledSchema(
+                            connection.accountId,
+                            connection.databaseId,
+                            connection.containerId,
+                            result.sampleQuery,
+                            result.documentCount,
+                            result.schema as Record<string, unknown>,
+                            result.requestCharge,
+                        );
+                    } else {
+                        toolResult = new vscode.LanguageModelToolResult([
+                            new vscode.LanguageModelTextPart(
+                                l10n.t(
+                                    'No active Cosmos DB connection. Please open a query editor and connect to a container first.',
+                                ),
+                            ),
+                        ]);
+                    }
+                } else {
+                    toolResult = await vscode.lm.invokeTool(
+                        toolCall.name,
+                        { input: toolCall.input, toolInvocationToken: undefined },
+                        token,
+                    );
+                }
+
+                // Log tool result to output channel
+                for (const part of toolResult.content) {
+                    if (part instanceof vscode.LanguageModelTextPart) {
+                        if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
+                            try {
+                                const parsed = JSON.parse(part.value) as { schema?: Record<string, unknown> };
+                                const fieldCount = parsed.schema ? Object.keys(parsed.schema).length : 0;
+                                ext.outputChannel.info(
+                                    `[Generate Query] Tool result: schema with ${fieldCount} top-level fields`,
+                                );
+                            } catch {
+                                ext.outputChannel.info(`[Generate Query] Tool result: (schema)`);
+                            }
+                        } else {
+                            ext.outputChannel.info(`[Generate Query] Tool result:\n${part.value}`);
+                        }
+                    }
+                }
+
+                messages.push(
+                    vscode.LanguageModelChatMessage.User([
+                        new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
+                    ]),
+                );
+            }
         }
         ext.outputChannel.appendLine('');
 
@@ -791,12 +1002,15 @@ export class CosmosDbOperationsService {
 
         if (withExplanation) {
             // Parse JSON response
-            const result = JSON.parse(responseText) as { query: string; explanation: string };
+            const result = JSON.parse(responseText) as { query: string; explanation: string; comments?: string };
             if (!result.query || typeof result.query !== 'string') {
                 throw new Error(l10n.t('Invalid LLM response: missing query'));
             }
+            const query = result.comments
+                ? `${sanitizeSqlComment(result.comments)}\n${this.cleanupQueryResponse(result.query)}`
+                : this.cleanupQueryResponse(result.query);
             return {
-                query: this.cleanupQueryResponse(result.query),
+                query,
                 explanation: result.explanation || l10n.t('Query generated by AI'),
             };
         }

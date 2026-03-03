@@ -156,7 +156,9 @@ export function formatQueryHistoryContext(historyContext: QueryHistoryContext): 
             formatted += `, ${execution.requestCharge.toFixed(2)} RUs`;
         }
         formatted += `\n`;
-        if (execution.schema) {
+        if (execution.simplifiedSchema) {
+            formatted += `**Schema:** ${JSON.stringify(execution.simplifiedSchema)}\n`;
+        } else if (execution.schema) {
             formatted += `**Schema:** ${JSON.stringify(simplifySchema(execution.schema))}\n`;
         }
         formatted += `\n`;
@@ -210,10 +212,20 @@ export function buildQueryGenerationUserContent(payload: QueryGenerationPayload)
         content += `## Query Language Reference\n${payload.languageReference}\n\n`;
     }
 
-    if (payload.historyContext) {
-        content += wrapUserContent(formatQueryHistoryContext(payload.historyContext), 'context');
+    const formattedHistory = payload.historyContext ? formatQueryHistoryContext(payload.historyContext) : '';
+
+    if (formattedHistory) {
+        content += wrapUserContent(formattedHistory, 'context');
         content += '\n\n';
+    } else {
+        content +=
+            '## Schema Context\n' +
+            'No known schema. You MUST call `cosmosdb_sampleContainerSchema` first to discover property names/types.\n\n';
     }
+
+    // Always remind the LLM on every turn to check tool if uncertain,
+    // overriding its tendency to hallucinate schema.
+    content += `IMPORTANT: If the schema for required properties is not in the context above, call 'cosmosdb_sampleContainerSchema' to find them. Do NOT guess property names.\n\n`;
 
     if (payload.currentQuery) {
         content += `Current query:\n${wrapUserContent(payload.currentQuery, 'query')}`;

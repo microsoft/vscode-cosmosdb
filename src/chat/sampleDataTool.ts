@@ -20,6 +20,8 @@ import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 /**
  * The sampling query used to infer container schema.
  * Uses TOP 10 to minimize RU cost while getting enough documents for schema diversity.
+ * % 2 filter is a cheap way to get non-sequential documents which can help discover more properties in some cases.
+ * Orders by _ts DESC to get the most recent documents, which are more likely to reflect the current schema.
  */
 const SAMPLE_QUERY = 'SELECT TOP 10 * FROM c WHERE c._ts % 2 = 0 ORDER BY c._ts DESC';
 

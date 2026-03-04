@@ -93,18 +93,20 @@ export async function importDocumentsWithProgress(
         {
             location: vscode.ProgressLocation.Notification,
             title: l10n.t('Importing documents…'),
+            cancellable: true,
         },
         async (progress) => {
             progress.report({ increment: 0, message: l10n.t('Loading documents…') });
 
             const countUri = uris.length;
             const incrementUri = 50 / (countUri || 1);
+            const multiplierUri = incrementUri !== 0 && incrementUri < 1 ? Math.floor(1 / incrementUri) : 1;
             const documents: unknown[] = [];
             let hasErrors = false;
 
-            for (let i = 0, percent = 0; i < countUri; i++, percent += incrementUri) {
+            for (let i = 0; i < countUri; i++) {
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: Math.floor(i % multiplierUri === 0 ? incrementUri * multiplierUri : 0),
                     message: l10n.t('Loading document {num} of {countUri}', { num: i + 1, countUri }),
                 });
 
@@ -126,11 +128,14 @@ export async function importDocumentsWithProgress(
 
             const countDocuments = documents.length;
             const incrementDocuments = 50 / (countDocuments || 1);
+            const multiplierDocuments =
+                incrementDocuments !== 0 && incrementDocuments < 1 ? Math.floor(1 / incrementDocuments) : 1;
+
             let count = 0;
 
-            for (let i = 0, percent = 0; i < countDocuments; i++, percent += incrementDocuments) {
+            for (let i = 0; i < countDocuments; i++) {
                 progress.report({
-                    increment: Math.floor(percent),
+                    increment: Math.floor(i % multiplierDocuments === 0 ? incrementDocuments * multiplierDocuments : 0),
                     message: l10n.t('Importing document {num} of {countDocuments}', {
                         num: i + 1,
                         countDocuments,

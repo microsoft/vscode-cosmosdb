@@ -208,7 +208,14 @@ function registerFabricProviders(
         artifactTypes: ['CosmosDBDatabase', 'MirroredDatabase'],
         treeNodeProviders: [ext.fabricNativeTreeNodeProvider, ext.fabricMirroredTreeNodeProvider],
         localProjectTreeNodeProviders: [],
-        artifactHandlers: [],
+        artifactHandlers: [
+            {
+                artifactType: 'CosmosDBDatabase',
+                createWorkflow: {
+                    showCreate: (): Promise<boolean | undefined> => Promise.resolve(true),
+                },
+            },
+        ],
     };
 
     ext.fabricServices = fabricApi.addExtension(extension);

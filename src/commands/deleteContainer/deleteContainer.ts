@@ -40,7 +40,7 @@ export async function cosmosDBDeleteContainer(
 
     if (
         !isTreeElementWithContextValue(element) ||
-        !(element.contextValue.includes('treeItem.container') && element.contextValue.includes('treeItem.items'))
+        (!element.contextValue.includes('treeItem.container') && !element.contextValue.includes('treeItem.items'))
     ) {
         return undefined;
     }

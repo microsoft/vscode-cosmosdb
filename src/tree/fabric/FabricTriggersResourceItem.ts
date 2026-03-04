@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBTriggersResourceItem } from '../cosmosdb/CosmosDBTriggersResourceItem';
-import  { type FabricTriggersModel } from './models/FabricTriggersModel';
 import type vscode from 'vscode';
-import  { type Experience } from '../../AzureDBExperiences';
+import { type Experience } from '../../AzureDBExperiences';
+import { CosmosDBTriggersResourceItem } from '../cosmosdb/CosmosDBTriggersResourceItem';
+import { type FabricTriggersModel } from './models/FabricTriggersModel';
 
 export abstract class FabricTriggersResourceItem extends CosmosDBTriggersResourceItem {
     declare public readonly model: FabricTriggersModel;

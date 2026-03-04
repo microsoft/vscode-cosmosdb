@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CosmosDBStoredProceduresResourceItem } from '../cosmosdb/CosmosDBStoredProceduresResourceItem';
-import  { type FabricStoredProceduresModel } from './models/FabricStoredProceduresModel';
 import type vscode from 'vscode';
-import  { type Experience } from '../../AzureDBExperiences';
+import { type Experience } from '../../AzureDBExperiences';
+import { CosmosDBStoredProceduresResourceItem } from '../cosmosdb/CosmosDBStoredProceduresResourceItem';
+import { type FabricStoredProceduresModel } from './models/FabricStoredProceduresModel';
 
 export abstract class FabricStoredProceduresResourceItem extends CosmosDBStoredProceduresResourceItem {
     declare public readonly model: FabricStoredProceduresModel;

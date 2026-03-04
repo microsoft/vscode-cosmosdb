@@ -37,16 +37,14 @@ SELECT <select_specification>
 <select_specification> ::=
       '*'
       | [DISTINCT] <object_property_list>
-      | [DISTINCT] VALUE <scalar_expression> [[ AS ] value_alias]
-
-<object_property_list> ::=
-{ <scalar_expression> [ [ AS ] property_alias ] } [ ,...n ]
+      | [DISTINCT] VALUE <scalar_expression>
 ```
 
 ### Key Rules
 
 - Use `{containerAlias}.{propertyName}` to refer to properties (e.g., `SELECT c.name FROM c`)
 - Use `VALUE` keyword to return raw values instead of wrapped JSON objects
+- Do NOT use `AS` aliases with `SELECT VALUE` — `SELECT VALUE c.name` is valid, but `SELECT VALUE c.name AS n` is NOT valid
 - Use `DISTINCT VALUE` (not just `DISTINCT`) when getting unique values of a property
 - Give projection values aliases when possible, formatted in camelCase
 - `SELECT *` is only valid when FROM clause declares exactly one alias

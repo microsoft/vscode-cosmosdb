@@ -34,6 +34,7 @@ import { type FabricArtifactType } from './constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { FabricService } from './services/FabricService';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
 import {
@@ -209,12 +210,8 @@ function registerFabricProviders(
         treeNodeProviders: [ext.fabricNativeTreeNodeProvider, ext.fabricMirroredTreeNodeProvider],
         localProjectTreeNodeProviders: [],
         artifactHandlers: [
-            {
-                artifactType: 'CosmosDBDatabase',
-                createWorkflow: {
-                    showCreate: (): Promise<boolean | undefined> => Promise.resolve(true),
-                },
-            },
+            ...FabricService.getArtifactHandlers('CosmosDBDatabase'),
+            ...FabricService.getArtifactHandlers('MirroredDatabase'),
         ],
     };
 

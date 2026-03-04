@@ -3,7 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IApiClientResponse, type IArtifact, type IWorkspace } from '@microsoft/vscode-fabric-api';
+import {
+    type IApiClientResponse,
+    type IArtifact,
+    type IArtifactHandler,
+    type IWorkspace,
+} from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import vscode from 'vscode';
 import { type FabricArtifactType } from '../constants';
@@ -45,16 +50,22 @@ export interface IFabricService {
      * @param artifact
      */
     getArtifactConnectionInfo(artifact: IArtifact): Promise<ArtifactConnectionInfo>;
+
+    getArtifactHandlers(artifactType: string): IArtifactHandler[];
+
+    isArtifact(artifact: unknown): artifact is IArtifact;
+
+    getWorkspace(artifact: CosmosDBArtifact): Promise<IWorkspace>;
 }
+
+type CosmosDBArtifact = IArtifact & { type: FabricArtifactType };
 
 class FabricServiceImpl implements IFabricService {
     /**
      * Retrieves connection information for artifact
      * @param artifact
      */
-    public async getArtifactConnectionInfo(
-        artifact: IArtifact & { type: FabricArtifactType },
-    ): Promise<ArtifactConnectionInfo> | never {
+    public async getArtifactConnectionInfo(artifact: CosmosDBArtifact): Promise<ArtifactConnectionInfo> | never {
         if (!ext.fabricServices) {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
@@ -83,7 +94,55 @@ class FabricServiceImpl implements IFabricService {
         };
     }
 
-    public async getWorkspace(artifact: IArtifact): Promise<IWorkspace> {
+    public getArtifactHandlers(artifactType: FabricArtifactType): IArtifactHandler[] {
+        if (artifactType === 'CosmosDBDatabase') {
+            return [
+                {
+                    artifactType,
+                    createWorkflow: {
+                        showCreate: (): Promise<boolean | undefined> => Promise.resolve(true),
+                        onBeforeCreate: (artifact: IArtifact): Promise<IArtifact | undefined> => {
+                            const artifactName = artifact.displayName;
+                            const regex = /^[^/?#\\]{0,264}[^/?# \\]$/;
+
+                            if (!artifactName) {
+                                throw new Error(l10n.t('Artifact name is required'));
+                            }
+
+                            if (artifactName.endsWith(' ')) {
+                                throw new Error(l10n.t('Trailing space is not allowed'));
+                            }
+
+                            if (artifactName.length > 256) {
+                                throw new Error(
+                                    l10n.t('Name cannot be more than {maxLength} characters', {
+                                        maxLength: 256,
+                                    }),
+                                );
+                            }
+
+                            if (!regex.test(artifactName)) {
+                                throw new Error(
+                                    l10n.t(
+                                        "Invalid name for {currentName}. Value must be 1-265 characters, cannot contain '/', '?', '#', or '\\', and cannot end with a space or any of those characters.",
+                                        {
+                                            currentName: artifactName,
+                                        },
+                                    ),
+                                );
+                            }
+
+                            return Promise.resolve(artifact);
+                        },
+                    },
+                },
+            ];
+        }
+
+        return [];
+    }
+
+    public async getWorkspace(artifact: CosmosDBArtifact): Promise<IWorkspace> {
         if (!ext.fabricServices) {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
@@ -111,7 +170,7 @@ class FabricServiceImpl implements IFabricService {
         );
     }
 
-    public async getFullArtifact(artifact: IArtifact): Promise<IArtifact & Record<string, unknown>> {
+    protected async getFullArtifact(artifact: CosmosDBArtifact): Promise<IArtifact & Record<string, unknown>> {
         if (!ext.fabricServices) {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
@@ -135,7 +194,7 @@ class FabricServiceImpl implements IFabricService {
     }
 
     protected async getAccountInfo(
-        artifact: IArtifact & { type: FabricArtifactType },
+        artifact: CosmosDBArtifact,
         credentialType: CosmosDbArtifactType,
         accountEndpoint: string,
     ): Promise<AccountInfo> {
@@ -189,9 +248,7 @@ class FabricServiceImpl implements IFabricService {
         };
     }
 
-    protected async getCredentialType(
-        artifact: IArtifact & { type: FabricArtifactType },
-    ): Promise<CosmosDbArtifactType> | never {
+    protected async getCredentialType(artifact: CosmosDBArtifact): Promise<CosmosDbArtifactType> | never {
         if (!ext.fabricServices) {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }

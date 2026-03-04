@@ -146,6 +146,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('openCopilotExplainQuery');
     }
 
+    public async closeGenerateInput(): Promise<void> {
+        await this.sendCommand('closeGenerateInput');
+    }
+
     protected initEventListeners() {
         super.initEventListeners();
 

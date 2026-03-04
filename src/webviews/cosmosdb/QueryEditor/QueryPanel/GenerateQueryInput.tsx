@@ -308,6 +308,26 @@ export const GenerateQueryInput = () => {
         return null;
     }
 
+    const handleClose = () => {
+        if (isLoading) {
+            handleCancel();
+        }
+        setConfirmMessage(null);
+        setInput('');
+        setLineCount(1);
+        void channel.postMessage({
+            type: 'event',
+            name: 'command',
+            params: [
+                {
+                    commandName: 'closeGenerateInput',
+                    params: [],
+                },
+            ],
+        });
+        dispatch({ type: 'toggleGenerateInput' });
+    };
+
     const handleSend = async () => {
         if (!input.trim()) {
             return;
@@ -373,11 +393,7 @@ export const GenerateQueryInput = () => {
             void handleSend();
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            if (isLoading) {
-                handleCancel();
-            } else {
-                dispatch({ type: 'toggleGenerateInput' });
-            }
+            handleClose();
         } else if (e.key === 'ArrowUp') {
             // Navigate to previous prompt in history
             const previousPrompt = promptHistory.navigatePrevious(input);
@@ -404,7 +420,7 @@ export const GenerateQueryInput = () => {
             <Button
                 className={styles.closeButton}
                 icon={<Dismiss12Regular />}
-                onClick={() => dispatch({ type: 'toggleGenerateInput' })}
+                onClick={handleClose}
                 title={l10n.t('Close')}
                 aria-label={l10n.t('Close')}
                 appearance="transparent"

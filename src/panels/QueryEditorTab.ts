@@ -262,6 +262,8 @@ export class QueryEditorTab extends BaseTab {
                 return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
             case 'cancelGenerateQuery':
                 return this.cancelGenerateQuery();
+            case 'closeGenerateInput':
+                return this.closeGenerateInput();
             case 'confirmToolInvocationResponse':
                 this.pendingConfirmResolve?.(payload.params[0] as boolean);
                 this.pendingConfirmResolve = undefined;
@@ -855,6 +857,12 @@ export class QueryEditorTab extends BaseTab {
         this.generateQueryCancellation?.cancel();
         this.generateQueryCancellation?.dispose();
         this.generateQueryCancellation = undefined;
+        return Promise.resolve();
+    }
+
+    private closeGenerateInput(): Promise<void> {
+        ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
+        this.cancelGenerateQuery();
         return Promise.resolve();
     }
 

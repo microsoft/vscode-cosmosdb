@@ -24,6 +24,9 @@ export const AIButton = ({ type = 'button' }: ToolbarOverflowItemProps) => {
     }
 
     const handleGenerateClick = () => {
+        if (state.showGenerateInput) {
+            void dispatcher.closeGenerateInput();
+        }
         dispatch({ type: 'toggleGenerateInput' });
     };
 

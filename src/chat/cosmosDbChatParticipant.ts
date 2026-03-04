@@ -366,7 +366,7 @@ export class CosmosDbChatParticipant {
             const result = await operationsService.executeOperation(
                 operationName,
                 parameters,
-                (message) => stream.progress(message),
+                (message) => stream.markdown(message + '\n\n'),
                 async (message) => {
                     const answer = await vscode.window.showInformationMessage(
                         message,
@@ -482,7 +482,7 @@ export class CosmosDbChatParticipant {
             const result = await operationsService.executeOperation(
                 operationName,
                 parameters,
-                (message) => stream.progress(message),
+                (message) => stream.markdown(message + '\n\n'),
                 async (message) => {
                     const answer = await vscode.window.showInformationMessage(
                         message,

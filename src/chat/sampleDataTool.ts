@@ -7,6 +7,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
+import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import {
@@ -18,10 +19,9 @@ import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
  * The sampling query used to infer container schema.
- * Uses TOP 5 to minimize RU cost while getting enough documents for schema diversity.
- * A single cheap query that returns a small sample of documents.
+ * Uses TOP 10 to minimize RU cost while getting enough documents for schema diversity.
  */
-const SAMPLE_QUERY = 'SELECT TOP 10 * FROM c WHERE c._ts % 97 = 0';
+const SAMPLE_QUERY = 'SELECT TOP 10 * FROM c WHERE c._ts % 2 = 0 ORDER BY c._ts DESC';
 
 /**
  * Tool name constant for the sample data schema tool.
@@ -75,7 +75,7 @@ export async function sampleContainerSchema(connection: NoSqlQueryConnection): P
 
     const response = await container.items
         .query<Record<string, unknown>>(SAMPLE_QUERY, {
-            maxItemCount: 5,
+            maxItemCount: 10,
             maxDegreeOfParallelism: 1,
             bufferItems: false,
         })
@@ -195,6 +195,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
         ): Promise<vscode.LanguageModelToolResult> {
             const connection = getActiveConnection();
             if (!connection) {
+                ext.outputChannel.warn('[Sample Schema Tool] No active Cosmos DB connection.');
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(
                         l10n.t(
@@ -205,6 +206,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             }
 
             if (token.isCancellationRequested) {
+                ext.outputChannel.info('[Sample Schema Tool] Operation cancelled by user.');
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
                 ]);
@@ -212,11 +214,15 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
 
             try {
                 const result = await sampleContainerSchema(connection);
+                ext.outputChannel.info(
+                    `[Sample Schema Tool] Sampled ${result.documentCount} documents from ${result.databaseId}/${result.containerId}, cost: ${(result.requestCharge ?? 0).toFixed(2)} RUs`,
+                );
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                 ]);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
+                ext.outputChannel.error(`[Sample Schema Tool] Failed to sample data: ${message}`);
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(l10n.t('Failed to sample data: {0}', message)),
                 ]);

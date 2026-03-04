@@ -34,8 +34,7 @@ interface ExtendedChatRequest {
 export class CosmosDbChatParticipant {
     private participant: vscode.ChatParticipant;
     private extensionPath: string;
-    private cosmosDbInstructions: string | undefined;
-    private dataModelingPrompt: string | undefined;
+    private skillContent: string | undefined;
 
     constructor(context: vscode.ExtensionContext) {
         this.extensionPath = context.extensionPath;
@@ -60,41 +59,26 @@ export class CosmosDbChatParticipant {
     }
 
     /**
-     * Loads and caches the Cosmos DB LLM reference assets (instructions and data modeling prompt).
-     * These are included in the system prompt for free-form chat to provide domain knowledge.
+     * Loads and caches the Cosmos DB best practices skill content.
+     * This is included in the system prompt for free-form chat to provide domain knowledge.
      */
     private getCosmosDbReferenceContext(): string {
-        if (this.cosmosDbInstructions === undefined) {
+        if (this.skillContent === undefined) {
             try {
-                this.cosmosDbInstructions = fs.readFileSync(
-                    path.join(this.extensionPath, 'resources', 'llm-assets', 'azurecosmosdb.instructions.md'),
+                this.skillContent = fs.readFileSync(
+                    path.join(this.extensionPath, 'skills', 'cosmosdb-best-practices', 'SKILL.md'),
                     'utf-8',
                 );
             } catch (error) {
-                console.warn('Failed to load Cosmos DB instructions:', error);
-                this.cosmosDbInstructions = '';
-            }
-        }
-        if (this.dataModelingPrompt === undefined) {
-            try {
-                this.dataModelingPrompt = fs.readFileSync(
-                    path.join(this.extensionPath, 'resources', 'llm-assets', 'azurecosmosdb-datamodeling.prompt.md'),
-                    'utf-8',
-                );
-            } catch (error) {
-                console.warn('Failed to load data modeling prompt:', error);
-                this.dataModelingPrompt = '';
+                console.warn('Failed to load Cosmos DB best practices skill:', error);
+                this.skillContent = '';
             }
         }
 
-        let reference = '';
-        if (this.cosmosDbInstructions) {
-            reference += `\n\n## Azure Cosmos DB Reference\n${this.cosmosDbInstructions}`;
+        if (this.skillContent) {
+            return `\n\n## Azure Cosmos DB Reference\n${this.skillContent}`;
         }
-        if (this.dataModelingPrompt) {
-            reference += `\n\n## Data Modeling Reference\n${this.dataModelingPrompt}`;
-        }
-        return reference;
+        return '';
     }
 
     /**

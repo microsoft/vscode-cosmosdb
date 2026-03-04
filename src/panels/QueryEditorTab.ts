@@ -895,12 +895,14 @@ export class QueryEditorTab extends BaseTab {
             const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
             const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
 
-            const modelList = models.map((m) => ({
-                id: m.id,
-                name: m.name,
-                family: m.family,
-                vendor: m.vendor,
-            }));
+            const modelList = models
+                .filter((m) => m.name.toLowerCase() !== 'auto') // auto model does not work
+                .map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                    family: m.family,
+                    vendor: m.vendor,
+                }));
 
             await this.channel.postMessage({
                 type: 'event',

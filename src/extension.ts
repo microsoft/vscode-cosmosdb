@@ -203,11 +203,12 @@ function registerFabricProviders(
     ext.fabricMirroredTreeNodeProvider = new FabricTreeNodeProvider(context, 'MirroredDatabase');
 
     // Register Fabric providers and commands
+    // Mirrored DB is currently hidden until we have a better story around it
     const extension: fabric.IFabricExtension & { artifactTypes: FabricArtifactType[] } = {
         identity: context.extension.id,
         apiVersion: String(fabric.apiVersion),
-        artifactTypes: ['CosmosDBDatabase', 'MirroredDatabase'],
-        treeNodeProviders: [ext.fabricNativeTreeNodeProvider, ext.fabricMirroredTreeNodeProvider],
+        artifactTypes: ['CosmosDBDatabase' /*, 'MirroredDatabase'*/],
+        treeNodeProviders: [ext.fabricNativeTreeNodeProvider /*, ext.fabricMirroredTreeNodeProvider*/],
         localProjectTreeNodeProviders: [],
         artifactHandlers: [
             ...FabricService.getArtifactHandlers('CosmosDBDatabase'),

@@ -44,23 +44,23 @@ export async function openNoSqlQueryEditor(
         }
 
         if (
-            isTreeElementWithContextValue(element) &&
-            (element.contextValue.includes('treeItem.container') ||
-                element.contextValue.includes('treeItem.items') ||
-                element.contextValue.includes('treeItem.queryEditor'))
+            !isTreeElementWithContextValue(element) ||
+            (!element.contextValue.includes('treeItem.container') &&
+                !element.contextValue.includes('treeItem.items') &&
+                !element.contextValue.includes('treeItem.queryEditor'))
         ) {
-            const containerNode = element as CosmosDBContainerResourceItem;
-
-            connection = {
-                databaseId: containerNode.model.database.id,
-                containerId: containerNode.model.container.id,
-                endpoint: containerNode.model.accountInfo.endpoint,
-                credentials: containerNode.model.accountInfo.credentials,
-                isEmulator: containerNode.model.accountInfo.isEmulator,
-            };
-        } else {
             throw new Error(l10n.t('The selected item is not a Cosmos DB container.'));
         }
+
+        const containerNode = element as CosmosDBContainerResourceItem;
+
+        connection = {
+            databaseId: containerNode.model.database.id,
+            containerId: containerNode.model.container.id,
+            endpoint: containerNode.model.accountInfo.endpoint,
+            credentials: containerNode.model.accountInfo.credentials,
+            isEmulator: containerNode.model.accountInfo.isEmulator,
+        };
     }
 
     if (!connection) {

@@ -73,16 +73,18 @@ export async function importDocuments(
     }
 
     if (
-        isTreeElementWithContextValue(element) &&
-        (element.contextValue.includes('treeItem.container') || element.contextValue.includes('treeItem.items'))
+        !isTreeElementWithContextValue(element) ||
+        (!element.contextValue.includes('treeItem.container') && !element.contextValue.includes('treeItem.items'))
     ) {
-        const containerElement = element as CosmosDBContainerResourceItem;
-        await ext.state.runWithTemporaryDescription(containerElement.id, l10n.t('Importing…'), async () => {
-            await importDocumentsWithProgress(containerElement, uris);
-        });
-
-        ext.state.notifyChildrenChanged(containerElement.id);
+        return undefined;
     }
+
+    const containerElement = element as CosmosDBContainerResourceItem;
+    await ext.state.runWithTemporaryDescription(containerElement.id, l10n.t('Importing…'), async () => {
+        await importDocumentsWithProgress(containerElement, uris);
+    });
+
+    ext.state.notifyChildrenChanged(containerElement.id);
 }
 
 export async function importDocumentsWithProgress(

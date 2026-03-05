@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
-import { CheckmarkFilled, Dismiss12Regular, DismissFilled, RecordStopFilled, SendFilled } from '@fluentui/react-icons';
+import { CheckmarkFilled, Dismiss12Regular, DismissFilled, RecordStopFilled, SendFilled, ThumbDislikeFilled, ThumbDislikeRegular, ThumbLikeFilled, ThumbLikeRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
@@ -62,6 +62,33 @@ const useStyles = makeStyles({
         fontSize: '11px',
         color: 'var(--vscode-descriptionForeground)',
         whiteSpace: 'nowrap',
+    },
+    modelSection: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0px',
+    },
+    feedbackButtons: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0px',
+        marginLeft: '16px',
+    },
+    feedbackButton: {
+        padding: '2px',
+        fontSize: '16px',
+        minWidth: 'auto',
+        minHeight: 'auto',
+        color: 'var(--vscode-descriptionForeground)',
+        backgroundColor: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        '&:hover': {
+            color: 'var(--vscode-foreground)',
+        },
     },
     modelDropdown: {
         minWidth: 'auto',
@@ -171,6 +198,7 @@ export const GenerateQueryInput = () => {
     const [lineCount, setLineCount] = useState(1);
     const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+    const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
     const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
 
     // Prompt history for arrow up/down navigation
@@ -305,6 +333,7 @@ export const GenerateQueryInput = () => {
             handleCancel();
         }
         setConfirmMessage(null);
+        setFeedbackGiven(null);
         setInput('');
         setLineCount(1);
         void channel.postMessage({
@@ -376,6 +405,15 @@ export const GenerateQueryInput = () => {
                     params: [confirmed],
                 },
             ],
+        });
+    };
+
+    const handleFeedback = (direction: 'up' | 'down') => {
+        setFeedbackGiven(direction);
+        void channel.postMessage({
+            type: 'event',
+            name: 'command',
+            params: [{ commandName: 'reportFeedback', params: [{ component: 'generateQueryInput', feedbackValue: direction }] }],
         });
     };
 
@@ -464,29 +502,55 @@ export const GenerateQueryInput = () => {
             ) : null}
             {!confirmMessage && (
                 <div className={styles.footer}>
-                    {availableModels.length > 1 ? (
-                        <Dropdown
-                            className={styles.modelDropdown}
-                            onOptionSelect={(_event, data) => handleModelChange(data)}
-                            size="small"
-                            appearance="filled-lighter"
-                            value={modelDisplayName}
-                            selectedOptions={selectedModelId ? [selectedModelId] : []}
-                            disabled={isLoading}
-                        >
-                            {availableModels.map((model) => (
-                                <Option
-                                    key={model.id}
-                                    value={model.id}
-                                    style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
-                                >
-                                    {model.name}
-                                </Option>
-                            ))}
-                        </Dropdown>
-                    ) : (
-                        <div className={styles.modelLabel}>{modelDisplayName}</div>
-                    )}
+                    <div className={styles.modelSection}>
+                        {availableModels.length > 1 ? (
+                            <Dropdown
+                                className={styles.modelDropdown}
+                                onOptionSelect={(_event, data) => handleModelChange(data)}
+                                size="small"
+                                appearance="filled-lighter"
+                                value={modelDisplayName}
+                                selectedOptions={selectedModelId ? [selectedModelId] : []}
+                                disabled={isLoading}
+                            >
+                                {availableModels.map((model) => (
+                                    <Option
+                                        key={model.id}
+                                        value={model.id}
+                                        style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
+                                    >
+                                        {model.name}
+                                    </Option>
+                                ))}
+                            </Dropdown>
+                        ) : (
+                            <div className={styles.modelLabel}>{modelDisplayName}</div>
+                        )}
+                        {state.isSurveyCandidate && (
+                            <div className={styles.feedbackButtons}>
+                                <Button
+                                    className={styles.feedbackButton}
+                                    icon={feedbackGiven === 'up' ? <ThumbLikeFilled fontSize={16} /> : <ThumbLikeRegular fontSize={16} />}
+                                    onClick={() => handleFeedback('up')}
+                                    title={l10n.t('Thumb up')}
+                                    aria-label={l10n.t('Thumb up')}
+                                    appearance="transparent"
+                                    size="small"
+                                    disabled={feedbackGiven !== null}
+                                />
+                                <Button
+                                    className={styles.feedbackButton}
+                                    icon={feedbackGiven === 'down' ? <ThumbDislikeFilled fontSize={16} /> : <ThumbDislikeRegular fontSize={16} />}
+                                    onClick={() => handleFeedback('down')}
+                                    title={l10n.t('Thumb down')}
+                                    aria-label={l10n.t('Thumb down')}
+                                    appearance="transparent"
+                                    size="small"
+                                    disabled={feedbackGiven !== null}
+                                />
+                            </div>
+                        )}
+                    </div>
                     <Button
                         className={styles.button}
                         icon={isLoading ? <RecordStopFilled /> : <SendFilled />}

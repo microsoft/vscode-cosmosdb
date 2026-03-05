@@ -862,7 +862,7 @@ export class CosmosDbOperationsService {
         const requestOptions: vscode.LanguageModelChatRequestOptions = { tools };
 
         ext.outputChannel.info('[Generate Query] LLM response:');
-        onProgress?.(l10n.t('Generating query\u2026'));
+        onProgress?.(l10n.t('Generating query…'));
         let responseText = '';
         let schemaSamplingRUs = 0;
         let schemaSamplingExecuted = false;

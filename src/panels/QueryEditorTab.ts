@@ -280,6 +280,10 @@ export class QueryEditorTab extends BaseTab {
                 return this.setSelectedModel(payload.params[0] as string);
             case 'openCopilotExplainQuery':
                 return this.openCopilotExplainQuery();
+            case 'reportFeedback': {
+                const feedback = payload.params[0] as { component: string; feedbackValue: 'up' | 'down' };
+                return this.reportFeedback(feedback.feedbackValue, feedback.component);
+            }
         }
 
         return super.getCommand(payload);
@@ -942,6 +946,13 @@ export class QueryEditorTab extends BaseTab {
 
         await vscode.commands.executeCommand('workbench.action.chat.open', {
             query: chatQuery,
+        });
+    }
+
+    private async reportFeedback(feedback: 'up' | 'down', category: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.reportFeedback', (context) => {
+            context.telemetry.properties.feedback = feedback;
+            context.telemetry.properties.category = category;
         });
     }
 }

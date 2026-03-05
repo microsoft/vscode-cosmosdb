@@ -7,7 +7,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
 import * as semver from 'semver';
-import { env, Uri, window } from 'vscode';
+import { env, Uri, window, workspace } from 'vscode';
 import { ext } from '../extensionVariables';
 import { ExperienceKind, type UsageImpact } from './surveyTypes';
 
@@ -19,7 +19,6 @@ const SurveyConfig = {
     },
     settings: {
         DEBUG_ALWAYS_PROMPT: false, // Forces survey prompt regardless of conditions
-        DISABLE_SURVEY: false, // Completely disables survey functionality
         PROBABILITY: 1, // Probability to become candidate (0-1), Azure Tools uses 0.15
         A_B_TEST_SELECTION: 1, // change this value to adjust the candidate selection (e.g. 0.50 for 50% of users)
         PROMPT_ENGLISH_ONLY: false, // Whether to limit survey to English locales
@@ -63,13 +62,11 @@ const surveyState = new SurveyState();
  * @returns {boolean} True if surveys are disabled globally, false otherwise.
  *
  * @remarks
- * Currently uses the extension's setting but per TODO note, this should
- * be migrated to a global admin constant setting.
+ * Uses VS Code setting telemetry.feedback.enabled to respect user feedback preferences.
  */
 export function getIsSurveyDisabledGlobally(): boolean {
-    // TODO: This should be a global admin constent setting, not just for the extension,
-    // also tests will fail if `true` and need to take the disabled scenario into account
-    return SurveyConfig.settings.DISABLE_SURVEY;
+    const isFeedbackEnabled = workspace.getConfiguration('telemetry').get<boolean>('feedback.enabled', true);
+    return !isFeedbackEnabled;
 }
 
 /**

@@ -4,7 +4,17 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
-import { CheckmarkFilled, Dismiss12Regular, DismissFilled, RecordStopFilled, SendFilled, ThumbDislikeFilled, ThumbDislikeRegular, ThumbLikeFilled, ThumbLikeRegular } from '@fluentui/react-icons';
+import {
+    CheckmarkFilled,
+    Dismiss12Regular,
+    DismissFilled,
+    RecordStopFilled,
+    SendFilled,
+    ThumbDislikeFilled,
+    ThumbDislikeRegular,
+    ThumbLikeFilled,
+    ThumbLikeRegular,
+} from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WebviewContext } from '../../../WebviewContext';
@@ -413,7 +423,12 @@ export const GenerateQueryInput = () => {
         void channel.postMessage({
             type: 'event',
             name: 'command',
-            params: [{ commandName: 'reportFeedback', params: [{ component: 'generateQueryInput', feedbackValue: direction }] }],
+            params: [
+                {
+                    commandName: 'reportFeedback',
+                    params: [{ component: 'generateQueryInput', feedbackValue: direction }],
+                },
+            ],
         });
     };
 
@@ -530,7 +545,13 @@ export const GenerateQueryInput = () => {
                             <div className={styles.feedbackButtons}>
                                 <Button
                                     className={styles.feedbackButton}
-                                    icon={feedbackGiven === 'up' ? <ThumbLikeFilled fontSize={16} /> : <ThumbLikeRegular fontSize={16} />}
+                                    icon={
+                                        feedbackGiven === 'up' ? (
+                                            <ThumbLikeFilled fontSize={16} />
+                                        ) : (
+                                            <ThumbLikeRegular fontSize={16} />
+                                        )
+                                    }
                                     onClick={() => handleFeedback('up')}
                                     title={l10n.t('Thumb up')}
                                     aria-label={l10n.t('Thumb up')}
@@ -540,7 +561,13 @@ export const GenerateQueryInput = () => {
                                 />
                                 <Button
                                     className={styles.feedbackButton}
-                                    icon={feedbackGiven === 'down' ? <ThumbDislikeFilled fontSize={16} /> : <ThumbDislikeRegular fontSize={16} />}
+                                    icon={
+                                        feedbackGiven === 'down' ? (
+                                            <ThumbDislikeFilled fontSize={16} />
+                                        ) : (
+                                            <ThumbDislikeRegular fontSize={16} />
+                                        )
+                                    }
                                     onClick={() => handleFeedback('down')}
                                     title={l10n.t('Thumb down')}
                                     aria-label={l10n.t('Thumb down')}

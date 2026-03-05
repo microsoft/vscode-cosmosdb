@@ -121,11 +121,15 @@ export class QueryEditorTab extends BaseTab {
                     params: [this.query],
                 });
             }
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'isSurveyCandidateChanged',
-                params: [!getIsSurveyDisabledGlobally()],
-            });
+            await this.refreshSurveyFeedbackVisibility();
+        });
+    }
+
+    public async refreshSurveyFeedbackVisibility(): Promise<void> {
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'isSurveyCandidateChanged',
+            params: [!getIsSurveyDisabledGlobally()],
         });
     }
 

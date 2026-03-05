@@ -45,6 +45,14 @@ jest.mock('vscode', () => ({
     window: {
         showInformationMessage: jest.fn(),
     },
+    workspace: {
+        getConfiguration: jest.fn(() => ({
+            get: jest.fn().mockReturnValue(true),
+            has: jest.fn(),
+            inspect: jest.fn(),
+            update: jest.fn(),
+        })),
+    },
 }));
 
 // Mock extensionVariables module
@@ -85,8 +93,15 @@ describe('Survey Prompt', () => {
         // Reset mocks
         jest.clearAllMocks();
 
+        jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: jest.fn().mockReturnValue(true),
+            has: jest.fn(),
+            inspect: jest.fn(),
+            update: jest.fn(),
+        });
+
         // Store a reference to the update function mock for use in tests
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+
         globalStateUpdateMock = ext.context.globalState.update as jest.Mock;
 
         // Setup default mock behavior

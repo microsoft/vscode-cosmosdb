@@ -96,6 +96,12 @@ export async function activateInternal(
                 if (event.affectsConfiguration(ext.settingsKeys.documentLabelFields)) {
                     await vscode.commands.executeCommand('azureDatabases.refresh');
                 }
+
+                if (event.affectsConfiguration('telemetry.feedback.enabled')) {
+                    await Promise.all(
+                        Array.from(QueryEditorTab.openTabs).map((tab) => tab.refreshSurveyFeedbackVisibility()),
+                    );
+                }
             },
         );
 

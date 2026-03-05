@@ -178,17 +178,21 @@ export class QueryEditorTab extends BaseTab {
                     params: [initialQuery],
                 });
             }
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'isSurveyCandidateChanged',
-                params: [!getIsSurveyDisabledGlobally()],
-            });
+            await this.refreshSurveyFeedbackVisibility();
             // Send AI features availability state
             await this.channel.postMessage({
                 type: 'event',
                 name: 'aiFeaturesEnabledChanged',
                 params: [ext.isAIFeaturesEnabled],
             });
+        });
+    }
+
+    public async refreshSurveyFeedbackVisibility(): Promise<void> {
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'isSurveyCandidateChanged',
+            params: [!getIsSurveyDisabledGlobally()],
         });
     }
 

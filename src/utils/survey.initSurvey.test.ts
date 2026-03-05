@@ -13,9 +13,17 @@ jest.mock('vscode', () => ({
         language: 'en',
         openExternal: jest.fn(),
     },
+    workspace: {
+        getConfiguration: jest.fn(() => ({
+            get: jest.fn().mockReturnValue(true),
+            has: jest.fn(),
+            inspect: jest.fn(),
+            update: jest.fn(),
+        })),
+    },
 }));
 
-import { env } from 'vscode';
+import { env, workspace } from 'vscode';
 import { getIsSurveyCandidate, getSurveyConfig, getSurveyState, getSurveyStateKeys } from './survey';
 
 let globalState: { get: jest.Mock; update: jest.Mock };
@@ -83,6 +91,13 @@ describe('Survey Initialization', () => {
 
         // Set up default A/B test mocks for passing
         mockABTestPassing();
+
+        (workspace.getConfiguration as jest.Mock).mockImplementation(() => ({
+            get: jest.fn().mockReturnValue(true),
+            has: jest.fn(),
+            inspect: jest.fn(),
+            update: jest.fn(),
+        }));
 
         // Set a consistent machine ID
         (env as any).machineId = 'test-machine-id';

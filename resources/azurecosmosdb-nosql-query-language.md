@@ -143,9 +143,9 @@ WHERE <filter_condition>
 
 - Use `!=` instead of `IS NOT`
 - For string comparisons, assume NOT case sensitive unless specified
-- Use `STRINGEQUALS` for case-insensitive string equality
-- Use `BETWEEN` for **numeric** range filtering only (e.g., `c.price BETWEEN 10 AND 100`)
-- **Do NOT use BETWEEN with string values** (including dates stored as strings) - use `>=` and `<=` operators instead
+- Use `StringEquals` for case-insensitive string equality
+- Use `BETWEEN` for inclusive range filtering on any type (e.g., `c.price BETWEEN 10 AND 100`, `c.orderDate BETWEEN '2014-01-01' AND '2014-06-30'`)
+- Prefer `BETWEEN` over a pair of `>=` and `<=` operators because the operand is guaranteed to be evaluated only once
 
 ### Examples
 
@@ -167,10 +167,10 @@ SELECT * FROM c WHERE c.category = 'electronics' AND c.price > 100
 SELECT * FROM c WHERE c.price BETWEEN 10 AND 50
 ```
 
-**Date string range filter (use >= and <=, NOT BETWEEN):**
+**Date string range filter with BETWEEN:**
 
 ```sql
-SELECT * FROM c WHERE c.orderDate >= '2014-01-01' AND c.orderDate <= '2014-06-30'
+SELECT * FROM c WHERE c.orderDate BETWEEN '2014-01-01' AND '2014-06-30'
 ```
 
 ---
@@ -428,17 +428,14 @@ JOIN (SELECT VALUE s FROM s IN p.sizes WHERE s["order"] >= 3)
 
 ### BETWEEN
 
-Evaluates whether a **numeric** value is within an inclusive range. **Only works with numeric expressions, NOT strings.**
+Evaluates whether a value is within an inclusive range. Works with all types, including numbers and strings. Preferred over a pair of comparison operators (`>=` and `<=`) because the operand is guaranteed to be evaluated only once.
 
 ```sql
--- CORRECT: BETWEEN with numeric values
+-- BETWEEN with numeric values
 SELECT * FROM c WHERE c.price BETWEEN 10 AND 100
 
--- INCORRECT: BETWEEN with string dates will fail
--- SELECT * FROM c WHERE c.orderDate BETWEEN '2014-01-01' AND '2014-06-30'
-
--- CORRECT: Use >= and <= for string/date ranges
-SELECT * FROM c WHERE c.orderDate >= '2014-01-01' AND c.orderDate <= '2014-06-30'
+-- BETWEEN with string/date values
+SELECT * FROM c WHERE c.orderDate BETWEEN '2014-01-01' AND '2014-06-30'
 ```
 
 ### DISTINCT
@@ -519,13 +516,16 @@ SELECT (c.quantity > 0 ? 'In Stock' : 'Out of Stock') AS availability FROM c
 
 ### Aggregate Functions
 
-| Function      | Description       |
-| ------------- | ----------------- |
-| `AVG(expr)`   | Average of values |
-| `COUNT(expr)` | Count of items    |
-| `MAX(expr)`   | Maximum value     |
-| `MIN(expr)`   | Minimum value     |
-| `SUM(expr)`   | Sum of values     |
+| Function         | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `AVG(expr)`      | Average of values                                      |
+| `COUNT(expr)`    | Count of items                                         |
+| `CountIf(expr)`  | Count of items where expression evaluates to true      |
+| `MAX(expr)`      | Maximum value                                          |
+| `MIN(expr)`      | Minimum value                                          |
+| `SUM(expr)`      | Sum of values                                          |
+| `MakeList(expr)` | Collects values into an array (may include duplicates) |
+| `MakeSet(expr)`  | Collects distinct values into an array                 |
 
 **Important:** Use `ARRAY_LENGTH()`, NOT `COUNT()`, for array length.
 
@@ -549,14 +549,33 @@ SELECT (c.quantity > 0 ? 'In Stock' : 'Out of Stock') AS availability FROM c
 | `REPLACE(str, find, replace)`             | Replaces occurrences                         |
 | `REVERSE(str)`                            | Reverses string                              |
 | `INDEX_OF(str, substr)`                   | Returns index of substring (-1 if not found) |
-| `REGEXMATCH(str, pattern)`                | Regular expression match                     |
-| `STRINGEQUALS(str1, str2 [, ignoreCase])` | Case-sensitive/insensitive equality          |
-| `TOSTRING(expr)`                          | Converts to string                           |
+| `RegExMatch(str, pattern)`                | Regular expression match                     |
+| `StringEquals(str1, str2 [, ignoreCase])` | Case-sensitive/insensitive equality          |
+| `ToString(expr)`                          | Converts to string                           |
 
-**Case Sensitivity Note:** Do NOT normalize using `LOWER()` within `CONTAINS()`. Instead, set the case sensitivity parameter to `true`:
+**Case Sensitivity Note:** `CONTAINS`, `STARTSWITH`, and `ENDSWITH` all support an optional third boolean argument for case-insensitive matching. Do NOT normalize using `LOWER()` — instead, pass `true` as the third argument:
 
 ```sql
 SELECT * FROM c WHERE CONTAINS(c.name, 'jacket', true)
+SELECT * FROM c WHERE STARTSWITH(c.name, 'Pro', true)
+SELECT * FROM c WHERE ENDSWITH(c.name, 'ket', true)
+```
+
+**Multi-keyword String Matching:** For checking multiple keywords at once, use the dedicated `ContainsAll`/`ContainsAny` functions which are more efficient than multiple `CONTAINS` calls:
+
+| Function                          | Description                                            |
+| --------------------------------- | ------------------------------------------------------ |
+| `ContainsAllCI(str, k1, k2, ...)` | Case-insensitive check if string contains all keywords |
+| `ContainsAllCS(str, k1, k2, ...)` | Case-sensitive check if string contains all keywords   |
+| `ContainsAnyCI(str, k1, k2, ...)` | Case-insensitive check if string contains any keyword  |
+| `ContainsAnyCS(str, k1, k2, ...)` | Case-sensitive check if string contains any keyword    |
+
+```sql
+-- Case-insensitive: check if description contains ALL of the keywords
+SELECT * FROM c WHERE ContainsAllCI(c.description, 'leather', 'jacket')
+
+-- Case-sensitive: check if description contains ANY of the keywords
+SELECT * FROM c WHERE ContainsAnyCS(c.description, 'Leather', 'Suede')
 ```
 
 ### Array Functions
@@ -569,8 +588,8 @@ SELECT * FROM c WHERE CONTAINS(c.name, 'jacket', true)
 | `ARRAY_SLICE(arr, start [, length])`     | Returns subset of array                    |
 | `ARRAY_CONTAINS_ALL(arr, values)`        | Checks if array contains all values        |
 | `ARRAY_CONTAINS_ANY(arr, values)`        | Checks if array contains any values        |
-| `SETINTERSECT(arr1, arr2)`               | Returns intersection of arrays             |
-| `SETUNION(arr1, arr2)`                   | Returns union of arrays                    |
+| `SetIntersect(arr1, arr2)`               | Returns intersection of arrays             |
+| `SetUnion(arr1, arr2)`                   | Returns union of arrays                    |
 
 ### Date and Time Functions
 
@@ -649,12 +668,12 @@ WHERE c._ts > (GetCurrentTimestamp() / 1000 - 3600)
 
 | Function               | Description               |
 | ---------------------- | ------------------------- |
-| `TOSTRING(expr)`       | Convert to string         |
-| `STRINGTONUMBER(str)`  | Convert string to number  |
-| `STRINGTOBOOLEAN(str)` | Convert string to boolean |
-| `STRINGTONULL(str)`    | Convert string to null    |
-| `STRINGTOARRAY(str)`   | Convert string to array   |
-| `STRINGTOOBJECT(str)`  | Convert string to object  |
+| `ToString(expr)`       | Convert to string         |
+| `StringToNumber(str)`  | Convert string to number  |
+| `StringToBoolean(str)` | Convert string to boolean |
+| `StringToNull(str)`    | Convert string to null    |
+| `StringToArray(str)`   | Convert string to array   |
+| `StringToObject(str)`  | Convert string to object  |
 
 ### Conditional Functions
 
@@ -689,6 +708,32 @@ The ARRAY expression projects subquery results as an array in the SELECT clause.
 SELECT
   p.name,
   ARRAY(SELECT VALUE s.key FROM s IN p.sizes) AS sizeKeys
+FROM products p
+```
+
+---
+
+## FIRST Expression
+
+The FIRST expression returns the first element from a subquery result.
+
+```sql
+SELECT
+  p.name,
+  FIRST(SELECT VALUE t.value FROM t IN p.tags WHERE t.key = 'category') AS firstCategory
+FROM products p
+```
+
+---
+
+## LAST Expression
+
+The LAST expression returns the last element from a subquery result.
+
+```sql
+SELECT
+  p.name,
+  LAST(SELECT VALUE t.value FROM t IN p.tags WHERE t.key = 'category') AS lastCategory
 FROM products p
 ```
 
@@ -798,15 +843,17 @@ SELECT c.tags[0].value AS firstTag FROM c
 2. **Use VALUE for single-value results** to get clean output
 3. **Use DISTINCT VALUE** (not just DISTINCT) for unique property values
 4. **Never use SELECT \* with JOIN** - project specific properties
-5. **Use BETWEEN for numeric ranges only** - for strings/dates use `>=` and `<=`
+5. **Use BETWEEN for inclusive range checks** - works with all types; preferred over `>=` and `<=` because the operand is evaluated only once
 6. **Use != instead of IS NOT**
 7. **Use ARRAY_LENGTH for array length**, not COUNT
 8. **Use proper date functions**: DateTimeAdd, DateTimeDiff, GetCurrentDateTime
 9. **Convert timestamps correctly** when comparing with `_ts` (seconds vs milliseconds)
-10. **Use STRINGEQUALS for case-insensitive string equality**
-11. **Use EXISTS or JOIN** for filtering on array element properties
-12. **Do NOT use HAVING** (not supported)
-13. **Do NOT use DISTINCT within COUNT**
-14. **Do NOT generate DML statements** (INSERT, UPDATE, DELETE, DROP)
-15. **Do NOT use ORDER BY on subquery aliases or computed columns** - ORDER BY requires direct document paths
-16. **Prefer single-property ORDER BY** - multi-property ORDER BY or mixed directions (ASC/DESC) require composite indexes which may not exist
+10. **Use StringEquals for case-insensitive string equality**
+11. **Use the third argument on CONTAINS/STARTSWITH/ENDSWITH** for case-insensitive matching instead of `LOWER()`
+12. **Use ContainsAllCI/ContainsAnyCI** for multi-keyword string matching instead of multiple CONTAINS calls
+13. **Use EXISTS, FIRST, LAST, or JOIN** for filtering on array element properties
+14. **Do NOT use HAVING** (not supported)
+15. **Do NOT use DISTINCT within COUNT**
+16. **Do NOT generate DML statements** (INSERT, UPDATE, DELETE, DROP)
+17. **Do NOT use ORDER BY on subquery aliases or computed columns** - ORDER BY requires direct document paths
+18. **Prefer single-property ORDER BY** - multi-property ORDER BY or mixed directions (ASC/DESC) require composite indexes which may not exist

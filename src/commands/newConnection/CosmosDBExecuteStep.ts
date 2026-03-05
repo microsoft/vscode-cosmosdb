@@ -24,6 +24,9 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
         const parsedCS = parseCosmosDBConnectionString(connectionString);
         const label = `${parsedCS.accountId} (${shortName})`;
 
+        // Use tenantId from context (set by tenant prompt or connection string parsing)
+        const tenantId = context.tenantId ?? parsedCS.tenantId;
+
         return ext.state.showCreatingChild(
             parentId,
             l10n.t('Creating "{nodeName}"…', { nodeName: label }),
@@ -36,7 +39,7 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWiz
                     properties: {
                         isEmulator: false,
                         api,
-                        ...(parsedCS.tenantId && { tenantId: parsedCS.tenantId }),
+                        ...(tenantId && { tenantId }),
                     },
                     secrets: [connectionString],
                 };

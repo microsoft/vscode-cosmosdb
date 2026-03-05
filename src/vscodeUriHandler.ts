@@ -290,6 +290,7 @@ async function revealAzureResourceInExplorer(
  * @param connectionString - The connection string used to connect to the account
  * @param isEmulator - Whether this connection is to a local emulator
  * @param emulatorPort - Optional port number for the emulator connection
+ * @param tenantId - Optional Microsoft Entra tenant ID associated with the attached account connection
  * @param disableEmulatorSecurity
  * @returns A Promise that resolves to the ID of the created/updated connection
  *

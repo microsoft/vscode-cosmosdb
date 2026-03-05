@@ -12,7 +12,7 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
         context.connectionString = (
             await context.ui.showInputBox({
-                placeHolder: 'AccountEndpoint=…;AccountKey=…;TenantId=…',
+                placeHolder: 'AccountEndpoint=…;AccountKey=…',
                 prompt: l10n.t('Enter the connection string for your database account'),
                 validateInput: (connectionString?: string) => this.validateInput(connectionString),
                 asyncValidationTask: (connectionString: string) => this.validateConnectionString(connectionString),
@@ -20,6 +20,12 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
         ).trim();
 
         context.valuesToMask.push(context.connectionString);
+
+        // Extract tenantId from connection string if provided
+        const parsedCS = parseCosmosDBConnectionString(context.connectionString);
+        if (parsedCS.tenantId) {
+            context.tenantId = parsedCS.tenantId;
+        }
     }
 
     public shouldPrompt(context: NewConnectionWizardContext): boolean {
@@ -45,9 +51,7 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return l10n.t(
-                    'Connection string must include "AccountEndpoint=…" and either "AccountKey=…" or "TenantId=…"',
-                );
+                return l10n.t('Connection string must include "AccountEndpoint=…"');
             }
         }
 

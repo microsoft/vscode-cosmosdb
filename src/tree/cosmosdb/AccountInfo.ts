@@ -11,8 +11,10 @@ import {
     type ParsedCosmosDBConnectionString,
 } from '../../cosmosdb/cosmosDBConnectionStrings';
 import { type CosmosDBCredential, getCosmosDBCredentials } from '../../cosmosdb/CosmosDBCredential';
+import { FabricService } from '../../services/FabricService';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { nonNullProp } from '../../utils/nonNull';
+import { type FabricArtifact } from '../fabric/models/FabricArtifact';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { type CosmosDBAccountModel } from './models/CosmosDBAccountModel';
 
@@ -41,9 +43,16 @@ function isCosmosDBConnectionString(connectionString: unknown): connectionString
 }
 
 export async function getAccountInfo(
-    accountOrConnectionString: CosmosDBAccountModel | CosmosDBAttachedAccountModel | ParsedCosmosDBConnectionString,
+    accountOrConnectionString:
+        | CosmosDBAccountModel
+        | CosmosDBAttachedAccountModel
+        | ParsedCosmosDBConnectionString
+        | FabricArtifact,
 ): Promise<AccountInfo> | never {
-    if (isCosmosDBAttachedAccountModel(accountOrConnectionString)) {
+    if (FabricService.isArtifact(accountOrConnectionString)) {
+        const artifactConnectionInfo = await FabricService.getArtifactConnectionInfo(accountOrConnectionString);
+        return artifactConnectionInfo.accountInfo;
+    } else if (isCosmosDBAttachedAccountModel(accountOrConnectionString)) {
         return getAccountInfoForAttached(accountOrConnectionString);
     } else if (isCosmosDBConnectionString(accountOrConnectionString)) {
         return getAccountInfoForConnectionString(accountOrConnectionString);

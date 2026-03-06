@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    callWithTelemetryAndErrorHandling,
     type IActionContext,
     registerCommand,
     registerCommandWithTreeNodeUnwrapping,
@@ -143,6 +144,10 @@ export function registerChatButtonCommands() {
             async (connection: NoSqlQueryConnection, suggestedQuery: string) => {
                 console.log('[CosmosDB Chat] applyQuerySuggestion called', { connection, suggestedQuery });
 
+                void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.applyQuery', (ctx) => {
+                    ctx.errorHandling.suppressDisplay = true;
+                });
+
                 if (!connection || !suggestedQuery) {
                     void vscode.window.showErrorMessage(l10n.t('Missing connection or query data'));
                     return;
@@ -176,6 +181,10 @@ export function registerChatButtonCommands() {
             'cosmosDB.openQuerySideBySide',
             (connection: NoSqlQueryConnection, suggestedQuery: string) => {
                 console.log('[CosmosDB Chat] openQuerySideBySide called', { connection, suggestedQuery });
+
+                void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.openSideBySide', (ctx) => {
+                    ctx.errorHandling.suppressDisplay = true;
+                });
 
                 if (!connection || !suggestedQuery) {
                     void vscode.window.showErrorMessage(l10n.t('Missing connection or query data'));

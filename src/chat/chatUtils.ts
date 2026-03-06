@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
@@ -22,6 +23,7 @@ import { type QueryEditorTab } from '../panels/QueryEditorTab';
  * @param token Cancellation token
  * @param intermediateMessages Optional messages inserted between instruction and user
  *   message, e.g. one-shot User/Assistant example pairs
+ * @param caller Identifier for what triggered this LLM call (for telemetry)
  * @returns The chat response from the model
  */
 export async function sendChatRequest(
@@ -31,6 +33,7 @@ export async function sendChatRequest(
     options: vscode.LanguageModelChatRequestOptions,
     token: vscode.CancellationToken,
     intermediateMessages?: vscode.LanguageModelChatMessage[],
+    caller?: string,
 ): Promise<vscode.LanguageModelChatResponse> {
     // Build messages array with instruction message always first
     const messages = buildChatMessages(instructionMessage, userMessage, intermediateMessages);
@@ -50,6 +53,17 @@ export async function sendChatRequest(
                 `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
                 `usage=${ratio}%`,
         );
+
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+            ctx.telemetry.properties.caller = caller ?? 'unknown';
+            ctx.telemetry.properties.modelName = model.name;
+            ctx.telemetry.properties.modelFamily = model.family;
+            ctx.telemetry.measurements.instructionTokens = instructionTokens;
+            ctx.telemetry.measurements.userTokens = userTokens;
+            ctx.telemetry.measurements.requestTokens = totalTokens;
+            ctx.telemetry.measurements.maxInputTokens = maxTokens;
+        });
     } catch {
         // Token counting is best-effort; don't block the request
     }

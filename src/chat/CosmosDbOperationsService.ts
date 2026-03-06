@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -573,6 +574,11 @@ export class CosmosDbOperationsService {
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.executeOperationFailed', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.operation = operationName;
+                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
+            });
             return l10n.t('❌ Error executing {0}: {1}', operationName, errorMessage);
         }
     }
@@ -691,6 +697,10 @@ export class CosmosDbOperationsService {
                 `\n${explanation}`
             );
         } catch (error) {
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFailed', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
+            });
             console.warn('LLM query explanation failed:', error);
             throw new Error(
                 l10n.t(
@@ -718,6 +728,10 @@ export class CosmosDbOperationsService {
             // Get available language models
             const models = await vscode.lm.selectChatModels({});
             if (models.length === 0) {
+                void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
+                    ctx.errorHandling.suppressDisplay = true;
+                    ctx.telemetry.properties.caller = 'explainQuery';
+                });
                 throw new Error('No language model available');
             }
 
@@ -749,6 +763,8 @@ export class CosmosDbOperationsService {
                 undefined,
                 {},
                 new vscode.CancellationTokenSource().token,
+                undefined,
+                'explainQuery',
             );
 
             let explanation = '';
@@ -758,6 +774,10 @@ export class CosmosDbOperationsService {
 
             return explanation.trim();
         } catch (error) {
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.generateExplanationFailed', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
+            });
             console.error('LLM query explanation failed:', error);
             throw error;
         }
@@ -811,6 +831,10 @@ export class CosmosDbOperationsService {
 
         const models = await vscode.lm.selectChatModels();
         if (models.length === 0) {
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.caller = 'generateQuery';
+            });
             throw new Error(l10n.t('No language model available. Please ensure you have access to Copilot.'));
         }
 
@@ -863,9 +887,44 @@ export class CosmosDbOperationsService {
 
         ext.outputChannel.info('[Generate Query] LLM response:');
         onProgress?.(l10n.t('Generating query…'));
+        const llmStartTime = Date.now();
+
+        // Count tokens for the initial request and report telemetry
+        try {
+            const [systemTokens, userTokenCount] = await Promise.all([
+                model.countTokens(systemMessage, token),
+                model.countTokens(userMessage, token),
+            ]);
+            const totalTokens = systemTokens + userTokenCount;
+            const maxTokens = model.maxInputTokens;
+            const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
+            ext.outputChannel.info(
+                `[Generate Query] model="${model.name}" (${model.family}), ` +
+                    `systemTokens=${systemTokens}, userTokens=${userTokenCount}, ` +
+                    `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
+                    `usage=${ratio}%`,
+            );
+
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.caller = 'generateQuery';
+                ctx.telemetry.properties.modelName = model.name;
+                ctx.telemetry.properties.modelFamily = model.family;
+                ctx.telemetry.measurements.instructionTokens = systemTokens;
+                ctx.telemetry.measurements.userTokens = userTokenCount;
+                ctx.telemetry.measurements.requestTokens = totalTokens;
+                ctx.telemetry.measurements.maxInputTokens = maxTokens;
+            });
+        } catch {
+            // Token counting is best-effort
+        }
+
         let responseText = '';
         let schemaSamplingRUs = 0;
         let schemaSamplingExecuted = false;
+        let schemaSamplingDurationMs = 0;
+        let schemaSamplingUserAllowed: boolean | undefined;
+        let toolRoundsUsed = 0;
 
         // Agentic loop: let the LLM decide whether to call the schema sampling tool
         const MAX_TOOL_ROUNDS = 3;
@@ -891,6 +950,7 @@ export class CosmosDbOperationsService {
             }
 
             // LLM requested tool call(s) — invoke and feed results back
+            toolRoundsUsed = round + 1;
             ext.outputChannel.info(
                 `[Generate Query] Tool call round ${round + 1}: ${toolCallParts.map((t) => t.name).join(', ')}`,
             );
@@ -904,6 +964,11 @@ export class CosmosDbOperationsService {
 
                 if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
                     onProgress?.(l10n.t('Analyzing container schema…'));
+
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingRequested', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.source = onConfirm ? 'queryEditor' : 'chatParticipant';
+                    });
                 }
 
                 let toolResult: vscode.LanguageModelToolResult;
@@ -918,6 +983,11 @@ export class CosmosDbOperationsService {
                         if (onConfirm) {
                             const confirmed = await onConfirm(l10n.t(SAMPLE_DATA_CONFIRMATION_MESSAGE));
                             if (!confirmed) {
+                                schemaSamplingUserAllowed = false;
+                                void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingDenied', (ctx) => {
+                                    ctx.errorHandling.suppressDisplay = true;
+                                    ctx.telemetry.properties.source = 'queryEditor';
+                                });
                                 toolResult = new vscode.LanguageModelToolResult([
                                     new vscode.LanguageModelTextPart(
                                         l10n.t('User declined to sample the container schema.'),
@@ -931,11 +1001,19 @@ export class CosmosDbOperationsService {
                                 continue;
                             }
                         }
+                        schemaSamplingUserAllowed = true;
+                        void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingAllowed', (ctx) => {
+                            ctx.errorHandling.suppressDisplay = true;
+                            ctx.telemetry.properties.source = onConfirm ? 'queryEditor' : 'chatParticipant';
+                        });
+
+                        const schemaSamplingStart = Date.now();
                         const result = await sampleContainerSchema(connection);
                         toolResult = new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                         ]);
 
+                        schemaSamplingDurationMs += Date.now() - schemaSamplingStart;
                         const ruCost = result.requestCharge ?? 0;
                         schemaSamplingRUs += ruCost;
                         schemaSamplingExecuted = true;
@@ -996,7 +1074,7 @@ export class CosmosDbOperationsService {
                                 ext.outputChannel.info(`[Generate Query] Tool result: (schema)`);
                             }
                         } else {
-                            ext.outputChannel.info(`[Generate Query] Tool result:\n${part.value}`);
+                            ext.outputChannel.info(`[Generate Query] Tool result: (non-schema tool)`);
                         }
                     }
                 }
@@ -1020,10 +1098,34 @@ export class CosmosDbOperationsService {
                 .trim();
         }
 
+        const llmDurationMs = Date.now() - llmStartTime;
+
+        // Report generation telemetry
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerated', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+            ctx.telemetry.properties.schemaSampled = String(schemaSamplingExecuted);
+            ctx.telemetry.properties.modelId = model.id;
+            ctx.telemetry.properties.hasCurrentQuery = String(!!currentQuery);
+            if (schemaSamplingUserAllowed !== undefined) {
+                ctx.telemetry.properties.schemaSamplingUserAllowed = String(schemaSamplingUserAllowed);
+            }
+            ctx.telemetry.measurements.durationMs = llmDurationMs;
+            ctx.telemetry.measurements.toolRoundsUsed = toolRoundsUsed;
+            ctx.telemetry.measurements.queryHistorySize = historyContext?.executions?.length ?? 0;
+            if (schemaSamplingExecuted) {
+                ctx.telemetry.measurements.schemaSamplingRUs = schemaSamplingRUs;
+                ctx.telemetry.measurements.schemaSamplingDurationMs = schemaSamplingDurationMs;
+            }
+        });
+
         if (withExplanation) {
             // Parse JSON response
             const result = JSON.parse(responseText) as { query: string; explanation: string; comments?: string };
             if (!result.query || typeof result.query !== 'string') {
+                void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
+                    ctx.errorHandling.suppressDisplay = true;
+                    ctx.telemetry.properties.reason = 'missingQuery';
+                });
                 throw new Error(l10n.t('Invalid LLM response: missing query'));
             }
             const query = result.comments
@@ -1031,7 +1133,7 @@ export class CosmosDbOperationsService {
                 : this.cleanupQueryResponse(result.query);
             const schemaSamplingComment = schemaSamplingExecuted
                 ? `-- ${l10n.t('Schema sampling tool was executed. Cost: {0} RUs', schemaSamplingRUs.toFixed(2))}\n`
-                : `-- ${l10n.t('Schema sampling tool was not executed')}\n`;
+                : '';
             return {
                 query: schemaSamplingComment + query,
                 explanation: result.explanation || l10n.t('Query generated by AI'),
@@ -1040,7 +1142,7 @@ export class CosmosDbOperationsService {
 
         const schemaSamplingComment = schemaSamplingExecuted
             ? `-- ${l10n.t('Schema sampling tool was executed. Cost: {0} RUs', schemaSamplingRUs.toFixed(2))}\n`
-            : `-- ${l10n.t('Schema sampling tool was not executed')}\n`;
+            : '';
         return schemaSamplingComment + this.cleanupQueryResponse(responseText);
     }
 

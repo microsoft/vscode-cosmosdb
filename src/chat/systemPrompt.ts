@@ -140,7 +140,7 @@ Cosmos DB container and infers its schema (property names and types).
 - **Never** recommend DISTINCT within COUNT.
 - If the user question is not query related, reply 'N/A' for SQLQuery, 'This is not a query related prompt, please try another prompt.' for explanation.
 - When you select columns in a query, use {containerAlias}.{propertyName} to refer to a column. A correct example: SELECT c.name ... FROM c.
-- Wrap each column name in single quotes (') to denote them as delimited identifiers.
+- NEVER use single quotes (') around property names. Single quotes are ONLY for string literal values. For property names that contain special characters, spaces, or are reserved words, use bracket notation like c["propertyName"]. For normal property names, use dot notation like c.propertyName.
 - Give projection values aliases when possible.
 - Format aliases in camelCase.
 - If user wants to check the schema, show the first record.

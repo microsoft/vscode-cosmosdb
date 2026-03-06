@@ -521,6 +521,7 @@ export class CosmosDbOperationsService {
                         true,
                         onProgress,
                         onConfirm,
+                        parameters.additionalContext as string | undefined,
                     );
                 }
                 case 'explainQuery': {
@@ -536,11 +537,17 @@ export class CosmosDbOperationsService {
                         ? this.extractSchemaFromResults(currentResult!.documents)
                         : undefined;
 
-                    return await this.handleExplainQuery(actualQuery, parameters.userPrompt as string, connection, {
-                        documentCount: hasResults ? currentResult?.documents?.length : undefined,
-                        requestCharge: hasResults ? currentResult?.requestCharge : undefined,
-                        schema: currentSchema,
-                    });
+                    return await this.handleExplainQuery(
+                        actualQuery,
+                        parameters.userPrompt as string,
+                        connection,
+                        {
+                            documentCount: hasResults ? currentResult?.documents?.length : undefined,
+                            requestCharge: hasResults ? currentResult?.requestCharge : undefined,
+                            schema: currentSchema,
+                        },
+                        parameters.additionalContext as string | undefined,
+                    );
                 }
                 case 'generateQuery': {
                     const {
@@ -566,6 +573,7 @@ export class CosmosDbOperationsService {
                         false,
                         onProgress,
                         onConfirm,
+                        parameters.additionalContext as string | undefined,
                     );
                 }
 
@@ -598,6 +606,7 @@ export class CosmosDbOperationsService {
         sendCurrentQueryToLLM: boolean = true,
         onProgress?: (message: string) => void,
         onConfirm?: (message: string) => Promise<boolean>,
+        additionalContext?: string,
     ): Promise<EditQueryResult> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
@@ -611,6 +620,7 @@ export class CosmosDbOperationsService {
                 withExplanation: true,
                 onProgress,
                 onConfirm,
+                additionalContext,
             },
         );
         const suggestion = llmSuggestion.query;
@@ -657,6 +667,7 @@ export class CosmosDbOperationsService {
             requestCharge?: number;
             schema?: JSONSchema;
         },
+        additionalContext?: string,
     ): Promise<string> {
         try {
             // Generate LLM explanation with current query context
@@ -665,6 +676,7 @@ export class CosmosDbOperationsService {
                 userPrompt || 'Explain this query',
                 connection,
                 resultContext,
+                additionalContext,
             );
 
             // Build context header for better user understanding
@@ -723,6 +735,7 @@ export class CosmosDbOperationsService {
             requestCharge?: number;
             schema?: JSONSchema;
         },
+        additionalContext?: string,
     ): Promise<string> {
         try {
             // Get available language models
@@ -748,6 +761,9 @@ export class CosmosDbOperationsService {
             }
             if (resultContext?.schema) {
                 contextInfo += `**Inferred Schema:** ${JSON.stringify(this.simplifySchemaForLLM(resultContext.schema))}\n`;
+            }
+            if (additionalContext) {
+                contextInfo += `\n## User-Provided Context\n${additionalContext}\n`;
             }
 
             // System prompt (fixed instructions) - from systemPrompt.ts
@@ -801,6 +817,7 @@ export class CosmosDbOperationsService {
             cancellationToken?: vscode.CancellationToken;
             onProgress?: (message: string) => void;
             onConfirm?: (message: string) => Promise<boolean>;
+            additionalContext?: string;
         },
     ): Promise<string>;
     public async generateQueryWithLLM(
@@ -813,6 +830,7 @@ export class CosmosDbOperationsService {
             cancellationToken?: vscode.CancellationToken;
             onProgress?: (message: string) => void;
             onConfirm?: (message: string) => Promise<boolean>;
+            additionalContext?: string;
         },
     ): Promise<{ query: string; explanation: string }>;
     public async generateQueryWithLLM(
@@ -825,9 +843,18 @@ export class CosmosDbOperationsService {
             cancellationToken?: vscode.CancellationToken;
             onProgress?: (message: string) => void;
             onConfirm?: (message: string) => Promise<boolean>;
+            additionalContext?: string;
         },
     ): Promise<string | { query: string; explanation: string }> {
-        const { modelId, historyContext, withExplanation, cancellationToken, onProgress, onConfirm } = options ?? {};
+        const {
+            modelId,
+            historyContext,
+            withExplanation,
+            cancellationToken,
+            onProgress,
+            onConfirm,
+            additionalContext,
+        } = options ?? {};
 
         const models = await vscode.lm.selectChatModels();
         if (models.length === 0) {
@@ -850,6 +877,7 @@ export class CosmosDbOperationsService {
             currentQuery: currentQuery || undefined,
             historyContext,
             languageReference: queryLanguageRef || undefined,
+            additionalContext,
         };
         const userContent = buildQueryGenerationUserContent(userPayload);
 

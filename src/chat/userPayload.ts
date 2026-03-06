@@ -87,6 +87,8 @@ export interface QueryGenerationPayload {
     readonly currentQuery?: string;
     readonly historyContext?: QueryHistoryContext;
     readonly languageReference?: string;
+    /** Additional context from chat references (files, selections, etc.) */
+    readonly additionalContext?: string;
 }
 
 /**
@@ -229,6 +231,11 @@ export function buildQueryGenerationUserContent(payload: QueryGenerationPayload)
 
     if (payload.currentQuery) {
         content += `Current query:\n${wrapUserContent(payload.currentQuery, 'query')}`;
+        content += '\n\n';
+    }
+
+    if (payload.additionalContext) {
+        content += `## User-Provided Context\n${wrapUserContent(payload.additionalContext, 'context')}`;
         content += '\n\n';
     }
 

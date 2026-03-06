@@ -117,6 +117,42 @@ export class CosmosDbChatParticipant {
     }
 
     /**
+     * Resolves chat prompt references (files, selections, etc.) into a formatted text string
+     * that can be included as additional context in LLM queries.
+     */
+    private async resolveChatReferences(request: vscode.ChatRequest): Promise<string> {
+        if (!request.references || request.references.length === 0) {
+            return '';
+        }
+
+        const parts: string[] = [];
+
+        for (const ref of request.references) {
+            try {
+                if (ref.value instanceof vscode.Uri) {
+                    const content = await vscode.workspace.fs.readFile(ref.value);
+                    const text = new TextDecoder().decode(content);
+                    const fileName = path.basename(ref.value.fsPath);
+                    parts.push(`### File: ${fileName}\n\`\`\`\n${text}\n\`\`\``);
+                } else if (ref.value instanceof vscode.Location) {
+                    const doc = await vscode.workspace.openTextDocument(ref.value.uri);
+                    const text = doc.getText(ref.value.range);
+                    const fileName = path.basename(ref.value.uri.fsPath);
+                    const startLine = ref.value.range.start.line + 1;
+                    const endLine = ref.value.range.end.line + 1;
+                    parts.push(`### File: ${fileName} (lines ${startLine}-${endLine})\n\`\`\`\n${text}\n\`\`\``);
+                } else if (typeof ref.value === 'string') {
+                    parts.push(ref.value);
+                }
+            } catch (error) {
+                console.warn('Failed to resolve chat reference:', error);
+            }
+        }
+
+        return parts.join('\n\n');
+    }
+
+    /**
      * Uses LLM for complete intent and parameter extraction - the ideal approach.
      * Uses separated system prompt (instructions) and user content (payload).
      */
@@ -285,17 +321,23 @@ export class CosmosDbChatParticipant {
         // Get query editor context if available (user content/payload)
         const queryEditorContext = this.getQueryEditorContext();
 
+        // Resolve any attached references (files, selections, etc.)
+        const chatReferencesContext = await this.resolveChatReferences(request);
+
         // Load Cosmos DB reference assets for domain knowledge
         const referenceContext = this.getCosmosDbReferenceContext();
 
         // System prompt (fixed instructions) - from systemPrompt.ts, enriched with reference docs
         const systemMessage = vscode.LanguageModelChatMessage.User(CHAT_PARTICIPANT_SYSTEM_PROMPT + referenceContext);
 
-        // User content (dynamic payload) - query editor context + user prompt
+        // User content (dynamic payload) - query editor context + chat references + user prompt
         let userContent = '';
         if (queryEditorContext) {
             userContent += wrapUserContent(queryEditorContext, 'context');
             userContent += QUERY_EDITOR_CONTEXT_SUFFIX;
+        }
+        if (chatReferencesContext) {
+            userContent += `\n\n## User-Provided Context\n${wrapUserContent(chatReferencesContext, 'context')}`;
         }
         userContent += `\n\nUser request:\n${wrapUserContent(request.prompt, 'data')}`;
 
@@ -357,6 +399,9 @@ export class CosmosDbChatParticipant {
             let operationName = intent.operation;
             let parameters = intent.parameters;
 
+            // Resolve any attached references (files, selections, etc.)
+            const chatReferencesContext = await this.resolveChatReferences(request);
+
             // Handle special cases
             if (intent.operation === 'editQuery' && request.prompt.trim()) {
                 operationName = 'editQuery';
@@ -365,6 +410,11 @@ export class CosmosDbChatParticipant {
                     userPrompt: request.prompt, // Pass the full user prompt for LLM processing
                     explanation: 'Query optimization based on AI analysis',
                 };
+            }
+
+            // Forward resolved chat references as additional context
+            if (chatReferencesContext) {
+                parameters = { ...parameters, additionalContext: chatReferencesContext };
             }
 
             const result = await operationsService.executeOperation(
@@ -486,6 +536,12 @@ export class CosmosDbChatParticipant {
             // Ensure userPrompt is always populated from the original request
             if (!parameters.userPrompt && request.prompt.trim()) {
                 parameters.userPrompt = request.prompt;
+            }
+
+            // Resolve any attached references (files, selections, etc.)
+            const chatReferencesContext = await this.resolveChatReferences(request);
+            if (chatReferencesContext) {
+                parameters = { ...parameters, additionalContext: chatReferencesContext };
             }
 
             const result = await operationsService.executeOperation(

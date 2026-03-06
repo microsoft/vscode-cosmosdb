@@ -39,7 +39,9 @@
     "onFileSystem:azureDatabases",
     "onView:azureWorkspace",
     "onView:azureResourceGroups",
-    "onUri"
+    "onUri",
+    "onChatParticipant:cosmosdb",
+    "onLanguageModelTool:cosmosdb_sampleContainerSchema"
   ],
   "scripts": {
     "build": "tsc",
@@ -143,6 +145,7 @@
     "@trpc/server": "~11.10.0",
     "@vscode/l10n": "~0.0.18",
     "allotment": "^1.20.4",
+    "denque": "^2.1.0",
     "es-toolkit": "~1.44.0",
     "monaco-editor": "~0.52.2",
     "react-hotkeys-hook": "~5.2.1",
@@ -206,6 +209,61 @@
         ]
       }
     },
+    "languageModelTools": [
+      {
+        "name": "cosmosdb_sampleContainerSchema",
+        "displayName": "Sample Container Schema",
+        "description": "Samples a few documents from the active Cosmos DB container to infer its schema. Runs a cheap read query (SELECT TOP 5 * FROM c) and returns the inferred property names and types. ALWAYS use this tool FIRST if you do not know the container schema (property names/types). Do not guess schema.",
+        "parametersSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "canBeReferencedInPrompt": true
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "cosmosdb",
+        "name": "cosmosdb",
+        "fullName": "Cosmos DB (NoSQL) Assistant",
+        "description": "AI-powered assistant for Azure Cosmos DB (NoSQL) help, best practices, and code examples",
+        "disambiguation": [
+          {
+            "category": "databases",
+            "description": "The user wants help with their NoSQL Cosmos DB database",
+            "examples": [
+              "Optimize my query to improve performance and cost",
+              "Explain my current query",
+              "Help me write a NoSQL query"
+            ]
+          }
+        ],
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "editQuery",
+            "description": "Edit query with LLM suggestions and user confirmation"
+          },
+          {
+            "name": "help",
+            "description": "Show available commands and help"
+          },
+          {
+            "name": "explainQuery",
+            "description": "Explain the current query with AI analysis"
+          },
+          {
+            "name": "generateQuery",
+            "description": "Generate a new query from natural language description"
+          },
+          {
+            "name": "question",
+            "description": "Ask a general question about Azure Cosmos DB"
+          }
+        ]
+      }
+    ],
     "languages": [
       {
         "id": "nosql",
@@ -369,6 +427,16 @@
         "category": "NoSQL",
         "command": "cosmosDB.openNoSqlQueryEditor",
         "title": "%cosmosdb.command.query.editor.open%"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.applyQuerySuggestion",
+        "title": "Apply Query Suggestion"
+      },
+      {
+        "category": "NoSQL",
+        "command": "cosmosDB.openQuerySideBySide",
+        "title": "Open Query Side-by-Side"
       },
       {
         "category": "NoSQL",

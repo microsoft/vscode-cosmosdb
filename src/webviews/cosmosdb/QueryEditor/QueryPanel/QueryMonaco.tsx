@@ -14,6 +14,9 @@ export const QueryMonaco = () => {
     const disposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
 
     const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
+        // Update initial editor value as monaco editor doesn't update the value after it's mounted. We need to set it manually here.
+        dispatcher.insertText(editor.getValue());
+
         // Set up cursor selection event listener
         disposableRef.current = editor.onDidChangeCursorSelection((event) => {
             const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';

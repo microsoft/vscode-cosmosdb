@@ -6,11 +6,12 @@
 import { makeStyles } from '@fluentui/react-components';
 import { Grid, type IApi, type IColumnConfig, type IRow, Willow, WillowDark } from '@svar-ui/react-grid';
 import '@svar-ui/react-grid/all.css';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/queryResult';
 import { type TableData, type TableRecord, toStringUniversal } from '../../../../../utils/convertors';
 import { useThemeState } from '../../../../theme/state/ThemeContext';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
+import { ColumnHeaderCell } from './ColumnHeaderMenu';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -41,21 +42,41 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const { themeKind } = useThemeState();
+    const apiRef = useRef<IApi | null>(null);
 
     // Determine SVAR theme based on VS Code theme
     const isDarkTheme = themeKind === 'vscode-dark' || themeKind === 'vscode-high-contrast';
     const ThemeWrapper = isDarkTheme ? WillowDark : Willow;
 
+    // Handler for resize by content
+    const handleResizeByContent = useCallback((columnId: string) => {
+        if (apiRef.current) {
+            void apiRef.current.exec('resize-column', { id: columnId, auto: true });
+        }
+    }, []);
+
+    // Handler for manual resize
+    const handleResize = useCallback((columnId: string, newWidth: number) => {
+        if (apiRef.current) {
+            void apiRef.current.exec('resize-column', { id: columnId, width: newWidth });
+        }
+    }, []);
+
     // Convert headers to SVAR column config
     const gridColumns = useMemo((): IColumnConfig[] => {
         return headers.map((header) => {
             const field = header.startsWith('/') ? header.slice(1) : header;
+            const columnId = header + '_id';
             return {
-                id: header + '_id',
-                header: header,
+                id: columnId,
+                header: {
+                    text: header,
+                    cell: ColumnHeaderCell,
+                },
                 resize: true,
                 sort: false,
                 flexgrow: 1,
+                width: 150,
                 template: (value: unknown) => {
                     if (value === undefined || value === null || value === '{}') {
                         const displayValue = value === undefined ? 'undefined' : value === null ? 'null' : '{}';
@@ -63,10 +84,13 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     }
                     return toStringUniversal(value);
                 },
-                getter: (obj: GridDataItem) => obj.__rawData[field],
-            } as IColumnConfig;
+                getter: (obj: GridDataItem) => {
+                    const value = obj.__rawData[field];
+                    return toStringUniversal(value);
+                },
+            };
         });
-    }, [headers]);
+    }, [headers, handleResizeByContent, handleResize]);
 
     // Convert dataset to SVAR data format with __rawData reference
     const gridData = useMemo(
@@ -81,13 +105,14 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Handle grid initialization
     const handleInit = useCallback(
         (api: IApi) => {
+            apiRef.current = api;
+
             // Handle row double-click for opening documents
             api.intercept('open-editor', ({ id }) => {
-                // Check for double-click pattern or use this for document opening
                 // If not in edit mode, do nothing
                 if (!state.isEditMode) return false;
 
-                // Clear the selection in the browser to avoid confusion with SlickGrid selection
+                // Clear the selection in the browser
                 globalThis.getSelection()?.removeAllRanges();
 
                 // Find the row and open document in view mode

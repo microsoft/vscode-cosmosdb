@@ -145,7 +145,7 @@
     "allotment": "^1.20.4",
     "es-toolkit": "~1.44.0",
     "monaco-editor": "~0.52.2",
-    "react-hotkeys-hook": "~5.2.1",
+    "react-hotkeys-hook": "5.1.0",
     "semver": "~7.7.3",
     "slickgrid-react": "~9.13.0",
     "uuid": "~13.0.0",

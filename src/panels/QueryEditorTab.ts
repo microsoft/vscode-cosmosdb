@@ -909,7 +909,7 @@ export class QueryEditorTab extends BaseTab {
         void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (ctx) => {
             ctx.errorHandling.suppressDisplay = true;
         });
-        this.cancelGenerateQuery();
+        void this.cancelGenerateQuery();
         return Promise.resolve();
     }
 

@@ -168,7 +168,7 @@
   "contributes": {
     "chatSkills": [
       {
-        "path": "./skills/cosmosdb-best-practices"
+        "path": "./skills/cosmosdb-best-practices/SKILL.md"
       }
     ],
     "x-azResources": {

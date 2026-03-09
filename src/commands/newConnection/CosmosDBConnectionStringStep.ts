@@ -20,6 +20,12 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
         ).trim();
 
         context.valuesToMask.push(context.connectionString);
+
+        // Extract tenantId from connection string if provided
+        const parsedCS = parseCosmosDBConnectionString(context.connectionString);
+        if (parsedCS.tenantId) {
+            context.tenantId = parsedCS.tenantId;
+        }
     }
 
     public shouldPrompt(context: NewConnectionWizardContext): boolean {
@@ -45,7 +51,7 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
             if (error instanceof Error) {
                 return error.message;
             } else {
-                return l10n.t('Connection string must be of the form "AccountEndpoint=…;AccountKey=…"');
+                return l10n.t('Connection string must include "AccountEndpoint=…"');
             }
         }
 

@@ -12,6 +12,7 @@
 ### Fixed
 
 - Fixed an issue where the contributed chat skill was not properly picked up by GitHub Copilot.
+- Fixed an issue where Keyboard shortcuts didn't work in the Query Editor. (#2949)
 
 ### Changed
 

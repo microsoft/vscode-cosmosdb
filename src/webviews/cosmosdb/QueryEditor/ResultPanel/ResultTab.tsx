@@ -15,8 +15,11 @@ import {
 } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { ResultTabViewJson } from './ResultTabViewJson';
-import { ResultTabViewTable } from './ResultTabViewTable';
-import { ResultTabViewTree } from './ResultTabViewTree';
+import { ResultTabViewTable } from './Slickgrid/ResultTabViewTable';
+import { ResultTabViewTree } from './Slickgrid/ResultTabViewTree';
+
+import { ResultTabViewTable as SVARResultTabViewTable } from './SVAR/ResultTabViewTable';
+import { ResultTabViewTree as SVARResultTabViewTree } from './SVAR/ResultTabViewTree';
 
 const useClasses = makeStyles({
     container: {
@@ -56,7 +59,7 @@ interface ResultTabProps {
 
 export const ResultTab = ({ className }: ResultTabProps) => {
     const classes = useClasses();
-    const { tableViewMode, currentQueryResult, partitionKey, isExecuting } = useQueryEditorState();
+    const { tableViewMode, currentQueryResult, partitionKey, isExecuting, gridLibrary } = useQueryEditorState();
     const [viewData, setViewData] = useState<ViewData>({});
     const [isLoading, setIsLoading] = useState(false);
     const [resultCount, setResultCount] = useState<number>(0);
@@ -180,13 +183,26 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                 </div>
             ) : (
                 <>
-                    {tableViewMode === 'Table' && (
+                    {gridLibrary === 'Slickgrid Universal' && tableViewMode === 'Table' && (
                         <ResultTabViewTable
                             headers={viewData.table?.headers ?? []}
                             dataset={viewData.table?.dataset ?? []}
                         />
                     )}
-                    {tableViewMode === 'Tree' && <ResultTabViewTree data={viewData.tree ?? []} />}
+                    {gridLibrary === 'Slickgrid Universal' && tableViewMode === 'Tree' && (
+                        <ResultTabViewTree data={viewData.tree ?? []} />
+                    )}
+
+                    {gridLibrary === 'SVAR' && tableViewMode === 'Table' && (
+                        <SVARResultTabViewTable
+                            headers={viewData.table?.headers ?? []}
+                            dataset={viewData.table?.dataset ?? []}
+                        />
+                    )}
+                    {gridLibrary === 'SVAR' && tableViewMode === 'Tree' && (
+                        <SVARResultTabViewTree data={viewData.tree ?? []} />
+                    )}
+
                     {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
                 </>
             )}

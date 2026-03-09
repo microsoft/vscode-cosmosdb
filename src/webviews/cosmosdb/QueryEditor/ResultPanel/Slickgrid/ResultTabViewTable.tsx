@@ -14,9 +14,9 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { type TableData } from '../../../utils';
-import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { useColumnMenu } from './ColumnMenu';
+import { type TableData } from '../../../../utils';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
+import { useColumnMenu } from '../ColumnMenu';
 
 type ResultTabViewTableProps = TableData & {};
 

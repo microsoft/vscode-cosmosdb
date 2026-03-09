@@ -11,6 +11,15 @@ export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
+export type GridLibrary =
+    | 'AG Grid Community'
+    | 'FluentUI'
+    | 'Tanstack/FluentUI'
+    | 'SVAR'
+    | 'Slickgrid Universal'
+    | 'React Data Grid'
+    | 'React OSS Data Grid';
+
 export type DispatchAction =
     | {
           type: 'insertText';
@@ -76,6 +85,10 @@ export type DispatchAction =
     | {
           type: 'setConnectionList';
           connectionList: Record<string, string[]> | undefined;
+      }
+    | {
+          type: 'setGridLibrary';
+          gridLibrary: GridLibrary;
       };
 
 export type QueryEditorState = {
@@ -97,6 +110,8 @@ export type QueryEditorState = {
     // Result state
     pageNumber: number; // Current page number (Readonly, only server can change it) (Value exists on both client and server)
     pageSize: number;
+
+    gridLibrary: GridLibrary;
 
     currentQueryResult: SerializedQueryResult | null;
     selectedRows: number[];
@@ -126,6 +141,8 @@ export const defaultState: QueryEditorState = {
     // Result state
     pageNumber: 1,
     pageSize: DEFAULT_PAGE_SIZE,
+
+    gridLibrary: 'Slickgrid Universal',
 
     currentQueryResult: null,
     selectedRows: [],
@@ -197,5 +214,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, throughputBuckets: action.throughputBuckets };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
+        case 'setGridLibrary':
+            return { ...state, gridLibrary: action.gridLibrary };
     }
 }

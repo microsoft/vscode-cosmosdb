@@ -6,6 +6,7 @@
 import { Toolbar } from '@fluentui/react-components';
 import { ToolbarOverflowDividerTransparent } from '../../../common/ToolbarOverflow/ToolbarOverflowDividerTransparent';
 import { useQueryEditorState } from '../state/QueryEditorContext';
+import { ChangeGridDropdown } from './ChangeGridDropdown';
 import { ChangeViewModeDropdown } from './ChangeViewModeDropdown';
 import { DeleteItemButton } from './DeleteItemButton';
 import { EditItemButton } from './EditItemButton';
@@ -28,6 +29,8 @@ export const ResultTabToolbar = () => {
                     </>
                 )}
 
+                <ChangeGridDropdown />
+                <ToolbarOverflowDividerTransparent padding={8} />
                 <ChangeViewModeDropdown />
             </Toolbar>
         </>

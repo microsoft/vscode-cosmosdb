@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Formatters, SlickgridReact, type Column, type GridOption } from 'slickgrid-react';
-import { useColumnMenu } from './ColumnMenu';
+import { useColumnMenu } from '../ColumnMenu';
 
 type ResultTabViewTreeProps = {
     data: Record<string, unknown>[];

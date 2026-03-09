@@ -61,7 +61,7 @@ async function getAccountInfoForConnectionString(
         documentEndpoint: connectionString.documentEndpoint,
         isEmulator,
         masterKey: connectionString.masterKey,
-        tenantId: undefined,
+        tenantId: connectionString.tenantId,
     });
     const isServerless = false;
 
@@ -126,12 +126,13 @@ async function getAccountInfoForAttached(account: CosmosDBAttachedAccountModel):
     const isEmulator = account.isEmulator;
     const parsedCS = parseCosmosDBConnectionString(account.connectionString);
     const documentEndpoint = parsedCS.documentEndpoint;
+    const tenantId = account.tenantId || parsedCS.tenantId;
     const credentials = await getCosmosDBCredentials({
         accountName: name,
         documentEndpoint,
         isEmulator,
         masterKey: parsedCS.masterKey,
-        tenantId: undefined,
+        tenantId,
     });
     const isServerless = false;
 

@@ -14,6 +14,9 @@ export interface NewConnectionWizardContext extends IActionContext {
     connectionString?: string;
     parsedConnectionString?: URL | ParsedCosmosDBConnectionString;
 
+    /** TenantId resolved from connection string or tenant selection prompt */
+    tenantId?: string;
+
     username?: string;
     password?: string;
 }

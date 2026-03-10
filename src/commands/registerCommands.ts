@@ -11,8 +11,8 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { doubleClickDebounceDelay } from '../constants';
 import { CosmosDbChatParticipant } from '../chat/cosmosDbChatParticipant';
+import { doubleClickDebounceDelay } from '../constants';
 import {
     deployLLMInstructionsFiles,
     removeLLMInstructionsFiles,
@@ -200,9 +200,7 @@ export function registerChatButtonCommands() {
             const { connection, suggestedQuery } = pending;
 
             QueryEditorTab.render(connection, vscode.ViewColumn.Two, false, suggestedQuery);
-            void vscode.window.showInformationMessage(
-                l10n.t('🔍 Suggested query opened side-by-side for comparison.'),
-            );
+            void vscode.window.showInformationMessage(l10n.t('🔍 Suggested query opened side-by-side for comparison.'));
         }),
     );
 }

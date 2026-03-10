@@ -30,9 +30,28 @@ interface ExtendedChatRequest {
 }
 
 /**
+ * Stores pending edit query results keyed by a unique ID so that chat button
+ * commands can look them up without serializing large objects (connection
+ * credentials, full query text) into the button arguments.
+ */
+export interface PendingEditQueryResult {
+    connection: EditQueryResult['connection'];
+    suggestedQuery: string;
+}
+
+/**
  * A CosmosDB chat participant that forwards requests to an LLM for intelligent responses.
  */
 export class CosmosDbChatParticipant {
+    /**
+     * Map of pending edit-query results. Button commands look up the stored
+     * connection & query by the lightweight numeric ID passed as button arg.
+     * Old entries are evicted when the map exceeds {@link MAX_PENDING_RESULTS}.
+     */
+    static readonly pendingResults = new Map<number, PendingEditQueryResult>();
+    private static nextResultId = 1;
+    private static readonly MAX_PENDING_RESULTS = 20;
+
     private participant: vscode.ChatParticipant;
     private extensionPath: string;
     private skillContent: string | undefined;
@@ -619,16 +638,32 @@ export class CosmosDbChatParticipant {
             stream.markdown(`**Explanation:** ${safeMarkdownText(result.explanation)}\n\n`);
         }
 
+        // Store the result in the pending map and pass only the lightweight ID
+        // to the button arguments. This avoids serializing large objects
+        // (credentials, full query text) into the chat response, which can
+        // delay button interactivity.
+        const resultId = CosmosDbChatParticipant.nextResultId++;
+        CosmosDbChatParticipant.pendingResults.set(resultId, {
+            connection: result.connection,
+            suggestedQuery: result.suggestedQuery,
+        });
+
+        // Evict oldest entries when the map grows too large
+        while (CosmosDbChatParticipant.pendingResults.size > CosmosDbChatParticipant.MAX_PENDING_RESULTS) {
+            const oldest = CosmosDbChatParticipant.pendingResults.keys().next().value as number;
+            CosmosDbChatParticipant.pendingResults.delete(oldest);
+        }
+
         stream.button({
             command: 'cosmosDB.applyQuerySuggestion',
             title: l10n.t('✅ Update Query'),
-            arguments: [result.connection, result.suggestedQuery],
+            arguments: [resultId],
         });
 
         stream.button({
             command: 'cosmosDB.openQuerySideBySide',
             title: l10n.t('🔍 Open Side-by-Side'),
-            arguments: [result.connection, result.suggestedQuery],
+            arguments: [resultId],
         });
 
         stream.markdown('\n');

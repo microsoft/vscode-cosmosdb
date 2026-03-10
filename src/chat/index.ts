@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export { CosmosDbChatParticipant } from './cosmosDbChatParticipant';
+export { CosmosDbChatParticipant, type PendingEditQueryResult } from './cosmosDbChatParticipant';
 export {
     CosmosDbOperationsService,
     type QueryExecutionEntry,

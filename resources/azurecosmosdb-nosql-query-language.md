@@ -22,6 +22,9 @@ FROM <from_source>
 - Cosmos DB NoSQL is READ-ONLY for queries. Do NOT generate DML statements (INSERT, UPDATE, DELETE, DROP).
 - Data is typically schema-free and denormalized.
 - JOINs are self-joins within a single item, NOT cross-item joins.
+- **Strict Dialect:** This is NOT standard SQL. Do NOT rely on T-SQL, PostgreSQL, or MySQL conventions. Patterns from generic SQL (e.g., `SELECT COUNT(*) AS alias`, omitting `VALUE` for scalar aggregates, using `DATEDIFF`/`DATEADD`) will fail or produce wrong results.
+- **Aggregate scalar queries** (no GROUP BY) MUST use `SELECT VALUE COUNT(1)` — do NOT use `COUNT(c)` or alias the result with `AS`. With GROUP BY, `COUNT(1) AS alias` is valid.
+- **Function casing:** Use exact PascalCase for newer system functions (`StringEquals`, `DateTimeDiff`, `DateTimeAdd`, `GetCurrentDateTime`, `RegExMatch`, `CountIf`, `MakeList`, `MakeSet`). Traditional SQL-like functions (`CONTAINS`, `STARTSWITH`, `ENDSWITH`, `ARRAY_LENGTH`, etc.) use their documented ALL CAPS form.
 
 ---
 
@@ -840,7 +843,7 @@ SELECT c.tags[0].value AS firstTag FROM c
 ## Query Best Practices Summary
 
 1. **Always use container alias** (e.g., `c.propertyName`)
-2. **Use VALUE for single-value results** to get clean output
+2. **Use `SELECT VALUE COUNT(1)` for scalar aggregates** (no GROUP BY) — do NOT use `COUNT(c)` or alias with `AS`
 3. **Use DISTINCT VALUE** (not just DISTINCT) for unique property values
 4. **Never use SELECT \* with JOIN** - project specific properties
 5. **Use BETWEEN for inclusive range checks** - works with all types; preferred over `>=` and `<=` because the operand is evaluated only once

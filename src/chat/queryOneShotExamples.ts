@@ -63,10 +63,10 @@ const UNIQUE_EXAMPLES: QueryOneShotExample[] = [
         question: 'How many distinct movie titles exist?',
         query: 'SELECT COUNT(1) AS count FROM (SELECT DISTINCT c.title FROM c)',
     },
-    // Pattern: EXISTS + STRINGEQUALS on nested array property with COUNT
+    // Pattern: EXISTS + StringEquals on nested array property with COUNT
     {
         question: 'How many movies did the production company Eon Productions make?',
-        query: "SELECT COUNT(c) AS movieCount FROM c WHERE EXISTS (SELECT VALUE t FROM t IN c.production_companies WHERE STRINGEQUALS(t.name, 'Eon Productions', true))",
+        query: "SELECT VALUE COUNT(1) FROM c WHERE EXISTS (SELECT VALUE t FROM t IN c.production_companies WHERE StringEquals(t.name, 'Eon Productions', true))",
     },
 ];
 
@@ -79,10 +79,10 @@ const UNIQUE_EXAMPLES: QueryOneShotExample[] = [
  * Removing these would save ~480 tokens.
  */
 const REDUNDANT_EXAMPLES: QueryOneShotExample[] = [
-    // Covered by: String Functions > STRINGEQUALS + Aggregate Functions > COUNT
+    // Covered by: String Functions > StringEquals + Aggregate Functions > COUNT
     {
         question: 'What is the total number of cooking items?',
-        query: "SELECT COUNT(c) AS itemCount FROM c WHERE STRINGEQUALS(c.category, 'cooking', true)",
+        query: "SELECT VALUE COUNT(1) FROM c WHERE StringEquals(c.category, 'cooking', true)",
     },
     // Covered by: Date and Time Functions > DateTimePart
     {

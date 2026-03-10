@@ -1,6 +1,25 @@
 # Change Log
 
-## 0.31.3
+## 0.32.0
+
+### Added
+
+- Added support for attaching Cosmos DB accounts to the workspace using a tenant instead of an account key. (#2620)
+  - The connection string now supports a `TenantId` value.
+  - If only the endpoint has been provided, the extension will prompt to sign in and select a tenant.
+- Added support for the `telemetry.feedback.enabled` setting.
+
+### Fixed
+
+- Fixed an issue where the contributed chat skill was not properly picked up by GitHub Copilot.
+- Fixed an issue where Keyboard shortcuts didn't work in the Query Editor. (#2949)
+
+### Changed
+
+- Updated localization.
+- Updated several dependencies to address vulnerabilities.
+
+## 0.31.3 (Preview)
 
 ### Added
 
@@ -17,7 +36,7 @@
 - Updated the minimum required VS Code version to 1.109.0.
 - Updated several dependencies to address vulnerabilities.
 
-## 0.31.2
+## 0.31.2 (Preview)
 
 ### Fixed
 
@@ -49,14 +68,14 @@
 - Updated several dependencies to address vulnerabilities.
 - Updated the link to the privacy statement in the Readme (#2896).
 
-## 0.31.1
+## 0.31.1 (Preview)
 
 ### Fixed
 
 - Fixed an issue where the Query Editor didn't resize properly with it's parent Tab (#2869).
 - Added missing translations (#2878).
 
-## 0.31.0
+## 0.31.0 (Preview)
 
 ### Added
 

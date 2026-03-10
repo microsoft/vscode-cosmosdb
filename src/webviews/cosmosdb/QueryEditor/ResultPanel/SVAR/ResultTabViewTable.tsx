@@ -48,20 +48,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const isDarkTheme = themeKind === 'vscode-dark' || themeKind === 'vscode-high-contrast';
     const ThemeWrapper = isDarkTheme ? WillowDark : Willow;
 
-    // Handler for resize by content
-    const handleResizeByContent = useCallback((columnId: string) => {
-        if (apiRef.current) {
-            void apiRef.current.exec('resize-column', { id: columnId, auto: true });
-        }
-    }, []);
-
-    // Handler for manual resize
-    const handleResize = useCallback((columnId: string, newWidth: number) => {
-        if (apiRef.current) {
-            void apiRef.current.exec('resize-column', { id: columnId, width: newWidth });
-        }
-    }, []);
-
     // Convert headers to SVAR column config
     const gridColumns = useMemo((): IColumnConfig[] => {
         return headers.map((header) => {
@@ -90,7 +76,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 },
             };
         });
-    }, [headers, handleResizeByContent, handleResize]);
+    }, [headers]);
 
     // Convert dataset to SVAR data format with __rawData reference
     const gridData = useMemo(

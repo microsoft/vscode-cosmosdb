@@ -37,11 +37,11 @@ export const QueryEditor = () => {
     return (
         <div className={styles.root}>
             <WithQueryEditorContext channel={channel} vscodeApi={vscodeApi}>
-                <Allotment vertical={true} defaultSizes={[20, 80]}>
-                    <Allotment.Pane minSize={100} maxSize={800} preferredSize={'20%'}>
+                <Allotment vertical={true} defaultSizes={[30, 70]}>
+                    <Allotment.Pane minSize={100} maxSize={800} preferredSize={'30%'}>
                         <QueryPanel />
                     </Allotment.Pane>
-                    <Allotment.Pane preferredSize={'80%'}>
+                    <Allotment.Pane preferredSize={'70%'}>
                         <ResultPanel />
                     </Allotment.Pane>
                 </Allotment>

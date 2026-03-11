@@ -195,6 +195,17 @@ const useStyles = makeStyles({
         minWidth: 'auto',
         fontSize: '11px',
     },
+    screenReaderOnly: {
+        position: 'absolute',
+        width: '1px',
+        height: '1px',
+        padding: '0',
+        margin: '-1px',
+        overflow: 'hidden',
+        clip: 'rect(0, 0, 0, 0)',
+        whiteSpace: 'nowrap',
+        border: '0',
+    },
 });
 
 export const GenerateQueryInput = () => {
@@ -474,6 +485,7 @@ export const GenerateQueryInput = () => {
             <textarea
                 ref={textareaRef}
                 className={styles.textarea}
+                aria-label={l10n.t('Describe your query in natural language')}
                 placeholder={l10n.t('Describe your query in natural language')}
                 value={input}
                 onChange={(e) => {
@@ -489,10 +501,19 @@ export const GenerateQueryInput = () => {
                 rows={1}
                 style={{ height: `${Math.max(1, lineCount) * 17}px` }}
             />
-            {isLoading ? <ProgressBar className={styles.progressBar} /> : <div style={{ height: '2px' }} />}
+            {isLoading ? (
+                <ProgressBar className={styles.progressBar} aria-label={l10n.t('Generating query')} />
+            ) : (
+                <div style={{ height: '2px' }} />
+            )}
+            <div className={styles.screenReaderOnly} aria-live="polite" aria-atomic="true">
+                {isLoading ? l10n.t('Generating query...') : ''}
+            </div>
             {confirmMessage ? (
-                <div className={styles.confirmBanner}>
-                    <span className={styles.confirmMessage}>{confirmMessage}</span>
+                <div className={styles.confirmBanner} role="alertdialog" aria-describedby="confirm-msg">
+                    <span id="confirm-msg" className={styles.confirmMessage}>
+                        {confirmMessage}
+                    </span>
                     <div className={styles.confirmButtons}>
                         <Button
                             className={styles.confirmButton}
@@ -500,6 +521,7 @@ export const GenerateQueryInput = () => {
                             appearance="primary"
                             size="small"
                             onClick={() => handleConfirmResponse(true)}
+                            aria-describedby="confirm-msg"
                         >
                             {l10n.t('Allow')}
                         </Button>
@@ -509,6 +531,7 @@ export const GenerateQueryInput = () => {
                             appearance="subtle"
                             size="small"
                             onClick={() => handleConfirmResponse(false)}
+                            aria-describedby="confirm-msg"
                         >
                             {l10n.t('Deny')}
                         </Button>
@@ -542,7 +565,11 @@ export const GenerateQueryInput = () => {
                             <div className={styles.modelLabel}>{modelDisplayName}</div>
                         )}
                         {state.isSurveyCandidate && (
-                            <div className={styles.feedbackButtons}>
+                            <div
+                                className={styles.feedbackButtons}
+                                role="group"
+                                aria-label={l10n.t('Rate this response')}
+                            >
                                 <Button
                                     className={styles.feedbackButton}
                                     icon={
@@ -553,8 +580,8 @@ export const GenerateQueryInput = () => {
                                         )
                                     }
                                     onClick={() => handleFeedback('up')}
-                                    title={l10n.t('Thumb up')}
-                                    aria-label={l10n.t('Thumb up')}
+                                    title={l10n.t('Like this response')}
+                                    aria-label={l10n.t('Like this response')}
                                     appearance="transparent"
                                     size="small"
                                     disabled={feedbackGiven !== null}
@@ -569,8 +596,8 @@ export const GenerateQueryInput = () => {
                                         )
                                     }
                                     onClick={() => handleFeedback('down')}
-                                    title={l10n.t('Thumb down')}
-                                    aria-label={l10n.t('Thumb down')}
+                                    title={l10n.t('Dislike this response')}
+                                    aria-label={l10n.t('Dislike this response')}
                                     appearance="transparent"
                                     size="small"
                                     disabled={feedbackGiven !== null}

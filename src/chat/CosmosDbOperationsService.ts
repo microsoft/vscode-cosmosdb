@@ -22,13 +22,7 @@ import {
 import { sanitizeSqlComment } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
-import {
-    SAMPLE_DATA_CONFIRMATION_MESSAGE,
-    SAMPLE_DATA_TOOL_DESCRIPTION,
-    SAMPLE_DATA_TOOL_INPUT_SCHEMA,
-    SAMPLE_DATA_TOOL_NAME,
-    sampleContainerSchema,
-} from './sampleDataTool';
+import { SAMPLE_DATA_CONFIRMATION_MESSAGE, SAMPLE_DATA_TOOL_NAME, sampleContainerSchema } from './sampleDataTool';
 import {
     JSON_RESPONSE_FORMAT_WITH_EXPLANATION,
     QUERY_EXPLANATION_PROMPT_TEMPLATE,
@@ -899,15 +893,16 @@ export class CosmosDbOperationsService {
         const token = cancellationToken ?? new vscode.CancellationTokenSource().token;
 
         // Build the tool list so the LLM can decide to sample schema if needed.
-        // We construct the tool definition directly rather than looking up via vscode.lm.tools,
-        // because the extension's own tools may not appear there during development.
-        const tools: vscode.LanguageModelChatTool[] = [
-            {
-                name: SAMPLE_DATA_TOOL_NAME,
-                description: SAMPLE_DATA_TOOL_DESCRIPTION,
-                inputSchema: SAMPLE_DATA_TOOL_INPUT_SCHEMA,
-            },
-        ];
+        const registeredTool = vscode.lm.tools.find((t) => t.name === SAMPLE_DATA_TOOL_NAME);
+        const tools: vscode.LanguageModelChatTool[] = registeredTool
+            ? [
+                  {
+                      name: registeredTool.name,
+                      description: registeredTool.description,
+                      inputSchema: registeredTool.inputSchema,
+                  },
+              ]
+            : [];
 
         // Build messages: [system instruction] → [one-shot examples] → [user request]
         const messages = buildChatMessages(systemMessage, userMessage, oneShotMessages);
@@ -1001,10 +996,8 @@ export class CosmosDbOperationsService {
 
                 let toolResult: vscode.LanguageModelToolResult;
 
-                // Handle our own tool directly to avoid the "not contributed" error
-                // from vscode.lm.invokeTool(). When onConfirm is provided (query editor),
-                // show inline confirmation UI first. When not provided (chat participant),
-                // invoke directly without confirmation.
+                // Invoke our own tool directly so we can show custom confirmation
+                // (onConfirm), track telemetry, report progress, and cache the schema.
                 if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
                     const connection = this.getActiveConnection();
                     if (connection) {

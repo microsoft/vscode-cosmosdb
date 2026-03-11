@@ -21,6 +21,9 @@ import { ResultTabViewTree } from './Slickgrid/ResultTabViewTree';
 import { ResultTabViewTable as SVARResultTabViewTable } from './SVAR/ResultTabViewTable';
 import { ResultTabViewTree as SVARResultTabViewTree } from './SVAR/ResultTabViewTree';
 
+import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDataGrid/ResultTabViewTable';
+import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';
+
 const useClasses = makeStyles({
     container: {
         marginTop: '10px',
@@ -201,6 +204,16 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                     )}
                     {gridLibrary === 'SVAR' && tableViewMode === 'Tree' && (
                         <SVARResultTabViewTree data={viewData.tree ?? []} />
+                    )}
+
+                    {gridLibrary === 'React Data Grid' && tableViewMode === 'Table' && (
+                        <ReactDataGridResultTabViewTable
+                            headers={viewData.table?.headers ?? []}
+                            dataset={viewData.table?.dataset ?? []}
+                        />
+                    )}
+                    {gridLibrary === 'React Data Grid' && tableViewMode === 'Tree' && (
+                        <ReactDataGridResultTabViewTree data={viewData.tree ?? []} />
                     )}
 
                     {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}

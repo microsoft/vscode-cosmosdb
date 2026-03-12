@@ -10,9 +10,9 @@ import { DataGrid, SelectColumn, type Column, type ColumnWidths, type RenderHead
 import 'react-data-grid/lib/styles.css';
 import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/queryResult';
 import { toStringUniversal, type TableData, type TableRecord } from '../../../../../utils/convertors';
-import { useThemeState } from '../../../../theme/state/ThemeContext';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
+import './vscodeTheme.css';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -48,14 +48,10 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const styles = useStyles();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const { themeKind } = useThemeState();
 
     // Column widths state
     const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
 
-    // Determine theme class based on VS Code theme
-    const isDarkTheme = themeKind === 'vscode-dark' || themeKind === 'vscode-high-contrast';
-    const themeClass = isDarkTheme ? 'rdg-dark' : 'rdg-light';
 
     // Selected rows state
     const [selectedRows, setSelectedRows] = useState<ReadonlySet<number>>(() => new Set());
@@ -137,7 +133,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     onCellDoubleClick={handleCellDoubleClick}
                     columnWidths={columnWidths}
                     onColumnWidthsChange={setColumnWidths}
-                    className={themeClass}
                     aria-label={l10n.t('Query results table')}
                     defaultColumnOptions={{
                         resizable: true,

@@ -15,8 +15,8 @@ import {
     type RenderHeaderCellProps,
 } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
-import { useThemeState } from '../../../../theme/state/ThemeContext';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
+import './vscodeTheme.css';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -172,7 +172,6 @@ function TreeHeaderRenderer({
 
 export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     const styles = useStyles();
-    const { themeKind } = useThemeState();
 
     // Column widths state
     const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
@@ -180,9 +179,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     // Expanded node IDs
     const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
-    // Determine theme class based on VS Code theme
-    const isDarkTheme = themeKind === 'vscode-dark' || themeKind === 'vscode-high-contrast';
-    const themeClass = isDarkTheme ? 'rdg-dark' : 'rdg-light';
 
     // Build children map once
     const childrenMap = useMemo(() => buildChildrenMap(data), [data]);
@@ -322,7 +318,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
                     rowKeyGetter={rowKeyGetter}
                     columnWidths={columnWidths}
                     onColumnWidthsChange={setColumnWidths}
-                    className={themeClass}
                     aria-label={l10n.t('Query results tree')}
                     defaultColumnOptions={{
                         resizable: true,

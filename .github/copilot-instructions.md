@@ -17,6 +17,12 @@
 - To update strings used in `package.json`, modify `package.nls.json` only. Do **not** update the actual translation files.
 - After modifying any localizable strings, always run `npm run l10n` to update strings.
 
+## Accessibility Skill Routing
+
+- When implementing or modifying UI in React/Fluent UI webviews (for example under `src/webviews/`), use the `accessibility-aria-expert` skill.
+- Apply the skill for ARIA labeling, tooltip accessibility, keyboard/focus behavior, status announcements, and dialog focus management.
+- Keep all user-facing accessibility messages localizable and follow the Localization rules above.
+
 ## Validation Before Finishing
 
 Before finishing work, agents **must** run the following steps in order:

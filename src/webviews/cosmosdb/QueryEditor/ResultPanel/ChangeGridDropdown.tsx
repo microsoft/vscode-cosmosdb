@@ -30,15 +30,15 @@ export const ChangeGridDropdown = () => {
                 value={state.gridLibrary}
                 defaultSelectedOptions={[state.tableViewMode]}
             >
-                <Option key="AG Grid Community" value="AG Grid Community">
-                    {'AG Grid Community'}
-                </Option>
-                <Option key="FluentUI" value="FluentUI">
-                    {'FluentUI'}
-                </Option>
-                <Option key="Tanstack/FluentUI" value="Tanstack/FluentUI">
-                    {'Tanstack/FluentUI'}
-                </Option>
+                {/*<Option key="AG Grid Community" value="AG Grid Community">*/}
+                {/*    {'AG Grid Community'}*/}
+                {/*</Option>*/}
+                {/*<Option key="FluentUI" value="FluentUI">*/}
+                {/*    {'FluentUI'}*/}
+                {/*</Option>*/}
+                {/*<Option key="Tanstack/FluentUI" value="Tanstack/FluentUI">*/}
+                {/*    {'Tanstack/FluentUI'}*/}
+                {/*</Option>*/}
                 <Option key="SVAR" value="SVAR">
                     {'SVAR'}
                 </Option>
@@ -48,8 +48,8 @@ export const ChangeGridDropdown = () => {
                 <Option key="React Data Grid" value="React Data Grid">
                     {'React Data Grid'}
                 </Option>
-                <Option key="React OSS Data Grid" value="React OSS Data Grid">
-                    {'React OSS Data Grid'}
+                <Option key="Material React Table" value="Material React Table">
+                    {'Material React Table'}
                 </Option>
             </Dropdown>
         </Tooltip>

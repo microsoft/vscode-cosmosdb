@@ -24,6 +24,9 @@ import { ResultTabViewTree as SVARResultTabViewTree } from './SVAR/ResultTabView
 import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDataGrid/ResultTabViewTable';
 import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';
 
+import { ResultTabViewTable as MaterialReactTableResultTabViewTable } from './MaterialReactTable/ResultTabViewTable';
+import { ResultTabViewTree as MaterialReactTableResultTabViewTree } from './MaterialReactTable/ResultTabViewTree';
+
 const useClasses = makeStyles({
     container: {
         marginTop: '10px',
@@ -214,6 +217,16 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                     )}
                     {gridLibrary === 'React Data Grid' && tableViewMode === 'Tree' && (
                         <ReactDataGridResultTabViewTree data={viewData.tree ?? []} />
+                    )}
+
+                    {gridLibrary === 'Material React Table' && tableViewMode === 'Table' && (
+                        <MaterialReactTableResultTabViewTable
+                            headers={viewData.table?.headers ?? []}
+                            dataset={viewData.table?.dataset ?? []}
+                        />
+                    )}
+                    {gridLibrary === 'Material React Table' && tableViewMode === 'Tree' && (
+                        <MaterialReactTableResultTabViewTree data={viewData.tree ?? []} />
                     )}
 
                     {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}

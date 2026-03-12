@@ -18,7 +18,7 @@ export type GridLibrary =
     | 'SVAR'
     | 'Slickgrid Universal'
     | 'React Data Grid'
-    | 'React OSS Data Grid';
+    | 'Material React Table';
 
 export type DispatchAction =
     | {

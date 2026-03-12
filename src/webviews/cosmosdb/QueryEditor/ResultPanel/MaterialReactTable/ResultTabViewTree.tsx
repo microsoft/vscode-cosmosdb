@@ -5,11 +5,13 @@
 
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { AutoFixHigh, WidthFull } from '@mui/icons-material';
-import { ListItemIcon, ListItemText, MenuItem } from '@mui/material';
+import { ListItemIcon, ListItemText, MenuItem, ThemeProvider } from '@mui/material';
 import * as l10n from '@vscode/l10n';
 import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef, type MRT_Row } from 'material-react-table';
 import { useCallback, useMemo, useState } from 'react';
+import { useThemeState } from '../../../../theme/state/ThemeContext';
 import { ColumnResizeDialog } from '../ColumnResizeDialog';
+import { createVSCodeMuiTheme, getVSCodeThemeFingerprint } from './muiTheme';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -84,6 +86,12 @@ function buildNestedTreeData(data: TreeData[]): TreeRow[] {
 
 export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     const styles = useStyles();
+    const { themeKind } = useThemeState();
+
+    // Create MUI theme based on VS Code theme
+    // Use both themeKind and fingerprint to detect actual theme changes (e.g., dark to different dark)
+    const themeFingerprint = getVSCodeThemeFingerprint();
+    const muiTheme = useMemo(() => createVSCodeMuiTheme(themeKind), [themeKind, themeFingerprint]);
 
     // Column resize dialog state
     const [resizeDialogOpen, setResizeDialogOpen] = useState(false);
@@ -217,19 +225,21 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     );
 
     return (
-        <div className={styles.wrapper}>
-            <div className={styles.gridContainer}>
-                <MaterialReactTable table={table} />
+        <ThemeProvider theme={muiTheme}>
+            <div className={styles.wrapper}>
+                <div className={styles.gridContainer}>
+                    <MaterialReactTable table={table} />
+                </div>
+                <ColumnResizeDialog
+                    isOpen={resizeDialogOpen}
+                    defaultWidth={resizeColumnWidth}
+                    onClose={() => {
+                        setResizeDialogOpen(false);
+                        setResizeColumnId(null);
+                    }}
+                    onApply={handleApplyResize}
+                />
             </div>
-            <ColumnResizeDialog
-                isOpen={resizeDialogOpen}
-                defaultWidth={resizeColumnWidth}
-                onClose={() => {
-                    setResizeDialogOpen(false);
-                    setResizeColumnId(null);
-                }}
-                onApply={handleApplyResize}
-            />
-        </div>
+        </ThemeProvider>
     );
 };

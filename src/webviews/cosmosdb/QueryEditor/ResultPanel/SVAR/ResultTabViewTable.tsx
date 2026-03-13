@@ -4,14 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from '@fluentui/react-components';
-import { Grid, type IApi, type IColumnConfig, type IRow, Willow, WillowDark } from '@svar-ui/react-grid';
+import { Grid, type IApi, type IColumnConfig, type IRow, Willow } from '@svar-ui/react-grid';
 import '@svar-ui/react-grid/all.css';
 import { useCallback, useMemo, useRef } from 'react';
 import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/queryResult';
 import { type TableData, type TableRecord, toStringUniversal } from '../../../../../utils/convertors';
-import { useThemeState } from '../../../../theme/state/ThemeContext';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
+import './vscodeTheme.css';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -41,12 +41,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const styles = useStyles();
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
-    const { themeKind } = useThemeState();
     const apiRef = useRef<IApi | null>(null);
 
-    // Determine SVAR theme based on VS Code theme
-    const isDarkTheme = themeKind === 'vscode-dark' || themeKind === 'vscode-high-contrast';
-    const ThemeWrapper = isDarkTheme ? WillowDark : Willow;
 
     // Convert headers to SVAR column config
     const gridColumns = useMemo((): IColumnConfig[] => {
@@ -126,7 +122,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
     return (
         <div className={styles.wrapper}>
-            <ThemeWrapper>
+            <Willow>
                 <div className={styles.container}>
                     <Grid
                         columns={gridColumns}
@@ -139,7 +135,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                         init={handleInit}
                     />
                 </div>
-            </ThemeWrapper>
+            </Willow>
         </div>
     );
 };

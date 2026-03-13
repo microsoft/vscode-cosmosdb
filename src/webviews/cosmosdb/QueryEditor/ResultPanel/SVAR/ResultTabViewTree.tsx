@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { makeStyles } from '@fluentui/react-components';
-import { Grid, Willow, WillowDark, type IColumnConfig, type IRow } from '@svar-ui/react-grid';
+import { Grid, type IColumnConfig, type IRow, Willow } from '@svar-ui/react-grid';
 import '@svar-ui/react-grid/all.css';
 import * as l10n from '@vscode/l10n';
 import { useMemo } from 'react';
-import { useThemeState } from '../../../../theme/state/ThemeContext';
+import './vscodeTheme.css';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -86,11 +86,6 @@ const convertToTreeData = (flatData: TreeData[]): TreeDataItem[] => {
 
 export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     const styles = useStyles();
-    const { themeKind } = useThemeState();
-
-    // Determine SVAR theme based on VS Code theme
-    const isDarkTheme = themeKind === 'vscode-dark' || themeKind === 'vscode-high-contrast';
-    const ThemeWrapper = isDarkTheme ? WillowDark : Willow;
 
     // Define columns for tree view (Field, Value, Type)
     const columnsDef = useMemo(
@@ -135,7 +130,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
 
     return (
         <div className={styles.wrapper}>
-            <ThemeWrapper>
+            <Willow>
                 <div className={styles.container}>
                     <Grid
                         columns={columnsDef}
@@ -148,7 +143,7 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
                         header={true}
                     />
                 </div>
-            </ThemeWrapper>
+            </Willow>
         </div>
     );
 };

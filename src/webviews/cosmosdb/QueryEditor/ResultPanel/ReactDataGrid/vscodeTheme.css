@@ -15,44 +15,43 @@
     --rdg-row-hover-background-color: var(--vscode-list-hoverBackground);
     --rdg-row-selected-background-color: var(--vscode-list-activeSelectionBackground);
     --rdg-row-selected-hover-background-color: var(--vscode-list-activeSelectionBackground);
-    --rdg-checkbox-color: var(--vscode-editor-foreground);
+    --rdg-checkbox-color: var(--vscode-checkbox-foreground);
     --rdg-checkbox-focus-color: var(--vscode-focusBorder);
-    --rdg-checkbox-disabled-border-color: var(--vscode-disabledForeground);
-    --rdg-checkbox-disabled-background-color: var(--vscode-editor-background);
+    --rdg-checkbox-disabled-border-color: var(--vscode-checkbox-disabled-background);
+    --rdg-checkbox-disabled-background-color: var(--vscode-checkbox-disabled-background);
     --rdg-color: var(--vscode-editor-foreground);
-    --rdg-border-color: var(--vscode-panel-border);
-    --rdg-summary-border-color: var(--vscode-panel-border);
+    --rdg-border-color: var(--vscode-editorGroup-border);
+    --rdg-summary-border-color: var(--vscode-editorGroup-border);
     --rdg-selection-color: var(--vscode-focusBorder);
     --rdg-font-size: 13px;
 
-    border: none;
     font-family: var(--vscode-font-family);
 }
 
 /* Header cells */
 .rdg-header-row {
     background-color: var(--vscode-editor-background);
-    font-weight: 600;
+    border-bottom: 1px solid var(--vscode-panel-border);
 }
 
-.rdg-header-row .rdg-cell {
-    background-color: var(--vscode-editor-background);
-    color: var(--vscode-editor-foreground);
-    border-right-color: var(--vscode-panel-border);
-    border-bottom-color: var(--vscode-panel-border);
-}
+/*.rdg-header-row .rdg-cell {*/
+/*    background-color: var(--vscode-editor-background);*/
+/*    color: var(--vscode-editor-foreground);*/
+/*    border-right: 1px solid var(--vscode-panel-border);*/
+/*    border-bottom: 1px solid var(--vscode-panel-border);*/
+/*}*/
 
 /* Body cells */
 .rdg-row {
     background-color: var(--vscode-editor-background);
 }
 
-.rdg-row .rdg-cell {
-    background-color: var(--vscode-editor-background);
-    color: var(--vscode-editor-foreground);
-    border-right-color: var(--vscode-panel-border);
-    border-bottom-color: var(--vscode-panel-border);
-}
+/*.rdg-row .rdg-cell {*/
+/*    background-color: var(--vscode-editor-background);*/
+/*    color: var(--vscode-editor-foreground);*/
+/*    border-right-color: var(--vscode-panel-border);*/
+/*    border-bottom-color: var(--vscode-panel-border);*/
+/*}*/
 
 /* Row hover */
 .rdg-row:hover {
@@ -83,16 +82,23 @@
 
 /* Checkbox styling */
 .rdg-checkbox-input {
-    accent-color: var(--vscode-editor-foreground);
+    accent-color: var(--vscode-checkbox-foreground);
 }
 
-.rdg-checkbox {
-    border-color: var(--vscode-editor-foreground);
+.rdg-checkbox-input {
+    background-color: var(--vscode-checkbox-background);
+    border-color: var(--vscode-checkbox-border);
 }
 
 .rdg-checkbox-input:checked + .rdg-checkbox {
-    border-color: var(--vscode-editor-foreground);
-    background-color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-checkbox-foreground);
+    border-color: var(--vscode-checkbox-border);
+}
+
+.rdg-checkbox-input:disabled + .rdg-checkbox {
+    background-color: var(--vscode-checkbox-disabled-background);
+    border-color: var(--vscode-checkbox-disabled-background);
+    color: var(--vscode-checkbox-disabled-foreground);
 }
 
 /* Focus styles */

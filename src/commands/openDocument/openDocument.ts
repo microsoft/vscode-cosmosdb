@@ -17,7 +17,7 @@ export async function cosmosDBOpenItem(context: IActionContext, node?: CosmosDBI
     if (!node) {
         node = await pickAppResource<CosmosDBItemResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.document'],
+            expectedChildContextValue: ['treeItem.item'],
         });
     }
 

@@ -5,9 +5,11 @@
 
 import { type IAzExtLogOutputChannel, type TreeElementStateManager } from '@microsoft/vscode-azext-utils';
 import { type AzureResourcesExtensionApiWithActivity } from '@microsoft/vscode-azext-utils/activity';
+import { type IFabricExtensionServiceCollection } from '@microsoft/vscode-fabric-api';
 import type * as vscode from 'vscode';
 import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
+import { type FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
 
@@ -21,21 +23,16 @@ export namespace ext {
     export let isBundle: boolean | undefined;
     export let secretStorage: vscode.SecretStorage;
     export let fileSystem: DatabasesFileSystem;
-    export let rgApiV2: AzureResourcesExtensionApiWithActivity;
-
     export let state: TreeElementStateManager;
-
-    // TODO: To avoid these three below variables below the rgApiV2 should have the following public fields (but they are private):
-    // - AzureResourceProviderManager,
-    // - AzureResourceBranchDataProviderManager,
-    // - WorkspaceResourceProviderManager,
-    // - WorkspaceResourceBranchDataProviderManager,
-
-    // used for the resources tree and the workspace tree REFRESH
     export let cosmosDBBranchDataProvider: CosmosDBBranchDataProvider;
-    // used for the workspace: these are the dedicated providers
     export let cosmosDBWorkspaceBranchDataProvider: CosmosDBWorkspaceBranchDataProvider;
     export let cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem;
+    export let fabricNativeTreeNodeProvider: FabricTreeNodeProvider;
+    export let fabricMirroredTreeNodeProvider: FabricTreeNodeProvider;
+
+    // Services what different extensions return
+    export let rgApiV2: AzureResourcesExtensionApiWithActivity;
+    export let fabricServices: IFabricExtensionServiceCollection;
 
     export namespace settingsKeys {
         export const documentLabelFields = 'cosmosDB.documentLabelFields';

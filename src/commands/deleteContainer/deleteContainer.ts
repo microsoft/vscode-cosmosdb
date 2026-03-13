@@ -6,41 +6,50 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { API } from '../../AzureDBExperiences';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
+import { type FabricTreeElement, isFabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function cosmosDBDeleteContainer(
     context: IActionContext,
-    node?: CosmosDBContainerResourceItem,
+    node?: TreeElement | FabricTreeElement,
 ): Promise<void> {
-    if (!node) {
-        node = await pickAppResource<CosmosDBContainerResourceItem>(context, {
-            type: [AzExtResourceType.AzureCosmosDb],
-            expectedChildContextValue: ['treeItem.container'],
-        });
-    }
+    const element: TreeElement | undefined = isFabricTreeElement(node)
+        ? node?.element
+        : isTreeElement(node)
+          ? node
+          : await pickAppResource<CosmosDBContainerResourceItem>(context, {
+                type: [AzExtResourceType.AzureCosmosDb],
+                expectedChildContextValue: ['treeItem.container'],
+            });
 
-    if (!node) {
+    if (!element) {
         return undefined;
     }
 
-    context.telemetry.properties.experience = node.experience.api;
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
+    }
 
-    const containerId = node.model.container.id;
-    const message =
-        node.experience.api === API.Graph
-            ? l10n.t('Delete graph "{containerId}" and its contents?', { containerId })
-            : l10n.t('Delete container "{containerId}" and its contents?', { containerId });
+    if (
+        !isTreeElementWithContextValue(element) ||
+        (!element.contextValue.includes('treeItem.container') && !element.contextValue.includes('treeItem.items'))
+    ) {
+        return undefined;
+    }
 
-    const successMessage =
-        node.experience.api === API.Graph
-            ? l10n.t('The graph "{containerId}" has been deleted.', { containerId })
-            : l10n.t('The container "{containerId}" has been deleted.', { containerId });
+    const containerElement = element as CosmosDBContainerResourceItem;
+    const containerId = containerElement.model.container.id;
+    const message = l10n.t('Delete container "{containerId}" and its contents?', { containerId });
+
+    const successMessage = l10n.t('The container "{containerId}" has been deleted.', { containerId });
 
     const confirmed = await getConfirmationAsInSettings(
         l10n.t('Delete "{nodeName}"?', { nodeName: containerId }),
@@ -53,14 +62,14 @@ export async function cosmosDBDeleteContainer(
     }
 
     try {
-        const success = await deleteContainer(node);
+        const success = await deleteContainer(containerElement);
 
         if (success) {
             showConfirmationAsInSettings(successMessage);
         }
     } finally {
-        const lastSlashIndex = node.id.lastIndexOf('/');
-        let parentId = node.id;
+        const lastSlashIndex = containerElement.id.lastIndexOf('/');
+        let parentId = containerElement.id;
         if (lastSlashIndex !== -1) {
             parentId = parentId.substring(0, lastSlashIndex);
         }

@@ -11,12 +11,7 @@ import { type apiUtils } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
 import * as extension from './src/extension';
 
-const perfStats = {
-    loadStartTime: Date.now(),
-    loadEndTime: -1,
-};
-
-export async function activate(ctx: vscode.ExtensionContext): Promise<apiUtils.AzureExtensionApiProvider> {
+export async function activate(ctx: vscode.ExtensionContext): Promise<apiUtils.AzureExtensionApiProvider | void> {
     if (process.env['STOP_ON_ENTRY'] === 'true') {
         /**
          * It's useful to have a debugger statement here to stop the extension at the very beginning.
@@ -29,11 +24,9 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<apiUtils.A
         debugger;
     }
 
-    return extension.activateInternal(ctx, perfStats);
+    return extension.activateInternal(ctx);
 }
 
 export async function deactivate(ctx: vscode.ExtensionContext): Promise<void> {
     return extension.deactivateInternal(ctx);
 }
-
-perfStats.loadEndTime = Date.now();

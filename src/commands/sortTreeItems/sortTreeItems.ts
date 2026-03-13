@@ -5,13 +5,24 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { ext } from '../../extensionVariables';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isSortable } from '../../tree/mixins/Sortable';
-import { type TreeElement } from '../../tree/TreeElement';
+import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
 
-export async function sortTreeItems(_context: IActionContext, node: TreeElement): Promise<void> {
-    if (isSortable(node)) {
-        await node.handleSortCommand();
+export async function sortTreeItems(_context: IActionContext, node?: TreeElement | FabricTreeElement): Promise<void> {
+    const element: TreeElement | undefined = isFabricTreeElement(node)
+        ? node.element
+        : isTreeElement(node)
+          ? node
+          : undefined;
+
+    if (!element) {
+        return;
     }
 
-    return ext.state.notifyChildrenChanged(node.id);
+    if (isSortable(element)) {
+        await element.handleSortCommand();
+    }
+
+    return ext.state.notifyChildrenChanged(element.id);
 }

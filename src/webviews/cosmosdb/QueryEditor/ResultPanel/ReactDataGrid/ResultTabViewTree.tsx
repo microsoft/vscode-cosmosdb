@@ -7,7 +7,7 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { ChevronDownRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { isNil } from 'es-toolkit';
-import { useMemo, useReducer, useState } from 'react';
+import { useCallback, useMemo, useReducer, useState } from 'react';
 import { DataGrid, type Column, type ColumnWidths } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { toStringUniversal, type TreeRow } from '../../../../utils';
@@ -22,13 +22,9 @@ const useStyles = makeStyles({
         flexDirection: 'column',
     },
     gridContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        flex: '1 1 auto',
+        flex: 1,
         minHeight: 0,
-        overflow: 'hidden',
         '& .rdg': {
-            flex: '1 1 auto',
             height: '100%',
             blockSize: '100%',
         },
@@ -55,7 +51,9 @@ const useStyles = makeStyles({
         fontSize: '16px',
     },
     expandPlaceholder: {
+        display: 'inline-block',
         width: '32px',
+        flexShrink: 0,
     },
     fieldText: {
         fontWeight: 600,
@@ -71,9 +69,7 @@ interface DisplayRow extends TreeRow {
     level: number;
 }
 
-type Action = { type: 'toggleSubRow'; id: string };
-
-// Toggle expand/collapse
+// Toggle expand/collapse and update rows
 function toggleSubRow(rows: DisplayRow[], id: string): DisplayRow[] {
     const rowIndex = rows.findIndex((r) => r.id === id);
     const row = rows[rowIndex];
@@ -84,8 +80,7 @@ function toggleSubRow(rows: DisplayRow[], id: string): DisplayRow[] {
     if (row.isExpanded) {
         // Collapse: remove all descendants
         let removeCount = 0;
-        for (let i = rowIndex + 1; i < rows.length; i++) {
-            if (rows[i].level <= row.level) break;
+        for (let i = rowIndex + 1; i < rows.length && rows[i].level > row.level; i++) {
             removeCount++;
         }
         newRows.splice(rowIndex + 1, removeCount);
@@ -98,98 +93,73 @@ function toggleSubRow(rows: DisplayRow[], id: string): DisplayRow[] {
     return newRows;
 }
 
-function reducer(rows: DisplayRow[], action: Action): DisplayRow[] {
-    switch (action.type) {
-        case 'toggleSubRow':
-            return toggleSubRow(rows, action.id);
-        default:
-            return rows;
-    }
-}
-
-// Expand button component
-interface CellExpanderProps {
-    tabIndex: number;
-    expanded: boolean;
-    onExpand: () => void;
-    className: string;
-}
-
-function CellExpander({ tabIndex, expanded, onExpand, className }: CellExpanderProps) {
-    return (
-        <button
-            className={className}
-            tabIndex={tabIndex}
-            onClick={onExpand}
-            aria-expanded={expanded}
-            aria-label={expanded ? l10n.t('Collapse') : l10n.t('Expand')}
-        >
-            {expanded ? <ChevronDownRegular /> : <ChevronRightRegular />}
-        </button>
-    );
-}
-
 export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     const styles = useStyles();
+    const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
 
     // Initialize with level 0 for root rows
     const initialRows = useMemo((): DisplayRow[] => data.map((row) => ({ ...row, level: 0 })), [data]);
-    const [rows, dispatch] = useReducer(reducer, initialRows);
-    const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
+    const [rows, dispatch] = useReducer((_rows: DisplayRow[], id: string) => toggleSubRow(_rows, id), initialRows);
 
-    const columns = useMemo((): readonly Column<DisplayRow>[] => {
-        const fieldColumn: Column<DisplayRow> = {
-            key: 'field',
-            name: l10n.t('Field'),
-            resizable: true,
-            renderHeaderCell: (props) => (
-                <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
-            ),
-            renderCell: ({ row, tabIndex }) => {
-                const hasChildren = row.children !== undefined;
-                return (
-                    <div className={styles.expandCell} style={{ paddingLeft: `${row.level * 16}px` }}>
-                        {hasChildren ? (
-                            <CellExpander
-                                tabIndex={tabIndex}
-                                expanded={row.isExpanded === true}
-                                onExpand={() => dispatch({ type: 'toggleSubRow', id: row.id })}
+    const handleToggle = useCallback((id: string) => dispatch(id), []);
+
+    const columns = useMemo(
+        (): readonly Column<DisplayRow>[] => [
+            {
+                key: 'field',
+                name: l10n.t('Field'),
+                resizable: true,
+                renderHeaderCell: (props) => (
+                    <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
+                ),
+                renderCell: ({ row, tabIndex }) => (
+                    <div className={styles.expandCell}>
+                        {/* Indent spacers based on level */}
+                        {Array.from({ length: row.level }).map((_, i) => (
+                            <span key={i} className={styles.expandPlaceholder} />
+                        ))}
+                        {/* Expand button or placeholder */}
+                        {row.children ? (
+                            <button
                                 className={styles.expandButton}
-                            />
+                                tabIndex={tabIndex}
+                                onClick={() => handleToggle(row.id)}
+                                aria-expanded={row.isExpanded}
+                                aria-label={row.isExpanded ? l10n.t('Collapse') : l10n.t('Expand')}
+                            >
+                                {row.isExpanded ? <ChevronDownRegular /> : <ChevronRightRegular />}
+                            </button>
                         ) : (
                             <span className={styles.expandPlaceholder} />
                         )}
                         <span className={styles.fieldText}>{row.field}</span>
                     </div>
-                );
+                ),
             },
-        };
-
-        const valueColumn: Column<DisplayRow> = {
-            key: 'value',
-            name: l10n.t('Value'),
-            resizable: true,
-            renderHeaderCell: (props) => (
-                <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
-            ),
-            renderCell: ({ row }) => {
-                const className = isNil(row.value) || row.value === '{}' ? styles.emptyValue : undefined;
-                return <span className={className}>{toStringUniversal(row.value)}</span>;
+            {
+                key: 'value',
+                name: l10n.t('Value'),
+                resizable: true,
+                renderHeaderCell: (props) => (
+                    <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
+                ),
+                renderCell: ({ row }) => {
+                    const className = isNil(row.value) || row.value === '{}' ? styles.emptyValue : undefined;
+                    return <span className={className}>{toStringUniversal(row.value)}</span>;
+                },
             },
-        };
-
-        const typeColumn: Column<DisplayRow> = {
-            key: 'type',
-            name: l10n.t('Type'),
-            resizable: true,
-            renderHeaderCell: (props) => (
-                <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
-            ),
-            renderCell: ({ row }) => toStringUniversal(row.type),
-        };
-
-        return [fieldColumn, valueColumn, typeColumn];
-    }, [columnWidths, styles]);
+            {
+                key: 'type',
+                name: l10n.t('Type'),
+                resizable: true,
+                renderHeaderCell: (props) => (
+                    <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
+                ),
+                renderCell: ({ row }) => toStringUniversal(row.type),
+            },
+        ],
+        [columnWidths, styles, handleToggle],
+    );
 
     return (
         <div className={styles.wrapper}>

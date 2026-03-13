@@ -3,5 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* Define standard variables and values for this extension to be shared with all webviews */
-
+export { ColumnHeaderCell } from './ColumnHeaderMenu';
+export { ResultTabViewTable } from './ResultTabViewTable';
+export { ResultTabViewTree } from './ResultTabViewTree';

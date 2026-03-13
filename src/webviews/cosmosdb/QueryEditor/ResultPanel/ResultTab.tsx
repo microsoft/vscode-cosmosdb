@@ -6,13 +6,7 @@
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useState } from 'react';
-import {
-    queryResultToJSON,
-    queryResultToTable,
-    queryResultToTree,
-    type TableData,
-    type TreeRow,
-} from '../../../utils';
+import { queryResultToJSON, queryResultToTable, queryResultToTree, type TableData, type TreeRow } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
 import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDataGrid/ResultTabViewTable';
 import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';

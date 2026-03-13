@@ -179,7 +179,6 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     // Expanded node IDs
     const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
-
     // Build children map once
     const childrenMap = useMemo(() => buildChildrenMap(data), [data]);
 

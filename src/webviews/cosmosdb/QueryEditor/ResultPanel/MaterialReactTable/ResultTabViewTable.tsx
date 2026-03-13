@@ -52,7 +52,6 @@ interface GridRow {
     [key: string]: unknown;
 }
 
-
 export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps) => {
     const styles = useStyles();
     const state = useQueryEditorState();

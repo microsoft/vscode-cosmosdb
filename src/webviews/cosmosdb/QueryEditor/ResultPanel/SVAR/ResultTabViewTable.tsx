@@ -43,7 +43,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     const dispatcher = useQueryEditorDispatcher();
     const apiRef = useRef<IApi | null>(null);
 
-
     // Convert headers to SVAR column config
     const gridColumns = useMemo((): IColumnConfig[] => {
         return headers.map((header) => {

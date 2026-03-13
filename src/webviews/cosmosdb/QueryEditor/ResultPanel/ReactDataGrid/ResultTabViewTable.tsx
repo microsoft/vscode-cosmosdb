@@ -52,7 +52,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Column widths state
     const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
 
-
     // Selected rows state
     const [selectedRows, setSelectedRows] = useState<ReadonlySet<number>>(() => new Set());
 

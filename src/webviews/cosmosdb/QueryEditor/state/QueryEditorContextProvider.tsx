@@ -15,7 +15,7 @@ import {
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
-import { type DispatchAction, type TableViewMode } from './QueryEditorState';
+import { type DispatchAction, type GridLibrary, type TableViewMode } from './QueryEditorState';
 
 const DEFAULT_RESULT_VIEW_METADATA: QueryMetadata = {
     countPerPage: DEFAULT_PAGE_SIZE,
@@ -83,6 +83,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public setPageSize(pageSize: number) {
         void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
         this.dispatch({ type: 'setPageSize', pageSize });
+    }
+
+    public setGridLibrary(gridLibrary: GridLibrary): void {
+        this.dispatch({ type: 'setGridLibrary', gridLibrary });
     }
 
     public setTableViewMode(mode: TableViewMode) {

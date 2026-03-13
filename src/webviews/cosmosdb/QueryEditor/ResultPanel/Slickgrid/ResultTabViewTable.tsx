@@ -14,9 +14,9 @@ import {
     type OnDblClickEventArgs,
     type OnSelectedRowsChangedEventArgs,
 } from 'slickgrid-react';
-import { type TableData } from '../../../utils';
-import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { useColumnMenu } from './ColumnMenu';
+import { type TableData } from '../../../../utils';
+import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
+import { useColumnMenu } from '../ColumnMenu';
 
 type ResultTabViewTableProps = TableData & {};
 
@@ -145,15 +145,16 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             resizeByContentOnlyOnFirstLoad: false, // + this
             enableCellNavigation: true,
             enableCheckboxSelector: false,
-            enableRowSelection: true,
+            enableSelection: true,
             multiSelect: true,
             // disabling features that would require more polishing to make them production-ready
             enableColumnPicker: false,
             enableColumnReorder: false,
             enableContextMenu: false,
             enableGridMenu: false,
-            enableHeaderMenu: false, // Disable header menu by default
+            enableHeaderMenu: true,
             enableHeaderButton: true, // Enable header buttons
+            enableRowDetailView: true,
             datasetIdPropertyName: '__id',
             cellValueCouldBeUndefined: true,
         }),

@@ -517,8 +517,8 @@ export const queryResultToTable = async (
     queryResult: SerializedQueryResult | null,
     partitionKey: PartitionKeyDefinition | undefined,
     options: ColumnOptions = {
-        ShowPartitionKey: 'first',
-        ShowServiceColumns: 'last',
+        ShowPartitionKey: 'none',
+        ShowServiceColumns: 'none',
         Sorting: 'none',
         TruncateValues: MAX_TREE_LEVEL_LENGTH,
     },

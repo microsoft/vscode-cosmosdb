@@ -6,7 +6,7 @@
 import * as l10n from '@vscode/l10n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Formatters, SlickgridReact, type Column, type GridOption } from 'slickgrid-react';
-import { useColumnMenu } from './ColumnMenu';
+import { useColumnMenu } from '../ColumnMenu';
 
 type ResultTabViewTreeProps = {
     data: Record<string, unknown>[];
@@ -87,16 +87,20 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             enableAutoResizeColumnsByCellContent: true, // + this
             resizeByContentOnlyOnFirstLoad: false, // + this
             enableCheckboxSelector: false,
-            enableRowSelection: true,
+            enableSelection: true,
             multiSelect: true,
             // disabling features that would require more polishing to make them production-ready
             enableColumnPicker: false,
             enableColumnReorder: false,
             enableContextMenu: false,
             enableGridMenu: false,
-            enableHeaderMenu: false, // Disable header menu by default
+            enableHeaderMenu: true,
             enableHeaderButton: true, // Enable header buttons
-
+            enableExcelExport: false,
+            enablePdfExport: false,
+            enableTextExport: false,
+            enableCompositeEditor: false,
+            enablePagination: false,
             showHeaderRow: false, // this actually hides the filter-view, not the header: https://ghiscoding.gitbook.io/slickgrid-universal/grid-functionalities/tree-data-grid#parentchild-relation-dataset:~:text=If%20you%20don%27t,showHeaderRow%3A%20false
             enableFiltering: true, // required by slickgrid to render Tree Data
             enableSorting: true,
@@ -104,6 +108,8 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
             enableCellNavigation: true, // Enable cell navigation
             editable: false, // Set to false for read-only
             autoEdit: false, // Disable auto-edit
+            autoEditNewRow: false,
+            autoParseInputFilterOperator: false,
             treeDataOptions: {
                 columnId: 'id_field',
                 parentPropName: 'parentId',

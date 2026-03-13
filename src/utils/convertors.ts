@@ -35,13 +35,18 @@ export type TableData = {
     dataset: TableRecord[];
 };
 
-export type TreeData = {
+/**
+ * Tree row format for hierarchical tree view.
+ * Uses nested children array for tree structure.
+ */
+export type TreeRow = {
     id: string;
-    documentId: CosmosDBRecordIdentifier | undefined;
-    parentId: string | null;
+    documentId?: CosmosDBRecordIdentifier;
     field: string;
     value: string;
     type: string;
+    children?: TreeRow[];
+    isExpanded?: boolean;
 };
 
 export type ColumnOptions = {
@@ -49,13 +54,6 @@ export type ColumnOptions = {
     ShowServiceColumns: 'last' | 'none'; // 'last' = show service columns last, 'none' = hide service columns
     Sorting: 'ascending' | 'descending' | 'none'; // 'ascending' = sort columns in ascending order, 'descending' = sort columns in descending order, 'none' = no sorting
     TruncateValues: number; // truncate values to this length, 0 = no truncation
-};
-
-type StackEntry = {
-    id: string;
-    key: string;
-    value: unknown;
-    parentId: string | null;
 };
 
 const MAX_TREE_LEVEL_LENGTH = 100;
@@ -197,65 +195,122 @@ export const queryResultToJSON = (queryResult: SerializedQueryResult | null, sel
 export const queryResultToTree = async (
     queryResult: SerializedQueryResult | null,
     partitionKey: PartitionKeyDefinition | undefined,
-): Promise<TreeData[]> => {
-    const tree: TreeData[] = [];
-
+): Promise<TreeRow[]> => {
     if (!queryResult) {
-        return tree;
+        return [];
     }
 
+    const rows: TreeRow[] = [];
     const docsLength = queryResult.documents.length;
+
     for (let i = 0; i < docsLength; i++) {
         const doc = queryResult.documents[i];
-        const documentTree = await documentToSlickGridTree(doc, partitionKey, leftPadIndex(i, docsLength));
-        documentTree.forEach((doc) => tree.push(doc));
+        const docRow = await documentToTreeRow(doc, partitionKey, leftPadIndex(i, docsLength));
+        rows.push(docRow);
+
+        // Yield to the event loop periodically to avoid UI freezes
+        if (i % 100 === 0 && i > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
     }
 
-    return tree;
+    return rows;
 };
 
-const stackEntryToSlickGridTree = (entry: StackEntry): TreeData => {
-    const entryType = typeof entry.value;
-    const type =
-        entryType === null
-            ? 'Null'
-            : entryType === 'string'
-              ? 'String'
-              : entryType === 'number'
-                ? 'Number'
-                : entryType === 'boolean'
-                  ? 'Boolean'
-                  : Array.isArray(entry.value)
-                    ? 'Array'
-                    : entryType === 'object'
-                      ? 'Object'
-                      : entryType.charAt(0).toUpperCase() + entryType.slice(1);
+/**
+ * Get the type name for a value
+ */
+const getTypeName = (value: unknown): string => {
+    if (value === null) return 'Null';
+    if (value === undefined) return 'Undefined';
+    if (Array.isArray(value)) return 'Array';
 
-    const value = Array.isArray(entry.value)
-        ? `(elements: ${entry.value.length})`
-        : entry.value === null
-          ? 'null'
-          : typeof entry.value === 'object'
-            ? '{...}'
-            : `${entry.value}`;
+    const type = typeof value;
+    return type.charAt(0).toUpperCase() + type.slice(1);
+};
 
-    return {
-        id: entry.id,
-        documentId: undefined,
-        field: `${entry.key}`,
-        value,
-        type,
-        parentId: entry.parentId,
+/**
+ * Get the display value for a tree row
+ */
+const getDisplayValue = (value: unknown): string => {
+    if (Array.isArray(value)) return `(elements: ${value.length})`;
+    if (value && typeof value === 'object') return '{...}';
+    return toStringUniversal(value);
+};
+
+/**
+ * Convert a value to a TreeRow with nested children
+ */
+const valueToTreeRow = (id: string, field: string, value: unknown): TreeRow => {
+    const row: TreeRow = {
+        id,
+        field,
+        value: getDisplayValue(value),
+        type: getTypeName(value),
+        isExpanded: false,
     };
+
+    if (Array.isArray(value)) {
+        const children: TreeRow[] = [];
+        const arrayLength = Math.min(value.length, MAX_TREE_LEVEL_LENGTH);
+
+        for (let i = 0; i < arrayLength; i++) {
+            children.push(valueToTreeRow(`${id}-${leftPadIndex(i, arrayLength + 1)}`, `${i}`, value[i]));
+        }
+
+        if (value.length > MAX_TREE_LEVEL_LENGTH) {
+            children.push({
+                id: `${id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, arrayLength + 1)}`,
+                field: '',
+                value: 'Array is too large to be shown',
+                type: 'String',
+            });
+        }
+
+        if (children.length > 0) {
+            row.children = children;
+        }
+    } else if (value && typeof value === 'object') {
+        const children: TreeRow[] = [];
+        const sortedKeys = Object.keys(value).sort((a, b) => a.localeCompare(b));
+        const objectLength = Math.min(sortedKeys.length, MAX_TREE_LEVEL_LENGTH);
+
+        for (let i = 0; i < objectLength; i++) {
+            const key = sortedKeys[i];
+            children.push(
+                valueToTreeRow(
+                    `${id}-${leftPadIndex(i, objectLength + 1)}`,
+                    key,
+                    (value as Record<string, unknown>)[key],
+                ),
+            );
+        }
+
+        if (sortedKeys.length > MAX_TREE_LEVEL_LENGTH) {
+            children.push({
+                id: `${id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, objectLength + 1)}`,
+                field: '',
+                value: 'Object is too large to be shown',
+                type: 'String',
+            });
+        }
+
+        if (children.length > 0) {
+            row.children = children;
+        }
+    }
+
+    return row;
 };
 
-const documentToSlickGridTree = async (
+/**
+ * Convert a document to a hierarchical TreeRow
+ */
+const documentToTreeRow = async (
     document: QueryResultRecord,
     partitionKey: PartitionKeyDefinition | undefined,
     rootId: string,
-): Promise<TreeData[]> => {
-    const tree: TreeData[] = [];
-
+): Promise<TreeRow> => {
     const headers = getTableHeaders([document], partitionKey, {
         ShowPartitionKey: 'first',
         ShowServiceColumns: 'last',
@@ -263,90 +318,30 @@ const documentToSlickGridTree = async (
         TruncateValues: MAX_TREE_LEVEL_LENGTH,
     });
     const partitionKeyValues = extractPartitionKeyValues(document, partitionKey);
-    const stack: { id: string; key: string; value: unknown; parentId: string | null }[] = [];
 
-    // Add the document as the root element for the tree
-    tree.push({
+    // Build children for all headers
+    const children: TreeRow[] = [];
+    for (let index = 0; index < headers.length; index++) {
+        const header = headers[index];
+        const value = header.startsWith('/') ? partitionKeyValues[header] : document[header];
+        children.push(valueToTreeRow(`${rootId}-${leftPadIndex(index, headers.length)}`, header, value));
+
+        // Yield to the event loop periodically to avoid UI freezes
+        if (index % 500 === 0 && index > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+    }
+
+    // Return root document row with children
+    return {
         id: rootId,
         documentId: getDocumentId(document, partitionKey),
         field: document['id'] ? `${document['id']}` : `${rootId} (Index number, id is missing)`,
         value: '',
         type: 'Document',
-        parentId: null,
-    });
-
-    headers.forEach((header, index) => {
-        stack.push({
-            id: `${rootId}-${leftPadIndex(index, headers.length)}`,
-            parentId: rootId,
-            key: header,
-            value: header.startsWith('/') ? partitionKeyValues[header] : document[header],
-        });
-    });
-
-    const chunkSize = 1000; // Process 1000 stack entries per chunk
-    while (stack.length > 0) {
-        const chunk = stack.splice(0, Math.min(chunkSize, stack.length));
-
-        for (const stackEntry of chunk) {
-            const treeElement = stackEntryToSlickGridTree(stackEntry);
-            tree.push(treeElement);
-
-            if (Array.isArray(stackEntry.value)) {
-                const arrayLength = Math.min(stackEntry.value.length, MAX_TREE_LEVEL_LENGTH);
-
-                // Add the elements of the array to the stack
-                for (let i = 0; i < arrayLength; i++) {
-                    stack.push({
-                        id: `${stackEntry.id}-${leftPadIndex(i, arrayLength + 1)}`,
-                        key: `${i}`,
-                        value: stackEntry.value[i],
-                        parentId: stackEntry.id,
-                    });
-                }
-
-                // If the array is too large, add a placeholder
-                if (stackEntry.value.length > MAX_TREE_LEVEL_LENGTH) {
-                    stack.push({
-                        id: `${stackEntry.id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, arrayLength + 1)}`,
-                        key: '',
-                        value: 'Array is too large to be shown',
-                        parentId: stackEntry.id,
-                    });
-                }
-            } else if (stackEntry.value && typeof stackEntry.value === 'object') {
-                const sortedKeys = Object.keys(stackEntry.value).sort((a, b) => a.localeCompare(b));
-                const objectLength = Math.min(sortedKeys.length, MAX_TREE_LEVEL_LENGTH);
-
-                // Add the properties of the object to the stack
-                for (let i = 0; i < objectLength; i++) {
-                    stack.push({
-                        id: `${stackEntry.id}-${leftPadIndex(i, objectLength + 1)}`,
-                        key: sortedKeys[i],
-                        value: stackEntry.value[sortedKeys[i]],
-                        parentId: stackEntry.id,
-                    });
-                }
-
-                // If the object is too large, add a placeholder
-                if (sortedKeys.length > MAX_TREE_LEVEL_LENGTH) {
-                    stack.push({
-                        id: `${stackEntry.id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, objectLength + 1)}`,
-                        key: '',
-                        value: 'Object is too large to be shown',
-                        parentId: stackEntry.id,
-                    });
-                }
-            }
-        }
-
-        // Yield to the event loop after processing each chunk
-        if (stack.length > 0) {
-            await new Promise((resolve) => setTimeout(resolve, 0));
-        }
-    }
-
-    return tree;
+        children: children.length > 0 ? children : undefined,
+        isExpanded: false,
+    };
 };
 
 /**

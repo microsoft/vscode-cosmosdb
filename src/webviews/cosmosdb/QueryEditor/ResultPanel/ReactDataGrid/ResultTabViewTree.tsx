@@ -6,17 +6,13 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { ChevronDownRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useMemo, useState } from 'react';
-import {
-    DataGrid,
-    type Column,
-    type ColumnWidths,
-    type RenderCellProps,
-    type RenderHeaderCellProps,
-} from 'react-data-grid';
+import { isNil } from 'es-toolkit';
+import { useMemo, useReducer, useState } from 'react';
+import { DataGrid, type Column, type ColumnWidths } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { toStringUniversal, type TreeRow } from '../../../../utils';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
-import './vscodeTheme.css';
+import './vscodeTheme.scss';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -41,26 +37,25 @@ const useStyles = makeStyles({
         color: tokens.colorNeutralForeground4,
         fontStyle: 'italic',
     },
-    treeCell: {
+    expandCell: {
         display: 'flex',
         alignItems: 'center',
         height: '100%',
-        cursor: 'pointer',
     },
-    toggleIcon: {
+    expandButton: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '16px',
-        height: '16px',
-        marginRight: '4px',
-        flexShrink: 0,
+        width: '32px',
+        height: '32px',
+        cursor: 'pointer',
+        border: 'none',
+        background: 'transparent',
+        color: 'inherit',
+        fontSize: '16px',
     },
-    togglePlaceholder: {
-        width: '16px',
-        height: '16px',
-        marginRight: '4px',
-        flexShrink: 0,
+    expandPlaceholder: {
+        width: '32px',
     },
     fieldText: {
         fontWeight: 600,
@@ -68,245 +63,133 @@ const useStyles = makeStyles({
 });
 
 type ResultTabViewTreeProps = {
-    data: TreeData[];
+    data: TreeRow[];
 };
 
-// Input data type from SlickGrid format (flat with parentId)
-interface TreeData {
-    id: string;
-    documentId?: unknown;
-    parentId: string | null;
-    field: string;
-    value: string;
-    type: string;
+// Display row with level for indentation
+interface DisplayRow extends TreeRow {
+    level: number;
 }
 
-interface TreeRow {
-    __id: number;
-    __originalId: string;
-    __rawData: TreeData;
-    __parentId: string | null;
-    __level: number;
-    __hasChildren: boolean;
-    __isExpanded: boolean;
-    field: string;
-    value: string;
-    type: string;
-}
+type Action = { type: 'toggleSubRow'; id: string };
 
-// Build a map of children for each node
-function buildChildrenMap(data: TreeData[]): Map<string | null, TreeData[]> {
-    const childrenMap = new Map<string | null, TreeData[]>();
-    for (const item of data) {
-        const parentId = item.parentId;
-        if (!childrenMap.has(parentId)) {
-            childrenMap.set(parentId, []);
+// Toggle expand/collapse
+function toggleSubRow(rows: DisplayRow[], id: string): DisplayRow[] {
+    const rowIndex = rows.findIndex((r) => r.id === id);
+    const row = rows[rowIndex];
+    if (!row.children) return rows;
+
+    const newRows = rows.with(rowIndex, { ...row, isExpanded: !row.isExpanded });
+
+    if (row.isExpanded) {
+        // Collapse: remove all descendants
+        let removeCount = 0;
+        for (let i = rowIndex + 1; i < rows.length; i++) {
+            if (rows[i].level <= row.level) break;
+            removeCount++;
         }
-        childrenMap.get(parentId)!.push(item);
-    }
-    return childrenMap;
-}
-
-// Flatten tree data for display, respecting expanded/collapsed state
-function flattenTreeData(childrenMap: Map<string | null, TreeData[]>, expandedIds: Set<string>): TreeRow[] {
-    const result: TreeRow[] = [];
-    let idCounter = 1;
-
-    function traverse(parentId: string | null, level: number) {
-        const children = childrenMap.get(parentId) || [];
-        for (const item of children) {
-            const hasChildren = childrenMap.has(item.id) && (childrenMap.get(item.id)?.length ?? 0) > 0;
-            const isExpanded = expandedIds.has(item.id);
-
-            result.push({
-                __id: idCounter++,
-                __originalId: item.id,
-                __rawData: item,
-                __parentId: item.parentId,
-                __level: level,
-                __hasChildren: hasChildren,
-                __isExpanded: isExpanded,
-                field: item.field,
-                value: item.value,
-                type: item.type,
-            });
-
-            // Only traverse children if expanded
-            if (hasChildren && isExpanded) {
-                traverse(item.id, level + 1);
-            }
-        }
+        newRows.splice(rowIndex + 1, removeCount);
+    } else {
+        // Expand: insert children with level
+        const childRows = row.children.map((child) => ({ ...child, level: row.level + 1 }));
+        newRows.splice(rowIndex + 1, 0, ...childRows);
     }
 
-    // Start traversal from root nodes (parentId === null)
-    traverse(null, 0);
-    return result;
+    return newRows;
 }
 
-// Header renderer props type with column widths
-type HeaderRendererProps = RenderHeaderCellProps<TreeRow> & {
-    columnWidths: ColumnWidths;
-    onColumnWidthsChange: (columnWidths: ColumnWidths) => void;
-    columnKey: string;
-    columnName: string;
-};
+function reducer(rows: DisplayRow[], action: Action): DisplayRow[] {
+    switch (action.type) {
+        case 'toggleSubRow':
+            return toggleSubRow(rows, action.id);
+        default:
+            return rows;
+    }
+}
 
-// Reusable header renderer component
-function TreeHeaderRenderer({
-    column,
-    columnWidths,
-    onColumnWidthsChange,
-    columnKey,
-    columnName,
-    ...props
-}: HeaderRendererProps) {
+// Expand button component
+interface CellExpanderProps {
+    tabIndex: number;
+    expanded: boolean;
+    onExpand: () => void;
+    className: string;
+}
+
+function CellExpander({ tabIndex, expanded, onExpand, className }: CellExpanderProps) {
     return (
-        <ColumnHeaderCell
-            {...props}
-            column={{ ...column, key: columnKey, name: columnName }}
-            columnWidths={columnWidths}
-            onColumnWidthsChange={onColumnWidthsChange}
-        />
+        <button
+            className={className}
+            tabIndex={tabIndex}
+            onClick={onExpand}
+            aria-expanded={expanded}
+            aria-label={expanded ? l10n.t('Collapse') : l10n.t('Expand')}
+        >
+            {expanded ? <ChevronDownRegular /> : <ChevronRightRegular />}
+        </button>
     );
 }
 
 export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
     const styles = useStyles();
 
-    // Column widths state
+    // Initialize with level 0 for root rows
+    const initialRows = useMemo((): DisplayRow[] => data.map((row) => ({ ...row, level: 0 })), [data]);
+    const [rows, dispatch] = useReducer(reducer, initialRows);
     const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
 
-    // Expanded node IDs
-    const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-
-    // Build children map once
-    const childrenMap = useMemo(() => buildChildrenMap(data), [data]);
-
-    // Convert flat data to tree rows with proper flattening
-    const rows = useMemo((): readonly TreeRow[] => {
-        return flattenTreeData(childrenMap, expandedIds);
-    }, [childrenMap, expandedIds]);
-
-    // Toggle expand/collapse handler
-    const toggleExpand = useCallback((originalId: string) => {
-        setExpandedIds((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(originalId)) {
-                newSet.delete(originalId);
-            } else {
-                newSet.add(originalId);
-            }
-            return newSet;
-        });
-    }, []);
-
-    // Tree cell renderer component
-    const TreeCellRenderer = useCallback(
-        ({ row }: RenderCellProps<TreeRow>) => {
-            const indentWidth = row.__level * 16;
-
-            return (
-                <div
-                    className={styles.treeCell}
-                    style={{ paddingLeft: `${indentWidth}px` }}
-                    onClick={() => {
-                        if (row.__hasChildren) {
-                            toggleExpand(row.__originalId);
-                        }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                        if (row.__hasChildren && (e.key === 'Enter' || e.key === ' ')) {
-                            e.preventDefault();
-                            toggleExpand(row.__originalId);
-                        }
-                    }}
-                    aria-expanded={row.__hasChildren ? row.__isExpanded : undefined}
-                    aria-label={
-                        row.__hasChildren
-                            ? l10n.t('{field}, {state}', {
-                                  field: row.field,
-                                  state: row.__isExpanded ? 'expanded' : 'collapsed',
-                              })
-                            : row.field
-                    }
-                >
-                    {row.__hasChildren ? (
-                        <span className={styles.toggleIcon}>
-                            {row.__isExpanded ? <ChevronDownRegular /> : <ChevronRightRegular />}
-                        </span>
-                    ) : (
-                        <span className={styles.togglePlaceholder} />
-                    )}
-                    <span className={styles.fieldText}>{row.field}</span>
-                </div>
-            );
-        },
-        [styles, toggleExpand],
-    );
-
-    // Define columns
-    const columns = useMemo((): readonly Column<TreeRow>[] => {
-        return [
-            {
-                key: 'field',
-                name: l10n.t('Field'),
-                resizable: true,
-                sortable: false,
-                renderHeaderCell: (props: RenderHeaderCellProps<TreeRow>) => (
-                    <TreeHeaderRenderer
-                        {...props}
-                        columnWidths={columnWidths}
-                        onColumnWidthsChange={setColumnWidths}
-                        columnKey="field"
-                        columnName={l10n.t('Field')}
-                    />
-                ),
-                renderCell: TreeCellRenderer,
+    const columns = useMemo((): readonly Column<DisplayRow>[] => {
+        const fieldColumn: Column<DisplayRow> = {
+            key: 'field',
+            name: l10n.t('Field'),
+            resizable: true,
+            renderHeaderCell: (props) => (
+                <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
+            ),
+            renderCell: ({ row, tabIndex }) => {
+                const hasChildren = row.children !== undefined;
+                return (
+                    <div className={styles.expandCell} style={{ paddingLeft: `${row.level * 16}px` }}>
+                        {hasChildren ? (
+                            <CellExpander
+                                tabIndex={tabIndex}
+                                expanded={row.isExpanded === true}
+                                onExpand={() => dispatch({ type: 'toggleSubRow', id: row.id })}
+                                className={styles.expandButton}
+                            />
+                        ) : (
+                            <span className={styles.expandPlaceholder} />
+                        )}
+                        <span className={styles.fieldText}>{row.field}</span>
+                    </div>
+                );
             },
-            {
-                key: 'value',
-                name: l10n.t('Value'),
-                resizable: true,
-                sortable: false,
-                renderHeaderCell: (props: RenderHeaderCellProps<TreeRow>) => (
-                    <TreeHeaderRenderer
-                        {...props}
-                        columnWidths={columnWidths}
-                        onColumnWidthsChange={setColumnWidths}
-                        columnKey="value"
-                        columnName={l10n.t('Value')}
-                    />
-                ),
-                renderCell: ({ row }) => {
-                    const value = row.value;
-                    if (!value || value === '{}' || value === '[]') {
-                        return <span className={styles.emptyValue}>{value || ''}</span>;
-                    }
-                    return <>{value}</>;
-                },
-            },
-            {
-                key: 'type',
-                name: l10n.t('Type'),
-                resizable: true,
-                sortable: false,
-                renderHeaderCell: (props: RenderHeaderCellProps<TreeRow>) => (
-                    <TreeHeaderRenderer
-                        {...props}
-                        columnWidths={columnWidths}
-                        onColumnWidthsChange={setColumnWidths}
-                        columnKey="type"
-                        columnName={l10n.t('Type')}
-                    />
-                ),
-            },
-        ];
-    }, [columnWidths, styles.emptyValue, TreeCellRenderer]);
+        };
 
-    // Row key getter
-    const rowKeyGetter = useCallback((row: TreeRow) => row.__id, []);
+        const valueColumn: Column<DisplayRow> = {
+            key: 'value',
+            name: l10n.t('Value'),
+            resizable: true,
+            renderHeaderCell: (props) => (
+                <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
+            ),
+            renderCell: ({ row }) => {
+                const className = isNil(row.value) || row.value === '{}' ? styles.emptyValue : undefined;
+                return <span className={className}>{toStringUniversal(row.value)}</span>;
+            },
+        };
+
+        const typeColumn: Column<DisplayRow> = {
+            key: 'type',
+            name: l10n.t('Type'),
+            resizable: true,
+            renderHeaderCell: (props) => (
+                <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
+            ),
+            renderCell: ({ row }) => toStringUniversal(row.type),
+        };
+
+        return [fieldColumn, valueColumn, typeColumn];
+    }, [columnWidths, styles]);
 
     return (
         <div className={styles.wrapper}>
@@ -314,14 +197,11 @@ export const ResultTabViewTree = ({ data }: ResultTabViewTreeProps) => {
                 <DataGrid
                     columns={columns}
                     rows={rows}
-                    rowKeyGetter={rowKeyGetter}
+                    rowKeyGetter={(row) => row.id}
                     columnWidths={columnWidths}
                     onColumnWidthsChange={setColumnWidths}
                     aria-label={l10n.t('Query results tree')}
-                    defaultColumnOptions={{
-                        resizable: true,
-                        minWidth: 50,
-                    }}
+                    defaultColumnOptions={{ resizable: true, minWidth: 50 }}
                 />
             </div>
         </div>

@@ -93,18 +93,18 @@ export class BaseTab {
                       `form-action 'none';`,
                       `default-src ${cspSource};`,
                       `script-src ${cspSource} 'nonce-${nonce}';`,
-                      `style-src ${cspSource} 'unsafe-inline'; https://cdn.svar.dev/;`,
-                      `font-src ${cspSource}; https://cdn.svar.dev/;`,
+                      `style-src ${cspSource} 'unsafe-inline';`,
+                      `font-src ${cspSource};`,
                       `worker-src ${cspSource} blob:;`,
                       `img-src ${cspSource} data:;`,
                   ]
                 : [
                       `form-action 'none';`,
                       `default-src ${cspSource} ${DEV_SERVER_HOST};`,
-                      `style-src ${cspSource} ${DEV_SERVER_HOST} https://cdn.svar.dev 'unsafe-inline';`,
+                      `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
                       `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}' 'unsafe-eval';`,
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST} https://cdn.svar.dev;`,
+                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
                       `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]

@@ -11,21 +11,12 @@ import {
     queryResultToTable,
     queryResultToTree,
     type TableData,
-    type TreeData,
+    type TreeRow,
 } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
-import { ResultTabViewJson } from './ResultTabViewJson';
-import { ResultTabViewTable } from './Slickgrid/ResultTabViewTable';
-import { ResultTabViewTree } from './Slickgrid/ResultTabViewTree';
-
-import { ResultTabViewTable as SVARResultTabViewTable } from './SVAR/ResultTabViewTable';
-import { ResultTabViewTree as SVARResultTabViewTree } from './SVAR/ResultTabViewTree';
-
 import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDataGrid/ResultTabViewTable';
 import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';
-
-import { ResultTabViewTable as MaterialReactTableResultTabViewTable } from './MaterialReactTable/ResultTabViewTable';
-import { ResultTabViewTree as MaterialReactTableResultTabViewTree } from './MaterialReactTable/ResultTabViewTree';
+import { ResultTabViewJson } from './ResultTabViewJson';
 
 const useClasses = makeStyles({
     container: {
@@ -56,7 +47,7 @@ const useClasses = makeStyles({
 type ViewData = {
     json?: string;
     table?: TableData;
-    tree?: TreeData[];
+    tree?: TreeRow[];
 };
 
 interface ResultTabProps {
@@ -65,7 +56,7 @@ interface ResultTabProps {
 
 export const ResultTab = ({ className }: ResultTabProps) => {
     const classes = useClasses();
-    const { tableViewMode, currentQueryResult, partitionKey, isExecuting, gridLibrary } = useQueryEditorState();
+    const { tableViewMode, currentQueryResult, partitionKey, isExecuting } = useQueryEditorState();
     const [viewData, setViewData] = useState<ViewData>({});
     const [isLoading, setIsLoading] = useState(false);
     const [resultCount, setResultCount] = useState<number>(0);
@@ -189,45 +180,13 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                 </div>
             ) : (
                 <>
-                    {gridLibrary === 'Slickgrid Universal' && tableViewMode === 'Table' && (
-                        <ResultTabViewTable
-                            headers={viewData.table?.headers ?? []}
-                            dataset={viewData.table?.dataset ?? []}
-                        />
-                    )}
-                    {gridLibrary === 'Slickgrid Universal' && tableViewMode === 'Tree' && (
-                        <ResultTabViewTree data={viewData.tree ?? []} />
-                    )}
-
-                    {gridLibrary === 'SVAR' && tableViewMode === 'Table' && (
-                        <SVARResultTabViewTable
-                            headers={viewData.table?.headers ?? []}
-                            dataset={viewData.table?.dataset ?? []}
-                        />
-                    )}
-                    {gridLibrary === 'SVAR' && tableViewMode === 'Tree' && (
-                        <SVARResultTabViewTree data={viewData.tree ?? []} />
-                    )}
-
-                    {gridLibrary === 'React Data Grid' && tableViewMode === 'Table' && (
+                    {tableViewMode === 'Table' && (
                         <ReactDataGridResultTabViewTable
                             headers={viewData.table?.headers ?? []}
                             dataset={viewData.table?.dataset ?? []}
                         />
                     )}
-                    {gridLibrary === 'React Data Grid' && tableViewMode === 'Tree' && (
-                        <ReactDataGridResultTabViewTree data={viewData.tree ?? []} />
-                    )}
-
-                    {gridLibrary === 'Material React Table' && tableViewMode === 'Table' && (
-                        <MaterialReactTableResultTabViewTable
-                            headers={viewData.table?.headers ?? []}
-                            dataset={viewData.table?.dataset ?? []}
-                        />
-                    )}
-                    {gridLibrary === 'Material React Table' && tableViewMode === 'Tree' && (
-                        <MaterialReactTableResultTabViewTree data={viewData.tree ?? []} />
-                    )}
+                    {tableViewMode === 'Tree' && <ReactDataGridResultTabViewTree data={viewData.tree ?? []} />}
 
                     {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
                 </>

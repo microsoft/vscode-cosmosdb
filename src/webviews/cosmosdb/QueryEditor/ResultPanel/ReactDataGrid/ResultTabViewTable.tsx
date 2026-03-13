@@ -5,6 +5,7 @@
 
 import { makeStyles, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
+import { isNil } from 'es-toolkit';
 import { useCallback, useMemo, useState } from 'react';
 import { DataGrid, SelectColumn, type Column, type ColumnWidths, type RenderHeaderCellProps } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -12,7 +13,7 @@ import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/que
 import { toStringUniversal, type TableData, type TableRecord } from '../../../../../utils/convertors';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
-import './vscodeTheme.css';
+import './vscodeTheme.scss';
 
 const useStyles = makeStyles({
     wrapper: {
@@ -55,11 +56,15 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Selected rows state
     const [selectedRows, setSelectedRows] = useState<ReadonlySet<number>>(() => new Set());
 
+    // Row key getter
+    const rowKeyGetter = useCallback((row: GridRow) => row.__id, []);
+
+    // Row field getter
+    const rowFieldGetter = useCallback((row: GridRow, columnKey: string) => row.__rawData[columnKey], []);
+
     // Create columns from headers
     const columns = useMemo((): readonly Column<GridRow>[] => {
         const dataColumns = headers.map((header): Column<GridRow> => {
-            const field = header.startsWith('/') ? header.slice(1) : header;
-
             return {
                 key: header,
                 name: header,
@@ -70,19 +75,18 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     <ColumnHeaderCell {...props} columnWidths={columnWidths} onColumnWidthsChange={setColumnWidths} />
                 ),
                 renderCell: ({ row }) => {
-                    const value = row.__rawData[field];
-                    if (value === undefined || value === null || value === '{}') {
-                        const displayValue = value === undefined ? 'undefined' : value === null ? 'null' : '{}';
-                        return <span className={styles.emptyCell}>{displayValue}</span>;
-                    }
-                    return <>{toStringUniversal(value)}</>;
+                    const field = header.startsWith('/') ? header.slice(1) : header;
+                    const value = rowFieldGetter(row, field);
+                    const className = isNil(value) || value === '{}' ? styles.emptyCell : undefined;
+
+                    return <span className={className}>{toStringUniversal(value)}</span>;
                 },
             };
         });
 
         // Add SelectColumn at the beginning for row selection
         return [SelectColumn, ...dataColumns];
-    }, [headers, columnWidths, styles.emptyCell]);
+    }, [headers, columnWidths, rowFieldGetter, styles.emptyCell]);
 
     // Create rows from dataset without modifying original data
     const rows = useMemo((): readonly GridRow[] => {
@@ -92,9 +96,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         }));
     }, [dataset]);
 
-    // Row key getter
-    const rowKeyGetter = useCallback((row: GridRow) => row.__id, []);
-
     // Handle row double-click
     const handleCellDoubleClick = useCallback(
         (args: { row: GridRow }) => {
@@ -102,12 +103,12 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
             globalThis.getSelection()?.removeAllRanges();
 
-            const documentId = args.row.__rawData.__documentId as CosmosDBRecordIdentifier | undefined;
+            const documentId = rowFieldGetter(args.row, '__documentId') as CosmosDBRecordIdentifier | undefined;
             if (documentId) {
                 void dispatcher.openDocument('view', documentId);
             }
         },
-        [state.isEditMode, dispatcher],
+        [state.isEditMode, rowFieldGetter, dispatcher],
     );
 
     // Handle selection change

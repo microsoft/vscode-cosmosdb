@@ -1,5 +1,5 @@
 ---
-name: detecting-accessibility-issues
+name: accessibility-aria-expert
 description: Detects and fixes accessibility issues in React/Fluent UI webviews. Use when reviewing code for screen reader compatibility, fixing ARIA labels, ensuring keyboard navigation, adding live regions for status messages, or managing focus in dialogs.
 ---
 

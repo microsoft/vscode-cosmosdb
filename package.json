@@ -213,7 +213,7 @@
       {
         "name": "cosmosdb_sampleContainerSchema",
         "displayName": "Sample Container Schema",
-        "modelDescription": "Samples a few documents from the active Cosmos DB container to infer its schema. Runs a cheap read query (SELECT TOP 5 * FROM c) and returns the inferred property names and types. ALWAYS use this tool FIRST if you do not know the container schema (property names/types). Do not guess schema.",
+        "modelDescription": "Samples a few documents from the active Cosmos DB container to infer its schema. Runs a cheap read query and returns the inferred property names and types. ALWAYS use this tool FIRST if you do not know the container schema (property names/types). Do not guess schema.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "cosmosdb_sampleContainerSchema"
       }

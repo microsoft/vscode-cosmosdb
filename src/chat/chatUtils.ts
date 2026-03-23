@@ -39,7 +39,12 @@ export async function sendChatRequest(
     const messages = buildChatMessages(instructionMessage, userMessage, intermediateMessages);
 
     // Count tokens for all messages and log usage info
-    try {
+    await callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', async (ctx) => {
+        ctx.errorHandling.suppressDisplay = true;
+        ctx.telemetry.properties.caller = caller ?? 'unknown';
+        ctx.telemetry.properties.modelName = model.name;
+        ctx.telemetry.properties.modelFamily = model.family;
+
         const [instructionTokens, userTokens] = await Promise.all([
             model.countTokens(instructionMessage, token),
             userMessage ? model.countTokens(userMessage, token) : Promise.resolve(0),
@@ -47,26 +52,19 @@ export async function sendChatRequest(
         const totalTokens = instructionTokens + userTokens;
         const maxTokens = model.maxInputTokens;
         const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
+
+        ctx.telemetry.measurements.instructionTokens = instructionTokens;
+        ctx.telemetry.measurements.userTokens = userTokens;
+        ctx.telemetry.measurements.requestTokens = totalTokens;
+        ctx.telemetry.measurements.maxInputTokens = maxTokens;
+
         ext.outputChannel.info(
             `[Chat Request] model="${model.name}" (${model.family}), ` +
                 `instructionTokens=${instructionTokens}, userTokens=${userTokens}, ` +
                 `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
                 `usage=${ratio}%`,
         );
-
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', (ctx) => {
-            ctx.errorHandling.suppressDisplay = true;
-            ctx.telemetry.properties.caller = caller ?? 'unknown';
-            ctx.telemetry.properties.modelName = model.name;
-            ctx.telemetry.properties.modelFamily = model.family;
-            ctx.telemetry.measurements.instructionTokens = instructionTokens;
-            ctx.telemetry.measurements.userTokens = userTokens;
-            ctx.telemetry.measurements.requestTokens = totalTokens;
-            ctx.telemetry.measurements.maxInputTokens = maxTokens;
-        });
-    } catch {
-        // Token counting is best-effort; don't block the request
-    }
+    });
 
     return model.sendRequest(messages, options, token);
 }

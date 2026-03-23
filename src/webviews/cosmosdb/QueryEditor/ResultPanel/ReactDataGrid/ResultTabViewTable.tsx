@@ -7,7 +7,13 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { isNil } from 'es-toolkit';
 import { useCallback, useMemo, useState } from 'react';
-import { DataGrid, SelectColumn, type Column, type ColumnWidths, type RenderHeaderCellProps } from 'react-data-grid';
+import {
+    DataGrid,
+    type CellMouseEvent,
+    type Column,
+    type ColumnWidths,
+    type RenderHeaderCellProps,
+} from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/queryResult';
 import { toStringUniversal, type TableData, type TableRecord } from '../../../../../utils/convertors';
@@ -64,7 +70,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
     // Create columns from headers
     const columns = useMemo((): readonly Column<GridRow>[] => {
-        const dataColumns = headers.map((header): Column<GridRow> => {
+        return headers.map((header): Column<GridRow> => {
             return {
                 key: header,
                 name: header,
@@ -83,9 +89,6 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 },
             };
         });
-
-        // Add SelectColumn at the beginning for row selection
-        return [SelectColumn, ...dataColumns];
     }, [headers, columnWidths, rowFieldGetter, styles.emptyCell]);
 
     // Create rows from dataset without modifying original data
@@ -111,7 +114,37 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         [state.isEditMode, rowFieldGetter, dispatcher],
     );
 
-    // Handle selection change
+    // Handle cell click for row selection (click/ctrl+click)
+    const handleCellClick = useCallback(
+        (args: { row: GridRow }, event: CellMouseEvent) => {
+            const rowId = args.row.__id;
+
+            setSelectedRows((prevSelectedRows) => {
+                const newSelectedRows = new Set(prevSelectedRows);
+
+                if (event.ctrlKey || event.metaKey) {
+                    // Ctrl+click: toggle selection
+                    if (newSelectedRows.has(rowId)) {
+                        newSelectedRows.delete(rowId);
+                    } else {
+                        newSelectedRows.add(rowId);
+                    }
+                } else {
+                    // Regular click: select only this row
+                    newSelectedRows.clear();
+                    newSelectedRows.add(rowId);
+                }
+
+                // Update dispatcher with 0-based indexes
+                dispatcher.setSelectedRows(Array.from(newSelectedRows).map((id) => id - 1));
+
+                return newSelectedRows;
+            });
+        },
+        [dispatcher],
+    );
+
+    // Handle selection change from grid (required for visual selection to work)
     const handleSelectedRowsChange = useCallback(
         (newSelectedRows: Set<number>) => {
             setSelectedRows(newSelectedRows);
@@ -130,6 +163,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     rowKeyGetter={rowKeyGetter}
                     selectedRows={selectedRows}
                     onSelectedRowsChange={handleSelectedRowsChange}
+                    onCellClick={handleCellClick}
                     onCellDoubleClick={handleCellDoubleClick}
                     columnWidths={columnWidths}
                     onColumnWidthsChange={setColumnWidths}

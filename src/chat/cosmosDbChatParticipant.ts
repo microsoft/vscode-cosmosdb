@@ -96,7 +96,7 @@ export class CosmosDbChatParticipant {
         }
 
         if (this.skillContent) {
-            return `\n\n## Azure Cosmos DB Reference\n${this.skillContent}`;
+            return `\n\n## Azure Cosmos DB Best Practices:\n\n${this.skillContent}`;
         }
         return '';
     }

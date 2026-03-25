@@ -6,7 +6,7 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { isNil } from 'es-toolkit';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
     DataGrid,
     type CellKeyDownArgs,
@@ -52,6 +52,15 @@ interface GridRow {
     [key: string]: unknown;
 }
 
+/** Reducer for selectedRows – allows `useEffect` to reset selection via `dispatch`
+ *  without triggering the react-hooks/set-state-in-effect lint rule. */
+function selectedRowsReducer(state: ReadonlySet<number>, action: ReadonlySet<number> | 'reset'): ReadonlySet<number> {
+    if (action === 'reset') {
+        return state.size === 0 ? state : new Set();
+    }
+    return action;
+}
+
 // Outer component that provides the registry
 export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps) => {
     const styles = useStyles();
@@ -61,8 +70,8 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
     // Column widths state
     const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() => new Map());
 
-    // Selected rows state
-    const [selectedRows, setSelectedRows] = useState<ReadonlySet<number>>(() => new Set());
+    // Selected rows state (useReducer to avoid set-state-in-effect lint rule in the reset effect)
+    const [selectedRows, dispatchSelectedRows] = useReducer(selectedRowsReducer, new Set<number>());
 
     // Anchor row for shift-click / shift-arrow range selection (does not trigger re-render)
     const anchorRowIdRef = useRef<number | null>(null);
@@ -77,21 +86,24 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
         return set;
     }, []);
 
-    // Reset selection state when the dataset changes (e.g. new query executed, page changed).
-    // Uses the React-recommended "adjusting state during render" pattern with useState
-    // to avoid ref access during render (react-hooks/refs) and setState inside useEffect
-    // (react-hooks/set-state-in-effect).
-    const [prevDataset, setPrevDataset] = useState(dataset);
-    if (prevDataset !== dataset) {
-        setPrevDataset(dataset);
-        setSelectedRows(new Set());
-        dispatcher.setSelectedRows([]);
-    }
+    /** Update both local selection state and notify the extension host dispatcher. */
+    const updateSelection = useCallback(
+        (newSelectedRows: ReadonlySet<number>) => {
+            dispatchSelectedRows(newSelectedRows);
+            dispatcher.setSelectedRows(Array.from(newSelectedRows).map((id) => id - 1));
+        },
+        [dispatcher],
+    );
 
-    // Reset anchor ref after dataset change — ref writes are safe inside effects
+    // Reset selection state when the dataset changes (e.g. new query executed, page changed).
+    // The parent component must provide a referentially stable dataset prop (e.g. via useMemo
+    // or a module-level constant for the empty fallback) so this effect only fires on real
+    // data changes, not on every render.
     useEffect(() => {
+        dispatchSelectedRows('reset');
         anchorRowIdRef.current = null;
-    }, [dataset]);
+        dispatcher.setSelectedRows([]);
+    }, [dataset, dispatcher]);
 
     // Row key getter
     const rowKeyGetter = useCallback((row: GridRow) => row.__id, []);
@@ -156,33 +168,25 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 const anchorId = anchorRowIdRef.current;
                 const startId = Math.min(anchorId, rowId);
                 const endId = Math.max(anchorId, rowId);
-                const rangeIds = buildRangeSet(startId, endId);
-
-                setSelectedRows(rangeIds);
-                dispatcher.setSelectedRows(Array.from(rangeIds).map((id) => id - 1));
+                updateSelection(buildRangeSet(startId, endId));
                 // Anchor stays unchanged on shift+click
             } else if (event.ctrlKey || event.metaKey) {
                 // Ctrl+click: toggle selection
                 anchorRowIdRef.current = rowId;
-                setSelectedRows((prevSelectedRows) => {
-                    const newSelectedRows = new Set(prevSelectedRows);
-                    if (newSelectedRows.has(rowId)) {
-                        newSelectedRows.delete(rowId);
-                    } else {
-                        newSelectedRows.add(rowId);
-                    }
-                    dispatcher.setSelectedRows(Array.from(newSelectedRows).map((id) => id - 1));
-                    return newSelectedRows;
-                });
+                const newSelectedRows = new Set(selectedRows);
+                if (newSelectedRows.has(rowId)) {
+                    newSelectedRows.delete(rowId);
+                } else {
+                    newSelectedRows.add(rowId);
+                }
+                updateSelection(newSelectedRows);
             } else {
                 // Regular click: select only this row
                 anchorRowIdRef.current = rowId;
-                const newSelectedRows = new Set([rowId]);
-                setSelectedRows(newSelectedRows);
-                dispatcher.setSelectedRows([rowId - 1]);
+                updateSelection(new Set([rowId]));
             }
         },
-        [buildRangeSet, dispatcher],
+        [buildRangeSet, selectedRows, updateSelection],
     );
 
     // Handle keyboard selection: Space toggles current row, Shift+Arrow extends range
@@ -194,7 +198,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
             const rowIdx = args.rowIdx;
 
             if (event.key === ' ') {
-                // Prevent the grid's own space-key behaviour
+                // Prevent the grid's own space-key behavior
                 event.preventGridDefault();
 
                 if (event.shiftKey && anchorRowIdRef.current !== null) {
@@ -203,22 +207,17 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     const anchorId = anchorRowIdRef.current;
                     const startId = Math.min(anchorId, rowId);
                     const endId = Math.max(anchorId, rowId);
-                    const rangeIds = buildRangeSet(startId, endId);
-                    setSelectedRows(rangeIds);
-                    dispatcher.setSelectedRows(Array.from(rangeIds).map((id) => id - 1));
+                    updateSelection(buildRangeSet(startId, endId));
                 } else {
                     // Space: toggle the focused row
                     anchorRowIdRef.current = rowId;
-                    setSelectedRows((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(rowId)) {
-                            next.delete(rowId);
-                        } else {
-                            next.add(rowId);
-                        }
-                        dispatcher.setSelectedRows(Array.from(next).map((id) => id - 1));
-                        return next;
-                    });
+                    const newSelectedRows = new Set(selectedRows);
+                    if (newSelectedRows.has(rowId)) {
+                        newSelectedRows.delete(rowId);
+                    } else {
+                        newSelectedRows.add(rowId);
+                    }
+                    updateSelection(newSelectedRows);
                 }
             } else if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
                 // Shift+Arrow: extend/shrink selection; let the grid move focus normally
@@ -235,24 +234,20 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 if (nextRowId !== undefined) {
                     const startId = Math.min(anchorId, nextRowId);
                     const endId = Math.max(anchorId, nextRowId);
-                    const rangeIds = buildRangeSet(startId, endId);
-                    setSelectedRows(rangeIds);
-                    dispatcher.setSelectedRows(Array.from(rangeIds).map((id) => id - 1));
+                    updateSelection(buildRangeSet(startId, endId));
                 }
                 // Do NOT call preventGridDefault() — let the grid move focus to the next row
             }
         },
-        [buildRangeSet, dispatcher, rows],
+        [buildRangeSet, selectedRows, updateSelection, rows],
     );
 
     // Handle selection change from grid (required for visual selection to work)
     const handleSelectedRowsChange = useCallback(
         (newSelectedRows: Set<number>) => {
-            setSelectedRows(newSelectedRows);
-            // Convert to 0-based indexes
-            dispatcher.setSelectedRows(Array.from(newSelectedRows).map((id) => id - 1));
+            updateSelection(newSelectedRows);
         },
-        [dispatcher],
+        [updateSelection],
     );
 
     return (

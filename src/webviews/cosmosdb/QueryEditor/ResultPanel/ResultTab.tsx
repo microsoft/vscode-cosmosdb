@@ -12,6 +12,11 @@ import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDa
 import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';
 import { ResultTabViewJson } from './ResultTabViewJson';
 
+// Stable empty-array / empty-string constants to avoid creating new references on every render
+const EMPTY_HEADERS: string[] = [];
+const EMPTY_DATASET: TableData['dataset'] = [];
+const EMPTY_TREE: TreeRow[] = [];
+
 const useClasses = makeStyles({
     container: {
         marginTop: '10px',
@@ -176,11 +181,11 @@ export const ResultTab = ({ className }: ResultTabProps) => {
                 <>
                     {tableViewMode === 'Table' && (
                         <ReactDataGridResultTabViewTable
-                            headers={viewData.table?.headers ?? []}
-                            dataset={viewData.table?.dataset ?? []}
+                            headers={viewData.table?.headers ?? EMPTY_HEADERS}
+                            dataset={viewData.table?.dataset ?? EMPTY_DATASET}
                         />
                     )}
-                    {tableViewMode === 'Tree' && <ReactDataGridResultTabViewTree data={viewData.tree ?? []} />}
+                    {tableViewMode === 'Tree' && <ReactDataGridResultTabViewTree data={viewData.tree ?? EMPTY_TREE} />}
 
                     {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
                 </>

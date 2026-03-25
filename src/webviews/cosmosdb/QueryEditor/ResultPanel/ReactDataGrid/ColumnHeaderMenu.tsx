@@ -262,7 +262,7 @@ export const ColumnHeaderCell = <R, SR = unknown>({
             />
             {/* Keyboard hint for screen readers - rendered outside grid via portal */}
             {createPortal(
-                <div id={`${columnKey}-hint`} className={styles.srOnly}>
+                <div id={`${kebabCase(columnKey)}-hint`} className={styles.srOnly}>
                     {keyboardHint}
                 </div>,
                 document.body,

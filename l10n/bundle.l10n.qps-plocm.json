@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": "[الهاتف (Press 'Space' to select and 'Enter' to confirm)עִבְרִית عليكעִבְרִית !]",
   "\"{0}\" is not implemented on \"{1}\".": "[الهاتف\"{0}\" is not implemented on \"{1}\".עִבְרִית عليكעִבְ!]",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "[الهاتف\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְ!]",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "[الهاتف\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִ!]",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "[الهاتف\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְ!]",
   "(leave blank to skip)": "[الهاتف(leave blank to skip)עִבְרִית ع!]",
   "(recently used)": "[الهاتف(recently used)עִבְרִית!]",
   "[VSCodeTransport] Error occurred calling callback": "[الهاتف[VSCodeTransport] Error occurred calling callbackעִבְרִית عليكעִבְרִית !]",

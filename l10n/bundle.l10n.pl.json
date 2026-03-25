@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (Naciśnij klawisz „Spacja”, aby wybrać i klawisz „Enter”, aby potwierdzić)",
   "\"{0}\" is not implemented on \"{1}\".": "Element „{0}” nie jest wdrożony w „{1}”.",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "Przed użyciem pakietu vscode-azext-azureutils należy wywołać funkcję „registerAzureUtilsExtensionVariables”.",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "Przed użyciem pakietu vscode-azureextensionui należy wywołać funkcję „registerUIExtensionVariables”.",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(pozostaw puste, aby pominąć)",
   "(recently used)": "(ostatnio używane)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] Wystąpił błąd podczas wywoływania zwrotnego",

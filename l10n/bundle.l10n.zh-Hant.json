@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (按「空白鍵」以選取，然後按「Enter」以確認)",
   "\"{0}\" is not implemented on \"{1}\".": "未於「{1}」實作「{0}」。",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "使用 vscode-azext-azureutils 套件前，必須先呼叫「registerAzureUtilsExtensionVariables」。",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "使用 vscode-azureextensionui 套件前，必須先呼叫「registerUIExtensionVariables」。",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(保留空白以略過)",
   "(recently used)": "(最近使用)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] 呼叫回撥時發生錯誤",

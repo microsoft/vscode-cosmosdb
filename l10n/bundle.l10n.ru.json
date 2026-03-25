@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (Нажмите ПРОБЕЛ, чтобы выбрать, и ВВОД для подтверждения.)",
   "\"{0}\" is not implemented on \"{1}\".": "\"{0}\" не реализован в \"{1}\".",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "Перед использованием пакета vscode-azext-azureutils необходимо вызвать \"registerAzureUtilsExtensionVariables\".",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "Перед использованием пакета vscode-azureextensionui необходимо вызвать \"registerUIExtensionVariables\".",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(оставьте пустым, чтобы пропустить)",
   "(recently used)": "(недавно использованный)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] Произошла ошибка при обратном вызове",

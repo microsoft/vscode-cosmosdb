@@ -6,42 +6,7 @@
 /**
  * VS Code theme overrides for react-data-grid.
  * Uses VS Code CSS variables to match the editor theme.
- *
- * Note: VS Code injects these custom properties at runtime.
- * We declare them here to suppress IDE "Cannot resolve" warnings.
  */
-
-// VS Code theme variables used in this file (injected at runtime by VS Code)
-:root {
-    // Editor colors
-    --vscode-editor-background: initial;
-    --vscode-editor-foreground: initial;
-    --vscode-font-family: initial;
-
-    // List colors
-    --vscode-list-hoverBackground: initial;
-    --vscode-list-activeSelectionBackground: initial;
-    --vscode-list-activeSelectionForeground: initial;
-
-    // Checkbox colors
-    --vscode-checkbox-foreground: initial;
-    --vscode-checkbox-background: initial;
-    --vscode-checkbox-border: initial;
-    --vscode-checkbox-selectBackground: initial;
-    --vscode-checkbox-selectBorder: initial;
-
-    // Focus colors
-    --vscode-focusBorder: initial;
-
-    // Panel/Editor group colors
-    --vscode-panel-border: initial;
-    --vscode-editorGroup-border: initial;
-
-    // Scrollbar colors
-    --vscode-scrollbarSlider-background: initial;
-    --vscode-scrollbarSlider-hoverBackground: initial;
-    --vscode-scrollbarSlider-activeBackground: initial;
-}
 
 /* Base grid styles */
 .rdg {

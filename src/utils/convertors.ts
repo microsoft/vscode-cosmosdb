@@ -262,7 +262,7 @@ const valueToTreeRow = (id: string, field: string, value: unknown): TreeRow => {
             children.push({
                 id: `${id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, arrayLength + 1)}`,
                 field: '',
-                value: 'Array is too large to be shown',
+                value: l10n.t('Array is too large to be shown'),
                 type: 'String',
             });
         }
@@ -290,7 +290,7 @@ const valueToTreeRow = (id: string, field: string, value: unknown): TreeRow => {
             children.push({
                 id: `${id}-${leftPadIndex(MAX_TREE_LEVEL_LENGTH + 1, objectLength + 1)}`,
                 field: '',
-                value: 'Object is too large to be shown',
+                value: l10n.t('Object is too large to be shown'),
                 type: 'String',
             });
         }

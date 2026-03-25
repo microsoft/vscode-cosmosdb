@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react-components';
 import { ArrowFitFilled, AutoFitWidthFilled, ChevronDownRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
+import { kebabCase } from 'es-toolkit';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type ColumnWidths, type RenderHeaderCellProps } from 'react-data-grid';
@@ -99,7 +100,7 @@ export const ColumnHeaderCell = <R, SR = unknown>({
         if (!columnHeaderRef.current) return;
 
         // Add aria-describedby to the columnheader for proper screen reader announcement
-        const hintId = `${columnKey}-hint`;
+        const hintId = `${kebabCase(columnKey)}-hint`;
         columnHeaderRef.current.setAttribute('aria-describedby', hintId);
 
         const handleKeyDown = (e: KeyboardEvent) => {

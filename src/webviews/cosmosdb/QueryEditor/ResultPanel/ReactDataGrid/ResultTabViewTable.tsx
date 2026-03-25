@@ -6,7 +6,7 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { isNil } from 'es-toolkit';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DataGrid,
     type CellKeyDownArgs,
@@ -66,6 +66,32 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
 
     // Anchor row for shift-click / shift-arrow range selection (does not trigger re-render)
     const anchorRowIdRef = useRef<number | null>(null);
+
+    // Build a Set of sequential row IDs from startId..endId (inclusive).
+    // Row IDs are sequential (__id = index + 1), so we avoid scanning the whole rows array.
+    const buildRangeSet = useCallback((startId: number, endId: number): Set<number> => {
+        const set = new Set<number>();
+        for (let id = startId; id <= endId; id++) {
+            set.add(id);
+        }
+        return set;
+    }, []);
+
+    // Reset selection state when the dataset changes (e.g. new query executed, page changed).
+    // Uses the React-recommended "adjusting state during render" pattern with useState
+    // to avoid ref access during render (react-hooks/refs) and setState inside useEffect
+    // (react-hooks/set-state-in-effect).
+    const [prevDataset, setPrevDataset] = useState(dataset);
+    if (prevDataset !== dataset) {
+        setPrevDataset(dataset);
+        setSelectedRows(new Set());
+        dispatcher.setSelectedRows([]);
+    }
+
+    // Reset anchor ref after dataset change — ref writes are safe inside effects
+    useEffect(() => {
+        anchorRowIdRef.current = null;
+    }, [dataset]);
 
     // Row key getter
     const rowKeyGetter = useCallback((row: GridRow) => row.__id, []);
@@ -130,7 +156,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 const anchorId = anchorRowIdRef.current;
                 const startId = Math.min(anchorId, rowId);
                 const endId = Math.max(anchorId, rowId);
-                const rangeIds = new Set(rows.filter((r) => r.__id >= startId && r.__id <= endId).map((r) => r.__id));
+                const rangeIds = buildRangeSet(startId, endId);
 
                 setSelectedRows(rangeIds);
                 dispatcher.setSelectedRows(Array.from(rangeIds).map((id) => id - 1));
@@ -156,7 +182,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 dispatcher.setSelectedRows([rowId - 1]);
             }
         },
-        [dispatcher, rows],
+        [buildRangeSet, dispatcher],
     );
 
     // Handle keyboard selection: Space toggles current row, Shift+Arrow extends range
@@ -177,9 +203,7 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                     const anchorId = anchorRowIdRef.current;
                     const startId = Math.min(anchorId, rowId);
                     const endId = Math.max(anchorId, rowId);
-                    const rangeIds = new Set(
-                        rows.filter((r) => r.__id >= startId && r.__id <= endId).map((r) => r.__id),
-                    );
+                    const rangeIds = buildRangeSet(startId, endId);
                     setSelectedRows(rangeIds);
                     dispatcher.setSelectedRows(Array.from(rangeIds).map((id) => id - 1));
                 } else {
@@ -211,16 +235,14 @@ export const ResultTabViewTable = ({ headers, dataset }: ResultTabViewTableProps
                 if (nextRowId !== undefined) {
                     const startId = Math.min(anchorId, nextRowId);
                     const endId = Math.max(anchorId, nextRowId);
-                    const rangeIds = new Set(
-                        rows.filter((r) => r.__id >= startId && r.__id <= endId).map((r) => r.__id),
-                    );
+                    const rangeIds = buildRangeSet(startId, endId);
                     setSelectedRows(rangeIds);
                     dispatcher.setSelectedRows(Array.from(rangeIds).map((id) => id - 1));
                 }
                 // Do NOT call preventGridDefault() — let the grid move focus to the next row
             }
         },
-        [dispatcher, rows],
+        [buildRangeSet, dispatcher, rows],
     );
 
     // Handle selection change from grid (required for visual selection to work)

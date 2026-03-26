@@ -76,7 +76,21 @@ jobs:
             - name: 🌍 Localize
               run: npm run l10n:check
 
-            - name: 🔍 Lint
+            - name: � Verify External Skills
+              shell: bash
+              run: |
+                  cp -r skills/ skills-backup/
+                  npm run fetch-skill
+                  if ! diff -rq skills/ skills-backup/ > /dev/null 2>&1; then
+                      echo "::warning::Committed skills/ does not match the pinned commit in package.json. Run 'npm run fetch-skill' locally and commit the updated files."
+                      diff -r skills/ skills-backup/ || true
+                  else
+                      echo "✅ External skills are up to date."
+                  fi
+                  rm -rf skills/
+                  mv skills-backup/ skills/
+
+            - name: �🔍 Lint
               run: npm run lint
 
             - name: ✨ Prettier

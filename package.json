@@ -67,7 +67,22 @@
     "l10n:check": "node l10n/scripts/check.l10n.mjs",
     "l10n:auto": "cross-env AZURE_TRANSLATOR_KEY= cross-env AZURE_TRANSLATOR_REGION= npx @vscode/l10n-dev generate-azure --outDir ./l10n ./l10n/bundle.l10n.json ./package.nls.json",
     "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
-    "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf"
+    "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf",
+    "fetch-skill": "node scripts/fetch-skill.mjs"
+  },
+  "externalSkills": {
+    "cosmosdb-best-practices": {
+      "repo": "AzureCosmosDB/cosmosdb-agent-kit",
+      "path": "skills/cosmosdb-best-practices",
+      "commit": "2c9ca5a7f10cec855352e63382960381bdc5c751",
+      "exclude": [
+        "metadata.json",
+        "README.md",
+        "AGENTS.md",
+        "rules/_sections.md",
+        "rules/_template.md"
+      ]
+    }
   },
   "devDependencies": {
     "@eslint/js": "~9.39.1",

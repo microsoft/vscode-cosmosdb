@@ -42,6 +42,7 @@ export async function sendChatRequest(
     await callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', async (ctx) => {
         ctx.errorHandling.suppressDisplay = true;
         ctx.telemetry.properties.caller = caller ?? 'unknown';
+        ctx.telemetry.properties.modelId = model.id;
         ctx.telemetry.properties.modelName = model.name;
         ctx.telemetry.properties.modelFamily = model.family;
 

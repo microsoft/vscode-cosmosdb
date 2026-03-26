@@ -488,8 +488,16 @@ export class CosmosDbOperationsService {
         parameters: Record<string, unknown> = {},
         onProgress?: (message: string) => void,
         onConfirm?: (message: string) => Promise<boolean>,
+        /** Where the request originated, e.g. 'chatParticipant' or 'queryEditor' */
+        source?: string,
     ): Promise<string | EditQueryResult> {
-        try {
+        const result = await callWithTelemetryAndErrorHandling('cosmosDB.ai.executeOperation', async (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+            ctx.telemetry.properties.operation = operationName;
+            if (source) {
+                ctx.telemetry.properties.source = source;
+            }
+
             switch (operationName) {
                 case 'editQuery': {
                     const { activeEditor, connection, currentResult, sessionQuery, editorQuery, hasResults } =
@@ -516,6 +524,8 @@ export class CosmosDbOperationsService {
                         onProgress,
                         onConfirm,
                         parameters.additionalContext as string | undefined,
+                        source,
+                        operationName,
                     );
                 }
                 case 'explainQuery': {
@@ -568,21 +578,20 @@ export class CosmosDbOperationsService {
                         onProgress,
                         onConfirm,
                         parameters.additionalContext as string | undefined,
+                        source,
+                        operationName,
                     );
                 }
 
                 default:
                     throw new Error(l10n.t('Unknown operation: {0}', operationName));
             }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.executeOperationFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.operation = operationName;
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
-            return l10n.t('❌ Error executing {0}: {1}', operationName, errorMessage);
+        });
+
+        if (result === undefined) {
+            return l10n.t('❌ Error executing {0}', operationName);
         }
+        return result;
     }
 
     private async handleEditQuery(
@@ -601,6 +610,8 @@ export class CosmosDbOperationsService {
         onProgress?: (message: string) => void,
         onConfirm?: (message: string) => Promise<boolean>,
         additionalContext?: string,
+        source?: string,
+        operation?: string,
     ): Promise<EditQueryResult> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
@@ -615,6 +626,8 @@ export class CosmosDbOperationsService {
                 onProgress,
                 onConfirm,
                 additionalContext,
+                source,
+                operation,
             },
         );
         const suggestion = llmSuggestion.query;
@@ -663,57 +676,44 @@ export class CosmosDbOperationsService {
         },
         additionalContext?: string,
     ): Promise<string> {
-        try {
-            // Generate LLM explanation with current query context
-            const explanation = await this.generateQueryExplanationWithLLM(
-                currentQuery,
-                userPrompt || 'Explain this query',
-                connection,
-                resultContext,
-                additionalContext,
-            );
+        // Generate LLM explanation with current query context
+        const explanation = await this.generateQueryExplanationWithLLM(
+            currentQuery,
+            userPrompt || 'Explain this query',
+            connection,
+            resultContext,
+            additionalContext,
+        );
 
-            // Build context header for better user understanding
-            let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
-            queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
-            queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
-            if (resultContext.documentCount !== undefined) {
-                queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
-                if (resultContext.requestCharge) {
-                    queryContext += l10n.t(', {0} RUs consumed', resultContext.requestCharge.toFixed(2));
-                }
-                queryContext += '\n';
-
-                // Include simplified schema for user reference
-                if (resultContext.schema) {
-                    queryContext +=
-                        l10n.t(
-                            '**Inferred Schema:** {0}',
-                            JSON.stringify(this.simplifySchemaForLLM(resultContext.schema)),
-                        ) + '\n';
-                }
+        // Build context header for better user understanding
+        let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
+        queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
+        queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
+        if (resultContext.documentCount !== undefined) {
+            queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
+            if (resultContext.requestCharge) {
+                queryContext += l10n.t(', {0} RUs consumed', resultContext.requestCharge.toFixed(2));
             }
-            queryContext += `\n`;
+            queryContext += '\n';
 
-            return (
-                `${queryContext}` +
-                l10n.t('**Query:**') +
-                `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
-                l10n.t('**Explanation:**') +
-                `\n${explanation}`
-            );
-        } catch (error) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
-            console.warn('LLM query explanation failed:', error);
-            throw new Error(
-                l10n.t(
-                    'AI query analysis is currently unavailable. For query syntax reference, visit the [Azure Cosmos DB SQL query documentation](https://learn.microsoft.com/azure/cosmos-db/nosql/query/).',
-                ),
-            );
+            // Include simplified schema for user reference
+            if (resultContext.schema) {
+                queryContext +=
+                    l10n.t(
+                        '**Inferred Schema:** {0}',
+                        JSON.stringify(this.simplifySchemaForLLM(resultContext.schema)),
+                    ) + '\n';
+            }
         }
+        queryContext += `\n`;
+
+        return (
+            `${queryContext}` +
+            l10n.t('**Query:**') +
+            `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
+            l10n.t('**Explanation:**') +
+            `\n${explanation}`
+        );
     }
 
     /**
@@ -731,66 +731,53 @@ export class CosmosDbOperationsService {
         },
         additionalContext?: string,
     ): Promise<string> {
-        try {
-            // Get available language models
-            const models = await vscode.lm.selectChatModels({});
-            if (models.length === 0) {
-                void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
-                    ctx.errorHandling.suppressDisplay = true;
-                    ctx.telemetry.properties.caller = 'explainQuery';
-                });
-                throw new Error('No language model available');
-            }
-
-            const model = models[0];
-
-            // Build user content (payload) - separated from system instructions
-            let contextInfo = `**Database:** ${connection.databaseId}\n**Container:** ${connection.containerId}\n`;
-            if (resultContext?.documentCount !== undefined) {
-                contextInfo += `**Last execution:** ${resultContext.documentCount} documents`;
-                if (resultContext.requestCharge) {
-                    contextInfo += `, ${resultContext.requestCharge.toFixed(2)} RUs`;
-                }
-                contextInfo += `\n`;
-            }
-            if (resultContext?.schema) {
-                contextInfo += `**Inferred Schema:** ${JSON.stringify(this.simplifySchemaForLLM(resultContext.schema))}\n`;
-            }
-            if (additionalContext) {
-                contextInfo += `\n## User-Provided Context\n${additionalContext}\n`;
-            }
-
-            // System prompt (fixed instructions) - from systemPrompt.ts
-            const systemPrompt = QUERY_EXPLANATION_PROMPT_TEMPLATE.replace('{contextInfo}', contextInfo)
-                .replace('{query}', query)
-                .replace('{userPrompt}', userPrompt);
-
-            // Use utility to ensure instruction message is always first
-            const systemMessage = vscode.LanguageModelChatMessage.User(systemPrompt);
-            const response = await sendChatRequest(
-                model,
-                systemMessage,
-                undefined,
-                {},
-                new vscode.CancellationTokenSource().token,
-                undefined,
-                'explainQuery',
-            );
-
-            let explanation = '';
-            for await (const fragment of response.text) {
-                explanation += fragment;
-            }
-
-            return explanation.trim();
-        } catch (error) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.generateExplanationFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
-            console.error('LLM query explanation failed:', error);
-            throw error;
+        // Get available language models
+        const models = await vscode.lm.selectChatModels({});
+        if (models.length === 0) {
+            throw new Error('No language model available');
         }
+
+        const model = models[0];
+
+        // Build user content (payload) - separated from system instructions
+        let contextInfo = `**Database:** ${connection.databaseId}\n**Container:** ${connection.containerId}\n`;
+        if (resultContext?.documentCount !== undefined) {
+            contextInfo += `**Last execution:** ${resultContext.documentCount} documents`;
+            if (resultContext.requestCharge) {
+                contextInfo += `, ${resultContext.requestCharge.toFixed(2)} RUs`;
+            }
+            contextInfo += `\n`;
+        }
+        if (resultContext?.schema) {
+            contextInfo += `**Inferred Schema:** ${JSON.stringify(this.simplifySchemaForLLM(resultContext.schema))}\n`;
+        }
+        if (additionalContext) {
+            contextInfo += `\n## User-Provided Context\n${additionalContext}\n`;
+        }
+
+        // System prompt (fixed instructions) - from systemPrompt.ts
+        const systemPrompt = QUERY_EXPLANATION_PROMPT_TEMPLATE.replace('{contextInfo}', contextInfo)
+            .replace('{query}', query)
+            .replace('{userPrompt}', userPrompt);
+
+        // Use utility to ensure instruction message is always first
+        const systemMessage = vscode.LanguageModelChatMessage.User(systemPrompt);
+        const response = await sendChatRequest(
+            model,
+            systemMessage,
+            undefined,
+            {},
+            new vscode.CancellationTokenSource().token,
+            undefined,
+            'explainQuery',
+        );
+
+        let explanation = '';
+        for await (const fragment of response.text) {
+            explanation += fragment;
+        }
+
+        return explanation.trim();
     }
 
     /**
@@ -812,6 +799,10 @@ export class CosmosDbOperationsService {
             onProgress?: (message: string) => void;
             onConfirm?: (message: string) => Promise<boolean>;
             additionalContext?: string;
+            /** Where the request originated: 'queryEditor' or 'chatParticipant' */
+            source?: string;
+            /** The NL2Query operation type: 'generateQuery', 'editQuery', or 'explainQuery' */
+            operation?: string;
         },
     ): Promise<string>;
     public async generateQueryWithLLM(
@@ -825,6 +816,8 @@ export class CosmosDbOperationsService {
             onProgress?: (message: string) => void;
             onConfirm?: (message: string) => Promise<boolean>;
             additionalContext?: string;
+            source?: string;
+            operation?: string;
         },
     ): Promise<{ query: string; explanation: string }>;
     public async generateQueryWithLLM(
@@ -838,6 +831,8 @@ export class CosmosDbOperationsService {
             onProgress?: (message: string) => void;
             onConfirm?: (message: string) => Promise<boolean>;
             additionalContext?: string;
+            source?: string;
+            operation?: string;
         },
     ): Promise<string | { query: string; explanation: string }> {
         const {
@@ -849,6 +844,8 @@ export class CosmosDbOperationsService {
             onConfirm,
             additionalContext,
         } = options ?? {};
+        const source = options?.source;
+        const operation = options?.operation;
 
         const models = await vscode.lm.selectChatModels();
         if (models.length === 0) {
@@ -1127,6 +1124,12 @@ export class CosmosDbOperationsService {
             ctx.telemetry.properties.schemaSampled = String(schemaSamplingExecuted);
             ctx.telemetry.properties.modelId = model.id;
             ctx.telemetry.properties.hasCurrentQuery = String(!!currentQuery);
+            if (source) {
+                ctx.telemetry.properties.source = source;
+            }
+            if (operation) {
+                ctx.telemetry.properties.operation = operation;
+            }
             if (schemaSamplingUserAllowed !== undefined) {
                 ctx.telemetry.properties.schemaSamplingUserAllowed = String(schemaSamplingUserAllowed);
             }

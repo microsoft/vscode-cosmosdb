@@ -52,6 +52,8 @@ export class QueryEditorTab extends BaseTab {
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
     private isLastQueryAIGenerated: boolean = false;
+    /** The raw AI-generated query text, used to detect if the user modified it before running */
+    private lastAIGeneratedQuery: string | undefined;
     private lastGenerationFailed: boolean = false;
     private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
     private pendingConfirmResolve: ((confirmed: boolean) => void) | undefined;
@@ -153,6 +155,8 @@ export class QueryEditorTab extends BaseTab {
 
     public async updateQuery(query: string): Promise<void> {
         this.query = query;
+        this.isLastQueryAIGenerated = true;
+        this.lastAIGeneratedQuery = query;
         await this.channel.postMessage({
             type: 'event',
             name: 'fileOpened',
@@ -544,7 +548,10 @@ export class QueryEditorTab extends BaseTab {
         this.query = query;
 
         const wasAIGenerated = this.isLastQueryAIGenerated;
+        const wasModified =
+            wasAIGenerated && this.lastAIGeneratedQuery !== undefined && query !== this.lastAIGeneratedQuery;
         this.isLastQueryAIGenerated = false;
+        this.lastAIGeneratedQuery = undefined;
 
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
@@ -553,6 +560,9 @@ export class QueryEditorTab extends BaseTab {
             }
 
             context.telemetry.properties.isAIGenerated = String(wasAIGenerated);
+            if (wasAIGenerated) {
+                context.telemetry.properties.isQueryModified = String(wasModified);
+            }
 
             if (options.sessionId) {
                 // Need to check if session exists in the current sessions
@@ -763,7 +773,6 @@ export class QueryEditorTab extends BaseTab {
 
     private updateQueryText(query: string): void {
         this.query = query;
-        this.isLastQueryAIGenerated = false;
     }
 
     private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
@@ -811,6 +820,8 @@ export class QueryEditorTab extends BaseTab {
                     modelId: model.id,
                     historyContext,
                     cancellationToken: token,
+                    source: 'queryEditor',
+                    operation: 'generateQuery',
                     onConfirm: async (message: string) => {
                         await this.channel.postMessage({
                             type: 'event',
@@ -847,6 +858,7 @@ export class QueryEditorTab extends BaseTab {
                 const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
 
                 this.isLastQueryAIGenerated = true;
+                this.lastAIGeneratedQuery = finalQuery;
 
                 await this.channel.postMessage({
                     type: 'event',
@@ -870,10 +882,6 @@ export class QueryEditorTab extends BaseTab {
 
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 this.lastGenerationFailed = true;
-                void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationFailed', (ctx) => {
-                    ctx.errorHandling.suppressDisplay = true;
-                    ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-                });
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'queryGenerated',

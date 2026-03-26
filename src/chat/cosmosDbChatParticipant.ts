@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -178,6 +178,7 @@ export class CosmosDbChatParticipant {
     private async extractIntentWithLLM(
         originalPrompt: string,
         model: vscode.LanguageModelChat,
+        ctx?: IActionContext,
     ): Promise<{ operation: string; parameters: Record<string, unknown> } | null> {
         try {
             // System prompt (fixed instructions) - from systemPrompt.ts
@@ -207,13 +208,15 @@ export class CosmosDbChatParticipant {
                 return null;
             }
 
-            const result = JSON.parse(jsonText.trim()) as { operation: string; parameters: Record<string, unknown> };
-            return result && result.operation ? result : null;
+            const parsed = JSON.parse(jsonText.trim()) as {
+                operation: string;
+                parameters: Record<string, unknown>;
+            };
+            return parsed && parsed.operation ? parsed : null;
         } catch (error) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.intentExtractionFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
+            if (ctx) {
+                ctx.telemetry.properties.intentExtractionFailed = 'true';
+            }
             console.warn('LLM intent extraction failed, falling back to rule-based:', error);
             return null;
         }
@@ -227,6 +230,7 @@ export class CosmosDbChatParticipant {
         operation: string,
         originalPrompt: string,
         model: vscode.LanguageModelChat,
+        ctx?: IActionContext,
     ): Promise<Record<string, unknown>> {
         try {
             // System prompt (fixed instructions) - from systemPrompt.ts
@@ -256,11 +260,9 @@ export class CosmosDbChatParticipant {
             const parameters = JSON.parse(jsonText.trim()) as Record<string, unknown>;
             return parameters && typeof parameters === 'object' ? parameters : {};
         } catch (error) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.parameterExtractionFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.operation = operation;
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
+            if (ctx) {
+                ctx.telemetry.properties.parameterExtractionFailed = 'true';
+            }
             console.warn('LLM parameter extraction failed, falling back to regex:', error);
             return this.extractParametersWithRegex(operation, originalPrompt);
         }
@@ -436,7 +438,7 @@ export class CosmosDbChatParticipant {
                 parameters = { ...parameters, additionalContext: chatReferencesContext };
             }
 
-            const result = await operationsService.executeOperation(
+            const operationResult = await operationsService.executeOperation(
                 operationName,
                 parameters,
                 (message) => stream.markdown(message + '\n\n'),
@@ -448,13 +450,14 @@ export class CosmosDbChatParticipant {
                     );
                     return answer === l10n.t('Allow');
                 },
+                'chatParticipant',
             );
 
             // Handle editQuery results specially with buttons
-            if (typeof result === 'object' && result.type === 'editQuery') {
-                this.handleEditQueryResult(result, stream);
+            if (typeof operationResult === 'object' && operationResult.type === 'editQuery') {
+                this.handleEditQueryResult(operationResult, stream);
             } else {
-                stream.markdown(result as string);
+                stream.markdown(operationResult as string);
             }
 
             // Add contextual suggestions
@@ -464,14 +467,10 @@ export class CosmosDbChatParticipant {
             const suggestions = OperationParser.generateSuggestions(!!connection);
             stream.markdown(suggestions);
 
-            return { metadata: { command: 'cosmosdb', operation: intent.operation, method: 'intent' } };
+            return {
+                metadata: { command: 'cosmosdb', operation: intent.operation, method: 'intent' },
+            };
         } catch (error) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.intentOperationFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.operation = intent.operation;
-                ctx.telemetry.properties.method = 'intent';
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
             stream.markdown(safeErrorDisplay(error as Error | string, '❌ Intent-based operation failed:'));
             return { metadata: { command: 'cosmosdb', result: 'error' } };
         }
@@ -484,6 +483,7 @@ export class CosmosDbChatParticipant {
         request: vscode.ChatRequest,
         stream: vscode.ChatResponseStream,
         _token: vscode.CancellationToken,
+        ctx?: IActionContext,
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
@@ -526,7 +526,7 @@ export class CosmosDbChatParticipant {
             // Use LLM to extract parameters if available, otherwise fallback to basic extraction
             if (languageModel && request.prompt.trim()) {
                 try {
-                    parameters = await this.extractParametersWithLLM(operationName, request.prompt, languageModel);
+                    parameters = await this.extractParametersWithLLM(operationName, request.prompt, languageModel, ctx);
                     stream.markdown(`🧠 **LLM Extracted Parameters:** ${safeJsonDisplay(parameters)}\n\n`);
                 } catch (error) {
                     console.warn('LLM parameter extraction failed, using basic extraction:', error);
@@ -563,7 +563,7 @@ export class CosmosDbChatParticipant {
                 parameters = { ...parameters, additionalContext: chatReferencesContext };
             }
 
-            const result = await operationsService.executeOperation(
+            const operationResult = await operationsService.executeOperation(
                 operationName,
                 parameters,
                 (message) => stream.markdown(message + '\n\n'),
@@ -575,13 +575,14 @@ export class CosmosDbChatParticipant {
                     );
                     return answer === l10n.t('Allow');
                 },
+                'chatParticipant',
             );
 
             // Handle editQuery results specially with buttons
-            if (typeof result === 'object' && result.type === 'editQuery') {
-                this.handleEditQueryResult(result, stream);
+            if (typeof operationResult === 'object' && operationResult.type === 'editQuery') {
+                this.handleEditQueryResult(operationResult, stream);
             } else {
-                stream.markdown(result as string);
+                stream.markdown(operationResult as string);
             }
 
             // Add suggestions for next operations
@@ -594,12 +595,6 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: request.command } };
         } catch (error) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.commandFailed', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.command = request.command || 'unknown';
-                ctx.telemetry.properties.method = 'command';
-                ctx.telemetry.properties.errorType = error instanceof Error ? error.constructor.name : 'unknown';
-            });
             stream.markdown(safeErrorDisplay(error as Error | string, '❌ Command failed:'));
             return { metadata: { command: 'cosmosdb', result: 'error' } };
         }
@@ -716,128 +711,123 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
         let resolvedCommand = request.command || 'freeform';
         let resolvedMethod = 'command';
 
-        try {
-            // Check if AI features are available
-            if (!(await areAIFeaturesEnabled())) {
-                stream.markdown(
-                    l10n.t(
-                        'AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.',
-                    ),
-                );
-                return { metadata: { command: '', result: 'AI features disabled' } };
-            }
+        const result = await callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.request', async (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
 
-            // Handle commands that don't require an active connection
-            if (request.command === 'question') {
-                const questionModel = await this.getLanguageModel(request);
-                if (!questionModel) {
-                    stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
-                    return { metadata: { command: 'cosmosdb' } };
+            try {
+                // Check if AI features are available
+                if (!(await areAIFeaturesEnabled())) {
+                    stream.markdown(
+                        l10n.t(
+                            'AI features are currently unavailable. Please ensure GitHub Copilot is installed and enabled.',
+                        ),
+                    );
+                    return { metadata: { command: '', result: 'AI features disabled' } } as vscode.ChatResult;
                 }
-                return await this.handleFreeformChat(request, questionModel, stream, token);
-            }
-            if (request.command === 'help') {
-                return await this.handleHelpCommand(stream);
-            }
 
-            // Check if there's an active connection or query editor
-            const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-            const hasConnection = activeQueryEditors.length > 0;
+                // Handle commands that don't require an active connection
+                if (request.command === 'question') {
+                    const questionModel = await this.getLanguageModel(request);
+                    if (!questionModel) {
+                        stream.markdown(
+                            l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'),
+                        );
+                        return { metadata: { command: 'cosmosdb' } } as vscode.ChatResult;
+                    }
+                    return await this.handleFreeformChat(request, questionModel, stream, token);
+                }
+                if (request.command === 'help') {
+                    return await this.handleHelpCommand(stream);
+                }
 
-            if (!hasConnection) {
-                // For natural language requests, check if this is a general question
-                // that doesn't need a connection
-                if (!request.command) {
-                    const noConnModel = await this.getLanguageModel(request);
-                    if (noConnModel) {
-                        const llmIntent = await this.extractIntentWithLLM(request.prompt, noConnModel);
-                        if (!llmIntent || llmIntent.operation === 'generalQuestion') {
-                            resolvedCommand = 'question';
-                            resolvedMethod = 'intent';
-                            return await this.handleFreeformChat(request, noConnModel, stream, token);
-                        }
-                        if (llmIntent.operation === 'help') {
-                            resolvedCommand = 'help';
-                            resolvedMethod = 'intent';
-                            return await this.handleHelpCommand(stream);
+                // Check if there's an active connection or query editor
+                const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+                const hasConnection = activeQueryEditors.length > 0;
+
+                if (!hasConnection) {
+                    // For natural language requests, check if this is a general question
+                    // that doesn't need a connection
+                    if (!request.command) {
+                        const noConnModel = await this.getLanguageModel(request);
+                        if (noConnModel) {
+                            const llmIntent = await this.extractIntentWithLLM(request.prompt, noConnModel, ctx);
+                            if (!llmIntent || llmIntent.operation === 'generalQuestion') {
+                                resolvedCommand = 'question';
+                                resolvedMethod = 'intent';
+                                return await this.handleFreeformChat(request, noConnModel, stream, token);
+                            }
+                            if (llmIntent.operation === 'help') {
+                                resolvedCommand = 'help';
+                                resolvedMethod = 'intent';
+                                return await this.handleHelpCommand(stream);
+                            }
                         }
                     }
+
+                    stream.markdown(l10n.t('⚠️ **No Cosmos DB connection found.**') + '\n\n');
+                    stream.markdown(
+                        l10n.t('Please connect to a Cosmos DB container to use the chat assistant.') + '\n\n',
+                    );
+
+                    // Add a button to open the query editor which will prompt for connection
+                    stream.button({
+                        command: 'cosmosDB.openNoSqlQueryEditor',
+                        title: l10n.t('🔌 Open Query Editor'),
+                        arguments: [],
+                    });
+
+                    return { metadata: { command: '', result: 'No connection' } } as vscode.ChatResult;
                 }
 
-                stream.markdown(l10n.t('⚠️ **No Cosmos DB connection found.**') + '\n\n');
-                stream.markdown(l10n.t('Please connect to a Cosmos DB container to use the chat assistant.') + '\n\n');
+                // Check if this is a structured command request (explicit intent)
+                if (request.command) {
+                    return await this.handleStructuredCommand(request, stream, token, ctx);
+                }
 
-                void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.noConnection', (ctx) => {
-                    ctx.errorHandling.suppressDisplay = true;
-                    ctx.telemetry.properties.command = request.command || 'freeform';
-                });
+                // Get the language model from the request or select one
+                const model = await this.getLanguageModel(request);
+                if (!model) {
+                    stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
+                    return { metadata: { command: 'cosmosdb' } } as vscode.ChatResult;
+                }
 
-                // Add a button to open the query editor which will prompt for connection
-                stream.button({
-                    command: 'cosmosDB.openNoSqlQueryEditor',
-                    title: l10n.t('🔌 Open Query Editor'),
-                    arguments: [],
-                });
+                // First try LLM-based intent detection (most intelligent approach)
+                const llmIntent = await this.extractIntentWithLLM(request.prompt, model, ctx);
+                if (llmIntent && llmIntent.operation !== 'generalQuestion') {
+                    resolvedCommand = llmIntent.operation;
+                    resolvedMethod = 'intent';
+                    stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
+                    if (Object.keys(llmIntent.parameters).length > 0) {
+                        stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
+                    } else {
+                        stream.markdown('\n');
+                    }
+                    return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
+                }
 
-                return { metadata: { command: '', result: 'No connection' } };
-            }
+                // No structured intent or general question — handle as free-form conversation
+                resolvedCommand = 'question';
+                resolvedMethod = 'fallback';
+                return await this.handleFreeformChat(request, model, stream, token);
+            } catch (error) {
+                // Handle errors gracefully
+                console.error('CosmosDB chat participant error:', error);
 
-            // Check if this is a structured command request (explicit intent)
-            if (request.command) {
-                return await this.handleStructuredCommand(request, stream, token);
-            }
-
-            // Get the language model from the request or select one
-            const model = await this.getLanguageModel(request);
-            if (!model) {
-                stream.markdown(l10n.t('❌ No language model available. Please ensure GitHub Copilot is enabled.'));
-                return { metadata: { command: 'cosmosdb' } };
-            }
-
-            // First try LLM-based intent detection (most intelligent approach)
-            const llmIntent = await this.extractIntentWithLLM(request.prompt, model);
-            if (llmIntent && llmIntent.operation !== 'generalQuestion') {
-                resolvedCommand = llmIntent.operation;
-                resolvedMethod = 'intent';
-                stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
-                if (Object.keys(llmIntent.parameters).length > 0) {
-                    stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
+                if (error instanceof vscode.LanguageModelError) {
+                    // Handle specific language model errors
+                    stream.markdown(l10n.t('❌ Language model error: {0}', error.message));
                 } else {
-                    stream.markdown('\n');
+                    stream.markdown(l10n.t('❌ An error occurred while processing your request. Please try again.'));
                 }
-                return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
-            }
 
-            // No structured intent or general question — handle as free-form conversation
-            resolvedCommand = 'question';
-            resolvedMethod = 'fallback';
-            return await this.handleFreeformChat(request, model, stream, token);
-        } catch (error) {
-            // Handle errors gracefully
-            console.error('CosmosDB chat participant error:', error);
-
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.error', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.command = resolvedCommand;
-                ctx.telemetry.properties.errorType =
-                    error instanceof vscode.LanguageModelError ? 'languageModel' : 'unknown';
-            });
-
-            if (error instanceof vscode.LanguageModelError) {
-                // Handle specific language model errors
-                stream.markdown(l10n.t('❌ Language model error: {0}', error.message));
-            } else {
-                stream.markdown(l10n.t('❌ An error occurred while processing your request. Please try again.'));
-            }
-
-            return { metadata: { command: 'cosmosdb', result: 'error' } };
-        } finally {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.request', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
+                throw error;
+            } finally {
                 ctx.telemetry.properties.command = resolvedCommand;
                 ctx.telemetry.properties.method = resolvedMethod;
                 ctx.telemetry.measurements.durationMs = Date.now() - requestStartTime;
-            });
-        }
+            }
+        });
+
+        return result ?? { metadata: { command: 'cosmosdb', result: 'error' } };
     }
 }

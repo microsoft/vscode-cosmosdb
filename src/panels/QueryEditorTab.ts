@@ -779,6 +779,7 @@ export class QueryEditorTab extends BaseTab {
         const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
         const isRetry = this.lastGenerationFailed;
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+            context.errorHandling.suppressDisplay = true;
             context.telemetry.properties.isRetry = String(isRetry);
             this.lastGenerationFailed = false;
             // Cancel any existing generation
@@ -892,6 +893,7 @@ export class QueryEditorTab extends BaseTab {
                     name: 'showErrorMessage',
                     params: [l10n.t('Failed to generate query: {0}', errorMessage)],
                 });
+                throw error;
             }
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);

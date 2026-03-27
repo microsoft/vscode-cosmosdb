@@ -300,7 +300,7 @@ export const GenerateQueryInput = () => {
             }
         };
         void channel.on('availableModels', handler as never);
-    return () => channel.off('availableModels');
+        return () => channel.off('availableModels');
     }, [channel]);
 
     // Fetch available models when input becomes visible

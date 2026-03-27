@@ -59,7 +59,7 @@ import * as l10n from '@vscode/l10n';
 import { assert } from 'console';
 import Denque from 'denque';
 import { type JSONSchema } from '../JSONSchema';
-import { NoSQLTypes } from './NoSqlTypes';
+import { inferNoSqlType, noSqlTypeToJSONType, type NoSQLTypes } from './NoSqlTypes';
 
 export type NoSQLDocument = Record<string, NoSQLTypes>;
 
@@ -88,7 +88,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
      * Start by pushing all root-level elements of the document into the queue
      */
     for (const [name, value] of Object.entries(document)) {
-        const datatype = NoSQLTypes.inferType(value);
+        const datatype = inferNoSqlType(value);
 
         // Ensure the field exists in the schema
         if (!schema.properties[name]) {
@@ -111,7 +111,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
         if (!typeEntry) {
             // Create a new type entry
             typeEntry = {
-                type: NoSQLTypes.toJSONType(datatype),
+                type: noSqlTypeToJSONType(datatype),
                 'x-bsonType': datatype,
                 'x-typeOccurrence': 0,
             };
@@ -145,7 +145,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
         }
 
         switch (item.fieldType) {
-            case NoSQLTypes.Object: {
+            case 'object': {
                 const objValue = item.fieldValue as Record<string, unknown>;
                 const objKeysCount = Object.keys(objValue).length;
 
@@ -159,7 +159,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
 
                 // Iterate over the object's properties
                 for (const [name, value] of Object.entries(objValue)) {
-                    const datatype = NoSQLTypes.inferType(value);
+                    const datatype = inferNoSqlType(value);
 
                     // Ensure the field exists in the schema
                     if (!item.propertySchema.properties[name]) {
@@ -182,7 +182,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
                     if (!typeEntry) {
                         // Create a new type entry
                         typeEntry = {
-                            type: NoSQLTypes.toJSONType(datatype),
+                            type: noSqlTypeToJSONType(datatype),
                             'x-bsonType': datatype,
                             'x-typeOccurrence': 0,
                         };
@@ -207,7 +207,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
                 break;
             }
 
-            case NoSQLTypes.Array: {
+            case 'array': {
                 const arrayValue = item.fieldValue as unknown[];
                 const arrayLength = arrayValue.length;
 
@@ -229,7 +229,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
 
                 // Iterate over the array elements
                 for (const element of arrayValue) {
-                    const elementType = NoSQLTypes.inferType(element);
+                    const elementType = inferNoSqlType(element);
 
                     // Find or create the type entry in 'items.anyOf'
                     let itemEntry = findTypeEntry(itemsSchema.anyOf as JSONSchema[], elementType);
@@ -237,7 +237,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
                     if (!itemEntry) {
                         // Create a new type entry
                         itemEntry = {
-                            type: NoSQLTypes.toJSONType(elementType),
+                            type: noSqlTypeToJSONType(elementType),
                             'x-bsonType': elementType,
                             'x-typeOccurrence': 0,
                         };
@@ -261,7 +261,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
                     }
 
                     // If the element is an object or array, queue it for further processing
-                    if (elementType === NoSQLTypes.Object || elementType === NoSQLTypes.Array) {
+                    if (elementType === 'object' || elementType === 'array') {
                         fifoQueue.push({
                             fieldName: '[]', // Array items don't have a specific field name
                             fieldType: elementType,
@@ -330,10 +330,10 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
      * Push all elements from the root of the document into the queue
      */
     for (const [name, value] of Object.entries(document)) {
-        const datatype = NoSQLTypes.inferType(value);
+        const datatype = inferNoSqlType(value);
 
         const typeEntry = {
-            type: NoSQLTypes.toJSONType(datatype),
+            type: noSqlTypeToJSONType(datatype),
             'x-bsonType': datatype,
             'x-typeOccurrence': 1,
         };
@@ -363,7 +363,7 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
         }
 
         switch (item.fieldNoSQLType) {
-            case NoSQLTypes.Object: {
+            case 'object': {
                 const objKeys = Object.keys(item.fieldValue as object).length;
                 item.propertyTypeEntry['x-maxLength'] = objKeys;
                 item.propertyTypeEntry['x-minLength'] = objKeys;
@@ -372,10 +372,10 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
                 item.propertyTypeEntry.properties = {};
 
                 for (const [name, value] of Object.entries(item.fieldValue as object)) {
-                    const mongoDatatype = NoSQLTypes.inferType(value);
+                    const mongoDatatype = inferNoSqlType(value);
 
                     const typeEntry = {
-                        type: NoSQLTypes.toJSONType(mongoDatatype),
+                        type: noSqlTypeToJSONType(mongoDatatype),
                         'x-bsonType': mongoDatatype,
                         'x-typeOccurrence': 1,
                     };
@@ -393,7 +393,7 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
                 }
                 break;
             }
-            case NoSQLTypes.Array: {
+            case 'array': {
                 const arrayLength = (item.fieldValue as unknown[]).length;
                 item.propertyTypeEntry['x-maxLength'] = arrayLength;
                 item.propertyTypeEntry['x-minLength'] = arrayLength;
@@ -406,13 +406,13 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
 
                 // iterate over the array and infer the type of each element
                 for (const element of item.fieldValue as unknown[]) {
-                    const elementMongoType = NoSQLTypes.inferType(element);
+                    const elementMongoType = inferNoSqlType(element);
 
                     let itemEntry: JSONSchema;
 
                     if (!encounteredMongoTypes.has(elementMongoType)) {
                         itemEntry = {
-                            type: NoSQLTypes.toJSONType(elementMongoType),
+                            type: noSqlTypeToJSONType(elementMongoType),
                             'x-bsonType': elementMongoType,
                             'x-typeOccurrence': 1, // Initialize type occurrence counter
                         };
@@ -436,7 +436,7 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
 
                     // an imporant exception for arrays as we have to start adding them already now to the schema
                     // (if we want to avoid more iterations over the data)
-                    if (elementMongoType === NoSQLTypes.Object || elementMongoType === NoSQLTypes.Array) {
+                    if (elementMongoType === 'object' || elementMongoType === 'array') {
                         fifoQueue.push({
                             fieldName: '[]', // Array items don't have a field name
                             fieldNoSQLType: elementMongoType,
@@ -467,29 +467,29 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
  */
 function initializeStatsForValue(value: unknown, type: NoSQLTypes, propertyTypeEntry: JSONSchema): void {
     switch (type) {
-        case NoSQLTypes.String: {
+        case 'string': {
             const currentLength = (value as string).length;
             propertyTypeEntry['x-maxLength'] = currentLength;
             propertyTypeEntry['x-minLength'] = currentLength;
             break;
         }
 
-        case NoSQLTypes.Number: {
+        case 'number': {
             const numericValue = Number(value);
             propertyTypeEntry['x-maxValue'] = numericValue;
             propertyTypeEntry['x-minValue'] = numericValue;
             break;
         }
 
-        case NoSQLTypes.Boolean: {
+        case 'boolean': {
             const boolValue = value as boolean;
             propertyTypeEntry['x-trueCount'] = boolValue ? 1 : 0;
             propertyTypeEntry['x-falseCount'] = boolValue ? 0 : 1;
             break;
         }
 
-        case NoSQLTypes.Null:
-        case NoSQLTypes.Timestamp:
+        case 'null':
+        case 'timestamp':
             // No stats computation for other types
             break;
 
@@ -505,7 +505,7 @@ function initializeStatsForValue(value: unknown, type: NoSQLTypes, propertyTypeE
  */
 function aggregateStatsForValue(value: unknown, type: NoSQLTypes, propertyTypeEntry: JSONSchema): void {
     switch (type) {
-        case NoSQLTypes.String: {
+        case 'string': {
             const currentLength = (value as string).length;
 
             // Update minLength
@@ -520,7 +520,7 @@ function aggregateStatsForValue(value: unknown, type: NoSQLTypes, propertyTypeEn
             break;
         }
 
-        case NoSQLTypes.Number: {
+        case 'number': {
             const numericValue = Number(value);
 
             // Update minValue
@@ -535,7 +535,7 @@ function aggregateStatsForValue(value: unknown, type: NoSQLTypes, propertyTypeEn
             break;
         }
 
-        case NoSQLTypes.Boolean: {
+        case 'boolean': {
             const boolValue = value as boolean;
 
             // Update trueCount and falseCount

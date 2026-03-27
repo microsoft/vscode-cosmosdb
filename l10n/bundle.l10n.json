@@ -605,6 +605,7 @@
   "Unable to find resource \"{0}\". Please ensure the resource exists and try again.": "Unable to find resource \"{0}\". Please ensure the resource exists and try again.",
   "Unable to parse execution result": "Unable to parse execution result",
   "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.": "Unable to reach emulator. Please ensure it is started and connected to the port specified by the 'cosmosDB.emulator.port' setting, then try again.",
+  "Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.": "Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.",
   "Unable to verify resource group \"{0}\" in subscription \"{1}\" due to a lack of permissions.": "Unable to verify resource group \"{0}\" in subscription \"{1}\" due to a lack of permissions.",
   "Unexpected status code: {0}": "Unexpected status code: {0}",
   "Unknown command: {commandName}": "Unknown command: {commandName}",

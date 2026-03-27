@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,7 +22,12 @@ import {
 import { sanitizeSqlComment } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
-import { SAMPLE_DATA_CONFIRMATION_MESSAGE, SAMPLE_DATA_TOOL_NAME, sampleContainerSchema } from './sampleDataTool';
+import {
+    SAMPLE_DATA_CONFIRMATION_MESSAGE,
+    SAMPLE_DATA_TOOL_NAME,
+    sampleContainerSchema,
+    type SampleSchemaResult,
+} from './sampleDataTool';
 import {
     JSON_RESPONSE_FORMAT_WITH_EXPLANATION,
     QUERY_EXPLANATION_PROMPT_TEMPLATE,
@@ -905,7 +910,7 @@ export class CosmosDbOperationsService {
         const messages = buildChatMessages(systemMessage, userMessage, oneShotMessages);
         const requestOptions: vscode.LanguageModelChatRequestOptions = { tools };
 
-        ext.outputChannel.info('[Generate Query] LLM response:');
+        ext.outputChannel.debug('[Generate Query] LLM response:');
         onProgress?.(l10n.t('Generating query…'));
         const llmStartTime = Date.now();
 
@@ -957,7 +962,7 @@ export class CosmosDbOperationsService {
             for await (const part of response.stream) {
                 if (part instanceof vscode.LanguageModelTextPart) {
                     textParts.push(part.value);
-                    ext.outputChannel.append(part.value);
+                    ext.outputChannel.debug(part.value);
                 } else if (part instanceof vscode.LanguageModelToolCallPart) {
                     toolCallParts.push(part);
                 }
@@ -1026,7 +1031,28 @@ export class CosmosDbOperationsService {
                         });
 
                         const schemaSamplingStart = Date.now();
-                        const result = await sampleContainerSchema(connection);
+                        let result: SampleSchemaResult;
+                        try {
+                            result = await sampleContainerSchema(connection);
+                        } catch (error) {
+                            const errMsg = parseError(error).message;
+                            ext.outputChannel.error(`[Generate Query] Failed to sample container schema: ${errMsg}`);
+                            const baseMessage = l10n.t(
+                                'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
+                            );
+                            void vscode.window.showErrorMessage(
+                                errMsg ? `${baseMessage} ${l10n.t('Error: {0}', errMsg)}` : baseMessage,
+                            );
+                            toolResult = new vscode.LanguageModelToolResult([
+                                new vscode.LanguageModelTextPart(l10n.t('Failed to sample data: {0}', errMsg)),
+                            ]);
+                            messages.push(
+                                vscode.LanguageModelChatMessage.User([
+                                    new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
+                                ]),
+                            );
+                            continue;
+                        }
                         toolResult = new vscode.LanguageModelToolResult([
                             new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                         ]);

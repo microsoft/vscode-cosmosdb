@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
@@ -223,8 +224,14 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                     new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                 ]);
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
+                const message = parseError(error).message;
                 ext.outputChannel.error(`[Sample Schema Tool] Failed to sample data: ${message}`);
+                const baseMessage = l10n.t(
+                    'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
+                );
+                void vscode.window.showErrorMessage(
+                    message ? `${baseMessage} ${l10n.t('Error: {0}', message)}` : baseMessage,
+                );
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(l10n.t('Failed to sample data: {0}', message)),
                 ]);

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
@@ -881,18 +881,14 @@ export class QueryEditorTab extends BaseTab {
                     return;
                 }
 
-                const errorMessage = error instanceof Error ? error.message : String(error);
+                const errorMessage = parseError(error).message;
                 this.lastGenerationFailed = true;
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'queryGenerated',
                     params: [false],
                 });
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'showErrorMessage',
-                    params: [l10n.t('Failed to generate query: {0}', errorMessage)],
-                });
+                void vscode.window.showErrorMessage(l10n.t('Failed to generate query: {0}', errorMessage));
                 throw error;
             }
         });

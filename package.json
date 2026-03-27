@@ -149,7 +149,7 @@
     "@fluentui/react-components": "~9.73.0",
     "@fluentui/react-icons": "~2.0.313",
     "@microsoft/vscode-azext-azureauth": "~5.1.1",
-    "@microsoft/vscode-azext-azureutils": "~4.0.0",
+    "@microsoft/vscode-azext-azureutils": "~4.1.0",
     "@microsoft/vscode-azext-utils": "~4.0.1",
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@monaco-editor/react": "~4.7.0",

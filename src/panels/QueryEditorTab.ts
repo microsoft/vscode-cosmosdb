@@ -130,6 +130,7 @@ export class QueryEditorTab extends BaseTab {
             await this.updateQueryHistory();
             await this.updateThroughputBuckets();
             await this.syncSchemaBasedOnQueriesSetting();
+            await this.sendSchemaToWebview();
 
             if (this.query) {
                 await this.channel.postMessage({
@@ -165,6 +166,34 @@ export class QueryEditorTab extends BaseTab {
             type: 'event',
             name: 'schemaSettingChanged',
             params: [isEnabled],
+        });
+    }
+
+    /**
+     * Sends the current container schema to the webview for autocompletion.
+     * If no schema exists for the current connection, sends null.
+     */
+    private async sendSchemaToWebview(): Promise<void> {
+        if (!this.connection) {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'schemaUpdated',
+                params: [null],
+            });
+            return;
+        }
+
+        const schemaId = this.getSchemaStorageId(this.connection);
+        const storage = StorageService.get(StorageNames.Default);
+        const items = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
+        const schemaItem = items.find((item) => item.id === schemaId);
+
+        const schema = schemaItem ? (JSON.parse(schemaItem.properties.schema) as JSONSchema) : null;
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'schemaUpdated',
+            params: [schema],
         });
     }
 
@@ -741,6 +770,8 @@ export class QueryEditorTab extends BaseTab {
         };
 
         await storage.push(SCHEMA_STORAGE_KEY, schemaItem);
+
+        await this.sendSchemaToWebview();
     }
 
     private getNextViewColumn(): vscode.ViewColumn {
@@ -835,6 +866,8 @@ export class QueryEditorTab extends BaseTab {
             void vscode.window.showInformationMessage(
                 l10n.t('Schema generated from {0} documents and saved for {1}.', documents.length, containerLabel),
             );
+
+            await this.sendSchemaToWebview();
         });
     }
 
@@ -895,6 +928,8 @@ export class QueryEditorTab extends BaseTab {
             await storage.delete(SCHEMA_STORAGE_KEY, schemaId);
 
             void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));
+
+            await this.sendSchemaToWebview();
         });
     }
 

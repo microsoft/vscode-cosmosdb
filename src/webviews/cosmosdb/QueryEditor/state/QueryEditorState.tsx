@@ -6,6 +6,7 @@
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
 import { isSelectStar } from '../../../../utils/convertors';
+import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
@@ -80,6 +81,10 @@ export type DispatchAction =
     | {
           type: 'setSchemaBasedOnQueries';
           isSchemaBasedOnQueries: boolean;
+      }
+    | {
+          type: 'setContainerSchema';
+          containerSchema: JSONSchema | null;
       };
 
 export type QueryEditorState = {
@@ -111,6 +116,8 @@ export type QueryEditorState = {
     tableViewMode: TableViewMode;
 
     isSchemaBasedOnQueries: boolean;
+
+    containerSchema: JSONSchema | null; // Schema of the container documents for autocompletion
 };
 
 export const defaultState: QueryEditorState = {
@@ -142,6 +149,8 @@ export const defaultState: QueryEditorState = {
     tableViewMode: 'Table',
 
     isSchemaBasedOnQueries: false,
+
+    containerSchema: null,
 };
 
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
@@ -207,5 +216,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, connectionList: action.connectionList };
         case 'setSchemaBasedOnQueries':
             return { ...state, isSchemaBasedOnQueries: action.isSchemaBasedOnQueries };
+        case 'setContainerSchema':
+            return { ...state, containerSchema: action.containerSchema };
     }
 }

@@ -13,6 +13,7 @@ import {
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
+import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
@@ -211,6 +212,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('schemaSettingChanged', (isSchemaBasedOnQueries: boolean) => {
             this.dispatch({ type: 'setSchemaBasedOnQueries', isSchemaBasedOnQueries });
+        });
+
+        this.channel.on('schemaUpdated', (containerSchema: JSONSchema | null) => {
+            this.dispatch({ type: 'setContainerSchema', containerSchema });
         });
     }
 }

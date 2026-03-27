@@ -39,6 +39,7 @@
     "onFileSystem:azureDatabases",
     "onView:azureWorkspace",
     "onView:azureResourceGroups",
+    "onLanguage:nosql",
     "onUri"
   ],
   "scripts": {
@@ -235,7 +236,19 @@
         ],
         "extensions": [
           ".nosql"
-        ]
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./resources/icons/theme-agnostic/CosmosDBAccount.svg",
+          "dark": "./resources/icons/theme-agnostic/CosmosDBAccount.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nosql",
+        "scopeName": "source.nosql",
+        "path": "./syntaxes/nosql.tmLanguage.json"
       }
     ],
     "commands": [

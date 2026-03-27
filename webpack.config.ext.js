@@ -166,6 +166,14 @@ module.exports = (env, { mode }) => {
                         to: 'skills',
                     },
                     {
+                        from: 'syntaxes',
+                        to: 'syntaxes',
+                    },
+                    {
+                        from: 'language-configuration.json',
+                        to: 'language-configuration.json',
+                    },
+                    {
                         from: 'SECURITY.md',
                         to: 'SECURITY.md',
                     },

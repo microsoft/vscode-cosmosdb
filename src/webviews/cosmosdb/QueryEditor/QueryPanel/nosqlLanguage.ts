@@ -14,8 +14,13 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import {
+    NOSQL_FUNCTION_NAMES,
+    NOSQL_KEYWORD_TOKENS,
+    NOSQL_LANGUAGE_ID,
+} from '../../../../cosmosdb/language/nosqlLanguageDefinitions';
 
-export const NOSQL_LANGUAGE_ID = 'nosql';
+export { NOSQL_LANGUAGE_ID } from '../../../../cosmosdb/language/nosqlLanguageDefinitions';
 
 /**
  * Language configuration for bracket matching, comments, and auto-closing pairs.
@@ -58,173 +63,11 @@ export const nosqlMonarchTokensProvider: monaco.languages.IMonarchLanguage = {
     ignoreCase: true,
     tokenPostfix: '.nosql',
 
-    // SQL-like keywords and CosmosDB-specific keywords
-    keywords: [
-        // Clauses
-        'SELECT',
-        'DISTINCT',
-        'TOP',
-        'FROM',
-        'WHERE',
-        'ORDER',
-        'BY',
-        'ASC',
-        'DESC',
-        'GROUP',
-        'HAVING',
-        'OFFSET',
-        'LIMIT',
-        'JOIN',
-        'IN',
-        'AS',
+    // SQL-like keywords and CosmosDB-specific keywords (from shared module)
+    keywords: [...NOSQL_KEYWORD_TOKENS],
 
-        // CosmosDB-specific
-        'VALUE',
-        'EXISTS',
-        'BETWEEN',
-        'LIKE',
-        'ARRAY',
-        'UDF',
-
-        // Logical
-        'AND',
-        'OR',
-        'NOT',
-
-        // Literals
-        'NULL',
-        'TRUE',
-        'FALSE',
-        'UNDEFINED',
-    ],
-
-    // Built-in functions (highlighting as support functions)
-    builtinFunctions: [
-        // Aggregate functions
-        'AVG',
-        'COUNT',
-        'MAX',
-        'MIN',
-        'SUM',
-
-        // Mathematical functions
-        'ABS',
-        'ACOS',
-        'ASIN',
-        'ATAN',
-        'ATN2',
-        'CEILING',
-        'COS',
-        'COT',
-        'DEGREES',
-        'EXP',
-        'FLOOR',
-        'LOG',
-        'LOG10',
-        'PI',
-        'POWER',
-        'RADIANS',
-        'RAND',
-        'ROUND',
-        'SIGN',
-        'SIN',
-        'SQRT',
-        'SQUARE',
-        'TAN',
-        'TRUNC',
-        'NumberBin',
-        'IntAdd',
-        'IntBitAnd',
-        'IntBitLeftShift',
-        'IntBitNot',
-        'IntBitOr',
-        'IntBitRightShift',
-        'IntBitXor',
-        'IntDiv',
-        'IntMod',
-        'IntMul',
-        'IntSub',
-
-        // Type checking functions
-        'IS_ARRAY',
-        'IS_BOOL',
-        'IS_DEFINED',
-        'IS_FINITE_NUMBER',
-        'IS_INTEGER',
-        'IS_NULL',
-        'IS_NUMBER',
-        'IS_OBJECT',
-        'IS_PRIMITIVE',
-        'IS_STRING',
-
-        // String functions
-        'CONCAT',
-        'CONTAINS',
-        'ENDSWITH',
-        'INDEX_OF',
-        'LEFT',
-        'LENGTH',
-        'LOWER',
-        'LTRIM',
-        'REGEXMATCH',
-        'REPLACE',
-        'REPLICATE',
-        'REVERSE',
-        'RIGHT',
-        'RTRIM',
-        'STARTSWITH',
-        'StringEquals',
-        'SUBSTRING',
-        'ToString',
-        'TRIM',
-        'UPPER',
-
-        // Array functions
-        'ARRAY_CONCAT',
-        'ARRAY_CONTAINS',
-        'ARRAY_LENGTH',
-        'ARRAY_SLICE',
-        'SetIntersect',
-        'SetUnion',
-
-        // Date/time functions
-        'DateTimeAdd',
-        'DateTimeBin',
-        'DateTimeDiff',
-        'DateTimeFromParts',
-        'DateTimePart',
-        'DateTimeToTicks',
-        'DateTimeToTimestamp',
-        'GetCurrentDateTime',
-        'GetCurrentDateTimeStatic',
-        'GetCurrentTicks',
-        'GetCurrentTicksStatic',
-        'GetCurrentTimestamp',
-        'GetCurrentTimestampStatic',
-        'TicksToDateTime',
-
-        // Spatial functions
-        'ST_AREA',
-        'ST_DISTANCE',
-        'ST_INTERSECTS',
-        'ST_ISVALID',
-        'ST_ISVALIDDETAILED',
-        'ST_WITHIN',
-
-        // Object functions
-        'ObjectToArray',
-        'AllMembers',
-
-        // Conversion functions
-        'StringToArray',
-        'StringToBoolean',
-        'StringToNull',
-        'StringToNumber',
-        'StringToObject',
-
-        // Vector functions
-        'VectorDistance',
-    ],
+    // Built-in functions (from shared module)
+    builtinFunctions: [...NOSQL_FUNCTION_NAMES],
 
     operators: ['=', '>', '<', '!', '~', '?', ':', '!=', '<>', '<=', '>=', '||', '??'],
 

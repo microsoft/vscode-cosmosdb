@@ -29,6 +29,7 @@ import { OpenFileButton } from './OpenFileButton';
 import { ProvideFeedbackButton } from './ProvideFeedbackButton';
 import { RunQueryButton } from './RunQueryButton';
 import { SaveToFileButton } from './SaveToFileButton';
+import { SchemaButton } from './SchemaButton';
 
 const OverflowMenu = () => {
     const { ref, isOverflowing } = useOverflowMenu<HTMLButtonElement>();
@@ -70,13 +71,16 @@ const OverflowMenu = () => {
                     <ToolbarOverflowMenuItem id="6">
                         <LearnButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
+                    <ToolbarOverflowMenuItem id="7">
+                        <SchemaButton type={'menuitem'} />
+                    </ToolbarOverflowMenuItem>
                     {state.isSurveyCandidate && (
-                        <ToolbarOverflowMenuItem id="7">
+                        <ToolbarOverflowMenuItem id="8">
                             <ProvideFeedbackButton type={'menuitem'} />
                         </ToolbarOverflowMenuItem>
                     )}
                     <ToolbarOverflowMenuDivider id="2" />
-                    <ToolbarOverflowMenuItem id="8">
+                    <ToolbarOverflowMenuItem id="9">
                         <ConnectionButton type={'menuitem'} />
                     </ToolbarOverflowMenuItem>
                 </MenuList>
@@ -108,13 +112,16 @@ export const QueryToolbarOverflow = (props: Partial<ToolbarProps>) => {
                 <OverflowItem id={'6'} groupId={'2'}>
                     <LearnButton type={'button'} />
                 </OverflowItem>
+                <OverflowItem id={'7'} groupId={'2'}>
+                    <SchemaButton type={'button'} />
+                </OverflowItem>
                 {useQueryEditorState().isSurveyCandidate && (
-                    <OverflowItem id={'7'} groupId={'2'}>
+                    <OverflowItem id={'8'} groupId={'2'}>
                         <ProvideFeedbackButton type={'button'} />
                     </OverflowItem>
                 )}
                 <ToolbarOverflowDivider groupId="2" />
-                <OverflowItem id={'8'} groupId={'3'}>
+                <OverflowItem id={'9'} groupId={'3'}>
                     <ConnectionButton type={'button'} />
                 </OverflowItem>
                 <OverflowMenu />

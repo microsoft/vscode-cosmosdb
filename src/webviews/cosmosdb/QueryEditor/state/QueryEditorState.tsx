@@ -76,6 +76,10 @@ export type DispatchAction =
     | {
           type: 'setConnectionList';
           connectionList: Record<string, string[]> | undefined;
+      }
+    | {
+          type: 'setSchemaBasedOnQueries';
+          isSchemaBasedOnQueries: boolean;
       };
 
 export type QueryEditorState = {
@@ -105,6 +109,8 @@ export type QueryEditorState = {
     selectedThroughputBucket?: number;
 
     tableViewMode: TableViewMode;
+
+    isSchemaBasedOnQueries: boolean;
 };
 
 export const defaultState: QueryEditorState = {
@@ -134,6 +140,8 @@ export const defaultState: QueryEditorState = {
     selectedThroughputBucket: undefined,
 
     tableViewMode: 'Table',
+
+    isSchemaBasedOnQueries: false,
 };
 
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
@@ -197,5 +205,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, throughputBuckets: action.throughputBuckets };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
+        case 'setSchemaBasedOnQueries':
+            return { ...state, isSchemaBasedOnQueries: action.isSchemaBasedOnQueries };
     }
 }

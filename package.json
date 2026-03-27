@@ -158,6 +158,7 @@
     "@trpc/server": "~11.15.0",
     "@vscode/l10n": "~0.0.18",
     "allotment": "^1.20.4",
+    "denque": "^2.1.0",
     "es-toolkit": "~1.45.1",
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
@@ -403,6 +404,11 @@
         "category": "CosmosDB AI",
         "command": "cosmosDB.ai.removeInstructionFiles",
         "title": "%cosmosdb.command.ai.remove_instruction_files%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.deleteAllSavedSchemas",
+        "title": "%cosmosdb.command.schema.delete_all%"
       }
     ],
     "submenus": [
@@ -731,6 +737,11 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
+          },
+          "cosmosDB.queryEditor.generateSchemaBasedOnQueries": {
+            "type": "boolean",
+            "default": false,
+            "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
           }
         }
       },

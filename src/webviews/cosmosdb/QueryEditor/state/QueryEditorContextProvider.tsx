@@ -112,6 +112,22 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('provideFeedback');
     }
 
+    public async generateSchema(limit?: number): Promise<void> {
+        await this.sendCommand('generateSchema', limit);
+    }
+
+    public async openSchemaSettings(): Promise<void> {
+        await this.sendCommand('openSchemaSettings');
+    }
+
+    public async showCurrentSchema(): Promise<void> {
+        await this.sendCommand('showCurrentSchema');
+    }
+
+    public async wipeCurrentSchema(): Promise<void> {
+        await this.sendCommand('wipeCurrentSchema');
+    }
+
     public async saveCSV(
         name: string,
         currentQueryResult: SerializedQueryResult | null,
@@ -191,6 +207,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
             this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
+        });
+
+        this.channel.on('schemaSettingChanged', (isSchemaBasedOnQueries: boolean) => {
+            this.dispatch({ type: 'setSchemaBasedOnQueries', isSchemaBasedOnQueries });
         });
     }
 }

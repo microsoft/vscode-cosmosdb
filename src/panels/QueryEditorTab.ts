@@ -8,7 +8,7 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { getThemedIconPath } from '../constants';
+import { getThemedIconPath, SCHEMA_STORAGE_KEY } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
@@ -21,8 +21,15 @@ import {
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
-import { toStringUniversal } from '../utils/convertors';
+import { isSelectStar, toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { type JSONSchema } from '../utils/json/JSONSchema';
+import {
+    getSchemaFromDocuments,
+    simplifySchema,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '../utils/json/nosql/SchemaAnalyzer';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -35,6 +42,14 @@ const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 type HistoryItem = StorageItem & {
     properties: {
         history: string[];
+    };
+};
+
+type SchemaItem = StorageItem & {
+    properties: {
+        schema: string; // JSON-serialized schema
+        generatedAt: string; // ISO date string
+        documentCount: string; // number of documents inspected
     };
 };
 
@@ -114,6 +129,8 @@ export class QueryEditorTab extends BaseTab {
             await this.updateConnection(this.connection);
             await this.updateQueryHistory();
             await this.updateThroughputBuckets();
+            await this.syncSchemaBasedOnQueriesSetting();
+
             if (this.query) {
                 await this.channel.postMessage({
                     type: 'event',
@@ -123,6 +140,14 @@ export class QueryEditorTab extends BaseTab {
             }
             await this.refreshSurveyFeedbackVisibility();
         });
+
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
+                    void this.syncSchemaBasedOnQueriesSetting();
+                }
+            }),
+        );
     }
 
     public async refreshSurveyFeedbackVisibility(): Promise<void> {
@@ -130,6 +155,16 @@ export class QueryEditorTab extends BaseTab {
             type: 'event',
             name: 'isSurveyCandidateChanged',
             params: [!getIsSurveyDisabledGlobally()],
+        });
+    }
+
+    private async syncSchemaBasedOnQueriesSetting(): Promise<void> {
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'schemaSettingChanged',
+            params: [isEnabled],
         });
     }
 
@@ -174,6 +209,14 @@ export class QueryEditorTab extends BaseTab {
                 return this.deleteDocuments(payload.params[0] as CosmosDBRecordIdentifier[]);
             case 'provideFeedback':
                 return this.provideFeedback();
+            case 'generateSchema':
+                return this.generateSchema(payload.params[0] as number | undefined);
+            case 'openSchemaSettings':
+                return this.openSchemaSettings();
+            case 'showCurrentSchema':
+                return this.showCurrentSchema();
+            case 'wipeCurrentSchema':
+                return this.wipeCurrentSchema();
             case 'saveCSV':
                 return this.saveCSV(
                     payload.params[0] as string,
@@ -494,6 +537,9 @@ export class QueryEditorTab extends BaseTab {
             this.sessions.set(session.id, session);
 
             await session.run();
+
+            // Merge results into stored schema if setting is enabled and query is SELECT *
+            void this.mergeQueryResultsIntoSchema(session);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
@@ -527,6 +573,9 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.nextPage();
+
+            // Merge results into stored schema if setting is enabled and query is SELECT *
+            void this.mergeQueryResultsIntoSchema(session);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
@@ -619,6 +668,81 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
+    /**
+     * Returns a stable, fixed-length storage key for the current connection's schema.
+     * Hashes endpoint + databaseId + containerId so different accounts with identical
+     * database/container names never collide.
+     */
+    private getSchemaStorageId(connection: NoSqlQueryConnection): string {
+        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
+        return crypto.createHash('sha256').update(raw).digest('hex');
+    }
+
+    /**
+     * When the "Generate schema based on queries" setting is enabled and the query is
+     * a SELECT *, merges the fetched documents into the stored schema for the current container.
+     * If no schema exists yet, creates one from scratch.
+     */
+    private async mergeQueryResultsIntoSchema(session: QuerySession): Promise<void> {
+        if (!this.connection) {
+            return;
+        }
+
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        if (!isEnabled) {
+            return;
+        }
+
+        if (!isSelectStar(session.queryText)) {
+            return;
+        }
+
+        const documents = session.getLastFetchedDocuments();
+        if (!documents || documents.length === 0) {
+            return;
+        }
+
+        const schemaId = this.getSchemaStorageId(this.connection);
+        const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+        const storage = StorageService.get(StorageNames.Default);
+
+        // Load existing schema or start fresh
+        const existingItems = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
+        const existingSchemaItem = existingItems.find((item) => item.id === schemaId);
+
+        let schema: JSONSchema;
+        let totalDocCount: number;
+
+        if (existingSchemaItem) {
+            schema = JSON.parse(existingSchemaItem.properties.schema) as JSONSchema;
+            totalDocCount = parseInt(existingSchemaItem.properties.documentCount, 10) || 0;
+        } else {
+            schema = {};
+            totalDocCount = 0;
+        }
+
+        // Merge each document into the schema
+        for (const doc of documents) {
+            updateSchemaWithDocument(schema, doc as NoSQLDocument);
+        }
+        simplifySchema(schema);
+
+        totalDocCount += documents.length;
+
+        const schemaItem: SchemaItem = {
+            id: schemaId,
+            name: containerLabel,
+            properties: {
+                schema: JSON.stringify(schema),
+                generatedAt: new Date().toISOString(),
+                documentCount: totalDocCount.toString(),
+            },
+        };
+
+        await storage.push(SCHEMA_STORAGE_KEY, schemaItem);
+    }
+
     private getNextViewColumn(): vscode.ViewColumn {
         let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.Active;
         if (viewColumn === vscode.ViewColumn.Nine) {
@@ -633,6 +757,145 @@ export class QueryEditorTab extends BaseTab {
     private async provideFeedback(): Promise<void> {
         openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
         return Promise.resolve();
+    }
+
+    private async generateSchema(limit?: number): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.generateSchema', async (context) => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            context.telemetry.properties.limit = limit?.toString() ?? 'all';
+
+            const schemaId = this.getSchemaStorageId(this.connection);
+            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const limitLabel = limit ? l10n.t('TOP {0}', limit) : l10n.t('ALL');
+
+            // Check if a schema already exists for this container
+            const storage = StorageService.get(StorageNames.Default);
+            const existingItems = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
+            const hasExistingSchema = existingItems.some((item) => item.id === schemaId);
+
+            const warningParts: string[] = [
+                l10n.t(
+                    'Generating schema from {0} documents will execute a query against your Azure Cosmos DB container, which consumes Request Units (RUs).',
+                    limitLabel,
+                ),
+            ];
+
+            if (hasExistingSchema) {
+                warningParts.push(l10n.t('The previously saved schema for this container will be replaced.'));
+            }
+
+            warningParts.push(l10n.t('Are you sure you want to continue?'));
+
+            const message = warningParts.join('\n');
+
+            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+            const choice = await vscode.window.showWarningMessage(message, { modal: true }, continueItem, cancelItem);
+
+            if (choice !== continueItem) {
+                return;
+            }
+
+            const query = limit ? `SELECT TOP ${limit} * FROM c` : 'SELECT * FROM c';
+
+            const response = await withClaimsChallengeHandling(this.connection, async (client) =>
+                client
+                    .database(this.connection!.databaseId)
+                    .container(this.connection!.containerId)
+                    .items.query(query)
+                    .fetchAll(),
+            );
+
+            const documents = response.resources ?? [];
+
+            if (documents.length === 0) {
+                void vscode.window.showInformationMessage(
+                    l10n.t('No documents found in the container. Schema was not generated.'),
+                );
+                return;
+            }
+
+            const schema = getSchemaFromDocuments(documents as JSONSchema[]);
+
+            const schemaItem: SchemaItem = {
+                id: schemaId,
+                name: containerLabel,
+                properties: {
+                    schema: JSON.stringify(schema),
+                    generatedAt: new Date().toISOString(),
+                    documentCount: documents.length.toString(),
+                },
+            };
+
+            await storage.push(SCHEMA_STORAGE_KEY, schemaItem);
+
+            void vscode.window.showInformationMessage(
+                l10n.t('Schema generated from {0} documents and saved for {1}.', documents.length, containerLabel),
+            );
+        });
+    }
+
+    private async openSchemaSettings(): Promise<void> {
+        await vscode.commands.executeCommand(
+            'workbench.action.openSettings',
+            'cosmosDB.queryEditor.generateSchemaBasedOnQueries',
+        );
+    }
+
+    private async showCurrentSchema(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.showCurrentSchema', async () => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const schemaId = this.getSchemaStorageId(this.connection);
+            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const storage = StorageService.get(StorageNames.Default);
+            const items = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
+            const schemaItem = items.find((item) => item.id === schemaId);
+
+            if (!schemaItem) {
+                void vscode.window.showInformationMessage(
+                    l10n.t('No schema found for {0}. Use the "Generate schema" option to create one.', containerLabel),
+                );
+                return;
+            }
+
+            const schema = JSON.parse(schemaItem.properties.schema) as JSONSchema;
+            const schemaText = JSON.stringify(schema, null, 2);
+
+            await vscodeUtil.showNewFile(
+                schemaText,
+                `${this.connection.databaseId}_${this.connection.containerId}_schema`,
+                '.json',
+            );
+        });
+    }
+
+    private async wipeCurrentSchema(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.wipeCurrentSchema', async () => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const schemaId = this.getSchemaStorageId(this.connection);
+            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const storage = StorageService.get(StorageNames.Default);
+            const items = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
+            const schemaItem = items.find((item) => item.id === schemaId);
+
+            if (!schemaItem) {
+                void vscode.window.showInformationMessage(l10n.t('No schema found for {0}.', containerLabel));
+                return;
+            }
+
+            await storage.delete(SCHEMA_STORAGE_KEY, schemaId);
+
+            void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));
+        });
     }
 
     private async saveCSV(

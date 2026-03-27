@@ -10,7 +10,6 @@
   "[WebviewTransport] Error occurred calling callback": "[WebviewTransport] Error occurred calling callback",
   "[WebviewTransport] Error occurred handling received message": "[WebviewTransport] Error occurred handling received message",
   "{0} document creations were throttled. Waiting {1}ms and retrying…": "{0} document creations were throttled. Waiting {1}ms and retrying…",
-  "{columnName}: {value}, tree level {level}": "{columnName}: {value}, tree level {level}",
   "{experienceName} Emulator": "{experienceName} Emulator",
   "{type} auth failed: {error}": "{type} auth failed: {error}",
   "⚠️ **Security:** TLS/SSL Disabled": "⚠️ **Security:** TLS/SSL Disabled",

@@ -224,6 +224,7 @@ export const GenerateQueryInput = () => {
 
     // Prompt history for arrow up/down navigation
     const promptHistory = usePromptHistory({ maxSize: 50 });
+    const { addToHistory } = promptHistory;
 
     // Get display name for currently selected model
     const selectedModel = availableModels.find((m) => m.id === selectedModelId) ?? availableModels[0];
@@ -272,14 +273,17 @@ export const GenerateQueryInput = () => {
             if (generatedQuery !== false) {
                 // Add the submitted prompt to history
                 if (submittedPrompt) {
-                    promptHistory.addToHistory(submittedPrompt);
+                    addToHistory(submittedPrompt);
                 }
                 setInput('');
                 setLineCount(1);
             }
         };
         void channel.on('queryGenerated', handler as never);
-    }, [channel, promptHistory]);
+        return () => {
+            channel.off('queryGenerated', handler as never);
+        };
+    }, [channel, addToHistory]);
 
     // Listen for tool invocation confirmation requests from the extension
     useEffect(() => {
@@ -287,6 +291,9 @@ export const GenerateQueryInput = () => {
             setConfirmMessage(message);
         };
         void channel.on('confirmToolInvocation', handler as never);
+        return () => {
+            channel.off('confirmToolInvocation', handler as never);
+        };
     }, [channel]);
 
     // Listen for availableModels event
@@ -300,7 +307,9 @@ export const GenerateQueryInput = () => {
             }
         };
         void channel.on('availableModels', handler as never);
-        return () => channel.off('availableModels');
+        return () => {
+            channel.off('availableModels', handler as never);
+        };
     }, [channel]);
 
     // Fetch available models when input becomes visible

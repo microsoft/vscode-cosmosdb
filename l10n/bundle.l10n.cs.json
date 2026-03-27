@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (Stisknutím mezerníku proveďte výběr a potvrďte stisknutím klávesy Enter.)",
   "\"{0}\" is not implemented on \"{1}\".": "„{0}“ není implementováno na „{1}“.",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "Před použitím balíčku vscode-azext-azureutils se musí volat „registerAzureUtilsExtensionVariables“.",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "Před použitím balíčku vscode-azureextensionui se musí volat „registerUIExtensionVariables“.",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(Pokud chcete přeskočit, ponechte prázdné.)",
   "(recently used)": "(nedávno použité)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] Při volání zpětného volání došlo k chybě.",

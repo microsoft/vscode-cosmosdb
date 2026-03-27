@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (選択には Space キーを、確認には Enter キーを押します)",
   "\"{0}\" is not implemented on \"{1}\".": "\"{0}\" は \"{1}\" に実装されていません。",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "vscode-azext-azureutils パッケージを使用する前に、\"registerAzureUtilsExtensionVariables\" を呼び出す必要があります。",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "vscode-azureextensionui パッケージを使用する前に、\"registerUIExtensionVariables\" を呼び出す必要があります。",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(スキップする場合は空白のままにします)",
   "(recently used)": "(最近使用)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] コールバックの呼び出し中にエラーが発生しました",

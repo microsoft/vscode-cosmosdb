@@ -1,0 +1,138 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+/**
+ * VS Code theme overrides for react-data-grid.
+ * Uses VS Code CSS variables to match the editor theme.
+ */
+
+/* Base grid styles */
+.rdg {
+    --rdg-background-color: var(--vscode-editor-background);
+    --rdg-header-background-color: var(--vscode-editor-background);
+    --rdg-row-hover-background-color: var(--vscode-list-hoverBackground);
+    --rdg-row-selected-background-color: var(--vscode-list-activeSelectionBackground);
+    --rdg-row-selected-hover-background-color: var(--vscode-list-activeSelectionBackground);
+    --rdg-checkbox-color: var(--vscode-checkbox-foreground);
+    --rdg-checkbox-focus-color: var(--vscode-focusBorder);
+    --rdg-checkbox-disabled-border-color: var(--vscode-checkbox-selectBackground);
+    --rdg-checkbox-disabled-background-color: var(--vscode-checkbox-selectBackground);
+    --rdg-color: var(--vscode-editor-foreground);
+    --rdg-border-color: var(--vscode-editorGroup-border);
+    --rdg-summary-border-color: var(--vscode-editorGroup-border);
+    --rdg-selection-color: var(--vscode-focusBorder);
+    --rdg-font-size: 13px;
+
+    font-family: var(--vscode-font-family);
+}
+
+/* Header cells */
+.rdg-header-row {
+    background-color: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+/* Body cells */
+.rdg-row {
+    background-color: var(--vscode-editor-background);
+
+    /* Row hover */
+    &:hover {
+        background-color: var(--vscode-list-hoverBackground);
+
+        .rdg-cell {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+    }
+
+    /* Selected row */
+    &[aria-selected='true'] {
+        background-color: var(--vscode-list-activeSelectionBackground);
+
+        .rdg-cell {
+            background-color: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+        }
+
+        &:hover {
+            background-color: var(--vscode-list-activeSelectionBackground);
+
+            .rdg-cell {
+                background-color: var(--vscode-list-activeSelectionBackground);
+            }
+        }
+    }
+}
+
+/* Checkbox styling */
+.rdg-checkbox-input {
+    accent-color: var(--vscode-checkbox-foreground);
+    background-color: var(--vscode-checkbox-background);
+    border-color: var(--vscode-checkbox-border);
+
+    &:checked + .rdg-checkbox {
+        background-color: var(--vscode-checkbox-foreground);
+        border-color: var(--vscode-checkbox-border);
+    }
+
+    &:disabled + .rdg-checkbox {
+        background-color: var(--vscode-checkbox-selectBackground);
+        border-color: var(--vscode-checkbox-selectBorder);
+        color: var(--vscode-disabledForeground, inherit);
+    }
+}
+
+/* Focus styles */
+.rdg-cell {
+    &[aria-selected='true'] {
+        outline-color: var(--vscode-focusBorder);
+    }
+}
+
+/* Sort icon */
+.rdg-header-sort-cell {
+    .rdg-header-sort-name {
+        color: var(--vscode-editor-foreground);
+    }
+}
+
+/* Resizer */
+.rdg-cell-resizer {
+    background-color: var(--vscode-panel-border);
+
+    &:hover {
+        background-color: var(--vscode-focusBorder);
+    }
+}
+
+/* Scrollbar styling to match VS Code */
+.rdg {
+    &::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: var(--vscode-editor-background);
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--vscode-scrollbarSlider-background);
+        border-radius: 0;
+
+        &:hover {
+            background: var(--vscode-scrollbarSlider-hoverBackground);
+        }
+
+        &:active {
+            background: var(--vscode-scrollbarSlider-activeBackground);
+        }
+    }
+
+    &::-webkit-scrollbar-corner {
+        background: var(--vscode-editor-background);
+    }
+}
+

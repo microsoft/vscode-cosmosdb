@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (Seçmek için ‘Boşluk’ tuşuna, onaylamak için ‘Enter’ tuşuna basın)",
   "\"{0}\" is not implemented on \"{1}\".": "\"{0}\" \"{1}\" üzerinde uygulanmadı.",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "vscode-azext-azureutils paketini kullanmadan önce “registerAzureUtilsExtensionVariables” çağrılmalıdır.",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "vscode-azureextensionui paketini kullanmadan önce “registerUIExtensionVariables” çağrılmalıdır.",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(atlamak için boş bırakın)",
   "(recently used)": "(son kullanılanlar)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] Geri arama çağrılırken hata oluştu",

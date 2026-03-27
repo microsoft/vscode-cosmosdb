@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (Premere \"BARRA SPAZIATRICE\" per selezionare e \"INVIO\" per confermare)",
   "\"{0}\" is not implemented on \"{1}\".": "\"{0}\" non è implementato in \"{1}\".",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "Prima di usare il pacchetto vscode-azext-azureutils, è necessario chiamare \"registerAzureUtilsExtensionVariables\".",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "Prima di usare il pacchetto vscode-azureextensionui, è necessario chiamare \"registerUIExtensionVariables\".",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(lasciare vuoto per ignorare)",
   "(recently used)": "(usato di recente)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] Si è verificato un errore durante la chiamata al callback",

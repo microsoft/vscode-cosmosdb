@@ -2,7 +2,7 @@
   " (Press 'Space' to select and 'Enter' to confirm)": " (선택하려면 <Space>를 누르고 확인하려면 <Enter>를 누르세요.)",
   "\"{0}\" is not implemented on \"{1}\".": "\"{0}\"은(는) \"{1}\"에 구현되지 않습니다.",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "vscode-azext-azureutils 패키지를 사용하기 전에 \"registerAzureUtilsExtensionVariables\"를 호출해야 합니다.",
-  "\"registerUIExtensionVariables\" must be called before using the vscode-azureextensionui package.": "vscode-azureextensionui 패키지를 사용하기 전에 \"registerUIExtensionVariables\"를 호출해야 합니다.",
+  "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
   "(leave blank to skip)": "(건너뛰려면 비워 둡니다.)",
   "(recently used)": "(최근에 사용됨)",
   "[VSCodeTransport] Error occurred calling callback": "[VSCodeTransport] 콜백을 호출하는 동안 오류 발생",

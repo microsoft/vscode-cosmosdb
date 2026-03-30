@@ -90,51 +90,43 @@
                 },
                 {
                     "name": "support.function.math.nosql",
-                    "match": "(?i)\\b(ABS|ACOS|ASIN|ATAN|ATN2|CEILING|COS|COT|DEGREES|EXP|FLOOR|LOG|LOG10|PI|POWER|RADIANS|RAND|ROUND|SIGN|SIN|SQRT|SQUARE|TAN|TRUNC)\\b(?=\\s*\\()"
-                },
-                {
-                    "name": "support.function.math.integer.nosql",
-                    "match": "\\b(IntAdd|IntBitAnd|IntBitLeftShift|IntBitNot|IntBitOr|IntBitRightShift|IntBitXor|IntDiv|IntMod|IntMul|IntSub|NumberBin)\\b(?=\\s*\\()"
+                    "match": "(?i)\\b(ABS|ACOS|ASIN|ATAN|ATN2|CEILING|COS|COT|DEGREES|EXP|FLOOR|INTADD|INTBITAND|INTBITLEFTSHIFT|INTBITNOT|INTBITOR|INTBITRIGHTSHIFT|INTBITXOR|INTDIV|INTMOD|INTMUL|INTSUB|LOG|LOG10|NUMBERBIN|PI|POWER|RADIANS|RAND|ROUND|SIGN|SIN|SQRT|SQUARE|TAN|TRUNC)\\b(?=\\s*\\()"
                 },
                 {
                     "name": "support.function.typecheck.nosql",
-                    "match": "(?i)\\b(IS_ARRAY|IS_BOOL|IS_DEFINED|IS_FINITE_NUMBER|IS_INTEGER|IS_NULL|IS_NUMBER|IS_OBJECT|IS_PRIMITIVE|IS_STRING)\\b(?=\\s*\\()"
+                    "match": "(?i)\\b(IS_ARRAY|IS_BOOL|IS_DEFINED|IS_FINITE_NUMBER|IS_INTEGER|IS_NULL|IS_NUMBER|IS_OBJECT|IS_PRIMITIVE|IS_STRING|STRINGTONULL|STRINGTONUMBER|STRINGTOOBJECT)\\b(?=\\s*\\()"
                 },
                 {
                     "name": "support.function.string.nosql",
-                    "match": "(?i)\\b(CONCAT|CONTAINS|ENDSWITH|INDEX_OF|LEFT|LENGTH|LOWER|LTRIM|REGEXMATCH|REPLACE|REPLICATE|REVERSE|RIGHT|RTRIM|STARTSWITH|SUBSTRING|TRIM|UPPER)\\b(?=\\s*\\()"
-                },
-                {
-                    "name": "support.function.string.nosql",
-                    "match": "\\b(StringEquals|ToString)\\b(?=\\s*\\()"
+                    "match": "(?i)\\b(CONCAT|CONTAINS|ENDSWITH|INDEX_OF|LEFT|LENGTH|LOWER|LTRIM|REGEXMATCH|REPLACE|REPLICATE|REVERSE|RIGHT|RTRIM|STARTSWITH|STRINGEQUALS|STRINGJOIN|STRINGSPLIT|STRINGTOARRAY|STRINGTOBOOLEAN|SUBSTRING|TOSTRING|TRIM|UPPER)\\b(?=\\s*\\()"
                 },
                 {
                     "name": "support.function.array.nosql",
-                    "match": "(?i)\\b(ARRAY_CONCAT|ARRAY_CONTAINS|ARRAY_LENGTH|ARRAY_SLICE)\\b(?=\\s*\\()"
-                },
-                {
-                    "name": "support.function.array.nosql",
-                    "match": "\\b(SetIntersect|SetUnion)\\b(?=\\s*\\()"
+                    "match": "(?i)\\b(ARRAY_CONCAT|ARRAY_CONTAINS_ALL|ARRAY_CONTAINS_ANY|ARRAY_CONTAINS|ARRAY_LENGTH|ARRAY_SLICE|CHOOSE|OBJECTTOARRAY|SETINTERSECT|SETUNION)\\b(?=\\s*\\()"
                 },
                 {
                     "name": "support.function.datetime.nosql",
-                    "match": "\\b(DateTimeAdd|DateTimeBin|DateTimeDiff|DateTimeFromParts|DateTimePart|DateTimeToTicks|DateTimeToTimestamp|GetCurrentDateTime|GetCurrentDateTimeStatic|GetCurrentTicks|GetCurrentTicksStatic|GetCurrentTimestamp|GetCurrentTimestampStatic|TicksToDateTime)\\b(?=\\s*\\()"
+                    "match": "(?i)\\b(DATETIMEADD|DATETIMEBIN|DATETIMEDIFF|DATETIMEFROMPARTS|DATETIMEPART|DATETIMETOTICKS|DATETIMETOTIMESTAMP|GETCURRENTDATETIME|GETCURRENTDATETIMESTATIC|GETCURRENTTICKS|GETCURRENTTICKSSTATIC|GETCURRENTTIMESTAMP|GETCURRENTTIMESTAMPSTATIC|TICKSTODATETIME|TIMESTAMPTODATETIME)\\b(?=\\s*\\()"
                 },
                 {
                     "name": "support.function.spatial.nosql",
                     "match": "(?i)\\b(ST_AREA|ST_DISTANCE|ST_INTERSECTS|ST_ISVALID|ST_ISVALIDDETAILED|ST_WITHIN)\\b(?=\\s*\\()"
                 },
                 {
-                    "name": "support.function.object.nosql",
-                    "match": "\\b(ObjectToArray|AllMembers)\\b(?=\\s*\\()"
+                    "name": "support.function.item.nosql",
+                    "match": "(?i)\\b(DOCUMENTID)\\b(?=\\s*\\()"
                 },
                 {
-                    "name": "support.function.conversion.nosql",
-                    "match": "\\b(StringToArray|StringToBoolean|StringToNull|StringToNumber|StringToObject)\\b(?=\\s*\\()"
+                    "name": "support.function.fulltext.nosql",
+                    "match": "(?i)\\b(FULLTEXTCONTAINS|FULLTEXTCONTAINSALL|FULLTEXTCONTAINSANY|FULLTEXTSCORE|RRF)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.conditional.nosql",
+                    "match": "(?i)\\b(IIF)\\b(?=\\s*\\()"
                 },
                 {
                     "name": "support.function.vector.nosql",
-                    "match": "\\b(VectorDistance)\\b(?=\\s*\\()"
+                    "match": "(?i)\\b(VECTORDISTANCE)\\b(?=\\s*\\()"
                 }
             ]
         },
@@ -142,11 +134,11 @@
             "patterns": [
                 {
                     "name": "keyword.clause.nosql",
-                    "match": "(?i)\\b(SELECT|DISTINCT|TOP|FROM|WHERE|ORDER\\s+BY|GROUP\\s+BY|HAVING|OFFSET|LIMIT|JOIN)\\b"
+                    "match": "(?i)\\b(SELECT|DISTINCT|TOP|FROM|WHERE|ORDER\\s+BY\\s+RANK|ORDER\\s+BY|GROUP\\s+BY|OFFSET|LIMIT|JOIN)\\b"
                 },
                 {
                     "name": "keyword.other.nosql",
-                    "match": "(?i)\\b(IN|AS|VALUE|EXISTS|BETWEEN|LIKE|ARRAY|UDF)\\b"
+                    "match": "(?i)\\b(IN|AS|VALUE|EXISTS|BETWEEN|LIKE)\\b"
                 },
                 {
                     "name": "keyword.operator.logical.nosql",

@@ -8,29 +8,33 @@ Syntax highlighting and code completion for the CosmosDB NoSQL query language. W
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────┐
-│            Shared Language Definitions            │
-│  src/cosmosdb/language/nosqlLanguageDefinitions   │
-│  Keywords, functions, schema helpers              │
-│  (no vscode or monaco imports)                    │
-└──────────┬───────────────────────┬───────────────┘
-           │                       │
- ┌─────────▼──────────┐  ┌────────▼─────────────────────┐
- │  VS Code Editor     │  │  Webview Monaco Editor        │
- │                     │  │                               │
- │  TextMate grammar   │  │  Monarch tokenizer            │
- │  VS Code completion │  │  Monaco completion provider   │
- │  provider           │  │  + schema-driven properties   │
- └─────────────────────┘  └───────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                  Shared Language Modules                       │
+│                                                               │
+│  nosqlLanguageDefinitions.ts   nosqlParser.ts                 │
+│  Pure data: interfaces,        Logic: alias extraction,       │
+│  enriched keywords &           schema resolution,             │
+│  functions (no vscode /        snippet generation             │
+│  monaco imports)               (no vscode / monaco imports)   │
+└───────────────┬───────────────────────────┬───────────────────┘
+                │                           │
+  ┌─────────────▼──────────┐  ┌────────────▼──────────────────────┐
+  │  VS Code Editor         │  │  Webview Monaco Editor             │
+  │                         │  │                                    │
+  │  TextMate grammar       │  │  Monarch tokenizer                 │
+  │  VS Code completion     │  │  Monaco completion provider        │
+  │  provider               │  │  + schema-driven properties        │
+  └─────────────────────────┘  └────────────────────────────────────┘
 ```
 
 ## Files
 
 ### Shared (environment-agnostic)
 
-| File                                                | Purpose                                                                                                                                                                                                                                                                                                                              |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/cosmosdb/language/nosqlLanguageDefinitions.ts` | Single source of truth for all language data: keyword lists (`NOSQL_KEYWORDS`, `NOSQL_KEYWORD_TOKENS`), function definitions with signatures (`NOSQL_FUNCTIONS`), and schema helper utilities (`extractFromAlias`, `resolveSchemaProperties`, `needsBracketNotation`, `getTypeLabel`). Imports neither `vscode` nor `monaco-editor`. |
+| File                                                | Purpose                                                                                                                                                                                                                                                                      |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/cosmosdb/language/nosqlLanguageDefinitions.ts` | **Pure data.** Single source of truth for all language constants: `NOSQL_KEYWORDS` (`KeywordInfo[]`), `NOSQL_KEYWORD_TOKENS` (derived), `NOSQL_FUNCTIONS` (`FunctionInfo[]`), `NOSQL_FUNCTION_NAMES`, and `NOSQL_LANGUAGE_ID`. Imports neither `vscode` nor `monaco-editor`. |
+| `src/cosmosdb/language/nosqlParser.ts`              | **Logic.** All parser/helper functions: `extractFromAlias`, `extractJoinAliases`, `resolveJoinAliasSchema`, `resolveSchemaProperties`, `needsBracketNotation`, `getTypeLabel`, `getOccurrence`, `signatureToSnippet`. Also exports the `JoinAlias` interface.                |
 
 ### VS Code Editor
 
@@ -43,11 +47,11 @@ Syntax highlighting and code completion for the CosmosDB NoSQL query language. W
 
 ### Webview Monaco Editor
 
-| File                                                     | Purpose                                                                                                                                                                                                                                                                  |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/webviews/.../QueryPanel/nosqlLanguage.ts`           | Registers the `nosql` language with Monaco: Monarch tokenizer for syntax highlighting and language configuration. Imports keyword/function lists from the shared module.                                                                                                 |
-| `src/webviews/.../QueryPanel/nosqlCompletionProvider.ts` | Monaco `CompletionItemProvider`. Provides keyword completions, function completions with snippets, **and** schema-driven property suggestions after dot notation (e.g. `c.address.city`). Uses `extractFromAlias` for lightweight alias tracking from the `FROM` clause. |
-| `src/webviews/.../QueryPanel/QueryMonaco.tsx`            | Registers both the language and the completion provider when Monaco becomes available. Keeps a ref to the latest container schema so the provider always reads fresh data.                                                                                               |
+| File                                                     | Purpose                                                                                                                                                                                                                                                               |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/webviews/.../QueryPanel/nosqlLanguage.ts`           | Registers the `nosql` language with Monaco: Monarch tokenizer for syntax highlighting and language configuration. Imports keyword/function lists from the definitions module.                                                                                         |
+| `src/webviews/.../QueryPanel/nosqlCompletionProvider.ts` | Monaco `CompletionItemProvider`. Provides keyword completions, function completions (using pre-computed `snippet` field), **and** schema-driven property suggestions after dot notation (e.g. `c.address.city`). Parser functions are imported from `nosqlParser.ts`. |
+| `src/webviews/.../QueryPanel/QueryMonaco.tsx`            | Registers both the language and the completion provider when Monaco becomes available. Keeps a ref to the latest container schema so the provider always reads fresh data.                                                                                            |
 
 ### Schema Pipeline (extension host → webview)
 
@@ -89,3 +93,52 @@ QueryEditorState.containerSchema
     ↓  (React ref in QueryMonaco.tsx)
 Monaco CompletionItemProvider.provideCompletionItems()
 ```
+
+## Data Shapes
+
+### `KeywordInfo`
+
+Each entry in `NOSQL_KEYWORDS` follows this interface:
+
+```ts
+export type KeywordCategory = 'clause' | 'keyword' | 'operator' | 'constant';
+
+export interface KeywordInfo {
+  name: string; // e.g. "ORDER BY"
+  description: string; // human-readable description for hover/completion
+  signature: string; // same as name
+  link: string; // https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/…
+  snippet: string; // same as name (insert text)
+  category: KeywordCategory;
+}
+```
+
+`NOSQL_KEYWORD_TOKENS` is derived from `NOSQL_KEYWORDS` by splitting multi-word names
+(e.g. `"ORDER BY"` → `"ORDER"`, `"BY"`) and deduplicating — no hand-maintained list.
+
+### `FunctionInfo`
+
+Each entry in `NOSQL_FUNCTIONS` follows this interface:
+
+```ts
+export interface NoSqlArgumentDefinition {
+  name: string; // e.g. "str", "ignoreCase"
+  type: string; // "string" | "number" | "boolean" | "array" | "object" | "any"
+  optional?: boolean; // true when wrapped in [...] in the signature
+}
+
+export interface FunctionInfo {
+  name: string;
+  signature: string; // e.g. "CONTAINS(str, substr [, ignoreCase])"
+  description: string;
+  link: string; // https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/{slug}
+  snippet: string; // pre-computed tab-stop snippet, e.g. "CONTAINS(${1:str}, ${2:substr})$0"
+  arguments: NoSqlArgumentDefinition[];
+}
+```
+
+URL slugs use lowercase with underscores replaced by hyphens:
+`IS_ARRAY` → `is-array`, `ST_DISTANCE` → `st-distance`, `INDEX_OF` → `index-of`.
+
+Snippets only include **required** parameters — optional params (`[...]`) are excluded
+so the user gets the minimal valid call and can add optional arguments manually.

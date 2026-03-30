@@ -30,6 +30,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
+import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
@@ -87,6 +88,7 @@ export async function activateInternal(
         registerCommands();
 
         context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
+        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

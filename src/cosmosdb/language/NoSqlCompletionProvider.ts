@@ -17,7 +17,25 @@
  */
 
 import * as vscode from 'vscode';
-import { extractFromAlias, NOSQL_FUNCTIONS, NOSQL_KEYWORDS, NOSQL_LANGUAGE_ID } from './nosqlLanguageDefinitions';
+import { NOSQL_FUNCTIONS, NOSQL_KEYWORDS, NOSQL_LANGUAGE_ID, type KeywordCategory } from './nosqlLanguageDefinitions';
+import { extractFromAlias } from './nosqlParser';
+
+/**
+ * Maps a keyword category to the appropriate VS Code CompletionItemKind.
+ */
+function categoryToCompletionKind(category: KeywordCategory): vscode.CompletionItemKind {
+    switch (category) {
+        case 'clause':
+            return vscode.CompletionItemKind.Keyword;
+        case 'operator':
+            return vscode.CompletionItemKind.Operator;
+        case 'constant':
+            return vscode.CompletionItemKind.Constant;
+        case 'keyword':
+        default:
+            return vscode.CompletionItemKind.Keyword;
+    }
+}
 
 export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
     provideCompletionItems(
@@ -43,17 +61,22 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
 
         // ── 1. Keyword completions ─────────────────────────────────────
         for (const keyword of NOSQL_KEYWORDS) {
-            const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
-            item.sortText = `1_${keyword}`;
+            const item = new vscode.CompletionItem(keyword.name, categoryToCompletionKind(keyword.category));
+            item.insertText = keyword.snippet;
+            item.detail = keyword.signature;
+            item.documentation = new vscode.MarkdownString(
+                `${keyword.description}\n\n[Documentation](${keyword.link})`,
+            );
+            item.sortText = `1_${keyword.name}`;
             suggestions.push(item);
         }
 
         // ── 2. Function completions ────────────────────────────────────
         for (const func of NOSQL_FUNCTIONS) {
             const item = new vscode.CompletionItem(func.name, vscode.CompletionItemKind.Function);
-            item.insertText = new vscode.SnippetString(`${func.name}($0)`);
+            item.insertText = new vscode.SnippetString(func.snippet);
             item.detail = func.signature;
-            item.documentation = new vscode.MarkdownString(func.description);
+            item.documentation = new vscode.MarkdownString(`${func.description}\n\n[Documentation](${func.link})`);
             item.sortText = `2_${func.name}`;
             suggestions.push(item);
         }

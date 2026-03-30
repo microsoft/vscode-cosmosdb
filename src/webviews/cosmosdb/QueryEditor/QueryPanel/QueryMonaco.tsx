@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 import { registerNoSqlCompletionProvider } from './nosqlCompletionProvider';
+import { registerNoSqlHoverProvider } from './nosqlHoverProvider';
 import { NOSQL_LANGUAGE_ID, registerNoSqlLanguage } from './nosqlLanguage';
 
 export const QueryMonaco = () => {
@@ -17,6 +18,7 @@ export const QueryMonaco = () => {
 
     const disposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
     const completionDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const hoverDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
 
     // Keep a ref to the latest schema so the completion provider always reads fresh data
     const schemaRef = useRef(state.containerSchema);
@@ -29,14 +31,19 @@ export const QueryMonaco = () => {
         if (monaco) {
             registerNoSqlLanguage(monaco);
 
-            // Dispose previous completion provider if any (e.g., hot reload)
+            // Dispose previous providers if any (e.g., hot reload)
             completionDisposableRef.current?.dispose();
             completionDisposableRef.current = registerNoSqlCompletionProvider(monaco, () => schemaRef.current);
+
+            hoverDisposableRef.current?.dispose();
+            hoverDisposableRef.current = registerNoSqlHoverProvider(monaco, () => schemaRef.current);
         }
 
         return () => {
             completionDisposableRef.current?.dispose();
             completionDisposableRef.current = null;
+            hoverDisposableRef.current?.dispose();
+            hoverDisposableRef.current = null;
         };
     }, [monaco]);
 

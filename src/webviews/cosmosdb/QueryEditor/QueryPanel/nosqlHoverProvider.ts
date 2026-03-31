@@ -19,6 +19,7 @@ import { NOSQL_LANGUAGE_ID } from '../../../../cosmosdb/language/nosqlLanguageDe
 import {
     extractFromAlias,
     extractJoinAliases,
+    getCurrentQueryBlock,
     resolvePropertyAtPath,
 } from '../../../../cosmosdb/language/nosqlParser';
 import { type JSONSchema } from '../../../../utils/json/JSONSchema';
@@ -54,8 +55,10 @@ export function createNoSqlHoverProvider(
                 const schema = getSchema();
                 if (schema) {
                     const fullText = model.getValue();
-                    const fromAlias = extractFromAlias(fullText);
-                    const joinAliases = extractJoinAliases(fullText);
+                    const cursorOffset = model.getOffsetAt(position);
+                    const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
+                    const fromAlias = extractFromAlias(queryBlockText);
+                    const joinAliases = extractJoinAliases(queryBlockText);
                     const dotPath = dotPathMatch[1];
 
                     const resolved = resolvePropertyAtPath(schema, dotPath, fromAlias, joinAliases);

@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 /**
  * Generates 10,000 JSON records for NoSQL database testing.
  *
@@ -11,7 +16,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -41,10 +46,32 @@ function randomString(len = 8) {
 
 function randomWord() {
     const words = [
-        'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf',
-        'hotel', 'india', 'juliet', 'kilo', 'lima', 'mike', 'november',
-        'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform',
-        'victor', 'whiskey', 'xray', 'yankee', 'zulu',
+        'alpha',
+        'bravo',
+        'charlie',
+        'delta',
+        'echo',
+        'foxtrot',
+        'golf',
+        'hotel',
+        'india',
+        'juliet',
+        'kilo',
+        'lima',
+        'mike',
+        'november',
+        'oscar',
+        'papa',
+        'quebec',
+        'romeo',
+        'sierra',
+        'tango',
+        'uniform',
+        'victor',
+        'whiskey',
+        'xray',
+        'yankee',
+        'zulu',
     ];
     return pick(words);
 }
@@ -100,10 +127,30 @@ function randomNestedObject(depth) {
     const propCount = randomInt(3, 5);
     const obj = {};
     const nestedKeys = [
-        'value', 'label', 'code', 'status', 'count', 'amount',
-        'description', 'channel', 'category', 'rating', 'score',
-        'timestamp', 'flag', 'level', 'index', 'name', 'title',
-        'ref', 'mode', 'kind', 'tag', 'unit', 'source', 'target',
+        'value',
+        'label',
+        'code',
+        'status',
+        'count',
+        'amount',
+        'description',
+        'channel',
+        'category',
+        'rating',
+        'score',
+        'timestamp',
+        'flag',
+        'level',
+        'index',
+        'name',
+        'title',
+        'ref',
+        'mode',
+        'kind',
+        'tag',
+        'unit',
+        'source',
+        'target',
     ];
 
     const usedKeys = new Set();
@@ -133,27 +180,74 @@ function randomComplexValue() {
 
 // ── property name pools ──────────────────────────────────────────────
 
-// 5 fixed property names (present in every record, primitive values)
-const FIXED_PROPS = ['userId', 'email', 'age', 'isActive', 'createdAt'];
-
 // 5 "slots" of varying property names — each slot has up to 10 variants
 // Records pick one variant per slot, simulating slight naming deviations.
 const VARYING_SLOTS = [
     // slot 0: address-like
-    ['address', 'addr', 'location', 'homeAddress', 'mailingAddress',
-     'postalAddress', 'residence', 'addressInfo', 'addrDetail', 'addressData'],
+    [
+        'address',
+        'addr',
+        'location',
+        'homeAddress',
+        'mailingAddress',
+        'postalAddress',
+        'residence',
+        'addressInfo',
+        'addrDetail',
+        'addressData',
+    ],
     // slot 1: payment-like
-    ['payment', 'paymentInfo', 'billing', 'billingInfo', 'paymentData',
-     'paymentDetail', 'payMethod', 'transaction', 'paymentRecord', 'charge'],
+    [
+        'payment',
+        'paymentInfo',
+        'billing',
+        'billingInfo',
+        'paymentData',
+        'paymentDetail',
+        'payMethod',
+        'transaction',
+        'paymentRecord',
+        'charge',
+    ],
     // slot 2: preferences-like
-    ['preferences', 'prefs', 'settings', 'config', 'options',
-     'userPrefs', 'userSettings', 'prefData', 'configData', 'settingsInfo'],
+    [
+        'preferences',
+        'prefs',
+        'settings',
+        'config',
+        'options',
+        'userPrefs',
+        'userSettings',
+        'prefData',
+        'configData',
+        'settingsInfo',
+    ],
     // slot 3: metadata-like
-    ['metadata', 'meta', 'metaInfo', 'metaData', 'extraInfo',
-     'additionalInfo', 'context', 'contextData', 'annotations', 'tags'],
+    [
+        'metadata',
+        'meta',
+        'metaInfo',
+        'metaData',
+        'extraInfo',
+        'additionalInfo',
+        'context',
+        'contextData',
+        'annotations',
+        'tags',
+    ],
     // slot 4: social / profile-like
-    ['social', 'socialLinks', 'profile', 'profileData', 'socialMedia',
-     'networks', 'socialInfo', 'accounts', 'links', 'connections'],
+    [
+        'social',
+        'socialLinks',
+        'profile',
+        'profileData',
+        'socialMedia',
+        'networks',
+        'socialInfo',
+        'accounts',
+        'links',
+        'connections',
+    ],
 ];
 
 // ── fixed property value generators ──────────────────────────────────
@@ -199,4 +293,3 @@ for (let i = 0; i < RECORD_COUNT; i++) {
 
 writeFileSync(OUTPUT, JSON.stringify(records, null, 2), 'utf-8');
 console.log(`Done → ${OUTPUT}  (${(Buffer.byteLength(JSON.stringify(records)) / 1024 / 1024).toFixed(1)} MB)`);
-

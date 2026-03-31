@@ -10,9 +10,9 @@
  * Consumed by both the VS Code hover provider and the Monaco hover provider.
  */
 
+import { type JSONSchema } from '../../utils/json/JSONSchema';
 import { NOSQL_FUNCTIONS, NOSQL_KEYWORDS } from './nosqlLanguageDefinitions';
 import { getOccurrence, getTypeLabel } from './nosqlParser';
-import { type JSONSchema } from '../../utils/json/JSONSchema';
 
 export interface NoSqlHoverContent {
     /** Markdown string to display in the hover popup. */

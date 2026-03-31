@@ -46,4 +46,3 @@ export class NoSqlHoverProvider implements vscode.HoverProvider {
 export function registerNoSqlVSCodeHoverProvider(): vscode.Disposable {
     return vscode.languages.registerHoverProvider(NOSQL_LANGUAGE_ID, new NoSqlHoverProvider());
 }
-

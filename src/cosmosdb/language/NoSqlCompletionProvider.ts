@@ -18,7 +18,25 @@
 
 import * as vscode from 'vscode';
 import { NOSQL_FUNCTIONS, NOSQL_KEYWORDS, NOSQL_LANGUAGE_ID, type KeywordCategory } from './nosqlLanguageDefinitions';
-import { extractFromAlias } from './nosqlParser';
+import {
+    computeAliasSortKey,
+    computeFunctionSortKey,
+    computeKeywordSortKey,
+    detectClauseContext,
+    extractFromAlias,
+    extractJoinAliases,
+    getCurrentQueryBlock,
+} from './nosqlParser';
+
+/**
+ * VS Code command descriptor that re-triggers the suggest widget after a completion is accepted.
+ * Attached to keywords/aliases whose insertText ends with a space so the user immediately
+ * sees the next set of relevant suggestions (e.g. SELECT → TOP / DISTINCT / alias).
+ */
+const RETRIGGER_SUGGEST_COMMAND: vscode.Command = {
+    command: 'editor.action.triggerSuggest',
+    title: 'Re-trigger completions',
+};
 
 /**
  * Maps a keyword category to the appropriate VS Code CompletionItemKind.
@@ -47,6 +65,17 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
         const lineText = document.lineAt(position).text;
         const textBeforeCursor = lineText.substring(0, position.character);
 
+        // ── 0. Semicolon auto-formatting: insert ;\n\n ─────────────────
+        if (textBeforeCursor.endsWith(';')) {
+            const item = new vscode.CompletionItem(';', vscode.CompletionItemKind.Snippet);
+            item.insertText = new vscode.SnippetString(';\n\n$0');
+            item.range = new vscode.Range(position.translate(0, -1), position);
+            item.detail = 'End query and start a new one';
+            item.sortText = '0';
+            item.preselect = true;
+            return [item];
+        }
+
         // If dot-triggered (e.g. `c.`), don't provide keyword/function suggestions.
         // Schema-driven property suggestions would require an active connection
         // which standalone .nosql files don't have.
@@ -55,9 +84,57 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
             return [];
         }
 
-        const textUntilPosition = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
-
         const suggestions: vscode.CompletionItem[] = [];
+
+        // Parse query context — scope to current query block
+        const textUntilPosition = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
+        const cursorOffset = textUntilPosition.length;
+        const fullText = document.getText();
+        const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
+        const fromAlias = extractFromAlias(queryBlockText);
+        const joinAliases = extractJoinAliases(queryBlockText);
+
+        // ── After LIKE keyword: suggest string literal templates ────────
+        if (/\bLIKE\s+$/i.test(textBeforeCursor)) {
+            const doubleQuoteItem = new vscode.CompletionItem('"..."', vscode.CompletionItemKind.Value);
+            doubleQuoteItem.insertText = new vscode.SnippetString('"$0"');
+            doubleQuoteItem.detail = 'String literal (double quotes)';
+            doubleQuoteItem.sortText = '0';
+            suggestions.push(doubleQuoteItem);
+
+            const singleQuoteItem = new vscode.CompletionItem("'...'", vscode.CompletionItemKind.Value);
+            singleQuoteItem.insertText = new vscode.SnippetString("'$0'");
+            singleQuoteItem.detail = 'String literal (single quotes)';
+            singleQuoteItem.sortText = '1';
+            suggestions.push(singleQuoteItem);
+            return suggestions;
+        }
+
+        // Detect clause context for suggestion filtering
+        const blockStart = fullText.lastIndexOf(queryBlockText, cursorOffset);
+        const cursorOffsetInBlock = cursorOffset - (blockStart >= 0 ? blockStart : 0);
+        const clauseCtx = detectClauseContext(queryBlockText, cursorOffsetInBlock);
+
+        // ── Special context suggestions ────────────────────────────────
+
+        // After IN operator: suggest `(` for value list
+        if (clauseCtx.precedingToken === 'in' && clauseCtx.clause === 'where') {
+            const parenItem = new vscode.CompletionItem('(...)', vscode.CompletionItemKind.Snippet);
+            parenItem.insertText = new vscode.SnippetString('($0)');
+            parenItem.detail = 'Value list';
+            parenItem.sortText = '0';
+            suggestions.push(parenItem);
+        }
+
+        // After SELECT (initial): suggest `*`
+        if (clauseCtx.clause === 'select' && clauseCtx.subPosition === 'initial') {
+            const starItem = new vscode.CompletionItem('*', vscode.CompletionItemKind.Keyword);
+            starItem.insertText = '* ';
+            starItem.detail = 'Select all fields';
+            starItem.sortText = '00_*';
+            starItem.command = RETRIGGER_SUGGEST_COMMAND;
+            suggestions.push(starItem);
+        }
 
         // ── 1. Keyword completions ─────────────────────────────────────
         for (const keyword of NOSQL_KEYWORDS) {
@@ -67,7 +144,28 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
             item.documentation = new vscode.MarkdownString(
                 `${keyword.description}\n\n[Documentation](${keyword.link})`,
             );
-            item.sortText = `1_${keyword.name}`;
+
+            let sortText = computeKeywordSortKey(keyword, clauseCtx);
+
+            // Special sub-position boosts
+            if (keyword.name === 'ASC' || keyword.name === 'DESC') {
+                if (clauseCtx.clause === 'orderby' && clauseCtx.subPosition === 'post-expression') {
+                    sortText = `00_${keyword.name}`;
+                }
+            }
+            if (keyword.name === 'TOP' || keyword.name === 'DISTINCT' || keyword.name === 'VALUE') {
+                if (clauseCtx.clause === 'select' && clauseCtx.subPosition === 'initial') {
+                    sortText = `01_${keyword.name}`;
+                }
+            }
+
+            item.sortText = sortText;
+
+            // Re-trigger suggest after keywords that end with a space
+            if (keyword.snippet.endsWith(' ')) {
+                item.command = RETRIGGER_SUGGEST_COMMAND;
+            }
+
             suggestions.push(item);
         }
 
@@ -77,16 +175,22 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
             item.insertText = new vscode.SnippetString(func.snippet);
             item.detail = func.signature;
             item.documentation = new vscode.MarkdownString(`${func.description}\n\n[Documentation](${func.link})`);
-            item.sortText = `2_${func.name}`;
+            item.sortText = computeFunctionSortKey(func.name, clauseCtx);
             suggestions.push(item);
         }
 
-        // ── 3. Alias suggestion ────────────────────────────────────────
-        const fromAlias = extractFromAlias(textUntilPosition);
+        // ── 3. Alias suggestions (FROM + JOIN aliases) ──────────────────
         const aliasItem = new vscode.CompletionItem(fromAlias, vscode.CompletionItemKind.Variable);
         aliasItem.detail = 'Collection alias from FROM clause';
-        aliasItem.sortText = `0_${fromAlias}`;
+        aliasItem.sortText = computeAliasSortKey(fromAlias, clauseCtx);
         suggestions.push(aliasItem);
+
+        for (const joinAlias of joinAliases) {
+            const joinAliasItem = new vscode.CompletionItem(joinAlias.alias, vscode.CompletionItemKind.Variable);
+            joinAliasItem.detail = `JOIN ${joinAlias.alias} IN ${joinAlias.sourceAlias}.${joinAlias.propertyPath.join('.')}`;
+            joinAliasItem.sortText = computeAliasSortKey(joinAlias.alias, clauseCtx);
+            suggestions.push(joinAliasItem);
+        }
 
         return suggestions;
     }
@@ -97,5 +201,11 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
  * Returns a disposable that should be added to `context.subscriptions`.
  */
 export function registerNoSqlVSCodeCompletionProvider(): vscode.Disposable {
-    return vscode.languages.registerCompletionItemProvider(NOSQL_LANGUAGE_ID, new NoSqlCompletionProvider(), '.', ' ');
+    return vscode.languages.registerCompletionItemProvider(
+        NOSQL_LANGUAGE_ID,
+        new NoSqlCompletionProvider(),
+        '.',
+        ' ',
+        ';',
+    );
 }

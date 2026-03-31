@@ -19,6 +19,11 @@
 
 export const NOSQL_LANGUAGE_ID = 'nosql';
 
+// ─── Clause types ──────────────────────────────────────────────────────────────
+
+/** Clause types in the CosmosDB NoSQL query language. */
+export type ClauseType = 'select' | 'from' | 'where' | 'orderby' | 'groupby' | 'join' | 'offset' | 'limit' | 'none';
+
 // ─── Keyword definitions ───────────────────────────────────────────────────────
 
 /** Discriminator for keyword categories, used for completion item grouping. */
@@ -40,6 +45,12 @@ export interface KeywordInfo {
     snippet: string;
     /** Semantic category for grouping/sorting completions. */
     category: KeywordCategory;
+    /**
+     * Clause contexts where this keyword is most relevant.
+     * When the cursor is in one of these clauses, the keyword is boosted in sort order.
+     * Keywords still appear in all contexts but with lower priority when not matching.
+     */
+    validAfter?: ClauseType[];
 }
 
 /**
@@ -55,72 +66,81 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         description: 'Specifies the fields or expressions to return in the query result.',
         signature: 'SELECT',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/select',
-        snippet: 'SELECT',
+        snippet: 'SELECT ',
         category: 'clause',
+        validAfter: ['none'],
     },
     {
         name: 'FROM',
         description: 'Specifies the data source container or subquery to query from.',
         signature: 'FROM',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/from',
-        snippet: 'FROM',
+        snippet: 'FROM ',
         category: 'clause',
+        validAfter: ['select'],
     },
     {
         name: 'WHERE',
         description: 'Filters the documents returned by applying a Boolean condition.',
         signature: 'WHERE',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/where',
-        snippet: 'WHERE',
+        snippet: 'WHERE ',
         category: 'clause',
+        validAfter: ['from', 'join'],
     },
     {
         name: 'ORDER BY',
         description: 'Sorts the query results in ascending or descending order.',
         signature: 'ORDER BY',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/order-by',
-        snippet: 'ORDER BY',
+        snippet: 'ORDER BY ',
         category: 'clause',
+        validAfter: ['from', 'where', 'groupby'],
     },
     {
         name: 'ORDER BY RANK',
         description: 'Sorts query results by relevancy rank using a scoring function such as FULLTEXTSCORE or RRF.',
         signature: 'ORDER BY RANK',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/order-by-rank',
-        snippet: 'ORDER BY RANK',
+        snippet: 'ORDER BY RANK ',
         category: 'clause',
+        validAfter: ['from', 'where'],
     },
     {
         name: 'GROUP BY',
         description: 'Groups query results by the specified expression and applies aggregate functions.',
         signature: 'GROUP BY',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/group-by',
-        snippet: 'GROUP BY',
+        snippet: 'GROUP BY ',
         category: 'clause',
+        validAfter: ['from', 'where'],
     },
     {
         name: 'JOIN',
         description: 'Performs an intra-document self-join to iterate over nested arrays.',
         signature: 'JOIN',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/join',
-        snippet: 'JOIN',
+        snippet: 'JOIN ',
         category: 'clause',
+        validAfter: ['from', 'join'],
     },
     {
         name: 'OFFSET',
         description: 'Skips the specified number of results before returning items (used with LIMIT).',
         signature: 'OFFSET',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit',
-        snippet: 'OFFSET',
+        snippet: 'OFFSET ',
         category: 'clause',
+        validAfter: ['from', 'where', 'orderby', 'groupby'],
     },
     {
         name: 'LIMIT',
         description: 'Limits the number of items returned by the query (used with OFFSET).',
         signature: 'LIMIT',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit',
-        snippet: 'LIMIT',
+        snippet: 'LIMIT ',
         category: 'clause',
+        validAfter: ['offset'],
     },
 
     // ── Modifiers / keywords ──────────────────────────────────────────────────
@@ -129,8 +149,9 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         description: 'Assigns an alias to an expression, field, or subquery in the SELECT or FROM clause.',
         signature: 'AS',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/from',
-        snippet: 'AS',
+        snippet: 'AS ',
         category: 'keyword',
+        validAfter: ['select', 'from'],
     },
     {
         name: 'ASC',
@@ -139,14 +160,16 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/order-by',
         snippet: 'ASC',
         category: 'keyword',
+        validAfter: ['orderby'],
     },
     {
         name: 'BETWEEN',
         description: 'Evaluates whether a value falls between two inclusive bounds.',
         signature: 'BETWEEN',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/between',
-        snippet: 'BETWEEN',
+        snippet: 'BETWEEN ',
         category: 'operator',
+        validAfter: ['where'],
     },
     {
         name: 'DESC',
@@ -155,54 +178,61 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/order-by',
         snippet: 'DESC',
         category: 'keyword',
+        validAfter: ['orderby'],
     },
     {
         name: 'DISTINCT',
         description: 'Eliminates duplicate values from the query result set.',
         signature: 'DISTINCT',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/distinct',
-        snippet: 'DISTINCT',
+        snippet: 'DISTINCT ',
         category: 'keyword',
+        validAfter: ['select'],
     },
     {
         name: 'EXISTS',
         description: 'Returns true if a subquery returns any results.',
         signature: 'EXISTS',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/keywords#exists',
-        snippet: 'EXISTS',
+        snippet: 'EXISTS ',
         category: 'operator',
+        validAfter: ['where'],
     },
     {
         name: 'IN',
         description: 'Checks whether a value matches any value in a list or subquery.',
         signature: 'IN',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/in',
-        snippet: 'IN',
+        snippet: 'IN ',
         category: 'operator',
+        validAfter: ['where', 'join'],
     },
     {
         name: 'LIKE',
         description: 'Checks whether a string matches a specified pattern using wildcard characters.',
         signature: 'LIKE',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/like',
-        snippet: 'LIKE',
+        snippet: 'LIKE ',
         category: 'operator',
+        validAfter: ['where'],
     },
     {
         name: 'TOP',
         description: 'Returns only the first N items from the query result.',
         signature: 'TOP',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/top',
-        snippet: 'TOP',
+        snippet: 'TOP ',
         category: 'keyword',
+        validAfter: ['select'],
     },
     {
         name: 'VALUE',
         description: 'Projects a scalar value instead of a full JSON object in the SELECT result.',
         signature: 'VALUE',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/select#select-value',
-        snippet: 'VALUE',
+        snippet: 'VALUE ',
         category: 'keyword',
+        validAfter: ['select'],
     },
 
     // ── Logical operators ─────────────────────────────────────────────────────
@@ -211,24 +241,27 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         description: 'Returns true when both operands are true.',
         signature: 'AND',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/logical-operators',
-        snippet: 'AND',
+        snippet: 'AND ',
         category: 'operator',
+        validAfter: ['where'],
     },
     {
         name: 'NOT',
         description: 'Negates the boolean value of an expression.',
         signature: 'NOT',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/logical-operators',
-        snippet: 'NOT',
+        snippet: 'NOT ',
         category: 'operator',
+        validAfter: ['where'],
     },
     {
         name: 'OR',
         description: 'Returns true when at least one operand is true.',
         signature: 'OR',
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/logical-operators',
-        snippet: 'OR',
+        snippet: 'OR ',
         category: 'operator',
+        validAfter: ['where'],
     },
 
     // ── Constants ────────────────────────────────────────────────────────────
@@ -239,6 +272,7 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/constants',
         snippet: 'FALSE',
         category: 'constant',
+        validAfter: ['where', 'select'],
     },
     {
         name: 'NULL',
@@ -247,6 +281,7 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/constants',
         snippet: 'NULL',
         category: 'constant',
+        validAfter: ['where', 'select'],
     },
     {
         name: 'TRUE',
@@ -255,6 +290,7 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/constants',
         snippet: 'TRUE',
         category: 'constant',
+        validAfter: ['where', 'select'],
     },
     {
         name: 'UNDEFINED',
@@ -263,6 +299,7 @@ export const NOSQL_KEYWORDS: readonly KeywordInfo[] = [
         link: 'https://learn.microsoft.com/en-us/cosmos-db/query/constants',
         snippet: 'UNDEFINED',
         category: 'constant',
+        validAfter: ['where', 'select'],
     },
 ];
 
@@ -1496,6 +1533,11 @@ export const NOSQL_FUNCTIONS: readonly FunctionInfo[] = [
  * Function names only — for use in syntax highlighting token matchers.
  */
 export const NOSQL_FUNCTION_NAMES: readonly string[] = NOSQL_FUNCTIONS.map((f) => f.name);
+
+/**
+ * Names of aggregate functions (for boosting in SELECT when GROUP BY is present).
+ */
+export const NOSQL_AGGREGATE_FUNCTION_NAMES: ReadonlySet<string> = new Set(['AVG', 'COUNT', 'MAX', 'MIN', 'SUM']);
 
 // ─── Language configuration (shared between VS Code and Monaco) ────────────────
 

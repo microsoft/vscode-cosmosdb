@@ -25,9 +25,16 @@ import {
     type KeywordCategory,
 } from '../../../../cosmosdb/language/nosqlLanguageDefinitions';
 import {
+    computeAliasSortKey,
+    computeFunctionSortKey,
+    computeKeywordSortKey,
+    computePropertySortKey,
+    detectClauseContext,
+    detectFunctionArgContext,
     extractFromAlias,
     extractJoinAliases,
-    getOccurrence,
+    getCurrentQueryBlock,
+    getExpectedArgType,
     getTypeLabel,
     needsBracketNotation,
     resolveJoinAliasSchema,
@@ -58,6 +65,16 @@ function categoryToCompletionKind(
     }
 }
 
+/**
+ * Monaco command descriptor that re-triggers the suggest widget after a completion is accepted.
+ * Attached to keywords/aliases whose insertText ends with a space so the user immediately
+ * sees the next set of relevant suggestions (e.g. SELECT → TOP / DISTINCT / alias).
+ */
+const RETRIGGER_SUGGEST_COMMAND: monaco.languages.Command = {
+    id: 'editor.action.triggerSuggest',
+    title: 'Re-trigger completions',
+};
+
 // ─── Completion Provider ───────────────────────────────────────────────────────
 
 /**
@@ -72,7 +89,7 @@ export function createNoSqlCompletionProvider(
     getSchema: () => JSONSchema | null,
 ): monaco.languages.CompletionItemProvider {
     return {
-        triggerCharacters: ['.', ' '],
+        triggerCharacters: ['.', ' ', ';'],
 
         provideCompletionItems(
             model: monaco.editor.ITextModel,
@@ -93,9 +110,31 @@ export function createNoSqlCompletionProvider(
 
             const suggestions: monaco.languages.CompletionItem[] = [];
 
-            // Parse query context
-            const fromAlias = extractFromAlias(fullText);
-            const joinAliases: JoinAlias[] = extractJoinAliases(fullText);
+            // ── 0. Semicolon auto-formatting: insert ;\n\n ─────────────────
+            if (textBeforeCursor.endsWith(';')) {
+                suggestions.push({
+                    label: ';',
+                    kind: monacoInstance.languages.CompletionItemKind.Snippet,
+                    insertText: ';\n\n$0',
+                    insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    range: {
+                        startLineNumber: position.lineNumber,
+                        startColumn: position.column - 1,
+                        endLineNumber: position.lineNumber,
+                        endColumn: position.column,
+                    },
+                    detail: 'End query and start a new one',
+                    sortText: '0',
+                    preselect: true,
+                });
+                return { suggestions };
+            }
+
+            // Parse query context — scope to current query block
+            const cursorOffset = model.getOffsetAt(position);
+            const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
+            const fromAlias = extractFromAlias(queryBlockText);
+            const joinAliases: JoinAlias[] = extractJoinAliases(queryBlockText);
 
             // ── 1. Dot-triggered: only schema property completions ─────────
             const dotMatch = textBeforeCursor.match(/(\w+(?:\.\w+)*)\.(\w*)$/);
@@ -140,6 +179,16 @@ export function createNoSqlCompletionProvider(
                         endColumn: position.column,
                     };
 
+                    // Detect function argument context for type-ranked suggestions
+                    const cursorOffset = model.getOffsetAt(position);
+                    const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
+                    const blockStartInFull = fullText.lastIndexOf(queryBlockText, cursorOffset);
+                    const cursorOffsetInBlock = cursorOffset - (blockStartInFull >= 0 ? blockStartInFull : 0);
+                    const funcArgCtx = detectFunctionArgContext(queryBlockText, cursorOffsetInBlock);
+                    const expectedType = funcArgCtx
+                        ? getExpectedArgType(funcArgCtx.functionName, funcArgCtx.argIndex)
+                        : null;
+
                     for (const [name, propSchema] of Object.entries(properties)) {
                         const typeLabel = getTypeLabel(propSchema as JSONSchema);
                         const hasChildren =
@@ -147,9 +196,7 @@ export function createNoSqlCompletionProvider(
                             !!(propSchema as JSONSchema).anyOf?.some(
                                 (e: JSONSchema) => e.type === 'object' || e.properties,
                             );
-                        // Higher occurrence → lower sort key → appears first
-                        const occurrence = getOccurrence(propSchema as JSONSchema);
-                        const sortKey = String(1e9 - occurrence).padStart(10, '0');
+                        const sortKey = computePropertySortKey(propSchema as JSONSchema, expectedType);
 
                         if (needsBracketNotation(name)) {
                             suggestions.push({
@@ -214,8 +261,58 @@ export function createNoSqlCompletionProvider(
                 return { suggestions };
             }
 
+            // ── Clause context detection ───────────────────────────────────
+            // Compute cursor offset within the query block by finding how much of the
+            // full text precedes the query block, then subtracting.
+            const blockStartInFull = fullText.lastIndexOf(queryBlockText, cursorOffset);
+            const cursorOffsetInBlock = cursorOffset - (blockStartInFull >= 0 ? blockStartInFull : 0);
+            const clauseCtx = detectClauseContext(queryBlockText, cursorOffsetInBlock);
+
+            // ── 2b. After IN operator: suggest `(` for value list ──────────
+            if (clauseCtx.precedingToken === 'in' && clauseCtx.clause === 'where') {
+                suggestions.push({
+                    label: '(...)',
+                    kind: monacoInstance.languages.CompletionItemKind.Snippet,
+                    insertText: '($0)',
+                    insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    range,
+                    detail: 'Value list',
+                    sortText: '0',
+                });
+            }
+
+            // ── 2c. After SELECT (initial): suggest `*` ───────────────────
+            if (clauseCtx.clause === 'select' && clauseCtx.subPosition === 'initial') {
+                suggestions.push({
+                    label: '*',
+                    kind: monacoInstance.languages.CompletionItemKind.Keyword,
+                    insertText: '* ',
+                    range,
+                    detail: 'Select all fields',
+                    sortText: '00_*',
+                    command: RETRIGGER_SUGGEST_COMMAND,
+                });
+            }
+
+            // ── 2d. After ORDER BY (post-expression): boost ASC/DESC ───────
+            // (handled via validAfter + subPosition check in keyword sort keys)
+
             // ── 3. Keyword completions ─────────────────────────────────────
             for (const keyword of NOSQL_KEYWORDS) {
+                let sortText = computeKeywordSortKey(keyword, clauseCtx);
+
+                // Special sub-position boosts
+                if (keyword.name === 'ASC' || keyword.name === 'DESC') {
+                    if (clauseCtx.clause === 'orderby' && clauseCtx.subPosition === 'post-expression') {
+                        sortText = `00_${keyword.name}`;
+                    }
+                }
+                if (keyword.name === 'TOP' || keyword.name === 'DISTINCT' || keyword.name === 'VALUE') {
+                    if (clauseCtx.clause === 'select' && clauseCtx.subPosition === 'initial') {
+                        sortText = `01_${keyword.name}`;
+                    }
+                }
+
                 suggestions.push({
                     label: keyword.name,
                     kind: categoryToCompletionKind(keyword.category, monacoInstance.languages.CompletionItemKind),
@@ -223,12 +320,14 @@ export function createNoSqlCompletionProvider(
                     range,
                     detail: keyword.signature,
                     documentation: `${keyword.description}\n\n${keyword.link}`,
-                    sortText: `1_${keyword.name}`,
+                    sortText,
+                    ...(keyword.snippet.endsWith(' ') ? { command: RETRIGGER_SUGGEST_COMMAND } : {}),
                 });
             }
 
             // ── 4. Function completions ────────────────────────────────────
             for (const func of NOSQL_FUNCTIONS) {
+                const sortText = computeFunctionSortKey(func.name, clauseCtx);
                 suggestions.push({
                     label: {
                         label: func.name,
@@ -240,11 +339,12 @@ export function createNoSqlCompletionProvider(
                     range,
                     detail: func.signature,
                     documentation: `${func.description}\n\n${func.link}`,
-                    sortText: `2_${func.name}`,
+                    sortText,
                 });
             }
 
             // ── 5. Alias suggestions (FROM + JOIN aliases) ─────────────────
+            const aliasSortKey = computeAliasSortKey(fromAlias, clauseCtx);
             suggestions.push({
                 label: {
                     label: fromAlias,
@@ -254,10 +354,11 @@ export function createNoSqlCompletionProvider(
                 insertText: fromAlias,
                 range,
                 detail: 'Collection alias from FROM clause',
-                sortText: `0_${fromAlias}`,
+                sortText: aliasSortKey,
             });
 
             for (const joinAlias of joinAliases) {
+                const joinAliasSortKey = computeAliasSortKey(joinAlias.alias, clauseCtx);
                 suggestions.push({
                     label: {
                         label: joinAlias.alias,
@@ -267,7 +368,7 @@ export function createNoSqlCompletionProvider(
                     insertText: joinAlias.alias,
                     range,
                     detail: `JOIN ${joinAlias.alias} IN ${joinAlias.sourceAlias}.${joinAlias.propertyPath.join('.')}`,
-                    sortText: `0_${joinAlias.alias}`,
+                    sortText: joinAliasSortKey,
                 });
             }
 

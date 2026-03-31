@@ -56,6 +56,7 @@
  */
 
 import * as l10n from '@vscode/l10n';
+import { assert } from 'console';
 import Denque from 'denque';
 import { type JSONSchema } from '../JSONSchema';
 import { inferNoSqlType, noSqlTypeToJSONType, type NoSQLTypes } from './NoSqlTypes';

@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.33.2 (Preview)
+
+### Changed
+
+- Migrated from Slickgrid to React Data Grid to address several accessibility and theming issues. (#2960)
+- Updated Cosmos DB best practices skill including a set of supplementary rule files for different scenarios. (#2965)
+- Updated localization.
+- Updated several dependencies to address vulnerabilities.
+
+## 0.33.1 (Preview)
+
+### Fixed
+
+- Fixed an issue where the SKILL.md was not packaged correctly. (#2954)
+
 ## 0.32.0
 
 ### Added

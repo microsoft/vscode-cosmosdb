@@ -62,7 +62,6 @@ export const nosqlMonarchTokensProvider: monaco.languages.IMonarchLanguage = {
     // Built-in functions (from shared module)
     builtinFunctions: [...NOSQL_FUNCTION_NAMES],
 
-
     tokenizer: {
         root: [
             // Comments (checked before whitespace so inline `--` is caught)

@@ -56,6 +56,21 @@ export const QueryMonaco = () => {
             const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
             dispatcher.setSelectedText(selectedContent);
         });
+
+        // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
+        // and route them through the extension host so they open in the default browser.
+        const container = editor.getContainerDomNode();
+        container.addEventListener('click', (e) => {
+            const target = (e.target as HTMLElement).closest('a');
+            if (target) {
+                const href = target.getAttribute('href') ?? target.getAttribute('data-href');
+                if (href) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void dispatcher.openUrl(href);
+                }
+            }
+        });
     };
 
     useEffect(() => {

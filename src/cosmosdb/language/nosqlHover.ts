@@ -40,7 +40,7 @@ export function getNoSqlHoverContent(word: string): NoSqlHoverContent | null {
             `**${keywordMatch.name}** &nbsp;<small>keyword</small>`,
             '---',
             keywordMatch.description,
-            `[ⓘ Documentation](${keywordMatch.link})`,
+            `<a href="${keywordMatch.link}">ⓘ Documentation</a>`,
         ];
         return { markdown: lines.join('\n\n') };
     }
@@ -53,7 +53,9 @@ export function getNoSqlHoverContent(word: string): NoSqlHoverContent | null {
         const lines: string[] = [
             `**${upper}** &nbsp;<small>keyword</small>`,
             '---',
-            ...partialMatches.map((k) => `- **${k.name}** — ${k.description}  \n  [ⓘ Documentation](${k.link})`),
+            ...partialMatches.map(
+                (k) => `- **${k.name}** — ${k.description}  \n  <a href="${k.link}">ⓘ Documentation</a>`,
+            ),
         ];
         return { markdown: lines.join('\n\n') };
     }
@@ -76,7 +78,7 @@ export function getNoSqlHoverContent(word: string): NoSqlHoverContent | null {
             lines.push('**Parameters:**\n' + argDocs);
         }
 
-        lines.push(`[ⓘ Documentation](${funcMatch.link})`);
+        lines.push(`<a href="${funcMatch.link}">ⓘ Documentation</a>`);
 
         return { markdown: lines.join('\n\n') };
     }

@@ -175,6 +175,10 @@ export class BaseTab {
             case 'executeReportIssueCommand':
                 // Use an async anonymous function to convert Thenable to Promise
                 return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
+            case 'openUrl':
+                return (async () => {
+                    await vscode.env.openExternal(vscode.Uri.parse(payload.params[0] as string));
+                })();
 
             default:
                 throw new Error(l10n.t('Unknown command: {commandName}', { commandName }));

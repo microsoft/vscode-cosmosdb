@@ -18,6 +18,7 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { getCursorContext } from '../../../../cosmosdb/language/AST';
 import {
     NOSQL_FUNCTIONS,
     NOSQL_KEYWORDS,
@@ -29,17 +30,11 @@ import {
     computeFunctionSortKey,
     computeKeywordSortKey,
     computePropertySortKey,
-    detectClauseContext,
-    detectFunctionArgContext,
-    extractFromAlias,
-    extractJoinAliases,
-    getCurrentQueryBlock,
     getExpectedArgType,
     getTypeLabel,
     needsBracketNotation,
     resolveJoinAliasSchema,
     resolveSchemaProperties,
-    type JoinAlias,
 } from '../../../../cosmosdb/language/nosqlParser';
 import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 
@@ -130,11 +125,10 @@ export function createNoSqlCompletionProvider(
                 return { suggestions };
             }
 
-            // Parse query context — scope to current query block
+            // Parse query context — single entry point via AST parser
             const cursorOffset = model.getOffsetAt(position);
-            const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
-            const fromAlias = extractFromAlias(queryBlockText);
-            const joinAliases: JoinAlias[] = extractJoinAliases(queryBlockText);
+            const cursorCtx = getCursorContext(fullText, cursorOffset);
+            const { fromAlias, joinAliases } = cursorCtx;
 
             // ── 1. Dot-triggered: only schema property completions ─────────
             const dotMatch = textBeforeCursor.match(/(\w+(?:\.\w+)*)\.(\w*)$/);
@@ -179,14 +173,9 @@ export function createNoSqlCompletionProvider(
                         endColumn: position.column,
                     };
 
-                    // Detect function argument context for type-ranked suggestions
-                    const cursorOffset = model.getOffsetAt(position);
-                    const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
-                    const blockStartInFull = fullText.lastIndexOf(queryBlockText, cursorOffset);
-                    const cursorOffsetInBlock = cursorOffset - (blockStartInFull >= 0 ? blockStartInFull : 0);
-                    const funcArgCtx = detectFunctionArgContext(queryBlockText, cursorOffsetInBlock);
-                    const expectedType = funcArgCtx
-                        ? getExpectedArgType(funcArgCtx.functionName, funcArgCtx.argIndex)
+                    // Use function argument context from AST parser for type-ranked suggestions
+                    const expectedType = cursorCtx.insideFunction
+                        ? getExpectedArgType(cursorCtx.insideFunction.name, cursorCtx.insideFunction.argIndex)
                         : null;
 
                     for (const [name, propSchema] of Object.entries(properties)) {
@@ -261,12 +250,8 @@ export function createNoSqlCompletionProvider(
                 return { suggestions };
             }
 
-            // ── Clause context detection ───────────────────────────────────
-            // Compute cursor offset within the query block by finding how much of the
-            // full text precedes the query block, then subtracting.
-            const blockStartInFull = fullText.lastIndexOf(queryBlockText, cursorOffset);
-            const cursorOffsetInBlock = cursorOffset - (blockStartInFull >= 0 ? blockStartInFull : 0);
-            const clauseCtx = detectClauseContext(queryBlockText, cursorOffsetInBlock);
+            // ── Clause context from AST parser (already computed above) ────
+            const clauseCtx = cursorCtx;
 
             // ── 2b. After IN operator: suggest `(` for value list ──────────
             if (clauseCtx.precedingToken === 'in' && clauseCtx.clause === 'where') {

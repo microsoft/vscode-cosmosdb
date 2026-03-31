@@ -17,16 +17,9 @@
  */
 
 import * as vscode from 'vscode';
+import { getCursorContext } from './AST';
 import { NOSQL_FUNCTIONS, NOSQL_KEYWORDS, NOSQL_LANGUAGE_ID, type KeywordCategory } from './nosqlLanguageDefinitions';
-import {
-    computeAliasSortKey,
-    computeFunctionSortKey,
-    computeKeywordSortKey,
-    detectClauseContext,
-    extractFromAlias,
-    extractJoinAliases,
-    getCurrentQueryBlock,
-} from './nosqlParser';
+import { computeAliasSortKey, computeFunctionSortKey, computeKeywordSortKey } from './nosqlParser';
 
 /**
  * VS Code command descriptor that re-triggers the suggest widget after a completion is accepted.
@@ -86,13 +79,12 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
 
         const suggestions: vscode.CompletionItem[] = [];
 
-        // Parse query context — scope to current query block
+        // Parse query context — single entry point via AST parser
         const textUntilPosition = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
         const cursorOffset = textUntilPosition.length;
         const fullText = document.getText();
-        const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
-        const fromAlias = extractFromAlias(queryBlockText);
-        const joinAliases = extractJoinAliases(queryBlockText);
+        const cursorCtx = getCursorContext(fullText, cursorOffset);
+        const { fromAlias, joinAliases } = cursorCtx;
 
         // ── After LIKE keyword: suggest string literal templates ────────
         if (/\bLIKE\s+$/i.test(textBeforeCursor)) {
@@ -110,10 +102,8 @@ export class NoSqlCompletionProvider implements vscode.CompletionItemProvider {
             return suggestions;
         }
 
-        // Detect clause context for suggestion filtering
-        const blockStart = fullText.lastIndexOf(queryBlockText, cursorOffset);
-        const cursorOffsetInBlock = cursorOffset - (blockStart >= 0 ? blockStart : 0);
-        const clauseCtx = detectClauseContext(queryBlockText, cursorOffsetInBlock);
+        // Clause context from AST parser (already computed above)
+        const clauseCtx = cursorCtx;
 
         // ── Special context suggestions ────────────────────────────────
 

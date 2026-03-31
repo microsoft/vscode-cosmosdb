@@ -14,14 +14,10 @@
 
 // eslint-disable-next-line import/no-internal-modules
 import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import { getCursorContext } from '../../../../cosmosdb/language/AST';
 import { getNoSqlHoverContent, getNoSqlSchemaPropertyHoverContent } from '../../../../cosmosdb/language/nosqlHover';
 import { NOSQL_LANGUAGE_ID } from '../../../../cosmosdb/language/nosqlLanguageDefinitions';
-import {
-    extractFromAlias,
-    extractJoinAliases,
-    getCurrentQueryBlock,
-    resolvePropertyAtPath,
-} from '../../../../cosmosdb/language/nosqlParser';
+import { resolvePropertyAtPath } from '../../../../cosmosdb/language/nosqlParser';
 import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 
 /**
@@ -56,9 +52,7 @@ export function createNoSqlHoverProvider(
                 if (schema) {
                     const fullText = model.getValue();
                     const cursorOffset = model.getOffsetAt(position);
-                    const queryBlockText = getCurrentQueryBlock(fullText, cursorOffset);
-                    const fromAlias = extractFromAlias(queryBlockText);
-                    const joinAliases = extractJoinAliases(queryBlockText);
+                    const { fromAlias, joinAliases } = getCursorContext(fullText, cursorOffset);
                     const dotPath = dotPathMatch[1];
 
                     const resolved = resolvePropertyAtPath(schema, dotPath, fromAlias, joinAliases);

@@ -25,7 +25,6 @@ import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { isSelectStar, toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
-import { sanitizeSqlComment } from '../utils/sanitization';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import {
     getSchemaFromDocuments,
@@ -33,6 +32,7 @@ import {
     updateSchemaWithDocument,
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
+import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';

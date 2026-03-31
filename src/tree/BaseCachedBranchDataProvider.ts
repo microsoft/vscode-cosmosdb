@@ -60,14 +60,14 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
     /**
      * Gets the name of the provider, used primarily in telemetry and logging.
-     * By default, returns the name of the implementing subclass.
-     * Subclasses can override this if they need a different naming scheme.
+     * Subclasses must return a stable string literal (e.g. the class name).
      *
-     * @returns A string identifier for this provider (the class name by default)
+     * **Important:** Do not use `this.constructor.name` — it gets mangled by
+     * webpack/Terser in production builds, producing unreadable telemetry.
+     *
+     * @returns A string identifier for this provider
      */
-    protected get providerName(): string {
-        return this.constructor.name;
-    }
+    protected abstract get providerName(): string;
 
     /**
      * Gets the prefix used for context values in tree items created by this provider.

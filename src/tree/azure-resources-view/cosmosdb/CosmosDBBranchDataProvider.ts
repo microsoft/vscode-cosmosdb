@@ -22,6 +22,10 @@ import { NoSqlAccountResourceItem } from '../../nosql/NoSqlAccountResourceItem';
 import { type TreeElement } from '../../TreeElement';
 
 export class CosmosDBBranchDataProvider extends BaseCachedBranchDataProvider<CosmosDBAccountModel> {
+    protected get providerName(): string {
+        return 'CosmosDBBranchDataProvider';
+    }
+
     protected get contextValue(): string {
         return 'cosmosDB.azure';
     }

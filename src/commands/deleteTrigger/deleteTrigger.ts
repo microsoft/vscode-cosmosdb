@@ -13,9 +13,10 @@ import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function cosmosDBDeleteTrigger(context: IActionContext, node: CosmosDBTriggerResourceItem): Promise<void> {
-    context.telemetry.properties.experience = node.experience.api;
-
+export async function cosmosDBDeleteTrigger(
+    context: IActionContext,
+    node?: CosmosDBTriggerResourceItem,
+): Promise<void> {
     if (!node) {
         node = await pickAppResource<CosmosDBTriggerResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
@@ -26,6 +27,8 @@ export async function cosmosDBDeleteTrigger(context: IActionContext, node: Cosmo
     if (!node) {
         return undefined;
     }
+
+    context.telemetry.properties.experience = node.experience.api;
 
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;

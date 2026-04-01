@@ -11,7 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { CosmosDbChatParticipant } from '../chat/cosmosDbChatParticipant';
+import { CosmosDbChatParticipant } from '../chat';
 import { doubleClickDebounceDelay } from '../constants';
 import {
     deployLLMInstructionsFiles,
@@ -72,7 +72,7 @@ export function registerCommands(): void {
     // For Cosmos DB FileSystem
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
-        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+        async (_actionContext: IActionContext, uri?: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
     );
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
@@ -183,7 +183,7 @@ export function registerChatButtonCommands() {
     // Command to open query side-by-side
     ext.context.subscriptions.push(
         vscode.commands.registerCommand('cosmosDB.openQuerySideBySide', (resultId: number) => {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.openSideBySide', async (ctx) => {
+            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.openSideBySide', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
 
                 console.log('[CosmosDB Chat] openQuerySideBySide called', { resultId });

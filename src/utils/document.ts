@@ -6,6 +6,7 @@
 import {
     PartitionKeyBuilder,
     type ItemDefinition,
+    type JSONObject,
     type JSONValue,
     type PartitionKey,
     type PartitionKeyDefinition,
@@ -26,8 +27,7 @@ export const extractPartitionKey = (document: ItemDefinition, partitionKey: Part
             // Use 'prop in interim' instead of 'interim[prop]' to check property existence
             // This ensures empty strings are treated as valid values (truthy check would fail)
             if (interim && typeof interim === 'object' && prop in interim) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                interim = interim[prop];
+                interim = (interim as JSONObject)[prop];
             } else {
                 // Property not found in the path
                 pathNotFound = true;
@@ -81,8 +81,7 @@ export const extractPartitionKeyValues = (
             // Use 'prop in interim' instead of 'interim[prop]' to check property existence
             // This ensures empty strings are treated as valid values (truthy check would fail)
             if (interim && typeof interim === 'object' && prop in interim) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                interim = interim[prop];
+                interim = (interim as JSONObject)[prop];
             } else {
                 // Property not found in the path
                 pathNotFound = true;

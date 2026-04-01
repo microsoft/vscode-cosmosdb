@@ -32,8 +32,8 @@ export const QueryMonaco = () => {
     }, []);
 
     const onChange = useMemo(
-        () => (newValue: string) => {
-            if (newValue !== state.queryValue) {
+        () => (newValue: string | undefined) => {
+            if (newValue !== undefined && newValue !== state.queryValue) {
                 dispatcher.insertText(newValue);
             }
         },

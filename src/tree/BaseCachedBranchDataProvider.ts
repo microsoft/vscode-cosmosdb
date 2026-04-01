@@ -371,8 +371,8 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 try {
                     // Set the data provider for the element
                     element.dataProvider = this;
-                    return ext.state.wrapItemInStateHandling(element, (item: TreeElement) =>
-                        this.refresh(item),
+                    return ext.state.wrapItemInStateHandling(element, (item) =>
+                        this.refresh(item as TreeElement),
                     ) as TreeElement;
                 } catch (error) {
                     context.telemetry.properties.wrapError = parseError(error).message;

@@ -15,10 +15,8 @@ import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function cosmosDBDeleteStoredProcedure(
     context: IActionContext,
-    node: CosmosDBStoredProcedureResourceItem,
+    node?: CosmosDBStoredProcedureResourceItem,
 ): Promise<void> {
-    context.telemetry.properties.experience = node.experience.api;
-
     if (!node) {
         node = await pickAppResource<CosmosDBStoredProcedureResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
@@ -29,6 +27,8 @@ export async function cosmosDBDeleteStoredProcedure(
     if (!node) {
         return undefined;
     }
+
+    context.telemetry.properties.experience = node.experience.api;
 
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;

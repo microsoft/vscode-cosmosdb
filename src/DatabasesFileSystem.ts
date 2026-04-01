@@ -143,7 +143,11 @@ export class DatabasesFileSystem implements FileSystemProvider {
     // endregion
 
     // region Public Methods
-    public async updateWithoutPrompt(uri: Uri): Promise<void> {
+    public async updateWithoutPrompt(uri?: Uri): Promise<void> {
+        if (!uri) {
+            return undefined;
+        }
+
         const textDoc = await vscode.workspace.openTextDocument(uri);
         this.showSaveConfirmation = false;
         try {

@@ -46,6 +46,10 @@ type IndexMetricsV2 = {
     };
 };
 
+const isPlainObject = (val: unknown): val is Record<string, unknown> => {
+    return typeof val === 'object' && val !== null && !Array.isArray(val) && !(val instanceof Date);
+};
+
 const isIndexV2 = (value: JSONValue): value is IndexV2 => {
     return !!(
         value &&
@@ -64,15 +68,13 @@ const isIndexMetricsV2 = (value: JSONValue): value is IndexMetricsV2 => {
         typeof value === 'object' &&
         ('UtilizedIndexes' in value || 'PotentialIndexes' in value) &&
         (value.UtilizedIndexes === undefined ||
-            (value.UtilizedIndexes &&
-                typeof value.UtilizedIndexes === 'object' &&
+            (isPlainObject(value.UtilizedIndexes) &&
                 (value.UtilizedIndexes['SingleIndexes'] === undefined ||
                     Array.isArray(value.UtilizedIndexes['SingleIndexes'])) &&
                 (value.UtilizedIndexes['CompositeIndexes'] === undefined ||
                     Array.isArray(value.UtilizedIndexes['CompositeIndexes'])))) &&
         (value.PotentialIndexes === undefined ||
-            (value.PotentialIndexes &&
-                typeof value.PotentialIndexes === 'object' &&
+            (isPlainObject(value.PotentialIndexes) &&
                 (value.PotentialIndexes['SingleIndexes'] === undefined ||
                     Array.isArray(value.PotentialIndexes['SingleIndexes'])) &&
                 (value.PotentialIndexes['CompositeIndexes'] === undefined ||
@@ -141,7 +143,11 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
                     {parsed.sections.map((section, index) => (
                         <TableRow
                             key={`${section.title}-${index}`}
-                            aria-label={section.title + ' ' + Object.values(section.indexes).join(' ')}
+                            aria-label={
+                                section.title +
+                                ' ' +
+                                section.indexes.map((idx) => Object.values(idx).join(' ')).join(', ')
+                            }
                             tabIndex={0}
                         >
                             <TableCell>{section.title}</TableCell>

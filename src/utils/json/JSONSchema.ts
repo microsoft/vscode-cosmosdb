@@ -28,12 +28,22 @@ export interface JSONSchema {
     'x-occurrence'?: number;
     'x-typeOccurrence'?: number;
     'x-bsonType'?: string; // Explicitly declare the key with a dash using quotes
+    'x-minProperties'?: number;
+    'x-maxProperties'?: number;
+    'x-minItems'?: number;
+    'x-maxItems'?: number;
+    'x-maxLength'?: number;
+    'x-minLength'?: number;
+    'x-maxValue'?: number;
+    'x-minValue'?: number;
+    'x-trueCount'?: number;
+    'x-falseCount'?: number;
     title?: string;
     definitions?: {
         [name: string]: JSONSchema;
     };
     description?: string;
-    properties?: JSONSchema; // changed from: JSONSchemaMap;
+    properties?: JSONSchemaMap;
     patternProperties?: JSONSchemaMap;
     additionalProperties?: JSONSchemaRef;
     minProperties?: number;

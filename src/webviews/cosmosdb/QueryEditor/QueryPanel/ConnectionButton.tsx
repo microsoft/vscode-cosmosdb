@@ -50,7 +50,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
     }, [state.dbName, state.containerName]);
 
     const onOpenChange = useCallback(
-        (_e: never, data: { open: boolean }) => {
+        (_e: unknown, data: { open: boolean }) => {
             if (data.open) {
                 void dispatcher.getConnections();
             }

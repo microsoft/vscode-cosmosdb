@@ -6,6 +6,7 @@
 import { AriaLiveAnnouncer, useFocusFinders } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { type l10nJsonFormat } from '@vscode/l10n';
+import { isPlainObject } from 'es-toolkit';
 import type * as React from 'react';
 import { useEffect, useRef } from 'react';
 // eslint-disable-next-line import/no-internal-modules
@@ -34,9 +35,9 @@ function FocusManager({ children }: { children: React.ReactNode }) {
 }
 
 export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewState>, rootId = 'root'): void {
-    l10n.config({
-        contents: (globalThis.l10n_bundle as l10nJsonFormat) ?? {},
-    });
+    const l10nBundle: l10nJsonFormat = isPlainObject(l10n_bundle) ? (l10n_bundle as l10nJsonFormat) : {};
+    l10n.config({ contents: l10nBundle });
+
     const container = document.getElementById(rootId);
     if (!container) {
         throw new Error(l10n.t('Element with id of {rootId} not found.', { rootId }));

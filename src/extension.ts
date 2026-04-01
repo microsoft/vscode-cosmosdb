@@ -139,7 +139,9 @@ export async function activateInternal(
         clientExtensionId: 'ms-azuretools.vscode-cosmosdb',
 
         // Successful retrieval of Azure Resources APIs will be returned here
-        onDidReceiveAzureResourcesApis: (azureResourcesApis: (AzureResourcesExtensionApi | undefined)[]) => {
+        onDidReceiveAzureResourcesApis: (
+            azureResourcesApis: (AzureResourcesExtensionApi | AzureExtensionApi | undefined)[],
+        ) => {
             const [rgApiV2] = azureResourcesApis;
             if (!rgApiV2) {
                 throw new Error(l10n.t('Failed to find a matching Azure Resources API for version "{0}".', v2));

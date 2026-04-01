@@ -20,8 +20,12 @@ export function createPortalUri(subscription: AzureSubscription | ISubscriptionC
 
 export async function openUnsupportedAccount(
     _context: IActionContext,
-    node: CosmosDBAccountUnsupportedResourceItem,
+    node?: CosmosDBAccountUnsupportedResourceItem,
 ): Promise<void> {
+    if (!node) {
+        return undefined;
+    }
+
     const api = node.experience.shortName;
     const message: string = l10n.t('This extension does not support Azure Cosmos DB for') + ` ${api} API.`;
 

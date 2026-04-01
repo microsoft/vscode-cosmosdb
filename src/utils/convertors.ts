@@ -454,14 +454,16 @@ export const getTableDataset = async (
                 const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) =>
                     path.startsWith('/') ? path.slice(1) : path,
                 );
-                const partitionKeyValues = extractPartitionKey(doc, partitionKey) ?? [];
+                const partitionKeyValues = extractPartitionKey(doc, partitionKey);
+                const valuesArray = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
+
                 partitionKeyPaths.forEach((path, index) => {
-                    const value: unknown = partitionKeyValues[index];
+                    const value: unknown = valuesArray[index];
                     // Check if the value is the NonePartitionKey (empty object from Cosmos DB SDK)
                     if (isNonePartitionKey(value)) {
                         row[path] = undefined; // represent None partition key as undefined
                     } else {
-                        row[path] = `${value ?? ''}`;
+                        row[path] = toStringUniversal(value ?? '');
                     }
                 });
             }

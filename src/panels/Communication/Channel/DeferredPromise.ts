@@ -14,7 +14,7 @@ export interface DeferredPromise<ValueType> {
 
      @param value - The value to resolve the promise with.
      */
-    resolve(this: void, value?: ValueType | PromiseLike<ValueType>): void;
+    resolve(this: void, value: ValueType | PromiseLike<ValueType>): void;
 
     /**
      Reject the promise with a provided reason or error.
@@ -25,7 +25,7 @@ export interface DeferredPromise<ValueType> {
 }
 
 export class Deferred<ValueType = unknown> implements DeferredPromise<ValueType> {
-    private _resolve!: (value?: ValueType | PromiseLike<ValueType>) => void;
+    private _resolve!: (value: ValueType | PromiseLike<ValueType>) => void;
     private _reject!: (reason?: unknown) => void;
 
     public readonly promise = new Promise<ValueType>((resolve, reject) => {
@@ -33,7 +33,7 @@ export class Deferred<ValueType = unknown> implements DeferredPromise<ValueType>
         this._reject = reject;
     });
 
-    resolve(value?: ValueType | PromiseLike<ValueType>): void {
+    resolve(value: ValueType | PromiseLike<ValueType>): void {
         this._resolve(value);
     }
 

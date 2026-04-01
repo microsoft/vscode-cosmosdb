@@ -296,10 +296,12 @@ function findTypeEntry(anyOfArray: JSONSchema[], bsonType: NoSQLTypes): JSONSche
     return anyOfArray.find((entry) => entry['x-bsonType'] === bsonType);
 }
 
+type NumericStatKey = 'x-minProperties' | 'x-maxProperties' | 'x-minItems' | 'x-maxItems';
+
 /**
  * Helper function to update min and max stats
  */
-function updateMinMaxStats(schema: JSONSchema, minKey: string, maxKey: string, value: number): void {
+function updateMinMaxStats(schema: JSONSchema, minKey: NumericStatKey, maxKey: NumericStatKey, value: number): void {
     if (schema[minKey] === undefined || value < schema[minKey]) {
         schema[minKey] = value;
     }
@@ -578,7 +580,9 @@ function getSchemaAtPath(schema: JSONSchema, path: string[]): JSONSchema {
              * We're looking at the "Object"-one, because these have the properties we're interested in.
              */
             if (nextNode.anyOf && nextNode.anyOf.length > 0) {
-                currentNode = nextNode.anyOf.find((entry: JSONSchema) => entry.type === 'object') as JSONSchema;
+                currentNode = nextNode.anyOf.find(
+                    (entry): entry is JSONSchema => typeof entry !== 'boolean' && entry.type === 'object',
+                ) as JSONSchema;
             } else {
                 // we can't continue, as we're missing the next node, we abort at the last node we managed to extract
                 return currentNode;

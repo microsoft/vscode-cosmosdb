@@ -11,7 +11,7 @@ export interface UseCommandHotkeyOptions {
     disabled?: boolean;
 }
 
-export const useCommandHotkey = <Scope extends HotkeyScope, Command extends HotkeyCommand, T extends unknown[] = []>(
+export const useCommandHotkey = <Scope extends HotkeyScope, Command extends HotkeyCommand>(
     scope: Scope,
     command: Command,
     handler: CommandHandler,
@@ -26,8 +26,8 @@ export const useCommandHotkey = <Scope extends HotkeyScope, Command extends Hotk
     handlerRef.current = handler;
 
     // Create a stable wrapper function that always calls the current handler
-    const stableWrapper = useCallback((event: KeyboardEvent, ...params: T) => {
-        return handlerRef?.current(event, ...params);
+    const stableWrapper = useCallback((event: KeyboardEvent) => {
+        return handlerRef?.current(event);
     }, []);
 
     // Register/unregister the stable wrapper

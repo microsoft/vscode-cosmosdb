@@ -824,7 +824,7 @@ For more information, visit the [Azure Cosmos DB documentation](https://learn.mi
             } finally {
                 ctx.telemetry.properties.command = resolvedCommand;
                 ctx.telemetry.properties.method = resolvedMethod;
-                ctx.telemetry.measurements.durationMs = Date.now() - requestStartTime;
+                ctx.telemetry.measurements.duration = Date.now() - requestStartTime;
             }
         });
 

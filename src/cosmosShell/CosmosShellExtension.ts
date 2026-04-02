@@ -212,7 +212,11 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         return;
     }
 
-    const cosmosShellCredential = getCosmosShellCredential(node);
+    // Skip passing credentials for emulator connections: CosmosDBShell auto-detects localhost
+    // emulators and injects the well-known key. Passing COSMOS_SHELL_CREDENTIAL would cause
+    // a conflict in CosmosDBShell's credential handling when combined with the emulator
+    // connection string it builds internally.
+    const cosmosShellCredential = node.model.accountInfo.isEmulator ? undefined : getCosmosShellCredential(node);
     const rawEndpoint = node.model.accountInfo.endpoint;
     if (!rawEndpoint) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));

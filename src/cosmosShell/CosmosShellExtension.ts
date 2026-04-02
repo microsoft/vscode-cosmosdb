@@ -139,6 +139,24 @@ function updateTerminalContext(): void {
     vscode.commands.executeCommand('setContext', 'vscodeDatabases.cosmosShellTerminalOpen', hasCosmosShellTerminal);
 }
 
+/**
+ * Watches for the terminal closing shortly after creation (early exit).
+ * If the process exits quickly, logs the exit code and reason to the output channel.
+ */
+function watchForEarlyExit(terminal: vscode.Terminal): void {
+    const startTime = Date.now();
+    const listener = vscode.window.onDidCloseTerminal((closedTerminal) => {
+        listener.dispose();
+        if (closedTerminal === terminal && Date.now() - startTime < 5000) {
+            const exitCode = closedTerminal.exitStatus?.code;
+            const exitReason = closedTerminal.exitStatus?.reason;
+            ext.outputChannel.error(
+                `Cosmos Shell exited early.${exitCode !== undefined ? ` Exit code: ${exitCode}.` : ''}${exitReason !== undefined ? ` Reason: ${exitReason}.` : ''}`,
+            );
+        }
+    });
+}
+
 export function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
     const isCosmosShellInstalled: boolean = isCosmosShellSupportEnabled();
 
@@ -180,12 +198,14 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         } else {
             args = [];
         }
+        ext.outputChannel.appendLine(`Launching Cosmos Shell: ${command} ${args.join(' ')}`);
         const terminal: vscode.Terminal = vscode.window.createTerminal({
             name: 'Cosmos Shell',
             shellPath: command,
             shellArgs: args,
         });
         terminal.show();
+        watchForEarlyExit(terminal);
         // Update context after creating terminal
         updateTerminalContext();
         // No connection string to store when launching without a node
@@ -210,7 +230,7 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         args.push('--k', containerCommand);
     }
 
-    ext.outputChannel.appendLine(`Cosmos Shell args: ${args.join(' ')}`);
+    ext.outputChannel.appendLine(`Launching Cosmos Shell: ${command} ${args.join(' ')}`);
 
     const terminal: vscode.Terminal = vscode.window.createTerminal({
         name: 'Cosmos Shell',
@@ -220,6 +240,7 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     });
 
     terminal.show();
+    watchForEarlyExit(terminal);
     // Update context after creating terminal
     updateTerminalContext();
     // Store the connection string for this terminal

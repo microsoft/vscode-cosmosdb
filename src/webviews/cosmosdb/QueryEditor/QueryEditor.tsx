@@ -7,9 +7,7 @@ import { makeStyles } from '@fluentui/react-components';
 import { Allotment } from 'allotment';
 // eslint-disable-next-line import/no-internal-modules
 import 'allotment/dist/style.css';
-import { useContext } from 'react';
 import { useHotkeyScope } from '../../common/hotkeys';
-import { WebviewContext } from '../../WebviewContext';
 import {
     QueryEditorGlobalHotkeys,
     type QueryEditorHotkeyCommand,
@@ -29,14 +27,13 @@ const useStyles = makeStyles({
 
 export const QueryEditor = () => {
     const styles = useStyles();
-    const { channel, vscodeApi } = useContext(WebviewContext);
 
     // Set up the hotkey scope for the global context
     useHotkeyScope<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('global', QueryEditorGlobalHotkeys);
 
     return (
         <div className={styles.root}>
-            <WithQueryEditorContext channel={channel} vscodeApi={vscodeApi}>
+            <WithQueryEditorContext>
                 <Allotment vertical={true} defaultSizes={[30, 70]}>
                     <Allotment.Pane minSize={100} maxSize={800} preferredSize={'30%'}>
                         <QueryPanel />

@@ -9,10 +9,10 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
-import { CosmosDbOperationsService } from '../../chat/CosmosDbOperationsService';
+import { CosmosDbOperationsService } from '../../chat';
 import { ext } from '../../extensionVariables';
-import { type Channel } from '../../panels/Communication/Channel/Channel';
-import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
+import { getErrorMessage } from '../../utils/getErrorMessage';
+import { type UntypedEventEmitter } from '../../utils/TypedEventSink';
 import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { getCosmosClient } from '../getCosmosClient';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
@@ -21,12 +21,45 @@ import {
     DEFAULT_PAGE_SIZE,
     type QueryMetadata,
     type QueryResultRecord,
+    type SerializedQueryResult,
 } from '../types/queryResult';
 import { QuerySessionResult } from './QuerySessionResult';
 
+/**
+ * Interface for emitting query-related events.
+ * Can be backed by a TypedEventSink for Query Editor events.
+ */
+export interface QueryEventEmitter {
+    emitExecutionStarted(executionId: string, startTime: number): void;
+    emitExecutionStopped(executionId: string, endTime: number): void;
+    emitQueryResults(executionId: string, result: SerializedQueryResult | null, currentPage: number): void;
+    emitQueryError(executionId: string, error: string): void;
+}
+
+/**
+ * Creates a QueryEventEmitter that emits events to a typed event sink.
+ * Accepts an UntypedEventEmitter so it can work with any event sink.
+ */
+export function createQueryEventEmitter(sink: UntypedEventEmitter): QueryEventEmitter {
+    return {
+        emitExecutionStarted(executionId, startTime) {
+            sink.emit({ type: 'executionStarted', executionId, startTime });
+        },
+        emitExecutionStopped(executionId, endTime) {
+            sink.emit({ type: 'executionStopped', executionId, endTime });
+        },
+        emitQueryResults(executionId, result, currentPage) {
+            sink.emit({ type: 'queryResults', executionId, result, currentPage });
+        },
+        emitQueryError(executionId, error) {
+            sink.emit({ type: 'queryError', executionId, error });
+        },
+    };
+}
+
 export class QuerySession {
     public readonly id: string;
-    private readonly channel: Channel;
+    private readonly eventEmitter: QueryEventEmitter;
     private readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
@@ -43,11 +76,16 @@ export class QuerySession {
     private currentIteration = 0;
     private _isDisposed = false;
 
-    constructor(connection: NoSqlQueryConnection, channel: Channel, query: string, resultViewMetadata: QueryMetadata) {
+    constructor(
+        connection: NoSqlQueryConnection,
+        eventEmitter: QueryEventEmitter,
+        query: string,
+        resultViewMetadata: QueryMetadata,
+    ) {
         const { databaseId, containerId, endpoint, credentials } = connection;
 
         this.id = uuid();
-        this.channel = channel;
+        this.eventEmitter = eventEmitter;
         this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;
@@ -234,11 +272,7 @@ export class QuerySession {
             } finally {
                 this.iterator = null;
 
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'executionStopped',
-                    params: [this.id, Date.now()],
-                });
+                this.eventEmitter.emitExecutionStopped(this.id, Date.now());
             }
         });
     }
@@ -253,45 +287,24 @@ export class QuerySession {
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
             const message: string = error.body?.message ?? l10n.t('Query failed with status code {0}', code);
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, message],
-            });
+            this.eventEmitter.emitQueryError(this.id, message);
             this.logAndThrowError(l10n.t('Query failed'), error);
         } else if (error instanceof TimeoutError) {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, l10n.t('Query timed out')],
-            });
+            this.eventEmitter.emitQueryError(this.id, l10n.t('Query timed out'));
             this.logAndThrowError(l10n.t('Query timed out'), error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, l10n.t('Query was aborted')],
-            });
+            this.eventEmitter.emitQueryError(this.id, l10n.t('Query was aborted'));
             this.logAndThrowError(l10n.t('Query was aborted'), error);
         } else {
-            // always force unexpected query errors to be included in report issue command
             context.errorHandling.forceIncludeInReportIssueCommand = true;
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, getErrorMessage(error)],
-            });
+            this.eventEmitter.emitQueryError(this.id, getErrorMessage(error));
             this.logAndThrowError(l10n.t('Query failed'), error);
         }
     }
 
     private async wrappedFetch(context: IActionContext, action: () => Promise<void>): Promise<void> {
         try {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'executionStarted',
-                params: [this.id, Date.now()],
-            });
+            this.eventEmitter.emitExecutionStarted(this.id, Date.now());
 
             await action();
 
@@ -307,19 +320,11 @@ export class QuerySession {
                 );
             }
 
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryResults',
-                params: [this.id, serializedResult, this.currentIteration],
-            });
+            this.eventEmitter.emitQueryResults(this.id, serializedResult ?? null, this.currentIteration);
         } catch (error) {
             await this.errorHandling(error, context);
         } finally {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'executionStopped',
-                params: [this.id, Date.now()],
-            });
+            this.eventEmitter.emitExecutionStopped(this.id, Date.now());
         }
     }
 

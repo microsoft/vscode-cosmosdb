@@ -5,10 +5,8 @@
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer } from 'react';
-import { type WebviewApi } from 'vscode-webview';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
+import { useTrpcClient } from '../../../api/webview-client/useTrpcClient';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
-import { type WebviewState } from '../../../WebviewContext';
 import { DocumentContextProvider } from './DocumentContextProvider';
 import { defaultState, dispatch as DocumentPanelDispatch, type DocumentState } from './DocumentState';
 
@@ -23,21 +21,15 @@ export function useDocumentDispatcher() {
     return useContext(DocumentPanelDispatcherContext);
 }
 
-export const WithDocumentContext = ({
-    channel,
-    children,
-}: {
-    channel: Channel;
-    vscodeApi: WebviewApi<WebviewState>;
-    children: ReactNode;
-}) => {
+export const WithDocumentContext = ({ children }: { children: ReactNode }) => {
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(DocumentPanelDispatch, { ...defaultState });
+    const { trpcClient } = useTrpcClient();
 
     const provider = useMemo(
-        () => new DocumentContextProvider(channel, dispatch, dispatchToast),
-        [channel, dispatchToast],
+        () => new DocumentContextProvider(dispatch, dispatchToast, trpcClient),
+        [dispatchToast, trpcClient],
     );
 
     useEffect(() => {

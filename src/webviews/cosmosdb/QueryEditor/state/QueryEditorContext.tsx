@@ -5,10 +5,8 @@
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import { type WebviewApi } from 'vscode-webview';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
+import { useTrpcClient } from '../../../api/webview-client/useTrpcClient';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
-import { type WebviewState } from '../../../WebviewContext';
 import { QueryEditorContextProvider } from './QueryEditorContextProvider';
 import {
     type DispatchAction,
@@ -38,21 +36,15 @@ export function useQueryEditorStateDispatch(): React.Dispatch<DispatchAction> {
     return dispatch ?? fallback;
 }
 
-export const WithQueryEditorContext = ({
-    channel,
-    children,
-}: {
-    channel: Channel;
-    vscodeApi: WebviewApi<WebviewState>;
-    children: ReactNode;
-}) => {
+export const WithQueryEditorContext = ({ children }: { children: ReactNode }) => {
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
+    const { trpcClient } = useTrpcClient();
 
     const provider = useMemo(
-        () => new QueryEditorContextProvider(channel, dispatch, dispatchToast),
-        [channel, dispatchToast],
+        () => new QueryEditorContextProvider(dispatch, dispatchToast, trpcClient),
+        [dispatchToast, trpcClient],
     );
 
     useEffect(() => {

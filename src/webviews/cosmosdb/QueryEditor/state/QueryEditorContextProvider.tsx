@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import type * as React from 'react';
 import {
     type CosmosDBRecordIdentifier,
     DEFAULT_EXECUTION_TIMEOUT,
@@ -12,8 +11,8 @@ import {
     type QueryMetadata,
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
-import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
+import { type QueryEditorEvent } from '../../../api/configuration/routers/queryEditorEventsRouter';
+import { BaseContextProvider, type DispatchToastFn, type TrpcClient } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
@@ -23,62 +22,68 @@ const DEFAULT_RESULT_VIEW_METADATA: QueryMetadata = {
 };
 
 export class QueryEditorContextProvider extends BaseContextProvider {
+    private eventSubscription?: { unsubscribe: () => void };
+    declare protected readonly trpcClient: TrpcClient;
+
     constructor(
-        channel: Channel,
         private readonly dispatch: (action: DispatchAction) => void,
-        dispatchToast: (content: React.ReactNode, options?: unknown) => void,
+        dispatchToast: DispatchToastFn,
+        trpcClient: TrpcClient,
     ) {
-        super(channel, dispatchToast);
+        super(dispatchToast, trpcClient);
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        await this.sendCommand('updateQueryHistory', query);
-        await this.sendCommand('runQuery', query, { ...DEFAULT_RESULT_VIEW_METADATA, ...options });
+        await this.trpcClient.queryEditor.updateQueryHistory.mutate({ query });
+        await this.trpcClient.queryEditor.runQuery.mutate({
+            query,
+            options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
+        });
     }
     public async stopQuery(executionId: string): Promise<void> {
-        await this.sendCommand('stopQuery', executionId);
+        await this.trpcClient.queryEditor.stopQuery.mutate({ executionId });
     }
     public async nextPage(executionId: string): Promise<void> {
-        await this.sendCommand('nextPage', executionId);
+        await this.trpcClient.queryEditor.nextPage.mutate({ executionId });
     }
     public async prevPage(executionId: string): Promise<void> {
-        await this.sendCommand('prevPage', executionId);
+        await this.trpcClient.queryEditor.prevPage.mutate({ executionId });
     }
     public async firstPage(executionId: string): Promise<void> {
-        await this.sendCommand('firstPage', executionId);
+        await this.trpcClient.queryEditor.firstPage.mutate({ executionId });
     }
 
     public async openFile(): Promise<void> {
-        await this.sendCommand('openFile');
+        await this.trpcClient.queryEditor.openFile.mutate();
     }
     public async copyToClipboard(text: string): Promise<void> {
-        await this.sendCommand('copyToClipboard', text);
+        await this.trpcClient.queryEditor.copyToClipboard.mutate({ text });
     }
     public async saveToFile(text: string, filename: string, ext: string): Promise<void> {
-        await this.sendCommand('saveFile', text, filename, ext);
+        await this.trpcClient.queryEditor.saveFile.mutate({ text, filename, ext });
     }
     public async duplicateTab(text: string): Promise<void> {
-        await this.sendCommand('duplicateTab', text);
+        await this.trpcClient.queryEditor.duplicateTab.mutate({ text });
     }
     public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
-        void this.sendCommand('updateQueryText', query);
+        void this.trpcClient.queryEditor.updateQueryText.mutate({ query });
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
     }
 
     public async connectToDatabase(): Promise<void> {
-        await this.sendCommand('connectToDatabase');
+        await this.trpcClient.queryEditor.connectToDatabase.mutate();
     }
     public async disconnectFromDatabase(): Promise<void> {
-        await this.sendCommand('disconnectFromDatabase');
+        await this.trpcClient.queryEditor.disconnectFromDatabase.mutate();
     }
     public async getConnections(): Promise<void> {
-        await this.sendCommand('getConnections');
+        await this.trpcClient.queryEditor.getConnections.query();
     }
     public async setConnection(databaseId: string, containerId: string): Promise<void> {
-        await this.sendCommand('setConnection', databaseId, containerId);
+        await this.trpcClient.queryEditor.setConnection.mutate({ databaseId, containerId });
     }
 
     public setPageSize(pageSize: number) {
@@ -96,7 +101,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async openDocument(mode: OpenDocumentMode, document?: CosmosDBRecordIdentifier): Promise<void> {
-        await this.sendCommand('openDocument', mode, document);
+        await this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document as never });
     }
     public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
         for (const document of documents) {
@@ -104,13 +109,13 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         }
     }
     public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
-        await this.sendCommand('deleteDocument', document);
+        await this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document as never });
     }
     public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        await this.sendCommand('deleteDocuments', documents);
+        await this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents as never });
     }
     public async provideFeedback(): Promise<void> {
-        await this.sendCommand('provideFeedback');
+        await this.trpcClient.queryEditor.provideFeedback.mutate();
     }
 
     public async saveCSV(
@@ -119,11 +124,19 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         partitionKey?: PartitionKeyDefinition,
         selection?: number[],
     ): Promise<void> {
-        await this.sendCommand('saveCSV', name, currentQueryResult, partitionKey, selection);
+        await this.trpcClient.queryEditor.saveCSV.mutate({
+            name,
+            result: currentQueryResult as never,
+            partitionKey: partitionKey as never,
+            selection,
+        });
     }
 
     public async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        await this.sendCommand('saveMetricsCSV', name, currentQueryResult);
+        await this.trpcClient.queryEditor.saveMetricsCSV.mutate({
+            name,
+            result: currentQueryResult as never,
+        });
     }
 
     public async copyCSVToClipboard(
@@ -131,11 +144,17 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         partitionKey?: PartitionKeyDefinition,
         selection?: number[],
     ): Promise<void> {
-        await this.sendCommand('copyCSVToClipboard', currentQueryResult, partitionKey, selection);
+        await this.trpcClient.queryEditor.copyCSVToClipboard.mutate({
+            result: currentQueryResult as never,
+            partitionKey: partitionKey as never,
+            selection,
+        });
     }
 
     public async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        await this.sendCommand('copyMetricsCSVToClipboard', currentQueryResult);
+        await this.trpcClient.queryEditor.copyMetricsCSVToClipboard.mutate({
+            result: currentQueryResult as never,
+        });
     }
 
     public selectBucket(throughputBucket?: number): void {
@@ -143,74 +162,99 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async openCopilotExplainQuery(): Promise<void> {
-        await this.sendCommand('openCopilotExplainQuery');
+        await this.trpcClient.queryEditor.openCopilotExplainQuery.mutate();
     }
 
     public async closeGenerateInput(): Promise<void> {
-        await this.sendCommand('closeGenerateInput');
+        await this.trpcClient.queryEditor.closeGenerateInput.mutate();
+    }
+
+    public dispose() {
+        this.eventSubscription?.unsubscribe();
+        super.dispose();
+    }
+
+    protected init(): void {
+        // Call tRPC init instead of sending legacy 'ready' channel event
+        void this.trpcClient.queryEditor.init.mutate();
     }
 
     protected initEventListeners() {
-        super.initEventListeners();
-
-        this.channel.on('fileOpened', (query: string) => {
-            this.insertText(query);
-        });
-
-        this.channel.on(
-            'databaseConnected',
-            (dbName: string, containerName: string, partitionKey?: PartitionKeyDefinition) => {
-                this.dispatch({ type: 'databaseConnected', dbName, containerName, partitionKey });
+        this.eventSubscription = this.trpcClient.queryEditor.events.subscribe(undefined, {
+            onData: (event: QueryEditorEvent) => {
+                this.handleQueryEditorEvent(event);
             },
-        );
-
-        this.channel.on('databaseDisconnected', () => {
-            this.dispatch({ type: 'databaseDisconnected' });
         });
+    }
 
-        this.channel.on('setConnectionList', (connectionList?: Record<string, string[]>) => {
-            this.dispatch({ type: 'setConnectionList', connectionList });
-        });
-
-        this.channel.on('executionStarted', (executionId: string, startExecutionTime: number) => {
-            this.dispatch({ type: 'executionStarted', executionId, startExecutionTime });
-        });
-
-        this.channel.on('executionStopped', (executionId: string, endExecutionTime: number) => {
-            this.dispatch({ type: 'executionStopped', executionId, endExecutionTime });
-        });
-
-        this.channel.on('queryResults', (executionId: string, result: SerializedQueryResult, currentPage: number) => {
-            this.dispatch({ type: 'updateQueryResult', executionId, result, currentPage });
-        });
-
-        this.channel.on('isSurveyCandidateChanged', (isSurveyCandidate: boolean) => {
-            this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: isSurveyCandidate });
-        });
-
-        this.channel.on('updateQueryHistory', (queryHistory: string[]) => {
-            this.dispatch({ type: 'updateHistory', queryHistory });
-        });
-
-        //TODO: there should be no queryError event that needs to show a toast,
-        //      all errors should be handled by QuerySession and dispatched to host error handling.
-        this.channel.on('queryError', (_executionId: string, _error: string) => {
-            //this.showToast('Query error', error, 'error');
-        });
-
-        this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
-            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
-        });
-
-        this.channel.on('queryGenerated', (generatedQuery: string | false) => {
-            // Only insert text if generation was successful (got a string, not false)
-            if (typeof generatedQuery === 'string') {
-                this.insertText(generatedQuery);
-            }
-        });
-
-        this.channel.on('aiFeaturesEnabledChanged', (isAIFeaturesEnabled: boolean) => {
-            this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled });
-        });
+    private handleQueryEditorEvent(event: QueryEditorEvent): void {
+        switch (event.type) {
+            case 'fileOpened':
+                this.insertText(event.query);
+                break;
+            case 'databaseConnected':
+                this.dispatch({
+                    type: 'databaseConnected',
+                    dbName: event.dbName,
+                    containerName: event.containerName,
+                    partitionKey: event.partitionKey as PartitionKeyDefinition | undefined,
+                });
+                break;
+            case 'databaseDisconnected':
+                this.dispatch({ type: 'databaseDisconnected' });
+                break;
+            case 'setConnectionList':
+                this.dispatch({ type: 'setConnectionList', connectionList: event.connectionList });
+                break;
+            case 'executionStarted':
+                this.dispatch({
+                    type: 'executionStarted',
+                    executionId: event.executionId,
+                    startExecutionTime: event.startTime,
+                });
+                break;
+            case 'executionStopped':
+                this.dispatch({
+                    type: 'executionStopped',
+                    executionId: event.executionId,
+                    endExecutionTime: event.endTime,
+                });
+                break;
+            case 'queryResults':
+                this.dispatch({
+                    type: 'updateQueryResult',
+                    executionId: event.executionId,
+                    result: event.result as SerializedQueryResult,
+                    currentPage: event.currentPage,
+                });
+                break;
+            case 'queryError':
+                // Errors handled by QuerySession
+                break;
+            case 'isSurveyCandidateChanged':
+                this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: event.isSurveyCandidate });
+                break;
+            case 'updateQueryHistory':
+                this.dispatch({ type: 'updateHistory', queryHistory: event.queryHistory });
+                break;
+            case 'updateThroughputBuckets':
+                this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: event.throughputBuckets });
+                break;
+            case 'queryGenerated':
+                if (typeof event.generatedQuery === 'string') {
+                    this.insertText(event.generatedQuery);
+                }
+                break;
+            case 'aiFeaturesEnabledChanged':
+                this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: event.isEnabled });
+                break;
+            case 'confirmToolInvocation':
+            case 'selectedModelName':
+            case 'availableModels':
+            case 'documentDeleted':
+            case 'bulkDeleteComplete':
+                // These events are handled directly by component-level subscribers (e.g., GenerateQueryInput)
+                break;
+        }
     }
 }

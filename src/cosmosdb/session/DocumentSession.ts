@@ -23,14 +23,27 @@ import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 
 import { ext } from '../../extensionVariables';
-import { type Channel } from '../../panels/Communication/Channel/Channel';
-import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { arePartitionKeysEqual, extractPartitionKey } from '../../utils/document';
+import { getErrorMessage } from '../../utils/getErrorMessage';
+import { type UntypedEventEmitter } from '../../utils/TypedEventSink';
 import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
 import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
+
+/**
+ * Interface for emitting document-related events.
+ * Can be backed by a TypedEventSink for Document events or Query Editor events.
+ */
+export interface DocumentEventEmitter {
+    emitSetDocument(sessionId: string, documentContent: CosmosDBRecord, partitionKey?: PartitionKeyDefinition): void;
+    emitDocumentError(sessionId: string, error: string): void;
+    emitQueryError(sessionId: string, error: string): void;
+    emitOperationAborted(sessionId?: string, message?: string): void;
+    emitDocumentDeleted(sessionId: string, documentId: CosmosDBRecordIdentifier): void;
+    emitBulkDelete(sessionId: string, status: DeleteStatus): void;
+}
 
 /**
  * Is more specific type for document identifiers used for deleting documents.
@@ -50,9 +63,37 @@ type DeleteStatus = {
     aborted: boolean;
 };
 
+
+/**
+ * Creates a DocumentEventEmitter that emits events to a typed document event sink.
+ * Accepts an UntypedEventEmitter so it can work with both DocumentEvent and QueryEditorEvent sinks.
+ */
+export function createDocumentEventEmitter(sink: UntypedEventEmitter): DocumentEventEmitter {
+    return {
+        emitSetDocument(sessionId, documentContent, partitionKey) {
+            sink.emit({ type: 'setDocument', sessionId, documentContent, partitionKey });
+        },
+        emitDocumentError(sessionId, error) {
+            sink.emit({ type: 'documentError', sessionId, error });
+        },
+        emitQueryError(sessionId, error) {
+            sink.emit({ type: 'queryError', sessionId, error });
+        },
+        emitOperationAborted(sessionId, message) {
+            sink.emit({ type: 'operationAborted', sessionId, message });
+        },
+        emitDocumentDeleted(sessionId, documentId) {
+            sink.emit({ type: 'documentDeleted', documentId, sessionId });
+        },
+        emitBulkDelete(sessionId, status) {
+            sink.emit({ type: 'bulkDeleteComplete', results: status, sessionId });
+        },
+    };
+}
+
 export class DocumentSession {
     public readonly id: string;
-    private readonly channel: Channel;
+    private readonly eventEmitter: DocumentEventEmitter;
     private readonly connection: NoSqlQueryConnection;
     private readonly databaseId: string;
     private readonly containerId: string;
@@ -64,11 +105,11 @@ export class DocumentSession {
     private abortController: AbortController;
     private isDisposed = false;
 
-    constructor(connection: NoSqlQueryConnection, channel: Channel) {
+    constructor(connection: NoSqlQueryConnection, eventEmitter: DocumentEventEmitter) {
         const { databaseId, containerId, endpoint, credentials } = connection;
 
         this.id = uuid();
-        this.channel = channel;
+        this.eventEmitter = eventEmitter;
         this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;
@@ -109,11 +150,7 @@ export class DocumentSession {
                     ? extractPartitionKey(record, containerPartitionKey)
                     : undefined;
 
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'setDocument',
-                    params: [this.id, record, partitionKey],
-                });
+                this.eventEmitter.emitSetDocument(this.id, record, containerPartitionKey);
 
                 return {
                     id: record.id,
@@ -121,11 +158,7 @@ export class DocumentSession {
                     partitionKey: partitionKey,
                 };
             } else {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'documentError',
-                    params: [this.id, 'Item creation failed'],
-                });
+                this.eventEmitter.emitDocumentError(this.id, l10n.t('Item creation failed'));
             }
         } catch (error) {
             await this.errorHandling(error, context);
@@ -236,29 +269,15 @@ export class DocumentSession {
 
                 if (result) {
                     const containerPartitionKey = await this.getPartitionKey();
-
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'setDocument',
-                        params: [this.id, result, containerPartitionKey],
-                    });
+                    this.eventEmitter.emitSetDocument(this.id, result, containerPartitionKey);
                 } else {
                     // No result - send documentError event (NOT queryError)
-                    const errorMessage = l10n.t('Item not found or request timed out');
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'documentError',
-                        params: [this.id, errorMessage],
-                    });
+                    this.eventEmitter.emitDocumentError(this.id, l10n.t('Item not found or request timed out'));
                 }
             } catch (error) {
                 // Handle unexpected errors - send documentError instead of using errorHandling
                 const errorMessage = error instanceof Error ? error.message : l10n.t('An unexpected error occurred');
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'documentError',
-                    params: [this.id, errorMessage],
-                });
+                this.eventEmitter.emitDocumentError(this.id, errorMessage);
                 // Still log telemetry but don't use errorHandling which sends queryError
                 context.telemetry.properties.error = errorMessage;
             }
@@ -307,22 +326,17 @@ export class DocumentSession {
 
                     if (!confirmation) {
                         context.telemetry.properties.result = 'Canceled';
-                        await this.channel.postMessage({
-                            type: 'event',
-                            name: 'operationAborted',
-                            params: [],
-                        });
+                        this.eventEmitter.emitOperationAborted(this.id);
                         return;
                     }
 
                     // Delete the old item
                     const deleteResult = await this.deleteInternal(documentId, context);
                     if (!deleteResult) {
-                        await this.channel.postMessage({
-                            type: 'event',
-                            name: 'documentError',
-                            params: [this.id, 'Deleting old item for partition key change failed'],
-                        });
+                        this.eventEmitter.emitDocumentError(
+                            this.id,
+                            l10n.t('Deleting old item for partition key change failed'),
+                        );
                         // To avoid data loss, we still save the new item even if deleting the old one failed
                         // TODO: should we abort here or prompt the user at this point if they want to create the
                         // duplicate on the new partition even if deleting the old one failed?
@@ -331,11 +345,7 @@ export class DocumentSession {
                     // Create the new item with the updated partition key
                     const newRecord = await this.createInternal(document, context);
                     if (!newRecord) {
-                        await this.channel.postMessage({
-                            type: 'event',
-                            name: 'documentError',
-                            params: [this.id, 'Item update with partition key change failed'],
-                        });
+                        this.eventEmitter.emitDocumentError(this.id, 'Item update with partition key change failed');
                     }
                     return newRecord;
                 } else {
@@ -355,11 +365,7 @@ export class DocumentSession {
                     if (response?.resource) {
                         const record = response.resource as CosmosDBRecord;
 
-                        await this.channel.postMessage({
-                            type: 'event',
-                            name: 'setDocument',
-                            params: [this.id, record, containerPartitionKey],
-                        });
+                        this.eventEmitter.emitSetDocument(this.id, record, containerPartitionKey);
 
                         return {
                             id: record.id,
@@ -369,11 +375,7 @@ export class DocumentSession {
                                 : undefined,
                         };
                     } else {
-                        await this.channel.postMessage({
-                            type: 'event',
-                            name: 'documentError',
-                            params: [this.id, 'Item update failed'],
-                        });
+                        this.eventEmitter.emitDocumentError(this.id, 'Item update failed');
                     }
                 }
             } catch (error) {
@@ -432,18 +434,10 @@ export class DocumentSession {
             );
 
             if (result?.statusCode === 204) {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'documentDeleted',
-                    params: [this.id, documentId],
-                });
+                this.eventEmitter.emitDocumentDeleted(this.id, documentId);
                 return true;
             } else {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'documentError',
-                    params: [this.id, 'Item deletion failed'],
-                });
+                this.eventEmitter.emitDocumentError(this.id, 'Item deletion failed');
             }
         } catch (error) {
             await this.errorHandling(error, context);
@@ -469,16 +463,13 @@ export class DocumentSession {
                 aborted: false,
             };
 
-            const sendResponse = async () => {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'bulkDelete',
-                    params: [this.id, status],
-                });
+            const sendResponse = () => {
+                this.eventEmitter.emitBulkDelete(this.id, status);
             };
 
             if (status.valid.length === 0) {
-                return sendResponse();
+                sendResponse();
+                return;
             }
 
             const confirmation = await getConfirmationAsInSettings(
@@ -491,7 +482,8 @@ export class DocumentSession {
 
             if (!confirmation) {
                 status.aborted = true;
-                return sendResponse();
+                sendResponse();
+                return;
             }
 
             try {
@@ -505,9 +497,9 @@ export class DocumentSession {
                         const abortController = new AbortController();
                         const abortSignal = abortController.signal;
 
-                        token.onCancellationRequested(async () => {
+                        token.onCancellationRequested(() => {
                             status.aborted = true;
-                            await sendResponse();
+                            sendResponse();
                             abortController.abort();
                         });
 
@@ -555,7 +547,7 @@ export class DocumentSession {
                     );
                 }
 
-                return sendResponse();
+                sendResponse();
             } catch (error) {
                 await this.errorHandling(error, context);
             }
@@ -596,11 +588,11 @@ export class DocumentSession {
                     target[finalSegment] = 'replace_with_new_partition_key_value';
                 });
 
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'setDocument',
-                    params: [this.id, newDocument, containerPartitionKey],
-                });
+                this.eventEmitter.emitSetDocument(
+                    this.id,
+                    newDocument as unknown as CosmosDBRecord,
+                    containerPartitionKey,
+                );
             },
         );
     }
@@ -615,34 +607,17 @@ export class DocumentSession {
         if (error instanceof ErrorResponse) {
             const code: string = `${error.code ?? 'Unknown'}`;
             const message: string = error.body?.message ?? l10n.t('Query failed with status code {0}', code);
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, message],
-            });
+            this.eventEmitter.emitQueryError(this.id, message);
             this.logAndThrowError(l10n.t('Query failed'), error);
         } else if (error instanceof TimeoutError) {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, l10n.t('Query timed out')],
-            });
+            this.eventEmitter.emitQueryError(this.id, l10n.t('Query timed out'));
             this.logAndThrowError(l10n.t('Query timed out'), error);
         } else if (error instanceof AbortError || (isObject && 'name' in error && error.name === 'AbortError')) {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, l10n.t('Query was aborted')],
-            });
+            this.eventEmitter.emitQueryError(this.id, l10n.t('Query was aborted'));
             this.logAndThrowError(l10n.t('Query was aborted'), error);
         } else {
-            // always force unexpected query errors to be included in report issue command
             context.errorHandling.forceIncludeInReportIssueCommand = true;
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'queryError',
-                params: [this.id, getErrorMessage(error)],
-            });
+            this.eventEmitter.emitQueryError(this.id, getErrorMessage(error));
             this.logAndThrowError(l10n.t('Query failed'), error);
         }
     }

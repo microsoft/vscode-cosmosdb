@@ -10,9 +10,19 @@ import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { type API } from '../../../AzureDBExperiences';
+import { type TelemetryContext } from '../../../Telemetry';
+import { type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
+import { type DocumentSession } from '../../../cosmosdb/session/DocumentSession';
+import { type QuerySession } from '../../../cosmosdb/session/QuerySession';
+import { type CosmosDBRecordIdentifier } from '../../../cosmosdb/types/queryResult';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
-import { publicProcedure, router } from '../extension-server/trpc';
+import { publicProcedure, router, trpcToTelemetry } from '../extension-server/trpc';
+import { documentEventsRouter, type DocumentEvent } from './routers/documentEventsRouter';
+import { documentRouter } from './routers/documentRouter';
+import { queryEditorEventsRouter, type QueryEditorEvent } from './routers/queryEditorEventsRouter';
+import { queryEditorRouter } from './routers/queryEditorRouter';
 
 /**
  * You can read more about tRPC here:
@@ -30,6 +40,34 @@ export type BaseRouterContext = {
     dbExperience: API;
     webviewName: string;
     signal?: AbortSignal; // This is a special property that is used to cancel subscriptions
+};
+
+export type QueryEditorRouterContext = BaseRouterContext & {
+    connection?: NoSqlQueryConnection;
+    sessions: Map<string, QuerySession>;
+    telemetryContext: TelemetryContext;
+    panel: vscode.WebviewPanel;
+    eventSink: TypedEventSink<QueryEditorEvent>;
+    // Mutable state fields
+    query?: string;
+    isLastQueryAIGenerated: boolean;
+    lastAIGeneratedQuery?: string;
+    lastGenerationFailed: boolean;
+    generateQueryCancellation?: vscode.CancellationTokenSource;
+    pendingConfirmResolve?: (confirmed: boolean) => void;
+    setConnection: (connection?: NoSqlQueryConnection) => void;
+};
+
+export type DocumentRouterContext = BaseRouterContext & {
+    connection: NoSqlQueryConnection;
+    documentSession: DocumentSession;
+    telemetryContext: TelemetryContext;
+    panel: vscode.WebviewPanel;
+    eventSink: TypedEventSink<DocumentEvent>;
+    // Mutable state fields
+    mode: 'add' | 'edit' | 'view';
+    documentId: CosmosDBRecordIdentifier | undefined;
+    isDirty: boolean;
 };
 
 /**
@@ -129,6 +167,21 @@ const commonRouter = router({
         .mutation(({ input }) => {
             void openSurvey(input.experienceKind, input.triggerAction);
         }),
+    showInformationMessage: publicProcedure
+        .use(trpcToTelemetry)
+        .input(z.object({ message: z.string() }))
+        .mutation(async ({ input }) => {
+            await vscode.window.showInformationMessage(input.message);
+        }),
+    showErrorMessage: publicProcedure
+        .use(trpcToTelemetry)
+        .input(z.object({ message: z.string() }))
+        .mutation(async ({ input }) => {
+            await vscode.window.showErrorMessage(input.message);
+        }),
+    executeReportIssueCommand: publicProcedure.use(trpcToTelemetry).mutation(async () => {
+        await vscode.commands.executeCommand('azureDatabases.reportIssue');
+    }),
 });
 
 // This is a demoRouter with examples of how to create a subscription
@@ -297,6 +350,14 @@ const commonRouter = router({
 
 export const appRouter = router({
     common: commonRouter,
+    queryEditor: router({
+        ...queryEditorRouter._def.procedures,
+        ...queryEditorEventsRouter._def.procedures,
+    }),
+    document: router({
+        ...documentRouter._def.procedures,
+        ...documentEventsRouter._def.procedures,
+    }),
 });
 
 // Export type router type signature, this is used by the client.

@@ -121,7 +121,8 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
     private async handleSubscriptionMessage(message: VsCodeLinkRequestMessage, context: BaseRouterContext) {
         try {
             const callerFactory = createCallerFactory(appRouter);
-            const caller = callerFactory(context);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const caller = callerFactory(context) as Record<string, any>;
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const procedure = caller[message.op.path];
@@ -191,7 +192,8 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
     private async handleDefaultMessage(message: VsCodeLinkRequestMessage, context: BaseRouterContext) {
         try {
             const callerFactory = createCallerFactory(appRouter);
-            const caller = callerFactory(context);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const caller = callerFactory(context) as Record<string, any>;
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const procedure = caller[message.op.path];

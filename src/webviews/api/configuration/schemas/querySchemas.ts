@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { z } from 'zod';
+import { type QueryExecutionResult } from '../../../../cosmosdb/session/QuerySession';
+import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
 
 // ─── Primitive JSON value ────────────────────────────────────────────────────
 
@@ -52,7 +54,10 @@ export const CosmosDBRecordSchema = z
 
 /**
  * Matches `CosmosDBRecordIdentifier` — the minimal set of fields to identify
- * a document. Uses PartitionKeySchema for the optional partitionKey.
+ * a document.
+ *
+ * Cast to `z.ZodType<CosmosDBRecordIdentifier>` so that `z.infer` produces
+ * the exact same type, eliminating `as never` casts in client-side tRPC calls.
  */
 export const CosmosDBRecordIdentifierSchema = z.object({
     id: z.string().optional(),
@@ -64,10 +69,11 @@ export const CosmosDBRecordIdentifierSchema = z.object({
             z.null(),
             z.undefined(),
             z.array(z.union([z.string(), z.number(), z.boolean(), z.null(), z.undefined()])),
+            z.object({}), // NonePartitionKeyType from @azure/cosmos
         ])
         .optional(),
     _rid: z.string().optional(),
-});
+}) as unknown as z.ZodType<CosmosDBRecordIdentifier>;
 
 // ─── SerializedQueryMetrics ─────────────────────────────────────────────────
 
@@ -100,6 +106,10 @@ export const QueryMetadataSchema = z.object({
 
 // ─── SerializedQueryResult ──────────────────────────────────────────────────
 
+/**
+ * Cast to `z.ZodType<SerializedQueryResult>` so that `z.infer` produces
+ * the exact same type, eliminating `as never` casts in client-side tRPC calls.
+ */
 export const SerializedQueryResultSchema = z.object({
     activityId: z.string().optional(),
     documents: z.array(QueryResultRecordSchema),
@@ -111,4 +121,13 @@ export const SerializedQueryResultSchema = z.object({
     roundTrips: z.number(),
     hasMoreResults: z.boolean(),
     query: z.string(),
-});
+}) as unknown as z.ZodType<SerializedQueryResult>;
+
+export const QueryExecutionResultSchema = z.object({
+    executionId: z.string(),
+    startTime: z.number(),
+    endTime: z.number(),
+    result: SerializedQueryResultSchema.nullable(),
+    currentPage: z.number(),
+    error: z.string().optional(),
+}) as unknown as z.ZodType<QueryExecutionResult>;

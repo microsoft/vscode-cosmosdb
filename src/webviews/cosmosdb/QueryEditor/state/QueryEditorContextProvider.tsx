@@ -21,6 +21,19 @@ const DEFAULT_RESULT_VIEW_METADATA: QueryMetadata = {
     timeout: DEFAULT_EXECUTION_TIMEOUT,
 };
 
+/**
+ * Shape returned by query execution mutations (runQuery, nextPage, prevPage, firstPage).
+ * Declared here to avoid TS2589 from deep tRPC type inference.
+ */
+type QueryExecutionResponse = {
+    executionId: string;
+    startTime: number;
+    endTime: number;
+    result: SerializedQueryResult | null;
+    currentPage: number;
+    error?: string;
+};
+
 export class QueryEditorContextProvider extends BaseContextProvider {
     private eventSubscription?: { unsubscribe: () => void };
     declare protected readonly trpcClient: TrpcClient;
@@ -34,27 +47,52 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        await this.trpcClient.queryEditor.updateQueryHistory.mutate({ query });
-        await this.trpcClient.queryEditor.runQuery.mutate({
+        const historyResult = await this.trpcClient.queryEditor.updateQueryHistory.mutate({ query });
+        if (historyResult?.queryHistory) {
+            this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
+        }
+        // tRPC output type matches QueryExecutionResponse; explicit cast avoids TS2589
+        // from deep AppRouter type inference.
+        const result = (await this.trpcClient.queryEditor.runQuery.mutate({
             query,
             options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
-        });
+        })) as QueryExecutionResponse | undefined;
+        this.handleQueryExecutionResult(result);
     }
     public async stopQuery(executionId: string): Promise<void> {
-        await this.trpcClient.queryEditor.stopQuery.mutate({ executionId });
+        const result = await this.trpcClient.queryEditor.stopQuery.mutate({ executionId });
+        if (result) {
+            this.dispatch({
+                type: 'executionStopped',
+                executionId: result.executionId,
+                endExecutionTime: result.endTime,
+            });
+        }
     }
     public async nextPage(executionId: string): Promise<void> {
-        await this.trpcClient.queryEditor.nextPage.mutate({ executionId });
+        const result = (await this.trpcClient.queryEditor.nextPage.mutate({ executionId })) as
+            | QueryExecutionResponse
+            | undefined;
+        this.handleQueryExecutionResult(result);
     }
     public async prevPage(executionId: string): Promise<void> {
-        await this.trpcClient.queryEditor.prevPage.mutate({ executionId });
+        const result = (await this.trpcClient.queryEditor.prevPage.mutate({ executionId })) as
+            | QueryExecutionResponse
+            | undefined;
+        this.handleQueryExecutionResult(result);
     }
     public async firstPage(executionId: string): Promise<void> {
-        await this.trpcClient.queryEditor.firstPage.mutate({ executionId });
+        const result = (await this.trpcClient.queryEditor.firstPage.mutate({ executionId })) as
+            | QueryExecutionResponse
+            | undefined;
+        this.handleQueryExecutionResult(result);
     }
 
     public async openFile(): Promise<void> {
-        await this.trpcClient.queryEditor.openFile.mutate();
+        const result = await this.trpcClient.queryEditor.openFile.mutate();
+        if (result?.query) {
+            this.insertText(result.query);
+        }
     }
     public async copyToClipboard(text: string): Promise<void> {
         await this.trpcClient.queryEditor.copyToClipboard.mutate({ text });
@@ -74,16 +112,36 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async connectToDatabase(): Promise<void> {
-        await this.trpcClient.queryEditor.connectToDatabase.mutate();
+        const result = await this.trpcClient.queryEditor.connectToDatabase.mutate();
+        if (result) {
+            this.dispatch({
+                type: 'databaseConnected',
+                dbName: result.dbName,
+                containerName: result.containerName,
+                partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
+            });
+        }
     }
     public async disconnectFromDatabase(): Promise<void> {
         await this.trpcClient.queryEditor.disconnectFromDatabase.mutate();
+        this.dispatch({ type: 'databaseDisconnected' });
     }
     public async getConnections(): Promise<void> {
-        await this.trpcClient.queryEditor.getConnections.query();
+        const result = await this.trpcClient.queryEditor.getConnections.query();
+        if (result && 'connectionList' in result) {
+            this.dispatch({ type: 'setConnectionList', connectionList: result.connectionList });
+        }
     }
     public async setConnection(databaseId: string, containerId: string): Promise<void> {
-        await this.trpcClient.queryEditor.setConnection.mutate({ databaseId, containerId });
+        const result = await this.trpcClient.queryEditor.setConnection.mutate({ databaseId, containerId });
+        if (result) {
+            this.dispatch({
+                type: 'databaseConnected',
+                dbName: result.dbName,
+                containerName: result.containerName,
+                partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
+            });
+        }
     }
 
     public setPageSize(pageSize: number) {
@@ -101,7 +159,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async openDocument(mode: OpenDocumentMode, document?: CosmosDBRecordIdentifier): Promise<void> {
-        await this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document as never });
+        await this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document });
     }
     public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
         for (const document of documents) {
@@ -109,10 +167,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         }
     }
     public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
-        await this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document as never });
+        await this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document });
     }
     public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        await this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents as never });
+        await this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents });
     }
     public async provideFeedback(): Promise<void> {
         await this.trpcClient.queryEditor.provideFeedback.mutate();
@@ -126,8 +184,8 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     ): Promise<void> {
         await this.trpcClient.queryEditor.saveCSV.mutate({
             name,
-            result: currentQueryResult as never,
-            partitionKey: partitionKey as never,
+            result: currentQueryResult,
+            partitionKey: partitionKey,
             selection,
         });
     }
@@ -135,7 +193,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     public async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
         await this.trpcClient.queryEditor.saveMetricsCSV.mutate({
             name,
-            result: currentQueryResult as never,
+            result: currentQueryResult,
         });
     }
 
@@ -145,15 +203,15 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         selection?: number[],
     ): Promise<void> {
         await this.trpcClient.queryEditor.copyCSVToClipboard.mutate({
-            result: currentQueryResult as never,
-            partitionKey: partitionKey as never,
+            result: currentQueryResult,
+            partitionKey: partitionKey,
             selection,
         });
     }
 
     public async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         await this.trpcClient.queryEditor.copyMetricsCSVToClipboard.mutate({
-            result: currentQueryResult as never,
+            result: currentQueryResult,
         });
     }
 
@@ -175,86 +233,84 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     protected init(): void {
-        // Call tRPC init instead of sending legacy 'ready' channel event
-        void this.trpcClient.queryEditor.init.mutate();
+        void this.trpcClient.queryEditor.init.mutate().then((result) => {
+            if (!result) return;
+
+            if (result.connectionState) {
+                this.dispatch({
+                    type: 'databaseConnected',
+                    dbName: result.connectionState.dbName,
+                    containerName: result.connectionState.containerName,
+                    partitionKey: result.connectionState.partitionKey as PartitionKeyDefinition | undefined,
+                });
+            } else {
+                this.dispatch({ type: 'databaseDisconnected' });
+            }
+
+            if (result.queryHistory.length > 0) {
+                this.dispatch({ type: 'updateHistory', queryHistory: result.queryHistory });
+            }
+
+            if (result.throughputBuckets) {
+                this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: result.throughputBuckets });
+            }
+
+            if (result.initialQuery) {
+                this.insertText(result.initialQuery);
+            }
+
+            this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: result.isSurveyCandidate });
+            this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: result.isAIFeaturesEnabled });
+        });
     }
 
     protected initEventListeners() {
         this.eventSubscription = this.trpcClient.queryEditor.events.subscribe(undefined, {
-            onData: (event: QueryEditorEvent) => {
-                this.handleQueryEditorEvent(event);
+            onData: (event) => {
+                this.handleQueryEditorEvent(event as QueryEditorEvent);
             },
         });
     }
 
     private handleQueryEditorEvent(event: QueryEditorEvent): void {
         switch (event.type) {
-            case 'fileOpened':
-                this.insertText(event.query);
-                break;
-            case 'databaseConnected':
-                this.dispatch({
-                    type: 'databaseConnected',
-                    dbName: event.dbName,
-                    containerName: event.containerName,
-                    partitionKey: event.partitionKey as PartitionKeyDefinition | undefined,
-                });
-                break;
-            case 'databaseDisconnected':
-                this.dispatch({ type: 'databaseDisconnected' });
-                break;
-            case 'setConnectionList':
-                this.dispatch({ type: 'setConnectionList', connectionList: event.connectionList });
-                break;
-            case 'executionStarted':
-                this.dispatch({
-                    type: 'executionStarted',
-                    executionId: event.executionId,
-                    startExecutionTime: event.startTime,
-                });
-                break;
-            case 'executionStopped':
-                this.dispatch({
-                    type: 'executionStopped',
-                    executionId: event.executionId,
-                    endExecutionTime: event.endTime,
-                });
-                break;
-            case 'queryResults':
-                this.dispatch({
-                    type: 'updateQueryResult',
-                    executionId: event.executionId,
-                    result: event.result as SerializedQueryResult,
-                    currentPage: event.currentPage,
-                });
-                break;
-            case 'queryError':
-                // Errors handled by QuerySession
-                break;
-            case 'isSurveyCandidateChanged':
-                this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: event.isSurveyCandidate });
-                break;
-            case 'updateQueryHistory':
-                this.dispatch({ type: 'updateHistory', queryHistory: event.queryHistory });
-                break;
-            case 'updateThroughputBuckets':
-                this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: event.throughputBuckets });
-                break;
-            case 'queryGenerated':
-                if (typeof event.generatedQuery === 'string') {
-                    this.insertText(event.generatedQuery);
-                }
+            case 'confirmToolInvocation':
+                // Handled by GenerateQueryInput component-level subscriber
                 break;
             case 'aiFeaturesEnabledChanged':
                 this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: event.isEnabled });
                 break;
-            case 'confirmToolInvocation':
-            case 'selectedModelName':
-            case 'availableModels':
-            case 'documentDeleted':
-            case 'bulkDeleteComplete':
-                // These events are handled directly by component-level subscribers (e.g., GenerateQueryInput)
+            case 'queryTextPushed':
+                this.insertText(event.query);
+                break;
+            case 'isSurveyCandidateChanged':
+                this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: event.isSurveyCandidate });
                 break;
         }
+    }
+
+    private handleQueryExecutionResult(result?: QueryExecutionResponse): void {
+        if (!result) return;
+
+        this.dispatch({
+            type: 'executionStarted',
+            executionId: result.executionId,
+            startExecutionTime: result.startTime,
+        });
+
+        if (result.result) {
+            this.dispatch({
+                type: 'updateQueryResult',
+                executionId: result.executionId,
+                result: result.result,
+                currentPage: result.currentPage,
+            });
+        }
+
+        this.dispatch({
+            type: 'executionStopped',
+            executionId: result.executionId,
+            endExecutionTime: result.endTime,
+        });
     }
 }

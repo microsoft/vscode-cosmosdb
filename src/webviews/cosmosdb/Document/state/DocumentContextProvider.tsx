@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONObject, type JSONValue, type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
-import { type DocumentEvent } from '../../../api/configuration/routers/documentEventsRouter';
 import { BaseContextProvider, type DispatchToastFn, type TrpcClient } from '../../../utils/context/BaseContextProvider';
 import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
 
+const emptyPartitionKey: PartitionKeyDefinition = { paths: [] };
+
 export class DocumentContextProvider extends BaseContextProvider {
-    private eventSubscription?: { unsubscribe: () => void };
     declare protected readonly trpcClient: TrpcClient;
 
     constructor(
@@ -23,15 +23,58 @@ export class DocumentContextProvider extends BaseContextProvider {
 
     public async saveDocument(documentText: string): Promise<void> {
         this.dispatch({ type: 'setSaving', isSaving: true });
-        await this.trpcClient.document.saveDocument.mutate({ documentText });
+        try {
+            const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
+                success: boolean;
+                documentContent?: JSONValue;
+                partitionKey?: PartitionKeyDefinition;
+            };
+            if (result.success && result.documentContent) {
+                this.dispatch({
+                    type: 'setDocument',
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else {
+                this.dispatch({ type: 'setError', error: l10n.t('Failed to save item') });
+            }
+        } catch (error) {
+            this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
+        } finally {
+            this.dispatch({ type: 'setSaving', isSaving: false });
+        }
     }
+
     public async saveDocumentAsFile(documentText: string): Promise<void> {
         await this.trpcClient.document.saveDocumentAsFile.mutate({ documentText });
     }
+
     public async refreshDocument(): Promise<void> {
         this.dispatch({ type: 'setError', error: undefined });
         this.dispatch({ type: 'setRefreshing', isRefreshing: true });
-        await this.trpcClient.document.refreshDocument.mutate();
+        try {
+            const result = (await this.trpcClient.document.refreshDocument.mutate()) as {
+                aborted: boolean;
+                documentContent?: JSONValue;
+                partitionKey?: PartitionKeyDefinition;
+            };
+            if (result.aborted) {
+                return;
+            }
+            if (result.documentContent) {
+                this.dispatch({
+                    type: 'setDocument',
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else {
+                this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
+            }
+        } catch (error) {
+            this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
+        } finally {
+            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
+        }
     }
 
     public setCurrentDocumentContent(content: string): void {
@@ -46,79 +89,31 @@ export class DocumentContextProvider extends BaseContextProvider {
     }
 
     public async setMode(mode: OpenDocumentMode): Promise<void> {
-        await this.trpcClient.document.setMode.mutate({ mode });
+        const result = await this.trpcClient.document.setMode.mutate({ mode });
+        this.dispatch({ type: 'setMode', mode: result.mode });
     }
     public async notifyDirty(isDirty: boolean): Promise<void> {
         await this.trpcClient.document.setDirty.mutate({ isDirty });
     }
 
-    public dispose() {
-        this.eventSubscription?.unsubscribe();
-        super.dispose();
-    }
-
     protected init(): void {
-        // Call tRPC getInitialState instead of sending legacy 'ready' channel event
-        void this.trpcClient.document.getInitialState.query();
-    }
-
-    protected initEventListeners(): void {
-        this.eventSubscription = this.trpcClient.document.events.subscribe(undefined, {
-            onData: (event: DocumentEvent) => {
-                this.handleDocumentEvent(event);
-            },
-        });
-    }
-
-    private handleDocumentEvent(event: DocumentEvent): void {
-        switch (event.type) {
-            case 'initState':
-                this.dispatch({
-                    type: 'initState',
-                    mode: event.mode,
-                    databaseId: event.databaseId,
-                    containerId: event.containerId,
-                    documentId: event.documentId,
-                    partitionKey: event.partitionKey as PartitionKey | undefined,
-                });
-                this.dispatch({ type: 'setRefreshing', isRefreshing: true });
-                break;
-            case 'modeChanged':
-                this.dispatch({ type: 'setMode', mode: event.mode });
-                break;
-            case 'setDocument':
-                this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-                this.dispatch({ type: 'setSaving', isSaving: false });
-                if (event.documentContent === undefined) {
-                    this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
-                    return;
-                }
+        void this.trpcClient.document.getInitialState.query().then((result) => {
+            this.dispatch({
+                type: 'initState',
+                mode: result.mode,
+                databaseId: result.databaseId,
+                containerId: result.containerId,
+                documentId: result.documentId,
+                partitionKey: result.partitionKey,
+            });
+            if (result.documentContent) {
                 this.dispatch({
                     type: 'setDocument',
-                    documentContent: JSON.stringify(event.documentContent, null, 4),
-                    partitionKey: (event.partitionKey ?? undefined) as PartitionKeyDefinition,
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.documentPartitionKey ?? emptyPartitionKey,
                 });
-                break;
-            case 'documentSaved':
-                this.dispatch({ type: 'setSaving', isSaving: false });
-                break;
-            case 'documentError':
-                this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-                this.dispatch({ type: 'setSaving', isSaving: false });
-                this.dispatch({ type: 'setError', error: this.parseError(event.error) });
-                break;
-            case 'queryError':
-                this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-                this.dispatch({ type: 'setSaving', isSaving: false });
-                break;
-            case 'operationAborted':
-                this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-                this.dispatch({ type: 'setSaving', isSaving: false });
-                if (event.message) {
-                    void this.showInformationMessage(event.message);
-                }
-                break;
-        }
+            }
+        });
     }
 
     private parseError(error: string): string {

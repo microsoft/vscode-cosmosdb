@@ -56,9 +56,7 @@ export class TypedEventSink<T extends DiscriminatedEvent> implements AsyncIterab
         }
 
         const event: T =
-            typeof eventOrType === 'string'
-                ? ({ type: eventOrType, ...payload } as unknown as T)
-                : eventOrType;
+            typeof eventOrType === 'string' ? ({ type: eventOrType, ...payload } as unknown as T) : eventOrType;
 
         if (this.resolve) {
             const res = this.resolve;

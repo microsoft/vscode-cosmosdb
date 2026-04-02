@@ -29,16 +29,44 @@ function wrapInTrpcErrorMessage(error: unknown, operationId: string) {
 }
 
 /**
- * Sets up tRPC integration for a webview panel. This is a standalone utility
- * that can be used by both `WebviewController` and `BaseTab` subclasses.
+ * Sets up tRPC integration for a webview panel. Used by `BaseTab` subclasses
+ * to wire a panel's `postMessage` bridge into the shared `appRouter`.
  *
- * Listens for messages from the webview, parses them as tRPC operations
- * (queries, mutations, subscriptions, or subscription stops), invokes the
- * appropriate server-side procedures, and returns results or errors.
+ * **How it works:**
+ * 1. Registers a `panel.webview.onDidReceiveMessage` listener.
+ * 2. Incoming messages are parsed as {@link VsCodeLinkRequestMessage} objects
+ *    containing an `op` with `type` (`query`, `mutation`, `subscription`,
+ *    or `subscription.stop`) and a dot-delimited `path` (e.g. `queryEditor.runQuery`).
+ * 3. For queries/mutations the procedure is invoked via `createCallerFactory`
+ *    and the result (or error) is posted back to the webview.
+ * 4. For subscriptions an `AbortController` is created so the webview can
+ *    cancel later via `subscription.stop`. The async iterable returned by the
+ *    procedure is consumed and each yielded value is forwarded to the webview.
  *
- * @param panel - The webview panel to wire up.
- * @param context - The base router context for procedure calls.
- * @returns A disposable that removes the message listener plus a map of active subscriptions.
+ * **Context contract:**
+ * The `context` parameter must satisfy {@link BaseRouterContext} at minimum
+ * (`webviewName`). Tab-specific routers expect narrower context types
+ * (e.g. `QueryEditorRouterContext`, `DocumentRouterContext`) which are applied
+ * automatically by the typed procedure middleware in `trpc.ts`.
+ *
+ * @param panel - The VS Code webview panel to attach the message listener to.
+ * @param context - The router context passed to every procedure invocation.
+ *   Must include at least `webviewName`. Tab routers expect additional fields
+ *   (connection, sessions, etc.).
+ * @returns An object containing:
+ *   - `disposable` — a {@link vscode.Disposable} that removes the message listener.
+ *   - `activeSubscriptions` — a `Map<string, AbortController>` tracking live subscriptions.
+ *
+ * @example
+ * ```ts
+ * const { disposable } = setupTrpc(panel, {
+ *     webviewName: 'queryEditor',
+ *     // ... additional context fields required by the router
+ * });
+ * ```
+ *
+ * @see {@link BaseRouterContext} for the minimal context shape.
+ * @see `docs/trpc-webview-guide.md` for a full walkthrough.
  */
 export function setupTrpc(
     panel: vscode.WebviewPanel,

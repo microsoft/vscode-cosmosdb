@@ -6,20 +6,18 @@
 /**
  * This a minimal tRPC server
  */
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { type API } from '../../../AzureDBExperiences';
 import { type TelemetryContext } from '../../../Telemetry';
 import { type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
-import { type DocumentSession } from '../../../cosmosdb/session/DocumentSession';
 import { type QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../../cosmosdb/types/queryResult';
 import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
-import { publicProcedure, router, trpcToTelemetry } from '../extension-server/trpc';
-import { documentEventsRouter, type DocumentEvent } from './routers/documentEventsRouter';
+import { commonProcedure, mergeRouters, publicProcedure, router, trpcToTelemetry } from '../extension-server/trpc';
 import { documentRouter } from './routers/documentRouter';
 import { queryEditorEventsRouter, type QueryEditorEvent } from './routers/queryEditorEventsRouter';
 import { queryEditorRouter } from './routers/queryEditorRouter';
@@ -37,7 +35,6 @@ import { queryEditorRouter } from './routers/queryEditorRouter';
  */
 
 export type BaseRouterContext = {
-    dbExperience: API;
     webviewName: string;
     signal?: AbortSignal; // This is a special property that is used to cancel subscriptions
 };
@@ -60,14 +57,13 @@ export type QueryEditorRouterContext = BaseRouterContext & {
 
 export type DocumentRouterContext = BaseRouterContext & {
     connection: NoSqlQueryConnection;
-    documentSession: DocumentSession;
     telemetryContext: TelemetryContext;
     panel: vscode.WebviewPanel;
-    eventSink: TypedEventSink<DocumentEvent>;
     // Mutable state fields
     mode: 'add' | 'edit' | 'view';
     documentId: CosmosDBRecordIdentifier | undefined;
     isDirty: boolean;
+    partitionKeyDefinition?: PartitionKeyDefinition;
 };
 
 /**
@@ -76,59 +72,50 @@ export type DocumentRouterContext = BaseRouterContext & {
         measurements?: Record<string, number>
  */
 const commonRouter = router({
-    reportEvent: publicProcedure
-        // This is the input schema of your procedure, two parameters, both strings
+    reportEvent: commonProcedure
         .input(
             z.object({
                 eventName: z.string(),
-                properties: z.optional(z.record(z.string(), z.string())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
-                measurements: z.optional(z.record(z.string(), z.number())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
+                properties: z.optional(z.record(z.string(), z.string())),
+                measurements: z.optional(z.record(z.string(), z.number())),
             }),
         )
-        // Here the procedure (query or mutation)
         .mutation(({ input, ctx }) => {
-            const myCtx = ctx as BaseRouterContext;
-
             void callWithTelemetryAndErrorHandling<void>(
-                `cosmosDB.${myCtx.dbExperience}.webview.event.${myCtx.webviewName}.${input.eventName}`,
+                `cosmosDB.NoSQL.webview.event.${ctx.webviewName}.${input.eventName}`,
                 (context) => {
                     context.errorHandling.suppressDisplay = true;
-                    context.telemetry.properties.experience = myCtx.dbExperience;
+                    context.telemetry.properties.experience = 'NoSQL';
                     Object.assign(context.telemetry.properties, input.properties ?? {});
                     Object.assign(context.telemetry.measurements, input.measurements ?? {});
                 },
             );
         }),
-    reportError: publicProcedure
-        // This is the input schema of your procedure, two parameters, both strings
+    reportError: commonProcedure
         .input(
             z.object({
                 message: z.string(),
                 stack: z.string(),
                 componentStack: z.optional(z.string()),
-                properties: z.optional(z.record(z.string(), z.string())), //By default, the keys of a JavaScript object are always strings (or symbols). Even if you use a number as an object key, JavaScript will convert it to a string internally.
+                properties: z.optional(z.record(z.string(), z.string())),
             }),
         )
-        // Here the procedure (query or mutation)
         .mutation(({ input, ctx }) => {
-            const myCtx = ctx as BaseRouterContext;
-
             void callWithTelemetryAndErrorHandling<void>(
-                `cosmosDB.${myCtx.dbExperience}.webview.error.${myCtx.webviewName}`,
+                `cosmosDB.NoSQL.webview.error.${ctx.webviewName}`,
                 (context) => {
                     context.errorHandling.suppressDisplay = true;
-                    context.telemetry.properties.experience = myCtx.dbExperience;
+                    context.telemetry.properties.experience = 'NoSQL';
 
                     Object.assign(context.telemetry.properties, input.properties ?? {});
 
                     const newError = new Error(input.message);
-                    // If it's a rendering error in the webview, swap the stack with the componentStack which is more helpful
                     newError.stack = input.componentStack ?? input.stack;
                     throw newError;
                 },
             );
         }),
-    displayErrorMessage: publicProcedure
+    displayErrorMessage: commonProcedure
         .input(
             z.object({
                 message: z.string(),
@@ -150,8 +137,12 @@ const commonRouter = router({
     surveyPing: publicProcedure
         .input(
             z.object({
-                experienceKind: z.nativeEnum(ExperienceKind),
-                usageImpact: z.nativeEnum(UsageImpact),
+                experienceKind: z.enum([ExperienceKind.Mongo, ExperienceKind.NoSQL]),
+                usageImpact: z.union([
+                    z.literal(UsageImpact.Low),
+                    z.literal(UsageImpact.Medium),
+                    z.literal(UsageImpact.High),
+                ]),
             }),
         )
         .mutation(({ input }) => {
@@ -160,8 +151,8 @@ const commonRouter = router({
     surveyOpen: publicProcedure
         .input(
             z.object({
-                experienceKind: z.nativeEnum(ExperienceKind),
-                triggerAction: z.string(), // Optional action that triggered the survey for telemetry
+                experienceKind: z.enum([ExperienceKind.Mongo, ExperienceKind.NoSQL]),
+                triggerAction: z.string(),
             }),
         )
         .mutation(({ input }) => {
@@ -184,180 +175,10 @@ const commonRouter = router({
     }),
 });
 
-// This is a demoRouter with examples of how to create a subscription
-// We left it here for reference for future projects
-//
-// const demoRouter = router({
-//     /**
-//      * Example Subscription Procedure: `demoBasicSubscription`
-//      *
-//      * This subscription demonstrates how to stream data from the server to the client over time
-//      * using asynchronous generators (the tRPC v11/v12 approach).
-//      *
-//      * **How Subscriptions Work in tRPC:**
-//      * - A subscription procedure is defined using `publicProcedure.subscription(async function*(opts) { ... })`.
-//      * - Inside the async generator, you `yield` values over time. Each yielded value is sent to the client.
-//      * - The subscription remains active until one of the following occurs:
-//      *   1. The server side returns from the async generator function (e.g., after certain logic or conditions).
-//      *   2. An error is thrown inside the async generator, causing the subscription to terminate with an error.
-//      *   3. The client unsubscribes (calling `subscription.unsubscribe()` on the client), which triggers the server to cancel the subscription.
-//      *   4. The server receives an abort signal (such as `ctx.signal.aborted`), and you return early to stop emitting more values.
-//      *
-//      * **Context and Abort Signals:**
-//      * - `ctx` contains an `AbortSignal` (`ctx.signal`) that indicates when the client wants to stop the subscription.
-//      * - By checking `if (ctx.signal?.aborted)`, you can gracefully end the subscription. This ensures no further values are emitted.
-//      *
-//      * **Usage Example (on the Client):**
-//      * ```typescript
-//      * const subscription = trpcClient.demo.demoBasicSubscription.subscribe(undefined, {
-//      *   onStarted() {
-//      *     console.log('Subscription started');
-//      *   },
-//      *   onData(data) {
-//      *     console.log('Received subscription data:', data);
-//      *     if (data === 5) {
-//      *       // Manually unsubscribe after receiving the number 5
-//      *       subscription.unsubscribe();
-//      *       // Note: onComplete() will not be called because we're forcefully unsubscribing here
-//      *     }
-//      *   },
-//      *   onError(err) {
-//      *     console.error('Subscription error:', err);
-//      *   },
-//      *   onComplete() {
-//      *     console.log('Subscription completed');
-//      *   }
-//      * });
-//      * ```
-//      *
-//      * **Key Points:**
-//      * - Subscriptions can produce multiple values over time.
-//      * - You decide when to stop by returning or by the client unsubscribing.
-//      * - Error handling and completion are well-defined; the client receives these signals via callbacks.
-//      */
-//     demoBasicSubscription: publicProcedure.subscription(async function* ({ ctx }) {
-//         const myCtx = ctx as BaseRouterContext;
-
-//         let count = 0;
-//         while (true) {
-//             // Simulate work or data updates by delaying each emission
-//             await new Promise((resolve) => setTimeout(resolve, 2000));
-
-//             // Optionally, you can stop emitting values after a certain condition:
-//             // if (count > 2) {
-//             //     return; // This completes the subscription after three iterations (0, 1, 2)
-//             // }
-
-//             // Check if the client has aborted (unsubscribed) before yielding the next value
-//             if (myCtx.signal?.aborted) {
-//                 // If aborted, just return to end the subscription gracefully
-//                 return;
-//             }
-
-//             // Yield the next value of `count`. This value is sent to the client as soon as possible.
-//             yield count++;
-//         }
-//     }),
-//     /**
-//      * Example Subscription Procedure: `demoComplexSubscription`
-//      *
-//      * This subscription demonstrates handling more complex inputs and outputs compared to a simple counter.
-//      *
-//      * **Key Points:**
-//      * - Inputs are validated using Zod, ensuring the caller provides the correct structure:
-//      *   - `start` and `end`: define the numeric range of values to emit.
-//      *   - `abortAt`: an optional number that, if reached or surpassed, causes the subscription to end.
-//      * - Each emitted value is delayed to simulate work or streaming data updates.
-//      * - The subscription checks both a user-defined cutoff (`abortAt`) and the `ctx.signal` abort
-//      *   mechanism to decide when to stop.
-//      * - Yielded data includes the current value, a `done` flag, and the original input, showing how
-//      *   you can return rich, structured results at each emission.
-//      *
-//      * **Example Usage on the Client:**
-//      * ```typescript
-//      * const subscription = trpcClient.demo.demoComplexSubscription.subscribe(
-//      *   { start: 1, end: 10, abortAt: 5 },
-//      *   {
-//      *     onStarted() {
-//      *       console.log('Complex subscription started');
-//      *     },
-//      *     onData(data) {
-//      *       console.log('Received complex subscription data:', data);
-//      *     },
-//      *     onError(err) {
-//      *       console.error('Complex subscription error:', err);
-//      *     },
-//      *     onComplete() {
-//      *       console.log('Complex subscription completed');
-//      *     }
-//      *   }
-//      * );
-//      * ```
-//      *
-//      * This setup shows how you can manage more intricate logic in a subscription:
-//      * - Emitting a range of values.
-//      * - Allowing the client to define when to stop via `abortAt`.
-//      * - Handling external abort signals for graceful termination.
-//      * - Returning additional contextual data (`originalInput`) along with each value.
-//      */
-//     demoComplexSubscription: publicProcedure
-//         .use(trpcToTelemetry)
-//         .input(
-//             z.object({
-//                 start: z.number(),
-//                 end: z.number(),
-//                 abortAt: z.optional(z.number()),
-//             }),
-//         )
-//         .subscription(async function* ({ input, ctx }) {
-//             const myCtx = ctx as BaseRouterContext;
-
-//             for (let i = input.start; i <= input.end; i++) {
-//                 // Simulate work or data updates by delaying each emission
-//                 await new Promise((resolve) => setTimeout(resolve, 2000));
-
-//                 if (input.abortAt && i >= input.abortAt) {
-//                     // If the specified abortAt value is reached, stop emitting.
-//                     return;
-//                 }
-
-//                 // Check if the client has aborted (unsubscribed) before yielding the next value
-//                 if (myCtx.signal?.aborted) {
-//                     // If aborted, just return to end the subscription gracefully
-//                     return;
-//                 }
-
-//                 yield { value: i, done: false, originalInput: input };
-//             }
-//         }),
-//     hello: publicProcedure
-//         // This is the input schema of your procedure, no parameters
-//         .query(async () => {
-//             await new Promise((resolve) => setTimeout(resolve, 5000));
-
-//             // This is what you're returning to your client
-//             return { text: 'Hello World!' };
-//         }),
-//     sayMyName: publicProcedure
-//         // This is the input schema of your procedure, one parameter, a string
-//         .input(z.string())
-//         // Here the procedure (query or mutation)
-//         .query(async ({ input }) => {
-//             // This is what you're returning to your client
-//             return { text: `Hello ${input}!` };
-//         }),
-// });
-
 export const appRouter = router({
     common: commonRouter,
-    queryEditor: router({
-        ...queryEditorRouter._def.procedures,
-        ...queryEditorEventsRouter._def.procedures,
-    }),
-    document: router({
-        ...documentRouter._def.procedures,
-        ...documentEventsRouter._def.procedures,
-    }),
+    queryEditor: mergeRouters(queryEditorRouter, queryEditorEventsRouter),
+    document: documentRouter,
 });
 
 // Export type router type signature, this is used by the client.

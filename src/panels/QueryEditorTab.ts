@@ -106,7 +106,6 @@ export class QueryEditorTab extends BaseTab {
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         return {
-            dbExperience: 'NoSQL' as QueryEditorRouterContext['dbExperience'],
             webviewName: QueryEditorTab.viewType,
             get connection() {
                 return self.connection;
@@ -192,7 +191,7 @@ export class QueryEditorTab extends BaseTab {
         this.query = query;
         this.isLastQueryAIGenerated = true;
         this.lastAIGeneratedQuery = query;
-        this.eventSink.emit({ type: 'fileOpened', query });
+        this.eventSink.emit({ type: 'queryTextPushed', query });
     }
 
     public async refreshSurveyFeedbackVisibility(): Promise<void> {

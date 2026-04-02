@@ -16,7 +16,7 @@ export const OpenDocumentModeSchema = z.enum(['add', 'edit', 'view']);
 // ─── BulkDeleteResult ───────────────────────────────────────────────────────
 
 /**
- * Matches the status object returned by `DocumentSession.bulkDelete`.
+ * Matches the status object returned by `bulkDeleteDocuments`.
  */
 export const BulkDeleteResultSchema = z.object({
     valid: z.array(CosmosDBRecordIdentifierSchema),

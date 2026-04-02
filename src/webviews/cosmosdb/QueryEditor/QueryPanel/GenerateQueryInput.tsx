@@ -263,37 +263,12 @@ export const GenerateQueryInput = () => {
         return Math.max(1, totalLines);
     };
 
-    // Listen for queryGenerated event to stop loading and clear input on success
+    // Listen for confirmToolInvocation event from server during LLM generation
     useEffect(() => {
-        // Parameters: generatedQuery (string on success, false on failure), modelName, submittedPrompt
-        const handler = (generatedQuery: string | false, _modelName?: string, submittedPrompt?: string) => {
-            setIsLoading(false);
-            setConfirmMessage(null);
-            // Only clear input and save to history on successful generation
-            if (generatedQuery !== false) {
-                // Add the submitted prompt to history
-                if (submittedPrompt) {
-                    addToHistory(submittedPrompt);
-                }
-                setInput('');
-                setLineCount(1);
-            }
-        };
-
-        // Subscribe to tRPC events for queryGenerated, confirmToolInvocation, and availableModels
         const subscription = trpcClient.queryEditor.events.subscribe(undefined, {
             onData: (event) => {
-                if (event.type === 'queryGenerated') {
-                    handler(event.generatedQuery, event.modelName, event.prompt);
-                } else if (event.type === 'confirmToolInvocation') {
+                if (event.type === 'confirmToolInvocation') {
                     setConfirmMessage(event.message);
-                } else if (event.type === 'availableModels') {
-                    setAvailableModels(event.models);
-                    if (event.savedModelId && event.models.some((m) => m.id === event.savedModelId)) {
-                        setSelectedModelId(event.savedModelId);
-                    } else if (event.models.length > 0) {
-                        setSelectedModelId(event.models[0].id);
-                    }
                 }
             },
         });
@@ -301,12 +276,21 @@ export const GenerateQueryInput = () => {
         return () => {
             subscription.unsubscribe();
         };
-    }, [trpcClient, addToHistory]);
+    }, [trpcClient]);
 
     // Fetch available models when input becomes visible
     useEffect(() => {
         if (state.showGenerateInput) {
-            void trpcClient.queryEditor.getAvailableModels.query();
+            void trpcClient.queryEditor.getAvailableModels.query().then((result) => {
+                if (result) {
+                    setAvailableModels(result.models);
+                    if (result.savedModelId && result.models.some((m) => m.id === result.savedModelId)) {
+                        setSelectedModelId(result.savedModelId);
+                    } else if (result.models.length > 0) {
+                        setSelectedModelId(result.models[0].id);
+                    }
+                }
+            });
         }
     }, [state.showGenerateInput, trpcClient]);
 
@@ -353,17 +337,31 @@ export const GenerateQueryInput = () => {
         try {
             // Get the current query content from the state
             const currentQuery = state.queryValue;
+            const submittedPrompt = input;
 
-            // Send command to extension via tRPC
-            await trpcClient.queryEditor.generateQuery.mutate({
-                prompt: input,
+            // Send command to extension via tRPC and get result back
+            const result = await trpcClient.queryEditor.generateQuery.mutate({
+                prompt: submittedPrompt,
                 currentQuery,
             });
 
-            // Input will be cleared by queryGenerated handler on success
+            setIsLoading(false);
+            setConfirmMessage(null);
+
+            if (result && typeof result.generatedQuery === 'string') {
+                // Insert generated query into the editor
+                dispatch({ type: 'insertText', queryValue: result.generatedQuery });
+                void trpcClient.queryEditor.updateQueryText.mutate({ query: result.generatedQuery });
+
+                // Save prompt to history and clear input
+                addToHistory(submittedPrompt);
+                setInput('');
+                setLineCount(1);
+            }
         } catch (error) {
             console.error('Failed to generate query:', error);
             setIsLoading(false);
+            setConfirmMessage(null);
         }
     };
 

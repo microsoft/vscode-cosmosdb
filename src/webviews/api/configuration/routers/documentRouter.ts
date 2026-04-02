@@ -3,15 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ItemDefinition, type JSONValue } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { type ItemDefinition, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { type NoSqlQueryConnection } from '../../../../cosmosdb/NoSqlQueryConnection';
+import {
+    buildNewDocumentTemplate,
+    createDocument,
+    deleteDocument,
+    extractPartitionKeyFromDocument,
+    readDocument,
+    replaceDocument,
+} from '../../../../cosmosdb/session/DocumentSession';
+import { getConfirmationAsInSettings } from '../../../../utils/dialogs/getConfirmation';
+import { arePartitionKeysEqual } from '../../../../utils/document';
 import { promptAfterActionEventually } from '../../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../../utils/vscodeUtils';
-import { publicProcedure, router, trpcToTelemetry } from '../../extension-server/trpc';
+import { documentProcedure, router, trpcToTelemetry } from '../../extension-server/trpc';
 import { type DocumentRouterContext } from '../appRouter';
 import { OpenDocumentModeSchema } from '../schemas/documentSchemas';
 
@@ -26,49 +37,54 @@ function isCosmosDBItemDefinition(documentContent: unknown): documentContent is 
     return false;
 }
 
-// ─── Document Router ────────────────────────────────────────────────────────
+// ─── Document Router (Controller) ───────────────────────────────────────────
+//
+// This router is the controller for the document view. It orchestrates all
+// business logic: confirmation dialogs, partition key change handling,
+// error display, and returns results directly to the webview client.
 
 export const documentRouter = router({
-    getInitialState: publicProcedure.use(trpcToTelemetry).query(async ({ ctx }) => {
-        const myCtx = ctx as DocumentRouterContext;
-        const { documentSession, connection, eventSink } = myCtx;
+    getInitialState: documentProcedure.use(trpcToTelemetry).query(async ({ ctx }) => {
+        const { connection } = ctx;
 
-        eventSink.emit({
-            type: 'initState',
-            mode: myCtx.mode,
-            databaseId: connection.databaseId,
-            containerId: connection.containerId,
-            documentId: myCtx.documentId?.id ?? '',
-            // PartitionKey includes NonePartitionKeyType which doesn't match the Zod schema exactly
-            partitionKey: myCtx.documentId?.partitionKey as never,
-        });
+        let documentContent: object | undefined;
+        let documentPartitionKey: PartitionKeyDefinition | undefined;
 
-        if (myCtx.documentId) {
-            await documentSession.read(myCtx.documentId);
-        } else if (myCtx.mode === 'add') {
-            await documentSession.setNewDocumentTemplate();
+        if (ctx.documentId) {
+            const result = await readDocument(connection, ctx.documentId, ctx.signal, ctx.partitionKeyDefinition);
+            documentContent = result?.documentContent;
+            documentPartitionKey = result?.partitionKey;
+            if (result?.partitionKey) ctx.partitionKeyDefinition = result.partitionKey;
+        } else if (ctx.mode === 'add') {
+            const result = await buildNewDocumentTemplate(connection, ctx.partitionKeyDefinition);
+            documentContent = result?.documentContent;
+            documentPartitionKey = result?.partitionKey;
+            if (result?.partitionKey) ctx.partitionKeyDefinition = result.partitionKey;
         }
 
         return {
-            mode: myCtx.mode,
+            mode: ctx.mode,
             databaseId: connection.databaseId,
             containerId: connection.containerId,
+            documentId: ctx.documentId?.id ?? '',
+            partitionKey: ctx.documentId?.partitionKey,
+            documentContent,
+            documentPartitionKey,
         };
     }),
 
-    refreshDocument: publicProcedure.use(trpcToTelemetry).mutation(async ({ ctx }) => {
-        const myCtx = ctx as DocumentRouterContext;
-        const { documentSession, eventSink } = myCtx;
+    refreshDocument: documentProcedure.use(trpcToTelemetry).mutation(async ({ ctx }) => {
+        const { connection } = ctx;
 
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.refreshDocument', async () => {
-            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
-            const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
-            const message =
-                l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.') +
-                '\n' +
-                l10n.t('Are you sure you want to continue?');
+        const result = await callWithTelemetryAndErrorHandling('cosmosDB.nosql.document.refreshDocument', async () => {
+            if (ctx.isDirty) {
+                const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+                const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
+                const message =
+                    l10n.t('Your item has unsaved changes. If you continue, these changes will be lost.') +
+                    '\n' +
+                    l10n.t('Are you sure you want to continue?');
 
-            if (myCtx.isDirty) {
                 const confirmation = await vscode.window.showWarningMessage(
                     message,
                     { modal: true },
@@ -77,55 +93,90 @@ export const documentRouter = router({
                 );
 
                 if (confirmation !== continueItem) {
-                    eventSink.emit({ type: 'operationAborted' });
-                    return;
+                    return { aborted: true as const };
                 }
             }
 
-            if (myCtx.documentId) {
-                await documentSession.read(myCtx.documentId);
+            let documentResult;
+            if (ctx.documentId) {
+                documentResult = await readDocument(connection, ctx.documentId, ctx.signal, ctx.partitionKeyDefinition);
             } else {
-                await documentSession.setNewDocumentTemplate();
+                documentResult = await buildNewDocumentTemplate(connection, ctx.partitionKeyDefinition);
             }
+
+            if (documentResult?.partitionKey) ctx.partitionKeyDefinition = documentResult.partitionKey;
+
+            return {
+                aborted: false as const,
+                documentContent: documentResult?.documentContent,
+                partitionKey: documentResult?.partitionKey,
+            };
         });
+
+        if (!result || result.aborted) {
+            return { aborted: true } as const;
+        }
+
+        return {
+            aborted: false,
+            documentContent: result.documentContent,
+            partitionKey: result.partitionKey,
+        } as const;
     }),
 
-    saveDocument: publicProcedure
+    saveDocument: documentProcedure
         .use(trpcToTelemetry)
         .input(z.object({ documentText: z.string() }))
         .mutation(async ({ input, ctx }) => {
-            const myCtx = ctx as DocumentRouterContext;
-            const { documentSession } = myCtx;
+            const { connection } = ctx;
 
             const callbackId = 'cosmosDB.nosql.document.saveDocument';
-            await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+            const saveResult = await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
                 const documentContent: JSONValue = JSON.parse(input.documentText) as JSONValue;
 
                 if (!isCosmosDBItemDefinition(documentContent)) {
                     throw new Error(l10n.t('Item is not a valid Cosmos DB item definition'));
                 }
 
-                const result = myCtx.documentId
-                    ? await documentSession.update(documentContent, myCtx.documentId)
-                    : await documentSession.create(documentContent);
+                if (ctx.documentId) {
+                    // Update existing document
+                    return await updateDocument(connection, documentContent, ctx, context);
+                } else {
+                    // Create new document
+                    const result = await createDocument(
+                        connection,
+                        documentContent,
+                        ctx.signal,
+                        ctx.partitionKeyDefinition,
+                    );
+                    if (!result) {
+                        context.errorHandling.suppressDisplay = true;
+                        throw new Error(l10n.t('Failed to create item'));
+                    }
 
-                if (!result) {
-                    context.errorHandling.suppressDisplay = true;
-                    throw new Error(l10n.t('Failed to create item'));
+                    if (result.partitionKey) ctx.partitionKeyDefinition = result.partitionKey;
+                    ctx.documentId = result.identifier;
+                    ctx.panel.title = `${result.identifier.id}.json`;
+                    return result;
                 }
-
-                myCtx.documentId = result;
-                myCtx.panel.title = `${result.id}.json`;
             });
             void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
+
+            if (!saveResult) {
+                return { success: false } as const;
+            }
+
+            return {
+                success: true,
+                documentContent: saveResult.documentContent,
+                partitionKey: saveResult.partitionKey,
+            } as const;
         }),
 
-    saveDocumentAsFile: publicProcedure
+    saveDocumentAsFile: documentProcedure
         .use(trpcToTelemetry)
         .input(z.object({ documentText: z.string() }))
         .mutation(async ({ input, ctx }) => {
-            const myCtx = ctx as DocumentRouterContext;
-
             const callbackId = 'cosmosDB.nosql.document.saveDocumentAsFile';
             await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
                 context.telemetry.suppressIfSuccessful = true;
@@ -138,36 +189,103 @@ export const documentRouter = router({
 
                 await vscodeUtil.showNewFile(
                     input.documentText,
-                    myCtx.documentId?.id ?? documentContent.id ?? 'Unknown',
+                    ctx.documentId?.id ?? documentContent.id ?? 'Unknown',
                     '.json',
                 );
             });
             void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
         }),
 
-    setMode: publicProcedure
+    setMode: documentProcedure
         .use(trpcToTelemetry)
         .input(z.object({ mode: OpenDocumentModeSchema }))
-        .mutation(async ({ input, ctx }) => {
-            const myCtx = ctx as DocumentRouterContext;
-            const { eventSink } = myCtx;
-
+        .mutation(({ input, ctx }) => {
             const newMode = input.mode;
 
-            if (newMode === 'view' && myCtx.mode === 'edit' && myCtx.isDirty) {
-                // do nothing, just keep the edit mode
-                return;
+            if (newMode === 'view' && ctx.mode === 'edit' && ctx.isDirty) {
+                return { mode: ctx.mode };
             }
 
-            myCtx.mode = newMode;
-            eventSink.emit({ type: 'modeChanged', mode: newMode });
+            ctx.mode = newMode;
+            return { mode: newMode };
         }),
 
-    setDirty: publicProcedure
+    setDirty: documentProcedure
         .use(trpcToTelemetry)
         .input(z.object({ isDirty: z.boolean() }))
-        .mutation(async ({ input, ctx }) => {
-            const myCtx = ctx as DocumentRouterContext;
-            myCtx.isDirty = input.isDirty;
+        .mutation(({ input, ctx }) => {
+            ctx.isDirty = input.isDirty;
         }),
 });
+
+/**
+ * Handle document update with partition key change detection.
+ * If the partition key changed, confirms with the user, deletes the old document,
+ * and creates a new one. Otherwise, does a simple replace.
+ */
+async function updateDocument(
+    connection: NoSqlQueryConnection,
+    documentContent: ItemDefinition,
+    ctx: DocumentRouterContext,
+    context: IActionContext,
+) {
+    const documentId = ctx.documentId!;
+
+    // Check if partition key has changed
+    const newPartitionKey = await extractPartitionKeyFromDocument(
+        connection,
+        documentContent,
+        ctx.partitionKeyDefinition,
+    );
+    const partitionKeyChanged = !arePartitionKeysEqual(documentId.partitionKey, newPartitionKey);
+
+    if (partitionKeyChanged) {
+        context.telemetry.properties.partitionKeyChanged = 'true';
+
+        const confirmation = await getConfirmationAsInSettings(
+            l10n.t('Partition Key changed'),
+            l10n.t(
+                'Are you sure you want to change the items partition key?\n\nThis will delete the old item and create a new one.',
+            ),
+            'change',
+        );
+
+        if (!confirmation) {
+            context.telemetry.properties.result = 'Canceled';
+            return undefined;
+        }
+
+        // Delete old document, then create new one
+        await deleteDocument(connection, documentId, ctx.signal);
+
+        const result = await createDocument(connection, documentContent, ctx.signal, ctx.partitionKeyDefinition);
+        if (!result) {
+            throw new Error(l10n.t('Item update with partition key change failed'));
+        }
+
+        if (result.partitionKey) ctx.partitionKeyDefinition = result.partitionKey;
+        ctx.documentId = result.identifier;
+        ctx.panel.title = `${result.identifier.id}.json`;
+        return result;
+    } else {
+        // Simple replace
+        context.telemetry.properties.partitionKeyChanged = 'false';
+
+        const result = await replaceDocument(
+            connection,
+            documentContent,
+            documentId,
+            ctx.signal,
+            ctx.partitionKeyDefinition,
+        );
+        if (!result) {
+            context.errorHandling.suppressDisplay = true;
+            throw new Error(l10n.t('Failed to update item'));
+        }
+
+        if (result.partitionKey) ctx.partitionKeyDefinition = result.partitionKey;
+        ctx.documentId = result.identifier;
+        ctx.panel.title = `${result.identifier.id}.json`;
+        return result;
+    }
+}

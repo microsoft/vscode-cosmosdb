@@ -15,6 +15,11 @@
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import { initTRPC } from '@trpc/server';
+import {
+    type BaseRouterContext,
+    type DocumentRouterContext,
+    type QueryEditorRouterContext,
+} from '../configuration/appRouter';
 
 /**
  * Initialization of tRPC backend.
@@ -30,7 +35,34 @@ const t = initTRPC.create();
 export const createCallerFactory = t.createCallerFactory;
 
 export const router = t.router;
+export const mergeRouters = t.mergeRouters;
 export const publicProcedure = t.procedure;
+
+/**
+ * Typed procedure for common routers shared across all webviews.
+ * Narrows `ctx` to `BaseRouterContext`.
+ */
+export const commonProcedure = publicProcedure.use(({ ctx, next }) => {
+    return next({ ctx: ctx as BaseRouterContext });
+});
+
+/**
+ * Typed procedure for query editor routers.
+ * Narrows `ctx` from `BaseRouterContext` to `QueryEditorRouterContext`
+ * so that every handler receives the correctly-typed context without casts.
+ */
+export const queryEditorProcedure = publicProcedure.use(({ ctx, next }) => {
+    return next({ ctx: ctx as QueryEditorRouterContext });
+});
+
+/**
+ * Typed procedure for document routers.
+ * Narrows `ctx` from `BaseRouterContext` to `DocumentRouterContext`
+ * so that every handler receives the correctly-typed context without casts.
+ */
+export const documentProcedure = publicProcedure.use(({ ctx, next }) => {
+    return next({ ctx: ctx as DocumentRouterContext });
+});
 
 // Create middleware for logging requests
 export const trpcToTelemetry = t.middleware(async ({ path, type, next }) => {

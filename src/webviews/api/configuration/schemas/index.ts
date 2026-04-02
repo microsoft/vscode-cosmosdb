@@ -7,6 +7,7 @@ export {
     CosmosDBRecordIdentifierSchema,
     CosmosDBRecordSchema,
     JSONValueSchema,
+    QueryExecutionResultSchema,
     QueryMetadataSchema,
     QueryResultRecordSchema,
     SerializedQueryMetricsSchema,

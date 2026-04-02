@@ -7,11 +7,8 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
-import { createDocumentEventEmitter, DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
-import { TypedEventSink } from '../utils/TypedEventSink';
 import { type DocumentRouterContext } from '../webviews/api/configuration/appRouter';
-import { type DocumentEvent } from '../webviews/api/configuration/routers/documentEventsRouter';
 import { setupTrpc } from '../webviews/api/extension-server/setupTrpc';
 import { BaseTab } from './BaseTab';
 
@@ -21,13 +18,8 @@ export class DocumentTab extends BaseTab {
     public static readonly viewType = 'cosmosDbDocument';
     public static readonly openTabs: Set<DocumentTab> = new Set<DocumentTab>();
 
-    private readonly session: DocumentSession;
-    public readonly eventSink: TypedEventSink<DocumentEvent>;
-
     private connection: NoSqlQueryConnection;
     private documentId: CosmosDBRecordIdentifier | undefined;
-    private _mode: DocumentTabMode = 'view';
-    private isDirty = false;
 
     protected constructor(
         panel: vscode.WebviewPanel,
@@ -41,7 +33,6 @@ export class DocumentTab extends BaseTab {
 
         this.connection = connection;
         this.documentId = documentId ?? undefined;
-        this._mode = mode;
 
         if (connection.credentials) {
             const masterKey = getCosmosDBKeyCredential(connection.credentials)?.key;
@@ -53,23 +44,15 @@ export class DocumentTab extends BaseTab {
         this.telemetryContext.addMaskedValue(connection.databaseId);
         this.telemetryContext.addMaskedValue(connection.containerId);
 
-        // Create TypedEventSink and DocumentSession with event emitter
-        this.eventSink = new TypedEventSink<DocumentEvent>();
-        const eventEmitter = createDocumentEventEmitter(this.eventSink);
-        this.session = new DocumentSession(connection, eventEmitter);
-
         // Set up tRPC with DocumentRouterContext
         const routerContext: DocumentRouterContext = {
-            dbExperience: 'NoSQL' as DocumentRouterContext['dbExperience'],
             webviewName: DocumentTab.viewType,
             connection: this.connection,
-            documentSession: this.session,
             telemetryContext: this.telemetryContext,
             panel: this.panel,
-            eventSink: this.eventSink,
-            mode: this._mode,
+            mode: mode,
             documentId: this.documentId,
-            isDirty: this.isDirty,
+            isDirty: false,
         };
 
         const { disposable } = setupTrpc(this.panel, routerContext);
@@ -108,7 +91,7 @@ export class DocumentTab extends BaseTab {
             });
 
             if (openTab) {
-                openTab.mode = mode;
+                // Just reveal the existing tab; mode changes are only done via the webview
                 openTab.panel.reveal(column);
                 return openTab;
             }
@@ -126,23 +109,6 @@ export class DocumentTab extends BaseTab {
     public dispose(): void {
         DocumentTab.openTabs.delete(this);
 
-        this.eventSink.close();
-        this.session.dispose();
-
         super.dispose();
-    }
-
-    public get mode(): DocumentTabMode {
-        return this._mode;
-    }
-    public set mode(value: DocumentTabMode) {
-        if (value === 'view' && this._mode === 'edit' && this.isDirty) {
-            // do nothing, just keep the edit mode
-            return;
-        }
-
-        this._mode = value;
-
-        this.eventSink.emit({ type: 'modeChanged', mode: this._mode });
     }
 }

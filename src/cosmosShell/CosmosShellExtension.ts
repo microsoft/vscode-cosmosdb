@@ -176,11 +176,15 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     let args: string[];
     if (!node) {
         if (useMcp) {
-            args = ['--mcp', '--mcp-port', mcpPort];
+            args = ['--mcp', mcpPort];
         } else {
             args = [];
         }
-        const terminal: vscode.Terminal = vscode.window.createTerminal('Cosmos Shell', command, args);
+        const terminal: vscode.Terminal = vscode.window.createTerminal({
+            name: 'Cosmos Shell',
+            shellPath: command,
+            shellArgs: args,
+        });
         terminal.show();
         // Update context after creating terminal
         updateTerminalContext();
@@ -196,7 +200,7 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     }
 
     if (useMcp) {
-        args = ['--mcp', '--mcp-port', mcpPort, '--connect', rawEndpoint];
+        args = ['--mcp', mcpPort, '--connect', rawEndpoint];
     } else {
         args = ['--connect', rawEndpoint];
     }

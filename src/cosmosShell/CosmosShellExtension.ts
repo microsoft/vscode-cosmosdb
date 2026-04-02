@@ -337,7 +337,7 @@ export function isCosmosShellSupportEnabled(): boolean {
         // Workaround: CosmosShell may print a valid version string but still exit non-zero
         // when ANSI is not available. Treat that as installed.
         const combinedOutput = `${stdout}\n${stderr}`;
-        if (/\bCosmosShell\b/i.test(combinedOutput)) {
+        if (/\bCosmos(?:DB)?Shell\b/i.test(combinedOutput)) {
             ext.outputChannel.appendLine(
                 'warning: CosmosShell "--version" exited non-zero, but returned version output; treating as installed.',
             );

@@ -218,13 +218,13 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
     }
 
     // Skip passing credentials for emulator connections: CosmosDBShell auto-detects localhost
-    // emulators and injects the well-known key. Passing COSMOS_SHELL_CREDENTIAL would cause
+    // emulators and injects the well-known key. Passing COSMOS_SHELL_ACCOUNT_KEY would cause
     // a conflict in CosmosDBShell's credential handling when combined with the emulator
     // connection string it builds internally.
-    const cosmosShellCredential = node.model.accountInfo.isEmulator ? undefined : getCosmosShellCredential(node);
-    const entraCredential = node.model.accountInfo.isEmulator
-        ? undefined
-        : getEntraIdCredential(node);
+    const isEmulator = node.model.accountInfo.isEmulator;
+    const cosmosShellCredential = isEmulator ? undefined : getCosmosShellCredential(node);
+    const entraCredential = isEmulator ? undefined : getEntraIdCredential(node);
+    const managedIdentityCredential = isEmulator ? undefined : getManagedIdentityCredential(node);
     const rawEndpoint = node.model.accountInfo.endpoint;
     if (!rawEndpoint) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
@@ -245,6 +245,11 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
         }
     }
 
+    // For user-assigned managed identity, pass the client ID via CLI arg
+    if (managedIdentityCredential?.clientId) {
+        args.push('--connect-managed-identity', managedIdentityCredential.clientId);
+    }
+
     const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
     if (containerCommand) {
         args.push('--k', containerCommand);
@@ -254,7 +259,7 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
 
     const env: Record<string, string> = {};
     if (cosmosShellCredential) {
-        env['COSMOS_SHELL_CREDENTIAL'] = cosmosShellCredential;
+        env['COSMOS_SHELL_ACCOUNT_KEY'] = cosmosShellCredential;
     }
 
     // For Entra ID, provide a pre-fetched token as fallback if VisualStudioCodeCredential fails
@@ -332,34 +337,22 @@ function findTerminalByConnectionString(connectionString: string): vscode.Termin
     return undefined;
 }
 
-function getCosmosShellCredential(node: NoSqlContainerResourceItem) {
-    for (const credential of node.model.accountInfo.credentials) {
-        switch (credential.type) {
-            case AuthenticationMethod.accountKey: {
-                // TypeScript doesn't narrow the type automatically, so we need to cast
-                const keyCredential = credential as CosmosDBKeyCredential;
-                return `key=${keyCredential.key}`;
-            }
-            case AuthenticationMethod.entraId: {
-                // Entra ID authentication is handled via --connect-vscode-credential flag,
-                // not through COSMOS_SHELL_CREDENTIAL.
-                continue;
-            }
-            case AuthenticationMethod.managedIdentity: {
-                const managedIdentityCredential = credential as CosmosDBManagedIdentityCredential;
-                // Note: There seems to be a bug here - you're accessing 'type' but probably want 'clientId' or similar
-                return `identity=${managedIdentityCredential.clientId ?? ''}`; // or whatever the actual property name is
-            }
-            default:
-                continue;
-        }
-    }
-    return undefined;
+function getCosmosShellCredential(node: NoSqlContainerResourceItem): string | undefined {
+    const credential = node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.accountKey) as
+        | CosmosDBKeyCredential
+        | undefined;
+    return credential?.key;
 }
 
 function getEntraIdCredential(node: NoSqlContainerResourceItem): CosmosDBEntraIdCredential | undefined {
     return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.entraId) as
         | CosmosDBEntraIdCredential
+        | undefined;
+}
+
+function getManagedIdentityCredential(node: NoSqlContainerResourceItem): CosmosDBManagedIdentityCredential | undefined {
+    return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.managedIdentity) as
+        | CosmosDBManagedIdentityCredential
         | undefined;
 }
 

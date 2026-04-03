@@ -501,6 +501,18 @@ async function resolveMcpServer(
         );
     }
 
+    if (!isCosmosShellSupportEnabled()) {
+        showMcpSettingsNotification(
+            l10n.t(
+                'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
+            ),
+            'cosmosDB.shell.path',
+        );
+        throw new Error(
+            'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
+        );
+    }
+
     const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
 
     if (!mcpEnabled) {
@@ -543,9 +555,6 @@ async function resolveMcpServer(
 
 export function registerMcpServer(context: vscode.ExtensionContext): void {
     try {
-        if (!isCosmosShellSupportEnabled()) {
-            return;
-        }
         const didChangeEmitter = new vscode.EventEmitter<void>();
 
         const mcpPort = (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();

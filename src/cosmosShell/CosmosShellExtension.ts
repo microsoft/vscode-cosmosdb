@@ -21,6 +21,8 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as child from 'child_process';
 import * as fs from 'fs';
+import * as http from 'http';
+import * as net from 'net';
 import * as vscode from 'vscode';
 import {
     LanguageClient,
@@ -391,6 +393,154 @@ export function isCosmosShellSupportEnabled(): boolean {
 }
 const McpServerName = 'Azure Cosmos DB Shell';
 
+function isPortReachable(port: string): Promise<boolean> {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        socket.setTimeout(2000);
+        socket.once('connect', () => {
+            socket.destroy();
+            resolve(true);
+        });
+        socket.once('timeout', () => {
+            socket.destroy();
+            resolve(false);
+        });
+        socket.once('error', () => {
+            socket.destroy();
+            resolve(false);
+        });
+        socket.connect(parseInt(port, 10), '127.0.0.1');
+    });
+}
+
+function isMcpShellServer(port: string): Promise<boolean> {
+    return new Promise((resolve) => {
+        const req = http.get(`http://127.0.0.1:${port}/sse`, { timeout: 3000 }, (res) => {
+            const contentType = res.headers['content-type'] ?? '';
+            res.destroy();
+            resolve(contentType.startsWith('text/event-stream'));
+        });
+        req.once('timeout', () => {
+            req.destroy();
+            resolve(false);
+        });
+        req.once('error', () => {
+            resolve(false);
+        });
+    });
+}
+
+function waitForPort(
+    port: string,
+    retries: number,
+    delayMs: number,
+    token: vscode.CancellationToken,
+): Promise<boolean> {
+    return new Promise((resolve) => {
+        let attempt = 0;
+        const tokenListener = token.onCancellationRequested(() => {
+            tokenListener.dispose();
+            resolve(false);
+        });
+
+        const poll = async () => {
+            if (token.isCancellationRequested) {
+                tokenListener.dispose();
+                resolve(false);
+                return;
+            }
+            if (await isPortReachable(port)) {
+                tokenListener.dispose();
+                resolve(true);
+                return;
+            }
+            attempt++;
+            if (attempt >= retries) {
+                tokenListener.dispose();
+                resolve(false);
+                return;
+            }
+            setTimeout(() => void poll(), delayMs);
+        };
+
+        void poll();
+    });
+}
+
+function showMcpSettingsNotification(message: string, settingKey: string): void {
+    const settingsLabel = l10n.t('Settings');
+    void vscode.window.showWarningMessage(message, settingsLabel).then((selection) => {
+        if (selection === settingsLabel) {
+            void vscode.commands.executeCommand('workbench.action.openSettings', settingKey);
+        }
+    });
+}
+
+async function resolveMcpServer(
+    server: vscode.McpServerDefinition,
+    mcpPort: string,
+    token: vscode.CancellationToken,
+): Promise<vscode.McpServerDefinition> {
+    if (server.label !== McpServerName) {
+        return server;
+    }
+
+    const portReachable = await isPortReachable(mcpPort);
+
+    if (portReachable) {
+        const isShell = await isMcpShellServer(mcpPort);
+        if (isShell) {
+            return server;
+        }
+        showMcpSettingsNotification(
+            l10n.t('Port {0} is in use by another process. Configure a different MCP port in settings.', mcpPort),
+            'cosmosDB.shell.MCP.port',
+        );
+        throw new Error(
+            `Port ${mcpPort} is in use by another process that is not the Cosmos DB Shell MCP server. Configure a different port via the "cosmosDB.shell.MCP.port" setting.`,
+        );
+    }
+
+    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+
+    if (!mcpEnabled) {
+        showMcpSettingsNotification(
+            l10n.t('Cosmos DB Shell MCP is not enabled. Enable it in settings to auto-start the shell.'),
+            'cosmosDB.shell.MCP.enabled',
+        );
+        throw new Error(
+            'Cosmos DB Shell MCP is not enabled. The user must enable the "cosmosDB.shell.MCP.enabled" setting and restart the MCP server.',
+        );
+    }
+
+    const existingTerminal = vscode.window.terminals.find((t) => t.creationOptions.name === 'Cosmos DB Shell');
+
+    if (existingTerminal) {
+        void vscode.window.showWarningMessage(
+            l10n.t('The running Cosmos DB Shell was started without MCP. Please close it and try again.'),
+        );
+        throw new Error(
+            'A Cosmos DB Shell terminal is already running without MCP support. The user must close it and try again.',
+        );
+    }
+
+    ext.outputChannel.appendLine('MCP resolve: launching Cosmos DB Shell with --mcp');
+    await vscode.commands.executeCommand('cosmosDB.launchCosmosShell');
+
+    const ready = await waitForPort(mcpPort, 10, 1000, token);
+    if (!ready) {
+        ext.outputChannel.appendLine('MCP resolve: Cosmos DB Shell MCP server did not become reachable in time');
+        void vscode.window.showWarningMessage(
+            l10n.t('Cosmos DB Shell MCP server did not start in time. Check the terminal for errors.'),
+        );
+        throw new Error(
+            'Cosmos DB Shell MCP server did not start in time. The user should check the Cosmos DB Shell terminal for errors.',
+        );
+    }
+
+    return server;
+}
+
 export function registerMcpServer(context: vscode.ExtensionContext): void {
     try {
         if (!isCosmosShellSupportEnabled()) {
@@ -415,16 +565,8 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
                         ),
                     ];
                 },
-                resolveMcpServerDefinition: (server: vscode.McpServerDefinition) => {
-                    if (server.label === McpServerName) {
-                        // Get the API key from the user, e.g. using vscode.window.showInputBox
-                        // Update the server definition with the API key
-                    }
-
-                    // Return undefined to indicate that the server should not be started or throw an error
-                    //twIf there is a pending toolc all, the editor will cancel it and return an error message
-                    // to the language model.
-                    return server;
+                resolveMcpServerDefinition: (server: vscode.McpServerDefinition, token: vscode.CancellationToken) => {
+                    return resolveMcpServer(server, mcpPort, token);
                 },
             }),
         );

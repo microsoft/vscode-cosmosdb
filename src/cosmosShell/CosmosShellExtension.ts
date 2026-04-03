@@ -37,6 +37,7 @@ import {
     type CosmosDBKeyCredential,
     type CosmosDBManagedIdentityCredential,
 } from '../cosmosdb/CosmosDBCredential';
+import { getAccessTokenForVSCode } from '../cosmosdb/utils/azureSessionHelper';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
@@ -159,7 +160,7 @@ function watchForEarlyExit(terminal: vscode.Terminal): void {
     });
 }
 
-export function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+export async function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
     const isCosmosShellInstalled: boolean = isCosmosShellSupportEnabled();
 
     if (!isCosmosShellInstalled) {
@@ -221,6 +222,9 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
     // a conflict in CosmosDBShell's credential handling when combined with the emulator
     // connection string it builds internally.
     const cosmosShellCredential = node.model.accountInfo.isEmulator ? undefined : getCosmosShellCredential(node);
+    const entraCredential = node.model.accountInfo.isEmulator
+        ? undefined
+        : getEntraIdCredential(node);
     const rawEndpoint = node.model.accountInfo.endpoint;
     if (!rawEndpoint) {
         void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
@@ -233,6 +237,14 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
         args = ['--connect', rawEndpoint];
     }
 
+    // For Entra ID credentials, use VisualStudioCodeCredential in the shell
+    if (entraCredential) {
+        args.push('--connect-vscode-credential');
+        if (entraCredential.tenantId) {
+            args.push('--connect-tenant', entraCredential.tenantId);
+        }
+    }
+
     const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
     if (containerCommand) {
         args.push('--k', containerCommand);
@@ -240,11 +252,24 @@ export function launchCosmosShell(_context: IActionContext, node?: NoSqlContaine
 
     ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
 
+    const env: Record<string, string> = {};
+    if (cosmosShellCredential) {
+        env['COSMOS_SHELL_CREDENTIAL'] = cosmosShellCredential;
+    }
+
+    // For Entra ID, provide a pre-fetched token as fallback if VisualStudioCodeCredential fails
+    if (entraCredential) {
+        const fallbackToken = await getCosmosShellToken(entraCredential, rawEndpoint);
+        if (fallbackToken) {
+            env['COSMOS_SHELL_TOKEN'] = fallbackToken;
+        }
+    }
+
     const terminal: vscode.Terminal = vscode.window.createTerminal({
         name: 'Cosmos DB Shell',
         shellPath: command,
         shellArgs: args,
-        env: cosmosShellCredential ? { COSMOS_SHELL_CREDENTIAL: cosmosShellCredential } : undefined,
+        env: Object.keys(env).length > 0 ? env : undefined,
     });
 
     terminal.show();
@@ -264,10 +289,10 @@ function getGoToContainerCommand(database: DatabaseDefinition, container: Contai
     return undefined;
 }
 
-export function connectCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+export async function connectCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
     if (!node) {
         // No node selected, just launch a new shell without connection
-        launchCosmosShell(_context, node);
+        await launchCosmosShell(_context, node);
         return;
     }
 
@@ -291,7 +316,7 @@ export function connectCosmosShell(_context: IActionContext, node?: NoSqlContain
     }
 
     // No terminal with this connection string, launch a new one
-    launchCosmosShell(_context, node);
+    await launchCosmosShell(_context, node);
 }
 
 /**
@@ -316,8 +341,9 @@ function getCosmosShellCredential(node: NoSqlContainerResourceItem) {
                 return `key=${keyCredential.key}`;
             }
             case AuthenticationMethod.entraId: {
-                const entraIdCredential = credential as CosmosDBEntraIdCredential;
-                return `tenantId=${entraIdCredential.tenantId ?? ''}`;
+                // Entra ID authentication is handled via --connect-vscode-credential flag,
+                // not through COSMOS_SHELL_CREDENTIAL.
+                continue;
             }
             case AuthenticationMethod.managedIdentity: {
                 const managedIdentityCredential = credential as CosmosDBManagedIdentityCredential;
@@ -329,6 +355,31 @@ function getCosmosShellCredential(node: NoSqlContainerResourceItem) {
         }
     }
     return undefined;
+}
+
+function getEntraIdCredential(node: NoSqlContainerResourceItem): CosmosDBEntraIdCredential | undefined {
+    return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.entraId) as
+        | CosmosDBEntraIdCredential
+        | undefined;
+}
+
+/**
+ * Obtains an access token from VS Code's authentication session for the Cosmos DB endpoint.
+ * Used as a fallback token via COSMOS_SHELL_TOKEN if VisualStudioCodeCredential fails in the shell.
+ */
+async function getCosmosShellToken(
+    entraCredential: CosmosDBEntraIdCredential,
+    endpoint: string,
+): Promise<string | undefined> {
+    try {
+        const endpointUrl = new URL(endpoint);
+        const scope = `${endpointUrl.origin}${endpointUrl.pathname}.default`;
+        const token = await getAccessTokenForVSCode(scope, entraCredential.tenantId, { createIfNone: false });
+        return token?.token ?? undefined;
+    } catch {
+        ext.outputChannel.appendLine('Failed to obtain fallback access token for Cosmos DB Shell');
+        return undefined;
+    }
 }
 
 /**

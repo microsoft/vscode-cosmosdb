@@ -29,6 +29,20 @@ function wrapInTrpcErrorMessage(error: unknown, operationId: string) {
 }
 
 /**
+ * Safely posts a message to the webview panel.
+ * Returns false if the panel has already been disposed.
+ */
+function safePostMessage(panel: vscode.WebviewPanel, message: unknown): boolean {
+    try {
+        void panel.webview.postMessage(message);
+        return true;
+    } catch {
+        // Panel was disposed between our check and the actual call
+        return false;
+    }
+}
+
+/**
  * Sets up tRPC integration for a webview panel. Used by `BaseTab` subclasses
  * to wire a panel's `postMessage` bridge into the shared `appRouter`.
  *
@@ -90,6 +104,14 @@ export function setupTrpc(
         }
     });
 
+    // Listen for panel disposal to abort all active subscriptions
+    panel.onDidDispose(() => {
+        for (const [id, abortController] of activeSubscriptions) {
+            abortController.abort();
+            activeSubscriptions.delete(id);
+        }
+    });
+
     return { disposable, activeSubscriptions };
 }
 
@@ -123,20 +145,20 @@ async function handleSubscriptionMessage(
             try {
                 for await (const value of asyncIter) {
                     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    panel.webview.postMessage({ id: message.id, result: value });
+                    safePostMessage(panel, { id: message.id, result: value });
                 }
 
-                panel.webview.postMessage({ id: message.id, complete: true });
+                safePostMessage(panel, { id: message.id, complete: true });
             } catch (error) {
                 const trpcErrorMessage = wrapInTrpcErrorMessage(error, message.id);
-                panel.webview.postMessage(trpcErrorMessage);
+                safePostMessage(panel, trpcErrorMessage);
             } finally {
                 activeSubscriptions.delete(message.id);
             }
         })();
     } catch (error) {
         const trpcErrorMessage = wrapInTrpcErrorMessage(error, message.id);
-        panel.webview.postMessage(trpcErrorMessage);
+        safePostMessage(panel, trpcErrorMessage);
     }
 }
 
@@ -173,9 +195,9 @@ async function handleDefaultMessage(
 
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const response = { id: message.id, result };
-        panel.webview.postMessage(response);
+        safePostMessage(panel, response);
     } catch (error) {
         const trpcErrorMessage = wrapInTrpcErrorMessage(error, message.id);
-        panel.webview.postMessage(trpcErrorMessage);
+        safePostMessage(panel, trpcErrorMessage);
     }
 }

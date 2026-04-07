@@ -145,23 +145,30 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
             void (async () => {
                 try {
                     for await (const value of asyncIter) {
+                        if (this.isDisposed) break;
                         // Each yielded value is sent to the webview
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         this._panel.webview.postMessage({ id: message.id, result: value });
                     }
 
                     // On natural completion, inform the client
-                    this._panel.webview.postMessage({ id: message.id, complete: true });
+                    if (!this.isDisposed) {
+                        this._panel.webview.postMessage({ id: message.id, complete: true });
+                    }
                 } catch (error) {
-                    const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
-                    this._panel.webview.postMessage(trpcErrorMessage);
+                    if (!this.isDisposed) {
+                        const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
+                        this._panel.webview.postMessage(trpcErrorMessage);
+                    }
                 } finally {
                     this._activeSubscriptions.delete(message.id);
                 }
             })();
         } catch (error) {
-            const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
-            this._panel.webview.postMessage(trpcErrorMessage);
+            if (!this.isDisposed) {
+                const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
+                this._panel.webview.postMessage(trpcErrorMessage);
+            }
         }
     }
 
@@ -208,10 +215,14 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
             // Send the result back to the client
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const response = { id: message.id, result };
-            this._panel.webview.postMessage(response);
+            if (!this.isDisposed) {
+                this._panel.webview.postMessage(response);
+            }
         } catch (error) {
-            const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
-            this._panel.webview.postMessage(trpcErrorMessage);
+            if (!this.isDisposed) {
+                const trpcErrorMessage = this.wrapInTrpcErrorMessage(error, message.id);
+                this._panel.webview.postMessage(trpcErrorMessage);
+            }
         }
     }
 
@@ -245,6 +256,19 @@ export class WebviewController<Configuration> extends WebviewBaseController<Conf
      */
     protected _getWebview(): vscode.Webview {
         return this._panel.webview;
+    }
+
+    /**
+     * Disposes the controller and aborts all active subscriptions.
+     */
+    public override dispose() {
+        // Abort all active subscriptions so their async iterators stop
+        for (const [id, abortController] of this._activeSubscriptions) {
+            abortController.abort();
+            this._activeSubscriptions.delete(id);
+        }
+
+        super.dispose();
     }
 
     /**

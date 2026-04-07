@@ -31,6 +31,10 @@ export type DispatchAction =
           startExecutionTime: number;
       }
     | {
+          type: 'paginationStarted';
+          startExecutionTime: number;
+      }
+    | {
           type: 'executionStopped';
           executionId: string;
           endExecutionTime: number;
@@ -175,8 +179,15 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 startExecutionTime: action.startExecutionTime,
                 isEditMode: isSelectStar(state.querySelectedValue || state.queryValue || ''),
             };
+        case 'paginationStarted':
+            return {
+                ...state,
+                isExecuting: true,
+                startExecutionTime: action.startExecutionTime,
+            };
         case 'executionStopped': {
-            if (action.executionId !== state.currentExecutionId) {
+            // Allow empty executionId to match any current execution (used for error recovery)
+            if (action.executionId !== '' && action.executionId !== state.currentExecutionId) {
                 // TODO: send telemetry. It should not happen
                 return state;
             }

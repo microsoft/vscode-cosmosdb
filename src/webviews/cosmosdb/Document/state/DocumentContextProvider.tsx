@@ -21,60 +21,76 @@ export class DocumentContextProvider extends BaseContextProvider {
         super(dispatchToast, trpcClient);
     }
 
-    public async saveDocument(documentText: string): Promise<void> {
+    public saveDocument(documentText: string): void {
         this.dispatch({ type: 'setSaving', isSaving: true });
-        try {
-            const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
-                success: boolean;
-                documentContent?: JSONValue;
-                partitionKey?: PartitionKeyDefinition;
-            };
-            if (result.success && result.documentContent) {
-                this.dispatch({
-                    type: 'setDocument',
-                    documentContent: JSON.stringify(result.documentContent, null, 4),
-                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+
+        // Defer mutation to the next frame so React renders the saving state first
+        requestAnimationFrame(() => {
+            void (
+                this.trpcClient.document.saveDocument.mutate({ documentText }) as Promise<{
+                    success: boolean;
+                    documentContent?: JSONValue;
+                    partitionKey?: PartitionKeyDefinition;
+                }>
+            )
+                .then((result) => {
+                    if (result.success && result.documentContent) {
+                        this.dispatch({
+                            type: 'setDocument',
+                            documentContent: JSON.stringify(result.documentContent, null, 4),
+                            partitionKey: result.partitionKey ?? emptyPartitionKey,
+                        });
+                    } else {
+                        this.dispatch({ type: 'setError', error: l10n.t('Failed to save item') });
+                    }
+                })
+                .catch((error: unknown) => {
+                    this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
+                })
+                .finally(() => {
+                    this.dispatch({ type: 'setSaving', isSaving: false });
                 });
-            } else {
-                this.dispatch({ type: 'setError', error: l10n.t('Failed to save item') });
-            }
-        } catch (error) {
-            this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
-        } finally {
-            this.dispatch({ type: 'setSaving', isSaving: false });
-        }
+        });
     }
 
     public async saveDocumentAsFile(documentText: string): Promise<void> {
         await this.trpcClient.document.saveDocumentAsFile.mutate({ documentText });
     }
 
-    public async refreshDocument(): Promise<void> {
+    public refreshDocument(): void {
         this.dispatch({ type: 'setError', error: undefined });
         this.dispatch({ type: 'setRefreshing', isRefreshing: true });
-        try {
-            const result = (await this.trpcClient.document.refreshDocument.mutate()) as {
-                aborted: boolean;
-                documentContent?: JSONValue;
-                partitionKey?: PartitionKeyDefinition;
-            };
-            if (result.aborted) {
-                return;
-            }
-            if (result.documentContent) {
-                this.dispatch({
-                    type: 'setDocument',
-                    documentContent: JSON.stringify(result.documentContent, null, 4),
-                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+
+        // Defer mutation to the next frame so React renders the refreshing state first
+        requestAnimationFrame(() => {
+            void (
+                this.trpcClient.document.refreshDocument.mutate() as Promise<{
+                    aborted: boolean;
+                    documentContent?: JSONValue;
+                    partitionKey?: PartitionKeyDefinition;
+                }>
+            )
+                .then((result) => {
+                    if (result.aborted) {
+                        return;
+                    }
+                    if (result.documentContent) {
+                        this.dispatch({
+                            type: 'setDocument',
+                            documentContent: JSON.stringify(result.documentContent, null, 4),
+                            partitionKey: result.partitionKey ?? emptyPartitionKey,
+                        });
+                    } else {
+                        this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
+                    }
+                })
+                .catch((error: unknown) => {
+                    this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
+                })
+                .finally(() => {
+                    this.dispatch({ type: 'setRefreshing', isRefreshing: false });
                 });
-            } else {
-                this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
-            }
-        } catch (error) {
-            this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
-        } finally {
-            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-        }
+        });
     }
 
     public setCurrentDocumentContent(content: string): void {

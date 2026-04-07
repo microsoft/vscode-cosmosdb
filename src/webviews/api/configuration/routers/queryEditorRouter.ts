@@ -98,10 +98,15 @@ export const queryEditorRouter = router({
         );
     }),
 
-    runQuery: queryEditorProcedure
+    /**
+     * Creates a new query session and returns its executionId immediately.
+     * The session is stored but not yet executed — call `runQuery` with the
+     * returned `executionId` to actually run it.
+     */
+    createQuerySession: queryEditorProcedure
         .use(trpcToTelemetry)
         .input(z.object({ query: z.string(), options: QueryMetadataSchema }))
-        .output(QueryExecutionResultSchema.optional())
+        .output(z.object({ executionId: z.string() }).optional())
         .mutation(async ({ input, ctx }) => {
             ctx.query = input.query;
 
@@ -111,46 +116,73 @@ export const queryEditorRouter = router({
             ctx.isLastQueryAIGenerated = false;
             ctx.lastAIGeneratedQuery = undefined;
 
+            return callWithTelemetryAndErrorHandling(
+                'cosmosDB.nosql.queryEditor.createQuerySession',
+                async (context) => {
+                    if (!ctx.connection) {
+                        throw new Error(l10n.t('No connection'));
+                    }
+
+                    context.telemetry.properties.isAIGenerated = String(wasAIGenerated);
+                    if (wasAIGenerated) {
+                        context.telemetry.properties.isQueryModified = String(wasModified);
+                    }
+
+                    if (input.options.sessionId) {
+                        const existingSession = ctx.sessions.get(input.options.sessionId);
+                        if (existingSession) {
+                            const message =
+                                l10n.t(
+                                    'All loaded data will be lost. The query will be executed again in new session.',
+                                ) +
+                                '\n' +
+                                l10n.t('Are you sure you want to continue?');
+                            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+                            const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
+                            const choice = await vscode.window.showWarningMessage(
+                                message,
+                                { modal: true },
+                                continueItem,
+                                closeItem,
+                            );
+
+                            if (choice !== continueItem) {
+                                return undefined;
+                            }
+                        }
+                    }
+
+                    const session = new QuerySession(ctx.connection, input.query, input.options);
+                    context.telemetry.properties.executionId = session.id;
+
+                    ctx.sessions.forEach((existingSession) => existingSession.dispose());
+                    ctx.sessions.clear();
+                    ctx.sessions.set(session.id, session);
+
+                    return { executionId: session.id };
+                },
+            );
+        }),
+
+    runQuery: queryEditorProcedure
+        .use(trpcToTelemetry)
+        .input(z.object({ executionId: z.string() }))
+        .output(QueryExecutionResultSchema.optional())
+        .mutation(async ({ input, ctx }) => {
             const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
             const execResult = await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+                context.telemetry.properties.executionId = input.executionId;
                 if (!ctx.connection) {
                     throw new Error(l10n.t('No connection'));
                 }
-
-                context.telemetry.properties.isAIGenerated = String(wasAIGenerated);
-                if (wasAIGenerated) {
-                    context.telemetry.properties.isQueryModified = String(wasModified);
+                const session = ctx.sessions.get(input.executionId);
+                if (!session) {
+                    throw new Error(
+                        l10n.t('No session found for executionId: {executionId}', {
+                            executionId: input.executionId,
+                        }),
+                    );
                 }
-
-                if (input.options.sessionId) {
-                    const existingSession = ctx.sessions.get(input.options.sessionId);
-                    if (existingSession) {
-                        const message =
-                            l10n.t('All loaded data will be lost. The query will be executed again in new session.') +
-                            '\n' +
-                            l10n.t('Are you sure you want to continue?');
-                        const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
-                        const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
-                        const choice = await vscode.window.showWarningMessage(
-                            message,
-                            { modal: true },
-                            continueItem,
-                            closeItem,
-                        );
-
-                        if (choice !== continueItem) {
-                            return undefined;
-                        }
-                    }
-                }
-
-                const session = new QuerySession(ctx.connection, input.query, input.options);
-                context.telemetry.properties.executionId = session.id;
-
-                ctx.sessions.forEach((existingSession) => existingSession.dispose());
-                ctx.sessions.clear();
-                ctx.sessions.set(session.id, session);
-
                 return session.run();
             });
             void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
@@ -162,15 +194,29 @@ export const queryEditorRouter = router({
         .input(z.object({ executionId: z.string() }))
         .mutation(async ({ input, ctx }) => {
             return callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.stopQuery', async (context) => {
-                context.telemetry.properties.executionId = input.executionId;
-                const session = ctx.sessions.get(input.executionId);
-                if (!session) {
-                    throw new Error(
-                        l10n.t('No session found for executionId: {executionId}', { executionId: input.executionId }),
-                    );
+                let session: QuerySession | undefined;
+
+                if (input.executionId) {
+                    context.telemetry.properties.executionId = input.executionId;
+                    session = ctx.sessions.get(input.executionId);
+                } else {
+                    // No specific executionId — stop the latest (only) active session
+                    const entries = [...ctx.sessions.entries()];
+                    if (entries.length > 0) {
+                        const [id, latest] = entries[entries.length - 1];
+                        context.telemetry.properties.executionId = id;
+                        session = latest;
+                    }
                 }
+
+                if (!session) {
+                    // Session may not exist yet (e.g., cancel pressed while runQuery is still in-flight)
+                    // or was already stopped/disposed. Return gracefully.
+                    return undefined;
+                }
+
                 const result = session.stop();
-                ctx.sessions.delete(input.executionId);
+                ctx.sessions.delete(session.id);
                 return result;
             });
         }),

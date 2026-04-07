@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import * as l10n from '@vscode/l10n';
 import {
     type CosmosDBRecordIdentifier,
     DEFAULT_EXECUTION_TIMEOUT,
@@ -47,17 +48,39 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        const historyResult = await this.trpcClient.queryEditor.updateQueryHistory.mutate({ query });
-        if (historyResult?.queryHistory) {
-            this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
-        }
-        // tRPC output type matches QueryExecutionResponse; explicit cast avoids TS2589
-        // from deep AppRouter type inference.
-        const result = (await this.trpcClient.queryEditor.runQuery.mutate({
+        // Update history (fire-and-forget, non-blocking)
+        void this.trpcClient.queryEditor.updateQueryHistory.mutate({ query }).then((historyResult) => {
+            if (historyResult?.queryHistory) {
+                this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
+            }
+        });
+
+        // Step 1: Create the session — this returns the executionId immediately
+        const session = await this.trpcClient.queryEditor.createQuerySession.mutate({
             query,
             options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
-        })) as QueryExecutionResponse | undefined;
-        this.handleQueryExecutionResult(result);
+        });
+
+        if (!session?.executionId) {
+            // User cancelled the confirmation dialog or no connection
+            return;
+        }
+
+        // Step 2: Show executing state with the real executionId (enables Cancel)
+        this.dispatch({
+            type: 'executionStarted',
+            executionId: session.executionId,
+            startExecutionTime: Date.now(),
+        });
+
+        // Step 3: Fire the actual query execution without blocking the UI
+        void (
+            this.trpcClient.queryEditor.runQuery.mutate({
+                executionId: session.executionId,
+            }) as Promise<QueryExecutionResponse | undefined>
+        )
+            .then((result) => this.handleQueryExecutionResult(result))
+            .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
     public async stopQuery(executionId: string): Promise<void> {
         const result = await this.trpcClient.queryEditor.stopQuery.mutate({ executionId });
@@ -67,25 +90,42 @@ export class QueryEditorContextProvider extends BaseContextProvider {
                 executionId: result.executionId,
                 endExecutionTime: result.endTime,
             });
+        } else {
+            // No server-side session found (e.g., cancel was pressed before the query started).
+            // Stop the executing state locally.
+            this.dispatch({
+                type: 'executionStopped',
+                executionId: '',
+                endExecutionTime: Date.now(),
+            });
         }
     }
-    public async nextPage(executionId: string): Promise<void> {
-        const result = (await this.trpcClient.queryEditor.nextPage.mutate({ executionId })) as
-            | QueryExecutionResponse
-            | undefined;
-        this.handleQueryExecutionResult(result);
+    public nextPage(executionId: string): void {
+        this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
+
+        void (
+            this.trpcClient.queryEditor.nextPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
+        )
+            .then((result) => this.handleQueryExecutionResult(result))
+            .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
-    public async prevPage(executionId: string): Promise<void> {
-        const result = (await this.trpcClient.queryEditor.prevPage.mutate({ executionId })) as
-            | QueryExecutionResponse
-            | undefined;
-        this.handleQueryExecutionResult(result);
+    public prevPage(executionId: string): void {
+        this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
+
+        void (
+            this.trpcClient.queryEditor.prevPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
+        )
+            .then((result) => this.handleQueryExecutionResult(result))
+            .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
-    public async firstPage(executionId: string): Promise<void> {
-        const result = (await this.trpcClient.queryEditor.firstPage.mutate({ executionId })) as
-            | QueryExecutionResponse
-            | undefined;
-        this.handleQueryExecutionResult(result);
+    public firstPage(executionId: string): void {
+        this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
+
+        void (
+            this.trpcClient.queryEditor.firstPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
+        )
+            .then((result) => this.handleQueryExecutionResult(result))
+            .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
 
     public async openFile(): Promise<void> {
@@ -292,11 +332,6 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     private handleQueryExecutionResult(result?: QueryExecutionResponse): void {
         if (!result) return;
 
-        this.dispatch({
-            type: 'executionStarted',
-            executionId: result.executionId,
-            startExecutionTime: result.startTime,
-        });
 
         if (result.result) {
             this.dispatch({
@@ -311,6 +346,18 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             type: 'executionStopped',
             executionId: result.executionId,
             endExecutionTime: result.endTime,
+        });
+    }
+
+    private handleQueryExecutionError(error: unknown): void {
+        const message = error instanceof Error ? error.message : String(error);
+        this.showToast(l10n.t('Query Error'), message, 'error');
+
+        // Stop the executing state; use currentExecutionId or empty string
+        this.dispatch({
+            type: 'executionStopped',
+            executionId: '',
+            endExecutionTime: Date.now(),
         });
     }
 }

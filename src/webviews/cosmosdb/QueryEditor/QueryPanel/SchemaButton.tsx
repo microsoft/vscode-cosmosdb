@@ -32,7 +32,7 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
 
     const showCurrentSchema = useCallback(() => void dispatcher.showCurrentSchema(), [dispatcher]);
 
-    const wipeCurrentSchema = useCallback(() => void dispatcher.wipeCurrentSchema(), [dispatcher]);
+    const deleteCurrentSchema = useCallback(() => void dispatcher.deleteCurrentSchema(), [dispatcher]);
 
     const checkedValues = useMemo(
         () => ({
@@ -44,19 +44,19 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
     const menuContent = (
         <MenuPopover>
             <MenuList>
-                <MenuItem disabled={isDisabled} onClick={() => generateSchema(50)}>
-                    {l10n.t('Generate schema from TOP 50')}
-                </MenuItem>
-                <MenuItem disabled={isDisabled} onClick={() => generateSchema(100)}>
-                    {l10n.t('Generate schema from TOP 100')}
-                </MenuItem>
-                <MenuItem disabled={isDisabled} onClick={() => generateSchema(500)}>
-                    {l10n.t('Generate schema from TOP 500')}
-                </MenuItem>
-                <MenuItem disabled={isDisabled} onClick={() => generateSchema(undefined)}>
-                    {l10n.t('Generate schema from ALL')}
-                </MenuItem>
-                <MenuDivider />
+                <Menu>
+                    <MenuTrigger disableButtonEnhancement>
+                        <MenuItem disabled={isDisabled}>{l10n.t('Generate schema')}</MenuItem>
+                    </MenuTrigger>
+                    <MenuPopover>
+                        <MenuList>
+                            <MenuItem onClick={() => generateSchema(50)}>{l10n.t('From TOP 50')}</MenuItem>
+                            <MenuItem onClick={() => generateSchema(100)}>{l10n.t('From TOP 100')}</MenuItem>
+                            <MenuItem onClick={() => generateSchema(500)}>{l10n.t('From TOP 500')}</MenuItem>
+                            <MenuItem onClick={() => generateSchema(undefined)}>{l10n.t('From ALL')}</MenuItem>
+                        </MenuList>
+                    </MenuPopover>
+                </Menu>
                 <MenuItemCheckbox
                     name="schemaSettings"
                     value="generateSchemaBasedOnQueries"
@@ -68,8 +68,8 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
                 <MenuItem disabled={isDisabled} onClick={showCurrentSchema}>
                     {l10n.t('Show current schema')}
                 </MenuItem>
-                <MenuItem disabled={isDisabled} onClick={wipeCurrentSchema}>
-                    {l10n.t('Wipe current schema')}
+                <MenuItem disabled={isDisabled} onClick={deleteCurrentSchema}>
+                    {l10n.t('Delete current schema')}
                 </MenuItem>
             </MenuList>
         </MenuPopover>

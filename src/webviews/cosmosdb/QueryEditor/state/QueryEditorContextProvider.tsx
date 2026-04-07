@@ -126,8 +126,8 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('showCurrentSchema');
     }
 
-    public async wipeCurrentSchema(): Promise<void> {
-        await this.sendCommand('wipeCurrentSchema');
+    public async deleteCurrentSchema(): Promise<void> {
+        await this.sendCommand('deleteCurrentSchema');
     }
 
     public async saveCSV(

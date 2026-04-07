@@ -27,7 +27,7 @@ import { isSelectStar, toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import {
-    getSchemaFromDocuments,
+    getSchemaFromDocument,
     simplifySchema,
     updateSchemaWithDocument,
     type NoSQLDocument,
@@ -42,6 +42,9 @@ import { DocumentTab } from './DocumentTab';
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
+const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
+const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
+const SCHEMA_GENERATION_PAGE_SIZE = 1000;
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -313,8 +316,8 @@ export class QueryEditorTab extends BaseTab {
                 return this.openSchemaSettings();
             case 'showCurrentSchema':
                 return this.showCurrentSchema();
-            case 'wipeCurrentSchema':
-                return this.wipeCurrentSchema();
+            case 'deleteCurrentSchema':
+                return this.deleteCurrentSchema();
             case 'saveCSV':
                 return this.saveCSV(
                     payload.params[0] as string,
@@ -903,11 +906,17 @@ export class QueryEditorTab extends BaseTab {
                 throw new Error(l10n.t('No connection'));
             }
 
-            context.telemetry.properties.limit = limit?.toString() ?? 'all';
+            // Cap the limit at MAX_SCHEMA_DOCUMENT_LIMIT
+            const effectiveLimit =
+                limit === undefined ? MAX_SCHEMA_DOCUMENT_LIMIT : Math.min(limit, MAX_SCHEMA_DOCUMENT_LIMIT);
+
+            context.telemetry.properties.limit = effectiveLimit.toString();
 
             const schemaId = this.getSchemaStorageId(this.connection);
             const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const limitLabel = limit ? l10n.t('TOP {0}', limit) : l10n.t('ALL');
+            const limitLabel = limit
+                ? l10n.t('TOP {0}', effectiveLimit)
+                : l10n.t('ALL (up to {0})', MAX_SCHEMA_DOCUMENT_LIMIT);
 
             // Check if a schema already exists for this container
             const storage = StorageService.get(StorageNames.Default);
@@ -937,42 +946,129 @@ export class QueryEditorTab extends BaseTab {
                 return;
             }
 
-            const query = limit ? `SELECT TOP ${limit} * FROM c` : 'SELECT * FROM c';
+            const connection = this.connection;
+            const query =
+                effectiveLimit < MAX_SCHEMA_DOCUMENT_LIMIT
+                    ? `SELECT TOP ${effectiveLimit} * FROM c`
+                    : `SELECT * FROM c`;
 
-            const response = await withClaimsChallengeHandling(this.connection, async (client) =>
-                client
-                    .database(this.connection!.databaseId)
-                    .container(this.connection!.containerId)
-                    .items.query(query)
-                    .fetchAll(),
+            const result = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: l10n.t('Generating schema for {0}', containerLabel),
+                    cancellable: true,
+                },
+                async (progress, token) => {
+                    const iterator = await withClaimsChallengeHandling(connection, (client) =>
+                        Promise.resolve(
+                            client
+                                .database(connection.databaseId)
+                                .container(connection.containerId)
+                                .items.query(query, { maxItemCount: SCHEMA_GENERATION_PAGE_SIZE }),
+                        ),
+                    );
+
+                    let schema: JSONSchema = {};
+                    let totalDocCount = 0;
+                    let isFirstDoc = true;
+
+                    while (iterator.hasMoreResults() && totalDocCount < effectiveLimit) {
+                        if (token.isCancellationRequested) {
+                            break;
+                        }
+
+                        const page = await iterator.fetchNext();
+                        const documents = page.resources ?? [];
+
+                        if (documents.length === 0) {
+                            break;
+                        }
+
+                        for (const doc of documents) {
+                            if (totalDocCount >= effectiveLimit) {
+                                break;
+                            }
+
+                            if (isFirstDoc) {
+                                schema = getSchemaFromDocument(doc as NoSQLDocument);
+                                isFirstDoc = false;
+                            } else {
+                                updateSchemaWithDocument(schema, doc as NoSQLDocument);
+                            }
+                            totalDocCount++;
+                        }
+
+                        const percentage = effectiveLimit
+                            ? Math.round((totalDocCount / effectiveLimit) * 100)
+                            : undefined;
+                        progress.report({
+                            message: l10n.t('{0} documents processed', totalDocCount),
+                            increment: percentage !== undefined ? (documents.length / effectiveLimit) * 100 : undefined,
+                        });
+                    }
+
+                    return { schema, totalDocCount, cancelled: token.isCancellationRequested };
+                },
             );
 
-            const documents = response.resources ?? [];
+            const { schema, totalDocCount, cancelled } = result;
 
-            if (documents.length === 0) {
+            if (totalDocCount === 0) {
                 void vscode.window.showInformationMessage(
                     l10n.t('No documents found in the container. Schema was not generated.'),
                 );
                 return;
             }
 
-            const schema = getSchemaFromDocuments(documents as JSONSchema[]);
+            simplifySchema(schema);
+
+            const schemaJson = JSON.stringify(schema);
+            const schemaSizeBytes = Buffer.byteLength(schemaJson, 'utf8');
+
+            if (schemaSizeBytes > SCHEMA_SIZE_WARNING_BYTES) {
+                const sizeMB = (schemaSizeBytes / (1024 * 1024)).toFixed(1);
+                const proceed: vscode.MessageItem = { title: l10n.t('Save anyway') };
+                const discard: vscode.MessageItem = { title: l10n.t('Discard'), isCloseAffordance: true };
+                const sizeChoice = await vscode.window.showWarningMessage(
+                    l10n.t(
+                        'The generated schema is {0} MB, which is very large and may impact performance. Do you want to save it?',
+                        sizeMB,
+                    ),
+                    { modal: true },
+                    proceed,
+                    discard,
+                );
+
+                if (sizeChoice !== proceed) {
+                    return;
+                }
+            }
 
             const schemaItem: SchemaItem = {
                 id: schemaId,
                 name: containerLabel,
                 properties: {
-                    schema: JSON.stringify(schema),
+                    schema: schemaJson,
                     generatedAt: new Date().toISOString(),
-                    documentCount: documents.length.toString(),
+                    documentCount: totalDocCount.toString(),
                 },
             };
 
             await storage.push(SCHEMA_STORAGE_KEY, schemaItem);
 
-            void vscode.window.showInformationMessage(
-                l10n.t('Schema generated from {0} documents and saved for {1}.', documents.length, containerLabel),
-            );
+            if (cancelled) {
+                void vscode.window.showInformationMessage(
+                    l10n.t(
+                        'Schema generation was cancelled. Partial schema from {0} documents has been saved for {1}.',
+                        totalDocCount,
+                        containerLabel,
+                    ),
+                );
+            } else {
+                void vscode.window.showInformationMessage(
+                    l10n.t('Schema generated from {0} documents and saved for {1}.', totalDocCount, containerLabel),
+                );
+            }
 
             await this.sendSchemaToWebview();
         });
@@ -1015,8 +1111,8 @@ export class QueryEditorTab extends BaseTab {
         });
     }
 
-    private async wipeCurrentSchema(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.wipeCurrentSchema', async () => {
+    private async deleteCurrentSchema(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteCurrentSchema', async () => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
             }

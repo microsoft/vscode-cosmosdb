@@ -62,6 +62,7 @@ export class QueryEditorContextProvider extends BaseContextProvider {
     }
     public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
+        void this.sendCommand('updateQueryText', query);
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
@@ -141,6 +142,14 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
+    public async openCopilotExplainQuery(): Promise<void> {
+        await this.sendCommand('openCopilotExplainQuery');
+    }
+
+    public async closeGenerateInput(): Promise<void> {
+        await this.sendCommand('closeGenerateInput');
+    }
+
     protected initEventListeners() {
         super.initEventListeners();
 
@@ -191,6 +200,17 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
             this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
+        });
+
+        this.channel.on('queryGenerated', (generatedQuery: string | false) => {
+            // Only insert text if generation was successful (got a string, not false)
+            if (typeof generatedQuery === 'string') {
+                this.insertText(generatedQuery);
+            }
+        });
+
+        this.channel.on('aiFeaturesEnabledChanged', (isAIFeaturesEnabled: boolean) => {
+            this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled });
         });
     }
 }

@@ -9,6 +9,7 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
+import { CosmosDbOperationsService } from '../../chat/CosmosDbOperationsService';
 import { ext } from '../../extensionVariables';
 import { type Channel } from '../../panels/Communication/Channel/Channel';
 import { getErrorMessage } from '../../panels/Communication/Channel/CommonChannel';
@@ -35,7 +36,7 @@ export class QuerySession {
     private readonly endpoint: string;
     private readonly masterKey: string;
 
-    private readonly sessionResult: QuerySessionResult;
+    public readonly sessionResult: QuerySessionResult;
 
     private abortController: AbortController | null = null;
     private iterator: QueryIterator<QueryResultRecord> | null = null;
@@ -294,10 +295,22 @@ export class QuerySession {
 
             await action();
 
+            const serializedResult = this.sessionResult.getSerializedResult(this.currentIteration);
+
+            // Record query execution to in-memory history for AI context
+            if (serializedResult) {
+                CosmosDbOperationsService.getInstance().recordQueryExecution(
+                    this.connection.accountId,
+                    this.databaseId,
+                    this.containerId,
+                    serializedResult,
+                );
+            }
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'queryResults',
-                params: [this.id, this.sessionResult.getSerializedResult(this.currentIteration), this.currentIteration],
+                params: [this.id, serializedResult, this.currentIteration],
             });
         } catch (error) {
             await this.errorHandling(error, context);

@@ -34,6 +34,10 @@ export namespace ext {
     export let rgApiV2: AzureResourcesExtensionApiWithActivity;
     export let fabricServices: IFabricExtensionServiceCollection;
 
+    // Tracks whether AI features (chat participant, AI button) are enabled
+    // This is set to true when GitHub Copilot and Copilot Chat extensions are installed
+    export let isAIFeaturesEnabled: boolean;
+
     export namespace settingsKeys {
         export const documentLabelFields = 'cosmosDB.documentLabelFields';
         export const enableEndpointDiscovery = 'cosmosDB.enableEndpointDiscovery';

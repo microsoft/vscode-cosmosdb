@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import { CosmosDbOperationsService } from '../chat/CosmosDbOperationsService';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
@@ -20,9 +21,11 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
+import { ext } from '../extensionVariables';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -31,6 +34,7 @@ import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
+const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -43,10 +47,16 @@ export class QueryEditorTab extends BaseTab {
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    private readonly sessions = new Map<string, QuerySession>();
+    public readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
+    private isLastQueryAIGenerated: boolean = false;
+    /** The raw AI-generated query text, used to detect if the user modified it before running */
+    private lastAIGeneratedQuery: string | undefined;
+    private lastGenerationFailed: boolean = false;
+    private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
+    private pendingConfirmResolve: ((confirmed: boolean) => void) | undefined;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
@@ -107,21 +117,80 @@ export class QueryEditorTab extends BaseTab {
         super.dispose();
     }
 
+    public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
+        const activeSession = this.sessions.values().next().value as QuerySession | undefined;
+        const result = activeSession?.sessionResult;
+        return result?.getSerializedResult(1);
+    };
+
+    public getConnection = (): NoSqlQueryConnection | undefined => {
+        return this.connection;
+    };
+
+    public getCurrentQuery = (): string | undefined => {
+        return this.query;
+    };
+
+    public isActive(): boolean {
+        return this.panel.active;
+    }
+
+    public isVisible(): boolean {
+        return this.panel.visible;
+    }
+
+    /**
+     * Broadcasts AI features availability change to all open QueryEditorTabs
+     */
+    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+        const notifications = Array.from(QueryEditorTab.openTabs).map((tab) =>
+            tab.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [isAIFeaturesEnabled],
+            }),
+        );
+        await Promise.all(notifications);
+    }
+
+    public async updateQuery(query: string): Promise<void> {
+        this.query = query;
+        this.isLastQueryAIGenerated = true;
+        this.lastAIGeneratedQuery = query;
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'fileOpened',
+            params: [query],
+        });
+    }
+
     protected initController() {
         super.initController();
 
         this.channel.on<void>('ready', async () => {
+            // Capture the initial query before any async operations to avoid a race
+            // condition: the webview's Monaco editor fires onMount which sends
+            // updateQueryText with the default "SELECT * FROM c", overwriting
+            // this.query while updateConnection is awaiting a network call.
+            const initialQuery = this.query;
+
             await this.updateConnection(this.connection);
             await this.updateQueryHistory();
             await this.updateThroughputBuckets();
-            if (this.query) {
+            if (initialQuery) {
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'fileOpened',
-                    params: [this.query],
+                    params: [initialQuery],
                 });
             }
             await this.refreshSurveyFeedbackVisibility();
+            // Send AI features availability state
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [ext.isAIFeaturesEnabled],
+            });
         });
     }
 
@@ -196,6 +265,31 @@ export class QueryEditorTab extends BaseTab {
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
             case 'updateQueryHistory':
                 return this.updateQueryHistory(payload.params[0] as string);
+            case 'updateQueryText':
+                this.updateQueryText(payload.params[0] as string);
+                return Promise.resolve();
+            case 'generateQuery':
+                return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
+            case 'cancelGenerateQuery':
+                return this.cancelGenerateQuery();
+            case 'closeGenerateInput':
+                return this.closeGenerateInput();
+            case 'confirmToolInvocationResponse':
+                this.pendingConfirmResolve?.(payload.params[0] as boolean);
+                this.pendingConfirmResolve = undefined;
+                return Promise.resolve();
+            case 'getSelectedModelName':
+                return this.getSelectedModelName();
+            case 'getAvailableModels':
+                return this.getAvailableModels();
+            case 'setSelectedModel':
+                return this.setSelectedModel(payload.params[0] as string);
+            case 'openCopilotExplainQuery':
+                return this.openCopilotExplainQuery();
+            case 'reportFeedback': {
+                const feedback = payload.params[0] as { component: string; feedbackValue: 'up' | 'down' };
+                return this.reportFeedback(feedback.feedbackValue, feedback.component);
+            }
         }
 
         return super.getCommand(payload);
@@ -451,10 +545,23 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async runQuery(query: string, options: QueryMetadata): Promise<void> {
+        this.query = query;
+
+        const wasAIGenerated = this.isLastQueryAIGenerated;
+        const wasModified =
+            wasAIGenerated && this.lastAIGeneratedQuery !== undefined && query !== this.lastAIGeneratedQuery;
+        this.isLastQueryAIGenerated = false;
+        this.lastAIGeneratedQuery = undefined;
+
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
+            }
+
+            context.telemetry.properties.isAIGenerated = String(wasAIGenerated);
+            if (wasAIGenerated) {
+                context.telemetry.properties.isQueryModified = String(wasModified);
             }
 
             if (options.sessionId) {
@@ -662,5 +769,245 @@ export class QueryEditorTab extends BaseTab {
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         const text = await queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
+    }
+
+    private updateQueryText(query: string): void {
+        this.query = query;
+    }
+
+    private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
+        const isRetry = this.lastGenerationFailed;
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+            context.errorHandling.suppressDisplay = true;
+            context.telemetry.properties.isRetry = String(isRetry);
+            this.lastGenerationFailed = false;
+            // Cancel any existing generation
+            this.generateQueryCancellation?.cancel();
+            this.generateQueryCancellation?.dispose();
+            this.generateQueryCancellation = new vscode.CancellationTokenSource();
+            const token = this.generateQueryCancellation.token;
+
+            try {
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+
+                if (models.length === 0) {
+                    throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+                }
+
+                // Check for cancellation
+                if (token.isCancellationRequested) {
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.phase = 'beforeLLM';
+                    });
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                // Use saved model selection or first available
+                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+                // Use the shared service for query generation
+                const service = CosmosDbOperationsService.getInstance();
+                const historyContext = service.getQueryHistoryContext(this);
+
+                const generatedQuery = await service.generateQueryWithLLM(prompt, currentQuery, {
+                    modelId: model.id,
+                    historyContext,
+                    cancellationToken: token,
+                    source: 'queryEditor',
+                    operation: 'generateQuery',
+                    onConfirm: async (message: string) => {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'confirmToolInvocation',
+                            params: [message],
+                        });
+                        return new Promise<boolean>((resolve) => {
+                            this.pendingConfirmResolve = resolve;
+                        });
+                    },
+                });
+
+                // Check for cancellation after LLM call
+                if (token.isCancellationRequested) {
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.phase = 'afterLLM';
+                    });
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                // Comment the original prompt and prepend the generated query
+                // Sanitize user inputs to prevent SQL comment injection
+                const sanitizedPrompt = sanitizeSqlComment(prompt);
+                const sanitizedCurrentQuery = currentQuery
+                    .split('\n')
+                    .map((line) => sanitizeSqlComment(line))
+                    .join('\n-- ');
+                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+
+                this.isLastQueryAIGenerated = true;
+                this.lastAIGeneratedQuery = finalQuery;
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [finalQuery, model.name, prompt],
+                });
+            } catch (error) {
+                // Check if it was a cancellation
+                if (token.isCancellationRequested) {
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.phase = 'exception';
+                    });
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                const errorMessage = parseError(error).message;
+                this.lastGenerationFailed = true;
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [false],
+                });
+                void vscode.window.showErrorMessage(l10n.t('Failed to generate query: {0}', errorMessage));
+                throw error;
+            }
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private cancelGenerateQuery(): Promise<void> {
+        this.pendingConfirmResolve?.(false);
+        this.pendingConfirmResolve = undefined;
+        if (this.generateQueryCancellation) {
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.phase = 'userCancel';
+            });
+        }
+        this.generateQueryCancellation?.cancel();
+        this.generateQueryCancellation?.dispose();
+        this.generateQueryCancellation = undefined;
+        return Promise.resolve();
+    }
+
+    private closeGenerateInput(): Promise<void> {
+        ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+        });
+        void this.cancelGenerateQuery();
+        return Promise.resolve();
+    }
+
+    private async getSelectedModelName(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels();
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            // Find the saved model or use first available
+            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+            const modelName = selectedModel?.name ?? 'Copilot';
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: [modelName],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: ['Copilot'],
+            });
+        }
+    }
+
+    private async getAvailableModels(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            const modelList = models
+                .filter((m) => m.name.toLowerCase() !== 'auto') // auto model does not work
+                .map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                    family: m.family,
+                    vendor: m.vendor,
+                }));
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [modelList, savedModelId],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [[], null],
+            });
+        }
+    }
+
+    private async setSelectedModel(modelId: string): Promise<void> {
+        await ext.context.globalState.update(SELECTED_MODEL_KEY, modelId);
+
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+            ctx.telemetry.properties.modelId = modelId;
+        });
+
+        // Send back confirmation with the model name
+        const models = await vscode.lm.selectChatModels();
+        const selectedModel = models.find((m) => m.id === modelId);
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'selectedModelName',
+            params: [selectedModel?.name ?? 'Copilot'],
+        });
+    }
+
+    private async openCopilotExplainQuery(): Promise<void> {
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+        });
+
+        const query = this.query?.trim();
+        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
+
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query: chatQuery,
+        });
+    }
+
+    private async reportFeedback(feedback: 'up' | 'down', category: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.reportFeedback', (context) => {
+            context.telemetry.properties.feedback = feedback;
+            context.telemetry.properties.category = category;
+            context.telemetry.properties.isAIGenerated = String(this.isLastQueryAIGenerated);
+        });
     }
 }

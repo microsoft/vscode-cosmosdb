@@ -162,6 +162,10 @@ module.exports = (env, { mode }) => {
                         transform: isDev ? undefined : (content) => content.toString().replace(excludeRegion, ''),
                     },
                     {
+                        from: 'skills',
+                        to: 'skills',
+                    },
+                    {
                         from: 'SECURITY.md',
                         to: 'SECURITY.md',
                     },

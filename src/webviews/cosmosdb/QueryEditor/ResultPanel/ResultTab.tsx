@@ -6,17 +6,16 @@
 import { makeStyles, Spinner } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { useEffect, useState } from 'react';
-import {
-    queryResultToJSON,
-    queryResultToTable,
-    queryResultToTree,
-    type TableData,
-    type TreeData,
-} from '../../../utils';
+import { queryResultToJSON, queryResultToTable, queryResultToTree, type TableData, type TreeRow } from '../../../utils';
 import { useQueryEditorState } from '../state/QueryEditorContext';
+import { ResultTabViewTable as ReactDataGridResultTabViewTable } from './ReactDataGrid/ResultTabViewTable';
+import { ResultTabViewTree as ReactDataGridResultTabViewTree } from './ReactDataGrid/ResultTabViewTree';
 import { ResultTabViewJson } from './ResultTabViewJson';
-import { ResultTabViewTable } from './ResultTabViewTable';
-import { ResultTabViewTree } from './ResultTabViewTree';
+
+// Stable empty-array / empty-string constants to avoid creating new references on every render
+const EMPTY_HEADERS: string[] = [];
+const EMPTY_DATASET: TableData['dataset'] = [];
+const EMPTY_TREE: TreeRow[] = [];
 
 const useClasses = makeStyles({
     container: {
@@ -47,7 +46,7 @@ const useClasses = makeStyles({
 type ViewData = {
     json?: string;
     table?: TableData;
-    tree?: TreeData[];
+    tree?: TreeRow[];
 };
 
 interface ResultTabProps {
@@ -181,12 +180,13 @@ export const ResultTab = ({ className }: ResultTabProps) => {
             ) : (
                 <>
                     {tableViewMode === 'Table' && (
-                        <ResultTabViewTable
-                            headers={viewData.table?.headers ?? []}
-                            dataset={viewData.table?.dataset ?? []}
+                        <ReactDataGridResultTabViewTable
+                            headers={viewData.table?.headers ?? EMPTY_HEADERS}
+                            dataset={viewData.table?.dataset ?? EMPTY_DATASET}
                         />
                     )}
-                    {tableViewMode === 'Tree' && <ResultTabViewTree data={viewData.tree ?? []} />}
+                    {tableViewMode === 'Tree' && <ReactDataGridResultTabViewTree data={viewData.tree ?? EMPTY_TREE} />}
+
                     {tableViewMode === 'JSON' && <ResultTabViewJson data={viewData.json ?? ''} />}
                 </>
             )}

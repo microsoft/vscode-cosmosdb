@@ -39,6 +39,10 @@ export class FabricTreeNodeProvider
         return await bindTreeElement(fabricNode, treeElement);
     }
 
+    protected get providerName(): string {
+        return 'FabricTreeNodeProvider';
+    }
+
     protected get contextValue(): string {
         return 'cosmosDB.fabric';
     }

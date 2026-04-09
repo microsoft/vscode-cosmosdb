@@ -16,6 +16,7 @@
 - Do **not** make direct changes to localization files inside the `l10n/` (e.g., `bundle.l10n.json`, `bundle.l10n.[lang].json`, etc.) folder or `package.[lang].nls.json` files (e.g., `package.nls.de.json`, `package.nls.fr.json`, etc.).
 - To update strings used in `package.json`, modify `package.nls.json` only. Do **not** update the actual translation files.
 - After modifying any localizable strings, always run `npm run l10n` to update strings.
+- Each `l10n.t()` translation key (the template string) must be **500 characters or fewer**. If a string exceeds this limit, split it into multiple separate `l10n.t()` calls and concatenate them (e.g., `l10n.t('Part one.') + l10n.t('Part two.')`).
 
 ## Accessibility Skill Routing
 

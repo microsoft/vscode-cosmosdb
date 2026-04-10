@@ -6,12 +6,11 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { SCHEMA_STORAGE_KEY } from '../../constants';
-import { StorageNames, StorageService } from '../../services/StorageService';
+import { SchemaFileStorage } from '../../services/SchemaFileStorage';
 
 export async function deleteAllSavedSchemas(_context: IActionContext): Promise<void> {
-    const storage = StorageService.get(StorageNames.Default);
-    const keys = storage.keys(SCHEMA_STORAGE_KEY);
+    const schemaStorage = SchemaFileStorage.getInstance();
+    const keys = schemaStorage.getAllSchemaIds();
 
     if (keys.length === 0) {
         void vscode.window.showInformationMessage(l10n.t('No saved schemas found.'));
@@ -30,9 +29,7 @@ export async function deleteAllSavedSchemas(_context: IActionContext): Promise<v
         return;
     }
 
-    for (const key of keys) {
-        await storage.delete(SCHEMA_STORAGE_KEY, key);
-    }
+    await schemaStorage.deleteAllSchemas();
 
     void vscode.window.showInformationMessage(l10n.t('All saved schemas have been deleted.'));
 }

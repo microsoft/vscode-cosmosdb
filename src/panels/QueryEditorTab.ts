@@ -9,7 +9,7 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { CosmosDbOperationsService } from '../chat/CosmosDbOperationsService';
-import { getThemedIconPath, SCHEMA_STORAGE_KEY } from '../constants';
+import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
@@ -22,6 +22,7 @@ import {
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../extensionVariables';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { isSelectStar, toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
@@ -52,13 +53,6 @@ type HistoryItem = StorageItem & {
     };
 };
 
-type SchemaItem = StorageItem & {
-    properties: {
-        schema: string; // JSON-serialized schema
-        generatedAt: string; // ISO date string
-        documentCount: string; // number of documents inspected
-    };
-};
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
@@ -256,11 +250,10 @@ export class QueryEditorTab extends BaseTab {
         }
 
         const schemaId = this.getSchemaStorageId(this.connection);
-        const storage = StorageService.get(StorageNames.Default);
-        const items = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
-        const schemaItem = items.find((item) => item.id === schemaId);
+        const schemaStorage = SchemaFileStorage.getInstance();
+        const schemaJson = await schemaStorage.readSchema(schemaId);
 
-        const schema = schemaItem ? (JSON.parse(schemaItem.properties.schema) as JSONSchema) : null;
+        const schema = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
 
         await this.channel.postMessage({
             type: 'event',
@@ -313,7 +306,7 @@ export class QueryEditorTab extends BaseTab {
             case 'generateSchema':
                 return this.generateSchema(payload.params[0] as number | undefined);
             case 'openSchemaSettings':
-                return this.openSchemaSettings();
+                return this.toggleSchemaBasedOnQueries();
             case 'showCurrentSchema':
                 return this.showCurrentSchema();
             case 'deleteCurrentSchema':
@@ -844,18 +837,18 @@ export class QueryEditorTab extends BaseTab {
 
         const schemaId = this.getSchemaStorageId(this.connection);
         const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-        const storage = StorageService.get(StorageNames.Default);
+        const schemaStorage = SchemaFileStorage.getInstance();
 
         // Load existing schema or start fresh
-        const existingItems = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
-        const existingSchemaItem = existingItems.find((item) => item.id === schemaId);
+        const existingMetadata = schemaStorage.getMetadata(schemaId);
+        const existingSchemaJson = existingMetadata ? await schemaStorage.readSchema(schemaId) : undefined;
 
         let schema: JSONSchema;
         let totalDocCount: number;
 
-        if (existingSchemaItem) {
-            schema = JSON.parse(existingSchemaItem.properties.schema) as JSONSchema;
-            totalDocCount = parseInt(existingSchemaItem.properties.documentCount, 10) || 0;
+        if (existingSchemaJson) {
+            schema = JSON.parse(existingSchemaJson) as JSONSchema;
+            totalDocCount = parseInt(existingMetadata!.documentCount, 10) || 0;
         } else {
             schema = {};
             totalDocCount = 0;
@@ -869,17 +862,13 @@ export class QueryEditorTab extends BaseTab {
 
         totalDocCount += documents.length;
 
-        const schemaItem: SchemaItem = {
-            id: schemaId,
-            name: containerLabel,
-            properties: {
-                schema: JSON.stringify(schema),
-                generatedAt: new Date().toISOString(),
-                documentCount: totalDocCount.toString(),
-            },
-        };
-
-        await storage.push(SCHEMA_STORAGE_KEY, schemaItem);
+        await schemaStorage.saveSchema(
+            schemaId,
+            containerLabel,
+            JSON.stringify(schema),
+            new Date().toISOString(),
+            totalDocCount.toString(),
+        );
 
         await this.sendSchemaToWebview();
     }
@@ -919,9 +908,8 @@ export class QueryEditorTab extends BaseTab {
                 : l10n.t('ALL (up to {0})', MAX_SCHEMA_DOCUMENT_LIMIT);
 
             // Check if a schema already exists for this container
-            const storage = StorageService.get(StorageNames.Default);
-            const existingItems = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
-            const hasExistingSchema = existingItems.some((item) => item.id === schemaId);
+            const schemaStorage = SchemaFileStorage.getInstance();
+            const hasExistingSchema = schemaStorage.hasSchema(schemaId);
 
             const warningParts: string[] = [
                 l10n.t(
@@ -1044,17 +1032,13 @@ export class QueryEditorTab extends BaseTab {
                 }
             }
 
-            const schemaItem: SchemaItem = {
-                id: schemaId,
-                name: containerLabel,
-                properties: {
-                    schema: schemaJson,
-                    generatedAt: new Date().toISOString(),
-                    documentCount: totalDocCount.toString(),
-                },
-            };
-
-            await storage.push(SCHEMA_STORAGE_KEY, schemaItem);
+            await schemaStorage.saveSchema(
+                schemaId,
+                containerLabel,
+                schemaJson,
+                new Date().toISOString(),
+                totalDocCount.toString(),
+            );
 
             if (cancelled) {
                 void vscode.window.showInformationMessage(
@@ -1074,11 +1058,10 @@ export class QueryEditorTab extends BaseTab {
         });
     }
 
-    private async openSchemaSettings(): Promise<void> {
-        await vscode.commands.executeCommand(
-            'workbench.action.openSettings',
-            'cosmosDB.queryEditor.generateSchemaBasedOnQueries',
-        );
+    private async toggleSchemaBasedOnQueries(): Promise<void> {
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const current = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        await config.update('generateSchemaBasedOnQueries', !current, vscode.ConfigurationTarget.Global);
     }
 
     private async showCurrentSchema(): Promise<void> {
@@ -1089,25 +1072,18 @@ export class QueryEditorTab extends BaseTab {
 
             const schemaId = this.getSchemaStorageId(this.connection);
             const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const storage = StorageService.get(StorageNames.Default);
-            const items = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
-            const schemaItem = items.find((item) => item.id === schemaId);
+            const schemaStorage = SchemaFileStorage.getInstance();
 
-            if (!schemaItem) {
+            if (!schemaStorage.hasSchema(schemaId)) {
                 void vscode.window.showInformationMessage(
                     l10n.t('No schema found for {0}. Use the "Generate schema" option to create one.', containerLabel),
                 );
                 return;
             }
 
-            const schema = JSON.parse(schemaItem.properties.schema) as JSONSchema;
-            const schemaText = JSON.stringify(schema, null, 2);
-
-            await vscodeUtil.showNewFile(
-                schemaText,
-                `${this.connection.databaseId}_${this.connection.containerId}_schema`,
-                '.json',
-            );
+            const fileUri = schemaStorage.getSchemaFileUri(schemaId);
+            const document = await vscode.workspace.openTextDocument(fileUri);
+            await vscode.window.showTextDocument(document, { preview: true });
         });
     }
 
@@ -1119,16 +1095,14 @@ export class QueryEditorTab extends BaseTab {
 
             const schemaId = this.getSchemaStorageId(this.connection);
             const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const storage = StorageService.get(StorageNames.Default);
-            const items = (await storage.getItems(SCHEMA_STORAGE_KEY)) as SchemaItem[];
-            const schemaItem = items.find((item) => item.id === schemaId);
+            const schemaStorage = SchemaFileStorage.getInstance();
 
-            if (!schemaItem) {
+            if (!schemaStorage.hasSchema(schemaId)) {
                 void vscode.window.showInformationMessage(l10n.t('No schema found for {0}.', containerLabel));
                 return;
             }
 
-            await storage.delete(SCHEMA_STORAGE_KEY, schemaId);
+            await schemaStorage.deleteSchema(schemaId);
 
             void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));
 

@@ -28,7 +28,10 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
 
     const generateSchema = useCallback((limit?: number) => void dispatcher.generateSchema(limit), [dispatcher]);
 
-    const openSchemaSettings = useCallback(() => void dispatcher.openSchemaSettings(), [dispatcher]);
+    const toggleSchemaBasedOnQueries = useCallback(
+        () => void dispatcher.openSchemaSettings(),
+        [dispatcher],
+    );
 
     const showCurrentSchema = useCallback(() => void dispatcher.showCurrentSchema(), [dispatcher]);
 
@@ -84,7 +87,7 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
                     <MenuItemCheckbox
                         name="schemaSettings"
                         value="generateSchemaBasedOnQueries"
-                        onClick={openSchemaSettings}
+                        onClick={toggleSchemaBasedOnQueries}
                     >
                         {l10n.t('Generate schema based on queries')}
                     </MenuItemCheckbox>

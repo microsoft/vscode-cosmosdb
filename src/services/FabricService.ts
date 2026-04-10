@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    type IApiClientRequestOptions,
     type IApiClientResponse,
     type IArtifact,
     type IArtifactHandler,
@@ -21,7 +22,7 @@ export const CosmosDbArtifactType = ['NATIVE', 'MIRRORED_KEY', 'MIRRORED_AAD'] a
 export type CosmosDbArtifactType = (typeof CosmosDbArtifactType)[number];
 
 export type ExtendedProperties = {
-    accountEndpoint: string;
+    serverFqdn: string;
     databaseName: string;
     connectionId?: string;
     resourceTokens?: Record<string, string>;
@@ -73,11 +74,10 @@ class FabricServiceImpl implements IFabricService {
         const credentialType = await this.getCredentialType(artifact);
         const fullArtifact = await this.getFullArtifact(artifact);
 
-        // TODO: implement Public API and required extended properties
-        const extendedProperties = (fullArtifact.extendedProperties ?? {}) as ExtendedProperties;
-        const accountEndpoint = `${extendedProperties?.accountEndpoint ?? ''}`; // https://0f25df82-0725-4a14-8706-651561309e4c.z0f.msit-sql.cosmos.fabric.microsoft.com:443/
-        const databaseName = `${extendedProperties?.databaseName ?? ''}`; // languye-02-16
-        const connectionId = extendedProperties?.connectionId; // 68a5afec-e417-4851-bf28-e0724cfdb939
+        const extendedProperties = (fullArtifact.properties ?? {}) as ExtendedProperties;
+        const accountEndpoint = `${extendedProperties?.serverFqdn ?? ''}`;
+        const databaseName = `${extendedProperties?.databaseName ?? ''}`;
+        const connectionId = extendedProperties?.connectionId;
         const resourceTokens = extendedProperties?.resourceTokens;
 
         const accountInfo = await this.getAccountInfo(artifact, credentialType, accountEndpoint);
@@ -175,7 +175,7 @@ class FabricServiceImpl implements IFabricService {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
 
-        const response = await ext.fabricServices?.artifactManager.getArtifact(artifact);
+        const response = await this.getArtifact(artifact);
         if (response.status !== 200) {
             throw new Error(
                 this.formatErrorResponse(
@@ -191,6 +191,22 @@ class FabricServiceImpl implements IFabricService {
         }
 
         return { ...artifact, ...fullArtifact } as IArtifact & Record<string, unknown>;
+    }
+
+    protected getArtifact(artifact: CosmosDBArtifact): Promise<IApiClientResponse> {
+        if (!ext.fabricServices) {
+            throw new Error(l10n.t('Fabric Service is not initialized'));
+        }
+
+        // If the handler has a readWorkflow with onBeforeRead, call it before sending the request
+        const pathTemplate = `/v1/workspaces/${artifact.workspaceId}/cosmosdbdatabases/${artifact.id}`;
+
+        const options: IApiClientRequestOptions = {
+            method: 'GET',
+            pathTemplate: pathTemplate,
+        };
+
+        return ext.fabricServices.apiClient.sendRequest(options);
     }
 
     protected async getAccountInfo(

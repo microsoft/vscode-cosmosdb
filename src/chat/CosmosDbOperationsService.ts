@@ -1159,7 +1159,7 @@ export class CosmosDbOperationsService {
             if (schemaSamplingUserAllowed !== undefined) {
                 ctx.telemetry.properties.schemaSamplingUserAllowed = String(schemaSamplingUserAllowed);
             }
-            ctx.telemetry.measurements.durationMs = llmDurationMs;
+            ctx.telemetry.measurements.duration = llmDurationMs;
             ctx.telemetry.measurements.toolRoundsUsed = toolRoundsUsed;
             ctx.telemetry.measurements.queryHistorySize = historyContext?.executions?.length ?? 0;
             if (schemaSamplingExecuted) {

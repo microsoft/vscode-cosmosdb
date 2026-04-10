@@ -89,3 +89,28 @@ export const sortObjectByKeys = (obj) => {
             return acc;
         }, {});
 };
+
+/**
+ * Additional checks for result dictionary
+ * @param {Object<string, string> | undefined} dictionary
+ * @returns {boolean} true if the dictionary is valid, false otherwise
+ */
+export function isDictionaryValid(dictionary) {
+    let hasErrors = false;
+
+    // 1. Key mustn't be more than 500 chars
+    const keys = Object.keys(dictionary);
+    const longKeys = keys.filter((k) => k.length > 500);
+    if (longKeys.length) {
+        hasErrors = true;
+        console.error(
+            'Each `l10n.t()` translation key (the template string) must be **500 characters or fewer**. ' +
+                'If a string exceeds this limit, split it into multiple separate `l10n.t()` ' +
+                "calls and concatenate them (e.g., `l10n.t('Part one.') + l10n.t('Part two.')`).",
+        );
+
+        console.log(longKeys.map((v, i) => `${i + 1} - ${v}`).join('\n\n'));
+    }
+
+    return !hasErrors;
+}

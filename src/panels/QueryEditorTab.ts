@@ -1102,6 +1102,22 @@ export class QueryEditorTab extends BaseTab {
                 return;
             }
 
+            const deleteItem: vscode.MessageItem = { title: l10n.t('Delete') };
+            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+            const choice = await vscode.window.showWarningMessage(
+                l10n.t(
+                    'Are you sure you want to delete the schema for {0}? The schema file will be permanently removed from disk. To get the schema back, you will need to generate it again.',
+                    containerLabel,
+                ),
+                { modal: true },
+                deleteItem,
+                cancelItem,
+            );
+
+            if (choice !== deleteItem) {
+                return;
+            }
+
             await schemaStorage.deleteSchema(schemaId);
 
             void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));

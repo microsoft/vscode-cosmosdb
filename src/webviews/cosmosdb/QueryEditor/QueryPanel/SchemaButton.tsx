@@ -25,6 +25,17 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
     const dispatcher = useQueryEditorDispatcher();
     const { ref, type } = props;
     const isDisabled = !state.isConnected;
+    const hasSchema = state.containerSchema !== null;
+
+    const generateSchemaDisabledReason = isDisabled
+        ? l10n.t('Connect to a container to generate a schema')
+        : undefined;
+
+    const schemaActionDisabledReason = isDisabled
+        ? l10n.t('Connect to a container first')
+        : !hasSchema
+          ? l10n.t('No schema available. Generate a schema first.')
+          : undefined;
 
     const generateSchema = useCallback((limit?: number) => void dispatcher.generateSchema(limit), [dispatcher]);
 
@@ -73,7 +84,9 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
                 <MenuList>
                     <Menu>
                         <MenuTrigger disableButtonEnhancement>
-                            <MenuItem disabled={isDisabled}>{l10n.t('Generate schema')}</MenuItem>
+                            <MenuItem disabled={isDisabled} aria-description={generateSchemaDisabledReason}>
+                                {l10n.t('Generate schema')}
+                            </MenuItem>
                         </MenuTrigger>
                         <MenuPopover>
                             <MenuList>
@@ -92,10 +105,18 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
                         {l10n.t('Generate schema based on queries')}
                     </MenuItemCheckbox>
                     <MenuDivider />
-                    <MenuItem disabled={isDisabled} onClick={showCurrentSchema}>
+                    <MenuItem
+                        disabled={isDisabled || !hasSchema}
+                        aria-description={schemaActionDisabledReason}
+                        onClick={showCurrentSchema}
+                    >
                         {l10n.t('Show current schema')}
                     </MenuItem>
-                    <MenuItem disabled={isDisabled} onClick={deleteCurrentSchema}>
+                    <MenuItem
+                        disabled={isDisabled || !hasSchema}
+                        aria-description={schemaActionDisabledReason}
+                        onClick={deleteCurrentSchema}
+                    >
                         {l10n.t('Delete current schema')}
                     </MenuItem>
                 </MenuList>

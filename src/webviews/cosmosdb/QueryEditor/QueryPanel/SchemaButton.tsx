@@ -41,44 +41,10 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
         [state.isSchemaBasedOnQueries],
     );
 
-    const menuContent = (
-        <MenuPopover>
-            <MenuList>
-                <Menu>
-                    <MenuTrigger disableButtonEnhancement>
-                        <MenuItem disabled={isDisabled}>{l10n.t('Generate schema')}</MenuItem>
-                    </MenuTrigger>
-                    <MenuPopover>
-                        <MenuList>
-                            <MenuItem onClick={() => generateSchema(50)}>{l10n.t('From TOP 50')}</MenuItem>
-                            <MenuItem onClick={() => generateSchema(100)}>{l10n.t('From TOP 100')}</MenuItem>
-                            <MenuItem onClick={() => generateSchema(500)}>{l10n.t('From TOP 500')}</MenuItem>
-                            <MenuItem onClick={() => generateSchema(undefined)}>{l10n.t('From ALL')}</MenuItem>
-                        </MenuList>
-                    </MenuPopover>
-                </Menu>
-                <MenuItemCheckbox
-                    name="schemaSettings"
-                    value="generateSchemaBasedOnQueries"
-                    onClick={openSchemaSettings}
-                >
-                    {l10n.t('Generate schema based on queries')}
-                </MenuItemCheckbox>
-                <MenuDivider />
-                <MenuItem disabled={isDisabled} onClick={showCurrentSchema}>
-                    {l10n.t('Show current schema')}
-                </MenuItem>
-                <MenuItem disabled={isDisabled} onClick={deleteCurrentSchema}>
-                    {l10n.t('Delete current schema')}
-                </MenuItem>
-            </MenuList>
-        </MenuPopover>
-    );
-
-    if (type === 'button') {
-        return (
-            <Menu hasCheckmarks checkedValues={checkedValues}>
-                <MenuTrigger>
+    return (
+        <Menu hasCheckmarks checkedValues={checkedValues}>
+            <MenuTrigger>
+                {type === 'button' ? (
                     <Tooltip
                         content={l10n.t('Schema options')}
                         relationship="description"
@@ -94,20 +60,43 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
                             {l10n.t('Schema')}
                         </ToolbarButton>
                     </Tooltip>
-                </MenuTrigger>
-                {menuContent}
-            </Menu>
-        );
-    } else {
-        return (
-            <Menu hasCheckmarks checkedValues={checkedValues}>
-                <MenuTrigger>
+                ) : (
                     <MenuItem aria-label={l10n.t('Schema')} icon={<DatabaseRegular />}>
                         {l10n.t('Schema')}
                     </MenuItem>
-                </MenuTrigger>
-                {menuContent}
-            </Menu>
-        );
-    }
+                )}
+            </MenuTrigger>
+            <MenuPopover>
+                <MenuList>
+                    <Menu>
+                        <MenuTrigger disableButtonEnhancement>
+                            <MenuItem disabled={isDisabled}>{l10n.t('Generate schema')}</MenuItem>
+                        </MenuTrigger>
+                        <MenuPopover>
+                            <MenuList>
+                                <MenuItem onClick={() => generateSchema(50)}>{l10n.t('From TOP 50')}</MenuItem>
+                                <MenuItem onClick={() => generateSchema(100)}>{l10n.t('From TOP 100')}</MenuItem>
+                                <MenuItem onClick={() => generateSchema(500)}>{l10n.t('From TOP 500')}</MenuItem>
+                                <MenuItem onClick={() => generateSchema(undefined)}>{l10n.t('From ALL')}</MenuItem>
+                            </MenuList>
+                        </MenuPopover>
+                    </Menu>
+                    <MenuItemCheckbox
+                        name="schemaSettings"
+                        value="generateSchemaBasedOnQueries"
+                        onClick={openSchemaSettings}
+                    >
+                        {l10n.t('Generate schema based on queries')}
+                    </MenuItemCheckbox>
+                    <MenuDivider />
+                    <MenuItem disabled={isDisabled} onClick={showCurrentSchema}>
+                        {l10n.t('Show current schema')}
+                    </MenuItem>
+                    <MenuItem disabled={isDisabled} onClick={deleteCurrentSchema}>
+                        {l10n.t('Delete current schema')}
+                    </MenuItem>
+                </MenuList>
+            </MenuPopover>
+        </Menu>
+    );
 };

@@ -13,7 +13,7 @@ import {
     useQueryEditorStateDispatch,
 } from '../state/QueryEditorContext';
 
-export const AIButton = ({ type = 'button' }: ToolbarOverflowItemProps) => {
+export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatch = useQueryEditorStateDispatch();
     const dispatcher = useQueryEditorDispatcher();
@@ -42,26 +42,16 @@ export const AIButton = ({ type = 'button' }: ToolbarOverflowItemProps) => {
     // AI button icon - use sparkle for AI/Copilot
     const aiIcon = <Sparkle20Regular />;
 
-    if (type === 'menuitem') {
-        // When in overflow menu, show both items separately
-        return (
-            <>
-                <MenuItem icon={generateIcon} onClick={handleGenerateClick}>
-                    {l10n.t('Generate query')}
-                </MenuItem>
-                <MenuItem icon={<ChatSparkle20Regular />} onClick={handleExplainClick}>
-                    {l10n.t('Explain query')}
-                </MenuItem>
-            </>
-        );
-    }
-
     return (
         <Menu positioning="below-end">
             <MenuTrigger disableButtonEnhancement>
-                <MenuButton appearance="subtle" icon={aiIcon}>
-                    {l10n.t('AI')}
-                </MenuButton>
+                {type === 'button' ? (
+                    <MenuButton ref={ref} appearance="subtle" icon={aiIcon}>
+                        {l10n.t('AI')}
+                    </MenuButton>
+                ) : (
+                    <MenuItem icon={aiIcon}>{l10n.t('AI')}</MenuItem>
+                )}
             </MenuTrigger>
             <MenuPopover>
                 <MenuList>

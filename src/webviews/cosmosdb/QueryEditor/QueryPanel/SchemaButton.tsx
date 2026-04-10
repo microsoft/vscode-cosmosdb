@@ -27,9 +27,7 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
     const isDisabled = !state.isConnected;
     const hasSchema = state.containerSchema !== null;
 
-    const generateSchemaDisabledReason = isDisabled
-        ? l10n.t('Connect to a container to generate a schema')
-        : undefined;
+    const generateSchemaDisabledReason = isDisabled ? l10n.t('Connect to a container to generate a schema') : undefined;
 
     const schemaActionDisabledReason = isDisabled
         ? l10n.t('Connect to a container first')
@@ -39,10 +37,7 @@ export const SchemaButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>)
 
     const generateSchema = useCallback((limit?: number) => void dispatcher.generateSchema(limit), [dispatcher]);
 
-    const toggleSchemaBasedOnQueries = useCallback(
-        () => void dispatcher.openSchemaSettings(),
-        [dispatcher],
-    );
+    const toggleSchemaBasedOnQueries = useCallback(() => void dispatcher.openSchemaSettings(), [dispatcher]);
 
     const showCurrentSchema = useCallback(() => void dispatcher.showCurrentSchema(), [dispatcher]);
 

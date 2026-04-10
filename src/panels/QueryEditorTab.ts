@@ -53,7 +53,6 @@ type HistoryItem = StorageItem & {
     };
 };
 
-
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
     public static readonly viewType = 'cosmosDbQuery';

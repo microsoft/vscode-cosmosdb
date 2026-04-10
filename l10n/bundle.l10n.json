@@ -247,6 +247,7 @@
   "Failed to find a matching Azure Resources API for version \"{0}\".": "Failed to find a matching Azure Resources API for version \"{0}\".",
   "Failed to find commandId on generic tree item.": "Failed to find commandId on generic tree item.",
   "Failed to generate query: {0}": "Failed to generate query: {0}",
+  "Failed to migrate schema \"{0}\":": "Failed to migrate schema \"{0}\":",
   "Failed to parse index metrics: {error}": "Failed to parse index metrics: {error}",
   "Failed to parse secrets for key {0}:": "Failed to parse secrets for key {0}:",
   "Failed to process URI: {0}": "Failed to process URI: {0}",

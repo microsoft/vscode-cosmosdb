@@ -17,7 +17,8 @@ import {
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTrpcClient } from '../../../api/webview-client/useTrpcClient';
+import { type QueryEditorAppRouter } from '../../../api/configuration/appRouter';
+import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 import { usePromptHistory } from './usePromptHistory';
 
@@ -210,7 +211,7 @@ const useStyles = makeStyles({
 
 export const GenerateQueryInput = () => {
     const styles = useStyles();
-    const { trpcClient } = useTrpcClient();
+    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
     const state = useQueryEditorState();
     const dispatch = useQueryEditorStateDispatch();
     const [input, setInput] = useState('');

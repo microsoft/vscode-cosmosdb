@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type TRPCClient } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
 import {
     type CosmosDBRecordIdentifier,
@@ -12,8 +13,8 @@ import {
     type QueryMetadata,
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
-import { type QueryEditorEvent } from '../../../api/configuration/routers/queryEditorEventsRouter';
-import { BaseContextProvider, type DispatchToastFn, type TrpcClient } from '../../../utils/context/BaseContextProvider';
+import { type QueryEditorAppRouter, type QueryEditorEvent } from '../../../api/types';
+import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
@@ -35,14 +36,13 @@ type QueryExecutionResponse = {
     error?: string;
 };
 
-export class QueryEditorContextProvider extends BaseContextProvider {
+export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorAppRouter> {
     private eventSubscription?: { unsubscribe: () => void };
-    declare protected readonly trpcClient: TrpcClient;
 
     constructor(
         private readonly dispatch: (action: DispatchAction) => void,
         dispatchToast: DispatchToastFn,
-        trpcClient: TrpcClient,
+        trpcClient: TRPCClient<QueryEditorAppRouter>,
     ) {
         super(dispatchToast, trpcClient);
     }
@@ -331,7 +331,6 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
     private handleQueryExecutionResult(result?: QueryExecutionResponse): void {
         if (!result) return;
-
 
         if (result.result) {
             this.dispatch({

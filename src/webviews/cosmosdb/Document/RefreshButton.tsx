@@ -18,9 +18,7 @@ export const RefreshButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>
     const dispatcher = useDocumentDispatcher();
     const { ref, type } = props;
 
-    const inProgress = state.isSaving || state.isRefreshing;
-    const hasDocumentInDB = state.documentId !== '';
-    const isRefreshDisabled = inProgress || !hasDocumentInDB;
+    const isRefreshDisabled = state.isSaving || state.isRefreshing;
 
     const hotkey = useMemo(
         () =>

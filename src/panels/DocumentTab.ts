@@ -8,9 +8,9 @@ import * as vscode from 'vscode';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
-import { type DocumentRouterContext } from '../webviews/api/configuration/appRouter';
-import { setupTrpc } from '../webviews/api/extension-server/setupTrpc';
 import { BaseTab } from './BaseTab';
+import { documentAppRouter, documentCallerFactory, type DocumentRouterContext } from './trpc/appRouter';
+import { setupTrpc } from './trpc/setupTrpc';
 
 type DocumentTabMode = 'add' | 'edit' | 'view';
 
@@ -50,12 +50,14 @@ export class DocumentTab extends BaseTab {
             connection: this.connection,
             telemetryContext: this.telemetryContext,
             panel: this.panel,
-            mode: mode,
-            documentId: this.documentId,
-            isDirty: false,
+            state: {
+                mode: mode,
+                documentId: this.documentId,
+                isDirty: false,
+            },
         };
 
-        const { disposable } = setupTrpc(this.panel, routerContext);
+        const { disposable } = setupTrpc(this.panel, routerContext, documentAppRouter, documentCallerFactory);
         this.disposables.push(disposable);
     }
 

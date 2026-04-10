@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { parse as parseJson } from '@prantlf/jsonlint';
 import { isEqual } from 'es-toolkit';
+import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
 
 export type OpenDocumentMode = 'add' | 'edit' | 'view';
 
@@ -13,8 +14,7 @@ export type DispatchAction =
     | {
           type: 'initState';
           mode: OpenDocumentMode;
-          documentId: string;
-          partitionKey: PartitionKey | undefined;
+          documentId: CosmosDBRecordIdentifier | undefined;
           databaseId: string;
           containerId: string;
       }
@@ -56,7 +56,7 @@ export type DocumentState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
     containerName: string; // Container which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
 
-    documentId: string; // Id of the document (Readonly, only server can change it)
+    documentId: CosmosDBRecordIdentifier | undefined; // Id of the document (Readonly, only server can change it)
     documentContent: string; // Content of the document (Readonly, only server can change it)
     partitionKey: PartitionKeyDefinition; // Partition key of the document (Readonly, only server can change it)
 
@@ -75,7 +75,7 @@ export type DocumentState = {
 export const defaultState: DocumentState = {
     dbName: '',
     containerName: '',
-    documentId: '',
+    documentId: undefined,
     documentContent: '',
     partitionKey: { paths: [] },
     mode: 'view',

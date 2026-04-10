@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Document } from '../../cosmosdb/Document/Document';
-import { QueryEditor } from '../../cosmosdb/QueryEditor/QueryEditor';
+import { Document } from './cosmosdb/Document/Document';
+import { QueryEditor } from './cosmosdb/QueryEditor/QueryEditor';
 
 export const WebviewRegistry = {
     cosmosDbDocument: Document,

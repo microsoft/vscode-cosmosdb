@@ -5,7 +5,8 @@
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
 import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import { useTrpcClient } from '../../../api/webview-client/useTrpcClient';
+import { type QueryEditorAppRouter } from '../../../api/configuration/appRouter';
+import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
 import { QueryEditorContextProvider } from './QueryEditorContextProvider';
 import {
@@ -40,7 +41,7 @@ export const WithQueryEditorContext = ({ children }: { children: ReactNode }) =>
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
-    const { trpcClient } = useTrpcClient();
+    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
 
     const provider = useMemo(
         () => new QueryEditorContextProvider(dispatch, dispatchToast, trpcClient),

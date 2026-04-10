@@ -12,10 +12,10 @@ import { useEffect, useRef } from 'react';
 // eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
-import { WebviewRegistry } from './api/configuration/WebviewRegistry';
 import './index.scss';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { type WebviewState, WithWebviewContext } from './WebviewContext';
+import { WebviewRegistry } from './WebviewRegistry';
 
 export type ViewKey = keyof typeof WebviewRegistry;
 

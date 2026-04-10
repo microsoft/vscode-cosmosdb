@@ -4,14 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createTRPCClient, loggerLink } from '@trpc/client';
+import { type AnyRouter } from '@trpc/server';
 import { useContext, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
-import { type AppRouter } from '../configuration/appRouter';
 import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
 
 /**
  * Custom React hook that provides a tRPC client for communication between the webview and VSCode extension.
  *
+ * @typeParam TRouter - The per-webview app router type (e.g. QueryEditorAppRouter, DocumentAppRouter).
  * @returns An object containing the tRPC client (`trpcClient`)
  *
  * @example
@@ -35,7 +36,7 @@ import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessa
  *   );
  * };
  */
-export function useTrpcClient() {
+export function useTrpcClient<TRouter extends AnyRouter>() {
     const { vscodeApi } = useContext(WebviewContext);
 
     /**
@@ -78,15 +79,15 @@ export function useTrpcClient() {
 
     // Use useMemo to avoid recreating the client on every render
     // At the moment I'm not sure about the details of WebviewContext implementation,
-    // so it's easier that way..
+    // so it's easier that way.
     const trpcClient = useMemo(
         () =>
-            createTRPCClient<AppRouter>({
-                links: [loggerLink(), vscodeLink({ send, onReceive })],
+            createTRPCClient<TRouter>({
+                links: [loggerLink(), vscodeLink<TRouter>({ send, onReceive })],
             }),
         [vscodeApi],
     );
 
     // Return the tRPC client
-    return { trpcClient: trpcClient };
+    return { trpcClient };
 }

@@ -2,17 +2,28 @@
 # Documentation: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
 
 services:
-  cosmosdb-emulator:
-    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
-    ports:
-      - "8081:8081"  # Main endpoint for Cosmos DB operations
-      - "1234:1234"  # Additional service port
-    environment:
-      # Available values: https, http, https-insecure
-      PROTOCOL: https-insecure
-      # Persistent storage path inside container
-      DATA_PATH: /usr/cosmos/data
-    volumes:
-      # Mount local directory for data persistence
-      - ./.cosmosdb-data:/usr/cosmos/data
+    # Init container: sets correct permissions on the mounted data directory
+    cosmosdb-init:
+        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+        user: root
+        entrypoint: ['sh', '-c', 'chown -R 1000:1000 /usr/cosmos/data']
+        volumes:
+            - ./.cosmosdb-data:/usr/cosmos/data
+
+    cosmosdb-emulator:
+        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+        depends_on:
+            cosmosdb-init:
+                condition: service_completed_successfully
+        ports:
+            - '8081:8081' # Main endpoint for Cosmos DB operations
+            - '1234:1234' # Additional service port
+        environment:
+            # Available values: https, http, https-insecure
+            PROTOCOL: https-insecure
+            # Persistent storage path inside container
+            DATA_PATH: /usr/cosmos/data
+        volumes:
+            # Mount local directory for data persistence
+            - ./.cosmosdb-data:/usr/cosmos/data
 

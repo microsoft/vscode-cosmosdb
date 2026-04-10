@@ -3,12 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { getTRPCErrorFromUnknown } from '@trpc/server';
+import { getTRPCErrorFromUnknown, type AnyRouter } from '@trpc/server';
 import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
-import { appRouter, type BaseRouterContext } from '../configuration/appRouter';
-import { type VsCodeLinkRequestMessage } from '../webview-client/vscodeLink';
-import { createCallerFactory } from './trpc';
+import { type BaseRouterContext } from './appRouter';
+import { type VsCodeLinkRequestMessage } from './vscodeProtocol';
 
 /**
  * Converts an unknown error into a tRPC-compatible error response.
@@ -43,55 +42,37 @@ function safePostMessage(panel: vscode.WebviewPanel, message: unknown): boolean 
 }
 
 /**
- * Sets up tRPC integration for a webview panel. Used by `BaseTab` subclasses
- * to wire a panel's `postMessage` bridge into the shared `appRouter`.
+ * Sets up tRPC integration for a webview panel.
  *
- * **How it works:**
- * 1. Registers a `panel.webview.onDidReceiveMessage` listener.
- * 2. Incoming messages are parsed as {@link VsCodeLinkRequestMessage} objects
- *    containing an `op` with `type` (`query`, `mutation`, `subscription`,
- *    or `subscription.stop`) and a dot-delimited `path` (e.g. `queryEditor.runQuery`).
- * 3. For queries/mutations the procedure is invoked via `createCallerFactory`
- *    and the result (or error) is posted back to the webview.
- * 4. For subscriptions an `AbortController` is created so the webview can
- *    cancel later via `subscription.stop`. The async iterable returned by the
- *    procedure is consumed and each yielded value is forwarded to the webview.
- *
- * **Context contract:**
- * The `context` parameter must satisfy {@link BaseRouterContext} at minimum
- * (`webviewName`). Tab-specific routers expect narrower context types
- * (e.g. `QueryEditorRouterContext`, `DocumentRouterContext`) which are applied
- * automatically by the typed procedure middleware in `trpc.ts`.
+ * Each webview type (QueryEditor, Document) has its own tRPC instance with a
+ * properly typed context. The caller passes the specific `appRouter` and
+ * `createCallerFactory` from that instance.
  *
  * @param panel - The VS Code webview panel to attach the message listener to.
  * @param context - The router context passed to every procedure invocation.
- *   Must include at least `webviewName`. Tab routers expect additional fields
- *   (connection, sessions, etc.).
- * @returns An object containing:
- *   - `disposable` — a {@link vscode.Disposable} that removes the message listener.
- *   - `activeSubscriptions` — a `Map<string, AbortController>` tracking live subscriptions.
- *
- * @example
- * ```ts
- * const { disposable } = setupTrpc(panel, {
- *     webviewName: 'queryEditor',
- *     // ... additional context fields required by the router
- * });
- * ```
- *
- * @see {@link BaseRouterContext} for the minimal context shape.
- * @see `docs/trpc-webview-guide.md` for a full walkthrough.
+ * @param appRouter - The tRPC router for this webview type.
+ * @param createCallerFactory - The `createCallerFactory` function from the
+ *   tRPC instance that created `appRouter`.
  */
-export function setupTrpc(
+export function setupTrpc<TContext extends BaseRouterContext, TRouter extends AnyRouter>(
     panel: vscode.WebviewPanel,
-    context: BaseRouterContext,
+    context: TContext,
+    appRouter: TRouter,
+    createCallerFactory: (router: TRouter) => (ctx: TContext) => Record<string, unknown>,
 ): { disposable: vscode.Disposable; activeSubscriptions: Map<string, AbortController> } {
     const activeSubscriptions = new Map<string, AbortController>();
 
     const disposable = panel.webview.onDidReceiveMessage(async (message: VsCodeLinkRequestMessage) => {
         switch (message.op.type) {
             case 'subscription':
-                await handleSubscriptionMessage(panel, message, context, activeSubscriptions);
+                await handleSubscriptionMessage(
+                    panel,
+                    message,
+                    context,
+                    activeSubscriptions,
+                    appRouter,
+                    createCallerFactory,
+                );
                 break;
 
             case 'subscription.stop':
@@ -99,7 +80,7 @@ export function setupTrpc(
                 break;
 
             default:
-                await handleDefaultMessage(panel, message, context);
+                await handleDefaultMessage(panel, message, context, appRouter, createCallerFactory);
                 break;
         }
     });
@@ -115,11 +96,13 @@ export function setupTrpc(
     return { disposable, activeSubscriptions };
 }
 
-async function handleSubscriptionMessage(
+async function handleSubscriptionMessage<TContext extends BaseRouterContext, TRouter extends AnyRouter>(
     panel: vscode.WebviewPanel,
     message: VsCodeLinkRequestMessage,
-    context: BaseRouterContext,
+    context: TContext,
     activeSubscriptions: Map<string, AbortController>,
+    appRouter: TRouter,
+    createCallerFactory: (router: TRouter) => (ctx: TContext) => Record<string, unknown>,
 ) {
     try {
         const callerFactory = createCallerFactory(appRouter);
@@ -173,10 +156,12 @@ function handleSubscriptionStopMessage(
     }
 }
 
-async function handleDefaultMessage(
+async function handleDefaultMessage<TContext extends BaseRouterContext, TRouter extends AnyRouter>(
     panel: vscode.WebviewPanel,
     message: VsCodeLinkRequestMessage,
-    context: BaseRouterContext,
+    context: TContext,
+    appRouter: TRouter,
+    createCallerFactory: (router: TRouter) => (ctx: TContext) => Record<string, unknown>,
 ) {
     try {
         const callerFactory = createCallerFactory(appRouter);

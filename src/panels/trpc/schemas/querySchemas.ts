@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { z } from 'zod';
-import { type QueryExecutionResult } from '../../../../cosmosdb/session/QuerySession';
-import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
+import { type QueryExecutionResult } from '../../../cosmosdb/session/QuerySession';
+import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../../../cosmosdb/types/queryResult';
 
 // ─── Primitive JSON value ────────────────────────────────────────────────────
 

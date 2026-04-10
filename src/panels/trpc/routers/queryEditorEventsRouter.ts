@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { z } from 'zod';
-import { type TypedEventSink } from '../../../../utils/TypedEventSink';
-import { queryEditorProcedure, router, trpcToTelemetry } from '../../extension-server/trpc';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
+import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
 // ─── Query Editor Event Discriminated Union ─────────────────────────────────
 // Only truly async push events remain here — events that originate from
@@ -35,12 +35,12 @@ export type QueryEditorEvent = z.infer<typeof QueryEditorEventSchema>;
 
 // ─── Query Editor Events Router ─────────────────────────────────────────────
 
-export const queryEditorEventsRouter = router({
+export const queryEditorEventsRouterDef = queryEditorRouter({
     /**
      * Subscription that streams query editor events from the extension to the webview.
      * Yields typed discriminated-union payloads from a TypedEventSink.
      */
-    events: queryEditorProcedure.use(trpcToTelemetry).subscription(async function* ({ ctx }) {
+    events: queryEditorProcedure.subscription(async function* ({ ctx }) {
         const sink: TypedEventSink<QueryEditorEvent> = ctx.eventSink;
 
         for await (const event of sink) {

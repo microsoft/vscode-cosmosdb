@@ -5,30 +5,53 @@
 
 import { Link, Toast, ToastBody, ToastTitle, ToastTrigger, type useToastController } from '@fluentui/react-components';
 import { type TRPCClient } from '@trpc/client';
+import { type AnyRouter } from '@trpc/server';
 import * as l10n from '@vscode/l10n';
-import { type AppRouter } from '../../api/configuration/appRouter';
 
 export type DispatchToastFn = ReturnType<typeof useToastController>['dispatchToast'];
 
 /**
- * Type alias for the tRPC client used by context providers.
+ * Common routes interface for the base context provider.
+ * Both QueryEditorAppRouter and DocumentAppRouter include these routes
+ * via the `buildCommonRouter` factory.
  */
-export type TrpcClient = TRPCClient<AppRouter>;
+interface CommonRoutes {
+    common: {
+        showInformationMessage: { mutate: (input: { message: string }) => Promise<void> };
+        showErrorMessage: { mutate: (input: { message: string }) => Promise<void> };
+        reportEvent: {
+            mutate: (input: {
+                eventName: string;
+                properties?: Record<string, string>;
+                measurements?: Record<string, number>;
+            }) => Promise<void>;
+        };
+        reportError: {
+            mutate: (input: { message: string; stack: string; componentStack?: string }) => Promise<void>;
+        };
+        executeReportIssueCommand: { mutate: () => Promise<void> };
+    };
+}
 
-export class BaseContextProvider {
+export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
     constructor(
         protected readonly dispatchToast: DispatchToastFn,
-        protected readonly trpcClient?: TrpcClient,
+        protected readonly trpcClient: TRPCClient<TRouter>,
     ) {
         this.initEventListeners();
         this.init();
     }
 
+    /** Type-safe accessor for common routes available on all app routers. */
+    private get common(): CommonRoutes['common'] | undefined {
+        return (this.trpcClient as unknown as CommonRoutes)?.common;
+    }
+
     public async showInformationMessage(message: string) {
-        await this.trpcClient?.common.showInformationMessage.mutate({ message });
+        await this.common?.showInformationMessage.mutate({ message });
     }
     public async showErrorMessage(message: string) {
-        await this.trpcClient?.common.showErrorMessage.mutate({ message });
+        await this.common?.showErrorMessage.mutate({ message });
     }
 
     public showToast(title: string, message: string, intent: 'info' | 'error' = 'info') {
@@ -59,21 +82,21 @@ export class BaseContextProvider {
         properties: Record<string, string> = {},
         measurements: Record<string, number> = {},
     ) {
-        await this.trpcClient?.common.reportEvent.mutate({ eventName, properties, measurements });
+        await this.common?.reportEvent.mutate({ eventName, properties, measurements });
     }
     public async reportWebviewError(
         message: string,
         stack: string | undefined,
         componentStack: string | null | undefined,
     ) {
-        await this.trpcClient?.common.reportError.mutate({
+        await this.common?.reportError.mutate({
             message,
             stack: stack ?? '',
             componentStack: componentStack ?? undefined,
         });
     }
     public async executeReportIssueCommand() {
-        await this.trpcClient?.common.executeReportIssueCommand.mutate();
+        await this.common?.executeReportIssueCommand.mutate();
     }
 
     public dispose() {

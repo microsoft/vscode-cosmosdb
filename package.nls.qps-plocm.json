@@ -32,6 +32,7 @@
   "cosmosdb.command.update": "[الهاتفUpdate to Cloudעִבְרִית!]",
   "cosmosdb.command.ai.deploy_instruction_files": "[الهاتفCopy LLM instructions to user profile folderעִבְרִית عليكעִבְרִי!]",
   "cosmosdb.command.ai.remove_instruction_files": "[الهاتفRemove LLM instructions from user profile folderעִבְרִית عليكעִבְרִית!]",
+  "cosmosdb.command.schema.delete_all": "[الهاتفDelete All Saved Schemasעִבְרִית علي!]",
   "cosmosdb.configuration.batch.size": "[الهاتفThe batch size to be used when querying Azure Database resources.עִבְרִית عليكעִבְרִית عليكעִ!]",
   "cosmosdb.configuration.confirmation.style": "[الهاتفThe behavior to use when confirming operations that cannot be undone, such as deleting resources.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִ!]",
   "cosmosdb.configuration.confirmation.style.button": "[الهاتفButton Click Confirmationעִבְרִית علي!]",
@@ -57,5 +58,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity": "[الهاتفManaged Identityעִבְרִית!]",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "[الهاتفOnly supported when running in Azure (i.e. a VM), [learn more](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִי!]",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "[الهاتفThe Client ID of the Managed Identity to use when authenticating with Entra ID using a User-assigned Managed Identity.עִבְרִית عليكעִבְרִית عليكעִבְרִית عليكעִבְרִית ع!]",
-  "cosmosdb.configuration.manage-llm-assets": "[الهاتفManage LLM assets. Allow the extension to keep LLM-related files updated.עִבְרִית عليكעִבְרִית عليكעִבְרִ!]"
+  "cosmosdb.configuration.manage-llm-assets": "[الهاتفManage LLM assets. Allow the extension to keep LLM-related files updated.עִבְרִית عليكעִבְרִית عليكעִבְרִ!]",
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "[الهاتفWhen enabled, schema generation also considers query results to infer the container schema.עִבְרִית عليكעִבְרִית عليكעִבְרִית علي!]"
 }

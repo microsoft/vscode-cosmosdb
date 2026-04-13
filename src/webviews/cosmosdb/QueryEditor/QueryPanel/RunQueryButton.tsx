@@ -111,7 +111,7 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                 {state.queryHistory.length === 0 && <MenuItem disabled>{l10n.t('No history')}</MenuItem>}
                 {state.queryHistory.length > 0 &&
                     state.queryHistory.map((query, index) => (
-                        <MenuItem onClick={() => dispatcher.insertText(query)} key={index}>
+                        <MenuItem onClick={() => void dispatcher.insertText(query)} key={index}>
                             {truncateString(query, 50)}
                         </MenuItem>
                     ))}

@@ -99,6 +99,20 @@ export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
         await this.common?.executeReportIssueCommand.mutate();
     }
 
+    /**
+     * Wraps a tRPC call so that errors are silently caught and the caller
+     * receives `undefined` instead of an exception. Error *display* is handled
+     * globally by the `errorLink` middleware in the tRPC client chain.
+     */
+    protected async safeMutate<T>(fn: () => Promise<T>): Promise<T | undefined> {
+        try {
+            return await fn();
+        } catch {
+            // Error notification is handled by the errorLink middleware
+            return undefined;
+        }
+    }
+
     public dispose() {
         // Override in subclasses if cleanup is needed
     }

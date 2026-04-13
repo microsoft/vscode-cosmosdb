@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import { type QueryEditorAppRouter } from '../../../api/configuration/appRouter';
+import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
 import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
+import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { QueryEditorContextProvider } from './QueryEditorContextProvider';
 import {
     type DispatchAction,
@@ -41,12 +42,30 @@ export const WithQueryEditorContext = ({ children }: { children: ReactNode }) =>
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
-    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
+
+    // Use a ref so the errorLink can forward errors to the provider once it's created.
+    const providerRef = useRef<BaseContextProvider | null>(null);
+    const onError = useMemo(
+        () => (error: Error) => {
+            void providerRef.current?.showErrorMessage(error.message);
+        },
+        [],
+    );
+
+    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>(onError);
 
     const provider = useMemo(
         () => new QueryEditorContextProvider(dispatch, dispatchToast, trpcClient),
         [dispatchToast, trpcClient],
     );
+
+    // Keep the ref pointing at the current provider so errorLink can forward errors.
+    useEffect(() => {
+        providerRef.current = provider;
+        return () => {
+            providerRef.current = null;
+        };
+    }, [provider]);
 
     useEffect(() => {
         return () => provider.dispose();

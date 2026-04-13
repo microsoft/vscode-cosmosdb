@@ -17,7 +17,7 @@ import {
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type QueryEditorAppRouter } from '../../../api/configuration/appRouter';
+import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
 import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 import { usePromptHistory } from './usePromptHistory';

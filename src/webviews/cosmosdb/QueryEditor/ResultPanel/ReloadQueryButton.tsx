@@ -20,7 +20,7 @@ export const ReloadQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
     const isDisabled = !state.isConnected || !state.currentExecutionId;
 
     const reloadData = useCallback(() => {
-        void dispatcher.runQuery(state.queryHistory[state.queryHistory.length - 1], {
+        void dispatcher.runQuery(state.queryHistory[0], {
             countPerPage: state.pageSize,
             sessionId: state.currentExecutionId,
         });

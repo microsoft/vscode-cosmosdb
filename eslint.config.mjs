@@ -52,7 +52,10 @@ export default defineConfig([
         rules: {
             eqeqeq: ['error', 'always'],
             'import/consistent-type-specifier-style': ['error', 'prefer-inline'],
-            'import/no-internal-modules': ['error', { allow: ['yaml/types', 'react-data-grid/lib/styles.css', '@trpc/server/*'] }],
+            'import/no-internal-modules': [
+                'error',
+                { allow: ['yaml/types', 'react-data-grid/lib/styles.css', '@trpc/server/*'] },
+            ],
             'no-case-declarations': 'error',
             'no-constant-condition': 'error',
             'no-inner-declarations': 'error',

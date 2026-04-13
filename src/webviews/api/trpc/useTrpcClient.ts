@@ -7,6 +7,7 @@ import { createTRPCClient, loggerLink } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
 import { useContext, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
+import { errorLink, type ErrorHandler } from './errorLink';
 import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
 
 /**
@@ -36,7 +37,7 @@ import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessa
  *   );
  * };
  */
-export function useTrpcClient<TRouter extends AnyRouter>() {
+export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler) {
     const { vscodeApi } = useContext(WebviewContext);
 
     /**
@@ -83,7 +84,11 @@ export function useTrpcClient<TRouter extends AnyRouter>() {
     const trpcClient = useMemo(
         () =>
             createTRPCClient<TRouter>({
-                links: [loggerLink(), vscodeLink<TRouter>({ send, onReceive })],
+                links: [
+                    loggerLink(),
+                    ...(onError ? [errorLink<TRouter>(onError)] : []),
+                    vscodeLink<TRouter>({ send, onReceive }),
+                ],
             }),
         [vscodeApi],
     );

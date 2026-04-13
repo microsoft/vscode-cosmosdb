@@ -41,7 +41,8 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
                 this.dispatch({ type: 'setError', error: l10n.t('Failed to save item') });
             }
         } catch (error: unknown) {
-            this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
+            const message = error instanceof Error ? error.message : String(error);
+            this.dispatch({ type: 'setError', error: this.parseError(message) });
         } finally {
             this.dispatch({ type: 'setSaving', isSaving: false });
         }
@@ -76,7 +77,8 @@ export class DocumentContextProvider extends BaseContextProvider<DocumentAppRout
                 this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
             }
         } catch (error: unknown) {
-            this.dispatch({ type: 'setError', error: this.parseError(String(error)) });
+            const message = error instanceof Error ? error.message : String(error);
+            this.dispatch({ type: 'setError', error: this.parseError(message) });
         } finally {
             this.dispatch({ type: 'setRefreshing', isRefreshing: false });
         }

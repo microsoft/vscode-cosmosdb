@@ -48,21 +48,24 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        // Update history (fire-and-forget, non-blocking)
-        void this.trpcClient.queryEditor.updateQueryHistory.mutate({ query }).then((historyResult) => {
-            if (historyResult?.queryHistory) {
-                this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
-            }
-        });
+        // Update history
+        const historyResult = await this.safeMutate(() =>
+            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query }),
+        );
+        if (historyResult?.queryHistory) {
+            this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
+        }
 
         // Step 1: Create the session — this returns the executionId immediately
-        const session = await this.trpcClient.queryEditor.createQuerySession.mutate({
-            query,
-            options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
-        });
+        const session = await this.safeMutate(() =>
+            this.trpcClient.queryEditor.createQuerySession.mutate({
+                query,
+                options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
+            }),
+        );
 
         if (!session?.executionId) {
-            // User cancelled the confirmation dialog or no connection
+            // User cancelled the confirmation dialog, no connection, or error
             return;
         }
 
@@ -83,7 +86,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
     public async stopQuery(executionId: string): Promise<void> {
-        const result = await this.trpcClient.queryEditor.stopQuery.mutate({ executionId });
+        const result = await this.safeMutate(() => this.trpcClient.queryEditor.stopQuery.mutate({ executionId }));
         if (result) {
             this.dispatch({
                 type: 'executionStopped',
@@ -129,30 +132,30 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async openFile(): Promise<void> {
-        const result = await this.trpcClient.queryEditor.openFile.mutate();
+        const result = await this.safeMutate(() => this.trpcClient.queryEditor.openFile.mutate());
         if (result?.query) {
-            this.insertText(result.query);
+            await this.insertText(result.query);
         }
     }
     public async copyToClipboard(text: string): Promise<void> {
-        await this.trpcClient.queryEditor.copyToClipboard.mutate({ text });
+        await this.safeMutate(() => this.trpcClient.queryEditor.copyToClipboard.mutate({ text }));
     }
     public async saveToFile(text: string, filename: string, ext: string): Promise<void> {
-        await this.trpcClient.queryEditor.saveFile.mutate({ text, filename, ext });
+        await this.safeMutate(() => this.trpcClient.queryEditor.saveFile.mutate({ text, filename, ext }));
     }
     public async duplicateTab(text: string): Promise<void> {
-        await this.trpcClient.queryEditor.duplicateTab.mutate({ text });
+        await this.safeMutate(() => this.trpcClient.queryEditor.duplicateTab.mutate({ text }));
     }
-    public insertText(query: string): void {
+    public async insertText(query: string): Promise<void> {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
-        void this.trpcClient.queryEditor.updateQueryText.mutate({ query });
+        await this.safeMutate(() => this.trpcClient.queryEditor.updateQueryText.mutate({ query }));
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
     }
 
     public async connectToDatabase(): Promise<void> {
-        const result = await this.trpcClient.queryEditor.connectToDatabase.mutate();
+        const result = await this.safeMutate(() => this.trpcClient.queryEditor.connectToDatabase.mutate());
         if (result) {
             this.dispatch({
                 type: 'databaseConnected',
@@ -163,17 +166,19 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         }
     }
     public async disconnectFromDatabase(): Promise<void> {
-        await this.trpcClient.queryEditor.disconnectFromDatabase.mutate();
+        await this.safeMutate(() => this.trpcClient.queryEditor.disconnectFromDatabase.mutate());
         this.dispatch({ type: 'databaseDisconnected' });
     }
     public async getConnections(): Promise<void> {
-        const result = await this.trpcClient.queryEditor.getConnections.query();
+        const result = await this.safeMutate(() => this.trpcClient.queryEditor.getConnections.query());
         if (result && 'connectionList' in result) {
             this.dispatch({ type: 'setConnectionList', connectionList: result.connectionList });
         }
     }
     public async setConnection(databaseId: string, containerId: string): Promise<void> {
-        const result = await this.trpcClient.queryEditor.setConnection.mutate({ databaseId, containerId });
+        const result = await this.safeMutate(() =>
+            this.trpcClient.queryEditor.setConnection.mutate({ databaseId, containerId }),
+        );
         if (result) {
             this.dispatch({
                 type: 'databaseConnected',
@@ -199,7 +204,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async openDocument(mode: OpenDocumentMode, document?: CosmosDBRecordIdentifier): Promise<void> {
-        await this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document });
+        await this.safeMutate(() => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document }));
     }
     public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
         for (const document of documents) {
@@ -207,13 +212,13 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         }
     }
     public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
-        await this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document });
+        await this.safeMutate(() => this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document }));
     }
     public async deleteDocuments(documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        await this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents });
+        await this.safeMutate(() => this.trpcClient.queryEditor.deleteDocuments.mutate({ documentIds: documents }));
     }
     public async provideFeedback(): Promise<void> {
-        await this.trpcClient.queryEditor.provideFeedback.mutate();
+        await this.safeMutate(() => this.trpcClient.queryEditor.provideFeedback.mutate());
     }
 
     public async saveCSV(
@@ -222,19 +227,23 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         partitionKey?: PartitionKeyDefinition,
         selection?: number[],
     ): Promise<void> {
-        await this.trpcClient.queryEditor.saveCSV.mutate({
-            name,
-            result: currentQueryResult,
-            partitionKey: partitionKey,
-            selection,
-        });
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.saveCSV.mutate({
+                name,
+                result: currentQueryResult,
+                partitionKey: partitionKey,
+                selection,
+            }),
+        );
     }
 
     public async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        await this.trpcClient.queryEditor.saveMetricsCSV.mutate({
-            name,
-            result: currentQueryResult,
-        });
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.saveMetricsCSV.mutate({
+                name,
+                result: currentQueryResult,
+            }),
+        );
     }
 
     public async copyCSVToClipboard(
@@ -242,17 +251,21 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         partitionKey?: PartitionKeyDefinition,
         selection?: number[],
     ): Promise<void> {
-        await this.trpcClient.queryEditor.copyCSVToClipboard.mutate({
-            result: currentQueryResult,
-            partitionKey: partitionKey,
-            selection,
-        });
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.copyCSVToClipboard.mutate({
+                result: currentQueryResult,
+                partitionKey: partitionKey,
+                selection,
+            }),
+        );
     }
 
     public async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        await this.trpcClient.queryEditor.copyMetricsCSVToClipboard.mutate({
-            result: currentQueryResult,
-        });
+        await this.safeMutate(() =>
+            this.trpcClient.queryEditor.copyMetricsCSVToClipboard.mutate({
+                result: currentQueryResult,
+            }),
+        );
     }
 
     public selectBucket(throughputBucket?: number): void {
@@ -260,11 +273,11 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async openCopilotExplainQuery(): Promise<void> {
-        await this.trpcClient.queryEditor.openCopilotExplainQuery.mutate();
+        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate());
     }
 
     public async closeGenerateInput(): Promise<void> {
-        await this.trpcClient.queryEditor.closeGenerateInput.mutate();
+        await this.safeMutate(() => this.trpcClient.queryEditor.closeGenerateInput.mutate());
     }
 
     public dispose() {
@@ -296,7 +309,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             }
 
             if (result.initialQuery) {
-                this.insertText(result.initialQuery);
+                void this.insertText(result.initialQuery);
             }
 
             this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: result.isSurveyCandidate });
@@ -307,7 +320,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     protected initEventListeners() {
         this.eventSubscription = this.trpcClient.queryEditor.events.subscribe(undefined, {
             onData: (event) => {
-                this.handleQueryEditorEvent(event as QueryEditorEvent);
+                this.handleQueryEditorEvent(event);
             },
         });
     }
@@ -321,7 +334,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: event.isEnabled });
                 break;
             case 'queryTextPushed':
-                this.insertText(event.query);
+                void this.insertText(event.query);
                 break;
             case 'isSurveyCandidateChanged':
                 this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: event.isSurveyCandidate });

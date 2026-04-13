@@ -26,6 +26,7 @@ import { cosmosDBCreateDocument } from './createDocument/createDocument';
 import { createServer } from './createServer/createServer';
 import { cosmosDBCreateStoredProcedure } from './createStoredProcedure/createStoredProcedure';
 import { cosmosDBCreateTrigger } from './createTrigger/createTrigger';
+import { deleteAllSavedSchemas } from './deleteAllSavedSchemas/deleteAllSavedSchemas';
 import { cosmosDBDeleteContainer } from './deleteContainer/deleteContainer';
 import { cosmosDBDeleteDatabase } from './deleteDatabase/deleteDatabase';
 import { cosmosDBDeleteDatabaseAccount } from './deleteDatabaseAccount/deleteDatabaseAccount';
@@ -103,6 +104,7 @@ export function registerContainerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.importDocument', importDocuments);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteContainer', cosmosDBDeleteContainer);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.viewContainerOffer', cosmosDBViewContainerOffer);
+    registerCommand('cosmosDB.deleteAllSavedSchemas', deleteAllSavedSchemas);
 }
 
 export function registerDocumentCommands() {

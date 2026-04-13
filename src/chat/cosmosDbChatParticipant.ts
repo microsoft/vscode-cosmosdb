@@ -668,31 +668,45 @@ export class CosmosDbChatParticipant {
      * Handles help command requests
      */
     private handleHelpCommand(stream: vscode.ChatResponseStream): Promise<vscode.ChatResult> {
-        const helpText = l10n.t(`## Cosmos DB (NoSQL) Assistant Commands
+        const heading = l10n.t('## Cosmos DB (NoSQL) Assistant Commands');
 
-### **Quick Commands:**
+        const queryCommands = l10n.t(`### **Quick Commands:**
 - \`@cosmosdb /editQuery\` - Edit and improve queries in active query editor with AI suggestions
 - \`@cosmosdb /explainQuery\` - Explain the current query with AI analysis
-- \`@cosmosdb /generateQuery\` - Generate a new query from natural language description
-- \`@cosmosdb /question\` - Ask a general question about Azure Cosmos DB
-- \`@cosmosdb /help\` - Show this help
+- \`@cosmosdb /generateQuery\` - Generate a new query from natural language description`);
 
-### **Natural Language:**
+        const generalCommands = l10n.t(`- \`@cosmosdb /question\` - Ask a general question about Azure Cosmos DB
+- \`@cosmosdb /help\` - Show this help`);
+
+        const naturalLanguageEditing = l10n.t(`### **Natural Language:**
 You can also use natural language:
 - "improve my current query" (requires active query editor)
-- "optimize this query" (modifies query in active editor)
-- "explain this query" (analyzes current query in active editor)
+- "optimize this query" (modifies query in active editor)`);
+
+        const naturalLanguageOther = l10n.t(`- "explain this query" (analyzes current query in active editor)
 - "what does my query do?" (explains query purpose and components)
 - "generate a query to find all users" (creates a new query from description)
-- "what is a partition key?" (general Cosmos DB question)
+- "what is a partition key?" (general Cosmos DB question)`);
 
-### **Features:**
+        const features = l10n.t(`### **Features:**
 - 🤖 AI query editing & optimization
 - 📊 Query explanation
 - ✨ AI-powered query generation from natural language
-- ❓ General Azure Cosmos DB knowledge and best practices
+- ❓ General Azure Cosmos DB knowledge and best practices`);
 
-For more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).`);
+        const docsLink = l10n.t(
+            'For more information, visit the [Azure Cosmos DB documentation](https://learn.microsoft.com/azure/cosmos-db/).',
+        );
+
+        const helpText = [
+            heading,
+            queryCommands,
+            generalCommands,
+            naturalLanguageEditing,
+            naturalLanguageOther,
+            features,
+            docsLink,
+        ].join('\n\n');
 
         stream.markdown(helpText);
         return Promise.resolve({ metadata: { command: 'cosmosdb', operation: 'help' } });

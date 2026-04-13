@@ -30,10 +30,14 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
+import { SCHEMA_STORAGE_KEY } from './constants';
+import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
+import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { QueryEditorTab } from './panels/QueryEditorTab';
+import { SchemaFileStorage } from './services/SchemaFileStorage';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import {
     SharedWorkspaceResourceProvider,
@@ -70,6 +74,10 @@ export async function activateInternal(
 
         ext.secretStorage = context.secrets;
 
+        // Migrate schemas from globalState (SQLite) to file-based storage
+        // This is idempotent and safe to call on every activation
+        void SchemaFileStorage.getInstance().migrateFromGlobalState(SCHEMA_STORAGE_KEY);
+
         // Early initialization to determine whether Managed Identity is available for authentication
         void getIsRunningOnAzure();
 
@@ -86,6 +94,9 @@ export async function activateInternal(
         context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
 
         registerCommands();
+
+        context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
+        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

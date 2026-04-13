@@ -53,6 +53,9 @@ export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
     public async showErrorMessage(message: string) {
         await this.common?.showErrorMessage.mutate({ message });
     }
+    public async openUrl(url: string) {
+        await this.sendCommand('openUrl', url);
+    }
 
     public showToast(title: string, message: string, intent: 'info' | 'error' = 'info') {
         this.dispatchToast(

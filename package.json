@@ -40,6 +40,7 @@
     "onView:azureWorkspace",
     "onView:azureResourceGroups",
     "onUri",
+    "onLanguage:nosql",
     "onChatParticipant:cosmosdb",
     "onLanguageModelTool:cosmosdb_sampleContainerSchema"
   ],
@@ -291,7 +292,19 @@
         ],
         "extensions": [
           ".nosql"
-        ]
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./resources/icons/theme-agnostic/CosmosDBAccount.svg",
+          "dark": "./resources/icons/theme-agnostic/CosmosDBAccount.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nosql",
+        "scopeName": "source.nosql",
+        "path": "./syntaxes/nosql.tmLanguage.json"
       }
     ],
     "commands": [
@@ -470,6 +483,11 @@
         "category": "CosmosDB AI",
         "command": "cosmosDB.ai.removeInstructionFiles",
         "title": "%cosmosdb.command.ai.remove_instruction_files%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.deleteAllSavedSchemas",
+        "title": "%cosmosdb.command.schema.delete_all%"
       }
     ],
     "submenus": [
@@ -798,6 +816,11 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
+          },
+          "cosmosDB.queryEditor.generateSchemaBasedOnQueries": {
+            "type": "boolean",
+            "default": false,
+            "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
           }
         }
       },

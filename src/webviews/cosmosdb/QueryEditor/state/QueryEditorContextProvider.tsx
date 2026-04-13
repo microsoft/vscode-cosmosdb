@@ -13,9 +13,9 @@ import {
     type QueryMetadata,
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
+import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { type QueryEditorAppRouter, type QueryEditorEvent } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
-import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
@@ -223,19 +223,19 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async generateSchema(limit?: number): Promise<void> {
-        await this.sendCommand('generateSchema', limit);
+        await this.safeMutate(() => this.trpcClient.queryEditor.generateSchema.mutate({ limit }));
     }
 
     public async openSchemaSettings(): Promise<void> {
-        await this.sendCommand('openSchemaSettings');
+        await this.safeMutate(() => this.trpcClient.queryEditor.openSchemaSettings.mutate());
     }
 
     public async showCurrentSchema(): Promise<void> {
-        await this.sendCommand('showCurrentSchema');
+        await this.safeMutate(() => this.trpcClient.queryEditor.showCurrentSchema.mutate());
     }
 
     public async deleteCurrentSchema(): Promise<void> {
-        await this.sendCommand('deleteCurrentSchema');
+        await this.safeMutate(() => this.trpcClient.queryEditor.deleteCurrentSchema.mutate());
     }
 
     public async saveCSV(
@@ -356,6 +356,18 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             case 'isSurveyCandidateChanged':
                 this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: event.isSurveyCandidate });
                 break;
+            case 'schemaSettingChanged':
+                this.dispatch({
+                    type: 'setSchemaBasedOnQueries',
+                    isSchemaBasedOnQueries: event.isSchemaBasedOnQueries,
+                });
+                break;
+            case 'schemaUpdated':
+                this.dispatch({
+                    type: 'setContainerSchema',
+                    containerSchema: event.containerSchema as JSONSchema | null,
+                });
+                break;
         }
     }
 
@@ -387,14 +399,6 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             type: 'executionStopped',
             executionId: '',
             endExecutionTime: Date.now(),
-        });
-
-        this.channel.on('schemaSettingChanged', (isSchemaBasedOnQueries: boolean) => {
-            this.dispatch({ type: 'setSchemaBasedOnQueries', isSchemaBasedOnQueries });
-        });
-
-        this.channel.on('schemaUpdated', (containerSchema: JSONSchema | null) => {
-            this.dispatch({ type: 'setContainerSchema', containerSchema });
         });
     }
 }

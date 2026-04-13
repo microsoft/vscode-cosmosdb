@@ -29,6 +29,14 @@ export const QueryEditorEventSchema = z.discriminatedUnion('type', [
         type: z.literal('isSurveyCandidateChanged'),
         isSurveyCandidate: z.boolean(),
     }),
+    z.object({
+        type: z.literal('schemaSettingChanged'),
+        isSchemaBasedOnQueries: z.boolean(),
+    }),
+    z.object({
+        type: z.literal('schemaUpdated'),
+        containerSchema: z.record(z.string(), z.unknown()).nullable(),
+    }),
 ]);
 
 export type QueryEditorEvent = z.infer<typeof QueryEditorEventSchema>;

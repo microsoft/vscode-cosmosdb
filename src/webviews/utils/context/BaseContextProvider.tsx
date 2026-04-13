@@ -19,6 +19,7 @@ interface CommonRoutes {
     common: {
         showInformationMessage: { mutate: (input: { message: string }) => Promise<void> };
         showErrorMessage: { mutate: (input: { message: string }) => Promise<void> };
+        openUrl: { mutate: (input: { url: string }) => Promise<void> };
         reportEvent: {
             mutate: (input: {
                 eventName: string;
@@ -54,7 +55,7 @@ export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
         await this.common?.showErrorMessage.mutate({ message });
     }
     public async openUrl(url: string) {
-        await this.sendCommand('openUrl', url);
+        await this.common?.openUrl.mutate({ url });
     }
 
     public showToast(title: string, message: string, intent: 'info' | 'error' = 'info') {

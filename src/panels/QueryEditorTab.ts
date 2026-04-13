@@ -3,12 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { type JSONSchema } from '../utils/json/JSONSchema';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
 import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
@@ -70,6 +73,18 @@ export class QueryEditorTab extends BaseTab {
             queryEditorCallerFactory,
         );
         this.disposables.push(disposable);
+
+        // Listen for schema setting changes
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
+                    void this.syncSchemaBasedOnQueriesSetting();
+                }
+            }),
+        );
+
+        // Send schema to webview on init
+        void this.sendSchemaToWebview();
     }
 
     public static render(
@@ -108,6 +123,32 @@ export class QueryEditorTab extends BaseTab {
         this.eventSink.close();
 
         super.dispose();
+    }
+
+    private syncSchemaBasedOnQueriesSetting(): void {
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        this.eventSink.emit({ type: 'schemaSettingChanged', isSchemaBasedOnQueries: isEnabled });
+    }
+
+    private async sendSchemaToWebview(): Promise<void> {
+        if (!this.state.connection) {
+            this.eventSink.emit({ type: 'schemaUpdated', containerSchema: null });
+            return;
+        }
+
+        const schemaId = this.getSchemaStorageId(this.state.connection);
+        const schemaStorage = SchemaFileStorage.getInstance();
+        const schemaJson = await schemaStorage.readSchema(schemaId);
+
+        const schema: JSONSchema | null = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
+
+        this.eventSink.emit({ type: 'schemaUpdated', containerSchema: schema as Record<string, unknown> | null });
+    }
+
+    private getSchemaStorageId(connection: NoSqlQueryConnection): string {
+        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
+        return crypto.createHash('sha256').update(raw).digest('hex');
     }
 
     private buildRouterContext(): QueryEditorRouterContext {

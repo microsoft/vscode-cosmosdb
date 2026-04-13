@@ -183,7 +183,7 @@ export function createNoSqlCompletionProvider(
                         const hasChildren =
                             !!(propSchema as JSONSchema).properties ||
                             !!(propSchema as JSONSchema).anyOf?.some(
-                                (e: JSONSchema) => e.type === 'object' || e.properties,
+                                (e) => typeof e !== 'boolean' && (e.type === 'object' || e.properties),
                             );
                         const sortKey = computePropertySortKey(propSchema as JSONSchema, expectedType);
 

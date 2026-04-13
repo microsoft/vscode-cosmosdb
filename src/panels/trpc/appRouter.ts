@@ -229,6 +229,12 @@ function buildCommonRouter(procedure: any, routerFn: any) {
         executeReportIssueCommand: procedure.mutation(async () => {
             await vscode.commands.executeCommand('azureDatabases.reportIssue');
         }),
+
+        openUrl: procedure
+            .input(z.object({ url: z.string() }))
+            .mutation(async ({ input }: { input: { url: string } }) => {
+                await vscode.env.openExternal(vscode.Uri.parse(input.url));
+            }),
     });
 }
 /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */

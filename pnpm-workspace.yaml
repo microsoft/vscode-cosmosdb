@@ -1,0 +1,14 @@
+# pnpm workspace configuration
+# Defines the packages that are part of the monorepo.
+#
+# Current structure:
+#   - Root: VS Code extension (will move to extensions/cosmosdb/ later)
+#   - packages/*: Shared/standalone packages
+#
+# Future structure:
+#   - extensions/*: VS Code extension(s)
+#   - packages/*: Shared/standalone packages
+
+packages:
+  - 'packages/*'
+

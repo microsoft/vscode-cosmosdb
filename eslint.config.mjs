@@ -26,10 +26,14 @@ export default defineConfig([
             'dist',
             'out',
             'node_modules',
+            'packages/*/dist',
+            'packages/*/node_modules',
             '**/__mocks__/**/*',
             '**/*.d.ts',
             '**/jest.config.js',
             '**/main.js',
+            'packages/*/vitest.config.ts',
+            'packages/*/tests/**/*.mjs',
         ],
     },
     {
@@ -220,6 +224,49 @@ export default defineConfig([
             'no-empty': 'off',
             'jest/expect-expect': 'off',
             'jest/no-conditional-expect': 'off',
+        },
+    },
+    // Vitest tests in packages/
+    {
+        files: ['packages/*/tests/**/*.ts', 'packages/*/tests/**/*.test.ts'],
+
+        extends: [ts.configs.recommendedTypeChecked],
+
+        plugins: {
+            '@typescript-eslint': ts.plugin,
+        },
+
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+
+            parser: ts.parser,
+            ecmaVersion: 2023,
+            sourceType: 'module',
+
+            parserOptions: {
+                projectService: false,
+                project: './packages/*/tsconfig.test.json',
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
+
+        rules: {
+            '@typescript-eslint/no-empty-function': 'off',
+            '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-floating-promises': 'off',
+            '@typescript-eslint/no-misused-promises': 'off',
+            '@typescript-eslint/no-non-null-assertion': 'off',
+            '@typescript-eslint/no-unsafe-assignment': 'off',
+            '@typescript-eslint/no-unsafe-member-access': 'off',
+            '@typescript-eslint/no-unsafe-return': 'off',
+            '@typescript-eslint/no-unsafe-call': 'off',
+            '@typescript-eslint/no-unsafe-argument': 'off',
+            '@typescript-eslint/require-await': 'off',
+            '@typescript-eslint/unbound-method': 'off',
+            'no-dupe-else-if': 'off',
+            'no-empty': 'off',
         },
     },
     // Mocha integration tests in test/

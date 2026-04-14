@@ -76,7 +76,7 @@ jobs:
             - name: 🌍 Localize
               run: npm run l10n:check
 
-            - name: � Verify External Skills
+            - name: 🔍 Verify External Skills
               shell: bash
               run: |
                   cp -r skills/ skills-backup/
@@ -91,7 +91,7 @@ jobs:
                   rm -rf skills/
                   mv skills-backup/ skills/
 
-            - name: �🔍 Lint
+            - name: 🔍 Lint
               run: npm run lint
 
             - name: ✨ Prettier

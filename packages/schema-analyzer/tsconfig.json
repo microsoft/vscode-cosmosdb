@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Override: this package is a standalone ESM library (no bundler)
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "jsx": "preserve",
+    "noUnusedLocals": false,
+
+    // Output
+    "outDir": "dist/esm",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationDir": "dist/types",
+    "declarationMap": true,
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "tests"]
+}
+

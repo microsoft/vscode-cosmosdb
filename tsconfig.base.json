@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    // Module settings
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2024",
+    "lib": ["ES2024", "dom", "dom.iterable", "webworker"],
+
+    // TS 7.0 defaults (can be removed entirely, shown for clarity)
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    // Additional strictness (not part of TS 7.0 defaults)
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // Other options
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx"
+  }
+}

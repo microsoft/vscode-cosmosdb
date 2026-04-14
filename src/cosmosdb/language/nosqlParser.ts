@@ -869,7 +869,7 @@ export function computeTypeMatchScore(propSchema: JSONSchema, expectedType: stri
     // Direct type match
     if (propSchema.type) {
         const propType = Array.isArray(propSchema.type) ? propSchema.type : [propSchema.type];
-        if (propType.includes(expectedType)) {
+        if ((propType as string[]).includes(expectedType)) {
             return TYPE_MATCH_EXACT;
         }
         // For object/array types, also check for nested types
@@ -879,7 +879,7 @@ export function computeTypeMatchScore(propSchema: JSONSchema, expectedType: stri
     // anyOf — check if any variant matches
     if (propSchema.anyOf) {
         const types = (propSchema.anyOf as JSONSchema[]).map((entry) => entry.type).filter(Boolean);
-        if (types.includes(expectedType)) {
+        if ((types as string[]).includes(expectedType)) {
             return TYPE_MATCH_PARTIAL;
         }
         return TYPE_MATCH_NONE;

@@ -374,7 +374,6 @@ describe('LLM Instructions Files', () => {
             expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('file1.md'));
             expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('file2.md'));
             expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining('file3.md'));
-            // eslint-disable-next-line @typescript-eslint/unbound-method
             expect(ext.context.globalState.update).toHaveBeenCalledWith('llm.assets.manifest', undefined);
             expect(mockTelemetryContext.telemetry.properties.count).toBe('3');
             expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(

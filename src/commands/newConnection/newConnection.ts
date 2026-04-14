@@ -10,6 +10,7 @@ import { type CosmosDBAttachAccountResourceItem } from '../../tree/workspace-vie
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { CosmosDBConnectionStringStep } from './CosmosDBConnectionStringStep';
 import { CosmosDBExecuteStep } from './CosmosDBExecuteStep';
+import { CosmosDBTenantStep } from './CosmosDBTenantStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export async function newConnection(context: IActionContext, node?: CosmosDBAttachAccountResourceItem): Promise<void> {
@@ -22,7 +23,7 @@ export async function newConnection(context: IActionContext, node?: CosmosDBAtta
 
     const wizard = new AzureWizard(wizardContext, {
         title: l10n.t('New Connection'),
-        promptSteps: [new CosmosDBConnectionStringStep()],
+        promptSteps: [new CosmosDBConnectionStringStep(), new CosmosDBTenantStep()],
         executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,
     });

@@ -86,6 +86,8 @@ export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
 
 export const CosmosDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
 
+export const SCHEMA_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.schema';
+
 export class HttpStatusCodes {
     /**
      * Official Documentation @ https://tools.ietf.org/html/rfc7231#section-6.2.1

@@ -32,6 +32,7 @@
   "cosmosdb.command.update": "[Dlu7d][นั้Üpðætë tø ÇløµðẤğ倪İЂҰนั้ढूँ]",
   "cosmosdb.command.ai.deploy_instruction_files": "[whonw][นั้Çøpÿ ££M ïñstrµçtïøñs tø µsër prøfïlë følðërẤğ倪İЂҰक्र्तिृまẤğ倪İนั้ढूँ]",
   "cosmosdb.command.ai.remove_instruction_files": "[lsSjs][นั้Rëmøvë ££M ïñstrµçtïøñs frøm µsër prøfïlë følðërẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
+  "cosmosdb.command.schema.delete_all": "[aTAhZ][นั้Ðëlëtë Æll §ævëð §çhëmæsẤğ倪İЂҰक्र्นั้ढूँ]",
   "cosmosdb.configuration.batch.size": "[d5qGs][นั้Thë þætçh sïzë tø þë µsëð whëñ qµërÿïñg Æzµrë Ðætæþæsë rësøµrçës.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.configuration.confirmation.style": "[in7OW][นั้Thë þëhævïør tø µsë whëñ çøñfïrmïñg øpërætïøñs thæt çæññøt þë µñðøñë, sµçh æs ðëlëtïñg rësøµrçës.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.configuration.confirmation.style.button": "[YzYgm][นั้ßµttøñ Çlïçk ÇøñfïrmætïøñẤğ倪İЂҰक्र्นั้ढूँ]",
@@ -57,5 +58,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity": "[YvD3d][นั้Mæñægëð ÏðëñtïtÿẤğ倪İЂҰนั้ढूँ]",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "[tYOFo][นั้Øñlÿ sµppørtëð whëñ rµññïñg ïñ Æzµrë (ï.ë. æ VM), [lëærñ mørë](https://lëærñ.mïçrøsøft.çøm/ëñ-µs/æzµrë/çøsmøs-ðþ/høw-tø-sëtµp-mæñægëð-ïðëñtïtÿ)Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "[nCYPi][นั้Thë Çlïëñt ÏÐ øf thë Mæñægëð Ïðëñtïtÿ tø µsë whëñ æµthëñtïçætïñg wïth Ëñtræ ÏÐ µsïñg æ Üsër-æssïgñëð Mæñægëð Ïðëñtïtÿ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
-  "cosmosdb.configuration.manage-llm-assets": "[L0464][นั้Mæñægë ££M æssëts. Ælløw thë ëxtëñsïøñ tø këëp ££M-rëlætëð fïlës µpðætëð.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]"
+  "cosmosdb.configuration.manage-llm-assets": "[L0464][นั้Mæñægë ££M æssëts. Ælløw thë ëxtëñsïøñ tø këëp ££M-rëlætëð fïlës µpðætëð.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "[Jrwq0][นั้Whëñ ëñæþlëð, sçhëmæ gëñërætïøñ ælsø çøñsïðërs qµërÿ rësµlts tø ïñfër thë çøñtæïñër sçhëmæ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्นั้ढूँ]"
 }

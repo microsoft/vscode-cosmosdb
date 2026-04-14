@@ -4,10 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import { CosmosDbOperationsService } from '../chat/CosmosDbOperationsService';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../cosmosdb/getCosmosClient';
@@ -20,9 +21,19 @@ import {
     type SerializedQueryResult,
 } from '../cosmosdb/types/queryResult';
 import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
+import { ext } from '../extensionVariables';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
-import { toStringUniversal } from '../utils/convertors';
+import { isSelectStar, toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
+import { type JSONSchema } from '../utils/json/JSONSchema';
+import {
+    getSchemaFromDocument,
+    simplifySchema,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '../utils/json/nosql/SchemaAnalyzer';
+import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
 import * as vscodeUtil from '../utils/vscodeUtils';
@@ -31,6 +42,10 @@ import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
+const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
+const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
+const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
+const SCHEMA_GENERATION_PAGE_SIZE = 1000;
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -43,10 +58,16 @@ export class QueryEditorTab extends BaseTab {
     public static readonly viewType = 'cosmosDbQuery';
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
-    private readonly sessions = new Map<string, QuerySession>();
+    public readonly sessions = new Map<string, QuerySession>();
 
     private connection: NoSqlQueryConnection | undefined;
     private query: string | undefined;
+    private isLastQueryAIGenerated: boolean = false;
+    /** The raw AI-generated query text, used to detect if the user modified it before running */
+    private lastAIGeneratedQuery: string | undefined;
+    private lastGenerationFailed: boolean = false;
+    private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
+    private pendingConfirmResolve: ((confirmed: boolean) => void) | undefined;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
@@ -107,22 +128,92 @@ export class QueryEditorTab extends BaseTab {
         super.dispose();
     }
 
+    public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
+        const activeSession = this.sessions.values().next().value as QuerySession | undefined;
+        const result = activeSession?.sessionResult;
+        return result?.getSerializedResult(1);
+    };
+
+    public getConnection = (): NoSqlQueryConnection | undefined => {
+        return this.connection;
+    };
+
+    public getCurrentQuery = (): string | undefined => {
+        return this.query;
+    };
+
+    public isActive(): boolean {
+        return this.panel.active;
+    }
+
+    public isVisible(): boolean {
+        return this.panel.visible;
+    }
+
+    /**
+     * Broadcasts AI features availability change to all open QueryEditorTabs
+     */
+    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+        const notifications = Array.from(QueryEditorTab.openTabs).map((tab) =>
+            tab.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [isAIFeaturesEnabled],
+            }),
+        );
+        await Promise.all(notifications);
+    }
+
+    public async updateQuery(query: string): Promise<void> {
+        this.query = query;
+        this.isLastQueryAIGenerated = true;
+        this.lastAIGeneratedQuery = query;
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'fileOpened',
+            params: [query],
+        });
+    }
+
     protected initController() {
         super.initController();
 
         this.channel.on<void>('ready', async () => {
+            // Capture the initial query before any async operations to avoid a race
+            // condition: the webview's Monaco editor fires onMount which sends
+            // updateQueryText with the default "SELECT * FROM c", overwriting
+            // this.query while updateConnection is awaiting a network call.
+            const initialQuery = this.query;
+
             await this.updateConnection(this.connection);
             await this.updateQueryHistory();
             await this.updateThroughputBuckets();
-            if (this.query) {
+            await this.syncSchemaBasedOnQueriesSetting();
+            await this.sendSchemaToWebview();
+
+            if (initialQuery) {
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'fileOpened',
-                    params: [this.query],
+                    params: [initialQuery],
                 });
             }
             await this.refreshSurveyFeedbackVisibility();
+            // Send AI features availability state
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'aiFeaturesEnabledChanged',
+                params: [ext.isAIFeaturesEnabled],
+            });
         });
+
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
+                    void this.syncSchemaBasedOnQueriesSetting();
+                }
+            }),
+        );
     }
 
     public async refreshSurveyFeedbackVisibility(): Promise<void> {
@@ -130,6 +221,43 @@ export class QueryEditorTab extends BaseTab {
             type: 'event',
             name: 'isSurveyCandidateChanged',
             params: [!getIsSurveyDisabledGlobally()],
+        });
+    }
+
+    private async syncSchemaBasedOnQueriesSetting(): Promise<void> {
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'schemaSettingChanged',
+            params: [isEnabled],
+        });
+    }
+
+    /**
+     * Sends the current container schema to the webview for autocompletion.
+     * If no schema exists for the current connection, sends null.
+     */
+    private async sendSchemaToWebview(): Promise<void> {
+        if (!this.connection) {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'schemaUpdated',
+                params: [null],
+            });
+            return;
+        }
+
+        const schemaId = this.getSchemaStorageId(this.connection);
+        const schemaStorage = SchemaFileStorage.getInstance();
+        const schemaJson = await schemaStorage.readSchema(schemaId);
+
+        const schema = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'schemaUpdated',
+            params: [schema],
         });
     }
 
@@ -174,6 +302,14 @@ export class QueryEditorTab extends BaseTab {
                 return this.deleteDocuments(payload.params[0] as CosmosDBRecordIdentifier[]);
             case 'provideFeedback':
                 return this.provideFeedback();
+            case 'generateSchema':
+                return this.generateSchema(payload.params[0] as number | undefined);
+            case 'openSchemaSettings':
+                return this.toggleSchemaBasedOnQueries();
+            case 'showCurrentSchema':
+                return this.showCurrentSchema();
+            case 'deleteCurrentSchema':
+                return this.deleteCurrentSchema();
             case 'saveCSV':
                 return this.saveCSV(
                     payload.params[0] as string,
@@ -196,6 +332,31 @@ export class QueryEditorTab extends BaseTab {
                 return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
             case 'updateQueryHistory':
                 return this.updateQueryHistory(payload.params[0] as string);
+            case 'updateQueryText':
+                this.updateQueryText(payload.params[0] as string);
+                return Promise.resolve();
+            case 'generateQuery':
+                return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
+            case 'cancelGenerateQuery':
+                return this.cancelGenerateQuery();
+            case 'closeGenerateInput':
+                return this.closeGenerateInput();
+            case 'confirmToolInvocationResponse':
+                this.pendingConfirmResolve?.(payload.params[0] as boolean);
+                this.pendingConfirmResolve = undefined;
+                return Promise.resolve();
+            case 'getSelectedModelName':
+                return this.getSelectedModelName();
+            case 'getAvailableModels':
+                return this.getAvailableModels();
+            case 'setSelectedModel':
+                return this.setSelectedModel(payload.params[0] as string);
+            case 'openCopilotExplainQuery':
+                return this.openCopilotExplainQuery();
+            case 'reportFeedback': {
+                const feedback = payload.params[0] as { component: string; feedbackValue: 'up' | 'down' };
+                return this.reportFeedback(feedback.feedbackValue, feedback.component);
+            }
         }
 
         return super.getCommand(payload);
@@ -451,10 +612,23 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async runQuery(query: string, options: QueryMetadata): Promise<void> {
+        this.query = query;
+
+        const wasAIGenerated = this.isLastQueryAIGenerated;
+        const wasModified =
+            wasAIGenerated && this.lastAIGeneratedQuery !== undefined && query !== this.lastAIGeneratedQuery;
+        this.isLastQueryAIGenerated = false;
+        this.lastAIGeneratedQuery = undefined;
+
         const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
         await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
             if (!this.connection) {
                 throw new Error(l10n.t('No connection'));
+            }
+
+            context.telemetry.properties.isAIGenerated = String(wasAIGenerated);
+            if (wasAIGenerated) {
+                context.telemetry.properties.isQueryModified = String(wasModified);
             }
 
             if (options.sessionId) {
@@ -494,6 +668,9 @@ export class QueryEditorTab extends BaseTab {
             this.sessions.set(session.id, session);
 
             await session.run();
+
+            // Merge results into stored schema if setting is enabled and query is SELECT *
+            void this.mergeQueryResultsIntoSchema(session);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
     }
@@ -527,6 +704,9 @@ export class QueryEditorTab extends BaseTab {
             }
 
             await session.nextPage();
+
+            // Merge results into stored schema if setting is enabled and query is SELECT *
+            void this.mergeQueryResultsIntoSchema(session);
         });
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
@@ -619,6 +799,79 @@ export class QueryEditorTab extends BaseTab {
         void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
     }
 
+    /**
+     * Returns a stable, fixed-length storage key for the current connection's schema.
+     * Hashes endpoint + databaseId + containerId so different accounts with identical
+     * database/container names never collide.
+     */
+    private getSchemaStorageId(connection: NoSqlQueryConnection): string {
+        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
+        return crypto.createHash('sha256').update(raw).digest('hex');
+    }
+
+    /**
+     * When the "Generate schema based on queries" setting is enabled and the query is
+     * a SELECT *, merges the fetched documents into the stored schema for the current container.
+     * If no schema exists yet, creates one from scratch.
+     */
+    private async mergeQueryResultsIntoSchema(session: QuerySession): Promise<void> {
+        if (!this.connection) {
+            return;
+        }
+
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        if (!isEnabled) {
+            return;
+        }
+
+        if (!isSelectStar(session.queryText)) {
+            return;
+        }
+
+        const documents = session.getLastFetchedDocuments();
+        if (!documents || documents.length === 0) {
+            return;
+        }
+
+        const schemaId = this.getSchemaStorageId(this.connection);
+        const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+        const schemaStorage = SchemaFileStorage.getInstance();
+
+        // Load existing schema or start fresh
+        const existingMetadata = schemaStorage.getMetadata(schemaId);
+        const existingSchemaJson = existingMetadata ? await schemaStorage.readSchema(schemaId) : undefined;
+
+        let schema: JSONSchema;
+        let totalDocCount: number;
+
+        if (existingSchemaJson) {
+            schema = JSON.parse(existingSchemaJson) as JSONSchema;
+            totalDocCount = parseInt(existingMetadata!.documentCount, 10) || 0;
+        } else {
+            schema = {};
+            totalDocCount = 0;
+        }
+
+        // Merge each document into the schema
+        for (const doc of documents) {
+            updateSchemaWithDocument(schema, doc as NoSQLDocument);
+        }
+        simplifySchema(schema);
+
+        totalDocCount += documents.length;
+
+        await schemaStorage.saveSchema(
+            schemaId,
+            containerLabel,
+            JSON.stringify(schema),
+            new Date().toISOString(),
+            totalDocCount.toString(),
+        );
+
+        await this.sendSchemaToWebview();
+    }
+
     private getNextViewColumn(): vscode.ViewColumn {
         let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.Active;
         if (viewColumn === vscode.ViewColumn.Nine) {
@@ -633,6 +886,243 @@ export class QueryEditorTab extends BaseTab {
     private async provideFeedback(): Promise<void> {
         openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
         return Promise.resolve();
+    }
+
+    private async generateSchema(limit?: number): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.generateSchema', async (context) => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            // Cap the limit at MAX_SCHEMA_DOCUMENT_LIMIT
+            const effectiveLimit =
+                limit === undefined ? MAX_SCHEMA_DOCUMENT_LIMIT : Math.min(limit, MAX_SCHEMA_DOCUMENT_LIMIT);
+
+            context.telemetry.properties.limit = effectiveLimit.toString();
+
+            const schemaId = this.getSchemaStorageId(this.connection);
+            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const limitLabel = limit
+                ? l10n.t('TOP {0}', effectiveLimit)
+                : l10n.t('ALL (up to {0})', MAX_SCHEMA_DOCUMENT_LIMIT);
+
+            // Check if a schema already exists for this container
+            const schemaStorage = SchemaFileStorage.getInstance();
+            const hasExistingSchema = schemaStorage.hasSchema(schemaId);
+
+            const warningParts: string[] = [
+                l10n.t(
+                    'Generating schema from {0} documents will execute a query against your Azure Cosmos DB container, which consumes Request Units (RUs).',
+                    limitLabel,
+                ),
+            ];
+
+            if (hasExistingSchema) {
+                warningParts.push(l10n.t('The previously saved schema for this container will be replaced.'));
+            }
+
+            warningParts.push(l10n.t('Are you sure you want to continue?'));
+
+            const message = warningParts.join('\n');
+
+            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
+            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+            const choice = await vscode.window.showWarningMessage(message, { modal: true }, continueItem, cancelItem);
+
+            if (choice !== continueItem) {
+                return;
+            }
+
+            const connection = this.connection;
+            const query =
+                effectiveLimit < MAX_SCHEMA_DOCUMENT_LIMIT
+                    ? `SELECT TOP ${effectiveLimit} * FROM c`
+                    : `SELECT * FROM c`;
+
+            const result = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: l10n.t('Generating schema for {0}', containerLabel),
+                    cancellable: true,
+                },
+                async (progress, token) => {
+                    const iterator = await withClaimsChallengeHandling(connection, (client) =>
+                        Promise.resolve(
+                            client
+                                .database(connection.databaseId)
+                                .container(connection.containerId)
+                                .items.query(query, { maxItemCount: SCHEMA_GENERATION_PAGE_SIZE }),
+                        ),
+                    );
+
+                    let schema: JSONSchema = {};
+                    let totalDocCount = 0;
+                    let isFirstDoc = true;
+
+                    while (iterator.hasMoreResults() && totalDocCount < effectiveLimit) {
+                        if (token.isCancellationRequested) {
+                            break;
+                        }
+
+                        const page = await iterator.fetchNext();
+                        const documents = page.resources ?? [];
+
+                        if (documents.length === 0) {
+                            break;
+                        }
+
+                        for (const doc of documents) {
+                            if (totalDocCount >= effectiveLimit) {
+                                break;
+                            }
+
+                            if (isFirstDoc) {
+                                schema = getSchemaFromDocument(doc as NoSQLDocument);
+                                isFirstDoc = false;
+                            } else {
+                                updateSchemaWithDocument(schema, doc as NoSQLDocument);
+                            }
+                            totalDocCount++;
+                        }
+
+                        const percentage = effectiveLimit
+                            ? Math.round((totalDocCount / effectiveLimit) * 100)
+                            : undefined;
+                        progress.report({
+                            message: l10n.t('{0} documents processed', totalDocCount),
+                            increment: percentage !== undefined ? (documents.length / effectiveLimit) * 100 : undefined,
+                        });
+                    }
+
+                    return { schema, totalDocCount, cancelled: token.isCancellationRequested };
+                },
+            );
+
+            const { schema, totalDocCount, cancelled } = result;
+
+            if (totalDocCount === 0) {
+                void vscode.window.showInformationMessage(
+                    l10n.t('No documents found in the container. Schema was not generated.'),
+                );
+                return;
+            }
+
+            simplifySchema(schema);
+
+            const schemaJson = JSON.stringify(schema);
+            const schemaSizeBytes = Buffer.byteLength(schemaJson, 'utf8');
+
+            if (schemaSizeBytes > SCHEMA_SIZE_WARNING_BYTES) {
+                const sizeMB = (schemaSizeBytes / (1024 * 1024)).toFixed(1);
+                const proceed: vscode.MessageItem = { title: l10n.t('Save anyway') };
+                const discard: vscode.MessageItem = { title: l10n.t('Discard'), isCloseAffordance: true };
+                const sizeChoice = await vscode.window.showWarningMessage(
+                    l10n.t(
+                        'The generated schema is {0} MB, which is very large and may impact performance. Do you want to save it?',
+                        sizeMB,
+                    ),
+                    { modal: true },
+                    proceed,
+                    discard,
+                );
+
+                if (sizeChoice !== proceed) {
+                    return;
+                }
+            }
+
+            await schemaStorage.saveSchema(
+                schemaId,
+                containerLabel,
+                schemaJson,
+                new Date().toISOString(),
+                totalDocCount.toString(),
+            );
+
+            if (cancelled) {
+                void vscode.window.showInformationMessage(
+                    l10n.t(
+                        'Schema generation was cancelled. Partial schema from {0} documents has been saved for {1}.',
+                        totalDocCount,
+                        containerLabel,
+                    ),
+                );
+            } else {
+                void vscode.window.showInformationMessage(
+                    l10n.t('Schema generated from {0} documents and saved for {1}.', totalDocCount, containerLabel),
+                );
+            }
+
+            await this.sendSchemaToWebview();
+        });
+    }
+
+    private async toggleSchemaBasedOnQueries(): Promise<void> {
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const current = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        await config.update('generateSchemaBasedOnQueries', !current, vscode.ConfigurationTarget.Global);
+    }
+
+    private async showCurrentSchema(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.showCurrentSchema', async () => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const schemaId = this.getSchemaStorageId(this.connection);
+            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const schemaStorage = SchemaFileStorage.getInstance();
+
+            if (!schemaStorage.hasSchema(schemaId)) {
+                void vscode.window.showInformationMessage(
+                    l10n.t('No schema found for {0}. Use the "Generate schema" option to create one.', containerLabel),
+                );
+                return;
+            }
+
+            const fileUri = schemaStorage.getSchemaFileUri(schemaId);
+            const document = await vscode.workspace.openTextDocument(fileUri);
+            await vscode.window.showTextDocument(document, { preview: true });
+        });
+    }
+
+    private async deleteCurrentSchema(): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteCurrentSchema', async () => {
+            if (!this.connection) {
+                throw new Error(l10n.t('No connection'));
+            }
+
+            const schemaId = this.getSchemaStorageId(this.connection);
+            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
+            const schemaStorage = SchemaFileStorage.getInstance();
+
+            if (!schemaStorage.hasSchema(schemaId)) {
+                void vscode.window.showInformationMessage(l10n.t('No schema found for {0}.', containerLabel));
+                return;
+            }
+
+            const deleteItem: vscode.MessageItem = { title: l10n.t('Delete') };
+            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+            const choice = await vscode.window.showWarningMessage(
+                l10n.t(
+                    'Are you sure you want to delete the schema for {0}? The schema file will be permanently removed from disk. To get the schema back, you will need to generate it again.',
+                    containerLabel,
+                ),
+                { modal: true },
+                deleteItem,
+                cancelItem,
+            );
+
+            if (choice !== deleteItem) {
+                return;
+            }
+
+            await schemaStorage.deleteSchema(schemaId);
+
+            void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));
+
+            await this.sendSchemaToWebview();
+        });
     }
 
     private async saveCSV(
@@ -662,5 +1152,245 @@ export class QueryEditorTab extends BaseTab {
     private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
         const text = await queryMetricsToCsv(currentQueryResult);
         await vscode.env.clipboard.writeText(text);
+    }
+
+    private updateQueryText(query: string): void {
+        this.query = query;
+    }
+
+    private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
+        const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
+        const isRetry = this.lastGenerationFailed;
+        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
+            context.errorHandling.suppressDisplay = true;
+            context.telemetry.properties.isRetry = String(isRetry);
+            this.lastGenerationFailed = false;
+            // Cancel any existing generation
+            this.generateQueryCancellation?.cancel();
+            this.generateQueryCancellation?.dispose();
+            this.generateQueryCancellation = new vscode.CancellationTokenSource();
+            const token = this.generateQueryCancellation.token;
+
+            try {
+                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+
+                if (models.length === 0) {
+                    throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
+                }
+
+                // Check for cancellation
+                if (token.isCancellationRequested) {
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.phase = 'beforeLLM';
+                    });
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                // Use saved model selection or first available
+                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+                // Use the shared service for query generation
+                const service = CosmosDbOperationsService.getInstance();
+                const historyContext = service.getQueryHistoryContext(this);
+
+                const generatedQuery = await service.generateQueryWithLLM(prompt, currentQuery, {
+                    modelId: model.id,
+                    historyContext,
+                    cancellationToken: token,
+                    source: 'queryEditor',
+                    operation: 'generateQuery',
+                    onConfirm: async (message: string) => {
+                        await this.channel.postMessage({
+                            type: 'event',
+                            name: 'confirmToolInvocation',
+                            params: [message],
+                        });
+                        return new Promise<boolean>((resolve) => {
+                            this.pendingConfirmResolve = resolve;
+                        });
+                    },
+                });
+
+                // Check for cancellation after LLM call
+                if (token.isCancellationRequested) {
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.phase = 'afterLLM';
+                    });
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                // Comment the original prompt and prepend the generated query
+                // Sanitize user inputs to prevent SQL comment injection
+                const sanitizedPrompt = sanitizeSqlComment(prompt);
+                const sanitizedCurrentQuery = currentQuery
+                    .split('\n')
+                    .map((line) => sanitizeSqlComment(line))
+                    .join('\n-- ');
+                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+
+                this.isLastQueryAIGenerated = true;
+                this.lastAIGeneratedQuery = finalQuery;
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [finalQuery, model.name, prompt],
+                });
+            } catch (error) {
+                // Check if it was a cancellation
+                if (token.isCancellationRequested) {
+                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                        ctx.errorHandling.suppressDisplay = true;
+                        ctx.telemetry.properties.phase = 'exception';
+                    });
+                    await this.channel.postMessage({
+                        type: 'event',
+                        name: 'queryGenerated',
+                        params: [false],
+                    });
+                    return;
+                }
+
+                const errorMessage = parseError(error).message;
+                this.lastGenerationFailed = true;
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'queryGenerated',
+                    params: [false],
+                });
+                void vscode.window.showErrorMessage(l10n.t('Failed to generate query: {0}', errorMessage));
+                throw error;
+            }
+        });
+        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
+    }
+
+    private cancelGenerateQuery(): Promise<void> {
+        this.pendingConfirmResolve?.(false);
+        this.pendingConfirmResolve = undefined;
+        if (this.generateQueryCancellation) {
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+                ctx.telemetry.properties.phase = 'userCancel';
+            });
+        }
+        this.generateQueryCancellation?.cancel();
+        this.generateQueryCancellation?.dispose();
+        this.generateQueryCancellation = undefined;
+        return Promise.resolve();
+    }
+
+    private closeGenerateInput(): Promise<void> {
+        ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+        });
+        void this.cancelGenerateQuery();
+        return Promise.resolve();
+    }
+
+    private async getSelectedModelName(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels();
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            // Find the saved model or use first available
+            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+
+            const modelName = selectedModel?.name ?? 'Copilot';
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: [modelName],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'selectedModelName',
+                params: ['Copilot'],
+            });
+        }
+    }
+
+    private async getAvailableModels(): Promise<void> {
+        try {
+            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+
+            const modelList = models
+                .filter((m) => m.name.toLowerCase() !== 'auto') // auto model does not work
+                .map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                    family: m.family,
+                    vendor: m.vendor,
+                }));
+
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [modelList, savedModelId],
+            });
+        } catch {
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'availableModels',
+                params: [[], null],
+            });
+        }
+    }
+
+    private async setSelectedModel(modelId: string): Promise<void> {
+        await ext.context.globalState.update(SELECTED_MODEL_KEY, modelId);
+
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+            ctx.telemetry.properties.modelId = modelId;
+        });
+
+        // Send back confirmation with the model name
+        const models = await vscode.lm.selectChatModels();
+        const selectedModel = models.find((m) => m.id === modelId);
+
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'selectedModelName',
+            params: [selectedModel?.name ?? 'Copilot'],
+        });
+    }
+
+    private async openCopilotExplainQuery(): Promise<void> {
+        void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+        });
+
+        const query = this.query?.trim();
+        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
+
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query: chatQuery,
+        });
+    }
+
+    private async reportFeedback(feedback: 'up' | 'down', category: string): Promise<void> {
+        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.reportFeedback', (context) => {
+            context.telemetry.properties.feedback = feedback;
+            context.telemetry.properties.category = category;
+            context.telemetry.properties.isAIGenerated = String(this.isLastQueryAIGenerated);
+        });
     }
 }

@@ -9,6 +9,14 @@ import { parseCosmosDBConnectionString } from './cosmosDBConnectionStrings';
 describe('cosmosDBConnectionStrings', () => {
     // Testing different ordering, different use of ';', different casing, etc.
     describe('Without database name', () => {
+        it('Connection string with AccountEndpoint only', () => {
+            const parsedCS = parseCosmosDBConnectionString('AccountEndpoint=https://abcdef.documents.azure.com:443/');
+            expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
+            expect(parsedCS.masterKey).toEqual(undefined);
+            expect(parsedCS.databaseName).toEqual(undefined);
+            expect(parsedCS.tenantId).toEqual(undefined);
+        });
+
         it('Connection string with empty database', () => {
             const parsedCS = parseCosmosDBConnectionString(
                 'AccountEndpoint=https://abcdef.documents.azure.com:443/;AccountKey=abcdef==',
@@ -16,6 +24,16 @@ describe('cosmosDBConnectionStrings', () => {
             expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
             expect(parsedCS.masterKey).toEqual('abcdef==');
             expect(parsedCS.databaseName).toEqual(undefined);
+        });
+
+        it('Connection string with TenantId', () => {
+            const parsedCS = parseCosmosDBConnectionString(
+                'AccountEndpoint=https://abcdef.documents.azure.com:443/;TenantId=00000000-0000-0000-0000-000000000000',
+            );
+            expect(parsedCS.documentEndpoint).toEqual('https://abcdef.documents.azure.com:443/');
+            expect(parsedCS.masterKey).toEqual(undefined);
+            expect(parsedCS.databaseName).toEqual(undefined);
+            expect(parsedCS.tenantId).toEqual('00000000-0000-0000-0000-000000000000');
         });
 
         it('Connection string with leading empty string in AccountEndpoint', () => {

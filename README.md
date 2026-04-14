@@ -61,6 +61,23 @@ The Azure Cosmos DB extension supports various keyboard shortcuts to improve you
 
 For a complete list of keyboard shortcuts, see [Keyboard Shortcuts](docs/hotkeys/01_keyboard_shortcuts.md).
 
+## AI-Powered Query Assistance (GitHub Copilot)
+
+The extension integrates with GitHub Copilot to help you write, edit, and understand Cosmos DB NoSQL queries using natural language.
+
+- **Generate Query**: Click the **AI** button in the Query Editor toolbar and select **Generate query** to describe your query in plain English. Copilot will generate a Cosmos DB NoSQL query for you.
+
+- **Explain Query**: Click the **AI** button and select **Explain query** to get a plain-English explanation of the current query in the editor.
+
+- **`@cosmosdb` Chat Participant**: Use `@cosmosdb` in VS Code Chat (Copilot) with dedicated commands:
+  - `/generateQuery` – Generate a new query from a description.
+  - `/explainQuery` – Explain an existing query.
+  - `/editQuery` – Edit or optimize a query based on instructions.
+
+> **Requires** the [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) extension and an active Copilot subscription.
+
+For more details, see the [AI Chat documentation](src/chat/README.md).
+
 ## Import into Azure Cosmos DB
 
 The extension allows you to import documents into CosmosDB.

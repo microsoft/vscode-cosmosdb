@@ -24,6 +24,9 @@ export class BaseContextProvider {
     public async showErrorMessage(message: string) {
         await this.sendCommand('showErrorMessage', message);
     }
+    public async openUrl(url: string) {
+        await this.sendCommand('openUrl', url);
+    }
 
     public showToast(title: string, message: string, intent: 'info' | 'error' = 'info') {
         this.dispatchToast(

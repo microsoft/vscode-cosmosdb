@@ -6,7 +6,7 @@
 import { diffLines } from 'diff';
 import fs from 'node:fs';
 import { bundlePath, exportSourcePaths } from './constants.mjs';
-import { l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
+import { isDictionaryValid, l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
 
 /**
  * Compares two strings and returns a readable diff
@@ -56,7 +56,9 @@ const checkLocalisationBundle = async () => {
         console.log('Diff:\n' + strDiff);
         console.log('Localization file has changed. Please run "npm run l10n" to update it.');
         process.exit(1); // Exit with an error code if changes are detected
-    } else {
+    }
+
+    if (isDictionaryValid(output)) {
         console.log('Localization file is up to date.');
     }
 };

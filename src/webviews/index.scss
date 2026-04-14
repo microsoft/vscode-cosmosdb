@@ -5,8 +5,3 @@
 
 /* Define standard variables and values for this extension to be shared with all webviews */
 
-@use './theme/slickgrid.scss';
-
-.selectionDisabled {
-    user-select: none;
-}

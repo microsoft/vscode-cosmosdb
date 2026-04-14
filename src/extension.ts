@@ -28,17 +28,23 @@ import {
 } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
+import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
+import { SCHEMA_STORAGE_KEY } from './constants';
+import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
+import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { QueryEditorTab } from './panels/QueryEditorTab';
+import { SchemaFileStorage } from './services/SchemaFileStorage';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import {
     SharedWorkspaceResourceProvider,
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { areAIFeaturesEnabled, onCopilotAvailabilityChanged } from './utils/copilotUtils';
 import { globalUriHandler } from './vscodeUriHandler';
 
 export async function activateInternal(
@@ -62,11 +68,15 @@ export async function activateInternal(
         });
     }
 
-    await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
         ext.secretStorage = context.secrets;
+
+        // Migrate schemas from globalState (SQLite) to file-based storage
+        // This is idempotent and safe to call on every activation
+        void SchemaFileStorage.getInstance().migrateFromGlobalState(SCHEMA_STORAGE_KEY);
 
         // Early initialization to determine whether Managed Identity is available for authentication
         void getIsRunningOnAzure();
@@ -85,6 +95,9 @@ export async function activateInternal(
 
         registerCommands();
 
+        context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
+        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
+
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
             vscode.workspace.onDidChangeConfiguration,
@@ -101,6 +114,28 @@ export async function activateInternal(
                     );
                 }
             },
+        );
+
+        // Initialize the CosmosDB chat participant
+        // The chat participant is always registered, but will show helpful error messages
+        // if AI features are not available (Copilot not installed, not signed in, or disabled)
+        CosmosDbOperationsService.initialize(context);
+        ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
+
+        // Always create the chat participant so users can see why it's not working
+        const chatParticipant = new CosmosDbChatParticipant(context);
+        void chatParticipant; // Acknowledge the variable is intentionally unused after creation
+
+        // Register language model tools for the chat participant
+        registerSampleDataTool(context);
+
+        // Listen for changes to extension availability (Copilot install/uninstall)
+        context.subscriptions.push(
+            onCopilotAvailabilityChanged((available) => {
+                ext.isAIFeaturesEnabled = available;
+                // Notify all open QueryEditorTabs about the change
+                void QueryEditorTab.notifyAIFeaturesChanged(available);
+            }),
         );
 
         // Suppress "Report an Issue" button for all errors in favor of the command

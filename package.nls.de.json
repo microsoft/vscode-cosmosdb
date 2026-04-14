@@ -32,6 +32,7 @@
   "cosmosdb.command.update": "Auf Cloud aktualisieren",
   "cosmosdb.command.ai.deploy_instruction_files": "Kopieren von LLM-Anweisungen in den Benutzerprofilordner",
   "cosmosdb.command.ai.remove_instruction_files": "Entfernen von LLM-Anweisungen aus dem Benutzerprofilordner",
+  "cosmosdb.command.schema.delete_all": "Delete All Saved Schemas",
   "cosmosdb.configuration.batch.size": "Die Batchgröße, die beim Abfragen von Azure-Datenbankressourcen verwendet werden soll.",
   "cosmosdb.configuration.confirmation.style": "Das Verhalten, das beim Bestätigen von Vorgängen verwendet werden soll, die nicht rückgängig gemacht werden können, z. B. das Löschen von Ressourcen.",
   "cosmosdb.configuration.confirmation.style.button": "Bestätigung per Klicken auf Schaltfläche",
@@ -57,5 +58,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity": "Verwaltete Identität",
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Wird nur bei Ausführung in Azure unterstützt (d. h. einem virtuellen Computer), [weitere Informationen](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Die Client-ID der verwalteten Identität, die bei der Authentifizierung mit Entra ID mithilfe einer benutzerseitig zugewiesenen verwalteten Identität verwendet werden soll.",
-  "cosmosdb.configuration.manage-llm-assets": "Verwalten Sie LLM-Ressourcen. Lassen Sie zu, dass die Erweiterung LLM-bezogene Dateien aktualisiert."
+  "cosmosdb.configuration.manage-llm-assets": "Verwalten Sie LLM-Ressourcen. Lassen Sie zu, dass die Erweiterung LLM-bezogene Dateien aktualisiert.",
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema."
 }

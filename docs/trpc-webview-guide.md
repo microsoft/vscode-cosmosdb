@@ -5,7 +5,7 @@ This guide explains how to add a new webview panel that communicates with the ex
 ## Architecture Overview
 
 ```
-┌──────────────┐   postMessage    ┌──────────────────┐
+┌───────────────┐   postMessage   ┌───────────────────┐
 │   Webview     │ ◄─────────────► │  Extension Host   │
 │  (React app)  │   vscodeLink    │   (tRPC server)   │
 │               │                 │                   │
@@ -15,7 +15,7 @@ This guide explains how to add a new webview panel that communicates with the ex
 │               │                 │   ├─ common       │
 │               │                 │   ├─ queryEditor  │
 │               │                 │   └─ document     │
-└──────────────┘                 └──────────────────┘
+└───────────────┘                 └───────────────────┘
 ```
 
 ## Steps

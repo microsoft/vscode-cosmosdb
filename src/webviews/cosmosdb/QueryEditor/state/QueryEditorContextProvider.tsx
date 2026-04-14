@@ -331,6 +331,16 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
             this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: result.isSurveyCandidate });
             this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: result.isAIFeaturesEnabled });
+            this.dispatch({
+                type: 'setSchemaBasedOnQueries',
+                isSchemaBasedOnQueries: result.isSchemaBasedOnQueries,
+            });
+            if (result.containerSchema !== undefined) {
+                this.dispatch({
+                    type: 'setContainerSchema',
+                    containerSchema: result.containerSchema as JSONSchema | null,
+                });
+            }
         });
     }
 

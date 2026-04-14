@@ -20,7 +20,7 @@ import { DocumentTab } from '../../../panels/DocumentTab';
 import { QueryEditorTab } from '../../../panels/QueryEditorTab';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
-import { toStringUniversal } from '../../../utils/convertors';
+import { isSelectStar, toStringUniversal } from '../../../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { type JSONSchema } from '../../../utils/json/JSONSchema';
@@ -97,6 +97,11 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         const queryHistory = await getQueryHistory(ctx);
 
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isSchemaBasedOnQueries = config.get<boolean>('generateSchemaBasedOnQueries', false);
+
+        const containerSchema = ctx.state.connection ? await readSchemaForConnection(ctx.state.connection) : null;
+
         return {
             connectionState,
             queryHistory,
@@ -104,6 +109,8 @@ export const queryEditorRouterDef = queryEditorRouter({
             initialQuery: ctx.state.query,
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),
             isAIFeaturesEnabled: ext.isAIFeaturesEnabled,
+            isSchemaBasedOnQueries,
+            containerSchema: containerSchema as Record<string, unknown> | null,
         };
     }),
 
@@ -190,6 +197,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                 );
             }
             const result = await session.run();
+            // Merge results into stored schema if setting is enabled and query is SELECT *
+            void mergeQueryResultsIntoSchema(result, ctx.state.connection!, ctx.eventSink);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.High,
@@ -243,6 +252,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                     l10n.t('No session found for executionId: {executionId}', { executionId: input.executionId }),
                 );
             const result = await session.nextPage();
+            // Merge results into stored schema if setting is enabled and query is SELECT *
+            void mergeQueryResultsIntoSchema(result, ctx.state.connection!, ctx.eventSink);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,
@@ -1083,6 +1094,81 @@ async function persistQueryHistory(ctx: QueryEditorRouterContext, query?: string
     await storage.push(HISTORY_STORAGE_KEY, historyData);
 
     return queryHistory;
+}
+
+/**
+ * When the "Generate schema based on queries" setting is enabled and the query is
+ * a SELECT *, merges the fetched documents into the stored schema for the current container.
+ * If no schema exists yet, creates one from scratch.
+ */
+async function mergeQueryResultsIntoSchema(
+    queryResult: { result: { query: string; documents: unknown[] } | null } | undefined,
+    connection: NoSqlQueryConnection,
+    eventSink: QueryEditorRouterContext['eventSink'],
+): Promise<void> {
+    if (!queryResult?.result) {
+        return;
+    }
+
+    const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+    const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+    if (!isEnabled) {
+        return;
+    }
+
+    if (!isSelectStar(queryResult.result.query ?? '')) {
+        return;
+    }
+
+    const documents = queryResult.result.documents;
+    if (!documents || documents.length === 0) {
+        return;
+    }
+
+    const schemaId = getSchemaStorageId(connection);
+    const containerLabel = `${connection.databaseId}/${connection.containerId}`;
+    const schemaStorage = SchemaFileStorage.getInstance();
+
+    // Load existing schema or start fresh
+    const existingMetadata = schemaStorage.getMetadata(schemaId);
+    const existingSchemaJson = existingMetadata ? await schemaStorage.readSchema(schemaId) : undefined;
+
+    let schema: JSONSchema;
+    let totalDocCount: number;
+
+    if (existingSchemaJson) {
+        schema = JSON.parse(existingSchemaJson) as JSONSchema;
+        totalDocCount = parseInt(existingMetadata!.documentCount, 10) || 0;
+    } else {
+        schema = {};
+        totalDocCount = 0;
+    }
+
+    // Merge each document into the schema
+    for (const doc of documents) {
+        if (totalDocCount === 0 && Object.keys(schema).length === 0) {
+            schema = getSchemaFromDocument(doc as NoSQLDocument);
+        } else {
+            updateSchemaWithDocument(schema, doc as NoSQLDocument);
+        }
+        totalDocCount++;
+    }
+    simplifySchema(schema);
+
+    await schemaStorage.saveSchema(
+        schemaId,
+        containerLabel,
+        JSON.stringify(schema),
+        new Date().toISOString(),
+        totalDocCount.toString(),
+    );
+
+    // Push updated schema to webview
+    const updatedSchema = await readSchemaForConnection(connection);
+    eventSink.emit({
+        type: 'schemaUpdated',
+        containerSchema: updatedSchema as Record<string, unknown> | null,
+    });
 }
 
 /**

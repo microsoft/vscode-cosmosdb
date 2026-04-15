@@ -26,6 +26,9 @@ importers:
       '@azure/identity':
         specifier: ~4.13.0
         version: 4.13.1
+      '@cosmosdb/nosql-language-service':
+        specifier: workspace:*
+        version: link:packages/nosql-language-service
       '@cosmosdb/schema-analyzer':
         specifier: workspace:*
         version: link:packages/schema-analyzer

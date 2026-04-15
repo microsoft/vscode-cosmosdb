@@ -3,13 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/monaco';
 import { useMonaco } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { registerNoSqlCompletionProvider } from './nosqlCompletionProvider';
-import { registerNoSqlHoverProvider } from './nosqlHoverProvider';
-import { NOSQL_LANGUAGE_ID, registerNoSqlLanguage } from './nosqlLanguage';
+
+/** Language ID matching the 'nosql' language contributed in package.json. */
+const NOSQL_LANGUAGE_ID = 'nosql';
 
 export const QueryMonaco = () => {
     const state = useQueryEditorState();
@@ -17,33 +19,34 @@ export const QueryMonaco = () => {
     const monaco = useMonaco();
 
     const disposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
-    const completionDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
-    const hoverDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const languageServiceDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
 
-    // Keep a ref to the latest schema so the completion provider always reads fresh data
+    // Keep a ref to the latest schema so the language service always reads fresh data
     const schemaRef = useRef(state.containerSchema);
     useEffect(() => {
         schemaRef.current = state.containerSchema;
     }, [state.containerSchema]);
 
-    // Register the CosmosDB NoSQL language and completion provider once Monaco is available
+    // Register the CosmosDB NoSQL language and all providers once Monaco is available
     useEffect(() => {
         if (monaco) {
-            registerNoSqlLanguage(monaco);
-
             // Dispose previous providers if any (e.g., hot reload)
-            completionDisposableRef.current?.dispose();
-            completionDisposableRef.current = registerNoSqlCompletionProvider(monaco, () => schemaRef.current);
+            languageServiceDisposableRef.current?.dispose();
 
-            hoverDisposableRef.current?.dispose();
-            hoverDisposableRef.current = registerNoSqlHoverProvider(monaco, () => schemaRef.current);
+            // Create language service with schema access and register all providers
+            // (includes Monarch tokenizer, completions, hover, diagnostics, signature help, formatting)
+            const service = new SqlLanguageService({
+                getSchema: () => schemaRef.current ?? undefined,
+            });
+
+            languageServiceDisposableRef.current = registerCosmosDbSql(monaco, service, {
+                languageId: NOSQL_LANGUAGE_ID,
+            });
         }
 
         return () => {
-            completionDisposableRef.current?.dispose();
-            completionDisposableRef.current = null;
-            hoverDisposableRef.current?.dispose();
-            hoverDisposableRef.current = null;
+            languageServiceDisposableRef.current?.dispose();
+            languageServiceDisposableRef.current = null;
         };
     }, [monaco]);
 

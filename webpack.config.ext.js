@@ -72,6 +72,29 @@ module.exports = (env, { mode }) => {
             conditionNames: ['import', 'require', 'node'],
             mainFields: ['module', 'main'],
             extensions: ['.js', '.ts'],
+            alias: {
+                // Resolve workspace packages directly to TypeScript sources
+                // so ts-loader compiles them (they live outside node_modules exclude)
+                '@cosmosdb/nosql-language-service/vscode': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/providers/vscode.ts',
+                ),
+                '@cosmosdb/nosql-language-service/services': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/services/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/index.ts',
+                ),
+                '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
+                '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
+                '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
+            },
+            // Map .js imports to .ts files for workspace packages using NodeNext resolution
+            extensionAlias: {
+                '.js': ['.ts', '.js'],
+            },
         },
         module: {
             rules: [
@@ -166,11 +189,11 @@ module.exports = (env, { mode }) => {
                         to: 'skills',
                     },
                     {
-                        from: 'syntaxes',
+                        from: 'packages/nosql-language-service/syntaxes',
                         to: 'syntaxes',
                     },
                     {
-                        from: 'language-configuration.json',
+                        from: 'packages/nosql-language-service/language-configuration.json',
                         to: 'language-configuration.json',
                     },
                     {

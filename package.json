@@ -150,6 +150,7 @@
     "@azure/arm-resources": "~7.0.0",
     "@azure/cosmos": "~4.9.0",
     "@azure/identity": "~4.13.0",
+    "@cosmosdb/nosql-language-service": "workspace:*",
     "@cosmosdb/schema-analyzer": "workspace:*",
     "@fluentui/react-components": "~9.73.0",
     "@fluentui/react-icons": "~2.0.313",

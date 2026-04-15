@@ -21,7 +21,7 @@
 
 import type * as monacoEditor from 'monaco-editor';
 import { type CompletionItemKind } from '../completion/SqlCompletion.js';
-import { type SqlLanguageService } from '../services/index.js';
+import { FUNCTION_SIGNATURES, type SqlLanguageService } from '../services/index.js';
 import { type Disposable, DiagnosticSeverity as DsSeverity } from '../services/types.js';
 
 // Declare timer APIs that exist in both Node.js and browsers
@@ -75,6 +75,18 @@ export interface MonacoRegistrationOptions {
      * @default true
      */
     formatting?: boolean;
+
+    /**
+     * Whether to register the Monarch tokenizer for syntax highlighting
+     * and the language configuration (brackets, comments, auto-closing pairs).
+     *
+     * When `true`, the language is registered with Monaco along with a
+     * Monarch tokenizer that highlights keywords, built-in functions,
+     * operators, strings, numbers, and comments.
+     *
+     * @default true
+     */
+    monarchTokenizer?: boolean;
 
     /**
      * Debounce delay (ms) for diagnostics on content change.
@@ -436,6 +448,198 @@ export class MonacoDiagnosticsProvider implements Disposable {
     }
 }
 
+// ========================== Monarch tokenizer =================================
+
+/**
+ * SQL keywords for Monarch tokenization.
+ * Derived from the Chevrotain token set in `lexer/tokens.ts`.
+ */
+const MONARCH_KEYWORDS = [
+    'AND',
+    'ARRAY',
+    'AS',
+    'ASC',
+    'BETWEEN',
+    'BY',
+    'CASE',
+    'CAST',
+    'CONVERT',
+    'CROSS',
+    'DESC',
+    'DISTINCT',
+    'ELSE',
+    'END',
+    'ESCAPE',
+    'EXISTS',
+    'FALSE',
+    'FOR',
+    'FROM',
+    'GROUP',
+    'HAVING',
+    'IN',
+    'INNER',
+    'INSERT',
+    'INTO',
+    'IS',
+    'JOIN',
+    'LEFT',
+    'LET',
+    'LIKE',
+    'LIMIT',
+    'NOT',
+    'NULL',
+    'OFFSET',
+    'ON',
+    'OR',
+    'ORDER',
+    'OUTER',
+    'OVER',
+    'RANK',
+    'RIGHT',
+    'SELECT',
+    'SET',
+    'THEN',
+    'TOP',
+    'TRUE',
+    'UDF',
+    'UNDEFINED',
+    'UPDATE',
+    'VALUE',
+    'WHEN',
+    'WHERE',
+    'WITH',
+];
+
+/** Word-based operators (checked before keywords so themes can color them differently). */
+const MONARCH_OPERATORS = ['AND', 'OR', 'NOT', 'BETWEEN', 'IN', 'LIKE', 'EXISTS'];
+
+/** Built-in function names, derived from the language service's function signatures. */
+const MONARCH_BUILTIN_FUNCTIONS = Object.keys(FUNCTION_SIGNATURES);
+
+/**
+ * Monaco language configuration for bracket matching, comments, and auto-closing pairs.
+ *
+ * Can be used standalone or is automatically applied by {@link registerCosmosDbSql}
+ * when `monarchTokenizer` is not `false`.
+ */
+export const cosmosDbSqlLanguageConfiguration: monacoEditor.languages.LanguageConfiguration = {
+    comments: {
+        lineComment: '--',
+        blockComment: ['/*', '*/'],
+    },
+    brackets: [
+        ['[', ']'],
+        ['(', ')'],
+    ],
+    autoClosingPairs: [
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '"', close: '"', notIn: ['string', 'comment'] },
+        { open: "'", close: "'", notIn: ['string', 'comment'] },
+    ],
+    surroundingPairs: [
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '"', close: '"' },
+        { open: "'", close: "'" },
+    ],
+};
+
+/**
+ * Monarch tokenizer for CosmosDB NoSQL query language.
+ *
+ * Provides syntax highlighting for:
+ * - SQL-like clauses: SELECT, FROM, WHERE, ORDER BY, GROUP BY, etc.
+ * - CosmosDB-specific keywords: VALUE, UNDEFINED, BETWEEN, EXISTS, RANK, etc.
+ * - Built-in functions (aggregate, string, math, type-checking, date/time, etc.)
+ * - Operators, hex/float/integer numbers, strings, identifiers, and quoted identifiers.
+ * - Comments: line comments (`--`) and block comments.
+ *
+ * Can be used standalone via `monaco.languages.setMonarchTokensProvider()`
+ * or automatically through {@link registerCosmosDbSql}.
+ */
+export const cosmosDbSqlMonarchTokensProvider: monacoEditor.languages.IMonarchLanguage = {
+    defaultToken: '',
+    ignoreCase: true,
+    tokenPostfix: '.nosql',
+
+    brackets: [
+        { open: '[', close: ']', token: 'delimiter.square' },
+        { open: '(', close: ')', token: 'delimiter.parenthesis' },
+    ],
+
+    keywords: [...MONARCH_KEYWORDS],
+    operators: [...MONARCH_OPERATORS],
+    builtinFunctions: [...MONARCH_BUILTIN_FUNCTIONS],
+
+    tokenizer: {
+        root: [
+            { include: '@comments' },
+            { include: '@whitespace' },
+            { include: '@numbers' },
+            { include: '@strings' },
+
+            [/[()[\]]/, '@brackets'],
+            [/[,;.]/, 'delimiter'],
+
+            // Multi-char operators: comparison, null coalescing, string concat, bitwise shifts
+            [/>>>|>>|<<|\|\||[<>]=?|!=|<>|\?\?/, 'operator'],
+            // Arithmetic and bitwise: + - * / % & | ^ ~
+            [/[+\-*/%&|^~]/, 'operator'],
+
+            [
+                /[a-zA-Z_]\w*/,
+                {
+                    cases: {
+                        '@operators': 'operator',
+                        '@keywords': 'keyword',
+                        '@builtinFunctions': 'support.function',
+                        '@default': 'identifier',
+                    },
+                },
+            ],
+        ],
+
+        comments: [
+            [/--+.*$/, 'comment'],
+            [/\/\*/, 'comment', '@blockComment'],
+        ],
+
+        blockComment: [
+            [/[^*/]+/, 'comment'],
+            [/\*\//, 'comment', '@pop'],
+            [/[*/]/, 'comment'],
+        ],
+
+        whitespace: [[/\s+/, 'white']],
+
+        numbers: [
+            [/0[xX][0-9a-fA-F]+/, 'number.hex'],
+            [/\d+\.\d*([eE][-+]?\d+)?/, 'number.float'],
+            [/\d+[eE][-+]?\d+/, 'number.float'],
+            [/\d+/, 'number'],
+        ],
+
+        strings: [
+            [/"/, 'string.quoted', '@quotedIdentifier'],
+            [/'/, 'string', '@singleQuotedString'],
+        ],
+
+        quotedIdentifier: [
+            [/[^"\\]+/, 'string.quoted'],
+            [/\\./, 'string.escape'],
+            [/"/, 'string.quoted', '@pop'],
+        ],
+
+        singleQuotedString: [
+            [/[^'\\]+/, 'string'],
+            [/\\./, 'string.escape'],
+            [/''/, 'string.escape'], // SQL-style escaped single quote
+            [/'/, 'string', '@pop'],
+        ],
+    },
+};
+
 // ========================== Registration =====================================
 
 /**
@@ -463,7 +667,17 @@ export function registerCosmosDbSql(
     // Register language (if not already registered)
     const languages = monaco.languages.getLanguages();
     if (!languages.some((l) => l.id === langId)) {
-        monaco.languages.register({ id: langId });
+        monaco.languages.register({
+            id: langId,
+            extensions: ['.nosql'],
+            aliases: ['CosmosDB NoSQL', langId],
+        });
+    }
+
+    // --- Monarch tokenizer (syntax highlighting) ----------
+    if (options.monarchTokenizer !== false) {
+        monaco.languages.setLanguageConfiguration(langId, cosmosDbSqlLanguageConfiguration);
+        monaco.languages.setMonarchTokensProvider(langId, cosmosDbSqlMonarchTokensProvider);
     }
 
     // --- Completions --------------------------------------

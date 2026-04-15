@@ -47,6 +47,25 @@ module.exports = (env, { mode }) => {
             // Use 'import' and 'default' conditions (NOT 'node') to get browser versions
             // This makes uuid use dist/index.js instead of dist-node/index.js
             conditionNames: ['browser', 'import', 'default'],
+            alias: {
+                // Resolve workspace packages directly to TypeScript sources
+                '@cosmosdb/nosql-language-service/monaco': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/providers/monaco.ts',
+                ),
+                '@cosmosdb/nosql-language-service/services': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/services/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/index.ts',
+                ),
+            },
+            // Map .js imports to .ts files for workspace packages using NodeNext resolution
+            extensionAlias: {
+                '.js': ['.ts', '.js'],
+            },
         },
         optimization: {
             // Tree-shaking configuration:

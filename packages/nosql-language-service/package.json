@@ -45,7 +45,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "syntaxes",
+    "language-configuration.json"
   ],
   "scripts": {
     "generate-docs": "node scripts/generate-docs-index.mjs",

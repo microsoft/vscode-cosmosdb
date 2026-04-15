@@ -37,6 +37,7 @@ export const QueryMonaco = () => {
             // (includes Monarch tokenizer, completions, hover, diagnostics, signature help, formatting)
             const service = new SqlLanguageService({
                 getSchema: () => schemaRef.current ?? undefined,
+                multiQuery: true,
             });
 
             languageServiceDisposableRef.current = registerCosmosDbSql(monaco, service, {

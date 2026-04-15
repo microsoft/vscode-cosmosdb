@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as vscodeApi from 'vscode';
 import {
     VSCodeCompletionProvider,
+    VSCodeFoldingRangeProvider,
     VSCodeFormattingProvider,
     VSCodeHoverProvider,
     VSCodeSignatureHelpProvider,
@@ -48,6 +49,9 @@ function createVSCodeMock() {
                 registeredProviders.formatting.push(provider);
                 return { dispose: vi.fn() };
             }),
+            registerFoldingRangeProvider: vi.fn((_selector, _provider) => {
+                return { dispose: vi.fn() };
+            }),
             createDiagnosticCollection: vi.fn((_name: string) => {
                 const items = new Map();
                 const collection = {
@@ -73,6 +77,11 @@ function createVSCodeMock() {
             onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
             onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
             textDocuments,
+        },
+        window: {
+            createTextEditorDecorationType: vi.fn(() => ({ dispose: vi.fn() })),
+            onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
+            activeTextEditor: undefined,
         },
         CompletionItem: class {
             label: string;
@@ -165,6 +174,14 @@ function createVSCodeMock() {
             Information: 2,
             Hint: 3,
         },
+        FoldingRange: class {
+            start: number;
+            end: number;
+            constructor(start: number, end: number) {
+                this.start = start;
+                this.end = end;
+            }
+        },
     } as unknown as VSCodeNamespace;
 }
 
@@ -180,6 +197,16 @@ function createDocumentMock(text: string): vscodeApi.TextDocument {
                 offset += lines[i].length + 1;
             }
             return offset + pos.character;
+        },
+        positionAt: (offset: number) => {
+            let remaining = offset;
+            for (let i = 0; i < lines.length; i++) {
+                if (remaining <= lines[i].length) {
+                    return { line: i, character: remaining };
+                }
+                remaining -= lines[i].length + 1;
+            }
+            return { line: lines.length - 1, character: lines[lines.length - 1].length };
         },
     } as unknown as vscodeApi.TextDocument;
 }
@@ -361,3 +388,53 @@ describe('registerCosmosDbSql (VS Code)', () => {
         disposable.dispose();
     });
 });
+
+describe('VSCodeFoldingRangeProvider', () => {
+    let vscode: VSCodeNamespace;
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        vscode = createVSCodeMock();
+        service = new SqlLanguageService();
+    });
+
+    it('returns no folds for a single query', () => {
+        const provider = new VSCodeFoldingRangeProvider(vscode, service);
+        const doc = createDocumentMock('SELECT * FROM c');
+        const ranges = provider.provideFoldingRanges(doc);
+        expect(ranges).toHaveLength(0);
+    });
+
+    it('returns no folds for single-line queries separated by semicolons', () => {
+        const provider = new VSCodeFoldingRangeProvider(vscode, service);
+        const doc = createDocumentMock('SELECT * FROM c;\nSELECT * FROM d;');
+        const ranges = provider.provideFoldingRanges(doc);
+        expect(ranges).toHaveLength(0);
+    });
+
+    it('returns a fold for a multi-line query', () => {
+        const provider = new VSCodeFoldingRangeProvider(vscode, service);
+        const doc = createDocumentMock('SELECT * FROM c;\nSELECT\n*\nFROM d;');
+        const ranges = provider.provideFoldingRanges(doc);
+        expect(ranges).toHaveLength(1);
+        // VSCode uses 0-based lines: SELECT on line 1, FROM d on line 3
+        expect(ranges[0].start).toBe(1);
+        expect(ranges[0].end).toBe(3);
+    });
+
+    it('fold range starts at content, not at previous semicolon', () => {
+        const provider = new VSCodeFoldingRangeProvider(vscode, service);
+        // Line 0: SELECT 1;
+        // Line 1: (empty)
+        // Line 2: SELECT
+        // Line 3: *
+        // Line 4: FROM c;
+        const doc = createDocumentMock('SELECT 1;\n\nSELECT\n*\nFROM c;');
+        const ranges = provider.provideFoldingRanges(doc);
+        expect(ranges).toHaveLength(1);
+        // Fold should start at line 2 (0-based), NOT line 0
+        expect(ranges[0].start).toBe(2);
+        expect(ranges[0].end).toBe(4);
+    });
+});
+

@@ -70,9 +70,9 @@ describe('Error recovery — returns errors for invalid queries', () => {
 });
 
 describe('Error recovery — error codes are correct', () => {
-    it('empty query gets UNEXPECTED_TOKEN', () => {
+    it('empty query gets UNEXPECTED_EOF', () => {
         const { errors } = parse('');
-        expect(errors[0].code).toBe(SqlErrorCode.UnexpectedToken);
+        expect(errors[0].code).toBe(SqlErrorCode.UnexpectedEof);
     });
 
     it('typo keyword gets MISSING_KEYWORD', () => {

@@ -95,7 +95,7 @@ export async function activateInternal(
 
         registerCommands();
 
-        const nosqlLanguageService = new SqlLanguageService();
+        const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
         registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });
 
         registerEvent(

@@ -203,10 +203,10 @@ suite('My Integration Tests', () => {
 ## 🎯 Key Differences
 
 | Feature         | Jest (`src/`)                      | Mocha (`test/`)                 |
-| --------------- |------------------------------------| ------------------------------- |
+| --------------- | ---------------------------------- | ------------------------------- |
 | **Syntax**      | `describe()`, `test()`, `expect()` | `suite()`, `test()`, `assert()` |
 | **Mocking**     | Built-in `jest.mock()`             | Manual (sinon, etc.)            |
-| **Speed**       | ⚡ Fast                             | 🐌 Slow                         |
+| **Speed**       | ⚡ Fast                            | 🐌 Slow                         |
 | **Environment** | Node.js                            | VS Code Extension Host          |
 | **Purpose**     | Unit tests                         | Integration tests               |
 | **TSConfig**    | `tsconfig.jest.json`               | `tsconfig.test.json`            |

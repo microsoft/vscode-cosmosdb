@@ -20,9 +20,11 @@
 // ---------------------------------------------------------------------------
 
 import { type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
+import { type StreamParser, type StringStream } from '@codemirror/language';
 import { type Diagnostic } from '@codemirror/lint';
-import { type EditorView, type Tooltip, type TooltipView } from '@codemirror/view';
-import { type SqlLanguageService } from '../services/index.js';
+import { type EditorView, type Tooltip, type TooltipView, type ViewUpdate } from '@codemirror/view';
+import { SQL_KEYWORDS } from '../lexer/tokens.js';
+import { FUNCTION_SIGNATURES, type SqlLanguageService } from '../services/index.js';
 import { DiagnosticSeverity as DsSeverity } from '../services/types.js';
 
 // ========================== Public types ======================================
@@ -174,6 +176,358 @@ export function createHoverTooltipSource(
 function escapeHtml(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+// ========================== Folding ==========================================
+
+/**
+ * Create a fold callback for multi-query documents that can be used
+ * with CodeMirror 6's `foldService` from `@codemirror/language`.
+ *
+ * Each non-empty query region (between semicolons) that spans multiple
+ * lines becomes a foldable range.
+ *
+ * @example
+ * ```typescript
+ * import { foldService } from "@codemirror/language";
+ *
+ * const foldFn = createMultiQueryFoldService(service);
+ * const ext = foldService.of(foldFn);
+ * ```
+ */
+export function createMultiQueryFoldService(
+    service: SqlLanguageService,
+): (state: { doc: { toString(): string; lineAt(pos: number): { from: number; to: number; number: number } } }, lineStart: number, lineEnd: number) => { from: number; to: number } | null {
+    return (state, lineStart, _lineEnd) => {
+        const text = state.doc.toString();
+        const foldable = service.getFoldableRegions(text);
+
+        // Find which foldable region starts on the requested line
+        for (const region of foldable) {
+            const startLine = state.doc.lineAt(region.contentStartOffset);
+            if (startLine.from !== lineStart) continue;
+
+            // Region must span multiple lines to be foldable
+            const endLine = state.doc.lineAt(region.contentEndOffset);
+            if (endLine.number <= startLine.number) return null;
+
+            return { from: startLine.to, to: endLine.to };
+        }
+        return null;
+    };
+}
+
+// ========================== Multi-query separator decorations ==================
+
+/**
+ * CSS class name for the separator line between query regions.
+ * Matches the Monaco decorator for consistent styling.
+ */
+const SEPARATOR_CLASS = 'cosmosdb-query-separator';
+
+/**
+ * Injects a `<style>` element with the default separator CSS rule.
+ * Identical to the Monaco variant — only injects once per document.
+ */
+function ensureSeparatorStyles(): void {
+    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+    const g = globalThis as any;
+    if (!g?.document?.createElement) return;
+    const STYLE_ID = 'cosmosdb-multiquery-styles';
+    if (g.document.getElementById(STYLE_ID)) return;
+    const style = g.document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = [
+        `.${SEPARATOR_CLASS} {`,
+        `  border-bottom: 2px solid var(--vscode-editorIndentGuide-activeBackground, var(--vscode-editorIndentGuide-background, #606060));`,
+        `  padding-bottom: 8px;`,
+        `}`,
+    ].join('\n');
+    g.document.head.appendChild(style);
+    /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+}
+
+/**
+ * Minimal subset of `@codemirror/view` and `@codemirror/state` symbols needed
+ * at **runtime** by the separator extension.
+ *
+ * Because this module avoids runtime `@codemirror/*` imports (only type-only
+ * imports are used), the consumer must pass the real objects at call-site.
+ *
+ * @example
+ * ```typescript
+ * import { ViewPlugin, Decoration } from "@codemirror/view";
+ *
+ * const ext = createMultiQuerySeparatorExtension(service, { ViewPlugin, Decoration });
+ * ```
+ */
+export interface MultiQuerySeparatorDeps {
+    /** `ViewPlugin` from `@codemirror/view`. */
+    ViewPlugin: {
+        fromClass<V extends object>(
+            cls: new (view: EditorView) => V,
+            spec?: { decorations?: (value: V) => unknown },
+        ): unknown; // Extension
+    };
+    /** `Decoration` from `@codemirror/view`. */
+    Decoration: {
+        /** Create a line-level decoration. */
+        line(spec: { class: string }): { range(from: number): unknown };
+        /** Empty decoration set. */
+        none: unknown;
+        /** Build a `DecorationSet` from an array of positioned ranges. */
+        set(of: unknown[], sort?: boolean): unknown;
+    };
+}
+
+/**
+ * Create a CodeMirror 6 extension that renders horizontal separator lines
+ * between query regions in a multi-query document.
+ *
+ * The extension is a `ViewPlugin` that recomputes line decorations whenever
+ * the document changes, using {@link SqlLanguageService.getSeparatorPositions}.
+ *
+ * @param service  - A configured {@link SqlLanguageService}.
+ * @param deps     - Runtime CodeMirror primitives (see {@link MultiQuerySeparatorDeps}).
+ * @param options  - Optional overrides.
+ * @returns A CodeMirror `Extension` (opaque — pass directly to `EditorState.create`).
+ *
+ * @example
+ * ```typescript
+ * import { ViewPlugin, Decoration } from "@codemirror/view";
+ *
+ * const ext = createMultiQuerySeparatorExtension(service, { ViewPlugin, Decoration });
+ * // Pass `ext` to EditorState.create({ extensions: [ext, ...] })
+ * ```
+ */
+export function createMultiQuerySeparatorExtension(
+    service: SqlLanguageService,
+    deps: MultiQuerySeparatorDeps,
+    options?: { separatorClass?: string },
+): unknown {
+    ensureSeparatorStyles();
+
+    const className = options?.separatorClass ?? SEPARATOR_CLASS;
+    const lineDeco = deps.Decoration.line({ class: className });
+
+    function buildDecorations(doc: { toString(): string; lineAt(pos: number): { from: number } }): unknown {
+        const text = doc.toString();
+        const separators = service.getSeparatorPositions(text);
+
+        if (separators.length === 0) return deps.Decoration.none;
+
+        const ranges: unknown[] = [];
+        for (const sep of separators) {
+            const line = doc.lineAt(sep.semicolonOffset);
+            ranges.push(lineDeco.range(line.from));
+        }
+        return deps.Decoration.set(ranges, true);
+    }
+
+    // Build a ViewPlugin class that CodeMirror will instantiate per-view.
+    type Doc = { toString(): string; lineAt(pos: number): { from: number } };
+
+    class SeparatorPlugin {
+        decorations: unknown;
+
+        constructor(view: EditorView) {
+            // EditorView.state.doc satisfies Doc but is typed opaquely;
+            // cast through unknown to stay runtime-safe.
+            this.decorations = buildDecorations(view.state.doc as unknown as Doc);
+        }
+
+        update(update: ViewUpdate) {
+            if (update.docChanged) {
+                this.decorations = buildDecorations(update.state.doc as unknown as Doc);
+            }
+        }
+    }
+
+    return deps.ViewPlugin.fromClass(SeparatorPlugin as unknown as new (view: EditorView) => SeparatorPlugin, {
+        decorations: (v: SeparatorPlugin) => v.decorations,
+    });
+}
+
+// ========================== Syntax highlighting (StreamParser) =================
+
+/** Word-based operators (case-insensitive). */
+const CM_OPERATORS = new Set(['AND', 'OR', 'NOT', 'BETWEEN', 'IN', 'LIKE', 'EXISTS']);
+
+/** Built-in function names (case-insensitive). */
+const CM_BUILTINS = new Set(Object.keys(FUNCTION_SIGNATURES).map((n) => n.toUpperCase()));
+
+/** SQL keywords (case-insensitive). */
+const CM_KEYWORDS = new Set(SQL_KEYWORDS.map((k) => k.toUpperCase()));
+
+/**
+ * Tokenizer state for the CosmosDB NoSQL stream parser.
+ */
+interface NoSqlTokenState {
+    /** Current context: 'top' | 'blockComment' | 'singleString' | 'quotedIdentifier' */
+    context: string;
+}
+
+/**
+ * A CodeMirror 6 `StreamParser` for CosmosDB NoSQL query syntax.
+ *
+ * Highlights keywords, built-in functions, word-based operators,
+ * strings, numbers, comments, and identifiers. Compatible with
+ * `StreamLanguage.define()`.
+ *
+ * @example
+ * ```typescript
+ * import { StreamLanguage } from "@codemirror/language";
+ * import { cosmosDbSqlStreamParser } from "@cosmosdb/nosql-language-service/codemirror";
+ *
+ * const lang = StreamLanguage.define(cosmosDbSqlStreamParser);
+ * // Pass `lang` as an extension to EditorState.create({ extensions: [lang] })
+ * ```
+ */
+export const cosmosDbSqlStreamParser: StreamParser<NoSqlTokenState> = {
+    name: 'cosmosdb-sql',
+
+    startState(): NoSqlTokenState {
+        return { context: 'top' };
+    },
+
+    token(stream: StringStream, state: NoSqlTokenState): string | null {
+        // --- Block comment continuation ---
+        if (state.context === 'blockComment') {
+            while (!stream.eol()) {
+                if (stream.match('*/')) {
+                    state.context = 'top';
+                    return 'blockComment';
+                }
+                stream.next();
+            }
+            return 'blockComment';
+        }
+
+        // --- Single-quoted string continuation ---
+        if (state.context === 'singleString') {
+            while (!stream.eol()) {
+                const ch = stream.next();
+                if (ch === '\\') {
+                    stream.next(); // skip escaped char
+                } else if (ch === "'") {
+                    // Check for SQL-style escaped quote ''
+                    if (stream.peek() === "'") {
+                        stream.next();
+                    } else {
+                        state.context = 'top';
+                        return 'string';
+                    }
+                }
+            }
+            return 'string';
+        }
+
+        // --- Quoted identifier continuation ---
+        if (state.context === 'quotedIdentifier') {
+            while (!stream.eol()) {
+                const ch = stream.next();
+                if (ch === '\\') {
+                    stream.next();
+                } else if (ch === '"') {
+                    state.context = 'top';
+                    return 'string.special';
+                }
+            }
+            return 'string.special';
+        }
+
+        // --- Top-level tokenization ---
+
+        // Skip whitespace
+        if (stream.eatSpace()) return null;
+
+        // Line comment: --
+        if (stream.match('--')) {
+            stream.skipToEnd();
+            return 'lineComment';
+        }
+
+        // Block comment start: /*
+        if (stream.match('/*')) {
+            state.context = 'blockComment';
+            // Check if it closes on the same match
+            while (!stream.eol()) {
+                if (stream.match('*/')) {
+                    state.context = 'top';
+                    return 'blockComment';
+                }
+                stream.next();
+            }
+            return 'blockComment';
+        }
+
+        // Single-quoted string
+        if (stream.peek() === "'") {
+            stream.next();
+            state.context = 'singleString';
+            while (!stream.eol()) {
+                const ch = stream.next();
+                if (ch === '\\') {
+                    stream.next();
+                } else if (ch === "'") {
+                    if (stream.peek() === "'") {
+                        stream.next();
+                    } else {
+                        state.context = 'top';
+                        return 'string';
+                    }
+                }
+            }
+            return 'string';
+        }
+
+        // Double-quoted identifier
+        if (stream.peek() === '"') {
+            stream.next();
+            state.context = 'quotedIdentifier';
+            while (!stream.eol()) {
+                const ch = stream.next();
+                if (ch === '\\') {
+                    stream.next();
+                } else if (ch === '"') {
+                    state.context = 'top';
+                    return 'string.special';
+                }
+            }
+            return 'string.special';
+        }
+
+        // Numbers: hex, float, integer
+        if (stream.match(/^0[xX][0-9a-fA-F]+/) || stream.match(/^\d+\.\d*(?:[eE][-+]?\d+)?/) || stream.match(/^\d+[eE][-+]?\d+/) || stream.match(/^\d+/)) {
+            return 'number';
+        }
+
+        // Multi-char operators
+        if (stream.match(/^(?:>>>|>>|<<|\|\||[<>]=?|!=|<>|\?\?)/) || stream.match(/^[+\-*/%&|^~]/)) {
+            return 'operator';
+        }
+
+        // Brackets and delimiters
+        if (stream.match(/^[()[\]]/)) {
+            return 'paren';
+        }
+        if (stream.match(/^[,;.]/)) {
+            return 'punctuation';
+        }
+
+        // Words: keywords, operators, functions, identifiers
+        if (stream.match(/^[a-zA-Z_]\w*/)) {
+            const word = stream.current().toUpperCase();
+            if (CM_OPERATORS.has(word)) return 'operatorKeyword';
+            if (CM_KEYWORDS.has(word)) return 'keyword';
+            if (CM_BUILTINS.has(word)) return 'function(definition)';
+            return 'variableName';
+        }
+
+        // Fallback: consume one character
+        stream.next();
+        return null;
+    },
+};
 
 // ========================== Kind mappers ======================================
 

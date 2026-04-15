@@ -292,6 +292,8 @@ enum CompletionContext {
     QueryStart,
     /** Right after SELECT keyword */
     AfterSelect,
+    /** After SELECT projection is complete (e.g. "SELECT *", "SELECT c.id") — expects FROM, WHERE, etc. */
+    AfterSelectSpec,
     /** Inside SELECT list (after first item) */
     InSelectList,
     /** Right after FROM keyword */
@@ -405,8 +407,23 @@ function detectContext(query: string, offset: number): CursorContext {
         return { context: CompletionContext.AfterDot, prevToken: tokenBeforeCursor, typingPrefix, aliases };
     }
 
+    // "SELECT * |" — Star after SELECT means spec is complete
+    if (prevType === T.Star && hasSelectBefore(tokens, tokenBeforeCursor!)) {
+        return { context: CompletionContext.AfterSelectSpec, prevToken: tokenBeforeCursor, typingPrefix, aliases };
+    }
+
     // After clause-ending tokens (identifier after FROM, etc.) — suggest next clause
     if (isIdentifierLike(prevType)) {
+        // If user is mid-typing right after SELECT → still AfterSelect context
+        // e.g. "SELECT T|" should suggest TOP, not just expression items
+        if (tokenBeforePrev?.tokenType === T.Select) {
+            return { context: CompletionContext.AfterSelect, prevToken: tokenBeforePrev, typingPrefix, aliases };
+        }
+        // After SELECT spec (e.g. "SELECT * FORM|", "SELECT c.id FR|")
+        // — suggest clause keywords like FROM, WHERE, etc.
+        if (hasSelectBefore(tokens, tokenBeforeCursor!)) {
+            return { context: CompletionContext.AfterSelectSpec, prevToken: tokenBeforeCursor, typingPrefix, aliases };
+        }
         // Check if we're right after FROM alias
         if (tokenBeforePrev?.tokenType === T.From || tokenBeforePrev?.tokenType === T.As) {
             return { context: CompletionContext.AfterFromClause, prevToken: tokenBeforeCursor, typingPrefix, aliases };
@@ -419,6 +436,24 @@ function detectContext(query: string, offset: number): CursorContext {
     }
     if (prevType === T.LParen) {
         return { context: CompletionContext.InFunctionArgs, prevToken: tokenBeforeCursor, typingPrefix, aliases };
+    }
+
+    // After SELECT modifiers — user still needs to type projection
+    // "SELECT TOP 10 |" → need *, VALUE, aliases, functions (but not TOP again)
+    // "SELECT DISTINCT |" → need *, VALUE, TOP, aliases, functions (but not DISTINCT again)
+    // "SELECT VALUE |" → need expression (aliases, functions)
+    if (isNumberLiteral(prevType) && tokenBeforePrev?.tokenType === T.Top) {
+        return { context: CompletionContext.AfterSelect, prevToken: tokenBeforeCursor, typingPrefix, aliases };
+    }
+    if (prevType === T.Distinct) {
+        return { context: CompletionContext.AfterSelect, prevToken: tokenBeforeCursor, typingPrefix, aliases };
+    }
+    if (prevType === T.Value) {
+        return { context: CompletionContext.AfterSelect, prevToken: tokenBeforeCursor, typingPrefix, aliases };
+    }
+    // After parameter in TOP position: "SELECT TOP @limit |"
+    if (prevType === T.Parameter && tokenBeforePrev?.tokenType === T.Top) {
+        return { context: CompletionContext.AfterSelect, prevToken: tokenBeforeCursor, typingPrefix, aliases };
     }
 
     return { context: CompletionContext.Unknown, prevToken: tokenBeforeCursor, typingPrefix, aliases };
@@ -491,6 +526,72 @@ function isOperator(type: TokenType): boolean {
     );
 }
 
+function isNumberLiteral(type: TokenType): boolean {
+    return type === T.NumberLiteral || type === T.IntegerLiteral || type === T.DoubleLiteral;
+}
+
+interface UsedSelectModifiers {
+    hasDistinct: boolean;
+    hasTop: boolean;
+    hasValue: boolean;
+}
+
+/**
+ * Scan tokens between SELECT and cursor to find which modifiers are already present.
+ * sql.y grammar: SELECT [DISTINCT] [TOP N] selection
+ */
+function detectUsedSelectModifiers(query: string, offset: number): UsedSelectModifiers {
+    const lexResult = SqlLexer.tokenize(query);
+    const tokens = lexResult.tokens;
+    const result: UsedSelectModifiers = { hasDistinct: false, hasTop: false, hasValue: false };
+
+    // Find the last SELECT before cursor, then scan forward
+    let selectIdx = -1;
+    for (let i = tokens.length - 1; i >= 0; i--) {
+        if (tokens[i].startOffset < offset && tokens[i].tokenType === T.Select) {
+            selectIdx = i;
+            break;
+        }
+    }
+    if (selectIdx < 0) return result;
+
+    for (let i = selectIdx + 1; i < tokens.length && tokens[i].startOffset < offset; i++) {
+        const tt = tokens[i].tokenType;
+        if (tt === T.Distinct) result.hasDistinct = true;
+        if (tt === T.Top) result.hasTop = true;
+        if (tt === T.Value) result.hasValue = true;
+        // Stop at clause boundaries
+        if (tt === T.From || tt === T.Where || tt === T.Order || tt === T.Group) break;
+    }
+    return result;
+}
+
+/**
+ * Scan backwards from a token to check if there's a SELECT before it
+ * without any intervening clause keyword (FROM, WHERE, etc.).
+ * Used to detect "after SELECT spec" positions like "SELECT * |" or "SELECT c.id |".
+ */
+function hasSelectBefore(tokens: IToken[], fromToken: IToken): boolean {
+    const idx = tokens.indexOf(fromToken);
+    for (let i = idx - 1; i >= 0; i--) {
+        const tt = tokens[i].tokenType;
+        if (tt === T.Select) return true;
+        // Stop if we hit another clause — we're past the SELECT spec
+        if (
+            tt === T.From ||
+            tt === T.Where ||
+            tt === T.Order ||
+            tt === T.Group ||
+            tt === T.Join ||
+            tt === T.Offset ||
+            tt === T.Limit
+        ) {
+            return false;
+        }
+    }
+    return false;
+}
+
 // ========================== Schema field extraction ===========================
 
 function getFieldsFromSchema(schema: JSONSchema | undefined, path: string[]): CompletionItem[] {
@@ -543,23 +644,56 @@ export function getCompletions(request: CompletionRequest): CompletionItem[] {
             items.push(kwp('SELECT', 1));
             break;
 
-        case CompletionContext.AfterSelect:
-            // Most common: * and aliases (to type c.field), then modifiers
+        case CompletionContext.AfterSelect: {
+            // sql.y: SELECT [DISTINCT] [TOP N] selection
+            // Determine which modifiers were already used by scanning tokens before cursor
+            const usedModifiers = detectUsedSelectModifiers(query, offset);
+
+            // After VALUE — only expressions (no *, no modifiers)
+            if (usedModifiers.hasValue) {
+                for (const alias of aliases) {
+                    items.push({ label: alias, kind: 'alias', sortText: '0001' + alias });
+                }
+                items.push(...functionItems(20));
+                break;
+            }
+
+            // Projection items: *, aliases, functions
             items.push({ label: '*', kind: 'keyword', sortText: '0001*' });
             for (const alias of aliases) {
                 items.push({ label: alias, kind: 'alias', sortText: '0002' + alias });
             }
-            items.push(kwp('TOP', 10)); // very common modifier
-            items.push(kwp('DISTINCT', 15)); // common modifier
-            items.push(kwp('VALUE', 20)); // less common
-            items.push(...functionItems(50)); // functions lower priority
+            // Modifiers — only suggest what hasn't been used yet and respects order
+            // DISTINCT must come before TOP; TOP before projection
+            if (!usedModifiers.hasTop && !usedModifiers.hasDistinct) {
+                items.push(kwp('DISTINCT', 10));
+            }
+            if (!usedModifiers.hasTop) {
+                items.push(kwp('TOP', 8));
+            }
+            if (!usedModifiers.hasValue) {
+                items.push(kwp('VALUE', 12));
+            }
+
+            items.push(...functionItems(50));
             break;
+        }
 
         case CompletionContext.InSelectList:
             for (const alias of aliases) {
                 items.push({ label: alias, kind: 'alias', sortText: '0001' + alias });
             }
             items.push(...functionItems(20));
+            break;
+
+        case CompletionContext.AfterSelectSpec:
+            // After SELECT projection — suggest clause keywords
+            items.push(kwp('FROM', 1)); // most common next clause
+            items.push(kwp('WHERE', 5));
+            items.push(kwp('ORDER BY', 10));
+            items.push(kwp('GROUP BY', 15));
+            items.push(kwp('JOIN', 18));
+            items.push(kwp('OFFSET', 20));
             break;
 
         case CompletionContext.AfterFrom:

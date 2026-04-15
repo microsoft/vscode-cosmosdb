@@ -118,6 +118,28 @@ export interface TextEdit {
     newText: string;
 }
 
+// ========================== Multi-query visual features =======================
+
+/**
+ * A foldable region described by document-level byte offsets.
+ * Content offsets exclude leading/trailing whitespace so that
+ * fold ranges start at the first real token of each query.
+ */
+export interface FoldableRegion {
+    /** Offset of the first non-whitespace character in the region. */
+    readonly contentStartOffset: number;
+    /** Offset just past the last non-whitespace character in the region. */
+    readonly contentEndOffset: number;
+}
+
+/**
+ * Position of a separator line between two query regions.
+ */
+export interface SeparatorPosition {
+    /** Offset of the semicolon that ends the region (separator drawn on this line). */
+    readonly semicolonOffset: number;
+}
+
 // ========================== Language service host =============================
 
 /**
@@ -139,6 +161,13 @@ export interface LanguageServiceHost {
      * the query alone (e.g. from a multi-statement context).
      */
     getAliases?(): string[] | undefined;
+
+    /**
+     * Enable multi-query document support. When `true`, the service
+     * splits input by semicolons and routes each language feature
+     * to the correct query region. Default: `false`.
+     */
+    multiQuery?: boolean;
 }
 
 // ========================== Disposable ========================================

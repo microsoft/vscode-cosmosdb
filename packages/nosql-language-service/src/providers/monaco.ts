@@ -23,6 +23,7 @@ import type * as monacoEditor from 'monaco-editor';
 import { type CompletionItemKind } from '../completion/SqlCompletion.js';
 import { FUNCTION_SIGNATURES, type SqlLanguageService } from '../services/index.js';
 import { type Disposable, DiagnosticSeverity as DsSeverity } from '../services/types.js';
+import { LANGUAGE_ID } from './shared.js';
 
 // Declare timer APIs that exist in both Node.js and browsers
 // without requiring DOM or @types/node lib references.
@@ -34,10 +35,8 @@ declare function clearTimeout(id: number): void;
  */
 export type MonacoNamespace = typeof monacoEditor;
 
-// ========================== Public config =====================================
-
-/** Language ID registered with Monaco. Override if you need a custom one. */
-export const LANGUAGE_ID = 'cosmosdb-sql';
+// Re-export so consumers can still import from this module.
+export { LANGUAGE_ID } from './shared.js';
 
 export interface MonacoRegistrationOptions {
     /**
@@ -640,6 +639,229 @@ export const cosmosDbSqlMonarchTokensProvider: monacoEditor.languages.IMonarchLa
     },
 };
 
+// ========================== Folding range provider =============================
+
+/**
+ * Provides folding ranges for multi-query documents.
+ * Each non-empty query region (between semicolons) becomes a foldable region.
+ */
+export class MonacoFoldingRangeProvider implements monacoEditor.languages.FoldingRangeProvider {
+    private readonly service: SqlLanguageService;
+
+    constructor(service: SqlLanguageService) {
+        this.service = service;
+    }
+
+    provideFoldingRanges(model: monacoEditor.editor.ITextModel): monacoEditor.languages.FoldingRange[] {
+        const text = model.getValue();
+        const foldable = this.service.getFoldableRegions(text);
+
+        const ranges: monacoEditor.languages.FoldingRange[] = [];
+        for (const region of foldable) {
+            const startPos = model.getPositionAt(region.contentStartOffset);
+            const endPos = model.getPositionAt(region.contentEndOffset);
+            if (endPos.lineNumber > startPos.lineNumber) {
+                ranges.push({
+                    start: startPos.lineNumber,
+                    end: endPos.lineNumber,
+                });
+            }
+        }
+        return ranges;
+    }
+}
+
+// ========================== Multi-query decorator ==============================
+
+/**
+ * CSS class name for the separator line between query regions.
+ * Consumers can style this class in their CSS:
+ * ```css
+ * .cosmosdb-query-separator {
+ *   border-bottom: 1px solid var(--vscode-editorIndentGuide-background, #404040);
+ * }
+ * ```
+ */
+const SEPARATOR_CLASS = 'cosmosdb-query-separator';
+
+/**
+ * Injects a `<style>` element with the default separator CSS rule.
+ * Only injects once per document, identified by a data attribute.
+ */
+function ensureSeparatorStyles(): void {
+    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+    const g = globalThis as any;
+    if (!g?.document?.createElement) return;
+    const STYLE_ID = 'cosmosdb-multiquery-styles';
+    if (g.document.getElementById(STYLE_ID)) return;
+    const style = g.document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = [
+        `.${SEPARATOR_CLASS} {`,
+        `  border-bottom: 2px solid var(--vscode-editorIndentGuide-activeBackground, var(--vscode-editorIndentGuide-background, #606060));`,
+        `}`,
+    ].join('\n');
+    g.document.head.appendChild(style);
+    /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+}
+
+/**
+ * Manages visual decorations for multi-query documents in Monaco:
+ * - Thin horizontal separator lines between query regions
+ *
+ * Listens for content changes and cursor movements, updating
+ * decorations automatically.
+ */
+export class MonacoMultiQueryDecorator implements Disposable {
+    private readonly service: SqlLanguageService;
+    private readonly disposables: Disposable[] = [];
+    private decorations: monacoEditor.editor.IEditorDecorationsCollection | null = null;
+    private editor: monacoEditor.editor.IStandaloneCodeEditor | null = null;
+    private viewZoneIds: string[] = [];
+
+    constructor(
+        monaco: MonacoNamespace,
+        service: SqlLanguageService,
+        options: { languageId?: string; decorationDelay?: number; separatorSpacing?: number } = {},
+    ) {
+        this.service = service;
+        const languageId = options.languageId ?? LANGUAGE_ID;
+        const delay = options.decorationDelay ?? 300;
+
+        ensureSeparatorStyles();
+
+        const attachToEditor = (editor: monacoEditor.editor.ICodeEditor) => {
+            if (this.editor) return; // already attached
+            const codeEditor = editor as monacoEditor.editor.IStandaloneCodeEditor;
+            if (typeof codeEditor.getModel !== 'function') return;
+            const model = codeEditor.getModel();
+            if (!model || model.getLanguageId() !== languageId) return;
+
+            this.editor = codeEditor;
+            this.decorations = codeEditor.createDecorationsCollection();
+            this.updateDecorations();
+
+            let timer: number | undefined;
+            const scheduleUpdate = () => {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                    timer = undefined;
+                    this.updateDecorations();
+                }, delay) as unknown as number;
+            };
+
+            this.disposables.push(model.onDidChangeContent(() => scheduleUpdate()));
+        };
+
+        const tryAttachAll = () => {
+            if (this.editor) return;
+            if (typeof monaco.editor.getEditors === 'function') {
+                for (const existing of monaco.editor.getEditors()) {
+                    attachToEditor(existing);
+                }
+            }
+        };
+
+        // Listen to editor creation to attach per-editor listeners
+        this.disposables.push(monaco.editor.onDidCreateEditor((editor) => {
+            // The editor may be created with a different language initially;
+            // try now and also schedule a retry for after the model is set.
+            attachToEditor(editor);
+            if (!this.editor) {
+                setTimeout(() => attachToEditor(editor), 100);
+            }
+        }));
+
+        // When a model is created or language changes, re-check editors
+        this.disposables.push(monaco.editor.onDidCreateModel(() => tryAttachAll()));
+        if (typeof monaco.editor.onDidChangeModelLanguage === 'function') {
+            this.disposables.push(monaco.editor.onDidChangeModelLanguage(() => tryAttachAll()));
+        }
+
+        // Also check already-existing editors (the editor may have been
+        // created before this decorator was instantiated — common in React
+        // where useEffect fires after the child <MonacoEditor> mounts).
+        tryAttachAll();
+    }
+
+    private updateDecorations(): void {
+        const editor = this.editor;
+        if (!editor || !this.decorations) return;
+        const model = editor.getModel();
+        if (!model) return;
+
+        const text = model.getValue();
+        const separators = this.service.getSeparatorPositions(text);
+
+        const newDecorations: monacoEditor.editor.IModelDeltaDecoration[] = [];
+        const separatorLineNumbers: number[] = [];
+
+        for (const sep of separators) {
+            const endPos = model.getPositionAt(sep.semicolonOffset);
+            separatorLineNumbers.push(endPos.lineNumber);
+            newDecorations.push({
+                range: {
+                    startLineNumber: endPos.lineNumber,
+                    startColumn: 1,
+                    endLineNumber: endPos.lineNumber,
+                    endColumn: model.getLineMaxColumn(endPos.lineNumber),
+                },
+                options: {
+                    isWholeLine: true,
+                    className: SEPARATOR_CLASS,
+                    stickiness: 1, // NeverGrowsWhenTypingAtEdges
+                },
+            });
+        }
+
+        this.decorations.set(newDecorations);
+
+        // Add view zones to create visual spacing after each separator line
+        editor.changeViewZones((accessor) => {
+            // Remove old view zones
+            for (const id of this.viewZoneIds) {
+                accessor.removeZone(id);
+            }
+            this.viewZoneIds = [];
+
+            // Add new view zones
+            for (const lineNumber of separatorLineNumbers) {
+                const id = accessor.addZone({
+                    afterLineNumber: lineNumber,
+                    heightInLines: 0.5,
+                    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+                    domNode: (() => {
+                        const g = globalThis as any;
+                        const node = g?.document?.createElement?.('div');
+                        if (node) {
+                            node.style.pointerEvents = 'none';
+                        }
+                        return node ?? g?.document?.createElement?.('div');
+                    })(),
+                    /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+                });
+                this.viewZoneIds.push(id);
+            }
+        });
+    }
+
+    dispose(): void {
+        this.decorations?.clear();
+        this.decorations = null;
+        if (this.editor && this.viewZoneIds.length > 0) {
+            const ids = this.viewZoneIds;
+            this.editor.changeViewZones((accessor) => {
+                for (const id of ids) {
+                    accessor.removeZone(id);
+                }
+            });
+        }
+        this.viewZoneIds = [];
+        for (const d of this.disposables) d.dispose();
+        this.disposables.length = 0;
+    }
+}
+
 // ========================== Registration =====================================
 
 /**
@@ -716,6 +938,16 @@ export function registerCosmosDbSql(
             monaco.languages.registerDocumentFormattingEditProvider(langId, new MonacoFormattingProvider(service)),
         );
     }
+
+    // --- Multi-query visual enhancements ------------------
+    // Auto-register folding and separator decorations when the service has multiQuery enabled
+    disposables.push(monaco.languages.registerFoldingRangeProvider(langId, new MonacoFoldingRangeProvider(service)));
+    disposables.push(
+        new MonacoMultiQueryDecorator(monaco, service, {
+            languageId: langId,
+            decorationDelay: options.diagnosticDelay,
+        }),
+    );
 
     // --- Composite disposable -----------------------------
     return {

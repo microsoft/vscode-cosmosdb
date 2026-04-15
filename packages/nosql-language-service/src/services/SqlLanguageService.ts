@@ -19,11 +19,14 @@ import * as T from '../lexer/tokens.js';
 import { sqlToString } from '../printer/SqlPrinter.js';
 import { getFunctionDoc, getKeywordDoc } from './docLoader.js';
 import { getFunctionMeta } from './functionSignatures.js';
+import { parseMultiQueryDocument, type MultiQueryDocument, type QueryRegion } from './MultiQueryDocument.js';
 import {
     DiagnosticSeverity,
     type Diagnostic,
+    type FoldableRegion,
     type HoverInfo,
     type LanguageServiceHost,
+    type SeparatorPosition,
     type SignatureHelpResult,
     type TextEdit,
     type TextRange,
@@ -60,13 +63,91 @@ export class SqlLanguageService {
         this.host = host ?? {};
     }
 
+    // ─── Multi-query document ──────────────────────────────
+
+    /**
+     * Parse a document that may contain multiple semicolon-separated
+     * queries. Returns a {@link MultiQueryDocument} with all regions.
+     *
+     * Works regardless of the `multiQuery` host flag — callers can
+     * use this directly when they need region-level access.
+     */
+    parseDocument(query: string): MultiQueryDocument {
+        return parseMultiQueryDocument(query);
+    }
+
+    /**
+     * Return the {@link QueryRegion} containing `offset`.
+     * Convenience shortcut for `parseDocument(query).regionAtOffset(offset)`.
+     */
+    getActiveRegion(query: string, offset: number): QueryRegion | undefined {
+        return parseMultiQueryDocument(query).regionAtOffset(offset);
+    }
+
+    /**
+     * Compute foldable regions for a multi-query document.
+     *
+     * Each non-empty query region is returned with content offsets
+     * (leading/trailing whitespace stripped). The caller converts
+     * offsets to line numbers and filters single-line regions.
+     *
+     * Returns an empty array when the document has only one region.
+     */
+    getFoldableRegions(query: string): FoldableRegion[] {
+        const doc = parseMultiQueryDocument(query);
+        if (doc.regions.length <= 1) return [];
+
+        const result: FoldableRegion[] = [];
+        for (const region of doc.regions) {
+            if (region.text.trim().length === 0) continue;
+
+            const leadingWs = region.text.length - region.text.trimStart().length;
+            const contentStartOffset = region.startOffset + leadingWs;
+            const contentEndOffset = region.startOffset + region.text.trimEnd().length;
+
+            result.push({ contentStartOffset, contentEndOffset });
+        }
+
+        return result;
+    }
+
+    /**
+     * Compute separator positions for a multi-query document.
+     *
+     * Returns the semicolon offset for every region except the last.
+     * The caller maps each offset to a line to draw a separator.
+     *
+     * Returns an empty array when the document has only one region.
+     */
+    getSeparatorPositions(query: string): SeparatorPosition[] {
+        const doc = parseMultiQueryDocument(query);
+        if (doc.regions.length <= 1) return [];
+
+        const result: SeparatorPosition[] = [];
+        for (let i = 0; i < doc.regions.length - 1; i++) {
+            result.push({ semicolonOffset: doc.regions[i].endOffset - 1 });
+        }
+
+        return result;
+    }
+
     // ─── Diagnostics ────────────────────────────────────────
 
     /**
      * Parse `query` and return an array of diagnostics (errors).
      * Returns an empty array when the query is valid.
+     *
+     * When `multiQuery` is enabled, parses each region independently
+     * and returns diagnostics with document-level offsets.
      */
     getDiagnostics(query: string): Diagnostic[] {
+        if (this.host.multiQuery) {
+            return this.getMultiQueryDiagnostics(query);
+        }
+        return this.getSingleQueryDiagnostics(query);
+    }
+
+    private getSingleQueryDiagnostics(query: string): Diagnostic[] {
         const { errors } = parse(query);
         return errors.map((e) => ({
             range: {
@@ -84,6 +165,40 @@ export class SqlLanguageService {
         }));
     }
 
+    private getMultiQueryDiagnostics(query: string): Diagnostic[] {
+        const doc = parseMultiQueryDocument(query);
+        const diagnostics: Diagnostic[] = [];
+
+        for (const region of doc.regions) {
+            if (!region.parseResult) continue;
+
+            for (const e of region.parseResult.errors) {
+                // Recompute line/column relative to the full document
+                const docStartOffset = region.startOffset + e.range.start.offset;
+                const docEndOffset = region.startOffset + e.range.end.offset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, docStartOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, docEndOffset);
+
+                diagnostics.push({
+                    range: {
+                        startOffset: docStartOffset,
+                        endOffset: docEndOffset,
+                        startLine,
+                        startColumn,
+                        endLine,
+                        endColumn,
+                    },
+                    message: e.message,
+                    severity: DiagnosticSeverity.Error,
+                    code: e.code,
+                    source: 'cosmosdb-sql',
+                });
+            }
+        }
+
+        return diagnostics;
+    }
+
     // ─── Completions ────────────────────────────────────────
 
     /**
@@ -92,6 +207,13 @@ export class SqlLanguageService {
     getCompletions(query: string, offset: number): CompletionItem[] {
         const schema = this.host.getSchema?.();
         const aliases = this.host.getAliases?.();
+
+        if (this.host.multiQuery) {
+            const local = this.toLocalContext(query, offset);
+            if (!local) return [];
+            return getCompletions({ query: local.text, offset: local.localOffset, schema, aliases });
+        }
+
         return getCompletions({ query, offset, schema, aliases });
     }
 
@@ -106,6 +228,19 @@ export class SqlLanguageService {
      * - **Schema fields** (when schema is available) — shows type.
      */
     getHoverInfo(query: string, offset: number): HoverInfo | null {
+        if (this.host.multiQuery) {
+            const local = this.toLocalContext(query, offset);
+            if (!local) return null;
+            const result = this.getHoverInfoSingle(local.text, local.localOffset);
+            if (result?.range) {
+                result.range = shiftRange(result.range, local.region.startOffset, query);
+            }
+            return result;
+        }
+        return this.getHoverInfoSingle(query, offset);
+    }
+
+    private getHoverInfoSingle(query: string, offset: number): HoverInfo | null {
         const lexResult = SqlLexer.tokenize(query);
         const token = findTokenAt(lexResult.tokens, offset);
         if (!token) return null;
@@ -156,6 +291,15 @@ export class SqlLanguageService {
      * call's parentheses. Returns `null` when not in a function call.
      */
     getSignatureHelp(query: string, offset: number): SignatureHelpResult | null {
+        if (this.host.multiQuery) {
+            const local = this.toLocalContext(query, offset);
+            if (!local) return null;
+            return this.getSignatureHelpSingle(local.text, local.localOffset);
+        }
+        return this.getSignatureHelpSingle(query, offset);
+    }
+
+    private getSignatureHelpSingle(query: string, offset: number): SignatureHelpResult | null {
         const lexResult = SqlLexer.tokenize(query);
         const tokens = lexResult.tokens;
 
@@ -206,8 +350,21 @@ export class SqlLanguageService {
      * Format a query string by parsing and re-printing it.
      * Returns the original string unchanged if parsing fails
      * with errors.
+     *
+     * When `multiQuery` is enabled, formats each region
+     * independently and joins them with `;\n\n`.
      */
     format(query: string): string {
+        if (this.host.multiQuery) {
+            const doc = parseMultiQueryDocument(query);
+            const formatted = doc.regions.map((region) => {
+                if (!region.parseResult || region.parseResult.errors.length > 0 || !region.parseResult.ast) {
+                    return region.text;
+                }
+                return sqlToString(region.parseResult.ast);
+            });
+            return formatted.join(';\n\n');
+        }
         const { ast, errors } = parse(query);
         if (errors.length > 0 || !ast) return query;
         return sqlToString(ast);
@@ -251,6 +408,24 @@ export class SqlLanguageService {
 
     // ─── Private helpers ────────────────────────────────────
 
+    /**
+     * Map a document-level offset to a local region context.
+     * Used by multi-query routing in completions, hover, and signature help.
+     */
+    private toLocalContext(
+        query: string,
+        offset: number,
+    ): { region: QueryRegion; text: string; localOffset: number } | undefined {
+        const doc = parseMultiQueryDocument(query);
+        const result = doc.toLocalOffset(offset);
+        if (!result) return undefined;
+        return {
+            region: result.region,
+            text: result.region.text,
+            localOffset: result.localOffset,
+        };
+    }
+
     private getFieldHover(query: string, token: IToken, schema: JSONSchema): string[] | null {
         if (!isIdentifierLike(token.tokenType)) return null;
 
@@ -286,6 +461,41 @@ export class SqlLanguageService {
 }
 
 // ========================== Utilities ========================================
+
+/**
+ * Convert a 0-based byte offset into 1-based line and column numbers.
+ */
+function offsetToLineCol(text: string, offset: number): { line: number; col: number } {
+    let line = 1;
+    let col = 1;
+    for (let i = 0; i < offset && i < text.length; i++) {
+        if (text[i] === '\n') {
+            line++;
+            col = 1;
+        } else {
+            col++;
+        }
+    }
+    return { line, col };
+}
+
+/**
+ * Shift a local-region {@link TextRange} to document-level coordinates.
+ */
+function shiftRange(range: TextRange, regionStartOffset: number, fullText: string): TextRange {
+    const docStartOffset = regionStartOffset + range.startOffset;
+    const docEndOffset = regionStartOffset + range.endOffset;
+    const start = offsetToLineCol(fullText, docStartOffset);
+    const end = offsetToLineCol(fullText, docEndOffset);
+    return {
+        startOffset: docStartOffset,
+        endOffset: docEndOffset,
+        startLine: start.line,
+        startColumn: start.col,
+        endLine: end.line,
+        endColumn: end.col,
+    };
+}
 
 function findTokenAt(tokens: IToken[], offset: number): IToken | null {
     for (const t of tokens) {

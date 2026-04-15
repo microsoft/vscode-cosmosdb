@@ -6,7 +6,7 @@
 import { type CompletionContext } from '@codemirror/autocomplete';
 import { type EditorView } from '@codemirror/view';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCompletionSource, createHoverTooltipSource, createLintSource } from '../../src/providers/codemirror.js';
+import { createCompletionSource, createHoverTooltipSource, createLintSource, createMultiQueryFoldService, createMultiQuerySeparatorExtension, type MultiQuerySeparatorDeps } from '../../src/providers/codemirror.js';
 import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------
@@ -200,3 +200,270 @@ describe('createHoverTooltipSource', () => {
         }
     });
 });
+
+// ---------------------------------------------------------------------------
+// Folding
+// ---------------------------------------------------------------------------
+
+function createStateMock(text: string) {
+    const lines = text.split('\n');
+    // Build line index: each line has { from, to, number }
+    const lineIndex: { from: number; to: number; number: number }[] = [];
+    let offset = 0;
+    for (let i = 0; i < lines.length; i++) {
+        lineIndex.push({ from: offset, to: offset + lines[i].length, number: i + 1 });
+        offset += lines[i].length + 1; // +1 for \n
+    }
+
+    return {
+        doc: {
+            toString: () => text,
+            lineAt: (pos: number) => {
+                for (const line of lineIndex) {
+                    if (pos >= line.from && pos <= line.to) return line;
+                }
+                return lineIndex[lineIndex.length - 1];
+            },
+        },
+    };
+}
+
+describe('createMultiQueryFoldService', () => {
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        service = new SqlLanguageService();
+    });
+
+    it('returns a function', () => {
+        const foldFn = createMultiQueryFoldService(service);
+        expect(typeof foldFn).toBe('function');
+    });
+
+    it('returns null for a single query', () => {
+        const foldFn = createMultiQueryFoldService(service);
+        const state = createStateMock('SELECT * FROM c');
+        const result = foldFn(state, 0, 14);
+        expect(result).toBeNull();
+    });
+
+    it('returns null for a single-line query in a multi-query doc', () => {
+        const foldFn = createMultiQueryFoldService(service);
+        const text = 'SELECT 1;\nSELECT 2;';
+        const state = createStateMock(text);
+        // Line 1 starts at offset 0
+        const result = foldFn(state, 0, 8);
+        expect(result).toBeNull();
+    });
+
+    it('returns fold range for a multi-line query', () => {
+        const foldFn = createMultiQueryFoldService(service);
+        // Line 0: SELECT 1;
+        // Line 1: SELECT
+        // Line 2: *
+        // Line 3: FROM c;
+        const text = 'SELECT 1;\nSELECT\n*\nFROM c;';
+        const state = createStateMock(text);
+        // The multi-line query starts at line 1 (offset 10), "SELECT"
+        const line1 = state.doc.lineAt(10);
+        const result = foldFn(state, line1.from, line1.to);
+        expect(result).not.toBeNull();
+        expect(result!.from).toBe(line1.to); // fold starts at end of first line
+    });
+
+    it('fold range starts at content, not at previous semicolon', () => {
+        const foldFn = createMultiQueryFoldService(service);
+        // Line 0: SELECT 1;
+        // Line 1: (empty)
+        // Line 2: SELECT
+        // Line 3: *
+        // Line 4: FROM c;
+        const text = 'SELECT 1;\n\nSELECT\n*\nFROM c;';
+        const state = createStateMock(text);
+        // Line at offset 0 (SELECT 1;) should not fold
+        const line0 = state.doc.lineAt(0);
+        expect(foldFn(state, line0.from, line0.to)).toBeNull();
+        // Line at offset 11 (SELECT on line 2) should fold
+        const line2 = state.doc.lineAt(11);
+        const result = foldFn(state, line2.from, line2.to);
+        expect(result).not.toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-query separator decorations
+// ---------------------------------------------------------------------------
+
+/**
+ * Mock for the CodeMirror deps required by `createMultiQuerySeparatorExtension`.
+ * Tracks decoration calls so we can assert on them.
+ */
+function createSeparatorDepsMock(): MultiQuerySeparatorDeps & {
+    createdRanges: { class: string; from: number }[];
+    decorationSets: unknown[][];
+    pluginInstances: { decorations: unknown; update(u: unknown): void }[];
+} {
+    const createdRanges: { class: string; from: number }[] = [];
+    const decorationSets: unknown[][] = [];
+    const pluginInstances: { decorations: unknown; update(u: unknown): void }[] = [];
+
+    return {
+        createdRanges,
+        decorationSets,
+        pluginInstances,
+        ViewPlugin: {
+            fromClass<V extends object>(
+                cls: new (view: unknown) => V,
+                _spec?: { decorations?: (value: V) => unknown },
+            ): { _cls: new (view: unknown) => V; _spec: typeof _spec } {
+                // Return an object that lets tests instantiate the plugin
+                return { _cls: cls, _spec };
+            },
+        },
+        Decoration: {
+            line(spec: { class: string }) {
+                return {
+                    range(from: number) {
+                        const r = { class: spec.class, from };
+                        createdRanges.push(r);
+                        return r;
+                    },
+                };
+            },
+            none: [] as unknown,
+            set(of: unknown[], _sort?: boolean) {
+                decorationSets.push(of);
+                return of;
+            },
+        },
+    };
+}
+
+/** Create a minimal EditorView-like object for the separator plugin. */
+function createSeparatorViewMock(text: string) {
+    const lines = text.split('\n');
+
+    function lineAt(pos: number): { from: number; to: number; number: number } {
+        let offset = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lineEnd = offset + lines[i].length;
+            if (pos >= offset && pos <= lineEnd) {
+                return { from: offset, to: lineEnd, number: i + 1 };
+            }
+            offset = lineEnd + 1;
+        }
+        const last = lines.length - 1;
+        const lastFrom = text.length - lines[last].length;
+        return { from: lastFrom, to: text.length, number: lines.length };
+    }
+
+    return {
+        state: {
+            doc: {
+                toString: () => text,
+                lineAt,
+            },
+        },
+    };
+}
+
+describe('createMultiQuerySeparatorExtension', () => {
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        service = new SqlLanguageService();
+    });
+
+    it('returns an extension (from ViewPlugin.fromClass)', () => {
+        const deps = createSeparatorDepsMock();
+        const ext = createMultiQuerySeparatorExtension(service, deps);
+        expect(ext).toBeDefined();
+        expect(ext).toHaveProperty('_cls');
+        expect(ext).toHaveProperty('_spec');
+    });
+
+    it('creates no decorations for a single query', () => {
+        const deps = createSeparatorDepsMock();
+        const ext = createMultiQuerySeparatorExtension(service, deps) as {
+            _cls: new (view: unknown) => { decorations: unknown };
+        };
+
+        const view = createSeparatorViewMock('SELECT * FROM c');
+        const plugin = new ext._cls(view);
+
+        // decorations should be Decoration.none (empty array in our mock)
+        expect(plugin.decorations).toEqual([]);
+    });
+
+    it('creates separator decorations between query regions', () => {
+        const deps = createSeparatorDepsMock();
+        const ext = createMultiQuerySeparatorExtension(service, deps) as {
+            _cls: new (view: unknown) => { decorations: unknown };
+        };
+
+        // "SELECT 1;\nSELECT 2;\nSELECT 3;" — trailing ; creates an empty
+        // 4th region, so getSeparatorPositions returns 3 separators.
+        const text = 'SELECT 1;\nSELECT 2;\nSELECT 3;';
+        const view = createSeparatorViewMock(text);
+        new ext._cls(view);
+
+        expect(deps.createdRanges).toHaveLength(3);
+        // First separator is on line containing offset of first ";"
+        expect(deps.createdRanges[0].from).toBe(0); // line 1 starts at 0
+        expect(deps.createdRanges[1].from).toBe(10); // line 2 starts at 10
+        expect(deps.createdRanges[0].class).toBe('cosmosdb-query-separator');
+    });
+
+    it('recalculates decorations on doc change', () => {
+        const deps = createSeparatorDepsMock();
+        const ext = createMultiQuerySeparatorExtension(service, deps) as {
+            _cls: new (view: unknown) => { decorations: unknown; update(u: unknown): void };
+        };
+
+        // "SELECT 1;\nSELECT 2;" — trailing ; → 3 regions, 2 separators
+        const view1 = createSeparatorViewMock('SELECT 1;\nSELECT 2;');
+        const plugin = new ext._cls(view1);
+        expect(deps.createdRanges).toHaveLength(2);
+
+        // Simulate doc change — add a third query
+        deps.createdRanges.length = 0;
+        const view2 = createSeparatorViewMock('SELECT 1;\nSELECT 2;\nSELECT 3;');
+        plugin.update({ docChanged: true, state: view2.state, view: view2 });
+
+        expect(deps.createdRanges).toHaveLength(3);
+    });
+
+    it('does not recalculate when doc did not change', () => {
+        const deps = createSeparatorDepsMock();
+        const ext = createMultiQuerySeparatorExtension(service, deps) as {
+            _cls: new (view: unknown) => { decorations: unknown; update(u: unknown): void };
+        };
+
+        const view = createSeparatorViewMock('SELECT 1;\nSELECT 2;');
+        const plugin = new ext._cls(view);
+        const initialRangeCount = deps.createdRanges.length;
+
+        // Simulate non-doc-change update (e.g. selection change)
+        plugin.update({ docChanged: false, state: view.state, view });
+
+        // No new ranges computed
+        expect(deps.createdRanges).toHaveLength(initialRangeCount);
+    });
+
+    it('supports custom separator class', () => {
+        const deps = createSeparatorDepsMock();
+        const ext = createMultiQuerySeparatorExtension(service, deps, {
+            separatorClass: 'my-custom-sep',
+        }) as {
+            _cls: new (view: unknown) => { decorations: unknown };
+        };
+
+        const view = createSeparatorViewMock('SELECT 1;\nSELECT 2;');
+        new ext._cls(view);
+
+        // 2 separators (trailing ; creates empty region)
+        expect(deps.createdRanges).toHaveLength(2);
+        expect(deps.createdRanges[0].class).toBe('my-custom-sep');
+    });
+});
+

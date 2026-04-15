@@ -153,6 +153,16 @@ module.exports = (env, { mode }) => {
                                 // Transpile only, skip type checking
                                 // This allows our custom loader to transform imports
                                 transpileOnly: true,
+                                // Override module settings so that all files (including
+                                // workspace packages whose tsconfig uses NodeNext) are
+                                // emitted as ESM.  ts.transpileModule() cannot read the
+                                // filesystem to check package.json "type", so NodeNext
+                                // defaults to CJS for .ts files, which breaks webpack's
+                                // ESM output (`outputModule: true`).
+                                compilerOptions: {
+                                    module: 'ESNext',
+                                    moduleResolution: 'Bundler',
+                                },
                             },
                         },
                     ],

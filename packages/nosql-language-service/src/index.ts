@@ -43,6 +43,8 @@ export * from './visitor/SqlVisitor.js';
 // Language service (IDE-agnostic facade)
 export { FUNCTION_SIGNATURES, getFunctionMeta } from './services/functionSignatures.js';
 export type { FunctionMeta } from './services/functionSignatures.js';
+export { parseMultiQueryDocument } from './services/MultiQueryDocument.js';
+export type { MultiQueryDocument, QueryRegion } from './services/MultiQueryDocument.js';
 export { SqlLanguageService } from './services/SqlLanguageService.js';
 export type {
     Diagnostic,
@@ -79,6 +81,25 @@ export interface ParseResult {
  * @internal
  */
 const parserInstance = new SqlParser();
+
+/**
+ * Convert a 0-based byte offset to a 1-based line/col {@link SourcePosition}.
+ * Used as a fallback when Chevrotain doesn't provide line/col (e.g. EOF token).
+ */
+function offsetToPosition(text: string, offset: number): SourcePosition {
+    let line = 1;
+    let col = 1;
+    const end = Math.min(offset, text.length);
+    for (let i = 0; i < end; i++) {
+        if (text[i] === '\n') {
+            line++;
+            col = 1;
+        } else {
+            col++;
+        }
+    }
+    return { offset, line, col };
+}
 
 /**
  * Parse a CosmosDB NoSQL SQL query string into a typed AST.
@@ -123,19 +144,31 @@ export function parse(query: string): ParseResult {
     // Collect parser errors
     for (const e of parserInstance.errors) {
         const token = e.token;
-        const startPos: SourcePosition = {
-            offset: token.startOffset,
-            line: token.startLine ?? 1,
-            col: token.startColumn ?? 1,
-        };
-        const endPos: SourcePosition = {
-            offset: (token.endOffset ?? token.startOffset) + 1,
-            line: token.endLine ?? token.startLine ?? 1,
-            col: (token.endColumn ?? token.startColumn ?? 0) + 1,
-        };
+
+        // Chevrotain returns NaN for virtual EOF tokens — treat NaN as missing
+        const safeOffset = (v: number | undefined, fallback: number) =>
+            v !== undefined && !isNaN(v) ? v : fallback;
+
+        const startOffset = safeOffset(token.startOffset, query.length);
+        const endOffset = safeOffset(token.endOffset, startOffset) + 1;
+        const startLine = safeOffset(token.startLine, undefined as unknown as number);
+        const startCol = safeOffset(token.startColumn, undefined as unknown as number);
+
+        // If Chevrotain didn't provide line/col (EOF token), compute from offset
+        const computedStart =
+            startLine !== undefined
+                ? { offset: startOffset, line: startLine, col: startCol ?? 1 }
+                : offsetToPosition(query, startOffset);
+
+        const endLine = safeOffset(token.endLine, undefined as unknown as number);
+        const endCol = safeOffset(token.endColumn, undefined as unknown as number);
+        const computedEnd =
+            endLine !== undefined
+                ? { offset: endOffset, line: endLine, col: (endCol ?? 0) + 1 }
+                : offsetToPosition(query, endOffset);
 
         let code = SqlErrorCode.UnexpectedToken;
-        if (token.startOffset >= query.length) {
+        if (startOffset >= query.length) {
             code = SqlErrorCode.UnexpectedEof;
         } else if (e.message.includes('expecting')) {
             code = SqlErrorCode.MissingKeyword;
@@ -144,7 +177,7 @@ export function parse(query: string): ParseResult {
         errors.push({
             code,
             message: e.message,
-            range: { start: startPos, end: endPos },
+            range: { start: computedStart, end: computedEnd },
         });
     }
 

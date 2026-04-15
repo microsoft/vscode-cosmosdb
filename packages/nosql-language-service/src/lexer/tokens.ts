@@ -285,3 +285,22 @@ export const allTokens: TokenType[] = [
     Bang,
     Question,
 ];
+
+// ========================== Derived keyword list ==============================
+
+/**
+ * SQL keyword names (uppercase) derived from the token definitions.
+ *
+ * A token is considered a keyword if it was created via `kw()` — i.e.
+ * it has `Identifier` in its `LONGER_ALT` list.  This avoids manually
+ * duplicating the keyword list in each editor adapter.
+ */
+export const SQL_KEYWORDS: readonly string[] = allTokens
+    .filter((t) => {
+        const alt = t.LONGER_ALT;
+        if (!alt) return false;
+        const alts = Array.isArray(alt) ? alt : [alt];
+        return alts.includes(Identifier);
+    })
+    .map((t) => t.name);
+

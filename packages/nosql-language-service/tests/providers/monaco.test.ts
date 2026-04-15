@@ -7,6 +7,7 @@ import type * as monacoEditor from 'monaco-editor';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     MonacoCompletionProvider,
+    MonacoFoldingRangeProvider,
     MonacoFormattingProvider,
     MonacoHoverProvider,
     MonacoSignatureHelpProvider,
@@ -34,6 +35,8 @@ function createMonacoMock(): MonacoNamespace {
         languages: {
             getLanguages: () => [],
             register: vi.fn(),
+            setLanguageConfiguration: vi.fn(),
+            setMonarchTokensProvider: vi.fn(),
             registerCompletionItemProvider: vi.fn((_langId, provider) => {
                 registeredProviders.completion.push(provider);
                 return { dispose: vi.fn() };
@@ -50,6 +53,9 @@ function createMonacoMock(): MonacoNamespace {
                 registeredProviders.formatting.push(provider);
                 return { dispose: vi.fn() };
             }),
+            registerFoldingRangeProvider: vi.fn((_langId, _provider) => {
+                return { dispose: vi.fn() };
+            }),
             CompletionItemKind: {
                 Keyword: 17,
                 Field: 4,
@@ -64,9 +70,13 @@ function createMonacoMock(): MonacoNamespace {
         },
         editor: {
             getModels: () => models,
+            getEditors: () => [],
             setModelMarkers: vi.fn(),
             onDidCreateModel: vi.fn((cb) => {
                 modelCreateListeners.push(cb);
+                return { dispose: vi.fn() };
+            }),
+            onDidCreateEditor: vi.fn((_cb) => {
                 return { dispose: vi.fn() };
             }),
         },
@@ -90,6 +100,16 @@ function createModelMock(text: string): monacoEditor.editor.ITextModel {
                 offset += lines[i].length + 1;
             }
             return offset + pos.column - 1;
+        },
+        getPositionAt: (offset: number) => {
+            let remaining = offset;
+            for (let i = 0; i < lines.length; i++) {
+                if (remaining <= lines[i].length) {
+                    return { lineNumber: i + 1, column: remaining + 1 };
+                }
+                remaining -= lines[i].length + 1; // +1 for \n
+            }
+            return { lineNumber: lines.length, column: lines[lines.length - 1].length + 1 };
         },
         getWordUntilPosition: (pos: any) => ({
             startColumn: 1,
@@ -252,6 +272,87 @@ describe('MonacoFormattingProvider', () => {
         const edits = provider.provideDocumentFormattingEdits(model);
 
         expect(edits).toHaveLength(0);
+    });
+});
+
+describe('MonacoFoldingRangeProvider', () => {
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        service = new SqlLanguageService();
+    });
+
+    it('returns no folds for a single query', () => {
+        const provider = new MonacoFoldingRangeProvider(service);
+        const model = createModelMock('SELECT * FROM c');
+        const ranges = provider.provideFoldingRanges(model);
+        expect(ranges).toHaveLength(0);
+    });
+
+    it('returns no folds for single-line queries separated by semicolons', () => {
+        const provider = new MonacoFoldingRangeProvider(service);
+        const model = createModelMock('SELECT * FROM c;\nSELECT * FROM d;');
+        const ranges = provider.provideFoldingRanges(model);
+        expect(ranges).toHaveLength(0);
+    });
+
+    it('returns a fold for a multi-line query', () => {
+        const provider = new MonacoFoldingRangeProvider(service);
+        const model = createModelMock('SELECT * FROM c;\nSELECT\n*\nFROM d;');
+        const ranges = provider.provideFoldingRanges(model);
+        expect(ranges).toHaveLength(1);
+        // The multi-line query starts on line 2 (SELECT) and ends on line 4 (FROM d)
+        expect(ranges[0].start).toBe(2);
+        expect(ranges[0].end).toBe(4);
+    });
+
+    it('fold range starts at content, not at previous semicolon', () => {
+        const provider = new MonacoFoldingRangeProvider(service);
+        // Line 1: SELECT 1;
+        // Line 2: (empty)
+        // Line 3: SELECT
+        // Line 4: *
+        // Line 5: FROM c;
+        const model = createModelMock('SELECT 1;\n\nSELECT\n*\nFROM c;');
+        const ranges = provider.provideFoldingRanges(model);
+        expect(ranges).toHaveLength(1);
+        // Fold should start at line 3 (where SELECT is), NOT line 1
+        expect(ranges[0].start).toBe(3);
+        expect(ranges[0].end).toBe(5);
+    });
+
+    it('handles multiple multi-line queries correctly', () => {
+        const provider = new MonacoFoldingRangeProvider(service);
+        // Line 1: SELECT * FROM c;
+        // Line 2: (empty)
+        // Line 3: SELECT TOP 10 * FROM c;
+        // Line 4: (empty)
+        // Line 5: SELECT
+        // Line 6: *
+        // Line 7: FROM g
+        // Line 8: WHERE
+        // Line 9: g.price > 0;
+        // Line 10: (empty)
+        // Line 11: sdfsdf
+        const text = [
+            'SELECT * FROM c;',
+            '',
+            'SELECT TOP 10 * FROM c;',
+            '',
+            'SELECT',
+            '*',
+            'FROM g',
+            'WHERE',
+            'g.price > 0;',
+            '',
+            'sdfsdf',
+        ].join('\n');
+        const model = createModelMock(text);
+        const ranges = provider.provideFoldingRanges(model);
+        // Only the multi-line query (lines 5-9) should be foldable
+        expect(ranges).toHaveLength(1);
+        expect(ranges[0].start).toBe(5);
+        expect(ranges[0].end).toBe(9);
     });
 });
 

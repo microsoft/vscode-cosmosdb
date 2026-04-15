@@ -66,6 +66,7 @@
   },
   "devDependencies": {
     "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/language": "^6.10.0",
     "@codemirror/lint": "^6.8.0",
     "@codemirror/state": "^6.5.0",
     "@codemirror/view": "^6.35.0",
@@ -75,6 +76,7 @@
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
     "@codemirror/lint": "^6.0.0",
     "@codemirror/state": "^6.0.0",
     "@codemirror/view": "^6.0.0",
@@ -82,6 +84,9 @@
   },
   "peerDependenciesMeta": {
     "@codemirror/autocomplete": {
+      "optional": true
+    },
+    "@codemirror/language": {
       "optional": true
     },
     "@codemirror/lint": {

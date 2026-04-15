@@ -24,6 +24,7 @@ import type * as vscodeApi from 'vscode';
 import { type CompletionItemKind } from '../completion/SqlCompletion.js';
 import { type SqlLanguageService } from '../services/index.js';
 import { type Disposable, DiagnosticSeverity as DsSeverity } from '../services/types.js';
+import { LANGUAGE_ID } from './shared.js';
 
 // Declare timer APIs that exist in both Node.js and browsers
 // without requiring DOM or @types/node lib references.
@@ -38,7 +39,8 @@ export type VSCodeNamespace = typeof vscodeApi;
 // ========================== Public types ======================================
 
 /** Document selector used to scope VS Code providers. */
-export const LANGUAGE_ID = 'cosmosdb-sql';
+// Re-export so consumers can still import from this module.
+export { LANGUAGE_ID } from './shared.js';
 
 export interface VSCodeRegistrationOptions {
     /**
@@ -82,6 +84,12 @@ export interface VSCodeRegistrationOptions {
      * @default 300
      */
     diagnosticDelay?: number;
+
+    /**
+     * Debounce delay (ms) for separator decoration updates on content change.
+     * @default 300
+     */
+    decorationDelay?: number;
 }
 
 export interface VSCodeDiagnosticsProviderOptions {
@@ -395,7 +403,153 @@ export class VSCodeDiagnosticsProvider implements Disposable {
     }
 }
 
-// ========================== Registration ======================================
+// ========================== Folding range provider =============================
+
+/**
+ * Provides folding ranges for multi-query documents.
+ * Each non-empty query region (between semicolons) becomes a foldable region.
+ */
+export class VSCodeFoldingRangeProvider implements vscodeApi.FoldingRangeProvider {
+    private readonly vscode: VSCodeNamespace;
+    private readonly service: SqlLanguageService;
+
+    constructor(vscode: VSCodeNamespace, service: SqlLanguageService) {
+        this.vscode = vscode;
+        this.service = service;
+    }
+
+    provideFoldingRanges(document: vscodeApi.TextDocument): vscodeApi.FoldingRange[] {
+        const text = document.getText();
+        const foldable = this.service.getFoldableRegions(text);
+
+        const ranges: vscodeApi.FoldingRange[] = [];
+        for (const region of foldable) {
+            const startPos = document.positionAt(region.contentStartOffset);
+            const endPos = document.positionAt(region.contentEndOffset);
+            if (endPos.line > startPos.line) {
+                ranges.push(new this.vscode.FoldingRange(startPos.line, endPos.line));
+            }
+        }
+        return ranges;
+    }
+}
+
+// ========================== Multi-query separator decorator ====================
+
+/**
+ * Manages visual separator-line decorations for multi-query documents in
+ * the native VS Code editor.
+ *
+ * Uses `vscode.window.createTextEditorDecorationType` to render a
+ * horizontal line after each semicolon-separated query region.
+ *
+ * @example
+ * ```typescript
+ * import { VSCodeMultiQueryDecorator } from "@cosmosdb/nosql-language-service/vscode";
+ *
+ * const decorator = new VSCodeMultiQueryDecorator(vscode, service, {
+ *   languageId: "cosmosdb-sql",
+ * });
+ * // later
+ * decorator.dispose();
+ * ```
+ */
+export class VSCodeMultiQueryDecorator implements Disposable {
+    private readonly service: SqlLanguageService;
+    private readonly languageId: string;
+    private readonly delay: number;
+    private readonly disposables: Disposable[] = [];
+    private readonly separatorDecorationType: vscodeApi.TextEditorDecorationType;
+    private timer: number | undefined;
+
+    constructor(
+        vscode: VSCodeNamespace,
+        service: SqlLanguageService,
+        options: { languageId?: string; decorationDelay?: number } = {},
+    ) {
+        this.service = service;
+        this.languageId = options.languageId ?? LANGUAGE_ID;
+        this.delay = options.decorationDelay ?? 300;
+
+        // Create a decoration type with a visible bottom border + margin
+        this.separatorDecorationType = vscode.window.createTextEditorDecorationType({
+            isWholeLine: true,
+            borderWidth: '0 0 2px 0',
+            borderStyle: 'solid',
+            borderColor: 'var(--vscode-editorIndentGuide-activeBackground, var(--vscode-editorIndentGuide-background, #606060))',
+            // Add visual spacing after the separator line
+            after: {
+                contentText: '',
+                margin: '0 0 8px 0',
+            },
+        });
+
+        // Update decorations for the active editor
+        const updateIfMatches = (editor: vscodeApi.TextEditor | undefined) => {
+            if (editor && editor.document.languageId === this.languageId) {
+                this.updateDecorations(editor);
+            }
+        };
+
+        // React to editor changes
+        this.disposables.push(
+            vscode.window.onDidChangeActiveTextEditor((editor) => {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = undefined;
+                }
+                updateIfMatches(editor);
+            }),
+        );
+
+        this.disposables.push(
+            vscode.workspace.onDidChangeTextDocument((event) => {
+                const editor = vscode.window.activeTextEditor;
+                if (!editor || editor.document !== event.document) return;
+                if (editor.document.languageId !== this.languageId) return;
+                this.scheduleUpdate(editor);
+            }),
+        );
+
+        // Initial update
+        updateIfMatches(vscode.window.activeTextEditor);
+    }
+
+    private scheduleUpdate(editor: vscodeApi.TextEditor): void {
+        if (this.timer) {
+            clearTimeout(this.timer);
+        }
+        this.timer = setTimeout(() => {
+            this.timer = undefined;
+            this.updateDecorations(editor);
+        }, this.delay);
+    }
+
+    private updateDecorations(editor: vscodeApi.TextEditor): void {
+        const text = editor.document.getText();
+        const separators = this.service.getSeparatorPositions(text);
+
+        const ranges: vscodeApi.DecorationOptions[] = separators.map((sep) => {
+            const pos = editor.document.positionAt(sep.semicolonOffset);
+            const line = editor.document.lineAt(pos.line);
+            return { range: line.range };
+        });
+
+        editor.setDecorations(this.separatorDecorationType, ranges);
+    }
+
+    dispose(): void {
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = undefined;
+        }
+        this.separatorDecorationType.dispose();
+        for (const d of this.disposables) d.dispose();
+        this.disposables.length = 0;
+    }
+}
+
+// ========================== Registration =====================================
 
 /**
  * Register CosmosDB NoSQL SQL language support with VS Code.
@@ -471,6 +625,21 @@ export function registerCosmosDbSql(
             ),
         );
     }
+
+    // --- Folding (multi-query regions) --------------------
+    if (typeof vscode.languages.registerFoldingRangeProvider === 'function') {
+        disposables.push(
+            vscode.languages.registerFoldingRangeProvider(selector, new VSCodeFoldingRangeProvider(vscode, service)),
+        );
+    }
+
+    // --- Multi-query separator decorations ----------------
+    disposables.push(
+        new VSCodeMultiQueryDecorator(vscode, service, {
+            languageId: langId,
+            decorationDelay: options.decorationDelay ?? options.diagnosticDelay,
+        }),
+    );
 
     // --- Register all disposables with extension context --
     const composite: Disposable = {

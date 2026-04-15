@@ -34,7 +34,7 @@ export class VSCodeMultiQueryDecorator implements Disposable {
                 'var(--vscode-editorIndentGuide-activeBackground, var(--vscode-editorIndentGuide-background, #606060))',
             after: {
                 contentText: '',
-                margin: '0 0 8px 0',
+                margin: '0 0 1em 0',
             },
         });
 

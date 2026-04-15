@@ -140,7 +140,7 @@ export class MonacoMultiQueryDecorator implements Disposable {
             for (const lineNumber of separatorLineNumbers) {
                 const id = accessor.addZone({
                     afterLineNumber: lineNumber,
-                    heightInLines: 0.5,
+                    heightInLines: 1,
                     /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
                     domNode: (() => {
                         const g = globalThis as any;

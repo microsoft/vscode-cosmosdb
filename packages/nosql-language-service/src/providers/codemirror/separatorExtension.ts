@@ -20,7 +20,7 @@ function ensureSeparatorStyles(): void {
     style.textContent = [
         `.${SEPARATOR_CLASS} {`,
         `  border-bottom: 2px solid var(--vscode-editorIndentGuide-activeBackground, var(--vscode-editorIndentGuide-background, #606060));`,
-        `  padding-bottom: 8px;`,
+        `  padding-bottom: 1em;`,
         `}`,
     ].join('\n');
     g.document.head.appendChild(style);

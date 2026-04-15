@@ -143,19 +143,21 @@ extends:
                               versionSource: fromFile
                               versionFilePath: '$(Build.SourcesDirectory)/.nvmrc'
 
+                        - pwsh: corepack enable && corepack prepare --activate
+                          displayName: '📦 Install pnpm'
+                          condition: succeeded()
+                          workingDirectory: $(Build.SourcesDirectory)
+
                         - task: npmAuthenticate@0
                           displayName: '🔐 Authenticate to npm registry'
                           condition: succeeded()
                           inputs:
                               workingFile: '$(Build.SourcesDirectory)/.azure-pipelines/.npmrc'
 
-                        - task: Npm@1
+                        - pwsh: pnpm install --frozen-lockfile --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
                           displayName: '⬇️ Install Dependencies'
                           condition: succeeded()
-                          inputs:
-                              command: custom
-                              customCommand: ci --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
-                              workingDir: $(Build.SourcesDirectory)
+                          workingDirectory: $(Build.SourcesDirectory)
 
                         - task: OneLocBuild@3
                           displayName: '🌍 Build Localized Files'
@@ -178,23 +180,17 @@ extends:
                               lclPackageSource: 'https://msdata.pkgs.visualstudio.com/CosmosDB/_packaging/vscode-cosmosdb/nuget/v3/index.json'
                               patVariable: '$(System.AccessToken)'
 
-                        - task: Npm@1
+                        - pwsh: pnpm run build
                           displayName: '🔨 Build'
                           condition: succeeded()
-                          inputs:
-                              command: custom
-                              customCommand: run build
-                              workingDir: $(Build.SourcesDirectory)
+                          workingDirectory: $(Build.SourcesDirectory)
 
-                        - task: Npm@1
+                        - pwsh: pnpm run package
                           displayName: '📦 Package'
                           condition: succeeded()
-                          inputs:
-                              command: custom
-                              customCommand: run package
-                              workingDir: $(Build.SourcesDirectory)
+                          workingDirectory: $(Build.SourcesDirectory)
 
-                        - pwsh: npm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
+                        - pwsh: pnpm i -g @vscode/vsce --userconfig $(Build.SourcesDirectory)/.azure-pipelines/.npmrc
                           displayName: '⬇️ Install vsce'
                           condition: succeeded()
 
@@ -324,13 +320,10 @@ extends:
                               TargetFolder: '$(ob_outputDirectory)'
                           condition: and(succeeded(), ne(variables['System.PullRequest.IsFork'], 'True'))
 
-                        - task: Npm@1
+                        - pwsh: pnpm test
                           displayName: '🧪 Test'
-                          inputs:
-                              command: custom
-                              customCommand: test
-                              workingDir: $(Build.SourcesDirectory)
                           condition: succeeded()
+                          workingDirectory: $(Build.SourcesDirectory)
 
                         - task: PowerShell@2
                           displayName: '⚖️ Validate Version / Preview Alignment'

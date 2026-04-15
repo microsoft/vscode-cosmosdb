@@ -82,7 +82,7 @@ Follow these steps precisely:
 
 - Run `git status` and make sure the resulting diff only contains the intended backport changes.
 - Preserve the original commit messages in non-squash mode.
-- Do not run `npm install`, `npm run build`, or test commands unless the user explicitly asks you to.
+- Do not run `npm install`, `npm run build`, `pnpm install`, `pnpm run build`, or test commands unless the user explicitly asks you to.
 
 ### 6. Report back
 

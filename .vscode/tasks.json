@@ -2,8 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "compile",
+      "label": "Build (tsc -watch)",
+      "type": "shell",
+      "command": "pnpm run compile",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -16,8 +17,8 @@
     },
     {
       "label": "Pretest",
-      "type": "npm",
-      "script": "pretest",
+      "type": "shell",
+      "command": "pnpm run pretest",
       "group": "build",
       "isBackground": true,
       "presentation": {
@@ -26,8 +27,9 @@
       "problemMatcher": "$tsc-watch"
     },
     {
-      "type": "npm",
-      "script": "lint",
+      "label": "Lint",
+      "type": "shell",
+      "command": "pnpm run lint",
       "problemMatcher": "$eslint-stylish"
     },
     {
@@ -36,8 +38,8 @@
     },
     {
       "label": "watch:ext",
-      "type": "npm",
-      "script": "watch:ext",
+      "type": "shell",
+      "command": "pnpm run watch:ext",
       "group": "build",
       "isBackground": true,
       "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
@@ -53,8 +55,8 @@
     },
     {
       "label": "watch:views",
-      "type": "npm",
-      "script": "watch:views",
+      "type": "shell",
+      "command": "pnpm run watch:views",
       "group": "build",
       "isBackground": true,
       "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],

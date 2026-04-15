@@ -83,13 +83,13 @@ function main() {
     console.log(`Preview: ${isPreview ? 'Yes' : 'No'}`);
 
     // Step 1: Build the extension
-    executeCommand('npm run webpack-prod', 'Building extension');
+    executeCommand('pnpm run webpack-prod', 'Building extension');
 
     // Step 2: Prepare dist directory and package VSIX
     const outputFileName = `${name}-${version}.vsix`;
     const vsceCommand = [
         'cd dist',
-        'npm pkg delete "scripts.vscode:prepublish"',
+        'pnpm pkg delete "scripts.vscode:prepublish"',
         `npx vsce package ${preReleaseFlag} --no-dependencies --out ../${outputFileName}`,
     ].join(' && ');
 

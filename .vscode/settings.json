@@ -11,8 +11,10 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
+  "npm.packageManager": "pnpm",
   "search.exclude": {
     "out": true,
+    "dist": true,
     "**/node_modules": true,
     ".vscode-test": true
   },

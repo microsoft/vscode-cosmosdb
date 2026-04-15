@@ -32,12 +32,14 @@ jobs:
             # Setup
             - uses: actions/checkout@v4
 
+            - name: 📦 Install pnpm
+              uses: pnpm/action-setup@v4
+
             - name: 📦 Using Node.js
               uses: actions/setup-node@v4
               with:
                   node-version-file: .nvmrc
-                  cache: 'npm'
-                  cache-dependency-path: '**/package-lock.json'
+                  cache: 'pnpm'
 
             - name: ⚖️ Validate Version / Preview Alignment
               shell: pwsh
@@ -71,19 +73,19 @@ jobs:
                   }
 
             - name: ⬇️ Install Dependencies
-              run: npm ci
+              run: pnpm install --frozen-lockfile
 
             - name: 🌍 Localize
-              run: npm run l10n:check
+              run: pnpm run l10n:check
 
             - name: 🔍 Verify External Skills
               shell: bash
               run: |
                   cp -r skills/ skills-backup/
-                  npm run fetch-skill
+                  pnpm run fetch-skill
                   # Use --strip-trailing-cr -B -b to ignore line ending, blank line, and whitespace differences
                   if ! diff -rq --strip-trailing-cr -B -b skills/ skills-backup/ > /dev/null 2>&1; then
-                      echo "::warning::Committed skills/ does not match the pinned commit in package.json. If you have local skill changes, submit them to the upstream skill repository first, then update the pinned commit in package.json and run 'npm run fetch-skill' to pull the latest version."
+                      echo "::warning::Committed skills/ does not match the pinned commit in package.json. If you have local skill changes, submit them to the upstream skill repository first, then update the pinned commit in package.json and run 'pnpm run fetch-skill' to pull the latest version."
                       diff -r --strip-trailing-cr -B -b skills/ skills-backup/ || true
                   else
                       echo "✅ External skills are up to date."
@@ -92,16 +94,16 @@ jobs:
                   mv skills-backup/ skills/
 
             - name: 🔍 Lint
-              run: npm run lint
+              run: pnpm run lint
 
             - name: ✨ Prettier
-              run: npm run prettier
+              run: pnpm run prettier
 
             - name: 🔨 Compile
-              run: npm run build
+              run: pnpm run build
 
             - name: 📦 Package
-              run: npm run package
+              run: pnpm run package
 
             - name: 🔍 Verify VSIX File
               shell: pwsh
@@ -152,12 +154,12 @@ jobs:
             - name: 🧪 Unit Tests
               id: unit-tests
               continue-on-error: true
-              run: npm run jesttest
+              run: pnpm run jesttest
 
             - name: 🧪 Integration Tests
               id: integration-tests
               continue-on-error: true
-              run: xvfb-run -a npm test
+              run: xvfb-run -a pnpm test
 
             - name: 📊 Generate Job Summary
               if: always()

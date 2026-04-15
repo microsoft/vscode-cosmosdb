@@ -5,13 +5,11 @@ steps:
     versionSource: fromFile
     versionFilePath: .nvmrc
 
-- task: Npm@1
-  displayName: 'npm ci'
-  inputs:
-    command: ci
+- pwsh: corepack enable && corepack prepare --activate
+  displayName: 'Install pnpm'
 
-- task: Npm@1
+- pwsh: pnpm install --frozen-lockfile
+  displayName: 'Install Dependencies'
+
+- pwsh: pnpm run build
   displayName: 'Build'
-  inputs:
-    command: custom
-    customCommand: run build

@@ -54,7 +54,7 @@ const checkLocalisationBundle = async () => {
     const strDiff = getStringDiff(bundleOld, bundleNew);
     if (strDiff) {
         console.log('Diff:\n' + strDiff);
-        console.log('Localization file has changed. Please run "npm run l10n" to update it.');
+        console.log('Localization file has changed. Please run "pnpm run l10n" to update it.');
         process.exit(1); // Exit with an error code if changes are detected
     }
 

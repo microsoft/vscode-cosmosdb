@@ -61,7 +61,7 @@ vscode-cosmosdb/
 
 - Compiles only production source code
 - Excludes all test files
-- Used by: `npm run build`, `npm run compile`
+- Used by: `pnpm run build`, `pnpm run compile`
 
 ### 2. `tsconfig.jest.json` (Jest Unit Tests)
 
@@ -79,7 +79,7 @@ vscode-cosmosdb/
 
 - Compiles Jest unit tests in `src/`
 - Includes Jest type definitions
-- Used by: `npm run jesttest` (via jest.config.js)
+- Used by: `pnpm run jesttest` (via jest.config.js)
 
 ### 3. `tsconfig.test.json` (Mocha Integration Tests)
 
@@ -97,7 +97,7 @@ vscode-cosmosdb/
 
 - Compiles Mocha integration tests in `test/`
 - Includes Mocha type definitions
-- Used by: `npm run pretest`, `npm run test`
+- Used by: `pnpm run pretest`, `pnpm run test`
 
 ---
 
@@ -146,7 +146,7 @@ The `eslint.config.mjs` has **separate configurations** for each test type:
 ### Jest Unit Tests (Fast)
 
 ```bash
-npm run jesttest
+pnpm run jesttest
 ```
 
 - Runs all `src/**/*.test.ts` files
@@ -157,8 +157,8 @@ npm run jesttest
 ### Mocha Integration Tests (Slow)
 
 ```bash
-npm run pretest    # Compile tests
-npm run test       # Run in VS Code test environment
+pnpm run pretest    # Compile tests
+pnpm run test       # Run in VS Code test environment
 ```
 
 - Runs all `test/**/*.test.ts` files
@@ -203,10 +203,10 @@ suite('My Integration Tests', () => {
 ## 🎯 Key Differences
 
 | Feature         | Jest (`src/`)                      | Mocha (`test/`)                 |
-| --------------- | ---------------------------------- | ------------------------------- |
+| --------------- |------------------------------------| ------------------------------- |
 | **Syntax**      | `describe()`, `test()`, `expect()` | `suite()`, `test()`, `assert()` |
 | **Mocking**     | Built-in `jest.mock()`             | Manual (sinon, etc.)            |
-| **Speed**       | ⚡ Fast                            | 🐌 Slow                         |
+| **Speed**       | ⚡ Fast                             | 🐌 Slow                         |
 | **Environment** | Node.js                            | VS Code Extension Host          |
 | **Purpose**     | Unit tests                         | Integration tests               |
 | **TSConfig**    | `tsconfig.jest.json`               | `tsconfig.test.json`            |

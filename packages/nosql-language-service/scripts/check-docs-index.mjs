@@ -19,7 +19,7 @@ const expected = generateDocsIndexContent();
 
 if (!fs.existsSync(outFile)) {
     console.error(`❌  ${outFile} does not exist.`);
-    console.error('    Run "npm run generate-docs" (or "pnpm run generate-docs") to create it.');
+    console.error('    Run "pnpm run generate-docs" to create it.');
     process.exit(1);
 }
 
@@ -47,6 +47,6 @@ console.error('❌  src/docs/index.ts is out of date with the .md source files.'
 if (firstDiffLine > 0) {
     console.error(`    First difference at line ${firstDiffLine}.`);
 }
-console.error('    Run "npm run generate-docs" (or "pnpm run generate-docs") to regenerate it.');
+console.error('    Run "pnpm run generate-docs" to regenerate it.');
 process.exit(1);
 

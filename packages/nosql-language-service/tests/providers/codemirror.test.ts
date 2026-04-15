@@ -6,18 +6,21 @@
 import { type CompletionContext } from '@codemirror/autocomplete';
 import { type EditorView } from '@codemirror/view';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCompletionSource, createHoverTooltipSource, createLintSource, createMultiQueryFoldService, createMultiQuerySeparatorExtension, type MultiQuerySeparatorDeps } from '../../src/providers/codemirror.js';
+import { createCompletionSource, createFormatCommand, createHoverTooltipSource, createLintSource, createMultiQueryFoldService, createMultiQuerySeparatorExtension, createSignatureHelpSource, type MultiQuerySeparatorDeps } from '../../src/providers/codemirror.js';
 import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------
 // Lightweight CodeMirror 6 mock helpers
 // ---------------------------------------------------------------------------
 
-function createViewMock(text: string): EditorView {
+function createViewMock(text: string, cursorPos?: number): EditorView {
     return {
         state: {
             doc: {
                 toString: () => text,
+            },
+            selection: {
+                main: { head: cursorPos ?? text.length },
             },
         },
         dom: {
@@ -32,6 +35,7 @@ function createViewMock(text: string): EditorView {
                 },
             },
         },
+        dispatch: () => {},
     } as unknown as EditorView;
 }
 
@@ -464,6 +468,89 @@ describe('createMultiQuerySeparatorExtension', () => {
         // 2 separators (trailing ; creates empty region)
         expect(deps.createdRanges).toHaveLength(2);
         expect(deps.createdRanges[0].class).toBe('my-custom-sep');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Document formatting
+// ---------------------------------------------------------------------------
+
+describe('createFormatCommand', () => {
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        service = new SqlLanguageService();
+    });
+
+    it('returns a function', () => {
+        const cmd = createFormatCommand(service);
+        expect(typeof cmd).toBe('function');
+    });
+
+    it('dispatches changes for an unformatted query', () => {
+        const cmd = createFormatCommand(service);
+        let dispatched = false;
+        const view = {
+            ...createViewMock('select * from c'),
+            dispatch: (tr: unknown) => {
+                dispatched = true;
+                expect(tr).toHaveProperty('changes');
+            },
+        } as unknown as EditorView;
+
+        const result = cmd(view);
+        // The formatter should produce edits (e.g., uppercasing keywords)
+        expect(result).toBe(true);
+        expect(dispatched).toBe(true);
+    });
+
+    it('returns false when no edits are needed', () => {
+        const cmd = createFormatCommand(service);
+        // Format a query first, then re-format — should produce no edits
+        const formatted = service.format('SELECT * FROM c');
+        const view = createViewMock(formatted);
+        const result = cmd(view);
+        expect(result).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Signature help
+// ---------------------------------------------------------------------------
+
+describe('createSignatureHelpSource', () => {
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        service = new SqlLanguageService();
+    });
+
+    it('returns a function', () => {
+        const source = createSignatureHelpSource(service);
+        expect(typeof source).toBe('function');
+    });
+
+    it('returns a tooltip inside a function call', () => {
+        const source = createSignatureHelpSource(service);
+        // Place cursor inside CONTAINS(
+        const text = 'SELECT * FROM c WHERE CONTAINS(c.name, ';
+        const view = createViewMock(text, text.length);
+        const result = source(view);
+
+        expect(result).not.toBeNull();
+        expect(result!.pos).toBeDefined();
+        expect(typeof result!.create).toBe('function');
+
+        // Verify the tooltip renders
+        const tooltipView = result!.create(view);
+        expect(tooltipView).toHaveProperty('dom');
+    });
+
+    it('returns null when not inside a function call', () => {
+        const source = createSignatureHelpSource(service);
+        const view = createViewMock('SELECT * FROM c', 15);
+        const result = source(view);
+        expect(result).toBeNull();
     });
 });
 

@@ -7,8 +7,8 @@
 | Autocompletion                 |   ✅    |    ✅    |      ✅      |
 | Diagnostics (lint / squiggles) |   ✅    |    ✅    |      ✅      |
 | Hover tooltips                 |   ✅    |    ✅    |      ✅      |
-| Signature help                 |   ✅    |    ✅    |      —       |
-| Document formatting            |   ✅    |    ✅    |      —       |
+| Signature help                 |   ✅    |    ✅    |      ✅      |
+| Document formatting            |   ✅    |    ✅    |      ✅      |
 | Syntax highlighting            | Monarch | TextMate | StreamParser |
 | Folding ranges (multi-query)   |   ✅    |    ✅    |      ✅      |
 | Separator decorations          |   ✅    |    ✅    |      ✅      |
@@ -327,6 +327,27 @@ import { cosmosDbSqlStreamParser } from '@cosmosdb/nosql-language-service/codemi
 
 const langExtension = StreamLanguage.define(cosmosDbSqlStreamParser);
 // Pass `langExtension` as an extension to EditorState.create({ extensions: [langExtension] })
+```
+
+### CodeMirror document formatting
+
+```typescript
+import { keymap } from '@codemirror/view';
+import { createFormatCommand } from '@cosmosdb/nosql-language-service/codemirror';
+
+const formatCommand = createFormatCommand(service);
+const ext = keymap.of([{ key: 'Shift-Alt-f', run: formatCommand }]);
+```
+
+### CodeMirror signature help
+
+```typescript
+import { createSignatureHelpSource } from '@cosmosdb/nosql-language-service/codemirror';
+
+// Returns a Tooltip | null for the current cursor position.
+// Wire it into a StateField + showTooltip, or call it from
+// an EditorView.updateListener to show/hide on cursor changes.
+const sigSource = createSignatureHelpSource(service);
 ```
 
 ## Writing your own adapter

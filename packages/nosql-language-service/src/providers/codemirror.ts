@@ -177,6 +177,135 @@ function escapeHtml(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// ========================== Document formatting ===============================
+
+/**
+ * Create a CodeMirror 6 command that formats the entire document using
+ * the language service's formatter.
+ *
+ * Returns a function compatible with CodeMirror's `Command` type
+ * (`(view: EditorView) => boolean`). Bind it to a keybinding or
+ * call it from a toolbar button.
+ *
+ * @example
+ * ```typescript
+ * import { keymap } from "@codemirror/view";
+ *
+ * const formatCommand = createFormatCommand(service);
+ * const ext = keymap.of([{ key: "Shift-Alt-f", run: formatCommand }]);
+ * ```
+ */
+export function createFormatCommand(service: SqlLanguageService): (view: EditorView) => boolean {
+    return (view: EditorView) => {
+        const query: string = view.state.doc.toString();
+        const edits = service.getFormatEdits(query);
+        if (edits.length === 0) return false;
+
+        // Convert TextEdit[] to CodeMirror ChangeSpec[],
+        // applying edits in reverse order to keep offsets stable.
+        const changes = edits
+            .slice()
+            .sort((a, b) => b.range.startOffset - a.range.startOffset)
+            .map((e) => ({
+                from: e.range.startOffset,
+                to: e.range.endOffset,
+                insert: e.newText,
+            }));
+
+        view.dispatch({ changes });
+        return true;
+    };
+}
+
+// ========================== Signature help ====================================
+
+/**
+ * Create a CodeMirror 6 extension that shows function signature tooltips
+ * when the cursor is inside a function call (after `(` or `,`).
+ *
+ * Returns a function compatible with `@codemirror/view`'s
+ * `hoverTooltip`-like pattern, but designed to be used with
+ * `EditorView.updateListener` for cursor-driven updates.
+ *
+ * The simplest integration is via `createSignatureHelpTooltipExtension`,
+ * which wires everything up as a single extension.
+ *
+ * @example
+ * ```typescript
+ * import { ViewPlugin, Decoration } from "@codemirror/view";
+ *
+ * const ext = createSignatureHelpTooltipExtension(service, {
+ *   ViewPlugin,
+ *   showTooltip,           // from @codemirror/view
+ *   StateField,            // from @codemirror/state
+ *   EditorView: EditorView // from @codemirror/view
+ * });
+ * ```
+ */
+export function createSignatureHelpSource(
+    service: SqlLanguageService,
+): (view: EditorView) => Tooltip | null {
+    return (view: EditorView) => {
+        const query: string = view.state.doc.toString();
+        const offset: number = view.state.selection.main.head;
+        const result = service.getSignatureHelp(query, offset);
+        if (!result || result.signatures.length === 0) return null;
+
+        const sig = result.signatures[result.activeSignature] ?? result.signatures[0];
+        if (!sig) return null;
+
+        return {
+            pos: offset,
+            above: true,
+            strictSide: false,
+            create(_view: EditorView): TooltipView {
+                const viewDom = _view.dom as unknown as Record<string, unknown>;
+                const ownerDoc = viewDom['ownerDocument'] as { createElement(tag: string): Record<string, unknown> };
+
+                const dom = ownerDoc.createElement('div');
+                dom['className'] = 'cm-cosmosdb-signature-help';
+
+                // Build the signature label with the active parameter highlighted
+                let html = `<div class="cm-cosmosdb-sig-label">`;
+                const params = sig.parameters;
+                const activeIdx = result.activeParameter;
+
+                if (params.length > 0) {
+                    // Build label with highlighted active param
+                    const parts: string[] = [];
+                    const funcName = sig.label.substring(0, sig.label.indexOf('('));
+                    html += `${escapeHtml(funcName)}(`;
+                    for (let i = 0; i < params.length; i++) {
+                        const paramLabel = escapeHtml(params[i].label);
+                        if (i === activeIdx) {
+                            parts.push(`<strong>${paramLabel}</strong>`);
+                        } else {
+                            parts.push(paramLabel);
+                        }
+                    }
+                    html += parts.join(', ');
+                    html += `)`;
+                } else {
+                    html += escapeHtml(sig.label);
+                }
+                html += `</div>`;
+
+                // Add documentation for active parameter
+                const activeParam = params[activeIdx];
+                if (activeParam?.documentation) {
+                    html += `<div class="cm-cosmosdb-sig-doc">${escapeHtml(activeParam.documentation)}</div>`;
+                } else if (sig.documentation) {
+                    html += `<div class="cm-cosmosdb-sig-doc">${escapeHtml(sig.documentation)}</div>`;
+                }
+
+                dom['innerHTML'] = html;
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                return { dom: dom as unknown as TooltipView['dom'] };
+            },
+        };
+    };
+}
+
 // ========================== Folding ==========================================
 
 /**

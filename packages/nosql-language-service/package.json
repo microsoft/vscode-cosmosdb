@@ -16,16 +16,16 @@
       "types": "./dist/types/services/index.d.ts"
     },
     "./monaco": {
-      "import": "./dist/esm/providers/monaco.js",
-      "types": "./dist/types/providers/monaco.d.ts"
+      "import": "./dist/esm/providers/monaco/index.js",
+      "types": "./dist/types/providers/monaco/index.d.ts"
     },
     "./vscode": {
-      "import": "./dist/esm/providers/vscode.js",
-      "types": "./dist/types/providers/vscode.d.ts"
+      "import": "./dist/esm/providers/vscode/index.js",
+      "types": "./dist/types/providers/vscode/index.d.ts"
     },
     "./codemirror": {
-      "import": "./dist/esm/providers/codemirror.js",
-      "types": "./dist/types/providers/codemirror.d.ts"
+      "import": "./dist/esm/providers/codemirror/index.js",
+      "types": "./dist/types/providers/codemirror/index.d.ts"
     }
   },
   "typesVersions": {
@@ -34,13 +34,13 @@
         "dist/types/services/index.d.ts"
       ],
       "monaco": [
-        "dist/types/providers/monaco.d.ts"
+        "dist/types/providers/monaco/index.d.ts"
       ],
       "vscode": [
-        "dist/types/providers/vscode.d.ts"
+        "dist/types/providers/vscode/index.d.ts"
       ],
       "codemirror": [
-        "dist/types/providers/codemirror.d.ts"
+        "dist/types/providers/codemirror/index.d.ts"
       ]
     }
   },

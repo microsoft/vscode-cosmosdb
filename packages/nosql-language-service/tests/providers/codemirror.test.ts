@@ -6,7 +6,7 @@
 import { type CompletionContext } from '@codemirror/autocomplete';
 import { type EditorView } from '@codemirror/view';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCompletionSource, createFormatCommand, createHoverTooltipSource, createLintSource, createMultiQueryFoldService, createMultiQuerySeparatorExtension, createSignatureHelpSource, type MultiQuerySeparatorDeps } from '../../src/providers/codemirror.js';
+import { createCompletionSource, createFormatCommand, createHoverTooltipSource, createLintSource, createMultiQueryFoldService, createMultiQuerySeparatorExtension, createSignatureHelpSource, type MultiQuerySeparatorDeps } from '../../src/providers/codemirror/index.js';
 import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------

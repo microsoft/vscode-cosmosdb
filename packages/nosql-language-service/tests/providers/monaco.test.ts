@@ -13,7 +13,7 @@ import {
     MonacoSignatureHelpProvider,
     registerCosmosDbSql,
     type MonacoNamespace,
-} from '../../src/providers/monaco.js';
+} from '../../src/providers/monaco/index.js';
 import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------

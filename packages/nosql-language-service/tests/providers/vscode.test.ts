@@ -13,7 +13,7 @@ import {
     VSCodeSignatureHelpProvider,
     registerCosmosDbSql,
     type VSCodeNamespace,
-} from '../../src/providers/vscode.js';
+} from '../../src/providers/vscode/index.js';
 import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------

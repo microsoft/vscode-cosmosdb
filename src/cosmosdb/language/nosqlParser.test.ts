@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '../../utils/json/JSONSchema';
+import { type JSONSchema, type JSONSchemaMap } from '../../utils/json/JSONSchema';
 import { NOSQL_KEYWORDS, type KeywordInfo } from './nosqlLanguageDefinitions';
 import {
     computeAliasSortKey,
@@ -861,15 +861,15 @@ describe('Phase 5: Graceful Incomplete Query Handling', () => {
                                     properties: {
                                         color: { type: 'string', 'x-occurrence': 80 },
                                         sku: { type: 'string', 'x-occurrence': 70 },
-                                    } as unknown as JSONSchema,
+                                    } as JSONSchemaMap,
                                 },
                                 'x-occurrence': 85,
                             },
-                        } as unknown as JSONSchema,
+                        } as JSONSchemaMap,
                     },
                     'x-occurrence': 95,
                 },
-            } as unknown as JSONSchema,
+            } as JSONSchemaMap,
         };
 
         it('extracts chained JOIN aliases from a single query block', () => {

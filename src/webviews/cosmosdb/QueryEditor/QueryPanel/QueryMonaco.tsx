@@ -13,13 +13,25 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 /** Language ID matching the 'nosql' language contributed in package.json. */
 const NOSQL_LANGUAGE_ID = 'nosql';
 
+/**
+ * Compute the query block text at the given cursor offset using the
+ * language service's multi-query parser. Falls back to the full text
+ * when only a single region exists.
+ */
+function getQueryBlockAtOffset(fullText: string, offset: number, service: SqlLanguageService): string {
+    const region = service.getActiveRegion(fullText, offset);
+    return region ? region.text.trim() : fullText;
+}
+
 export const QueryMonaco = () => {
     const state = useQueryEditorState();
     const dispatcher = useQueryEditorDispatcher();
     const monaco = useMonaco();
 
     const disposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const cursorDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
     const languageServiceDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const languageServiceRef = useRef<SqlLanguageService | null>(null);
 
     // Keep a ref to the latest schema so the language service always reads fresh data
     const schemaRef = useRef(state.containerSchema);
@@ -39,6 +51,7 @@ export const QueryMonaco = () => {
                 getSchema: () => schemaRef.current ?? undefined,
                 multiQuery: true,
             });
+            languageServiceRef.current = service;
 
             languageServiceDisposableRef.current = registerCosmosDbSql(monaco, service, {
                 languageId: NOSQL_LANGUAGE_ID,
@@ -61,6 +74,29 @@ export const QueryMonaco = () => {
             dispatcher.setSelectedText(selectedContent);
         });
 
+        // Track cursor position changes to always know which query block the cursor is in.
+        // This survives focus loss so the Run button can execute the correct block.
+        cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
+            const model = editor.getModel();
+            const service = languageServiceRef.current;
+            if (model && service) {
+                const offset = model.getOffsetAt(event.position);
+                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                dispatcher.setCurrentQueryBlock(block);
+            }
+        });
+
+        // Compute the initial query block based on the default cursor position
+        {
+            const model = editor.getModel();
+            const service = languageServiceRef.current;
+            if (model && service) {
+                const offset = model.getOffsetAt(editor.getPosition()!);
+                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                dispatcher.setCurrentQueryBlock(block);
+            }
+        }
+
         // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
         // and route them through the extension host so they open in the default browser.
         const container = editor.getContainerDomNode();
@@ -81,6 +117,7 @@ export const QueryMonaco = () => {
         // Cleanup on unmount
         return () => {
             disposableRef.current?.dispose();
+            cursorDisposableRef.current?.dispose();
         };
     }, []);
 

@@ -40,10 +40,12 @@ export interface VSCodeDiagnosticsProviderOptions {
     diagnosticDelay?: number;
 }
 
-// Timer declarations for environment-agnostic code
-declare function setTimeout(callback: () => void, ms: number): number;
-declare function clearTimeout(id: number): void;
-export { setTimeout, clearTimeout };
+/**
+ * Environment-agnostic timer ID type.
+ * Works in both Node.js (where setTimeout returns a Timeout object)
+ * and browsers (where it returns a number).
+ */
+export type TimerId = ReturnType<typeof globalThis.setTimeout>;
 
 export function mapCompletionKind(vscode: VSCodeNamespace, kind: CompletionItemKind): vscodeApi.CompletionItemKind {
     switch (kind) {

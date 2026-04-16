@@ -7,7 +7,7 @@ import type * as vscodeApi from 'vscode';
 import { type SqlLanguageService } from '../../services/index.js';
 import { type Disposable } from '../../services/types.js';
 import { LANGUAGE_ID } from '../shared.js';
-import { clearTimeout, mapSeverity, setTimeout, type VSCodeDiagnosticsProviderOptions, type VSCodeNamespace } from './types.js';
+import { mapSeverity, type TimerId, type VSCodeDiagnosticsProviderOptions, type VSCodeNamespace } from './types.js';
 
 export class VSCodeDiagnosticsProvider implements Disposable {
     private readonly vscode: VSCodeNamespace;
@@ -16,7 +16,7 @@ export class VSCodeDiagnosticsProvider implements Disposable {
     private readonly diagnosticDelay: number;
     private readonly collection: vscodeApi.DiagnosticCollection;
     private readonly disposables: Disposable[] = [];
-    private readonly timers = new Map<string, number>();
+    private readonly timers = new Map<string, TimerId>();
 
     constructor(vscode: VSCodeNamespace, service: SqlLanguageService, options: VSCodeDiagnosticsProviderOptions = {}) {
         this.vscode = vscode;

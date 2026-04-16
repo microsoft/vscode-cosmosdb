@@ -7,7 +7,7 @@ import type * as monacoEditor from 'monaco-editor';
 import { type SqlLanguageService } from '../../services/index.js';
 import { type Disposable } from '../../services/types.js';
 import { LANGUAGE_ID } from '../shared.js';
-import { clearTimeout, mapSeverity, setTimeout, type MonacoDiagnosticsProviderOptions, type MonacoNamespace } from './types.js';
+import { mapSeverity, type TimerId, type MonacoDiagnosticsProviderOptions, type MonacoNamespace } from './types.js';
 
 /**
  * Standalone diagnostics controller for Monaco Editor.
@@ -22,7 +22,7 @@ export class MonacoDiagnosticsProvider implements Disposable {
     private readonly languageId: string;
     private readonly owner: string;
     private readonly diagnosticDelay: number;
-    private readonly timers = new Map<monacoEditor.editor.ITextModel, number>();
+    private readonly timers = new Map<monacoEditor.editor.ITextModel, TimerId>();
     private readonly modelDisposables = new Map<monacoEditor.editor.ITextModel, Disposable[]>();
     private readonly rootDisposables: Disposable[] = [];
 

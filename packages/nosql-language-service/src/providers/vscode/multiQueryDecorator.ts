@@ -7,7 +7,7 @@ import type * as vscodeApi from 'vscode';
 import { type SqlLanguageService } from '../../services/index.js';
 import { type Disposable } from '../../services/types.js';
 import { LANGUAGE_ID } from '../shared.js';
-import { clearTimeout, setTimeout, type VSCodeNamespace } from './types.js';
+import { type TimerId, type VSCodeNamespace } from './types.js';
 
 export class VSCodeMultiQueryDecorator implements Disposable {
     private readonly service: SqlLanguageService;
@@ -15,7 +15,7 @@ export class VSCodeMultiQueryDecorator implements Disposable {
     private readonly delay: number;
     private readonly disposables: Disposable[] = [];
     private readonly separatorDecorationType: vscodeApi.TextEditorDecorationType;
-    private timer: number | undefined;
+    private timer: TimerId | undefined;
 
     constructor(
         vscode: VSCodeNamespace,

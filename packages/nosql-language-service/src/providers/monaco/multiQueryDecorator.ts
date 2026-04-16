@@ -7,7 +7,7 @@ import type * as monacoEditor from 'monaco-editor';
 import { type SqlLanguageService } from '../../services/index.js';
 import { type Disposable } from '../../services/types.js';
 import { LANGUAGE_ID } from '../shared.js';
-import { clearTimeout, setTimeout, type MonacoNamespace } from './types.js';
+import { type MonacoNamespace } from './types.js';
 
 const SEPARATOR_CLASS = 'cosmosdb-query-separator';
 
@@ -61,13 +61,13 @@ export class MonacoMultiQueryDecorator implements Disposable {
             this.decorations = codeEditor.createDecorationsCollection();
             this.updateDecorations();
 
-            let timer: number | undefined;
+            let timer: ReturnType<typeof setTimeout> | undefined;
             const scheduleUpdate = () => {
                 if (timer) clearTimeout(timer);
                 timer = setTimeout(() => {
                     timer = undefined;
                     this.updateDecorations();
-                }, delay) as unknown as number;
+                }, delay);
             };
 
             this.disposables.push(model.onDidChangeContent(() => scheduleUpdate()));

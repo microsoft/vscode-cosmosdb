@@ -40,10 +40,10 @@ export interface MonacoDiagnosticsProviderOptions {
     diagnosticDelay?: number;
 }
 
-// Timer declarations for environment-agnostic code
-declare function setTimeout(callback: () => void, ms: number): number;
-declare function clearTimeout(id: number): void;
-export { setTimeout, clearTimeout };
+/**
+ * Environment-agnostic timer ID type.
+ */
+export type TimerId = ReturnType<typeof globalThis.setTimeout>;
 
 export function mapCompletionKind(
     monaco: MonacoNamespace,

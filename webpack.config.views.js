@@ -51,7 +51,7 @@ module.exports = (env, { mode }) => {
                 // Resolve workspace packages directly to TypeScript sources
                 '@cosmosdb/nosql-language-service/monaco': path.resolve(
                     __dirname,
-                    'packages/nosql-language-service/src/providers/monaco.ts',
+                    'packages/nosql-language-service/src/providers/monaco/index.ts',
                 ),
                 '@cosmosdb/nosql-language-service/services': path.resolve(
                     __dirname,

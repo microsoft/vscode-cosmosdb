@@ -11,6 +11,7 @@
 
 import { EmbeddedActionsParser, EOF } from 'chevrotain';
 import * as AST from '../ast/nodes.js';
+import { SqlErrorMessageProvider } from '../errors/SqlErrorMessageProvider.js';
 import * as T from '../lexer/tokens.js';
 import { allTokens } from '../lexer/tokens.js';
 import { pos, posEnd, range, rangeFromNodes, rangeStartEnd } from './parserHelpers.js';
@@ -75,6 +76,7 @@ export class SqlParser extends EmbeddedActionsParser {
         super(allTokens, {
             recoveryEnabled: true,
             maxLookahead: 3,
+            errorMessageProvider: new SqlErrorMessageProvider(),
         });
         this.performSelfAnalysis();
     }

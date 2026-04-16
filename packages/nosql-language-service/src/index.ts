@@ -27,6 +27,7 @@
 // @cosmosdb/nosql-language-service — public API
 // ---------------------------------------------------------------------------
 
+import { MismatchedTokenException, NotAllInputParsedException } from 'chevrotain';
 import { type SqlProgram } from './ast/nodes.js';
 import { SqlErrorCode, type SourcePosition, type SqlParseError } from './errors/SqlError.js';
 import { SqlLexer } from './lexer/SqlLexer.js';
@@ -172,7 +173,12 @@ export function parse(query: string): ParseResult {
         let code = SqlErrorCode.UnexpectedToken;
         if (startOffset >= query.length) {
             code = SqlErrorCode.UnexpectedEof;
-        } else if (e.message.includes('expecting')) {
+        } else if (
+            e instanceof MismatchedTokenException ||
+            e instanceof NotAllInputParsedException
+        ) {
+            code = SqlErrorCode.MissingKeyword;
+        } else if (e.message.includes('Expected') || e.message.includes('expecting')) {
             code = SqlErrorCode.MissingKeyword;
         }
 

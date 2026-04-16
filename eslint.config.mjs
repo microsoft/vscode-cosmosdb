@@ -9,7 +9,7 @@ import ts from 'typescript-eslint';
 /**
  * Minimal ESLint config — almost all rules have been migrated to oxlint (.oxlintrc.json).
  * ESLint is kept only for `no-restricted-syntax`, which uses AST node selectors that oxlint
- * does not support. The TypeScript parser is set up so ESLint can parse .ts/.tsx files.
+ * does not support. Type-aware rules are handled by oxlint via `options.typeAware: true`.
  */
 export default defineConfig([
     {
@@ -29,7 +29,6 @@ export default defineConfig([
         ],
     },
     // TypeScript parser — required so ESLint can parse .ts/.tsx AST correctly.
-    // No type-aware rules: all TypeScript rules run in oxlint.
     {
         files: ['**/*.ts', '**/*.tsx'],
         plugins: { '@typescript-eslint': ts.plugin },
@@ -41,8 +40,6 @@ export default defineConfig([
     },
     // The only rule that cannot be expressed in oxlint: no-restricted-syntax uses
     // AST node selectors to enforce the @vscode/l10n import convention.
-    // Note: oxlint's no-restricted-imports with importNames incorrectly flags
-    // wildcard imports (import * as vscode), so both selectors must stay here.
     {
         rules: {
             'no-restricted-syntax': [

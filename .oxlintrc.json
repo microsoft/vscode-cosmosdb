@@ -2,11 +2,14 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["import", "promise"],
   "jsPlugins": ["eslint-plugin-license-header"],
+  "options": {
+    "typeAware": true
+  },
   "categories": {
+    "correctness": "error",
     "suspicious": "warn",
     "perf": "warn"
   },
-
   "env": {
     "builtin": true,
     "es2023": true,
@@ -27,16 +30,11 @@
     "**/main.js"
   ],
   "rules": {
-    // These are NOT default-on in correctness, so we enable them explicitly:
     "no-empty": "error",
     "no-inner-declarations": "error",
-    // Default correctness rule but with custom options:
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    // Style rules we opt into:
     "eqeqeq": ["error", "always"],
-    // Plugin rules:
     "import/consistent-type-specifier-style": ["error", "prefer-inline"],
-    // License header (jsPlugin):
     "license-header/header": [
       "error",
       [
@@ -52,7 +50,6 @@
       "files": ["**/*.ts"],
       "plugins": ["typescript"],
       "rules": {
-        // Disable JS rules that TypeScript handles natively (default-on correctness rules):
         "constructor-super": "off",
         "no-class-assign": "off",
         "no-const-assign": "off",
@@ -67,19 +64,12 @@
         "no-this-before-super": "off",
         "no-unsafe-negation": "off",
         "no-with": "off",
-        // Style rules (not default, need explicit opt-in):
         "no-var": "error",
         "prefer-const": "error",
         "prefer-rest-params": "error",
         "prefer-spread": "error",
         "no-array-constructor": "error",
-        // Default correctness with custom options:
         "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-        // TypeScript-specific rules that are NOT default-on
-        // (default-on ones: no-duplicate-enum-values, no-misused-new, no-this-alias,
-        //  no-wrapper-object-types, prefer-as-const, triple-slash-reference,
-        //  no-extra-non-null-assertion, no-non-null-asserted-optional-chain,
-        //  no-unsafe-declaration-merging, prefer-namespace-keyword — all auto-enabled by plugin):
         "typescript/ban-ts-comment": "error",
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "error",
@@ -88,9 +78,13 @@
         "typescript/no-restricted-types": "error",
         "typescript/no-unnecessary-type-constraint": "error",
         "typescript/no-unsafe-function-type": "error",
-        // TypeScript defaults we want disabled:
         "typescript/no-namespace": "off",
-        "typescript/no-inferrable-types": "off"
+        "typescript/no-inferrable-types": "off",
+        "typescript/no-floating-promises": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/require-await": "warn",
+        "typescript/unbound-method": "warn",
+        "typescript/no-base-to-string": "warn"
       }
     },
     {
@@ -100,7 +94,6 @@
         "browser": true
       },
       "rules": {
-        // Disable JS rules that TypeScript handles natively:
         "constructor-super": "off",
         "no-class-assign": "off",
         "no-const-assign": "off",
@@ -115,14 +108,12 @@
         "no-this-before-super": "off",
         "no-unsafe-negation": "off",
         "no-with": "off",
-        // Style rules:
         "no-var": "error",
         "prefer-const": "error",
         "prefer-rest-params": "error",
         "prefer-spread": "error",
         "no-array-constructor": "error",
         "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-        // TypeScript non-default rules:
         "typescript/ban-ts-comment": "error",
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "error",
@@ -131,13 +122,15 @@
         "typescript/no-restricted-types": "error",
         "typescript/no-unnecessary-type-constraint": "error",
         "typescript/no-unsafe-function-type": "error",
-        // TypeScript defaults we want disabled:
         "typescript/no-namespace": "off",
         "typescript/no-inferrable-types": "off",
-        // React defaults we want disabled:
+        "typescript/no-floating-promises": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/require-await": "warn",
+        "typescript/unbound-method": "warn",
+        "typescript/no-base-to-string": "warn",
         "react/no-unsafe": "off",
         "react/react-in-jsx-scope": "off",
-        // jsx-a11y adjustments:
         "jsx-a11y/anchor-ambiguous-text": "off",
         "jsx-a11y/no-noninteractive-tabindex": [
           "error",
@@ -154,7 +147,6 @@
             "handlers": ["onClick", "onMouseDown", "onMouseUp", "onKeyPress", "onKeyDown", "onKeyUp"]
           }
         ],
-        // react-perf (warn, not error):
         "react/exhaustive-deps": "warn",
         "react/no-array-index-key": "warn",
         "jsx-no-jsx-as-prop": "warn",
@@ -170,10 +162,8 @@
         "jest": true
       },
       "rules": {
-        // Style rules:
         "no-array-constructor": "error",
         "no-unused-vars": "error",
-        // TypeScript non-default rules (some relaxed for tests):
         "typescript/ban-ts-comment": "error",
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "off",
@@ -181,7 +171,11 @@
         "typescript/no-unnecessary-type-constraint": "error",
         "typescript/no-unsafe-function-type": "error",
         "typescript/no-non-null-assertion": "off",
-        // Jest rules: override level (off/warn) — "error" ones auto-enabled by plugin+correctness:
+        "typescript/no-floating-promises": "off",
+        "typescript/no-misused-promises": "off",
+        "typescript/require-await": "off",
+        "typescript/unbound-method": "off",
+        "typescript/no-base-to-string": "off",
         "jest/expect-expect": "off",
         "jest/no-alias-methods": "error",
         "jest/no-commented-out-tests": "warn",
@@ -201,7 +195,6 @@
         "jest/valid-expect": "error",
         "jest/valid-expect-in-promise": "error",
         "jest/valid-title": "error",
-        // Disable specific correctness rules for test files:
         "no-dupe-else-if": "off",
         "no-empty": "off",
         "no-empty-function": "off"
@@ -215,10 +208,8 @@
         "mocha": true
       },
       "rules": {
-        // Style rules:
         "no-array-constructor": "error",
         "no-unused-vars": "error",
-        // TypeScript non-default rules (relaxed for tests):
         "typescript/ban-ts-comment": "error",
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "off",
@@ -226,7 +217,11 @@
         "typescript/no-unnecessary-type-constraint": "error",
         "typescript/no-unsafe-function-type": "error",
         "typescript/no-non-null-assertion": "off",
-        // Mocha rules:
+        "typescript/no-floating-promises": "off",
+        "typescript/no-misused-promises": "off",
+        "typescript/require-await": "off",
+        "typescript/unbound-method": "off",
+        "typescript/no-base-to-string": "off",
         "mocha/handle-done-callback": "off",
         "mocha/max-top-level-suites": "off",
         "mocha/no-async-suite": "error",
@@ -250,7 +245,6 @@
         "mocha/valid-test-title": "off",
         "mocha/no-empty-title": "error",
         "mocha/consistent-spacing-between-blocks": "off",
-        // Disable specific correctness rules for test files:
         "no-dupe-else-if": "off",
         "no-empty": "off",
         "no-restricted-imports": "off",

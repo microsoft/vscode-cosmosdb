@@ -124,6 +124,7 @@
     "mocha-multi-reporters": "~1.5.1",
     "monaco-editor-webpack-plugin": "~7.1.1",
     "oxlint": "^1.60.0",
+    "oxlint-tsgolint": "^0.21.1",
     "prettier": "~3.8.1",
     "prettier-plugin-organize-imports": "~4.3.0",
     "react": "~19.2.1",

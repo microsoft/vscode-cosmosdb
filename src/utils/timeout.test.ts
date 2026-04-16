@@ -73,7 +73,7 @@ describe('timeout Tests', () => {
                     });
                 });
             } catch (err) {
-                error = err;
+                error = err as Error;
             }
 
             expect(executed).toBe(false);

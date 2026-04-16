@@ -81,7 +81,7 @@ export const QueryMonaco = () => {
     }, []);
 
     const onChange = useCallback(
-        () => (newValue: string | undefined) => {
+        (newValue: string | undefined) => {
             if (newValue !== undefined && newValue !== state.queryValue) {
                 void dispatcher.insertText(newValue);
             }

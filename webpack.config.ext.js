@@ -77,7 +77,7 @@ module.exports = (env, { mode }) => {
                 // so ts-loader compiles them (they live outside node_modules exclude)
                 '@cosmosdb/nosql-language-service/vscode': path.resolve(
                     __dirname,
-                    'packages/nosql-language-service/src/providers/vscode.ts',
+                    'packages/nosql-language-service/src/providers/vscode/index.ts',
                 ),
                 '@cosmosdb/nosql-language-service/services': path.resolve(
                     __dirname,

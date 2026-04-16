@@ -32,7 +32,7 @@
   "cosmosdb.command.update": "Buluta Güncelleştir",
   "cosmosdb.command.ai.deploy_instruction_files": "LLM yönergelerini kullanıcı profili klasörüne kopyala",
   "cosmosdb.command.ai.remove_instruction_files": "Kullanıcı profili klasöründen LLM yönergelerini kaldırın",
-  "cosmosdb.command.schema.delete_all": "Delete All Saved Schemas",
+  "cosmosdb.command.schema.delete_all": "Tüm Kaydedilen Şemaları Sil",
   "cosmosdb.configuration.batch.size": "Azure Veritabanı kaynaklarını sorgularken kullanılacak toplu iş boyutu.",
   "cosmosdb.configuration.confirmation.style": "Kaynakları silme gibi geri alınamayan işlemleri onaylarken kullanılacak davranış.",
   "cosmosdb.configuration.confirmation.style.button": "Düğme Tıklama Onayı",
@@ -59,5 +59,5 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Yalnızca Azure'da (yani bir VM'de) çalışırken desteklenir, [daha fazla bilgi edinin](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Kullanıcı tarafından atanan Yönetilen Kimlik kullanılarak Entra ID ile kimlik doğrulama yaparken kullanılacak Yönetilen Kimliğin İstemci Kimliği.",
   "cosmosdb.configuration.manage-llm-assets": "LLM varlıklarını yönetin. Uzantının LLM ile ilgili dosyaları güncel tutmasını sağlar.",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Etkinleştirildiğinde, şema oluşturma kapsayıcı şemasını çıkarsamak için sorgu sonuçlarını da dikkate alır."
 }

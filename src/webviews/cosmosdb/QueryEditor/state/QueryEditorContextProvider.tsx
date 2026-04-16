@@ -355,7 +355,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     private handleQueryEditorEvent(event: QueryEditorEvent): void {
         switch (event.type) {
             case 'confirmToolInvocation':
-                // Handled by GenerateQueryInput component-level subscriber
+                this.dispatch({ type: 'setConfirmToolInvocationMessage', message: event.message });
                 break;
             case 'aiFeaturesEnabledChanged':
                 this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: event.isEnabled });

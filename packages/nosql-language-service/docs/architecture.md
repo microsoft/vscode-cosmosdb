@@ -56,7 +56,8 @@ index.ts  (public API: parse, sqlToString, getCompletions, SqlLanguageService, t
     │       └── lexer/tokens.ts   (all token definitions)
     ├── parser/SqlParser.ts
     │       ├── lexer/tokens.ts
-    │       └── ast/nodes.ts      (all AST types)
+    │       ├── ast/nodes.ts      (all AST types)
+    │       └── errors/SqlErrorMessageProvider.ts  (human-friendly error messages)
     ├── printer/SqlPrinter.ts
     │       └── ast/nodes.ts
     ├── visitor/SqlVisitor.ts
@@ -158,6 +159,7 @@ dependencies and tree-shakes cleanly.
 | `printer/SqlPrinter.ts` | AST → SQL serializer |
 | `visitor/SqlVisitor.ts` | Visitor pattern dispatch |
 | `errors/SqlError.ts` | Error types + source locations |
+| `errors/SqlErrorMessageProvider.ts` | Human-friendly error messages |
 | `diagnostics/typoDetection.ts` | Near-miss keyword warnings |
 | `services/SqlLanguageService.ts` | IDE-agnostic facade |
 | `services/types.ts` | Generic language service types |

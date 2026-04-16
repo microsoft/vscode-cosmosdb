@@ -221,7 +221,12 @@ export const GenerateQueryInput = () => {
     const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
     const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
-    const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+
+    // confirmToolInvocation message is pushed from the extension via the shared event subscription
+    const confirmMessage = state.confirmToolInvocationMessage;
+    const setConfirmMessage = (message: string | null) => {
+        dispatch({ type: 'setConfirmToolInvocationMessage', message });
+    };
 
     // Prompt history for arrow up/down navigation
     const promptHistory = usePromptHistory({ maxSize: 50 });
@@ -263,21 +268,6 @@ export const GenerateQueryInput = () => {
 
         return Math.max(1, totalLines);
     };
-
-    // Listen for confirmToolInvocation event from server during LLM generation
-    useEffect(() => {
-        const subscription = trpcClient.queryEditor.events.subscribe(undefined, {
-            onData: (event) => {
-                if (event.type === 'confirmToolInvocation') {
-                    setConfirmMessage(event.message);
-                }
-            },
-        });
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, [trpcClient]);
 
     // Fetch available models when input becomes visible
     useEffect(() => {

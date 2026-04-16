@@ -123,6 +123,10 @@ export const queryEditorRouterDef = queryEditorRouter({
         .input(z.object({ query: z.string(), options: QueryMetadataSchema }))
         .output(z.object({ executionId: z.string() }).optional())
         .mutation(async ({ input, ctx }) => {
+            // Strip trailing semicolons — they are multi-query separators
+            // in the editor but CosmosDB server rejects them.
+            input.query = input.query.trim().replace(/;\s*$/, '');
+
             ctx.state.query = input.query;
 
             const wasAIGenerated = ctx.state.isLastQueryAIGenerated;

@@ -32,7 +32,7 @@
   "cosmosdb.command.update": "Aggiorna al cloud",
   "cosmosdb.command.ai.deploy_instruction_files": "Copia istruzioni LLM nella cartella del profilo utente",
   "cosmosdb.command.ai.remove_instruction_files": "Rimuovi istruzioni LLM dalla cartella del profilo utente",
-  "cosmosdb.command.schema.delete_all": "Delete All Saved Schemas",
+  "cosmosdb.command.schema.delete_all": "Elimina tutti gli schemi salvati",
   "cosmosdb.configuration.batch.size": "Dimensioni del batch da usare per l'esecuzione di query sulle risorse del database di Azure.",
   "cosmosdb.configuration.confirmation.style": "Comportamento da usare quando si confermano operazioni che non possono essere annullate, ad esempio l'eliminazione di risorse.",
   "cosmosdb.configuration.confirmation.style.button": "Conferma clic pulsante",
@@ -59,5 +59,5 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Supportato solo durante l'esecuzione in Azure, ad esempio per una macchina virtuale. [Altre informazioni](https://learn.microsoft.com/it-it/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ID client dell'identità gestita da usare quando si esegue l'autenticazione con Entra ID usando un'identità gestita assegnata dall'utente.",
   "cosmosdb.configuration.manage-llm-assets": "Gestire gli asset LLM. Consentire l'estensione per mantenere aggiornati i file correlati a LLM.",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Se abilitata, la generazione dello schema considera anche i risultati delle query per dedurre lo schema del contenitore."
 }

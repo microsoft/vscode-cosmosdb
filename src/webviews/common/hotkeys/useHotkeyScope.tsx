@@ -26,7 +26,6 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
         // Register the scope with the command service if not already registered
         commandService.registerScope(scope, hotkeys);
         // TODO: investigate how to avoid this disable
-        // eslint-disable-next-line react-hooks/refs
         hotkeysRef.current = hotkeys;
         setIsRegistered(true);
     }

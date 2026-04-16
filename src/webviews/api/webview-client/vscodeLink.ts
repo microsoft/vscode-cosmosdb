@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { TRPCClientError, type Operation, type TRPCLink } from '@trpc/client';
-// eslint-disable-next-line import/no-internal-modules
 import { observable } from '@trpc/server/observable'; // Their example uses a reference from /server/ and so do we: https://trpc.io/docs/client/links#example
 import { type AppRouter } from '../configuration/appRouter';
 

@@ -5,7 +5,6 @@
 
 import { makeStyles } from '@fluentui/react-components';
 import { Allotment } from 'allotment';
-// eslint-disable-next-line import/no-internal-modules
 import 'allotment/dist/style.css';
 import { useContext } from 'react';
 import { useHotkeyScope } from '../../common/hotkeys';

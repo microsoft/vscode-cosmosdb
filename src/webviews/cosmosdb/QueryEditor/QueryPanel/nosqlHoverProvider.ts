@@ -11,8 +11,6 @@
  * Also shows schema property info (type, occurrence) when hovering
  * over dot-path expressions like `c.address.city`.
  */
-
-// eslint-disable-next-line import/no-internal-modules
 import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { getCursorContext } from '../../../../cosmosdb/language/AST';
 import { getNoSqlHoverContent, getNoSqlSchemaPropertyHoverContent } from '../../../../cosmosdb/language/nosqlHover';

@@ -5,12 +5,9 @@
 
 import { useUncontrolledFocus } from '@fluentui/react-components';
 import Editor, { loader, useMonaco, type EditorProps } from '@monaco-editor/react';
-// eslint-disable-next-line import/no-internal-modules
 import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useEffect } from 'react';
 import { useThemeState } from './theme/state/ThemeContext';
-
-// eslint-disable-next-line import/no-internal-modules
 export type * as MonacoEditorType from 'monaco-editor/esm/vs/editor/editor.api';
 
 loader.config({ monaco: monacoEditor });

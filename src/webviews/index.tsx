@@ -8,7 +8,6 @@ import * as l10n from '@vscode/l10n';
 import { type l10nJsonFormat } from '@vscode/l10n';
 import type * as React from 'react';
 import { useEffect, useRef } from 'react';
-// eslint-disable-next-line import/no-internal-modules
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
 import { WebviewRegistry } from './api/configuration/WebviewRegistry';

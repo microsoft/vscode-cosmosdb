@@ -41,6 +41,7 @@
     "onView:azureResourceGroups",
     "onView:vscode-fabric.view.workspace",
     "onUri",
+    "onLanguage:nosql",
     "onChatParticipant:cosmosdb",
     "onLanguageModelTool:cosmosdb_sampleContainerSchema"
   ],
@@ -152,7 +153,7 @@
     "@fluentui/react-components": "~9.73.0",
     "@fluentui/react-icons": "~2.0.313",
     "@microsoft/vscode-azext-azureauth": "~5.1.1",
-    "@microsoft/vscode-azext-azureutils": "~4.0.0",
+    "@microsoft/vscode-azext-azureutils": "~4.1.0",
     "@microsoft/vscode-azext-utils": "~4.0.1",
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@microsoft/vscode-fabric-api": "~0.35.6",
@@ -290,7 +291,19 @@
         ],
         "extensions": [
           ".nosql"
-        ]
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./resources/icons/theme-agnostic/CosmosDBAccount.svg",
+          "dark": "./resources/icons/theme-agnostic/CosmosDBAccount.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nosql",
+        "scopeName": "source.nosql",
+        "path": "./syntaxes/nosql.tmLanguage.json"
       }
     ],
     "commands": [
@@ -469,6 +482,11 @@
         "category": "CosmosDB AI",
         "command": "cosmosDB.ai.removeInstructionFiles",
         "title": "%cosmosdb.command.ai.remove_instruction_files%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.deleteAllSavedSchemas",
+        "title": "%cosmosdb.command.schema.delete_all%"
       }
     ],
     "submenus": [
@@ -797,6 +815,11 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "%cosmosdb.configuration.manage-llm-assets%"
+          },
+          "cosmosDB.queryEditor.generateSchemaBasedOnQueries": {
+            "type": "boolean",
+            "default": false,
+            "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
           }
         }
       },

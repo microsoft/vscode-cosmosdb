@@ -9,7 +9,7 @@
  *
  * This is a 'work in progress' and will be updated as we progress with the project.
  *
- * Curent focus is:
+ * Current focus is:
  *  - discovery of the document structure
  *  - basic pre for future statistics work
  *
@@ -18,45 +18,44 @@
  *  - meaningful 'description' and 'markdownDescription'
  *  - add more properties to the schema, incl. properties like '$id', '$schema', and enable schema sharing/download
  *
-
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://example.com/sample.schema.json",
-  "title": "Sample Document Schema",
-  "type": "object",
-  "properties": {
-    "a-propert-root-level": {
-      "description": "a description as text",
-      "anyOf": [ // anyOf is used to indicate that the value can be of any of the types listed
-        {
-          "type": "string"
-        },
-        {
-          "type": "string"
-        }
-      ]
-    },
-    "isOpen": {
-      "description": "Indicates if the item is open",
-      "anyOf": [
-        {
-          "type": "boolean"
-        },
-        {
-          "type": "number"
-        }
-      ]
-    }
-  },
-  "required": ["isOpen"]
-}
-
- *
+ * Example schema
+ * ```json
+ * {
+ *   "$schema": "http://json-schema.org/draft-07/schema#",
+ *   "$id": "https://example.com/sample.schema.json",
+ *   "title": "Sample Document Schema",
+ *   "type": "object",
+ *   "properties": {
+ *     "a-propert-root-level": {
+ *       "description": "a description as text",
+ *       "anyOf": [ // anyOf is used to indicate that the value can be of the types listed
+ *         {
+ *           "type": "string"
+ *         },
+ *         {
+ *           "type": "string"
+ *         }
+ *       ]
+ *     },
+ *     "isOpen": {
+ *       "description": "Indicates if the item is open",
+ *       "anyOf": [
+ *         {
+ *           "type": "boolean"
+ *         },
+ *         {
+ *           "type": "number"
+ *         }
+ *       ]
+ *     }
+ *   },
+ *   "required": ["isOpen"]
+ * }
+ *```
  *
  */
 
 import * as l10n from '@vscode/l10n';
-import { assert } from 'console';
 import Denque from 'denque';
 import { type JSONSchema } from '../JSONSchema';
 import { inferNoSqlType, noSqlTypeToJSONType, type NoSQLTypes } from './NoSqlTypes';
@@ -100,7 +99,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
         }
 
         const propertySchema: JSONSchema = schema.properties[name] as JSONSchema;
-        assert(propertySchema !== undefined, 'propertySchema should not be undefined');
+        console.assert(propertySchema !== undefined, 'propertySchema should not be undefined');
 
         // Increment the field occurrence count
         propertySchema['x-occurrence'] = (propertySchema['x-occurrence'] ?? 0) + 1;
@@ -171,7 +170,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
                     }
 
                     const propertySchema: JSONSchema = item.propertySchema.properties[name] as JSONSchema;
-                    assert(propertySchema !== undefined, 'propertySchema should not be undefined');
+                    console.assert(propertySchema !== undefined, 'propertySchema should not be undefined');
 
                     // Increment the field occurrence count
                     propertySchema['x-occurrence'] = (propertySchema['x-occurrence'] ?? 0) + 1;
@@ -222,7 +221,7 @@ export function updateSchemaWithDocument(schema: JSONSchema, document: NoSQLDocu
                 }
 
                 const itemsSchema: JSONSchema = item.propertySchema.items as JSONSchema;
-                assert(itemsSchema !== undefined, 'itemsSchema should not be undefined');
+                console.assert(itemsSchema !== undefined, 'itemsSchema should not be undefined');
 
                 // Map to track types within the array
                 const encounteredMongoTypes: Map<NoSQLTypes, JSONSchema> = new Map();
@@ -398,7 +397,7 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
                 item.propertyTypeEntry['x-maxLength'] = arrayLength;
                 item.propertyTypeEntry['x-minLength'] = arrayLength;
 
-                // preapare the array items entry (in two lines for ts not to compalin about the missing type later on)
+                // prepare the array items entry (in two lines for ts not to complain about the missing type later on)
                 item.propertyTypeEntry.items = {};
                 item.propertyTypeEntry.items.anyOf = [];
 
@@ -434,7 +433,7 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
                         aggregateStatsForValue(element, elementMongoType, itemEntry);
                     }
 
-                    // an imporant exception for arrays as we have to start adding them already now to the schema
+                    // an important exception for arrays as we have to start adding them already now to the schema
                     // (if we want to avoid more iterations over the data)
                     if (elementMongoType === 'object' || elementMongoType === 'array') {
                         fifoQueue.push({
@@ -459,6 +458,67 @@ export function getSchemaFromDocument(document: NoSQLDocument): JSONSchema {
     }
 
     return schema;
+}
+
+export function getSchemaFromDocuments(documents: JSONSchema[]): JSONSchema {
+    if (documents.length === 0) {
+        throw new Error('No documents provided');
+    }
+
+    // start with the schema of the first document and merge the others into it
+    const currentSchema = getSchemaFromDocument(documents[0] as NoSQLDocument);
+
+    for (let i = 1; i < documents.length; i++) {
+        updateSchemaWithDocument(currentSchema, documents[i] as NoSQLDocument);
+    }
+
+    simplifySchema(currentSchema);
+
+    return currentSchema;
+}
+
+/**
+ * Simplifies the schema by unwrapping `anyOf` arrays that contain only a single type entry.
+ * When a node's `anyOf` has exactly one element, that element's fields are merged directly
+ * into the parent node and the `anyOf` wrapper is removed.  Applied recursively to the
+ * entire schema tree (nested `properties` and `items` are also simplified).
+ */
+export function simplifySchema(schema: JSONSchema): void {
+    if (!schema.properties) return;
+
+    for (const propSchema of Object.values(schema.properties)) {
+        simplifySchemaNode(propSchema as JSONSchema);
+    }
+}
+
+function simplifySchemaNode(node: JSONSchema): void {
+    // Promote a sole anyOf entry into the parent node
+    if (node.anyOf && (node.anyOf as JSONSchema[]).length === 1) {
+        const single = (node.anyOf as JSONSchema[])[0] as JSONSchema;
+        for (const [k, v] of Object.entries(single)) {
+            (node as Record<string, unknown>)[k] = v;
+        }
+        delete node.anyOf;
+    }
+
+    // Recurse into remaining anyOf entries (length > 1 case)
+    if (node.anyOf) {
+        for (const entry of node.anyOf as JSONSchema[]) {
+            simplifySchemaNode(entry as JSONSchema);
+        }
+    }
+
+    // Recurse into object properties
+    if (node.properties) {
+        for (const propSchema of Object.values(node.properties)) {
+            simplifySchemaNode(propSchema as JSONSchema);
+        }
+    }
+
+    // Recurse into array items
+    if (node.items) {
+        simplifySchemaNode(node.items as JSONSchema);
+    }
 }
 
 /**

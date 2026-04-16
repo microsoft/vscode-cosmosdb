@@ -6,6 +6,7 @@
 import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
 import { isSelectStar } from '../../../../utils/convertors';
+import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
@@ -81,6 +82,14 @@ export type DispatchAction =
           connectionList: Record<string, string[]> | undefined;
       }
     | {
+          type: 'setSchemaBasedOnQueries';
+          isSchemaBasedOnQueries: boolean;
+      }
+    | {
+          type: 'setContainerSchema';
+          containerSchema: JSONSchema | null;
+      }
+    | {
           type: 'setAIFeaturesEnabled';
           isAIFeaturesEnabled: boolean;
       };
@@ -111,6 +120,9 @@ export type QueryEditorState = {
     selectedThroughputBucket?: number;
 
     tableViewMode: TableViewMode;
+
+    isSchemaBasedOnQueries: boolean;
+    containerSchema: JSONSchema | null; // Schema of the container documents for autocompletion
 
     showGenerateInput: boolean; // Whether to show the LLM query generation input
     isAIFeaturesEnabled: boolean; // Whether AI features (AI button, etc.) are enabled (Copilot available)
@@ -143,6 +155,10 @@ export const defaultState: QueryEditorState = {
     selectedThroughputBucket: undefined,
 
     tableViewMode: 'Table',
+
+    isSchemaBasedOnQueries: false,
+    containerSchema: null,
+
     showGenerateInput: false,
     isAIFeaturesEnabled: false, // Default to false, will be updated from extension when Copilot is available
 };
@@ -210,6 +226,10 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, showGenerateInput: !state.showGenerateInput };
         case 'setConnectionList':
             return { ...state, connectionList: action.connectionList };
+        case 'setSchemaBasedOnQueries':
+            return { ...state, isSchemaBasedOnQueries: action.isSchemaBasedOnQueries };
+        case 'setContainerSchema':
+            return { ...state, containerSchema: action.containerSchema };
         case 'setAIFeaturesEnabled':
             return { ...state, isAIFeaturesEnabled: action.isAIFeaturesEnabled };
     }

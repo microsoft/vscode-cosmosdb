@@ -63,6 +63,17 @@ export class QuerySession {
         return this._isDisposed;
     }
 
+    public get queryText(): string {
+        return this.query;
+    }
+
+    /**
+     * Returns the documents from the most recently fetched page.
+     */
+    public getLastFetchedDocuments(): QueryResultRecord[] {
+        return this.sessionResult.getDocuments(this.currentIteration);
+    }
+
     public async run(): Promise<void> {
         await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.session.run', async (context) => {
             context.errorHandling.rethrow = true;

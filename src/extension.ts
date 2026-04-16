@@ -32,11 +32,15 @@ import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
 import { type FabricArtifactType } from './constants';
+import { SCHEMA_STORAGE_KEY } from './constants';
+import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
+import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { FabricService } from './services/FabricService';
+import { SchemaFileStorage } from './services/SchemaFileStorage';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { FabricTreeNodeProvider } from './tree/fabric-resources-view/FabricTreeNodeProvider';
 import {
@@ -80,6 +84,10 @@ export async function activateInternal(
             activateContext.telemetry.measurements.l10nLoadTime = performance.now() - l10nStartTime;
         }
 
+        // Migrate schemas from globalState (SQLite) to file-based storage
+        // This is idempotent and safe to call on every activation
+        void SchemaFileStorage.getInstance().migrateFromGlobalState(SCHEMA_STORAGE_KEY);
+
         // Early initialization to determine whether Managed Identity is available for authentication
         // Requires ext.outputChannel to be set
         void getIsRunningOnAzure();
@@ -98,6 +106,9 @@ export async function activateInternal(
 
         // Register common commands
         registerCommands();
+
+        context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
+        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

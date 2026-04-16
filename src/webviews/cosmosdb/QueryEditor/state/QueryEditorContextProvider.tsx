@@ -13,6 +13,7 @@ import {
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
 import { type Channel } from '../../../../panels/Communication/Channel/Channel';
+import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
 import { type DispatchAction, type TableViewMode } from './QueryEditorState';
@@ -113,6 +114,22 @@ export class QueryEditorContextProvider extends BaseContextProvider {
         await this.sendCommand('provideFeedback');
     }
 
+    public async generateSchema(limit?: number): Promise<void> {
+        await this.sendCommand('generateSchema', limit);
+    }
+
+    public async openSchemaSettings(): Promise<void> {
+        await this.sendCommand('openSchemaSettings');
+    }
+
+    public async showCurrentSchema(): Promise<void> {
+        await this.sendCommand('showCurrentSchema');
+    }
+
+    public async deleteCurrentSchema(): Promise<void> {
+        await this.sendCommand('deleteCurrentSchema');
+    }
+
     public async saveCSV(
         name: string,
         currentQueryResult: SerializedQueryResult | null,
@@ -211,6 +228,14 @@ export class QueryEditorContextProvider extends BaseContextProvider {
 
         this.channel.on('aiFeaturesEnabledChanged', (isAIFeaturesEnabled: boolean) => {
             this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled });
+        });
+
+        this.channel.on('schemaSettingChanged', (isSchemaBasedOnQueries: boolean) => {
+            this.dispatch({ type: 'setSchemaBasedOnQueries', isSchemaBasedOnQueries });
+        });
+
+        this.channel.on('schemaUpdated', (containerSchema: JSONSchema | null) => {
+            this.dispatch({ type: 'setContainerSchema', containerSchema });
         });
     }
 }

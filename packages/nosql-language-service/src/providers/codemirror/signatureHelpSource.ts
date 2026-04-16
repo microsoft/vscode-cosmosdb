@@ -5,7 +5,7 @@
 
 import { type EditorView, type Tooltip, type TooltipView } from '@codemirror/view';
 import { type SqlLanguageService } from '../../services/index.js';
-import { createDomElement, escapeHtml } from './types.js';
+import { createTooltipView, escapeHtml } from './types.js';
 
 export function createSignatureHelpSource(
     service: SqlLanguageService,
@@ -54,11 +54,8 @@ export function createSignatureHelpSource(
                     html += `<div class="cm-cosmosdb-sig-doc">${escapeHtml(sig.documentation)}</div>`;
                 }
 
-                const dom = createDomElement(_view, 'cm-cosmosdb-signature-help', html);
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                return { dom };
+                return createTooltipView(_view, 'cm-cosmosdb-signature-help', html);
             },
         };
     };
 }
-

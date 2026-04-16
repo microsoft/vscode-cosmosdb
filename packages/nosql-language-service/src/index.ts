@@ -36,6 +36,8 @@ import { SqlParser } from './parser/SqlParser.js';
 export * from './ast/nodes.js';
 export { getCompletions } from './completion/SqlCompletion.js';
 export type { CompletionItem, CompletionItemKind, CompletionRequest, JSONSchema } from './completion/SqlCompletion.js';
+export { detectTypos } from './diagnostics/typoDetection.js';
+export type { TypoWarning } from './diagnostics/typoDetection.js';
 export * from './errors/SqlError.js';
 export { sqlToString } from './printer/SqlPrinter.js';
 export * from './visitor/SqlVisitor.js';

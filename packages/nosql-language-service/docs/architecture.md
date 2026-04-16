@@ -64,6 +64,8 @@ index.ts  (public API: parse, sqlToString, getCompletions, SqlLanguageService, t
     ├── completion/SqlCompletion.ts
     │       ├── lexer/tokens.ts
     │       └── @cosmosdb/schema-analyzer  (JSONSchema type)
+    ├── diagnostics/typoDetection.ts  (near-miss keyword detection)
+    │       └── lexer/tokens.ts
     ├── errors/SqlError.ts        (SourceRange, error codes)
     └── services/
         ├── types.ts              (Diagnostic, HoverInfo, etc.)
@@ -86,6 +88,7 @@ The library is organized in three layers:
 - `printer/` — AST → SQL string
 - `visitor/` — visitor pattern
 - `errors/` — error types
+- `diagnostics/` — post-parse warnings (typo detection)
 - `completion/` — autocomplete engine (uses `JSONSchema` from `@cosmosdb/schema-analyzer`)
 
 ### Layer 2: Language Service (zero IDE dependencies)
@@ -155,6 +158,7 @@ dependencies and tree-shakes cleanly.
 | `printer/SqlPrinter.ts` | AST → SQL serializer |
 | `visitor/SqlVisitor.ts` | Visitor pattern dispatch |
 | `errors/SqlError.ts` | Error types + source locations |
+| `diagnostics/typoDetection.ts` | Near-miss keyword warnings |
 | `services/SqlLanguageService.ts` | IDE-agnostic facade |
 | `services/types.ts` | Generic language service types |
 | `services/functionSignatures.ts` | Function hover/sig metadata |

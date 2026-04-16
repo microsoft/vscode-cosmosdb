@@ -5,7 +5,7 @@
 
 import { type EditorView, type Tooltip, type TooltipView } from '@codemirror/view';
 import { type SqlLanguageService } from '../../services/index.js';
-import { createDomElement, escapeHtml } from './types.js';
+import { createTooltipView, escapeHtml } from './types.js';
 
 export function createHoverTooltipSource(
     service: SqlLanguageService,
@@ -20,15 +20,12 @@ export function createHoverTooltipSource(
             end: info.range?.endOffset ?? pos,
             above: true,
             create(_view: EditorView): TooltipView {
-                const dom = createDomElement(
+                return createTooltipView(
                     _view,
                     'cm-cosmosdb-hover',
                     info.contents.map((c: string) => `<div>${escapeHtml(c)}</div>`).join(''),
                 );
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                return { dom };
             },
         };
     };
 }
-

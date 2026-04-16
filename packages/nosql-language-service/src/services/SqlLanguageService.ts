@@ -13,6 +13,7 @@
 
 import { type IToken, type TokenType } from 'chevrotain';
 import { getCompletions, type CompletionItem, type JSONSchema } from '../completion/SqlCompletion.js';
+import { detectTypos } from '../diagnostics/typoDetection.js';
 import { parse, type ParseResult } from '../index.js';
 import { SqlLexer } from '../lexer/SqlLexer.js';
 import * as T from '../lexer/tokens.js';
@@ -149,7 +150,7 @@ export class SqlLanguageService {
 
     private getSingleQueryDiagnostics(query: string): Diagnostic[] {
         const { errors } = parse(query);
-        return errors.map((e) => ({
+        const diagnostics: Diagnostic[] = errors.map((e) => ({
             range: {
                 startOffset: e.range.start.offset,
                 endOffset: e.range.end.offset,
@@ -163,6 +164,26 @@ export class SqlLanguageService {
             code: e.code,
             source: 'cosmosdb-sql',
         }));
+
+        // Append typo warnings (near-miss keyword detection)
+        for (const typo of detectTypos(query)) {
+            diagnostics.push({
+                range: {
+                    startOffset: typo.range.start.offset,
+                    endOffset: typo.range.end.offset,
+                    startLine: typo.range.start.line,
+                    startColumn: typo.range.start.col,
+                    endLine: typo.range.end.line,
+                    endColumn: typo.range.end.col,
+                },
+                message: typo.message,
+                severity: DiagnosticSeverity.Warning,
+                code: 'POSSIBLE_TYPO',
+                source: 'cosmosdb-sql',
+            });
+        }
+
+        return diagnostics;
     }
 
     private getMultiQueryDiagnostics(query: string): Diagnostic[] {
@@ -191,6 +212,30 @@ export class SqlLanguageService {
                     message: e.message,
                     severity: DiagnosticSeverity.Error,
                     code: e.code,
+                    source: 'cosmosdb-sql',
+                });
+            }
+
+            // Typo warnings for this region
+            const regionText = query.substring(region.startOffset, region.endOffset);
+            for (const typo of detectTypos(regionText)) {
+                const docStartOffset = region.startOffset + typo.range.start.offset;
+                const docEndOffset = region.startOffset + typo.range.end.offset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, docStartOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, docEndOffset);
+
+                diagnostics.push({
+                    range: {
+                        startOffset: docStartOffset,
+                        endOffset: docEndOffset,
+                        startLine,
+                        startColumn,
+                        endLine,
+                        endColumn,
+                    },
+                    message: typo.message,
+                    severity: DiagnosticSeverity.Warning,
+                    code: 'POSSIBLE_TYPO',
                     source: 'cosmosdb-sql',
                 });
             }

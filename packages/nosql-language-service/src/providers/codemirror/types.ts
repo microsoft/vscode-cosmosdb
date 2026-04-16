@@ -69,20 +69,14 @@ export function mapSeverity(severity: DsSeverity): Diagnostic['severity'] {
 }
 
 /**
- * Helper to create a DOM element from a CodeMirror EditorView.
- * Works around the lack of DOM types in this package's TS config.
+ * Helper to create a TooltipView from a CodeMirror EditorView.
+ * Contains all DOM-related unsafe code so callers stay lint-clean.
  */
-export function createDomElement(
-    view: EditorView,
-    className: string,
-    innerHTML: string,
-): TooltipView['dom'] {
-    const viewDom = view.dom as unknown as Record<string, unknown>;
-    const ownerDoc = viewDom['ownerDocument'] as { createElement(tag: string): Record<string, unknown> };
+export function createTooltipView(view: EditorView, className: string, innerHTML: string): TooltipView {
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+    const ownerDoc = (view.dom as any).ownerDocument;
     const dom = ownerDoc.createElement('div');
-    dom['className'] = className;
-    dom['innerHTML'] = innerHTML;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return dom as unknown as TooltipView['dom'];
+    dom.className = className;
+    dom.innerHTML = innerHTML;
+    return { dom } as TooltipView;
 }
-

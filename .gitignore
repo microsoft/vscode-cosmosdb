@@ -279,3 +279,7 @@ bundle-analysis/
 
 .DS_Store
 
+
+# Agent skills (local only)
+.agents/
+skills-lock.json

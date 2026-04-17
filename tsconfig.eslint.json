@@ -3,9 +3,15 @@
   "compilerOptions": {
     "paths": {
       "@cosmosdb/schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
-      "@cosmosdb/schema-analyzer/*": ["./packages/schema-analyzer/src/*.ts"],
+      "@cosmosdb/schema-analyzer/*": [
+        "./packages/schema-analyzer/src/*.ts",
+        "./packages/schema-analyzer/src/*/index.ts"
+      ],
       "@cosmosdb/nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
-      "@cosmosdb/nosql-language-service/*": ["./packages/nosql-language-service/src/*.ts"]
+      "@cosmosdb/nosql-language-service/*": [
+        "./packages/nosql-language-service/src/*.ts",
+        "./packages/nosql-language-service/src/*/index.ts"
+      ]
     },
     "noUnusedLocals": false,
     "noUnusedParameters": false,

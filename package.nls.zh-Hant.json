@@ -32,7 +32,7 @@
   "cosmosdb.command.update": "更新至雲端",
   "cosmosdb.command.ai.deploy_instruction_files": "將 LLM 指示複製到使用者設定檔資料夾",
   "cosmosdb.command.ai.remove_instruction_files": "從使用者設定檔資料夾移除 LLM 指示",
-  "cosmosdb.command.schema.delete_all": "Delete All Saved Schemas",
+  "cosmosdb.command.schema.delete_all": "刪除所有已儲存的結構描述",
   "cosmosdb.configuration.batch.size": "查詢 Azure 資料庫資源時使用的批次大小。",
   "cosmosdb.configuration.confirmation.style": "確認無法復原的作業 (例如刪除資源) 時所使用的行為。",
   "cosmosdb.configuration.confirmation.style.button": "按鈕點擊確認",
@@ -59,5 +59,5 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "僅在 Azure (例如虛擬機器) 中執行時支援，[深入了解](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "使用使用者指派的受控識別驗證 Entra ID 時，所使用的受控識別的用戶端識別碼。",
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 資產。允許延伸模組持續更新 LLM 相關檔案。",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "When enabled, schema generation also considers query results to infer the container schema."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "啟用後，結構描述產生也會考慮查詢結果，以推斷容器結構描述。"
 }

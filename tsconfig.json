@@ -5,8 +5,11 @@
     "rootDir": ".",
     "paths": {
       "@cosmosdb/schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
+      "@cosmosdb/schema-analyzer/json": ["./packages/schema-analyzer/src/json/index.ts"],
       "@cosmosdb/schema-analyzer/*": ["./packages/schema-analyzer/src/*.ts"],
       "@cosmosdb/nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
+      "@cosmosdb/nosql-language-service/vscode": ["./packages/nosql-language-service/src/providers/vscode/index.ts"],
+      "@cosmosdb/nosql-language-service/monaco": ["./packages/nosql-language-service/src/providers/monaco/index.ts"],
       "@cosmosdb/nosql-language-service/*": ["./packages/nosql-language-service/src/*.ts"],
       "*": ["./*"]
     },

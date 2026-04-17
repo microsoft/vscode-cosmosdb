@@ -46,6 +46,7 @@
     "onLanguageModelTool:cosmosdb_sampleContainerSchema"
   ],
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "build": "tsc",
     "clean": "git clean -dfx",
     "compile": "tsc -watch",

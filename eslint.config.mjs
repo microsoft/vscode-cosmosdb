@@ -105,7 +105,8 @@ export default defineConfig([
             sourceType: 'module',
 
             parserOptions: {
-                projectService: true,
+                projectService: false,
+                project: './tsconfig.eslint.json',
                 tsconfigRootDir: import.meta.dirname,
             },
         },
@@ -151,7 +152,8 @@ export default defineConfig([
             },
 
             parserOptions: {
-                projectService: true,
+                projectService: false,
+                project: './tsconfig.eslint.json',
                 tsconfigRootDir: import.meta.dirname,
                 ecmaFeatures: {
                     jsx: true,

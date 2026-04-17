@@ -4,11 +4,15 @@
     "outDir": "out",
     "rootDir": ".",
     "paths": {
+      "@cosmosdb/schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
+      "@cosmosdb/schema-analyzer/*": ["./packages/schema-analyzer/src/*.ts"],
+      "@cosmosdb/nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
+      "@cosmosdb/nosql-language-service/*": ["./packages/nosql-language-service/src/*.ts"],
       "*": ["./*"]
     },
     "types": ["jest", "mocha", "node"],
     "typeRoots": ["node_modules/@types"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "main.ts"],
-  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__", "packages"]
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__"]
 }

@@ -20,12 +20,6 @@
     "noUnusedParameters": false,
     "types": ["jest", "mocha", "node"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "main.ts",
-    "packages/*/src/**/*.ts",
-    "packages/*/src/**/*.tsx"
-  ],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "main.ts", "packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
   "exclude": ["node_modules", "dist", "out", "**/__mocks__"]
 }

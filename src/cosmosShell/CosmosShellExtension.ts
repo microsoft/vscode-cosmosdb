@@ -41,6 +41,7 @@ import { getAccessTokenForVSCode } from '../cosmosdb/utils/azureSessionHelper';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
+import { resolveCosmosShellCommand } from './cosmosShellCommandResolver';
 
 // Track the connection string associated with each open Cosmos DB Shell terminal
 const terminalConnectionStrings = new Map<vscode.Terminal, string>();
@@ -115,7 +116,7 @@ export class CosmosShellExtension implements vscode.Disposable {
 
 function getCosmosShellCommand(): string {
     const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
-    return shellPath || 'CosmosShell';
+    return resolveCosmosShellCommand(shellPath);
 }
 
 function isCosmosShellPathFound(): boolean {

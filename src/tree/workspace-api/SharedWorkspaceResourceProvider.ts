@@ -25,6 +25,7 @@ import type * as vscode from 'vscode';
  */
 export enum WorkspaceResourceType {
     AttachedAccounts = 'vscode.cosmosdb.workspace.attachedaccounts-resourceType',
+    Migrations = 'vscode.cosmosdb.workspace.migrations-resourceType',
 }
 
 /**
@@ -50,6 +51,11 @@ export class SharedWorkspaceResourceProvider implements WorkspaceResourceProvide
                 resourceType: WorkspaceResourceType.AttachedAccounts,
                 id: 'vscode.cosmosdb.workspace.attachedaccounts',
                 name: l10n.t('Cosmos DB Accounts'),
+            },
+            {
+                resourceType: WorkspaceResourceType.Migrations,
+                id: 'vscode.cosmosdb.workspace.migrations',
+                name: l10n.t('Cosmos DB Migrations'),
             },
         ];
     }

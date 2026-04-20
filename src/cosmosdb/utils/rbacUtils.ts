@@ -4,9 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type SqlRoleAssignmentCreateUpdateParameters } from '@azure/arm-cosmosdb';
-import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
+import { createAuthorizationManagementClient, getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
+    createSubscriptionContext,
     type IActionContext,
     type IAzureMessageOptions,
 } from '@microsoft/vscode-azext-utils';
@@ -16,6 +17,25 @@ import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import { createCosmosDBClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
+
+/**
+ * Built-in "Cosmos DB Operator" role definition ID. This Azure RBAC role grants
+ * control-plane management of Cosmos DB accounts (databases, containers,
+ * account properties) while explicitly excluding access to keys, connection
+ * strings, and native data-plane role definitions/assignments.
+ *
+ * This role is required in addition to the data-plane "Cosmos DB Built-in Data
+ * Contributor" role because the built-in data role only covers data actions
+ * *inside* existing containers (`sqlDatabases/containers/*` and
+ * `sqlDatabases/containers/items/*`). Creating, updating, or deleting databases
+ * and containers is a control-plane operation and is not expressible as a
+ * Cosmos DB data action (the `sqlDatabases/*` wildcard is rejected by the
+ * service — see https://learn.microsoft.com/azure/cosmos-db/nosql/security/reference-data-plane-actions).
+ *
+ * See also:
+ * https://learn.microsoft.com/azure/cosmos-db/how-to-connect-role-based-access-control?pivots=azure-cli#grant-control-plane-role-based-access
+ */
+const COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID = '230815da-be43-4aae-9cb4-875f7bd000aa';
 
 export async function ensureRbacPermissionV2(
     fullId: string,
@@ -100,7 +120,7 @@ async function askForRbacPermissions(
     return result === setPermissionItem;
 }
 
-async function addRbacContributorPermission(
+export async function addRbacContributorPermission(
     databaseAccount: string,
     principalId: string,
     resourceGroup: string,
@@ -134,4 +154,52 @@ async function addRbacContributorPermission(
     );
 
     return create.id;
+}
+
+/**
+ * Assigns the built-in "Cosmos DB Operator" Azure RBAC role to the given
+ * principal at the **resource group** scope, granting the principal the ability
+ * to manage Cosmos DB accounts in that resource group — including creating,
+ * updating, and deleting databases and containers via the Cosmos DB SDK —
+ * without access to keys or data.
+ *
+ * This role is required in addition to the data-plane "Cosmos DB Built-in Data
+ * Contributor" role: Cosmos DB's native RBAC does not expose a data action for
+ * database/container lifecycle, so those operations are authorized by Azure
+ * RBAC instead. See:
+ * https://learn.microsoft.com/azure/cosmos-db/how-to-connect-role-based-access-control?pivots=azure-cli#permission-model
+ *
+ * Returns the new role assignment ID, or `undefined` when the principal already
+ * holds this role at the same scope (treated as success).
+ */
+export async function addCosmosDBOperatorRoleAssignment(
+    principalId: string,
+    resourceGroup: string,
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<string | undefined> {
+    const resourceGroupScope = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}`;
+    const roleDefinitionId = `/subscriptions/${subscription.subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID}`;
+
+    const subContext = createSubscriptionContext(subscription);
+    const authClient = await createAuthorizationManagementClient([context, subContext]);
+
+    try {
+        const result = await authClient.roleAssignments.create(resourceGroupScope, randomUUID(), {
+            principalId,
+            roleDefinitionId,
+            // Setting principalType avoids the 1-minute retry loop that ARM uses when
+            // it has to look up the principal type via Microsoft Graph.
+            principalType: 'User',
+        });
+        return result.id;
+    } catch (error) {
+        // The assignment already exists — Azure returns 409 RoleAssignmentExists.
+        // Treat as success since the desired state is already in place.
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes('RoleAssignmentExists')) {
+            return undefined;
+        }
+        throw error;
+    }
 }

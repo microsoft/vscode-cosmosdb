@@ -130,6 +130,10 @@ module.exports = (env, { mode }) => {
                         to: 'resources',
                     },
                     {
+                        from: 'skills',
+                        to: 'skills',
+                    },
+                    {
                         from: 'package.json',
                         to: 'package.json',
                     },

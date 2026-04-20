@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { extractJsonObject } from '../utils/aiUtils';
 import { areAIFeaturesEnabled } from '../utils/copilotUtils';
 import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
@@ -208,7 +209,12 @@ export class CosmosDbChatParticipant {
                 return null;
             }
 
-            const parsed = JSON.parse(jsonText.trim()) as {
+            // Extract JSON object defensively — the model may wrap the payload in
+            // prose or markdown fences despite the system prompt. Fall back to the
+            // raw trimmed text if no object is found so the JSON.parse error path
+            // retains the original diagnostic behaviour.
+            const jsonPayload = extractJsonObject(jsonText) ?? jsonText.trim();
+            const parsed = JSON.parse(jsonPayload) as {
                 operation: string;
                 parameters: Record<string, unknown>;
             };
@@ -256,8 +262,9 @@ export class CosmosDbChatParticipant {
                 jsonText += fragment;
             }
 
-            // Parse the JSON response
-            const parameters = JSON.parse(jsonText.trim()) as Record<string, unknown>;
+            // Parse the JSON response, tolerating any leading/trailing prose.
+            const jsonPayload = extractJsonObject(jsonText) ?? jsonText.trim();
+            const parameters = JSON.parse(jsonPayload) as Record<string, unknown>;
             return parameters && typeof parameters === 'object' ? parameters : {};
         } catch (error) {
             if (ctx) {

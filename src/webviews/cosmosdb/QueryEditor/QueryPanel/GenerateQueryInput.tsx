@@ -17,16 +17,10 @@ import {
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { resolveSelectedModelId, sortModelsAutoFirst, type ModelInfo } from '../../../../utils/modelUtils';
 import { WebviewContext } from '../../../WebviewContext';
 import { useQueryEditorState, useQueryEditorStateDispatch } from '../state/QueryEditorContext';
 import { usePromptHistory } from './usePromptHistory';
-
-interface ModelInfo {
-    id: string;
-    name: string;
-    family: string;
-    vendor: string;
-}
 
 const useStyles = makeStyles({
     container: {
@@ -299,12 +293,9 @@ export const GenerateQueryInput = () => {
     // Listen for availableModels event
     useEffect(() => {
         const handler = (models: ModelInfo[], savedModelId: string | null) => {
-            setAvailableModels(models);
-            if (savedModelId && models.some((m) => m.id === savedModelId)) {
-                setSelectedModelId(savedModelId);
-            } else if (models.length > 0) {
-                setSelectedModelId(models[0].id);
-            }
+            const sortedModels = sortModelsAutoFirst(models);
+            setAvailableModels(sortedModels);
+            setSelectedModelId(resolveSelectedModelId(sortedModels, savedModelId));
         };
         void channel.on('availableModels', handler as never);
         return () => {

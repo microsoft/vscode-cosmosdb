@@ -24,6 +24,7 @@ import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHand
 import { ext } from '../extensionVariables';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
+import { getAvailableModelsInfo, getSelectedModel } from '../utils/aiUtils';
 import { isSelectStar, toStringUniversal } from '../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
 import { type JSONSchema } from '../utils/json/JSONSchema';
@@ -33,6 +34,7 @@ import {
     updateSchemaWithDocument,
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
+import { SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { sanitizeSqlComment } from '../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
 import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
@@ -42,7 +44,6 @@ import { DocumentTab } from './DocumentTab';
 
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
-const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
 const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
 const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
 const SCHEMA_GENERATION_PAGE_SIZE = 1000;
@@ -1172,12 +1173,6 @@ export class QueryEditorTab extends BaseTab {
             const token = this.generateQueryCancellation.token;
 
             try {
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-
-                if (models.length === 0) {
-                    throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
-                }
-
                 // Check for cancellation
                 if (token.isCancellationRequested) {
                     void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
@@ -1192,9 +1187,7 @@ export class QueryEditorTab extends BaseTab {
                     return;
                 }
 
-                // Use saved model selection or first available
-                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+                const model = await getSelectedModel();
 
                 // Use the shared service for query generation
                 const service = CosmosDbOperationsService.getInstance();
@@ -1304,12 +1297,7 @@ export class QueryEditorTab extends BaseTab {
 
     private async getSelectedModelName(): Promise<void> {
         try {
-            const models = await vscode.lm.selectChatModels();
-            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-
-            // Find the saved model or use first available
-            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
-
+            const selectedModel = await getSelectedModel();
             const modelName = selectedModel?.name ?? 'Copilot';
 
             await this.channel.postMessage({
@@ -1327,31 +1315,12 @@ export class QueryEditorTab extends BaseTab {
     }
 
     private async getAvailableModels(): Promise<void> {
-        try {
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-
-            const modelList = models
-                .filter((m) => m.name.toLowerCase() !== 'auto') // auto model does not work
-                .map((m) => ({
-                    id: m.id,
-                    name: m.name,
-                    family: m.family,
-                    vendor: m.vendor,
-                }));
-
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'availableModels',
-                params: [modelList, savedModelId],
-            });
-        } catch {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'availableModels',
-                params: [[], null],
-            });
-        }
+        const { models, savedModelId } = await getAvailableModelsInfo();
+        await this.channel.postMessage({
+            type: 'event',
+            name: 'availableModels',
+            params: [models, savedModelId],
+        });
     }
 
     private async setSelectedModel(modelId: string): Promise<void> {

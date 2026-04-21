@@ -2,8 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "types": ["mocha", "node"],
-    "composite": true
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "types": ["mocha", "node"]
   },
   "include": [
     "src/**/*.ts",

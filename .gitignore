@@ -273,3 +273,7 @@ pnpm-debug.log*
 # npm lockfile (replaced by pnpm-lock.yaml)
 package-lock.json
 
+
+# Agent skills (local only)
+.agents/
+skills-lock.json

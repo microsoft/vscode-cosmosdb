@@ -10,6 +10,7 @@ import { TestOutputChannel } from './TestOutputChannel';
 import { TestUserInput } from './TestUserInput';
 
 // Runs before all tests
+// oxlint-disable-next-line mocha/no-top-level-hooks -- global setup hook intentionally at top level
 suiteSetup(async function (this: Mocha.Context): Promise<void> {
     this.timeout(2 * 60 * 1000);
 

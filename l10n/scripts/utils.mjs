@@ -3,10 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { getL10nJson } from '@vscode/l10n-dev';
 import * as glob from 'glob';
 import { readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Worker } from 'node:worker_threads';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WORKER_PATH = path.join(__dirname, 'worker.mjs');
 
 const GLOB_DEFAULTS = {
     // We only want files.
@@ -17,6 +22,24 @@ const GLOB_DEFAULTS = {
     // For now, we'll keep it, but in the future, we should remove it.
     windowsPathsNoEscape: true,
 };
+
+/**
+ * Run getL10nJson on a chunk of files in a worker thread.
+ * @param {Array} fileContents
+ * @returns {Promise<Object>}
+ */
+function analyzeInWorker(fileContents) {
+    return new Promise((resolve, reject) => {
+        const worker = new Worker(WORKER_PATH);
+        worker.on('message', ({ ok, result, error }) => {
+            worker.terminate();
+            if (ok) resolve(result);
+            else reject(new Error(error));
+        });
+        worker.on('error', reject);
+        worker.postMessage(fileContents);
+    });
+}
 
 /**
  * Export strings from TypeScript/JavaScript files.
@@ -41,9 +64,19 @@ export async function l10nExportStrings(paths) {
         return;
     }
 
-    console.log(`Found ${tsFileContents.length} files. Extracting strings...`);
+    const numWorkers = Math.min(os.cpus().length, tsFileContents.length);
+    console.log(`Found ${tsFileContents.length} files. Extracting strings using ${numWorkers} workers...`);
 
-    const jsonResult = await getL10nJson(tsFileContents);
+    // Split files into equal chunks across workers
+    const chunkSize = Math.ceil(tsFileContents.length / numWorkers);
+    const chunks = Array.from({ length: numWorkers }, (_, i) =>
+        tsFileContents.slice(i * chunkSize, (i + 1) * chunkSize),
+    ).filter((c) => c.length > 0);
+
+    const results = await Promise.all(chunks.map(analyzeInWorker));
+
+    // Merge all worker results
+    const jsonResult = Object.assign({}, ...results);
     const stringsFound = Object.keys(jsonResult).length;
 
     if (!stringsFound) {
@@ -69,6 +102,7 @@ export const l10nExportAllStrings = async (paths) => {
     if (!output) {
         return;
     }
+
 
     // Log the total count of unique localization keys
     console.log(`Count of localization keys: ${Object.keys(output).length}`);

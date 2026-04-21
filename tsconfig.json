@@ -21,6 +21,7 @@
     "sourceMap": true,
     "rootDir": ".",
     "resolveJsonModule": true,
+    "alwaysStrict": true,
     "paths": {
       "*": ["./*"]
     },

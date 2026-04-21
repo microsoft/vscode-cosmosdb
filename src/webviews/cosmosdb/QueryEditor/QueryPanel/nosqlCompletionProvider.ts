@@ -15,8 +15,6 @@
  *
  * Reference: https://learn.microsoft.com/azure/cosmos-db/nosql/query/
  */
-
-// eslint-disable-next-line import/no-internal-modules
 import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { getCursorContext } from '../../../../cosmosdb/language/AST';
 import {

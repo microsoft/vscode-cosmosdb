@@ -456,8 +456,7 @@
       {
         "category": "NoSQL",
         "command": "cosmosDB.launchCosmosShell",
-        "title": "%cosmosdb.command.cosmos_shell.launch%",
-        "when": "vscodeDatabases.cosmosShellSupportEnabled"
+        "title": "%cosmosdb.command.cosmos_shell.launch%"
       },
       {
         "category": "NoSQL",

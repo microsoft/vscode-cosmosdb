@@ -13,8 +13,8 @@ import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import {
     getSchemaFromDocument,
-    updateSchemaWithDocument,
     type NoSQLDocument,
+    updateSchemaWithDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
@@ -124,8 +124,7 @@ function simplifySchemaForTool(schema: JSONSchema): Record<string, unknown> {
     }
 
     for (const [key, value] of Object.entries(schema.properties as Record<string, JSONSchema>)) {
-        const propSchema = value as JSONSchema;
-        const anyOfEntries = propSchema.anyOf as JSONSchema[] | undefined;
+        const anyOfEntries = value.anyOf as JSONSchema[] | undefined;
 
         if (anyOfEntries && anyOfEntries.length > 0) {
             // Check if any entry is an object type with nested properties

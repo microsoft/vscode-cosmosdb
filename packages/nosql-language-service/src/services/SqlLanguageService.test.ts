@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
+import { SqlLanguageService } from './SqlLanguageService.js';
 
 describe('SqlLanguageService.getFoldableRegions', () => {
     let service: SqlLanguageService;

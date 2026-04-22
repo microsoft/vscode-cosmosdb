@@ -9,11 +9,11 @@ import { getDocumentTreeItemLabel } from './vscodeUtils';
 
 describe('Document Label Tests', () => {
     beforeAll(() => {
-        jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-            get: jest.fn().mockReturnValue(['name']),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: vi.fn().mockReturnValue(['name']),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         });
     });
 

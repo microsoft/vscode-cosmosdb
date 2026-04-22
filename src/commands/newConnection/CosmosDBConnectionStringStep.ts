@@ -43,7 +43,7 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
         return undefined;
     }
 
-    //eslint-disable-next-line @typescript-eslint/require-await
+     
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
             parseCosmosDBConnectionString(connectionString);

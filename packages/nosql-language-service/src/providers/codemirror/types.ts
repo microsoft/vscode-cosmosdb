@@ -73,7 +73,7 @@ export function mapSeverity(severity: DsSeverity): Diagnostic['severity'] {
  * Contains all DOM-related unsafe code so callers stay lint-clean.
  */
 export function createTooltipView(view: EditorView, className: string, innerHTML: string): TooltipView {
-    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any */
+     
     const ownerDoc = (view.dom as any).ownerDocument;
     const dom = ownerDoc.createElement('div');
     dom.className = className;

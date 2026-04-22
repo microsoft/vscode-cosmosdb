@@ -1,25 +1,18 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "paths": {
-      "@cosmosdb/schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
-      "@cosmosdb/schema-analyzer/json": ["./packages/schema-analyzer/src/json/index.ts"],
-      "@cosmosdb/schema-analyzer/*": [
-        "./packages/schema-analyzer/src/*.ts",
-        "./packages/schema-analyzer/src/*/index.ts"
-      ],
-      "@cosmosdb/nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
-      "@cosmosdb/nosql-language-service/vscode": ["./packages/nosql-language-service/src/providers/vscode/index.ts"],
-      "@cosmosdb/nosql-language-service/monaco": ["./packages/nosql-language-service/src/providers/monaco/index.ts"],
-      "@cosmosdb/nosql-language-service/*": [
-        "./packages/nosql-language-service/src/*.ts",
-        "./packages/nosql-language-service/src/*/index.ts"
-      ]
-    },
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["jest", "mocha", "node"]
+    "types": ["mocha", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "main.ts", "packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "main.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/*/tests/**/*.ts",
+    "test/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist", "out", "**/__mocks__"]
 }

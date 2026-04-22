@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export const isWindows: boolean = /^win/.test(process.platform);
-export const isLinux: boolean = /^linux/.test(process.platform);
-export const isMacOS: boolean = /^darwin/.test(process.platform);
+export const isWindows: boolean = process.platform.startsWith('win');
+export const isLinux: boolean = process.platform.startsWith('linux');
+export const isMacOS: boolean = process.platform.startsWith('darwin');
 
 import * as fs from 'fs';
 import assert from 'node:assert';

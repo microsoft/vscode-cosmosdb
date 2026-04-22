@@ -7,12 +7,12 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { deployLLMInstructionsFiles, removeLLMInstructionsFiles } from './deployLLMInstructionsFiles';
 
 // Mock the callWithTelemetryAndErrorHandling function
-jest.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: jest.fn(),
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn(),
 }));
 
 // Mock all dependencies
-jest.mock('../../extensionVariables', () => ({
+vi.mock('../../extensionVariables', () => ({
     ext: {
         context: {
             globalStorageUri: {
@@ -24,36 +24,39 @@ jest.mock('../../extensionVariables', () => ({
                 },
             },
             globalState: {
-                get: jest.fn().mockReturnValue('{}'),
-                update: jest.fn(),
+                get: vi.fn().mockReturnValue('{}'),
+                update: vi.fn(),
             },
         },
     },
 }));
 
-jest.mock('../../services/SettingsService', () => ({
+vi.mock('../../services/SettingsService', () => ({
     SettingsService: {
-        getSetting: jest.fn(),
+        getSetting: vi.fn(),
     },
 }));
 
-jest.mock('fs', () => ({
-    existsSync: jest.fn(),
-    mkdirSync: jest.fn(),
-    readdirSync: jest.fn(),
-    copyFileSync: jest.fn(),
-    readFileSync: jest.fn(),
-    unlinkSync: jest.fn(),
+vi.mock('fs', () => ({
+    existsSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    readdirSync: vi.fn(),
+    copyFileSync: vi.fn(),
+    readFileSync: vi.fn(),
+    unlinkSync: vi.fn(),
 }));
 
-jest.mock('path', () => ({
-    dirname: jest.fn(),
-    join: jest.fn(),
-    extname: jest.fn(),
-}));
+vi.mock('path', () => {
+    const mock = {
+        dirname: vi.fn(),
+        join: vi.fn(),
+        extname: vi.fn(),
+    };
+    return { ...mock, default: mock };
+});
 
-jest.mock('@vscode/l10n', () => ({
-    t: jest.fn(),
+vi.mock('@vscode/l10n', () => ({
+    t: vi.fn(),
 }));
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
@@ -80,7 +83,7 @@ describe('LLM Instructions Files', () => {
     });
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
         // Setup mock telemetry context that will be passed to the callback
         mockTelemetryContext = {
@@ -91,35 +94,35 @@ describe('LLM Instructions Files', () => {
         } as IActionContext;
 
         // Mock the callWithTelemetryAndErrorHandling function
-        (callWithTelemetryAndErrorHandling as jest.Mock).mockImplementation(
+        (callWithTelemetryAndErrorHandling as vi.Mock).mockImplementation(
             (_eventName: string, callback: (context: IActionContext) => void) => {
                 return callback(mockTelemetryContext);
             },
         );
 
         // Mock fs functions
-        (fs.existsSync as jest.Mock).mockReturnValue(true);
-        (fs.mkdirSync as jest.Mock).mockImplementation();
-        (fs.readdirSync as jest.Mock).mockReturnValue([]);
-        (fs.copyFileSync as jest.Mock).mockImplementation();
-        (fs.readFileSync as jest.Mock).mockReturnValue('test content');
-        (fs.unlinkSync as jest.Mock).mockImplementation();
+        (fs.existsSync as vi.Mock).mockReturnValue(true);
+        (fs.mkdirSync as vi.Mock).mockImplementation();
+        (fs.readdirSync as vi.Mock).mockReturnValue([]);
+        (fs.copyFileSync as vi.Mock).mockImplementation();
+        (fs.readFileSync as vi.Mock).mockReturnValue('test content');
+        (fs.unlinkSync as vi.Mock).mockImplementation();
 
         // Mock path functions
-        (path.dirname as jest.Mock).mockImplementation((p: string) => {
+        (path.dirname as vi.Mock).mockImplementation((p: string) => {
             if (p === 'C:\\Users\\test\\.vscode\\extensions\\storage') {
                 return 'C:\\Users\\test\\.vscode\\extensions';
             }
             return p;
         });
-        (path.join as jest.Mock).mockImplementation((...paths: string[]) => paths.join('\\'));
-        (path.extname as jest.Mock).mockImplementation((p: string) => {
+        (path.join as vi.Mock).mockImplementation((...paths: string[]) => paths.join('\\'));
+        (path.extname as vi.Mock).mockImplementation((p: string) => {
             const lastDot = p.lastIndexOf('.');
             return lastDot >= 0 ? p.substring(lastDot) : '';
         });
 
         // Mock l10n
-        (l10n.t as jest.Mock).mockImplementation((message: string, ...args: any[]) => {
+        (l10n.t as vi.Mock).mockImplementation((message: string, ...args: any[]) => {
             const templates: Record<string, string> = {
                 'Source folder not found: {0}': `Source folder not found: ${args[0]}`,
                 'Successfully copied {0} LLM instructions (.md) files': `Successfully copied ${args[0]} LLM instructions (.md) files`,
@@ -134,19 +137,19 @@ describe('LLM Instructions Files', () => {
         });
 
         // Setup console mocks
-        jest.spyOn(console, 'log').mockImplementation();
-        jest.spyOn(console, 'error').mockImplementation();
+        vi.spyOn(console, 'log').mockImplementation();
+        vi.spyOn(console, 'error').mockImplementation();
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     describe('deployLLMInstructionsFiles', () => {
         describe('when manageLLMAssets setting is disabled', () => {
             it('should skip deployment and return early', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(false);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(false);
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -163,8 +166,8 @@ describe('LLM Instructions Files', () => {
         describe('when manageLLMAssets setting is enabled', () => {
             it('should create prompt folder if it does not exist', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
-                (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
+                (fs.existsSync as vi.Mock).mockImplementation((path: string) => {
                     return path !== 'C:\\Users\\test\\.vscode\\extensions\\..\\prompts';
                 });
 
@@ -180,8 +183,8 @@ describe('LLM Instructions Files', () => {
 
             it('should handle source folder not found error', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
-                (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
+                (fs.existsSync as vi.Mock).mockImplementation((path: string) => {
                     return !path.toString().includes('llm-assets');
                 });
 
@@ -198,19 +201,19 @@ describe('LLM Instructions Files', () => {
 
             it('should copy new .md files', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
                 const mockFiles = [
                     createMockDirent('test1.md', true),
                     createMockDirent('test2.md', true),
                     createMockDirent('readme.txt', true), // Should be ignored
                     createMockDirent('subfolder', false), // Should be ignored
                 ];
-                (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
-                (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+                (fs.readdirSync as vi.Mock).mockReturnValue(mockFiles);
+                (fs.existsSync as vi.Mock).mockImplementation((path: string) => {
                     // Source folder exists, but destination files don't exist
                     return !path.includes('.md') || path.includes('llm-assets');
                 });
-                (fs.readFileSync as jest.Mock).mockReturnValue('file content');
+                (fs.readFileSync as vi.Mock).mockReturnValue('file content');
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -227,17 +230,17 @@ describe('LLM Instructions Files', () => {
 
             it('should skip identical files and show status bar', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
                 const mockFiles = [createMockDirent('test1.md', true), createMockDirent('test2.md', true)];
-                (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
-                (fs.existsSync as jest.Mock).mockReturnValue(true); // All files exist
-                (fs.readFileSync as jest.Mock).mockReturnValue('identical content'); // Same content
+                (fs.readdirSync as vi.Mock).mockReturnValue(mockFiles);
+                (fs.existsSync as vi.Mock).mockReturnValue(true); // All files exist
+                (fs.readFileSync as vi.Mock).mockReturnValue('identical content'); // Same content
                 const mockStatusBar = {
                     text: '',
-                    show: jest.fn(),
-                    dispose: jest.fn(),
+                    show: vi.fn(),
+                    dispose: vi.fn(),
                 };
-                (vscode.window.createStatusBarItem as jest.Mock).mockReturnValue(mockStatusBar);
+                (vscode.window.createStatusBarItem as vi.Mock).mockReturnValue(mockStatusBar);
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -254,15 +257,15 @@ describe('LLM Instructions Files', () => {
 
             it('should show status bar when no .md files found', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
                 const mockFiles = [createMockDirent('readme.txt', true), createMockDirent('subfolder', false)];
-                (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
+                (fs.readdirSync as vi.Mock).mockReturnValue(mockFiles);
                 const mockStatusBar = {
                     text: '',
-                    show: jest.fn(),
-                    dispose: jest.fn(),
+                    show: vi.fn(),
+                    dispose: vi.fn(),
                 };
-                (vscode.window.createStatusBarItem as jest.Mock).mockReturnValue(mockStatusBar);
+                (vscode.window.createStatusBarItem as vi.Mock).mockReturnValue(mockStatusBar);
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -278,9 +281,9 @@ describe('LLM Instructions Files', () => {
 
             it('should handle errors gracefully', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
                 const error = new Error('Test error');
-                (fs.readdirSync as jest.Mock).mockImplementation(() => {
+                (fs.readdirSync as vi.Mock).mockImplementation(() => {
                     throw error;
                 });
 
@@ -297,20 +300,20 @@ describe('LLM Instructions Files', () => {
 
             it('should handle case-insensitive file extensions', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
                 const mockFiles = [
                     createMockDirent('test1.MD', true),
                     createMockDirent('test2.Md', true),
                     createMockDirent('test3.mD', true),
                 ];
-                (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
-                (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+                (fs.readdirSync as vi.Mock).mockReturnValue(mockFiles);
+                (fs.existsSync as vi.Mock).mockImplementation((path: string) => {
                     // Source folder exists, but destination files don't exist for uppercase variants
                     if (path.includes('llm-assets')) return true; // Source folder exists
                     if (path.includes('.MD') || path.includes('.Md') || path.includes('.mD')) return false; // Destination files don't exist
                     return true; // Other paths exist
                 });
-                (fs.readFileSync as jest.Mock).mockReturnValue('content');
+                (fs.readFileSync as vi.Mock).mockReturnValue('content');
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -327,7 +330,7 @@ describe('LLM Instructions Files', () => {
 
             it('should delete obsolete files from previous deployment', async () => {
                 // Arrange
-                (SettingsService.getSetting as jest.Mock).mockReturnValue(true);
+                (SettingsService.getSetting as vi.Mock).mockReturnValue(true);
                 const previousManifest = {
                     files: {
                         'old-file.md': { status: 'deployed' },
@@ -336,12 +339,12 @@ describe('LLM Instructions Files', () => {
                 };
                 const mockFiles = [createMockDirent('still-exists.md', true), createMockDirent('new-file.md', true)];
 
-                (ext.context.globalState.get as jest.Mock).mockReturnValue(JSON.stringify(previousManifest));
-                (fs.readdirSync as jest.Mock).mockReturnValue(mockFiles);
-                (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+                (ext.context.globalState.get as vi.Mock).mockReturnValue(JSON.stringify(previousManifest));
+                (fs.readdirSync as vi.Mock).mockReturnValue(mockFiles);
+                (fs.existsSync as vi.Mock).mockImplementation((path: string) => {
                     return !path.includes('new-file.md') || path.includes('llm-assets');
                 });
-                (fs.readFileSync as jest.Mock).mockReturnValue('file content');
+                (fs.readFileSync as vi.Mock).mockReturnValue('file content');
 
                 // Act
                 await deployLLMInstructionsFiles({} as IActionContext);
@@ -363,8 +366,8 @@ describe('LLM Instructions Files', () => {
                     'file3.md': { status: 'deployed' },
                 },
             };
-            (ext.context.globalState.get as jest.Mock).mockReturnValue(JSON.stringify(manifest));
-            (fs.existsSync as jest.Mock).mockReturnValue(true);
+            (ext.context.globalState.get as vi.Mock).mockReturnValue(JSON.stringify(manifest));
+            (fs.existsSync as vi.Mock).mockReturnValue(true);
 
             // Act
             await removeLLMInstructionsFiles({} as IActionContext);
@@ -390,8 +393,8 @@ describe('LLM Instructions Files', () => {
                     'existing.md': { status: 'deployed' },
                 },
             };
-            (ext.context.globalState.get as jest.Mock).mockReturnValue(JSON.stringify(manifest));
-            (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
+            (ext.context.globalState.get as vi.Mock).mockReturnValue(JSON.stringify(manifest));
+            (fs.existsSync as vi.Mock).mockImplementation((path: string) => {
                 return path.includes('existing.md');
             });
 
@@ -406,7 +409,7 @@ describe('LLM Instructions Files', () => {
 
         it('should show message when no files found to delete', async () => {
             // Arrange
-            (ext.context.globalState.get as jest.Mock).mockReturnValue('{}');
+            (ext.context.globalState.get as vi.Mock).mockReturnValue('{}');
 
             // Act
             await removeLLMInstructionsFiles({} as IActionContext);

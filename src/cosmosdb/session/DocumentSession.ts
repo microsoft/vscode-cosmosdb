@@ -389,7 +389,7 @@ async function readWithFallback(
             ]);
 
             if (queryResult?.resources?.length === 1) {
-                result = queryResult.resources[0] as CosmosDBRecord;
+                result = queryResult.resources[0];
                 ext.outputChannel.appendLog(`[document.read] Document found via _rid query`);
             } else {
                 ext.outputChannel.appendLog(

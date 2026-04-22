@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { parse, sqlToString } from '../../src/index.js';
+import { parse, sqlToString } from '../index.js';
 
 describe('SqlParser — basic queries', () => {
     it('parses SELECT * FROM c', () => {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { getSurveyConfig, getSurveyState, getSurveyStateKeys, promptAfterActionEventually } from './survey';
@@ -13,19 +13,19 @@ const telemetryContextMock = {
     telemetry: { properties: {}, measurements: {} },
     errorHandling: { issueProperties: {} },
     ui: {
-        showWarningMessage: jest.fn(),
-        onDidFinishPrompt: jest.fn(),
-        showQuickPick: jest.fn(),
-        showInputBox: jest.fn(),
-        showOpenDialog: jest.fn(),
-        showWorkspaceFolderPick: jest.fn(),
+        showWarningMessage: vi.fn(),
+        onDidFinishPrompt: vi.fn(),
+        showQuickPick: vi.fn(),
+        showInputBox: vi.fn(),
+        showOpenDialog: vi.fn(),
+        showWorkspaceFolderPick: vi.fn(),
     },
     valuesToMask: [],
 };
 
 // Mock vscode-azext-utils module
-jest.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: jest.fn(
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn(
         async (_eventName, callback: (context: IActionContext) => Promise<void>) => {
             await callback(telemetryContextMock);
             return undefined; // Explicitly return undefined to match function signature
@@ -34,34 +34,34 @@ jest.mock('@microsoft/vscode-azext-utils', () => ({
 }));
 
 // Mock vscode module
-jest.mock('vscode', () => ({
+vi.mock('vscode', () => ({
     env: {
-        openExternal: jest.fn(() => Promise.resolve(true)),
+        openExternal: vi.fn(() => Promise.resolve(true)),
         language: 'en',
     },
     Uri: {
-        parse: jest.fn((url) => ({ toString: () => url })),
+        parse: vi.fn((url) => ({ toString: () => url })),
     },
     window: {
-        showInformationMessage: jest.fn(),
+        showInformationMessage: vi.fn(),
     },
     workspace: {
-        getConfiguration: jest.fn(() => ({
-            get: jest.fn().mockReturnValue(true),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        getConfiguration: vi.fn(() => ({
+            get: vi.fn().mockReturnValue(true),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         })),
     },
 }));
 
 // Mock extensionVariables module
-jest.mock('../extensionVariables', () => ({
+vi.mock('../extensionVariables', () => ({
     ext: {
         context: {
             globalState: {
-                get: jest.fn(),
-                update: jest.fn(() => Promise.resolve()),
+                get: vi.fn(),
+                update: vi.fn(() => Promise.resolve()),
             },
             extension: {
                 packageJSON: {
@@ -79,7 +79,7 @@ describe('Survey Prompt', () => {
     const stateKeys = getSurveyStateKeys()!;
 
     // Store a reference to the mocked function
-    let globalStateUpdateMock: jest.Mock;
+    let globalStateUpdateMock: vi.Mock;
 
     beforeEach(() => {
         // Reset survey state before each test
@@ -91,22 +91,21 @@ describe('Survey Prompt', () => {
         surveyState.isCandidate = true;
 
         // Reset mocks
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
-        jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-            get: jest.fn().mockReturnValue(true),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: vi.fn().mockReturnValue(true),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         });
 
         // Store a reference to the update function mock for use in tests
-
-        globalStateUpdateMock = ext.context.globalState.update as jest.Mock;
+        globalStateUpdateMock = ext.context.globalState.update as vi.Mock;
 
         // Setup default mock behavior
-        (vscode.window.showInformationMessage as jest.Mock).mockResolvedValue(undefined);
-        (ext.context.globalState.get as jest.Mock).mockImplementation((key) => {
+        (vscode.window.showInformationMessage as vi.Mock).mockResolvedValue(undefined);
+        (ext.context.globalState.get as vi.Mock).mockImplementation((key) => {
             if (key === stateKeys.SESSION_COUNT) return surveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT;
             return undefined;
         });
@@ -165,13 +164,13 @@ describe('Survey Prompt', () => {
             // Create a mock take survey button with a run function we can capture and execute
             const mockTakeSurveyButton = {
                 title: 'Take Survey',
-                run: jest.fn(async () => {
+                run: vi.fn(async () => {
                     // The implementation is irrelevant - we just need to capture it was called
                 }),
             };
 
             // Mock the showInformationMessage to return our take button
-            (vscode.window.showInformationMessage as jest.Mock).mockImplementation(
+            (vscode.window.showInformationMessage as vi.Mock).mockImplementation(
                 (_message, takeBtn, _remindBtn, _neverBtn) => {
                     // Grab the real run function from the take button passed to showInformationMessage
                     mockTakeSurveyButton.run = takeBtn.run;
@@ -199,13 +198,13 @@ describe('Survey Prompt', () => {
             // Create a mock remind later button with a run function we can capture and execute
             const mockRemindButton = {
                 title: 'Remind Me Later',
-                run: jest.fn(async () => {
+                run: vi.fn(async () => {
                     // The implementation is irrelevant - we just need to capture it was called
                 }),
             };
 
             // Mock the showInformationMessage to return our remind button
-            (vscode.window.showInformationMessage as jest.Mock).mockImplementation(
+            (vscode.window.showInformationMessage as vi.Mock).mockImplementation(
                 (_message, _takeBtn, remindBtn, _neverBtn) => {
                     // Grab the real run function from the remind button passed to showInformationMessage
                     mockRemindButton.run = remindBtn.run;
@@ -231,13 +230,13 @@ describe('Survey Prompt', () => {
             const mockNeverButton = {
                 title: "Don't Ask Again",
                 isSecondary: true,
-                run: jest.fn(async () => {
+                run: vi.fn(async () => {
                     // The implementation is irrelevant - we just need to capture it was called
                 }),
             };
 
             // Mock the showInformationMessage to return our never button
-            (vscode.window.showInformationMessage as jest.Mock).mockImplementation(
+            (vscode.window.showInformationMessage as vi.Mock).mockImplementation(
                 (_message, _takeBtn, _remindBtn, neverBtn) => {
                     // Grab the real run function from the never button passed to showInformationMessage
                     mockNeverButton.run = neverBtn.run;
@@ -262,7 +261,7 @@ describe('Survey Prompt', () => {
 
         test('should default to "Remind Me Later" if no button is clicked', async () => {
             // Setup no button clicked (undefined response)
-            (vscode.window.showInformationMessage as jest.Mock).mockResolvedValue(undefined);
+            (vscode.window.showInformationMessage as vi.Mock).mockResolvedValue(undefined);
 
             // Call the function that would trigger surveyPromptIfCandidate
             await promptAfterActionEventually(ExperienceKind.NoSQL, surveyConfig.scoring.REQUIRED_SCORE);
@@ -280,19 +279,19 @@ describe('Survey Prompt', () => {
             // Setup a more sophisticated mock that captures the context
             const telemetryContexts: IActionContext[] = [];
 
-            (
-                jest.requireMock('@microsoft/vscode-azext-utils').callWithTelemetryAndErrorHandling as jest.Mock
-            ).mockImplementation(async (eventName: string, callback: (context: IActionContext) => Promise<void>) => {
-                const context: IActionContext = telemetryContextMock;
+            (callWithTelemetryAndErrorHandling as vi.Mock).mockImplementation(
+                async (eventName: string, callback: (context: IActionContext) => Promise<void>) => {
+                    const context: IActionContext = telemetryContextMock;
 
-                // Store the context for later inspection if it's the event we care about
-                if (eventName === 'survey.prompt') {
-                    telemetryContexts.push(context);
-                }
+                    // Store the context for later inspection if it's the event we care about
+                    if (eventName === 'survey.prompt') {
+                        telemetryContexts.push(context);
+                    }
 
-                await callback(context);
-                return undefined;
-            });
+                    await callback(context);
+                    return undefined;
+                },
+            );
 
             // Trigger the prompt with Mongo experience
             await promptAfterActionEventually(ExperienceKind.Mongo, surveyConfig.scoring.REQUIRED_SCORE);

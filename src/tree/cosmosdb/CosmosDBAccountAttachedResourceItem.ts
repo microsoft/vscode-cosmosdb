@@ -80,6 +80,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
         }
 
         return {
+            // oxlint-disable-next-line typescript/no-misused-spread
             ...treeItem,
             description: description,
             tooltip: new vscode.MarkdownString(tooltipMessage),
@@ -137,7 +138,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
                         "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
                     );
                     const readMoreItem = l10n.t('Learn more');
-                    void vscode.window.showErrorMessage(message, ...[readMoreItem]).then((item) => {
+                    void vscode.window.showErrorMessage(message, readMoreItem).then((item) => {
                         if (item === readMoreItem) {
                             void vscode.env.openExternal(
                                 vscode.Uri.parse(

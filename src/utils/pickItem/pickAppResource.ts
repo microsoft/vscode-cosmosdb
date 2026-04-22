@@ -105,7 +105,7 @@ export async function pickWorkspaceResource<T extends TreeElement>(
         .filter((resource) => resource !== undefined);
 
     const childrenPromise = await Promise.allSettled(firstWorkspaceResources.map((item) => item?.getChildren()));
-    const items = childrenPromise.map((promise) => (promise.status === 'fulfilled' ? promise.value : [])).flat();
+    const items = childrenPromise.flatMap((promise) => (promise.status === 'fulfilled' ? promise.value : []));
     const quickPickItemsPromise = await Promise.allSettled(
         items.map(async (item) => [await item.getTreeItem(), item] as const),
     );

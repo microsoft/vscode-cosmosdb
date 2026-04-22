@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "types": ["vitest/globals", "node"],
+    "composite": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.json",
+    "src/**/*.test.ts",
+    "src/**/__mocks__/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test"]
+}

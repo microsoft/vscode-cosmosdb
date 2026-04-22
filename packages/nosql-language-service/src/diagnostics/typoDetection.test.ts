@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { detectTypos } from '../../src/diagnostics/typoDetection.js';
-import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
+import { detectTypos } from './typoDetection.js';
+import { SqlLanguageService } from '../services/SqlLanguageService.js';
 
 // ========================== detectTypos unit tests ============================
 

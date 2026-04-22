@@ -40,6 +40,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
     }
 
     public getTreeItem(): vscode.TreeItem {
+        // oxlint-disable-next-line typescript/no-misused-spread
         return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconPath('CosmosDBAccount.svg') };
     }
 

@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import type * as AST from '../../src/ast/nodes.js';
-import { parse, visitNode, type SqlVisitor } from '../../src/index.js';
+import type * as AST from '../ast/nodes.js';
+import { parse, visitNode, type SqlVisitor } from '../index.js';
 
 // ---------------------------------------------------------------------------
 // Helper: counting visitor that tracks which kinds were visited

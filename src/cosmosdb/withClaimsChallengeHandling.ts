@@ -119,7 +119,7 @@ export async function withClaimsChallengeHandling<T>(
         options = arg3 as GetCosmosClientOptions;
     } else {
         // Handle AccountInfo
-        const accountInfo = arg1 as AccountInfo;
+        const accountInfo = arg1;
         endpoint = accountInfo.endpoint;
         credentials = accountInfo.credentials || [];
         isEmulator = accountInfo.isEmulator || false;

@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { type JSONSchema } from '../../src/index.js';
+import { type JSONSchema } from '../index.js';
 import {
     buildFullPaths,
     getPropertyNamesAtLevel,
@@ -12,7 +12,7 @@ import {
     getSchemaFromDocuments,
     inferNoSqlType,
     updateSchemaWithDocument,
-} from '../../src/json/index.js';
+} from './index.js';
 
 // ── Type inference ─────────────────────────────────────────────────────
 

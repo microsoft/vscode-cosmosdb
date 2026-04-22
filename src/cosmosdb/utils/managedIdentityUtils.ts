@@ -91,7 +91,7 @@ async function getHasManagedIdentity(
     } catch (error) {
         if (!silent) {
             ext.outputChannel.error(
-                `Managed Identity token acquisition failed for account "${accountEndpoint}": ${error}`,
+                `Managed Identity token acquisition failed for account "${accountEndpoint}": ${String(error)}`,
             );
         }
         return false;

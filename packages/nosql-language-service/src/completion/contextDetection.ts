@@ -149,7 +149,7 @@ export function detectContext(query: string, offset: number): CursorContext {
     }
 
     // "SELECT * |" — Star after SELECT means spec is complete
-    if (prevType === T.Star && hasSelectBefore(tokens, tokenBeforeCursor!)) {
+    if (prevType === T.Star && hasSelectBefore(tokens, tokenBeforeCursor)) {
         return { context: CompletionContext.AfterSelectSpec, prevToken: tokenBeforeCursor, typingPrefix, aliases };
     }
 
@@ -162,7 +162,7 @@ export function detectContext(query: string, offset: number): CursorContext {
         }
         // After SELECT spec (e.g. "SELECT * FORM|", "SELECT c.id FR|")
         // — suggest clause keywords like FROM, WHERE, etc.
-        if (hasSelectBefore(tokens, tokenBeforeCursor!)) {
+        if (hasSelectBefore(tokens, tokenBeforeCursor)) {
             return { context: CompletionContext.AfterSelectSpec, prevToken: tokenBeforeCursor, typingPrefix, aliases };
         }
         // Check if we're right after FROM alias

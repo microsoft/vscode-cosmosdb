@@ -5,7 +5,7 @@
 
 import { createTRPCClient, loggerLink } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
-import { useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
 import { errorLink, type ErrorHandler } from './errorLink';
 import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
@@ -45,9 +45,12 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
      *
      * @param message - The message to send, following the VsCodeLinkRequestMessage format.
      */
-    function send(message: VsCodeLinkRequestMessage) {
-        vscodeApi.postMessage(message);
-    }
+    const send = useCallback(
+        (message: VsCodeLinkRequestMessage) => {
+            vscodeApi.postMessage(message);
+        },
+        [vscodeApi],
+    );
 
     /**
      * Function to handle incoming messages from the VSCode extension.
@@ -63,7 +66,7 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
      * Be cautious when modifying this function, as it could affect the tRPC client's ability to
      * receive responses correctly.
      */
-    function onReceive(callback: (message: VsCodeLinkResponseMessage) => void): () => void {
+    const onReceive = useCallback((callback: (message: VsCodeLinkResponseMessage) => void) => {
         const handler = (event: MessageEvent) => {
             // a basic type guard here
             if ((event.data as VsCodeLinkResponseMessage).id) {
@@ -76,11 +79,9 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
         return () => {
             window.removeEventListener('message', handler);
         };
-    }
+    }, []);
 
     // Use useMemo to avoid recreating the client on every render
-    // At the moment I'm not sure about the details of WebviewContext implementation,
-    // so it's easier that way.
     const trpcClient = useMemo(
         () =>
             createTRPCClient<TRouter>({
@@ -90,7 +91,7 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
                     vscodeLink<TRouter>({ send, onReceive }),
                 ],
             }),
-        [vscodeApi],
+        [onError, send, onReceive],
     );
 
     // Return the tRPC client

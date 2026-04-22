@@ -70,7 +70,7 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
             );
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
-            throw new Error(l10n.t('Failed to process URI: {0}', errMsg));
+            throw new Error(l10n.t('Failed to process URI: {0}', errMsg), { cause: error });
         }
     });
 }
@@ -431,7 +431,7 @@ async function openAppropriateEditorForConnection(
     }
 
     const info = await getAccountInfo(parsedConnection.connectionString);
-    const parsedCS = parsedConnection.connectionString as ParsedCosmosDBConnectionString;
+    const parsedCS = parsedConnection.connectionString;
     const databaseName = database || parsedCS.databaseName;
     if (!databaseName) {
         throw new Error(l10n.t("Can't open the Query Editor, Database name is required"));
@@ -547,12 +547,12 @@ function extractParams(query: string): {
 
 /**
  * Interface for URI parameters used for connecting to Azure Cosmos DB resources.
- * @property resourceId - The Azure resource ID of the Cosmos DB account.
- * @property subscriptionId - The Azure subscription ID.
- * @property resourceGroup - The Azure resource group name containing the Cosmos DB account.
- * @property connectionString - The connection string to the Cosmos DB account.
- * @property database - The name of the database in the Cosmos DB account.
- * @property container - The name of the container within the database.
+ * @property {string|undefined} resourceId - The Azure resource ID of the Cosmos DB account.
+ * @property {string|undefined} subscriptionId - The Azure subscription ID.
+ * @property {string|undefined} resourceGroup - The Azure resource group name containing the Cosmos DB account.
+ * @property {string|undefined} connectionString - The connection string to the Cosmos DB account.
+ * @property {string|undefined} database - The name of the database in the Cosmos DB account.
+ * @property {string|undefined} container - The name of the container within the database.
  */
 interface UriParams {
     resourceId?: string | undefined;

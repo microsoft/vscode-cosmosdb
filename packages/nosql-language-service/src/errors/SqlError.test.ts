@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { parse, SqlErrorCode } from '../../src/index.js';
+import { parse, SqlErrorCode } from '../index.js';
 
 describe('Error recovery — never throws', () => {
     const badQueries = [

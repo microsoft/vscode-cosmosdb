@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { parse } from '../../src/index.js';
+import { parse } from '../index.js';
 
 /**
  * Tests for human-friendly error messages produced by {@link SqlErrorMessageProvider}.

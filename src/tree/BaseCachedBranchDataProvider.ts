@@ -47,7 +47,7 @@ import { isTreeElementWithExperience } from './TreeElementWithExperience';
  * - The cache is automatically pruned during refresh operations
  *
  * @abstract
- * @extends vscode.Disposable
+ * @augments vscode.Disposable
  * @implements {BranchDataProvider<T, TreeElement>}
  */
 export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource>
@@ -278,7 +278,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             // AFTER finding the element, update the cache:
             // 1. Clear the cache for this ID to remove any stale references
             // (drops the element and its children)
-            this.pruneCache(element.id!);
+            this.pruneCache(element.id);
 
             // 2. Re-register the node (but not its children)
             if (currentElement?.id) {
@@ -297,7 +297,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             // NOTE: It is impossible to fall here, but we handle it just in case
             // If anything goes wrong during the lookup, still attempt the refresh with the original element
             // and clear the cache for this ID
-            console.log(`Error finding current element for refresh: ${error}`);
+            console.log(`Error finding current element for refresh: ${String(error)}`);
             this.pruneCache(element.id);
             this.onDidChangeTreeDataEmitter.fire(element);
         }

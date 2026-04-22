@@ -58,7 +58,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
 
         // TODO: Does it matter to keep the same fields in the document? Why user can't change them?
         for (const field of CosmosDBHiddenFields) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+             
             newData[field] = this.model.item[field];
         }
 

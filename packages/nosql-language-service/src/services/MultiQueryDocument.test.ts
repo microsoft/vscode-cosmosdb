@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { parseMultiQueryDocument } from '../../src/services/MultiQueryDocument.js';
-import { SqlLanguageService } from '../../src/services/SqlLanguageService.js';
+import { parseMultiQueryDocument } from './MultiQueryDocument.js';
+import { SqlLanguageService } from './SqlLanguageService.js';
 
 // ========================== parseMultiQueryDocument ===========================
 

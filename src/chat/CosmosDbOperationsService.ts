@@ -386,13 +386,13 @@ export class CosmosDbOperationsService {
                     // Skip boolean schema values
                     continue;
                 }
-                const propSchema = value as JSONSchema;
+                const propSchema = value;
                 if (propSchema.anyOf && propSchema.anyOf.length > 0) {
                     // Get the types from anyOf (filter out boolean entries)
                     const validEntries = propSchema.anyOf.filter(
                         (entry): entry is JSONSchema => typeof entry !== 'boolean',
                     );
-                    const types = validEntries.map((entry: JSONSchema) => entry.type || entry['x-bsonType']);
+                    const types = validEntries.map((entry: JSONSchema) => entry.type || entry['x-dataType']);
                     simplified[key] = types.length === 1 ? types[0] : types;
 
                     // If it's an object, recurse into its properties
@@ -413,11 +413,13 @@ export class CosmosDbOperationsService {
                                     (entry): entry is JSONSchema => typeof entry !== 'boolean',
                                 );
                                 const itemTypes = validItemEntries.map(
-                                    (entry: JSONSchema) => entry.type || entry['x-bsonType'],
+                                    (entry: JSONSchema) => entry.type || entry['x-dataType'],
                                 );
                                 simplified[key] = `array<${itemTypes.join('|')}>`;
-                            } else if (itemsSchema.type) {
+                            } else if (itemsSchema.type && typeof itemsSchema.type === 'string') {
                                 simplified[key] = `array<${itemsSchema.type}>`;
+                            } else if (itemsSchema.type && Array.isArray(itemsSchema.type)) {
+                                simplified[key] = `array<${itemsSchema.type.join('|')}>`;
                             }
                         }
                     }
@@ -1080,7 +1082,7 @@ export class CosmosDbOperationsService {
                             connection.containerId,
                             result.sampleQuery,
                             result.documentCount,
-                            result.schema as Record<string, unknown>,
+                            result.schema,
                             result.requestCharge,
                         );
                     } else {

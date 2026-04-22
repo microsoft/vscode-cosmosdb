@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { getCompletions, type JSONSchema } from '../../src/index.js';
+import { getCompletions, type JSONSchema } from '../index.js';
 
 // Real-world schema from user's collection
 const productSchema: JSONSchema = {

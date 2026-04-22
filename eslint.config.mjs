@@ -7,7 +7,7 @@ import { defineConfig } from 'eslint/config';
 import ts from 'typescript-eslint';
 
 /**
- * Minimal ESLint config — almost all rules have been migrated to oxlint (.oxlintrc.json).
+ * Minimal ESLint config — almost all rules have been migrated to oxlint (.oxlintrc.jsonc).
  * ESLint is kept only for `no-restricted-syntax`, which uses AST node selectors that oxlint
  * does not support. Type-aware rules are handled by oxlint via `options.typeAware: true`.
  */
@@ -26,10 +26,11 @@ export default defineConfig([
             'packages/*/node_modules',
             '**/__mocks__/**/*',
             '**/*.d.ts',
-            '**/jest.config.js',
+            '**/vitest.config.ts',
             '**/main.js',
             'packages/*/vitest.config.ts',
             'packages/*/tests/**/*.mjs',
+            'packages/*/scripts/**/*.mjs',
         ],
     },
     // TypeScript parser — required so ESLint can parse .ts/.tsx AST correctly.
@@ -37,8 +38,16 @@ export default defineConfig([
         files: ['**/*.ts', '**/*.tsx'],
         plugins: { '@typescript-eslint': ts.plugin },
         languageOptions: {
+            ecmaVersion: 2024,
             parser: ts.parser,
-            ecmaVersion: 2023,
+            parserOptions: {
+                ecmaFeatures: {
+                    jsx: true,
+                },
+                project: './tsconfig.eslint.json',
+                projectService: false,
+                tsconfigRootDir: import.meta.dirname,
+            },
             sourceType: 'module',
         },
     },

@@ -12,7 +12,7 @@ import { type MonacoNamespace } from './types.js';
 const SEPARATOR_CLASS = 'cosmosdb-query-separator';
 
 function ensureSeparatorStyles(): void {
-    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+     
     const g = globalThis as any;
     if (!g?.document?.createElement) return;
     const STYLE_ID = 'cosmosdb-multiquery-styles';
@@ -25,7 +25,7 @@ function ensureSeparatorStyles(): void {
         `}`,
     ].join('\n');
     g.document.head.appendChild(style);
-    /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+     
 }
 
 /**
@@ -141,7 +141,7 @@ export class MonacoMultiQueryDecorator implements Disposable {
                 const id = accessor.addZone({
                     afterLineNumber: lineNumber,
                     heightInLines: 1,
-                    /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+                     
                     domNode: (() => {
                         const g = globalThis as any;
                         const node = g?.document?.createElement?.('div');
@@ -150,7 +150,7 @@ export class MonacoMultiQueryDecorator implements Disposable {
                         }
                         return node ?? g?.document?.createElement?.('div');
                     })(),
-                    /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+                     
                 });
                 this.viewZoneIds.push(id);
             }

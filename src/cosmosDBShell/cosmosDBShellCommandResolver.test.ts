@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as fs from 'fs';
-import { resolveCosmosShellCommand } from './cosmosShellCommandResolver';
+import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
 
 jest.mock('fs', () => ({
     existsSync: jest.fn(),
@@ -12,7 +12,7 @@ jest.mock('fs', () => ({
     statSync: jest.fn(),
 }));
 
-describe('cosmosShellCommandResolver', () => {
+describe('cosmosDBShellCommandResolver', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         configureMockFiles([]);
@@ -28,7 +28,7 @@ describe('cosmosShellCommandResolver', () => {
             '@echo off\n"%~dp0.store\\cosmosdbshell.win-x64\\1.0.0\\cosmosdbshell.win-x64\\1.0.0\\tools\\any\\win-x64\\CosmosDBShell.exe" %*',
         );
 
-        const resolvedCommand = resolveCosmosShellCommand(
+        const resolvedCommand = resolveCosmosDBShellCommand(
             undefined,
             {
                 PATH: 'C:\\Users\\test\\.dotnet\\tools',
@@ -44,7 +44,7 @@ describe('cosmosShellCommandResolver', () => {
         const configuredPath = 'C:\\tools\\CosmosDBShell.exe';
         configureMockFiles([configuredPath]);
 
-        const resolvedCommand = resolveCosmosShellCommand(
+        const resolvedCommand = resolveCosmosDBShellCommand(
             `"${configuredPath}"`,
             {
                 PATH: '',

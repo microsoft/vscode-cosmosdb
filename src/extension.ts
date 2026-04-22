@@ -35,10 +35,10 @@ import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSql
 import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import {
-    CosmosShellExtension,
-    registerCosmosShellLanguageServer,
+    CosmosDBShellExtension,
+    registerCosmosDBShellLanguageServer,
     registerMcpServer,
-} from './cosmosShell/CosmosShellExtension';
+} from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { QueryEditorTab } from './panels/QueryEditorTab';
@@ -92,8 +92,8 @@ export async function activateInternal(
 
         ext.fileSystem = new DatabasesFileSystem();
 
-        const cosmosShellSupport: CosmosShellExtension = new CosmosShellExtension();
-        await cosmosShellSupport.activate();
+        const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
+        await cosmosDBShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -151,7 +151,7 @@ export async function activateInternal(
         registerReportIssueCommand('azureDatabases.reportIssue');
 
         registerMcpServer(context);
-        registerCosmosShellLanguageServer(context);
+        registerCosmosDBShellLanguageServer(context);
     });
 
     const exportedApi: AzureExtensionApi = { apiVersion: '1.2.0' };

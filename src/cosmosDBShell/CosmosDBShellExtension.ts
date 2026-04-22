@@ -38,14 +38,14 @@ import { getAccessTokenForVSCode } from '../cosmosdb/utils/azureSessionHelper';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
-import { resolveCosmosShellCommand } from './cosmosShellCommandResolver';
+import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
 
 // Track the connection string associated with each open Cosmos DB Shell terminal.
 // An empty string indicates a terminal launched via the command palette that has not
 // yet been connected to a specific account.
 const terminalConnectionStrings = new Map<vscode.Terminal, string>();
 
-export class CosmosShellExtension implements vscode.Disposable {
+export class CosmosDBShellExtension implements vscode.Disposable {
     private terminalChangeListeners: vscode.Disposable[] = [];
 
     dispose(): Promise<void> {
@@ -59,66 +59,75 @@ export class CosmosShellExtension implements vscode.Disposable {
     }
 
     async activate(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.cosmosShell.activate', (_activateContext: IActionContext) => {
-            const isCosmosShellInstalled: boolean = isCosmosShellSupportEnabled();
-            vscode.commands.executeCommand(
-                'setContext',
-                'vscodeDatabases.cosmosShellSupportEnabled',
-                isCosmosShellInstalled,
-            );
+        await callWithTelemetryAndErrorHandling(
+            'cosmosDB.cosmosDBShell.activate',
+            (_activateContext: IActionContext) => {
+                const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
+                vscode.commands.executeCommand(
+                    'setContext',
+                    'vscodeDatabases.cosmosDBShellSupportEnabled',
+                    isCosmosDBShellInstalled,
+                );
 
-            // Initialize terminal context on activation
-            this.updateCosmosShellTerminalContext();
+                // Initialize terminal context on activation
+                this.updateCosmosDBShellTerminalContext();
 
-            // Watch for terminal open events
-            const openListener = vscode.window.onDidOpenTerminal((terminal) => {
-                // Check if it's a Cosmos DB Shell terminal
-                if (terminal.name === 'Cosmos DB Shell') {
-                    this.updateCosmosShellTerminalContext();
+                // Watch for terminal open events
+                const openListener = vscode.window.onDidOpenTerminal((terminal) => {
+                    // Check if it's a Cosmos DB Shell terminal
+                    if (terminal.name === 'Cosmos DB Shell') {
+                        this.updateCosmosDBShellTerminalContext();
+                    }
+                });
+
+                // Watch for terminal close events
+                const closeListener = vscode.window.onDidCloseTerminal((terminal) => {
+                    // Check if it was a Cosmos DB Shell terminal
+                    if (terminal.name === 'Cosmos DB Shell') {
+                        this.updateCosmosDBShellTerminalContext();
+                        // Remove the connection string for this terminal
+                        terminalConnectionStrings.delete(terminal);
+                    }
+                });
+
+                // Store listeners for disposal
+                this.terminalChangeListeners.push(openListener, closeListener);
+
+                registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosDBShell', connectCosmosDBShell);
+
+                if (isCosmosDBShellInstalled) {
+                    ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
+                } else {
+                    ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
                 }
-            });
-
-            // Watch for terminal close events
-            const closeListener = vscode.window.onDidCloseTerminal((terminal) => {
-                // Check if it was a Cosmos DB Shell terminal
-                if (terminal.name === 'Cosmos DB Shell') {
-                    this.updateCosmosShellTerminalContext();
-                    // Remove the connection string for this terminal
-                    terminalConnectionStrings.delete(terminal);
-                }
-            });
-
-            // Store listeners for disposal
-            this.terminalChangeListeners.push(openListener, closeListener);
-
-            registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosShell', connectCosmosShell);
-
-            if (isCosmosShellInstalled) {
-                ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
-            } else {
-                ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
-            }
-        });
+            },
+        );
     }
 
-    private updateCosmosShellTerminalContext(): void {
-        const hasCosmosShellTerminal = vscode.window.terminals.some((terminal) => terminal.name === 'Cosmos DB Shell');
-        vscode.commands.executeCommand('setContext', 'vscodeDatabases.cosmosShellTerminalOpen', hasCosmosShellTerminal);
+    private updateCosmosDBShellTerminalContext(): void {
+        const hasCosmosDBShellTerminal = vscode.window.terminals.some(
+            (terminal) => terminal.name === 'Cosmos DB Shell',
+        );
+        vscode.commands.executeCommand(
+            'setContext',
+            'vscodeDatabases.cosmosDBShellTerminalOpen',
+            hasCosmosDBShellTerminal,
+        );
         ext.outputChannel.appendLine(
-            `Cosmos DB Shell terminal context updated: ${hasCosmosShellTerminal ? 'open' : 'closed'}`,
+            `Cosmos DB Shell terminal context updated: ${hasCosmosDBShellTerminal ? 'open' : 'closed'}`,
         );
     }
 }
 
 // Create a singleton instance to access the context updater
-//const cosmosShellExt = new CosmosShellExtension();
+//const cosmosDBShellExt = new CosmosDBShellExtension();
 
-function getCosmosShellCommand(): string {
+function getCosmosDBShellCommand(): string {
     const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
-    return resolveCosmosShellCommand(shellPath);
+    return resolveCosmosDBShellCommand(shellPath);
 }
 
-function isCosmosShellPathFound(): boolean {
+function isCosmosDBShellPathFound(): boolean {
     const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
     if (!shellPath?.trim()) {
         return false;
@@ -155,14 +164,14 @@ function watchForEarlyExit(terminal: vscode.Terminal): void {
     });
 }
 
-export async function launchCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
-    const isCosmosShellInstalled: boolean = isCosmosShellSupportEnabled();
+export async function launchCosmosDBShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+    const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
 
-    if (!isCosmosShellInstalled) {
+    if (!isCosmosDBShellInstalled) {
         const settings = l10n.t('Settings');
 
         let msg: string;
-        if (!isCosmosShellPathFound()) {
+        if (!isCosmosDBShellPathFound()) {
             msg = l10n.t('Cosmos DB Shell path is not found. Please configure the correct path in settings.');
         } else {
             msg = l10n.t(
@@ -181,7 +190,7 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
         return;
     }
 
-    const command = getCosmosShellCommand();
+    const command = getCosmosDBShellCommand();
     const foundTerminal = vscode.window.terminals.find(
         (terminal) => terminal.creationOptions.name === 'Cosmos DB Shell',
     );
@@ -213,11 +222,11 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
     }
 
     // Skip passing credentials for emulator connections: CosmosDBShell auto-detects localhost
-    // emulators and injects the well-known key. Passing COSMOS_SHELL_ACCOUNT_KEY would cause
+    // emulators and injects the well-known key. Passing COSMOSDB_SHELL_ACCOUNT_KEY would cause
     // a conflict in CosmosDBShell's credential handling when combined with the emulator
     // connection string it builds internally.
     const isEmulator = node.model.accountInfo.isEmulator;
-    const cosmosShellCredential = isEmulator ? undefined : getCosmosShellCredential(node);
+    const cosmosDBShellCredential = isEmulator ? undefined : getCosmosDBShellCredential(node);
     const entraCredential = isEmulator ? undefined : getEntraIdCredential(node);
     const managedIdentityCredential = isEmulator ? undefined : getManagedIdentityCredential(node);
     const rawEndpoint = node.model.accountInfo.endpoint;
@@ -253,15 +262,15 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
     ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);
 
     const env: Record<string, string> = {};
-    if (cosmosShellCredential) {
-        env['COSMOS_SHELL_ACCOUNT_KEY'] = cosmosShellCredential;
+    if (cosmosDBShellCredential) {
+        env['COSMOSDB_SHELL_ACCOUNT_KEY'] = cosmosDBShellCredential;
     }
 
     // For Entra ID, provide a pre-fetched token as fallback if VisualStudioCodeCredential fails
     if (entraCredential) {
-        const fallbackToken = await getCosmosShellToken(entraCredential, rawEndpoint);
+        const fallbackToken = await getCosmosDBShellToken(entraCredential, rawEndpoint);
         if (fallbackToken) {
-            env['COSMOS_SHELL_TOKEN'] = fallbackToken;
+            env['COSMOSDB_SHELL_TOKEN'] = fallbackToken;
         }
     }
 
@@ -287,10 +296,10 @@ function getGoToContainerCommand(database: DatabaseDefinition, container: Contai
     return undefined;
 }
 
-export async function connectCosmosShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+export async function connectCosmosDBShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
     if (!node) {
         // No node selected, just launch a new shell without connection
-        await launchCosmosShell(_context, node);
+        await launchCosmosDBShell(_context, node);
         return;
     }
 
@@ -317,7 +326,7 @@ export async function connectCosmosShell(_context: IActionContext, node?: NoSqlC
     // reuse it rather than spawning a second shell. We only attempt this when the node's
     // credentials do not require launch-time environment variables or a pre-fetched token,
     // because those can only be injected when the terminal is created.
-    const unconnectedTerminal = findUnconnectedCosmosShellTerminal();
+    const unconnectedTerminal = findUnconnectedCosmosDBShellTerminal();
     if (unconnectedTerminal && canReuseUnconnectedTerminal(node)) {
         unconnectedTerminal.show();
         const connectCommand = buildInteractiveConnectCommand(node, rawConnectionString);
@@ -332,7 +341,7 @@ export async function connectCosmosShell(_context: IActionContext, node?: NoSqlC
     }
 
     // Fall back to launching a new shell.
-    await launchCosmosShell(_context, node);
+    await launchCosmosDBShell(_context, node);
 }
 
 /**
@@ -352,7 +361,7 @@ function findTerminalByConnectionString(connectionString: string): vscode.Termin
  * Finds an open Cosmos DB Shell terminal that was launched without a connection (e.g. via the
  * command palette) and has not yet been associated with a specific account.
  */
-function findUnconnectedCosmosShellTerminal(): vscode.Terminal | undefined {
+function findUnconnectedCosmosDBShellTerminal(): vscode.Terminal | undefined {
     for (const [terminal, connStr] of terminalConnectionStrings) {
         if (connStr === '' && vscode.window.terminals.includes(terminal)) {
             return terminal;
@@ -371,12 +380,12 @@ function canReuseUnconnectedTerminal(node: NoSqlContainerResourceItem): boolean 
     if (isEmulator) {
         return true;
     }
-    // Account keys are passed via COSMOS_SHELL_ACCOUNT_KEY env var and cannot be set on a running terminal.
-    if (getCosmosShellCredential(node)) {
+    // Account keys are passed via COSMOSDB_SHELL_ACCOUNT_KEY env var and cannot be set on a running terminal.
+    if (getCosmosDBShellCredential(node)) {
         return false;
     }
 
-    // The fresh-launch Entra path also injects COSMOS_SHELL_TOKEN as a fallback if the shell cannot
+    // The fresh-launch Entra path also injects COSMOSDB_SHELL_TOKEN as a fallback if the shell cannot
     // acquire VisualStudioCodeCredential on its own. Reusing an existing terminal would drop that
     // fallback and make launch order affect whether connection succeeds.
     if (getEntraIdCredential(node)) {
@@ -416,7 +425,7 @@ function quoteArg(value: string): string {
     return /[\s"']/.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value;
 }
 
-function getCosmosShellCredential(node: NoSqlContainerResourceItem): string | undefined {
+function getCosmosDBShellCredential(node: NoSqlContainerResourceItem): string | undefined {
     const credential = node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.accountKey) as
         | CosmosDBKeyCredential
         | undefined;
@@ -437,9 +446,9 @@ function getManagedIdentityCredential(node: NoSqlContainerResourceItem): CosmosD
 
 /**
  * Obtains an access token from VS Code's authentication session for the Cosmos DB endpoint.
- * Used as a fallback token via COSMOS_SHELL_TOKEN if VisualStudioCodeCredential fails in the shell.
+ * Used as a fallback token via COSMOSDB_SHELL_TOKEN if VisualStudioCodeCredential fails in the shell.
  */
-async function getCosmosShellToken(
+async function getCosmosDBShellToken(
     entraCredential: CosmosDBEntraIdCredential,
     endpoint: string,
 ): Promise<string | undefined> {
@@ -455,38 +464,38 @@ async function getCosmosShellToken(
 }
 
 /**
- * Determines if CosmosShell is installed.
+ * Determines if CosmosDBShell is installed.
  *
- * @returns true, if CosmosShell is installed, false otherwise.
+ * @returns true, if CosmosDBShell is installed, false otherwise.
  */
-export function isCosmosShellSupportEnabled(): boolean {
-    const command = getCosmosShellCommand();
-    const cached = cosmosShellSupportCache.get(command);
+export function isCosmosDBShellSupportEnabled(): boolean {
+    const command = getCosmosDBShellCommand();
+    const cached = cosmosDBShellSupportCache.get(command);
     if (cached !== undefined) {
         return cached;
     }
-    const result = detectCosmosShellSupport(command);
-    cosmosShellSupportCache.set(command, result);
+    const result = detectCosmosDBShellSupport(command);
+    cosmosDBShellSupportCache.set(command, result);
     return result;
 }
 
 /**
- * Clears the cached result of {@link isCosmosShellSupportEnabled}.
+ * Clears the cached result of {@link isCosmosDBShellSupportEnabled}.
  * Call this when the shell path configuration changes or the binary may have been installed/removed.
  */
-export function invalidateCosmosShellSupportCache(): void {
-    cosmosShellSupportCache.clear();
+export function invalidateCosmosDBShellSupportCache(): void {
+    cosmosDBShellSupportCache.clear();
 }
 
-const cosmosShellSupportCache = new Map<string, boolean>();
+const cosmosDBShellSupportCache = new Map<string, boolean>();
 
-function detectCosmosShellSupport(command: string): boolean {
+function detectCosmosDBShellSupport(command: string): boolean {
     try {
         child.execFileSync(command, ['--version'], {
             windowsHide: true,
             env: {
                 ...process.env,
-                // CosmosShell may use ANSI output libraries (e.g. Spectre.Console).
+                // CosmosDBShell may use ANSI output libraries (e.g. Spectre.Console).
                 // When spawned by VS Code, stdio is typically redirected which can confuse
                 // terminal capability detection. Prefer a plain output mode.
                 NO_COLOR: '1',
@@ -510,12 +519,12 @@ function detectCosmosShellSupport(command: string): boolean {
                   ? anyErr.stderr.toString('utf8')
                   : '';
 
-        // Workaround: CosmosShell may print a valid version string but still exit non-zero
+        // Workaround: CosmosDBShell may print a valid version string but still exit non-zero
         // when ANSI is not available. Treat that as installed.
         const combinedOutput = `${stdout}\n${stderr}`;
         if (/\bCosmos(?:DB)?Shell\b/i.test(combinedOutput)) {
             ext.outputChannel.appendLine(
-                'warning: CosmosShell "--version" exited non-zero, but returned version output; treating as installed.',
+                'warning: CosmosDBShell "--version" exited non-zero, but returned version output; treating as installed.',
             );
             if (stderr.trim().length > 0) {
                 ext.outputChannel.appendLine(stderr.trim());
@@ -644,7 +653,7 @@ async function resolveMcpServer(
         );
     }
 
-    if (!isCosmosShellSupportEnabled()) {
+    if (!isCosmosDBShellSupportEnabled()) {
         showMcpSettingsNotification(
             l10n.t(
                 'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
@@ -680,7 +689,7 @@ async function resolveMcpServer(
     }
 
     ext.outputChannel.appendLine('MCP resolve: launching Cosmos DB Shell with --mcp');
-    await vscode.commands.executeCommand('cosmosDB.launchCosmosShell');
+    await vscode.commands.executeCommand('cosmosDB.launchCosmosDBShell');
 
     const ready = await waitForPort(mcpPort, 10, 1000, token);
     if (!ready) {
@@ -728,7 +737,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration((event) => {
                 if (event.affectsConfiguration('cosmosDB.shell.path')) {
-                    invalidateCosmosShellSupportCache();
+                    invalidateCosmosDBShellSupportCache();
                 }
                 if (
                     event.affectsConfiguration('cosmosDB.shell.MCP.port') ||
@@ -746,15 +755,15 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
     }
 }
 
-let cosmosShellLanguageClient: LanguageClient | undefined;
+let cosmosDBShellLanguageClient: LanguageClient | undefined;
 
-export function registerCosmosShellLanguageServer(context: vscode.ExtensionContext) {
-    if (cosmosShellLanguageClient || !isCosmosShellSupportEnabled()) {
+export function registerCosmosDBShellLanguageServer(context: vscode.ExtensionContext) {
+    if (cosmosDBShellLanguageClient || !isCosmosDBShellSupportEnabled()) {
         return;
     }
 
     // Path to your LSP server executable
-    const command = getCosmosShellCommand();
+    const command = getCosmosDBShellCommand();
     // Adjust argument form depending on the tool’s expectation (--lsp vs -lsp)
     const serverArgs = ['--lsp'];
 
@@ -772,7 +781,7 @@ export function registerCosmosShellLanguageServer(context: vscode.ExtensionConte
     };
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'cosmosshell' }],
+        documentSelector: [{ scheme: 'file', language: 'cosmosdbshell' }],
         synchronize: {
             // Watch for related files (adjust pattern as needed)
             fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{csh}'),
@@ -789,8 +798,8 @@ export function registerCosmosShellLanguageServer(context: vscode.ExtensionConte
         },
     };
 
-    cosmosShellLanguageClient = new LanguageClient(
-        'cosmosShellLanguageServer',
+    cosmosDBShellLanguageClient = new LanguageClient(
+        'cosmosDBShellLanguageServer',
         l10n.t('Cosmos DB Shell Language Server'),
         serverOptions,
         clientOptions,
@@ -798,18 +807,18 @@ export function registerCosmosShellLanguageServer(context: vscode.ExtensionConte
 
     context.subscriptions.push({
         dispose: async () => {
-            if (cosmosShellLanguageClient) {
+            if (cosmosDBShellLanguageClient) {
                 try {
-                    await cosmosShellLanguageClient.stop();
+                    await cosmosDBShellLanguageClient.stop();
                 } catch (error) {
                     console.error('Failed to stop the Cosmos DB Shell language client:', error);
                 }
-                cosmosShellLanguageClient = undefined;
+                cosmosDBShellLanguageClient = undefined;
             }
         },
     });
 
-    void cosmosShellLanguageClient
+    void cosmosDBShellLanguageClient
         .start()
         .then(() => {
             ext.outputChannel.appendLine('Cosmos DB Shell language server started.');

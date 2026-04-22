@@ -7,14 +7,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { isWindows } from '../constants';
 
-const defaultCosmosShellCommand = 'cosmosdbshell';
+const defaultCosmosDBShellCommand = 'cosmosdbshell';
 
-export function resolveCosmosShellCommand(
+export function resolveCosmosDBShellCommand(
     shellPath: string | undefined,
     env: NodeJS.ProcessEnv = process.env,
     isWindowsPlatform: boolean = isWindows,
 ): string {
-    const command = getConfiguredCosmosShellCommand(shellPath);
+    const command = getConfiguredCosmosDBShellCommand(shellPath);
 
     if (!isWindowsPlatform) {
         return command;
@@ -28,10 +28,10 @@ export function resolveCosmosShellCommand(
     return resolveWindowsDotnetToolShim(resolvedCommand) ?? resolvedCommand;
 }
 
-function getConfiguredCosmosShellCommand(shellPath: string | undefined): string {
+function getConfiguredCosmosDBShellCommand(shellPath: string | undefined): string {
     const trimmedShellPath = shellPath?.trim();
     if (!trimmedShellPath) {
-        return defaultCosmosShellCommand;
+        return defaultCosmosDBShellCommand;
     }
 
     return stripWrappingQuotes(trimmedShellPath);
@@ -50,7 +50,7 @@ function resolveWindowsCommand(command: string, env: NodeJS.ProcessEnv): string 
 
     for (const pathEntry of getPathEntries(env)) {
         for (const candidate of getWindowsCommandCandidates(command, env.PATHEXT)) {
-            const candidatePath = path.join(pathEntry, candidate);
+            const candidatePath = path.win32.join(pathEntry, candidate);
             if (isFile(candidatePath)) {
                 return candidatePath;
             }
@@ -61,18 +61,18 @@ function resolveWindowsCommand(command: string, env: NodeJS.ProcessEnv): string 
 }
 
 function isExplicitPath(command: string): boolean {
-    return path.isAbsolute(command) || command.includes('\\') || command.includes('/');
+    return path.win32.isAbsolute(command) || command.includes('\\') || command.includes('/');
 }
 
 function getPathEntries(env: NodeJS.ProcessEnv): string[] {
     return (env.PATH ?? '')
-        .split(path.delimiter)
+        .split(path.win32.delimiter)
         .map((entry) => stripWrappingQuotes(entry.trim()))
         .filter((entry) => entry.length > 0);
 }
 
 function getWindowsCommandCandidates(command: string, pathExt: string | undefined): string[] {
-    if (path.extname(command)) {
+    if (path.win32.extname(command)) {
         return [command];
     }
 
@@ -101,10 +101,10 @@ function resolveWindowsDotnetToolShim(commandPath: string): string | undefined {
             return undefined;
         }
 
-        const shimDirectory = path.dirname(commandPath);
-        const resolvedTarget = path.resolve(
+        const shimDirectory = path.win32.dirname(commandPath);
+        const resolvedTarget = path.win32.resolve(
             shimDirectory,
-            launcherMatch[1].replace(/%~dp0/gi, `${shimDirectory}${path.sep}`),
+            launcherMatch[1].replace(/%~dp0/gi, `${shimDirectory}${path.win32.sep}`),
         );
 
         return isFile(resolvedTarget) ? resolvedTarget : undefined;

@@ -303,15 +303,15 @@
         }
       },
       {
-        "id": "cosmosshell",
+        "id": "cosmosdbshell",
         "aliases": [
           "Cosmos DB Shell Script",
-          "cosmosshell"
+          "cosmosdbshell"
         ],
         "extensions": [
           ".csh"
         ],
-        "configuration": "./src/cosmosShell/configuration.json"
+        "configuration": "./src/cosmosDBShell/configuration.json"
       }
     ],
     "grammars": [
@@ -455,8 +455,8 @@
       },
       {
         "category": "NoSQL",
-        "command": "cosmosDB.launchCosmosShell",
-        "title": "%cosmosdb.command.cosmos_shell.launch%"
+        "command": "cosmosDB.launchCosmosDBShell",
+        "title": "%cosmosdb.command.cosmos_db_shell.launch%"
       },
       {
         "category": "NoSQL",
@@ -627,8 +627,8 @@
         },
         {
           "//": "[Database] Launch Cosmos DB Shell",
-          "command": "cosmosDB.launchCosmosShell",
-          "when": "vscodeDatabases.cosmosShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
+          "command": "cosmosDB.launchCosmosDBShell",
+          "when": "vscodeDatabases.cosmosDBShellSupportEnabled && view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
           "group": "1@4"
         },
         {

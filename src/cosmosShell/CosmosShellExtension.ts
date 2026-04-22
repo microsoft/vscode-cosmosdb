@@ -593,12 +593,14 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
     try {
         const didChangeEmitter = new vscode.EventEmitter<void>();
 
-        const mcpPort = (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();
+        const getMcpPort = (): string =>
+            (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();
 
         context.subscriptions.push(
             vscode.lm.registerMcpServerDefinitionProvider('cosmosDbShellMcpProvider', {
                 onDidChangeMcpServerDefinitions: didChangeEmitter.event,
                 provideMcpServerDefinitions: () => {
+                    const mcpPort = getMcpPort();
                     return [
                         new vscode.McpHttpServerDefinition(
                             McpServerName,
@@ -611,10 +613,24 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
                     ];
                 },
                 resolveMcpServerDefinition: (server: vscode.McpServerDefinition, token: vscode.CancellationToken) => {
-                    return resolveMcpServer(server, mcpPort, token);
+                    return resolveMcpServer(server, getMcpPort(), token);
                 },
             }),
         );
+
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration((event) => {
+                if (
+                    event.affectsConfiguration('cosmosDB.shell.MCP.port') ||
+                    event.affectsConfiguration('cosmosDB.shell.MCP.enabled') ||
+                    event.affectsConfiguration('cosmosDB.shell.path')
+                ) {
+                    didChangeEmitter.fire();
+                }
+            }),
+        );
+
+        context.subscriptions.push(didChangeEmitter);
     } catch (err) {
         ext.outputChannel.appendLine('error while registering MCP server: ' + err);
     }

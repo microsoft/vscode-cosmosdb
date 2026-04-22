@@ -118,7 +118,7 @@
     "eslint-plugin-react-hooks": "~7.0.1",
     "glob": "~12.0.0",
     "globals": "~17.5.0",
-    "jest-mock-vscode": "~4.12.0",
+    "jest-mock-vscode": "^4.12.0",
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
     "mocha-multi-reporters": "~1.5.1",

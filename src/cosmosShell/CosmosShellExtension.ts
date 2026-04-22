@@ -374,6 +374,26 @@ async function getCosmosShellToken(
  */
 export function isCosmosShellSupportEnabled(): boolean {
     const command = getCosmosShellCommand();
+    const cached = cosmosShellSupportCache.get(command);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const result = detectCosmosShellSupport(command);
+    cosmosShellSupportCache.set(command, result);
+    return result;
+}
+
+/**
+ * Clears the cached result of {@link isCosmosShellSupportEnabled}.
+ * Call this when the shell path configuration changes or the binary may have been installed/removed.
+ */
+export function invalidateCosmosShellSupportCache(): void {
+    cosmosShellSupportCache.clear();
+}
+
+const cosmosShellSupportCache = new Map<string, boolean>();
+
+function detectCosmosShellSupport(command: string): boolean {
     try {
         child.execFileSync(command, ['--version'], {
             windowsHide: true,
@@ -620,6 +640,9 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
 
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration((event) => {
+                if (event.affectsConfiguration('cosmosDB.shell.path')) {
+                    invalidateCosmosShellSupportCache();
+                }
                 if (
                     event.affectsConfiguration('cosmosDB.shell.MCP.port') ||
                     event.affectsConfiguration('cosmosDB.shell.MCP.enabled') ||

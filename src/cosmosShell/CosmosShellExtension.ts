@@ -43,7 +43,9 @@ import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 import { resolveCosmosShellCommand } from './cosmosShellCommandResolver';
 
-// Track the connection string associated with each open Cosmos DB Shell terminal
+// Track the connection string associated with each open Cosmos DB Shell terminal.
+// An empty string indicates a terminal launched via the command palette that has not
+// yet been connected to a specific account.
 const terminalConnectionStrings = new Map<vscode.Terminal, string>();
 
 export class CosmosShellExtension implements vscode.Disposable {
@@ -207,7 +209,9 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
         });
         terminal.show();
         watchForEarlyExit(terminal);
-        // No connection string to store when launching without a node
+        // Track the command-launched terminal with an empty connection string so it can
+        // be reused later when the user invokes "Launch Cosmos DB Shell" from a tree node.
+        terminalConnectionStrings.set(terminal, '');
         return;
     }
 
@@ -312,7 +316,25 @@ export async function connectCosmosShell(_context: IActionContext, node?: NoSqlC
         return;
     }
 
-    // No terminal with this connection string, launch a new one
+    // No matching connected terminal. If a command-launched terminal is still unconnected,
+    // reuse it rather than spawning a second shell. We only attempt this when the node's
+    // credentials do not require environment variables (account key) or a pre-fetched
+    // fallback token, because those can only be injected at terminal creation time.
+    const unconnectedTerminal = findUnconnectedCosmosShellTerminal();
+    if (unconnectedTerminal && canReuseUnconnectedTerminal(node)) {
+        unconnectedTerminal.show();
+        const connectCommand = buildInteractiveConnectCommand(node, rawConnectionString);
+        unconnectedTerminal.sendText(connectCommand, true);
+        const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
+        if (containerCommand) {
+            unconnectedTerminal.sendText(containerCommand, true);
+        }
+        // Upgrade the tracking entry with the resolved connection string.
+        terminalConnectionStrings.set(unconnectedTerminal, rawConnectionString);
+        return;
+    }
+
+    // Fall back to launching a new shell.
     await launchCosmosShell(_context, node);
 }
 
@@ -327,6 +349,67 @@ function findTerminalByConnectionString(connectionString: string): vscode.Termin
         }
     }
     return undefined;
+}
+
+/**
+ * Finds an open Cosmos DB Shell terminal that was launched without a connection (e.g. via the
+ * command palette) and has not yet been associated with a specific account.
+ */
+function findUnconnectedCosmosShellTerminal(): vscode.Terminal | undefined {
+    for (const [terminal, connStr] of terminalConnectionStrings) {
+        if (connStr === '' && vscode.window.terminals.includes(terminal)) {
+            return terminal;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Determines whether the given node's credentials can be applied to an already-running
+ * Cosmos DB Shell terminal. Credentials that depend on environment variables set at terminal
+ * creation time (account key, pre-fetched fallback token) cannot be injected retroactively.
+ */
+function canReuseUnconnectedTerminal(node: NoSqlContainerResourceItem): boolean {
+    const isEmulator = node.model.accountInfo.isEmulator;
+    if (isEmulator) {
+        return true;
+    }
+    // Account keys are passed via COSMOS_SHELL_ACCOUNT_KEY env var – cannot be set on a running terminal.
+    if (getCosmosShellCredential(node)) {
+        return false;
+    }
+    // Entra ID uses VisualStudioCodeCredential inside the shell, which does not require env vars.
+    // Managed identity uses a CLI-only client id but the interactive connect command supports it.
+    return true;
+}
+
+/**
+ * Builds the interactive `connect` command that mirrors the CLI `--connect` flag and related
+ * credential flags, so an already-running Cosmos DB Shell can be attached to a specific account.
+ */
+function buildInteractiveConnectCommand(node: NoSqlContainerResourceItem, endpoint: string): string {
+    const parts = ['connect', quoteArg(endpoint)];
+
+    if (!node.model.accountInfo.isEmulator) {
+        const entraCredential = getEntraIdCredential(node);
+        if (entraCredential) {
+            parts.push('--vscode-credential');
+            if (entraCredential.tenantId) {
+                parts.push('--tenant', quoteArg(entraCredential.tenantId));
+            }
+        }
+
+        const managedIdentityCredential = getManagedIdentityCredential(node);
+        if (managedIdentityCredential?.clientId) {
+            parts.push('--managed-identity', quoteArg(managedIdentityCredential.clientId));
+        }
+    }
+
+    return parts.join(' ');
+}
+
+function quoteArg(value: string): string {
+    return /[\s"']/.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value;
 }
 
 function getCosmosShellCredential(node: NoSqlContainerResourceItem): string | undefined {

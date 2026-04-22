@@ -138,11 +138,6 @@ function isCosmosShellPathFound(): boolean {
     }
 }
 
-function updateTerminalContext(): void {
-    const hasCosmosShellTerminal = vscode.window.terminals.some((terminal) => terminal.name === 'Cosmos DB Shell');
-    vscode.commands.executeCommand('setContext', 'vscodeDatabases.cosmosShellTerminalOpen', hasCosmosShellTerminal);
-}
-
 /**
  * Watches for the terminal closing shortly after creation (early exit).
  * If the process exits quickly, logs the exit code and reason to the output channel.
@@ -212,8 +207,6 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
         });
         terminal.show();
         watchForEarlyExit(terminal);
-        // Update context after creating terminal
-        updateTerminalContext();
         // No connection string to store when launching without a node
         return;
     }
@@ -280,8 +273,6 @@ export async function launchCosmosShell(_context: IActionContext, node?: NoSqlCo
 
     terminal.show();
     watchForEarlyExit(terminal);
-    // Update context after creating terminal
-    updateTerminalContext();
     // Store the connection string for this terminal
     terminalConnectionStrings.set(terminal, rawEndpoint);
 }

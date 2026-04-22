@@ -318,8 +318,8 @@ export async function connectCosmosShell(_context: IActionContext, node?: NoSqlC
 
     // No matching connected terminal. If a command-launched terminal is still unconnected,
     // reuse it rather than spawning a second shell. We only attempt this when the node's
-    // credentials do not require environment variables (account key) or a pre-fetched
-    // fallback token, because those can only be injected at terminal creation time.
+    // credentials do not require launch-time environment variables or a pre-fetched token,
+    // because those can only be injected when the terminal is created.
     const unconnectedTerminal = findUnconnectedCosmosShellTerminal();
     if (unconnectedTerminal && canReuseUnconnectedTerminal(node)) {
         unconnectedTerminal.show();
@@ -366,19 +366,26 @@ function findUnconnectedCosmosShellTerminal(): vscode.Terminal | undefined {
 
 /**
  * Determines whether the given node's credentials can be applied to an already-running
- * Cosmos DB Shell terminal. Credentials that depend on environment variables set at terminal
- * creation time (account key, pre-fetched fallback token) cannot be injected retroactively.
+ * Cosmos DB Shell terminal. Credentials that depend on launch-time environment variables or
+ * a pre-fetched fallback token cannot be injected retroactively.
  */
 function canReuseUnconnectedTerminal(node: NoSqlContainerResourceItem): boolean {
     const isEmulator = node.model.accountInfo.isEmulator;
     if (isEmulator) {
         return true;
     }
-    // Account keys are passed via COSMOS_SHELL_ACCOUNT_KEY env var – cannot be set on a running terminal.
+    // Account keys are passed via COSMOS_SHELL_ACCOUNT_KEY env var and cannot be set on a running terminal.
     if (getCosmosShellCredential(node)) {
         return false;
     }
-    // Entra ID uses VisualStudioCodeCredential inside the shell, which does not require env vars.
+
+    // The fresh-launch Entra path also injects COSMOS_SHELL_TOKEN as a fallback if the shell cannot
+    // acquire VisualStudioCodeCredential on its own. Reusing an existing terminal would drop that
+    // fallback and make launch order affect whether connection succeeds.
+    if (getEntraIdCredential(node)) {
+        return false;
+    }
+
     // Managed identity uses a CLI-only client id but the interactive connect command supports it.
     return true;
 }

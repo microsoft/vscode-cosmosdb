@@ -3,16 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-/* eslint-disable import/no-internal-modules */
-
 /**
  * entry-point for mongoClusters-related code. Activated from ./src/extension.ts
  *
  * We'll try to have everything related to mongoClusters-support managed from here.
  * In case of a failure with this plan, this comment section will be updated.
  */
-import { type ContainerDefinition } from '@azure/cosmos/dist/commonjs/client/Container/ContainerDefinition';
-import { type DatabaseDefinition } from '@azure/cosmos/dist/commonjs/client/Database/DatabaseDefinition';
+import { type ContainerDefinition, type DatabaseDefinition } from '@azure/cosmos';
 import {
     callWithTelemetryAndErrorHandling,
     registerCommandWithTreeNodeUnwrapping,

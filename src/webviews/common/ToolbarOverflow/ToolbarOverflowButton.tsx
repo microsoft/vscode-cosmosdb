@@ -66,9 +66,13 @@ export const ToolbarOverflowButton = function ToolbarOverflowButton(props: Toolb
                 <ToolbarButton
                     ref={ref}
                     {...props.toolbarButtonProps}
-                     
-                    onClick={onClick}
-                    aria-label={formattedAriaLabel}
+                    onClick={
+                        onClick
+                            ? () => {
+                                  void onClick();
+                              }
+                            : undefined
+                    }
                     aria-keyshortcuts={hotkey}
                     icon={icon}
                     disabled={disabled}
@@ -84,9 +88,13 @@ export const ToolbarOverflowButton = function ToolbarOverflowButton(props: Toolb
         return (
             <MenuItem
                 {...props.menuItemProps}
-                 
-                onClick={onClick}
-                secondaryContent={hotkey}
+                onClick={
+                    onClick
+                        ? () => {
+                              void onClick();
+                          }
+                        : undefined
+                }
                 aria-label={formattedAriaLabel}
                 icon={icon}
                 disabled={disabled}

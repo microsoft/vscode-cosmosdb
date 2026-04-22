@@ -43,7 +43,6 @@ export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConne
         return undefined;
     }
 
-     
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
             parseCosmosDBConnectionString(connectionString);

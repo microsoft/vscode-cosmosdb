@@ -29,7 +29,6 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
         context.valuesToMask.push(context.connectionString);
     }
 
-     
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
             parseCosmosDBConnectionString(connectionString);

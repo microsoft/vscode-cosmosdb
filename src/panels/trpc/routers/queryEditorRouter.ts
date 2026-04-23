@@ -643,18 +643,24 @@ export const queryEditorRouterDef = queryEditorRouter({
         ctx.state.generateQueryCancellation = undefined;
     }),
 
-    closeGenerateInput: queryEditorProcedure.mutation(async ({ ctx }) => {
-        ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
-            telCtx.errorHandling.suppressDisplay = true;
-        });
-        // Cancel any pending generation
-        ctx.state.pendingConfirmResolve?.(false);
-        ctx.state.pendingConfirmResolve = undefined;
-        ctx.state.generateQueryCancellation?.cancel();
-        ctx.state.generateQueryCancellation?.dispose();
-        ctx.state.generateQueryCancellation = undefined;
-    }),
+    closeGenerateInput: queryEditorProcedure
+        .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
+        .mutation(async ({ input, ctx }) => {
+            ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
+                telCtx.errorHandling.suppressDisplay = true;
+                if (input) {
+                    telCtx.telemetry.properties.hadEnteredPrompt = String(input.hadEnteredPrompt);
+                    telCtx.telemetry.properties.hadExecutedGenerateQuery = String(input.hadExecutedGenerateQuery);
+                }
+            });
+            // Cancel any pending generation
+            ctx.state.pendingConfirmResolve?.(false);
+            ctx.state.pendingConfirmResolve = undefined;
+            ctx.state.generateQueryCancellation?.cancel();
+            ctx.state.generateQueryCancellation?.dispose();
+            ctx.state.generateQueryCancellation = undefined;
+        }),
 
     getSelectedModelName: queryEditorProcedure.query(async () => {
         try {

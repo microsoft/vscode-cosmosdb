@@ -221,6 +221,7 @@ export const GenerateQueryInput = () => {
     const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
     const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
+    const [hadGenerated, setHadGenerated] = useState(false);
 
     // confirmToolInvocation message is pushed from the extension via the shared event subscription
     const confirmMessage = state.confirmToolInvocationMessage;
@@ -311,11 +312,16 @@ export const GenerateQueryInput = () => {
         if (isLoading) {
             handleCancel();
         }
+        const hadEnteredPrompt = !!input.trim();
         setConfirmMessage(null);
         setFeedbackGiven(null);
         setInput('');
         setLineCount(1);
-        void trpcClient.queryEditor.closeGenerateInput.mutate();
+        void trpcClient.queryEditor.closeGenerateInput.mutate({
+            hadEnteredPrompt,
+            hadExecutedGenerateQuery: hadGenerated,
+        });
+        setHadGenerated(false);
         dispatch({ type: 'toggleGenerateInput' });
     };
 
@@ -340,6 +346,7 @@ export const GenerateQueryInput = () => {
             setConfirmMessage(null);
 
             if (result && typeof result.generatedQuery === 'string') {
+                setHadGenerated(true);
                 // Insert generated query into the editor
                 dispatch({ type: 'insertText', queryValue: result.generatedQuery });
                 void trpcClient.queryEditor.updateQueryText.mutate({ query: result.generatedQuery });

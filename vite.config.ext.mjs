@@ -33,8 +33,6 @@ const supportedLanguages = [
     'qps-ploc',
 ]; // From VSCode L10n
 
-const langPattern = supportedLanguages.join('|');
-
 export default ({ mode }) => {
     const isDev = mode === 'development';
 
@@ -61,6 +59,9 @@ export default ({ mode }) => {
                 output: {
                     entryFileNames: '[name].mjs',
                     chunkFileNames: '[name]-[hash].mjs',
+                    // CJS interop: bundled CJS packages may call require() at runtime.
+                    // Since the output is ESM, require is not defined — inject it via createRequire.
+                    banner: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
                 },
             },
         },
@@ -81,14 +82,8 @@ export default ({ mode }) => {
                     __dirname,
                     'packages/nosql-language-service/src/index.ts',
                 ),
-                '@cosmosdb/schema-analyzer/json': path.resolve(
-                    __dirname,
-                    'packages/schema-analyzer/src/json/index.ts',
-                ),
-                '@cosmosdb/schema-analyzer/bson': path.resolve(
-                    __dirname,
-                    'packages/schema-analyzer/src/bson/index.ts',
-                ),
+                '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
+                '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
                 '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
             },
         },
@@ -151,4 +146,3 @@ export default ({ mode }) => {
         ].filter(Boolean),
     };
 };
-

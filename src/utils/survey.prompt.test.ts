@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { vi, type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { getSurveyConfig, getSurveyState, getSurveyStateKeys, promptAfterActionEventually } from './survey';
@@ -79,7 +80,7 @@ describe('Survey Prompt', () => {
     const stateKeys = getSurveyStateKeys()!;
 
     // Store a reference to the mocked function
-    let globalStateUpdateMock: vi.Mock;
+    let globalStateUpdateMock: Mock;
 
     beforeEach(() => {
         // Reset survey state before each test
@@ -101,11 +102,11 @@ describe('Survey Prompt', () => {
         });
 
         // Store a reference to the update function mock for use in tests
-        globalStateUpdateMock = ext.context.globalState.update as vi.Mock;
+        globalStateUpdateMock = ext.context.globalState.update as Mock;
 
         // Setup default mock behavior
-        (vscode.window.showInformationMessage as vi.Mock).mockResolvedValue(undefined);
-        (ext.context.globalState.get as vi.Mock).mockImplementation((key) => {
+        (vscode.window.showInformationMessage as Mock).mockResolvedValue(undefined);
+        (ext.context.globalState.get as Mock).mockImplementation((key) => {
             if (key === stateKeys.SESSION_COUNT) return surveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT;
             return undefined;
         });
@@ -170,7 +171,7 @@ describe('Survey Prompt', () => {
             };
 
             // Mock the showInformationMessage to return our take button
-            (vscode.window.showInformationMessage as vi.Mock).mockImplementation(
+            (vscode.window.showInformationMessage as Mock).mockImplementation(
                 (_message, takeBtn, _remindBtn, _neverBtn) => {
                     // Grab the real run function from the take button passed to showInformationMessage
                     mockTakeSurveyButton.run = takeBtn.run;
@@ -204,7 +205,7 @@ describe('Survey Prompt', () => {
             };
 
             // Mock the showInformationMessage to return our remind button
-            (vscode.window.showInformationMessage as vi.Mock).mockImplementation(
+            (vscode.window.showInformationMessage as Mock).mockImplementation(
                 (_message, _takeBtn, remindBtn, _neverBtn) => {
                     // Grab the real run function from the remind button passed to showInformationMessage
                     mockRemindButton.run = remindBtn.run;
@@ -236,7 +237,7 @@ describe('Survey Prompt', () => {
             };
 
             // Mock the showInformationMessage to return our never button
-            (vscode.window.showInformationMessage as vi.Mock).mockImplementation(
+            (vscode.window.showInformationMessage as Mock).mockImplementation(
                 (_message, _takeBtn, _remindBtn, neverBtn) => {
                     // Grab the real run function from the never button passed to showInformationMessage
                     mockNeverButton.run = neverBtn.run;
@@ -261,7 +262,7 @@ describe('Survey Prompt', () => {
 
         test('should default to "Remind Me Later" if no button is clicked', async () => {
             // Setup no button clicked (undefined response)
-            (vscode.window.showInformationMessage as vi.Mock).mockResolvedValue(undefined);
+            (vscode.window.showInformationMessage as Mock).mockResolvedValue(undefined);
 
             // Call the function that would trigger surveyPromptIfCandidate
             await promptAfterActionEventually(ExperienceKind.NoSQL, surveyConfig.scoring.REQUIRED_SCORE);
@@ -279,7 +280,7 @@ describe('Survey Prompt', () => {
             // Setup a more sophisticated mock that captures the context
             const telemetryContexts: IActionContext[] = [];
 
-            (callWithTelemetryAndErrorHandling as vi.Mock).mockImplementation(
+            (callWithTelemetryAndErrorHandling as Mock).mockImplementation(
                 async (eventName: string, callback: (context: IActionContext) => Promise<void>) => {
                     const context: IActionContext = telemetryContextMock;
 

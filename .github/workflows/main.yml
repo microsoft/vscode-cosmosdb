@@ -154,7 +154,7 @@ jobs:
             - name: 🧪 Unit Tests
               id: unit-tests
               continue-on-error: true
-              run: pnpm run jesttest
+              run: pnpm run vitest
 
             - name: 🧪 Integration Tests
               id: integration-tests

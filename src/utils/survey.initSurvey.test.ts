@@ -4,7 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import crypto from 'crypto';
-import { ext } from '../extensionVariables';
+
+// Create a hoisted mutable mock for ext.context so each beforeEach can swap globalState
+// without hitting the write-once setter on the real ExtensionService.
+const mockContext = vi.hoisted(() => ({
+    globalState: { get: vi.fn(), update: vi.fn() } as {
+        get: ReturnType<typeof vi.fn>;
+        update: ReturnType<typeof vi.fn>;
+    },
+    extension: { packageJSON: { version: '1.1.1' } },
+}));
+
+vi.mock('../extensionVariables', () => ({
+    ext: { context: mockContext },
+}));
 
 // Mock the vscode module
 vi.mock('vscode', () => ({
@@ -26,7 +39,7 @@ vi.mock('vscode', () => ({
 import { env, workspace } from 'vscode';
 import { getIsSurveyCandidate, getSurveyConfig, getSurveyState, getSurveyStateKeys } from './survey';
 
-let globalState: { get: vi.Mock; update: vi.Mock };
+let globalState: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 // Using type assertion here to tell TypeScript that we're confident getSurveyConfig() will not return undefined
 // in the test environment.
 const SurveyConfig = getSurveyConfig() as NonNullable<ReturnType<typeof getSurveyConfig>>;
@@ -65,7 +78,7 @@ vi.mock('@microsoft/vscode-azext-utils', () => {
 beforeAll(() => {
     // Verify the exported references are available
     if (!surveyStateRef || !SurveyConfig || !SurveyConfig.settings || !StateKeys) {
-        throw new Error('SurveyState is missing or invalid. Please compile with "test" mode when using webpack.');
+        throw new Error('SurveyState is missing or invalid. Please compile with "test" mode.');
     }
 });
 
@@ -80,11 +93,9 @@ describe('Survey Initialization', () => {
             get: vi.fn(),
             update: vi.fn(),
         };
-        // Provide the extension context in ext.context
-        (ext.context as any) = {
-            globalState,
-            extension: { packageJSON: { version: currentExtensionVersion } }, // extension version for version based checks
-        };
+        // Update the mocked ext.context so survey.ts sees the fresh globalState
+        mockContext.globalState = globalState;
+        mockContext.extension.packageJSON.version = currentExtensionVersion;
         // Reset any previously set candidate flag
         // This directly modifies the surveyState object in the survey.ts module
         surveyStateRef.isCandidate = undefined;
@@ -92,7 +103,7 @@ describe('Survey Initialization', () => {
         // Set up default A/B test mocks for passing
         mockABTestPassing();
 
-        (workspace.getConfiguration as vi.Mock).mockImplementation(() => ({
+        (workspace.getConfiguration as ReturnType<typeof vi.fn>).mockImplementation(() => ({
             get: vi.fn().mockReturnValue(true),
             has: vi.fn(),
             inspect: vi.fn(),
@@ -406,10 +417,9 @@ describe('Survey Initialization', () => {
                 get: vi.fn(),
                 update: vi.fn(),
             };
-            (ext.context as any) = {
-                globalState,
-                extension: { packageJSON: { version: currentExtensionVersion } },
-            };
+            // Update the mocked ext.context so survey.ts sees the fresh globalState
+            mockContext.globalState = globalState;
+            mockContext.extension.packageJSON.version = currentExtensionVersion;
             mockGlobalStateValues({
                 [StateKeys.SESSION_COUNT]: SurveyConfig.settings.MIN_SESSIONS_BEFORE_PROMPT,
             });

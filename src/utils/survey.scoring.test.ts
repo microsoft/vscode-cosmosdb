@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import { countExperienceUsageForSurvey, getSurveyConfig, getSurveyState } from './survey';
 import { ExperienceKind } from './surveyTypes';
@@ -156,7 +157,7 @@ describe('Survey Scoring', () => {
             let capturedExperience: ExperienceKind | undefined;
 
             // Mock the implementation for this test
-            (vscode.env.openExternal as vi.Mock).mockImplementation((uri: { toString: () => string }) => {
+            (vscode.env.openExternal as Mock).mockImplementation((uri: { toString: () => string }) => {
                 const urlString = uri.toString();
                 if (urlString.includes(surveyConfig.urls.MONGO)) {
                     capturedExperience = ExperienceKind.Mongo;

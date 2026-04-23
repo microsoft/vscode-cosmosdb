@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import {
     areAIFeaturesEnabled,
@@ -30,12 +31,12 @@ vi.mock('vscode', () => ({
 }));
 
 describe('copilotUtils', () => {
-    let mockConfigGet: vi.Mock;
+    let mockConfigGet: Mock;
 
     beforeEach(() => {
         vi.clearAllMocks();
         mockConfigGet = vi.fn();
-        (vscode.workspace.getConfiguration as vi.Mock).mockReturnValue({
+        (vscode.workspace.getConfiguration as Mock).mockReturnValue({
             get: mockConfigGet,
         });
     });
@@ -66,14 +67,14 @@ describe('copilotUtils', () => {
     describe('isCopilotChatExtensionInstalled', () => {
         it('returns true when GitHub Copilot Chat extension is installed', () => {
             const mockExtension = { id: 'GitHub.copilot-chat' };
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue(mockExtension);
+            (vscode.extensions.getExtension as Mock).mockReturnValue(mockExtension);
 
             expect(isCopilotChatExtensionInstalled()).toBe(true);
             expect(vscode.extensions.getExtension).toHaveBeenCalledWith('GitHub.copilot-chat');
         });
 
         it('returns false when GitHub Copilot Chat extension is not installed', () => {
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue(undefined);
+            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
 
             expect(isCopilotChatExtensionInstalled()).toBe(false);
             expect(vscode.extensions.getExtension).toHaveBeenCalledWith('GitHub.copilot-chat');
@@ -82,20 +83,20 @@ describe('copilotUtils', () => {
 
     describe('areCopilotModelsAvailable', () => {
         it('returns true when Copilot models are available', async () => {
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([{ id: 'model1' }]);
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areCopilotModelsAvailable()).resolves.toBe(true);
             expect(vscode.lm.selectChatModels).toHaveBeenCalledWith({ vendor: 'copilot' });
         });
 
         it('returns false when no Copilot models are available', async () => {
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([]);
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
             await expect(areCopilotModelsAvailable()).resolves.toBe(false);
         });
 
         it('returns false when selectChatModels throws an error', async () => {
-            (vscode.lm.selectChatModels as vi.Mock).mockRejectedValue(new Error('Not available'));
+            (vscode.lm.selectChatModels as Mock).mockRejectedValue(new Error('Not available'));
 
             await expect(areCopilotModelsAvailable()).resolves.toBe(false);
         });
@@ -104,40 +105,40 @@ describe('copilotUtils', () => {
     describe('areAIFeaturesEnabled', () => {
         it('returns true when setting is not disabled, Chat extension is installed, and models are available', async () => {
             mockConfigGet.mockReturnValue(false); // AI features not disabled
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([{ id: 'model1' }]);
+            (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(true);
         });
 
         it('returns false when AI features are disabled by setting', async () => {
             mockConfigGet.mockReturnValue(true); // AI features disabled
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([{ id: 'model1' }]);
+            (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });
 
         it('returns false when Chat extension is installed but no models available', async () => {
             mockConfigGet.mockReturnValue(false);
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([]);
+            (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });
 
         it('returns false when Chat extension is not installed', async () => {
             mockConfigGet.mockReturnValue(false);
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue(undefined);
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([{ id: 'model1' }]);
+            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });
 
         it('returns false when neither extension nor models are available', async () => {
             mockConfigGet.mockReturnValue(false);
-            (vscode.extensions.getExtension as vi.Mock).mockReturnValue(undefined);
-            (vscode.lm.selectChatModels as vi.Mock).mockResolvedValue([]);
+            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });

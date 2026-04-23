@@ -48,7 +48,7 @@
   ],
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "build": "tsc",
+    "build": "tsc --noEmit && tsc -p tsconfig.vitest.json --noEmit && tsc -p tsconfig.test.json --noEmit && tsc -p packages/schema-analyzer/tsconfig.json && tsc -p packages/nosql-language-service/tsconfig.json --noEmit",
     "clean": "git clean -dfx",
     "compile": "tsc -watch",
     "package": "node scripts/package-vsix.mjs",
@@ -56,7 +56,7 @@
     "lint-fix": "oxlint --fix && eslint --fix .",
     "prettier": "prettier -c \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
     "prettier-fix": "prettier -w \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
-    "pretest": "rimraf out && tsc -p tsconfig.test.json",
+    "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'commonjs'}))\"",
     "test": "vscode-test",
     "vitest": "vitest run",
     "vitest:ui": "vitest --ui",

@@ -44,7 +44,16 @@
       "command": "pnpm run vite-watch:ext",
       "group": "build",
       "isBackground": true,
-      "problemMatcher": [],
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": "^\\s*ERROR\\s+(.*)$", "message": 1 }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "building .* for",
+            "endsPattern": "built in"
+          }
+        }
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -61,7 +70,16 @@
       "command": "pnpm run vite-watch:views",
       "group": "build",
       "isBackground": true,
-      "problemMatcher": [],
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": "^\\s*ERROR\\s+(.*)$", "message": 1 }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "building .* for",
+            "endsPattern": "built in"
+          }
+        }
+      ],
       "presentation": {
         "echo": true,
         "reveal": "always",

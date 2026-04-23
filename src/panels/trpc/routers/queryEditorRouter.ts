@@ -21,6 +21,7 @@ import { QueryEditorTab } from '../../../panels/QueryEditorTab';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
 import { isSelectStar, toStringUniversal } from '../../../utils/convertors';
+import { getAvailableLanguageModels } from '../../../utils/copilotUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { type JSONSchema } from '../../../utils/json/JSONSchema';
@@ -544,7 +545,8 @@ export const queryEditorRouterDef = queryEditorRouter({
             const token = ctx.state.generateQueryCancellation.token;
 
             try {
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+                const models = await getAvailableLanguageModels(savedModelId ?? undefined);
                 if (models.length === 0) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
                 }
@@ -557,8 +559,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                     return { generatedQuery: false as const };
                 }
 
-                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+                const model = models[0];
 
                 const service = CosmosDbOperationsService.getInstance();
                 const historyContext = ctx.state.connection
@@ -657,9 +658,9 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getSelectedModelName: queryEditorProcedure.query(async () => {
         try {
-            const models = await vscode.lm.selectChatModels();
             const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+            const models = await getAvailableLanguageModels(savedModelId ?? undefined);
+            const selectedModel = models.length > 0 ? models[0] : undefined;
             return { modelName: selectedModel?.name ?? 'Copilot' };
         } catch {
             return { modelName: 'Copilot' };
@@ -668,7 +669,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getAvailableModels: queryEditorProcedure.query(async () => {
         try {
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const models = await getAvailableLanguageModels();
             const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
 
             const modelList = models
@@ -690,8 +691,8 @@ export const queryEditorRouterDef = queryEditorRouter({
             telCtx.telemetry.properties.modelId = input.modelId;
         });
 
-        const models = await vscode.lm.selectChatModels();
-        const selectedModel = models.find((m) => m.id === input.modelId);
+        const models = await getAvailableLanguageModels(input.modelId);
+        const selectedModel = models.length > 0 ? models[0] : undefined;
         return { modelName: selectedModel?.name ?? 'Copilot' };
     }),
 

@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { areAIFeaturesEnabled } from '../utils/copilotUtils';
+import { areAIFeaturesEnabled, getAvailableLanguageModels } from '../utils/copilotUtils';
 import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
@@ -325,7 +325,7 @@ export class CosmosDbChatParticipant {
         if (extReq.model) {
             return extReq.model;
         }
-        const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+        const models = await getAvailableLanguageModels();
         return models.length > 0 ? models[0] : null;
     }
 
@@ -495,7 +495,7 @@ export class CosmosDbChatParticipant {
         if (extendedReq.model) {
             languageModel = extendedReq.model;
         } else {
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const models = await getAvailableLanguageModels();
             if (models.length > 0) {
                 languageModel = models[0];
             }

@@ -13,6 +13,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { getAvailableLanguageModels } from '../utils/copilotUtils';
 import { type JSONSchema } from '../utils/json/JSONSchema';
 import {
     getSchemaFromDocument,
@@ -737,7 +738,7 @@ export class CosmosDbOperationsService {
         additionalContext?: string,
     ): Promise<string> {
         // Get available language models
-        const models = await vscode.lm.selectChatModels({});
+        const models = await getAvailableLanguageModels();
         if (models.length === 0) {
             throw new Error('No language model available');
         }
@@ -852,7 +853,7 @@ export class CosmosDbOperationsService {
         const source = options?.source;
         const operation = options?.operation;
 
-        const models = await vscode.lm.selectChatModels();
+        const models = await getAvailableLanguageModels(modelId);
         if (models.length === 0) {
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
@@ -861,8 +862,8 @@ export class CosmosDbOperationsService {
             throw new Error(l10n.t('No language model available. Please ensure you have access to Copilot.'));
         }
 
-        // Use specified model or first available
-        const model = modelId ? (models.find((m) => m.id === modelId) ?? models[0]) : models[0];
+        // Use specified model or first available (preferred model is moved to front by getAvailableLanguageModels)
+        const model = models[0];
 
         // Load query language reference for comprehensive syntax guidance
         const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
@@ -992,7 +993,7 @@ export class CosmosDbOperationsService {
 
                     void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingRequested', (ctx) => {
                         ctx.errorHandling.suppressDisplay = true;
-                        ctx.telemetry.properties.source = onConfirm ? 'queryEditor' : 'chatParticipant';
+                        ctx.telemetry.properties.source = source ?? 'unknown';
                     });
                 }
 
@@ -1009,7 +1010,7 @@ export class CosmosDbOperationsService {
                                 schemaSamplingUserAllowed = false;
                                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingDenied', (ctx) => {
                                     ctx.errorHandling.suppressDisplay = true;
-                                    ctx.telemetry.properties.source = 'queryEditor';
+                                    ctx.telemetry.properties.source = source ?? 'unknown';
                                 });
                                 toolResult = new vscode.LanguageModelToolResult([
                                     new vscode.LanguageModelTextPart(
@@ -1027,7 +1028,7 @@ export class CosmosDbOperationsService {
                         schemaSamplingUserAllowed = true;
                         void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingAllowed', (ctx) => {
                             ctx.errorHandling.suppressDisplay = true;
-                            ctx.telemetry.properties.source = onConfirm ? 'queryEditor' : 'chatParticipant';
+                            ctx.telemetry.properties.source = source ?? 'unknown';
                         });
 
                         const schemaSamplingStart = Date.now();

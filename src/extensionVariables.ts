@@ -24,7 +24,7 @@ function required<T>(name: string): { get: () => T; set: (v: T) => void } {
     return {
         get: () => {
             if (stored === UNSET) throw new Error(`[ext] '${name}' not initialized — call activate() first.`);
-            return stored as T;
+            return stored;
         },
         set: (value: T) => {
             if (stored !== UNSET) throw new Error(`[ext] '${name}' already initialized.`);
@@ -60,10 +60,12 @@ class ExtensionService {
     private readonly _rgApiV2 = required<AzureResourcesExtensionApiWithActivity>('rgApiV2');
     private readonly _state = required<TreeElementStateManager>('state');
     private readonly _cosmosDBBranchDataProvider = required<CosmosDBBranchDataProvider>('cosmosDBBranchDataProvider');
-    private readonly _cosmosDBWorkspaceBranchDataProvider =
-        required<CosmosDBWorkspaceBranchDataProvider>('cosmosDBWorkspaceBranchDataProvider');
-    private readonly _cosmosDBWorkspaceBranchDataResource =
-        required<CosmosDBWorkspaceItem>('cosmosDBWorkspaceBranchDataResource');
+    private readonly _cosmosDBWorkspaceBranchDataProvider = required<CosmosDBWorkspaceBranchDataProvider>(
+        'cosmosDBWorkspaceBranchDataProvider',
+    );
+    private readonly _cosmosDBWorkspaceBranchDataResource = required<CosmosDBWorkspaceItem>(
+        'cosmosDBWorkspaceBranchDataResource',
+    );
 
     // ── Optional fields — getter returns undefined before activate() ────────────
     private readonly _isBundle = optional<boolean>('isBundle');
@@ -72,35 +74,75 @@ class ExtensionService {
     isAIFeaturesEnabled: boolean | undefined = undefined;
 
     // ── Getters / setters ────────────────────────────────────────────────────────
-    get context() { return this._context.get(); }
-    set context(v) { this._context.set(v); }
+    get context() {
+        return this._context.get();
+    }
+    set context(v) {
+        this._context.set(v);
+    }
 
-    get outputChannel() { return this._outputChannel.get(); }
-    set outputChannel(v) { this._outputChannel.set(v); }
+    get outputChannel() {
+        return this._outputChannel.get();
+    }
+    set outputChannel(v) {
+        this._outputChannel.set(v);
+    }
 
-    get secretStorage() { return this._secretStorage.get(); }
-    set secretStorage(v) { this._secretStorage.set(v); }
+    get secretStorage() {
+        return this._secretStorage.get();
+    }
+    set secretStorage(v) {
+        this._secretStorage.set(v);
+    }
 
-    get fileSystem() { return this._fileSystem.get(); }
-    set fileSystem(v) { this._fileSystem.set(v); }
+    get fileSystem() {
+        return this._fileSystem.get();
+    }
+    set fileSystem(v) {
+        this._fileSystem.set(v);
+    }
 
-    get rgApiV2() { return this._rgApiV2.get(); }
-    set rgApiV2(v) { this._rgApiV2.set(v); }
+    get rgApiV2() {
+        return this._rgApiV2.get();
+    }
+    set rgApiV2(v) {
+        this._rgApiV2.set(v);
+    }
 
-    get state() { return this._state.get(); }
-    set state(v) { this._state.set(v); }
+    get state() {
+        return this._state.get();
+    }
+    set state(v) {
+        this._state.set(v);
+    }
 
-    get cosmosDBBranchDataProvider() { return this._cosmosDBBranchDataProvider.get(); }
-    set cosmosDBBranchDataProvider(v) { this._cosmosDBBranchDataProvider.set(v); }
+    get cosmosDBBranchDataProvider() {
+        return this._cosmosDBBranchDataProvider.get();
+    }
+    set cosmosDBBranchDataProvider(v) {
+        this._cosmosDBBranchDataProvider.set(v);
+    }
 
-    get cosmosDBWorkspaceBranchDataProvider() { return this._cosmosDBWorkspaceBranchDataProvider.get(); }
-    set cosmosDBWorkspaceBranchDataProvider(v) { this._cosmosDBWorkspaceBranchDataProvider.set(v); }
+    get cosmosDBWorkspaceBranchDataProvider() {
+        return this._cosmosDBWorkspaceBranchDataProvider.get();
+    }
+    set cosmosDBWorkspaceBranchDataProvider(v) {
+        this._cosmosDBWorkspaceBranchDataProvider.set(v);
+    }
 
-    get cosmosDBWorkspaceBranchDataResource() { return this._cosmosDBWorkspaceBranchDataResource.get(); }
-    set cosmosDBWorkspaceBranchDataResource(v) { this._cosmosDBWorkspaceBranchDataResource.set(v); }
+    get cosmosDBWorkspaceBranchDataResource() {
+        return this._cosmosDBWorkspaceBranchDataResource.get();
+    }
+    set cosmosDBWorkspaceBranchDataResource(v) {
+        this._cosmosDBWorkspaceBranchDataResource.set(v);
+    }
 
-    get isBundle() { return this._isBundle.get(); }
-    set isBundle(v) { this._isBundle.set(v); }
+    get isBundle() {
+        return this._isBundle.get();
+    }
+    set isBundle(v) {
+        this._isBundle.set(v);
+    }
 
     // isAIFeaturesEnabled is a plain mutable field (declared above)
 
@@ -126,4 +168,3 @@ class ExtensionService {
  * Required fields throw on read before they are initialized.
  */
 export const ext = new ExtensionService();
-

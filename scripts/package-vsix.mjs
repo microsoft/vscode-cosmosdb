@@ -83,7 +83,7 @@ function main() {
     console.log(`Preview: ${isPreview ? 'Yes' : 'No'}`);
 
     // Step 1: Build the extension
-    executeCommand('pnpm run webpack-prod', 'Building extension');
+    executeCommand('pnpm run vite-prod', 'Building extension');
 
     // Step 2: Prepare dist directory and package VSIX
     const outputFileName = `${name}-${version}.vsix`;

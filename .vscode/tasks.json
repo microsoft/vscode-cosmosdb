@@ -32,8 +32,50 @@
       "command": "pnpm run lint",
       "problemMatcher": "$eslint-stylish"
     },
+
+    // ── Vite watch (default F5 workflow) ────────────────────────────────────────
     {
       "label": "Watch",
+      "dependsOn": ["vite-watch:ext", "vite-watch:views"]
+    },
+    {
+      "label": "vite-watch:ext",
+      "type": "shell",
+      "command": "pnpm run vite-watch:ext",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "Cosmos DB Extension Watch"
+      }
+    },
+    {
+      "label": "vite-watch:views",
+      "type": "shell",
+      "command": "pnpm run vite-watch:views",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "Cosmos DB Extension Watch"
+      }
+    },
+
+    // ── Webpack watch (kept as alternative) ─────────────────────────────────────
+    {
+      "label": "Watch (webpack)",
       "dependsOn": ["watch:ext", "watch:views"]
     },
     {
@@ -50,7 +92,7 @@
         "panel": "new",
         "showReuseMessage": false,
         "clear": true,
-        "group": "Cosmos DB Extension Watch"
+        "group": "Cosmos DB Extension Watch (webpack)"
       }
     },
     {
@@ -67,12 +109,17 @@
         "panel": "new",
         "showReuseMessage": false,
         "clear": true,
-        "group": "Cosmos DB Extension Watch"
+        "group": "Cosmos DB Extension Watch (webpack)"
       }
+    },
+
+    {
+      "label": "Pretest and Watch",
+      "dependsOn": ["Pretest", "Watch"]
     },
     {
       "label": "Pretest and Webpack",
-      "dependsOn": ["Pretest", "Watch"]
+      "dependsOn": ["Pretest", "Watch (webpack)"]
     },
     {
       "label": "CosmosDB Emulator",

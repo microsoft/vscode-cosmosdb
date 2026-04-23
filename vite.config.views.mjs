@@ -8,7 +8,6 @@ import { fileURLToPath } from 'url';
 import react from '@vitejs/plugin-react';
 import { analyzer } from 'vite-bundle-analyzer';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,7 +70,8 @@ export default ({ mode }) => {
         },
         plugins: [
             react(),
-            monacoEditorPlugin.default({ languageWorkers: ['json'] }),
+            // Monaco workers are bundled inline via Rolldown — no separate plugin needed.
+            // If custom worker URLs are required, configure MonacoEnvironment in webview source.
             !isDev &&
                 analyzer({
                     analyzerMode: 'static',

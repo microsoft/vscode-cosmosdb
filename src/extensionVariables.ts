@@ -41,7 +41,7 @@ function required<T>(name: string): { get: () => T; set: (v: T) => void } {
 function optional<T>(name: string): { get: () => T | undefined; set: (v: T | undefined) => void } {
     let stored: T | typeof UNSET = UNSET;
     return {
-        get: () => (stored === UNSET ? undefined : (stored as T)),
+        get: () => (stored === UNSET ? undefined : stored),
         set: (value: T | undefined) => {
             if (stored !== UNSET) throw new Error(`[ext] '${name}' already initialized.`);
             stored = value as T;
@@ -63,9 +63,9 @@ class ExtensionService {
     private readonly _cosmosDBWorkspaceBranchDataProvider = required<CosmosDBWorkspaceBranchDataProvider>(
         'cosmosDBWorkspaceBranchDataProvider',
     );
-    private readonly _cosmosDBWorkspaceBranchDataResource = required<CosmosDBWorkspaceItem>(
-        'cosmosDBWorkspaceBranchDataResource',
-    );
+
+    /** Mutable — updated on every workspace tree refresh via onResourceItemRetrieved. */
+    cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem | undefined = undefined;
 
     // ── Optional fields — getter returns undefined before activate() ────────────
     private readonly _isBundle = optional<boolean>('isBundle');
@@ -130,12 +130,7 @@ class ExtensionService {
         this._cosmosDBWorkspaceBranchDataProvider.set(v);
     }
 
-    get cosmosDBWorkspaceBranchDataResource() {
-        return this._cosmosDBWorkspaceBranchDataResource.get();
-    }
-    set cosmosDBWorkspaceBranchDataResource(v) {
-        this._cosmosDBWorkspaceBranchDataResource.set(v);
-    }
+    // cosmosDBWorkspaceBranchDataResource is a plain mutable field (declared above)
 
     get isBundle() {
         return this._isBundle.get();

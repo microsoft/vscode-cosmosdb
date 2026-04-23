@@ -30,40 +30,6 @@
         "STOP_ON_ENTRY": "false"
       }
     },
-    {
-      "name": "Launch Extension + AzureResources",
-      "type": "extensionHost",
-      "request": "launch",
-      "runtimeExecutable": "${execPath}",
-      "args": [
-        "--profile=noExtensionsProfile",
-        "--extensionDevelopmentPath=${workspaceFolder}/dist",
-        "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
-      ],
-      "outFiles": ["${workspaceFolder}/dist/**/*.mjs", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
-      "preLaunchTask": "Watch",
-      "autoAttachChildProcesses": true,
-      "debugWebWorkerHost": true,
-      "debugWebviews": false,
-      "trace": true,
-      "sourceMaps": true,
-      "pauseForSourceMap": true,
-      "skipFiles": ["**/node_modules/**"],
-      "smartStep": true,
-      "sourceMapRenames": true,
-      "rendererDebugOptions": {
-        "webRoot": "${workspaceFolder}"
-      },
-      "resolveSourceMapLocations": ["${workspaceFolder}/dist/**", "!**/node_modules/**"],
-      "sourceMapPathOverrides": {
-        "./*": "${workspaceFolder}/*"
-      },
-      "env": {
-        "DEBUGTELEMETRY": "true",
-        "DEVSERVER": "true",
-        "STOP_ON_ENTRY": "false"
-      }
-    },
 
     // ── Webpack (alternative) ────────────────────────────────────────────────────
     {

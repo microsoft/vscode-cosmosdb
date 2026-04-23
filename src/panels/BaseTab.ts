@@ -73,6 +73,7 @@ export class BaseTab {
                 .toString(true);
 
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
+        const reactPreambleUri = !isProduction && devServer ? `${DEV_SERVER_HOST}/@react-refresh` : null;
 
         const csp = (
             isProduction
@@ -101,12 +102,30 @@ export class BaseTab {
             title: this.panel.title,
             csp,
             srcUri,
+            reactPreambleUri,
             viewType: this.viewType,
             nonce,
         });
     }
 
-    private template(params: { csp: string; viewType: string; srcUri: string; title: string; nonce: string }) {
+    private template(params: {
+        csp: string;
+        viewType: string;
+        srcUri: string;
+        reactPreambleUri: string | null;
+        title: string;
+        nonce: string;
+    }) {
+        const preamble = params.reactPreambleUri
+            ? `
+    <script type="module" nonce="${params.nonce}">
+      import RefreshRuntime from "${params.reactPreambleUri}";
+      RefreshRuntime.injectIntoGlobalHook(window);
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+    </script>`
+            : '';
         return `
 <!DOCTYPE html>
 <html lang="en">
@@ -124,7 +143,7 @@ export class BaseTab {
           // eslint-disable-next-line no-restricted-syntax
           JSON.stringify(vscode.l10n.bundle ?? {})
       };
-    </script>
+    </script>${preamble}
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";
       render("${params.viewType}", acquireVsCodeApi());

@@ -21,7 +21,7 @@ export default ({ mode }) => {
             outDir: 'dist',
             emptyOutDir: false, // Extension build also writes to dist
             sourcemap: isDev,
-            minify: isDev ? false : 'esbuild',
+            minify: !isDev,
             rollupOptions: {
                 input: path.resolve(__dirname, 'src/webviews/index.tsx'),
                 output: {
@@ -29,7 +29,7 @@ export default ({ mode }) => {
                     // Match filename expected by BaseTab.ts
                     entryFileNames: 'views.js',
                     chunkFileNames: '[name]-[hash].js',
-                    // Manual chunks — mirrors webpack splitChunks strategy
+                    // Manual chunks — splits large dependencies into separate files for better caching
                     manualChunks: isDev
                         ? undefined
                         : (id) => {
@@ -70,6 +70,17 @@ export default ({ mode }) => {
         },
         plugins: [
             react(),
+            // In dev server mode, serve /views.js as a re-export of the real entry so VSCode
+            // webview can load it from http://localhost:18080/views.js with full HMR support.
+            isDev && {
+                name: 'vscode-webview-entry',
+                configureServer(server) {
+                    server.middlewares.use('/views.js', (_req, res) => {
+                        res.setHeader('Content-Type', 'application/javascript');
+                        res.end(`export * from "/src/webviews/index.tsx";`);
+                    });
+                },
+            },
             // Monaco workers are bundled inline via Rolldown — no separate plugin needed.
             // If custom worker URLs are required, configure MonacoEnvironment in webview source.
             !isDev &&

@@ -34,9 +34,12 @@
     },
 
     // ── Vite watch (default F5 workflow) ────────────────────────────────────────
+    // Uses `vite serve` for the webview — this starts a real dev server on
+    // port 18080 (matching DEV_SERVER_HOST in BaseTab.ts), enabling HMR.
+    // The extension host build uses --watch to rebuild main.mjs on changes.
     {
       "label": "Watch",
-      "dependsOn": ["vite-watch:ext", "vite-watch:views"]
+      "dependsOn": ["vite-watch:ext", "vite-serve:views"]
     },
     {
       "label": "vite-watch:ext",
@@ -64,6 +67,34 @@
         "group": "Cosmos DB Extension Watch"
       }
     },
+    {
+      "label": "vite-serve:views",
+      "type": "shell",
+      "command": "pnpm run vite-serve:views",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": "^(NOMATCH)()()$", "file": 1, "location": 2, "message": 3 }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "VITE",
+            "endsPattern": "ready in"
+          }
+        }
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "Cosmos DB Extension Watch"
+      }
+    },
+    // vite-watch:views kept for cases where a static build-watch is preferred
+    // (e.g. when the dev server is not needed and DEVSERVER is false)
     {
       "label": "vite-watch:views",
       "type": "shell",

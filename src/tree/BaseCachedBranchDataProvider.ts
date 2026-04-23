@@ -63,7 +63,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      * Subclasses must return a stable string literal (e.g. the class name).
      *
      * **Important:** Do not use `this.constructor.name` — it gets mangled by
-     * webpack/Terser in production builds, producing unreadable telemetry.
+     * Rolldown/OXC minifier in production builds, producing unreadable telemetry.
      *
      * @returns A string identifier for this provider
      */

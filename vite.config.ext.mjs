@@ -42,7 +42,7 @@ export default ({ mode }) => {
             outDir: 'dist',
             emptyOutDir: false, // Views build also writes to dist
             sourcemap: isDev,
-            minify: isDev ? false : 'esbuild',
+            minify: !isDev,
             lib: {
                 entry: path.resolve(__dirname, 'main.ts'),
                 formats: ['es'],

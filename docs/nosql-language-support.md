@@ -70,11 +70,11 @@ Works in two environments:
 
 ### Configuration
 
-| File                      | Purpose                                                                                                                                                                                                              |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `package.json`            | Declares the `nosql` language (`contributes.languages`) with file extension, language configuration, and file icon. Declares the TextMate grammar (`contributes.grammars`). Adds `onLanguage:nosql` activation event |
-| `webpack.config.ext.js`   | Aliases `@cosmosdb/nosql-language-service` to TypeScript sources; copies grammar and config from the package into `dist/`                                                                                            |
-| `webpack.config.views.js` | Aliases `@cosmosdb/nosql-language-service/monaco` to TypeScript sources for the webview bundle                                                                                                                       |
+| File                    | Purpose                                                                                                                                                                                                              |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `package.json`          | Declares the `nosql` language (`contributes.languages`) with file extension, language configuration, and file icon. Declares the TextMate grammar (`contributes.grammars`). Adds `onLanguage:nosql` activation event |
+| `vite.config.ext.mjs`   | Aliases `@cosmosdb/nosql-language-service` to TypeScript sources; copies grammar and config from the package into `dist/`                                                                                            |
+| `vite.config.views.mjs` | Aliases `@cosmosdb/nosql-language-service/monaco` to TypeScript sources for the webview bundle                                                                                                                       |
 
 ## How It Works
 

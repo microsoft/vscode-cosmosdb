@@ -80,7 +80,7 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
             }
 
             // Get the path to the source folder
-            const sourceFolder = path.join(__dirname, 'resources', 'llm-assets');
+            const sourceFolder = path.join(ext.context.extensionPath, 'resources', 'llm-assets');
 
             // Check if source folder exists
             if (!fs.existsSync(sourceFolder)) {

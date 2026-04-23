@@ -3,12 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-'use strict';
+import StatoscopeWebpackPlugin from '@statoscope/webpack-plugin';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import webpack from 'webpack';
 
-const webpack = require('webpack');
-const path = require('path');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const excludeRegion = /<!-- region exclude-from-marketplace -->.*?<!-- endregion exclude-from-marketplace -->/gis;
 const supportedLanguages = [
@@ -28,7 +30,7 @@ const supportedLanguages = [
     'qps-ploc',
 ]; // From VSCode L10n
 
-module.exports = (env, { mode }) => {
+export default (env, { mode }) => {
     const isDev = mode === 'development';
 
     return {
@@ -40,10 +42,14 @@ module.exports = (env, { mode }) => {
         },
         output: {
             path: path.resolve(__dirname, 'dist'),
-            filename: '[name].js',
-            chunkFormat: 'commonjs',
-            libraryTarget: 'commonjs2',
+            filename: '[name].mjs',
+            chunkFilename: '[name].mjs',
+            chunkFormat: 'module',
+            library: { type: 'module' },
             devtoolModuleFilenameTemplate: '[resource-path]',
+        },
+        experiments: {
+            outputModule: true,
         },
         cache: {
             type: 'filesystem',
@@ -62,10 +68,10 @@ module.exports = (env, { mode }) => {
             sideEffects: !isDev, // false = skip analysis (+1s saved) | true = remove unused modules
             runtimeChunk: !isDev,
         },
-        externalsType: 'node-commonjs',
+        externalsType: 'module',
         externals: {
             vs: 'vs',
-            vscode: 'commonjs vscode',
+            vscode: 'vscode',
         },
         resolve: {
             roots: [__dirname],
@@ -105,6 +111,16 @@ module.exports = (env, { mode }) => {
                         loader: 'ts-loader',
                         options: {
                             transpileOnly: true, // Skip type checking for faster builds
+                            // Override module settings so that all files (including
+                            // workspace packages whose tsconfig uses NodeNext) are
+                            // emitted as ESM.  ts.transpileModule() cannot read the
+                            // filesystem to check package.json "type", so NodeNext
+                            // defaults to CJS for .ts files, which breaks webpack's
+                            // ESM output (`outputModule: true`).
+                            compilerOptions: {
+                                module: 'ESNext',
+                                moduleResolution: 'Bundler',
+                            },
                         },
                     },
                 },
@@ -155,6 +171,12 @@ module.exports = (env, { mode }) => {
                     {
                         from: 'package.json',
                         to: 'package.json',
+                        // Rewrite "main" to point at the .mjs bundle (ESM output)
+                        transform: (content) => {
+                            const pkg = JSON.parse(content.toString());
+                            pkg.main = './main.mjs';
+                            return JSON.stringify(pkg, null, 2);
+                        },
                     },
                     {
                         from: 'package.nls.json',

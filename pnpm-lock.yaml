@@ -38,6 +38,9 @@ importers:
       '@fluentui/react-icons':
         specifier: ~2.0.324
         version: 2.0.324(react@19.2.5)
+      '@microsoft/applicationinsights-common':
+        specifier: ^3.4.1
+        version: 3.4.1(tslib@2.8.1)
       '@microsoft/vscode-azext-azureauth':
         specifier: ~5.1.1
         version: 5.1.1
@@ -1282,6 +1285,11 @@ packages:
 
   '@microsoft/applicationinsights-channel-js@3.4.1':
     resolution: {integrity: sha512-QS1k6iwVwR1MznGAB1H0F9raqpevbFNbadLS5O1419pz9OEWBfF9wRQLnENCyo8QS9Q0IdiqnGAON/D8IywpWg==}
+    peerDependencies:
+      tslib: '>= 1.0.0'
+
+  '@microsoft/applicationinsights-common@3.4.1':
+    resolution: {integrity: sha512-CTbD0g/68tiv2yCItsodDQBYxyHdfQkG7VhvVU8OHenukpl/7W4wEuxZuOntqhv5m9Nx/DFncbz+T83nvYTG3g==}
     peerDependencies:
       tslib: '>= 1.0.0'
 
@@ -7335,6 +7343,14 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
+      '@nevware21/ts-utils': 0.13.0
+      tslib: 2.8.1
+
+  '@microsoft/applicationinsights-common@3.4.1(tslib@2.8.1)':
+    dependencies:
+      '@microsoft/applicationinsights-core-js': 3.4.1(tslib@2.8.1)
+      '@microsoft/applicationinsights-shims': 3.0.1
+      '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-utils': 0.13.0
       tslib: 2.8.1
 

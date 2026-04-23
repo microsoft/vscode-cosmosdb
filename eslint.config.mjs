@@ -67,6 +67,13 @@ export default defineConfig([
                     message:
                         'Please use "import * as l10n from \'@vscode/l10n\';" and use l10n directly instead of vscode.l10n.',
                 },
+                {
+                    // Matches only `import vscode from 'vscode'` (ImportDefaultSpecifier),
+                    // NOT `import * as vscode from 'vscode'` (ImportNamespaceSpecifier).
+                    selector: 'ImportDeclaration[source.value="vscode"] > ImportDefaultSpecifier',
+                    message:
+                        'Use \'import * as vscode from "vscode"\' instead. Default import returns undefined in ESM.',
+                },
             ],
         },
     },

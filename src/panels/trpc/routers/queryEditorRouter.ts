@@ -710,13 +710,13 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     openCopilotExplainQuery: queryEditorProcedure
         .input(z.object({ query: z.string().optional() }).optional())
-        .mutation(async ({ input, ctx }) => {
+        .mutation(async ({ input }) => {
             // Fire-and-forget: separate telemetry event
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
             });
 
-            const query = (input?.query || ctx.state.selectedQuery || ctx.state.query)?.trim();
+            const query = input?.query?.trim();
             const chatQuery = query
                 ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
                 : '@cosmosdb /explainQuery';

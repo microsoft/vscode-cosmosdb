@@ -283,16 +283,10 @@ export class CosmosDbChatParticipant {
 
         switch (operation) {
             case 'editQuery': {
-                // Pass the full user prompt for LLM processing
+                // Pass the full user prompt for LLM processing.
+                // The query to edit always comes from the active editor, not from inline text.
                 parameters.userPrompt = originalPrompt;
-
-                // Extract current query from prompt if explicitly provided (and not already from code block)
-                if (!parameters.currentQuery) {
-                    const queryMatch = originalPrompt.match(/(?:query|select)\s*:?\s*(.+)/i);
-                    if (queryMatch) {
-                        parameters.currentQuery = queryMatch[1].trim();
-                    }
-                }
+                delete parameters.currentQuery;
                 break;
             }
             case 'explainQuery': {
@@ -423,14 +417,17 @@ export class CosmosDbChatParticipant {
             // Resolve any attached references (files, selections, etc.)
             const chatReferencesContext = await this.resolveChatReferences(request);
 
-            // Handle special cases
-            if (intent.operation === 'editQuery' && request.prompt.trim()) {
-                operationName = 'editQuery';
-                parameters = {
-                    currentQuery: intent.parameters.currentQuery || '',
-                    userPrompt: request.prompt, // Pass the full user prompt for LLM processing
-                    explanation: 'Query optimization based on AI analysis',
-                };
+            // For editQuery, ensure the full user prompt is passed for LLM processing.
+            // The query to edit always comes from the active editor, not inline text.
+            if (operationName === 'editQuery') {
+                if (request.prompt.trim()) {
+                    parameters.userPrompt = request.prompt;
+                }
+                parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
+            } else if (operationName === 'explainQuery') {
+                // Prefer inline query (e.g. from the AI button code block), fall back to editor
+                const inlineQuery = (parameters.currentQuery as string | undefined)?.trim();
+                parameters.currentQuery = inlineQuery || CosmosDbOperationsService.getInstance().getActiveEditorQuery();
             }
 
             // Forward resolved chat references as additional context
@@ -555,6 +552,23 @@ export class CosmosDbChatParticipant {
             // Ensure userPrompt is always populated from the original request
             if (!parameters.userPrompt && request.prompt.trim()) {
                 parameters.userPrompt = request.prompt;
+            }
+
+            // Resolve the query once before passing to executeOperation.
+            if (operationName === 'editQuery') {
+                // The query to edit always comes from the active editor, not inline text.
+                parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
+            } else if (operationName === 'explainQuery') {
+                // For explainQuery, two scenarios:
+                if (request.prompt.trim()) {
+                    // 1) User specifies a query in the prompt (e.g. "@cosmosdb /explainQuery SELECT * FROM c") - use this prompt as query
+                    parameters.currentQuery = request.prompt.trim();
+                    parameters.userPrompt = undefined;
+                } else {
+                    // 2) User just says "@cosmosdb /explainQuery" while having an active query editor - use the active editor query
+                    parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
+                    parameters.userPrompt = undefined;
+                }
             }
 
             // Resolve any attached references (files, selections, etc.)

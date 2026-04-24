@@ -439,9 +439,7 @@ export class CosmosDbOperationsService {
         activeEditor: QueryEditorTab;
         connection: NoSqlQueryConnection;
         currentResult: ReturnType<QueryEditorTab['getCurrentQueryResults']>;
-        sessionQuery: string | undefined;
-        editorQuery: string | undefined;
-        selectedQuery: string | undefined;
+        query: string | undefined;
         hasResults: boolean;
     } {
         const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
@@ -461,18 +459,16 @@ export class CosmosDbOperationsService {
         }
 
         const currentResult = activeEditor.getCurrentQueryResults();
-        const sessionQuery = currentResult?.query;
         const editorQuery = activeEditor.getCurrentQuery();
         const selectedQuery = activeEditor.getSelectedQuery();
+        const query = (selectedQuery || editorQuery)?.trim() || undefined;
         const hasResults = !!(currentResult?.documents && currentResult.documents.length > 0);
 
         return {
             activeEditor,
             connection,
             currentResult,
-            sessionQuery,
-            editorQuery,
-            selectedQuery,
+            query,
             hasResults,
         };
     }
@@ -487,6 +483,20 @@ export class CosmosDbOperationsService {
         }
         const activeEditor = getActiveQueryEditor(activeQueryEditors);
         return getConnectionFromQueryTab(activeEditor);
+    }
+
+    /**
+     * Returns the resolved query from the active query editor, using the priority:
+     * selected text > full editor content.
+     * Returns undefined if no query editor is open or no query is available.
+     */
+    public getActiveEditorQuery(): string | undefined {
+        try {
+            const { query } = this.getActiveQueryEditorContext();
+            return query;
+        } catch {
+            return undefined;
+        }
     }
 
     /**
@@ -509,11 +519,10 @@ export class CosmosDbOperationsService {
 
             switch (operationName) {
                 case 'editQuery': {
-                    const { activeEditor, connection, currentResult, sessionQuery, editorQuery, hasResults } =
-                        this.getActiveQueryEditorContext();
+                    const currentQuery = (parameters.currentQuery as string | undefined)?.trim();
+                    const { activeEditor, connection, currentResult, hasResults } = this.getActiveQueryEditorContext();
 
-                    const actualQuery = sessionQuery || editorQuery || (parameters.currentQuery as string);
-                    if (!actualQuery) {
+                    if (!currentQuery) {
                         return l10n.t(
                             'No query found to edit. Please write or execute a query in the query editor first.',
                         );
@@ -528,7 +537,7 @@ export class CosmosDbOperationsService {
                             documentCount: hasResults ? currentResult?.documents?.length : undefined,
                             requestCharge: hasResults ? currentResult?.requestCharge : undefined,
                         },
-                        actualQuery,
+                        currentQuery,
                         true,
                         onProgress,
                         onConfirm,
@@ -538,12 +547,10 @@ export class CosmosDbOperationsService {
                     );
                 }
                 case 'explainQuery': {
-                    const { connection, currentResult, sessionQuery, editorQuery, selectedQuery, hasResults } =
-                        this.getActiveQueryEditorContext();
+                    const currentQuery = (parameters.currentQuery as string | undefined)?.trim();
+                    const { connection, currentResult, hasResults } = this.getActiveQueryEditorContext();
 
-                    const actualQuery =
-                        selectedQuery || sessionQuery || editorQuery || (parameters.currentQuery as string);
-                    if (!actualQuery) {
+                    if (!currentQuery) {
                         return l10n.t('There is no query to analyze');
                     }
 
@@ -552,7 +559,7 @@ export class CosmosDbOperationsService {
                         : undefined;
 
                     return await this.handleExplainQuery(
-                        actualQuery,
+                        currentQuery,
                         parameters.userPrompt as string,
                         connection,
                         {
@@ -568,12 +575,10 @@ export class CosmosDbOperationsService {
                         activeEditor: genEditor,
                         connection: genConnection,
                         currentResult: genResult,
-                        sessionQuery: genSessionQuery,
-                        editorQuery: genEditorQuery,
+                        query: genCurrentQuery,
                         hasResults: genHasResults,
                     } = this.getActiveQueryEditorContext();
                     const genHistoryContext = this.getQueryHistoryContext(genEditor);
-                    const genCurrentQuery = genSessionQuery || genEditorQuery;
 
                     return await this.handleEditQuery(
                         parameters.userPrompt as string,

@@ -45,6 +45,10 @@ import { isTreeElementWithExperience } from './TreeElementWithExperience';
  * - Each tree element is wrapped with state handling capabilities before being returned
  * - Error states are represented as special tree elements
  * - The cache is automatically pruned during refresh operations
+ *
+ * @abstract
+ * @augments vscode.Disposable
+ * @implements {BranchDataProvider<T, TreeElement>}
  */
 export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource>
     extends vscode.Disposable

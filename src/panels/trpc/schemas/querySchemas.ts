@@ -15,7 +15,7 @@ import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../..
  *
  * Uses z.lazy for the recursive definition.
  */
-export const JSONValueSchema: z.ZodType<unknown> = z.lazy(() =>
+export const JSONValueSchema: z.ZodType = z.lazy(() =>
     z.union([
         z.string(),
         z.number(),

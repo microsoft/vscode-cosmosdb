@@ -98,6 +98,10 @@ export type DispatchAction =
           isAIFeaturesEnabled: boolean;
       }
     | {
+          type: 'setCurrentQueryBlock';
+          currentQueryBlock: string;
+      }
+    | {
           type: 'setConfirmToolInvocationMessage';
           message: string | null;
       };
@@ -109,6 +113,7 @@ export type QueryEditorState = {
     queryHistory: string[];
     queryValue: string;
     querySelectedValue: string;
+    currentQueryBlock: string; // The query block text under the cursor (persisted across focus loss)
     isConnected: boolean;
     isExecuting: boolean;
     isEditMode: boolean; // Query or selected query is start select (select * from c)
@@ -145,6 +150,7 @@ export const defaultState: QueryEditorState = {
     queryHistory: [],
     queryValue: DEFAULT_QUERY_VALUE,
     querySelectedValue: '',
+    currentQueryBlock: '',
     isConnected: false,
     isExecuting: false,
     isEditMode: false,
@@ -233,6 +239,8 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, selectedRows: action.selectedRows };
         case 'setQuerySelectedValue':
             return { ...state, querySelectedValue: action.selectedValue };
+        case 'setCurrentQueryBlock':
+            return { ...state, currentQueryBlock: action.currentQueryBlock };
         case 'setIsSurveyCandidate':
             return { ...state, isSurveyCandidate: action.isSurveyCandidate };
         case 'selectBucket':

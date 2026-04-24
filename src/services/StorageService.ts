@@ -210,7 +210,7 @@ class StorageImpl implements Storage {
             if (itemError instanceof Error) {
                 throw itemError; // Rethrow errors
             }
-            throw new Error(l10n.t('Failed to delete item "{0}".', itemId));
+            throw new Error(l10n.t('Failed to delete item "{0}".', itemId), { cause: itemError });
         }
     }
 

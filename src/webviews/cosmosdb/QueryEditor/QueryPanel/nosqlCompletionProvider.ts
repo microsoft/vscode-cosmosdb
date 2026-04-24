@@ -179,8 +179,8 @@ export function createNoSqlCompletionProvider(
                     for (const [name, propSchema] of Object.entries(properties)) {
                         const typeLabel = getTypeLabel(propSchema);
                         const hasChildren =
-                            !!(propSchema).properties ||
-                            !!(propSchema).anyOf?.some(
+                            !!propSchema.properties ||
+                            !!propSchema.anyOf?.some(
                                 (e) => typeof e !== 'boolean' && (e.type === 'object' || e.properties),
                             );
                         const sortKey = computePropertySortKey(propSchema, expectedType);

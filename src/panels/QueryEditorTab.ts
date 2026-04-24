@@ -78,7 +78,7 @@ export class QueryEditorTab extends BaseTab {
         this.disposables.push(
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
-                     this.syncSchemaBasedOnQueriesSetting();
+                    this.syncSchemaBasedOnQueriesSetting();
                 }
             }),
         );

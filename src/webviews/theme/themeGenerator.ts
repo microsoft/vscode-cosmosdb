@@ -59,14 +59,14 @@ export const generateAdaptiveLightTheme = (): Theme => {
     const buttonBackground = style.getPropertyValue('--vscode-button-background');
     const brandVSCode: BrandVariants = getBrandTokensFromPalette(buttonBackground);
 
-    return ({
-	...createLightTheme(brandVSCode),
-	colorNeutralForeground1: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground1Hover: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground1Pressed: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
-	colorNeutralBackground1: 'var(--vscode-editor-background)'
-});
+    return {
+        ...createLightTheme(brandVSCode),
+        colorNeutralForeground1: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground1Hover: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground1Pressed: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
+        colorNeutralBackground1: 'var(--vscode-editor-background)',
+    };
 };
 
 export const generateAdaptiveDarkTheme = (): Theme => {
@@ -74,18 +74,18 @@ export const generateAdaptiveDarkTheme = (): Theme => {
     const buttonBackground = style.getPropertyValue('--vscode-button-background');
     const brandVSCode: BrandVariants = getBrandTokensFromPalette(buttonBackground);
 
-    return ({
-	...createDarkTheme(brandVSCode),
-	colorNeutralForeground1: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground1Hover: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground1Pressed: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
-	colorNeutralForeground2: 'var(--vscode-foreground)',
-	colorNeutralForeground2Hover: 'var(--vscode-foreground)',
-	colorNeutralForeground2Pressed: 'var(--vscode-foreground)',
-	colorNeutralForeground2Selected: 'var(--vscode-foreground)',
-	colorNeutralBackground1: 'var(--vscode-editor-background)'
-});
+    return {
+        ...createDarkTheme(brandVSCode),
+        colorNeutralForeground1: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground1Hover: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground1Pressed: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground1Selected: 'var(--vscode-editor-foreground)',
+        colorNeutralForeground2: 'var(--vscode-foreground)',
+        colorNeutralForeground2Hover: 'var(--vscode-foreground)',
+        colorNeutralForeground2Pressed: 'var(--vscode-foreground)',
+        colorNeutralForeground2Selected: 'var(--vscode-foreground)',
+        colorNeutralBackground1: 'var(--vscode-editor-background)',
+    };
 };
 
 export const generateMonacoTheme = (baseTheme: MonacoBuiltinTheme): MonacoThemeData => {

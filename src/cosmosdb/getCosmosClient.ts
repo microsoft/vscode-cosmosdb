@@ -13,10 +13,7 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
-import {
-    getCosmosDBKeyCredential,
-    type CosmosDBCredential,
-} from './CosmosDBCredential';
+import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCredential';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
 import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
@@ -117,7 +114,7 @@ export function getCosmosClient(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,
-                                    (credential).tenantId,
+                                    credential.tenantId,
                                     { createIfNone: forcePrompt },
                                 );
                             }
@@ -168,9 +165,7 @@ export function getCosmosClient(
                 }
 
                 // 3. Last resort - Try EntraID again with forced prompting
-                const entraIdCreds = credentials.filter(
-                    (cred) => cred.type === AuthenticationMethod.entraId,
-                );
+                const entraIdCreds = credentials.filter((cred) => cred.type === AuthenticationMethod.entraId);
 
                 if (entraIdCreds.length > 0) {
                     // Force prompt on Entra ID as last resort

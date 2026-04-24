@@ -386,7 +386,7 @@ export class CosmosDbOperationsService {
                     // Skip boolean schema values
                     continue;
                 }
-                const propSchema = value as JSONSchema;
+                const propSchema = value;
                 if (propSchema.anyOf && propSchema.anyOf.length > 0) {
                     // Get the types from anyOf (filter out boolean entries)
                     const validEntries = propSchema.anyOf.filter(
@@ -417,7 +417,7 @@ export class CosmosDbOperationsService {
                                 );
                                 simplified[key] = `array<${itemTypes.join('|')}>`;
                             } else if (itemsSchema.type) {
-                                simplified[key] = `array<${itemsSchema.type}>`;
+                                simplified[key] = `array<${String(itemsSchema.type)}>`;
                             }
                         }
                     }
@@ -1080,7 +1080,7 @@ export class CosmosDbOperationsService {
                             connection.containerId,
                             result.sampleQuery,
                             result.documentCount,
-                            result.schema as Record<string, unknown>,
+                            result.schema,
                             result.requestCharge,
                         );
                     } else {

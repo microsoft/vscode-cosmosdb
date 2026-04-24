@@ -5,7 +5,7 @@
 
 import { createTRPCClient, loggerLink } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
-import { useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
 import { errorLink, type ErrorHandler } from './errorLink';
 import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
@@ -45,9 +45,12 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
      *
      * @param message - The message to send, following the VsCodeLinkRequestMessage format.
      */
-    function send(message: VsCodeLinkRequestMessage) {
-        vscodeApi.postMessage(message);
-    }
+    const send = useCallback(
+        (message: VsCodeLinkRequestMessage) => {
+            vscodeApi.postMessage(message);
+        },
+        [vscodeApi],
+    );
 
     /**
      * Function to handle incoming messages from the VSCode extension.
@@ -90,7 +93,7 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
                     vscodeLink<TRouter>({ send, onReceive }),
                 ],
             }),
-        [vscodeApi],
+        [onError, send],
     );
 
     // Return the tRPC client

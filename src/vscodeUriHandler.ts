@@ -431,7 +431,7 @@ async function openAppropriateEditorForConnection(
     }
 
     const info = await getAccountInfo(parsedConnection.connectionString);
-    const parsedCS = parsedConnection.connectionString as ParsedCosmosDBConnectionString;
+    const parsedCS = parsedConnection.connectionString;
     const databaseName = database || parsedCS.databaseName;
     if (!databaseName) {
         throw new Error(l10n.t("Can't open the Query Editor, Database name is required"));
@@ -547,12 +547,12 @@ function extractParams(query: string): {
 
 /**
  * Interface for URI parameters used for connecting to Azure Cosmos DB resources.
- * @property resourceId - The Azure resource ID of the Cosmos DB account.
- * @property subscriptionId - The Azure subscription ID.
- * @property resourceGroup - The Azure resource group name containing the Cosmos DB account.
- * @property connectionString - The connection string to the Cosmos DB account.
- * @property database - The name of the database in the Cosmos DB account.
- * @property container - The name of the container within the database.
+ * @property {string} [resourceId] - The Azure resource ID of the Cosmos DB account.
+ * @property {string} [subscriptionId] - The Azure subscription ID.
+ * @property {string} [resourceGroup] - The Azure resource group name containing the Cosmos DB account.
+ * @property {string} [connectionString] - The connection string to the Cosmos DB account.
+ * @property {string} [database] - The name of the database in the Cosmos DB account.
+ * @property {string} [container] - The name of the container within the database.
  */
 interface UriParams {
     resourceId?: string | undefined;

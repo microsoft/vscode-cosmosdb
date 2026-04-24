@@ -36,7 +36,7 @@ export async function openNoSqlQueryEditor(
         // Case 2: Input is a container node (using proper type guard)
         context.telemetry.properties.experience = nodeOrConnection.experience.api;
         connection = getConnectionFromNode(
-            nodeOrConnection as CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
+            nodeOrConnection,
         );
     } else {
         // Case 3: Input is already a connection

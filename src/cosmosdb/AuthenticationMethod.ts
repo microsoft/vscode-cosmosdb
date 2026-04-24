@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 
 export enum AuthenticationMethod {

@@ -202,7 +202,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             }
             const result = await session.run();
             // Merge results into stored schema if setting is enabled and query is SELECT *
-            void mergeQueryResultsIntoSchema(result, ctx.state.connection!, ctx.eventSink);
+            void mergeQueryResultsIntoSchema(result, ctx.state.connection, ctx.eventSink);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.High,
@@ -257,7 +257,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 );
             const result = await session.nextPage();
             // Merge results into stored schema if setting is enabled and query is SELECT *
-            void mergeQueryResultsIntoSchema(result, ctx.state.connection!, ctx.eventSink);
+            void mergeQueryResultsIntoSchema(result, ctx.state.connection, ctx.eventSink);
             void promptAfterActionEventually(
                 ExperienceKind.NoSQL,
                 UsageImpact.Medium,

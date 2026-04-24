@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { TRPCClientError, type Operation, type TRPCLink } from '@trpc/client';
+import { TRPCClientError, type TRPCLink } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
 import { observable } from '@trpc/server/observable'; // Their example uses a reference from /server/ and so do we: https://trpc.io/docs/client/links#example
 import { type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../../../panels/trpc/vscodeProtocol';
@@ -37,7 +37,7 @@ function vscodeLink<TRouter extends AnyRouter>(options: VSCodeLinkOptions): TRPC
     return (_runtime) => {
         // Since this is a terminating link, we do not deconstruct 'next'
         return ({ op }) => {
-            op = op as Operation<unknown>;
+            void op;
 
             /**
              * For each message sent from the client to the server, the function below will be called.

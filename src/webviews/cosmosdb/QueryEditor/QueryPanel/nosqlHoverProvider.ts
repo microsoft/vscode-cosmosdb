@@ -55,7 +55,7 @@ export function createNoSqlHoverProvider(
 
                     const resolved = resolvePropertyAtPath(schema, dotPath, fromAlias, joinAliases);
                     if (resolved) {
-                        const documentsInspected = schema['x-documentsInspected'] as number | undefined;
+                        const documentsInspected = schema['x-documentsInspected'];
                         const content = getNoSqlSchemaPropertyHoverContent(
                             resolved.propSchema,
                             resolved.propertyName,

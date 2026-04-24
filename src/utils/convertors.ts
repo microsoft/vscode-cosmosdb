@@ -80,7 +80,7 @@ export const toStringUniversal = (value: unknown): string => {
     } catch {
         // Circular reference or other JSON error
         // Try Object.prototype.toString for better type info
-        const typeString = Object.prototype.toString.call(value) as string;
+        const typeString = Object.prototype.toString.call(value);
 
         // Try to get constructor name
         try {
@@ -139,7 +139,7 @@ export const truncateString = (value: string, maxLength = MAX_TREE_LEVEL_LENGTH,
  * Creates a left-padded string representation of an index based on array length
  * @param {number} index - The index to pad
  * @param {Array|number} array - The array or its length to determine padding width
- * @param {string} [padChar='0'] - Character to use for padding
+ * @param {string} padChar - Character to use for padding
  * @returns {string} - Padded index string
  */
 function leftPadIndex(index: number, array: unknown[] | number, padChar: string = '0'): string {

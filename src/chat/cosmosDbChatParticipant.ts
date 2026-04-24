@@ -773,6 +773,11 @@ You can also use natural language:
                 const hasConnection = activeQueryEditors.length > 0;
 
                 if (!hasConnection) {
+                    // Allow /explainQuery with an inline query to proceed without a connection
+                    if (request.command === 'explainQuery' && request.prompt.trim()) {
+                        return await this.handleStructuredCommand(request, stream, token, ctx);
+                    }
+
                     // For natural language requests, check if this is a general question
                     // that doesn't need a connection
                     if (!request.command) {
@@ -788,6 +793,15 @@ You can also use natural language:
                                 resolvedCommand = 'help';
                                 resolvedMethod = 'intent';
                                 return await this.handleHelpCommand(stream);
+                            }
+                            // Allow intent-based explainQuery with an inline query
+                            if (
+                                llmIntent.operation === 'explainQuery' &&
+                                (llmIntent.parameters.currentQuery as string | undefined)?.trim()
+                            ) {
+                                resolvedCommand = llmIntent.operation;
+                                resolvedMethod = 'intent';
+                                return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
                             }
                         }
                     }

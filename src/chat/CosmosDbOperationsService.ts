@@ -548,23 +548,35 @@ export class CosmosDbOperationsService {
                 }
                 case 'explainQuery': {
                     const currentQuery = (parameters.currentQuery as string | undefined)?.trim();
-                    const { connection, currentResult, hasResults } = this.getActiveQueryEditorContext();
 
                     if (!currentQuery) {
                         return l10n.t('There is no query to analyze');
                     }
 
-                    const currentSchema = hasResults
-                        ? this.extractSchemaFromResults(currentResult!.documents)
-                        : undefined;
+                    // Try to get editor context, but don't require it for inline queries
+                    let connection: NoSqlQueryConnection | undefined;
+                    let currentSchema: JSONSchema | undefined;
+                    let documentCount: number | undefined;
+                    let requestCharge: number | undefined;
+                    try {
+                        const editorCtx = this.getActiveQueryEditorContext();
+                        connection = editorCtx.connection;
+                        if (editorCtx.hasResults) {
+                            currentSchema = this.extractSchemaFromResults(editorCtx.currentResult!.documents);
+                            documentCount = editorCtx.currentResult?.documents?.length;
+                            requestCharge = editorCtx.currentResult?.requestCharge;
+                        }
+                    } catch {
+                        // No active editor — proceed without editor context
+                    }
 
                     return await this.handleExplainQuery(
                         currentQuery,
                         parameters.userPrompt as string,
                         connection,
                         {
-                            documentCount: hasResults ? currentResult?.documents?.length : undefined,
-                            requestCharge: hasResults ? currentResult?.requestCharge : undefined,
+                            documentCount,
+                            requestCharge,
                             schema: currentSchema,
                         },
                         parameters.additionalContext as string | undefined,
@@ -683,7 +695,7 @@ export class CosmosDbOperationsService {
     private async handleExplainQuery(
         currentQuery: string,
         userPrompt: string | undefined,
-        connection: NoSqlQueryConnection,
+        connection: NoSqlQueryConnection | undefined,
         resultContext: {
             documentCount?: number;
             requestCharge?: number;
@@ -702,8 +714,10 @@ export class CosmosDbOperationsService {
 
         // Build context header for better user understanding
         let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
-        queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
-        queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
+        if (connection) {
+            queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
+            queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
+        }
         if (resultContext.documentCount !== undefined) {
             queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
             if (resultContext.requestCharge) {
@@ -738,7 +752,7 @@ export class CosmosDbOperationsService {
     private async generateQueryExplanationWithLLM(
         query: string,
         userPrompt: string,
-        connection: NoSqlQueryConnection,
+        connection: NoSqlQueryConnection | undefined,
         resultContext?: {
             documentCount?: number;
             requestCharge?: number;
@@ -755,7 +769,10 @@ export class CosmosDbOperationsService {
         const model = models[0];
 
         // Build user content (payload) - separated from system instructions
-        let contextInfo = `**Database:** ${connection.databaseId}\n**Container:** ${connection.containerId}\n`;
+        let contextInfo = '';
+        if (connection) {
+            contextInfo += `**Database:** ${connection.databaseId}\n**Container:** ${connection.containerId}\n`;
+        }
         if (resultContext?.documentCount !== undefined) {
             contextInfo += `**Last execution:** ${resultContext.documentCount} documents`;
             if (resultContext.requestCharge) {

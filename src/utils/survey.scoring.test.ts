@@ -4,33 +4,34 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type Mock } from 'vitest';
 import * as vscode from 'vscode';
 import { countExperienceUsageForSurvey, getSurveyConfig, getSurveyState } from './survey';
 import { ExperienceKind } from './surveyTypes';
 
 // Mock vscode-azext-utils module
-jest.mock('@microsoft/vscode-azext-utils', () => ({
-    callWithTelemetryAndErrorHandling: jest.fn(
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn(
         async (_eventName, callback: (context: IActionContext) => Promise<void>) => {
             await callback({
                 telemetry: { properties: {}, measurements: {} },
                 errorHandling: { issueProperties: {} },
                 ui: {
-                    showWarningMessage: jest.fn(),
-                    onDidFinishPrompt: jest.fn(),
-                    showQuickPick: jest.fn(),
-                    showInputBox: jest.fn(),
-                    showOpenDialog: jest.fn(),
-                    showWorkspaceFolderPick: jest.fn(),
+                    showWarningMessage: vi.fn(),
+                    onDidFinishPrompt: vi.fn(),
+                    showQuickPick: vi.fn(),
+                    showInputBox: vi.fn(),
+                    showOpenDialog: vi.fn(),
+                    showWorkspaceFolderPick: vi.fn(),
                 },
                 valuesToMask: [],
             });
         },
     ),
-    AzExtTreeDataProvider: jest.fn(),
-    AzExtTreeItem: jest.fn(),
-    createAzExtOutputChannel: jest.fn(),
-    parseError: jest.fn((err) => err),
+    AzExtTreeDataProvider: vi.fn(),
+    AzExtTreeItem: vi.fn(),
+    createAzExtOutputChannel: vi.fn(),
+    parseError: vi.fn((err) => err),
     DialogResponses: {
         yes: { title: 'Yes' },
         no: { title: 'No' },
@@ -39,19 +40,19 @@ jest.mock('@microsoft/vscode-azext-utils', () => ({
 }));
 
 // Mock vscode module
-jest.mock('vscode', () => ({
+vi.mock('vscode', () => ({
     env: {
-        openExternal: jest.fn(() => Promise.resolve(true)),
+        openExternal: vi.fn(() => Promise.resolve(true)),
     },
     Uri: {
-        parse: jest.fn((url) => ({ toString: () => url })),
+        parse: vi.fn((url) => ({ toString: () => url })),
     },
     workspace: {
-        getConfiguration: jest.fn(() => ({
-            get: jest.fn().mockReturnValue(true),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        getConfiguration: vi.fn(() => ({
+            get: vi.fn().mockReturnValue(true),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         })),
     },
 }));
@@ -70,18 +71,18 @@ describe('Survey Scoring', () => {
         surveyState.wasPromptedInSession = false;
 
         // Clear mock calls between tests
-        jest.clearAllMocks();
+        vi.clearAllMocks();
 
-        jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-            get: jest.fn().mockReturnValue(true),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+            get: vi.fn().mockReturnValue(true),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         });
     });
 
     afterEach(() => {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     describe('countExperienceUsageForSurvey', () => {
@@ -120,11 +121,11 @@ describe('Survey Scoring', () => {
         });
 
         test('should not increment score if telemetry.feedback.enabled is false', () => {
-            jest.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
-                get: jest.fn().mockReturnValue(false),
-                has: jest.fn(),
-                inspect: jest.fn(),
-                update: jest.fn(),
+            vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
+                get: vi.fn().mockReturnValue(false),
+                has: vi.fn(),
+                inspect: vi.fn(),
+                update: vi.fn(),
             });
 
             countExperienceUsageForSurvey(ExperienceKind.NoSQL, 40);
@@ -156,7 +157,7 @@ describe('Survey Scoring', () => {
             let capturedExperience: ExperienceKind | undefined;
 
             // Mock the implementation for this test
-            (vscode.env.openExternal as jest.Mock).mockImplementation((uri: { toString: () => string }) => {
+            (vscode.env.openExternal as Mock).mockImplementation((uri: { toString: () => string }) => {
                 const urlString = uri.toString();
                 if (urlString.includes(surveyConfig.urls.MONGO)) {
                     capturedExperience = ExperienceKind.Mongo;

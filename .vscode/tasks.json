@@ -2,8 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
-      "script": "compile",
+      "label": "Build (tsc -watch)",
+      "type": "shell",
+      "command": "npm run compile",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -16,8 +17,8 @@
     },
     {
       "label": "Pretest",
-      "type": "npm",
-      "script": "pretest",
+      "type": "shell",
+      "command": "npm run pretest",
       "group": "build",
       "isBackground": true,
       "presentation": {
@@ -26,62 +27,24 @@
       "problemMatcher": "$tsc-watch"
     },
     {
-      "type": "npm",
-      "script": "lint",
+      "label": "Lint",
+      "type": "shell",
+      "command": "npm run lint",
       "problemMatcher": "$eslint-stylish"
     },
+
+    // ── Vite watch (default F5 workflow) ────────────────────────────────────────
+    // Uses `vite serve` for the webview — this starts a real dev server on
+    // port 18080 (matching DEV_SERVER_HOST in BaseTab.ts), enabling HMR.
+    // The extension host build uses --watch to rebuild main.mjs on changes.
     {
       "label": "Watch",
-      "dependsOn": ["watch:ext", "watch:views"]
-    },
-    {
-      "label": "watch:ext",
-      "type": "npm",
-      "script": "watch:ext",
-      "group": "build",
-      "isBackground": true,
-      "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "new",
-        "showReuseMessage": false,
-        "clear": true,
-        "group": "Cosmos DB Extension Watch"
-      }
-    },
-    {
-      "label": "watch:views",
-      "type": "npm",
-      "script": "watch:views",
-      "group": "build",
-      "isBackground": true,
-      "problemMatcher": ["$ts-webpack-watch", "$tslint-webpack-watch"],
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "new",
-        "showReuseMessage": false,
-        "clear": true,
-        "group": "Cosmos DB Extension Watch"
-      }
-    },
-    {
-      "label": "Pretest and Webpack",
-      "dependsOn": ["Pretest", "Watch"]
-    },
-
-    // — Vite watch tasks (alternative to webpack, not the default) ——————————————
-    {
-      "label": "Watch (vite)",
       "dependsOn": ["vite-watch:ext", "vite-serve:views"]
     },
     {
       "label": "vite-watch:ext",
-      "type": "npm",
-      "script": "vite-watch:ext",
+      "type": "shell",
+      "command": "npm run vite-watch:ext",
       "group": "build",
       "isBackground": true,
       "problemMatcher": [
@@ -106,8 +69,8 @@
     },
     {
       "label": "vite-serve:views",
-      "type": "npm",
-      "script": "vite-serve:views",
+      "type": "shell",
+      "command": "npm run vite-serve:views",
       "group": "build",
       "isBackground": true,
       "problemMatcher": [
@@ -117,6 +80,39 @@
             "activeOnStart": true,
             "beginsPattern": "VITE",
             "endsPattern": "ready in"
+          }
+        }
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "Cosmos DB Extension Watch"
+      }
+    },
+    {
+      "label": "Pretest and Watch",
+      "dependsOn": ["Pretest", "Watch"]
+    },
+
+    // vite-watch:views kept for cases where a static build-watch is preferred
+    // (e.g. when the dev server is not needed and DEVSERVER is false)
+    {
+      "label": "vite-watch:views",
+      "type": "shell",
+      "command": "npm run vite-watch:views",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [{ "regexp": "^(NOMATCH)()()$", "file": 1, "location": 2, "message": 3 }],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "building .* for",
+            "endsPattern": "built in"
           }
         }
       ],

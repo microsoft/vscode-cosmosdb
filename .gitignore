@@ -283,3 +283,5 @@ bundle-analysis/
 # Agent skills (local only)
 .agents/
 skills-lock.json
+
+plans/

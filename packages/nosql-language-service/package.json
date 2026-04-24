@@ -1,0 +1,109 @@
+{
+  "name": "@cosmosdb/nosql-language-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CosmosDB NoSQL language service — parser, AST, autocomplete, hover docs, formatting, and editor providers",
+  "main": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./services": {
+      "import": "./dist/esm/services/index.js",
+      "types": "./dist/types/services/index.d.ts"
+    },
+    "./monaco": {
+      "import": "./dist/esm/providers/monaco/index.js",
+      "types": "./dist/types/providers/monaco/index.d.ts"
+    },
+    "./vscode": {
+      "import": "./dist/esm/providers/vscode/index.js",
+      "types": "./dist/types/providers/vscode/index.d.ts"
+    },
+    "./codemirror": {
+      "import": "./dist/esm/providers/codemirror/index.js",
+      "types": "./dist/types/providers/codemirror/index.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "services": [
+        "dist/types/services/index.d.ts"
+      ],
+      "monaco": [
+        "dist/types/providers/monaco/index.d.ts"
+      ],
+      "vscode": [
+        "dist/types/providers/vscode/index.d.ts"
+      ],
+      "codemirror": [
+        "dist/types/providers/codemirror/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "syntaxes",
+    "language-configuration.json"
+  ],
+  "scripts": {
+    "generate-docs": "node scripts/generate-docs-index.mjs",
+    "check-docs": "node scripts/check-docs-index.mjs",
+    "prebuild": "node scripts/generate-docs-index.mjs",
+    "build": "tsc",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "demo": "node scripts/demo.mjs"
+  },
+  "dependencies": {
+    "@cosmosdb/schema-analyzer": "workspace:*",
+    "chevrotain": "^12.0.0"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/lint": "^6.8.0",
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.35.0",
+    "@types/vscode": "~1.109.0",
+    "monaco-editor": "~0.52.2",
+    "vitest": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/lint": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "monaco-editor": ">=0.30.0"
+  },
+  "peerDependenciesMeta": {
+    "@codemirror/autocomplete": {
+      "optional": true
+    },
+    "@codemirror/language": {
+      "optional": true
+    },
+    "@codemirror/lint": {
+      "optional": true
+    },
+    "@codemirror/state": {
+      "optional": true
+    },
+    "@codemirror/view": {
+      "optional": true
+    },
+    "monaco-editor": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

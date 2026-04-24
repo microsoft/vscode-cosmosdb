@@ -22,15 +22,13 @@ export default defineConfig([
             'dist',
             'out',
             'node_modules',
-            'packages/*/dist',
-            'packages/*/node_modules',
+            // packages/ are inert in this PR — no monorepo wiring yet (Phase 0/1).
+            // Lint will be re-enabled when pnpm workspace is configured.
+            'packages',
             '**/__mocks__/**/*',
             '**/*.d.ts',
             '**/vitest.config.ts',
             '**/main.js',
-            'packages/*/vitest.config.ts',
-            'packages/*/tests/**/*.mjs',
-            'packages/*/scripts/**/*.mjs',
         ],
     },
     // TypeScript parser — required so ESLint can parse .ts/.tsx AST correctly.

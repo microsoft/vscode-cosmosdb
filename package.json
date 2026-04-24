@@ -54,7 +54,7 @@
     "lint-fix": "oxlint --fix && eslint --fix .",
     "prettier": "prettier -c \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
     "prettier-fix": "prettier -w \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
-    "pretest": "rimraf out && tsc -p tsconfig.test.json",
+    "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'commonjs'}))\"",
     "test": "vscode-test",
     "jesttest": "jest",
     "webpack-dev": "rimraf ./dist && npm run webpack-dev-ext && npm run webpack-dev-wv",

@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-const { defineConfig } = require('@vscode/test-cli');
-const path = require('path');
+import { defineConfig } from '@vscode/test-cli';
+import path from 'path';
 
-module.exports = defineConfig([
+export default defineConfig([
     {
         label: 'Integration Tests',
         files: 'out/test/**/*.test.js',
@@ -24,9 +24,10 @@ module.exports = defineConfig([
             reporterOptions: {
                 reporterEnabled: 'spec, mocha-junit-reporter',
                 mochaJunitReporterReporterOptions: {
-                    mochaFile: path.resolve(__dirname, '..', '..', 'test-results.xml'),
+                    mochaFile: path.resolve(import.meta.dirname, '..', '..', 'test-results.xml'),
                 },
             },
         },
     },
 ]);
+

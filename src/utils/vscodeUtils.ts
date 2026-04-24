@@ -87,10 +87,8 @@ export function getNodeEditorLabel(node: TreeElement | EditableFileSystemItem): 
 
 export function getDocumentTreeItemLabel(document: ItemDefinition): string {
     for (const field of getDocumentLabelFields()) {
-         
-        if (document.hasOwnProperty(field)) {
-             
-            const value = document[field];
+        if (Object.prototype.hasOwnProperty.call(document, field)) {
+            const value = document[field] as unknown;
             if (value !== undefined && typeof value !== 'object') {
                 return String(value);
             }

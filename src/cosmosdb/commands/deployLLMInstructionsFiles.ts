@@ -68,8 +68,7 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
         console.log('deployLLMInstructionsFiles to', promptFolder);
 
         const manifest: IDeploymentManifest = {
-             
-            extensionVersion: ext.context.extension.packageJSON.version as string,
+            extensionVersion: (ext.context.extension.packageJSON as { version: string }).version,
             deploymentTimestamp: Date.now(),
             files: {},
         };

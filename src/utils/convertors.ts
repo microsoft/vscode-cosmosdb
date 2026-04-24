@@ -65,7 +65,6 @@ export const toStringUniversal = (value: unknown): string => {
 
     // Handle primitives
     if (typeof value !== 'object') {
-         
         return String(value);
     }
 

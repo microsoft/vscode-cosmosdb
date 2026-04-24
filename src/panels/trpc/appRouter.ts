@@ -93,10 +93,9 @@ export type DocumentRouterContext = BaseRouterContext & {
  * Telemetry middleware is already baked into each procedure, so individual
  * `.use(trpcToTelemetry)` calls are not needed here.
  */
- 
- 
+
+/* oxlint-disable typescript/no-explicit-any, typescript/no-unsafe-call, typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-return -- tRPC builder types are too generic to express without `any` */
 function buildCommonRouter(procedure: any, routerFn: any) {
-     
     return routerFn({
         reportEvent: procedure
             .input(
@@ -237,12 +236,12 @@ function buildCommonRouter(procedure: any, routerFn: any) {
             }),
     });
 }
- 
+/* oxlint-enable typescript/no-explicit-any, typescript/no-unsafe-call, typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-return */
 
 // ─── Query Editor App Router
 
 export const queryEditorAppRouter = queryEditorRouter({
-     
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
     common: buildCommonRouter(queryEditorProcedure, queryEditorRouter),
     queryEditor: queryEditorMergeRouters(queryEditorRouterDef, queryEditorEventsRouterDef),
 });
@@ -253,7 +252,7 @@ export { queryEditorCallerFactory };
 // ─── Document App Router ────────────────────────────────────────────────────
 
 export const documentAppRouter = documentRouter({
-     
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
     common: buildCommonRouter(documentProcedure, documentRouter),
     document: documentRouterDef,
 });

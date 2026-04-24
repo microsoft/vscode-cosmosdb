@@ -25,7 +25,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<apiUtils.A
          * before the debugger can attach.
          */
 
-         
+        // oxlint-disable-next-line no-debugger -- intentional: helps attach debugger before fast startup
         debugger;
     }
 

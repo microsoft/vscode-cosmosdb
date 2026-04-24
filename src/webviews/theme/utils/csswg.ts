@@ -16,9 +16,7 @@ import { type Vec3 } from './types';
 
 type MatrixIO = number[][] | number[];
 
- 
-function isFlat(A: any): A is number[] {
-     
+function isFlat(A: MatrixIO): A is number[] {
     return !Array.isArray(A[0]);
 }
 

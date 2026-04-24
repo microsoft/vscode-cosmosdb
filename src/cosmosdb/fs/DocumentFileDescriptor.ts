@@ -58,8 +58,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
 
         // TODO: Does it matter to keep the same fields in the document? Why user can't change them?
         for (const field of CosmosDBHiddenFields) {
-             
-            newData[field] = this.model.item[field];
+            (newData as Record<string, unknown>)[field] = (this.model.item as Record<string, unknown>)[field];
         }
 
         // TODO: Does it make sense now? This check was created 4 years ago

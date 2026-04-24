@@ -78,7 +78,7 @@ export default (env, { mode }) => {
         resolve: {
             roots: [__dirname],
             conditionNames: ['import', 'require', 'node'],
-            mainFields: ['module', 'main'],
+            mainFields: ['main', 'module'],
             extensions: ['.js', '.ts'],
             // Map .js imports to .ts files for workspace packages using NodeNext resolution
             extensionAlias: {

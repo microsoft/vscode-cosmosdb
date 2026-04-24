@@ -124,7 +124,7 @@ function simplifySchemaForTool(schema: JSONSchema): Record<string, unknown> {
     }
 
     for (const [key, value] of Object.entries(schema.properties as Record<string, JSONSchema>)) {
-        const propSchema = value as JSONSchema;
+        const propSchema = value;
         const anyOfEntries = propSchema.anyOf as JSONSchema[] | undefined;
 
         if (anyOfEntries && anyOfEntries.length > 0) {

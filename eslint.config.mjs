@@ -7,7 +7,7 @@ import { defineConfig } from 'eslint/config';
 import ts from 'typescript-eslint';
 
 /**
- * Minimal ESLint config — almost all rules have been migrated to oxlint (.oxlintrc.json).
+ * Minimal ESLint config — almost all rules have been migrated to oxlint (.oxlintrc.jsonc).
  * ESLint is kept only for `no-restricted-syntax`, which uses AST node selectors that oxlint
  * does not support. Type-aware rules are handled by oxlint via `options.typeAware: true`.
  */
@@ -22,11 +22,12 @@ export default defineConfig([
             'dist',
             'out',
             'node_modules',
-            // packages/ may exist locally before PR0 merges — exclude from lint
+            // packages/ are inert in this PR — no monorepo wiring yet (Phase 0/1).
+            // Lint will be re-enabled when pnpm workspace is configured.
             'packages',
             '**/__mocks__/**/*',
             '**/*.d.ts',
-            '**/jest.config.js',
+            '**/vitest.config.ts',
             '**/main.js',
         ],
     },
@@ -35,8 +36,16 @@ export default defineConfig([
         files: ['**/*.ts', '**/*.tsx'],
         plugins: { '@typescript-eslint': ts.plugin },
         languageOptions: {
+            ecmaVersion: 2024,
             parser: ts.parser,
-            ecmaVersion: 2023,
+            parserOptions: {
+                ecmaFeatures: {
+                    jsx: true,
+                },
+                project: './tsconfig.eslint.json',
+                projectService: false,
+                tsconfigRootDir: import.meta.dirname,
+            },
             sourceType: 'module',
         },
     },
@@ -55,6 +64,13 @@ export default defineConfig([
                     selector: 'MemberExpression[object.name="vscode"][property.name="l10n"]',
                     message:
                         'Please use "import * as l10n from \'@vscode/l10n\';" and use l10n directly instead of vscode.l10n.',
+                },
+                {
+                    // Matches only `import vscode from 'vscode'` (ImportDefaultSpecifier),
+                    // NOT `import * as vscode from 'vscode'` (ImportNamespaceSpecifier).
+                    selector: 'ImportDeclaration[source.value="vscode"] > ImportDefaultSpecifier',
+                    message:
+                        'Use \'import * as vscode from "vscode"\' instead. Default import returns undefined in ESM.',
                 },
             ],
         },

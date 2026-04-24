@@ -1,0 +1,404 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "eslint",
+    "import",
+    "jsdoc",
+    "jsx-a11y",
+    "promise",
+    "react",
+    "react-perf",
+    "typescript",
+    "unicorn",
+    "vitest"
+  ],
+  "jsPlugins": ["eslint-plugin-license-header"],
+  "options": {
+    "typeAware": true
+  },
+  "categories": {
+    // This category includes rules that are 100% error
+    "correctness": "error",
+    "perf": "warn",
+    // These categories might be false positive, therefore they are off
+    "pedantic": "off",
+    "restriction": "off",
+    "style": "off",
+    "suspicious": "off"
+  },
+  "env": {
+    "builtin": true,
+    "es2024": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    ".azure-pipelines",
+    ".config",
+    ".github",
+    ".vscode-test",
+    "coverage",
+    "dist",
+    "docs",
+    "l10n",
+    "out",
+    "node_modules",
+    "packages",
+    "resources",
+    "scripts",
+    "skills",
+    "**/__mocks__/**/*",
+    "**/*.d.ts",
+    "**/vitest.config.ts",
+    "**/main.js"
+  ],
+  "rules": {
+    // These rules from ESLint are disabled by default in oxlint,
+    // But were enabled in ESLint recommended, enabling them here with error level to make sure they are not missed
+    "getter-return": "error",
+    "no-case-declarations": "error",
+    // "no-dupe-args": "error", // This rule is not exist yet in oxlint
+    "no-empty": "error",
+    "no-fallthrough": "error",
+    // "no-octal": "error", // This rule is not exist yet in oxlint
+    "no-prototype-builtins": "error",
+    "no-redeclare": "error",
+    "no-regex-spaces": "error",
+    "no-undef": "error",
+    "no-unexpected-multiline": "error",
+    "no-unreachable": "error",
+
+    // These rules from TSLint are disabled by default in oxlint,
+    // But were enabled in TSLint recommended, enabling them here with error level to make sure they are not missed
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+
+    // Enabling/disabling some rules from ESLint with different level for all files, and override them in specific files if needed
+    "no-inner-declarations": "error",
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "eqeqeq": ["error", "always"],
+    "no-shadow": "off",
+
+    // Allow TSDoc/TypeDoc tags that are not part of the standard JSDoc spec
+    "jsdoc/check-tag-names": [
+      "error",
+      { "definedTags": ["remarks", "typeParam", "defaultValue", "internal", "alpha", "beta", "experimental"] }
+    ],
+
+    "import/consistent-type-specifier-style": ["error", "prefer-inline"],
+    "license-header/header": [
+      "error",
+      [
+        "/*---------------------------------------------------------------------------------------------",
+        " *  Copyright (c) Microsoft Corporation. All rights reserved.",
+        " *  Licensed under the MIT License. See License.txt in the project root for license information.",
+        " *--------------------------------------------------------------------------------------------*/"
+      ]
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts"],
+      "rules": {
+        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-array-constructor": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-undef": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-unused-expressions": "off",
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
+        "no-with": "off",
+
+        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
+        // enabling them here with error level to make sure they are not missed
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-array-constructor": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-namespace": "warn",
+        "typescript/no-require-imports": "error",
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-enum-comparison": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "typescript/only-throw-error": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/require-await": "warn", // changed by us
+        "typescript/restrict-plus-operands": "error",
+
+        // Enabling some rules
+        "typescript/consistent-type-imports": "error",
+        "typescript/no-base-to-string": "warn",
+        "typescript/no-restricted-types": "error",
+        "typescript/unbound-method": "warn"
+      }
+    },
+    {
+      "files": ["**/*.tsx"],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-array-constructor": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-undef": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-unused-expressions": "off",
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
+        "no-with": "off",
+
+        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
+        // enabling them here with error level to make sure they are not missed
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-array-constructor": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-namespace": "warn",
+        "typescript/no-require-imports": "error",
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-enum-comparison": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "typescript/only-throw-error": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/require-await": "warn", // changed by us
+        "typescript/restrict-plus-operands": "error",
+
+        // Enabling some rules
+        "typescript/consistent-type-imports": "error",
+        "typescript/no-base-to-string": "warn",
+        "typescript/no-restricted-types": "error",
+        "typescript/unbound-method": "warn",
+
+        // These rules from ESLint for React are disabled by default in oxlint
+        "react/display-name": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/jsx-no-target-blank": "error",
+        // "react/jsx-uses-react": "error", // This rule is not exist yet in oxlint
+        // "react/jsx-uses-vars": "error", // This rule is not exist yet in oxlint
+        // "react/no-deprecated": "error", // This rule is not exist yet in oxlint
+        "react/no-unescaped-entities": "error",
+        "react/no-unknown-property": "error",
+        "react/no-unsafe": "off",
+        // "react/prop-types": "error", // This rule is not exist yet in oxlint
+        "react/react-in-jsx-scope": "off", // Not needed with React 17's new JSX transform
+        "react/require-render-return": "error",
+
+        // These rules from ESLint for React hooks are disabled by default in oxlint
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+
+        // Enabling some rules
+        "react/no-array-index-key": "warn"
+
+        // "jsx-a11y/interactive-supports-focus": "error", // This rule is not exist yet in oxlint
+        // "jsx-a11y/no-interactive-element-to-noninteractive-role": "error", // This rule is not exist yet in oxlint
+        // "jsx-a11y/no-noninteractive-element-interactions": "error", // This rule is not exist yet in oxlint
+        // "jsx-a11y/no-noninteractive-element-to-interactive-role": "error", // This rule is not exist yet in oxlint
+      }
+    },
+    {
+      "files": ["src/**/*.test.ts", "**/__mocks__/**/*.js"],
+      "env": {
+        "browser": false
+      },
+      "rules": {
+        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-array-constructor": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-undef": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-unused-expressions": "off",
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
+        "no-with": "off",
+
+        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
+        // enabling them here with error level to make sure they are not missed
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-array-constructor": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "off",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-namespace": "warn",
+        "typescript/no-require-imports": "error",
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-enum-comparison": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/only-throw-error": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/require-await": "off", // changed by us
+        "typescript/restrict-plus-operands": "error",
+
+        // Enabling some rules
+        "typescript/consistent-type-imports": "error",
+        "typescript/no-restricted-types": "error",
+
+        // Disabling some rules for test files
+        "no-dupe-else-if": "off",
+        "no-empty": "off",
+
+        "typescript/no-base-to-string": "off",
+        "typescript/unbound-method": "off",
+        "typescript/no-floating-promises": "off",
+
+        "vitest/require-mock-type-parameters": "off" // ???
+      }
+    },
+    {
+      "files": ["test/**/*.ts", "test/**/*.test.ts"],
+      "jsPlugins": ["eslint-plugin-mocha"],
+      "env": {
+        "mocha": true
+      },
+      "rules": {
+        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-array-constructor": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-undef": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-unused-expressions": "off",
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
+        "no-with": "off",
+
+        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
+        // enabling them here with error level to make sure they are not missed
+        "typescript/ban-ts-comment": "error",
+        "typescript/no-array-constructor": "error",
+        "typescript/no-empty-object-type": "error",
+        "typescript/no-explicit-any": "off",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-namespace": "warn",
+        "typescript/no-require-imports": "error",
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-unnecessary-type-constraint": "error",
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-enum-comparison": "error",
+        "typescript/no-unsafe-function-type": "error",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off",
+        "typescript/only-throw-error": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/require-await": "off", // changed by us
+        "typescript/restrict-plus-operands": "error",
+
+        // Enabling some rules
+        "typescript/consistent-type-imports": "error",
+        "typescript/no-restricted-types": "error",
+
+        // Disabling some rules for test files
+        "no-dupe-else-if": "off",
+        "no-empty": "off",
+
+        "typescript/no-base-to-string": "off",
+        "typescript/unbound-method": "off",
+        "typescript/no-floating-promises": "off",
+
+        "mocha/handle-done-callback": "off",
+        "mocha/max-top-level-suites": "off",
+        "mocha/no-async-suite": "error",
+        "mocha/no-exclusive-tests": "warn",
+        "mocha/no-exports": "error",
+        "mocha/no-global-tests": "error",
+        "mocha/no-hooks": "off",
+        "mocha/no-hooks-for-single-case": "off",
+        "mocha/no-identical-title": "error",
+        "mocha/no-mocha-arrows": "off",
+        "mocha/no-nested-tests": "error",
+        "mocha/no-pending-tests": "warn",
+        "mocha/no-return-and-callback": "error",
+        "mocha/no-return-from-async": "off",
+        "mocha/no-setup-in-describe": "error",
+        "mocha/no-sibling-hooks": "error",
+        "mocha/no-synchronous-tests": "off",
+        "mocha/no-top-level-hooks": "warn",
+        "mocha/prefer-arrow-callback": "off",
+        "mocha/valid-suite-title": "off",
+        "mocha/valid-test-title": "off",
+        "mocha/no-empty-title": "error",
+        "mocha/consistent-spacing-between-blocks": "off"
+      }
+    }
+  ]
+}

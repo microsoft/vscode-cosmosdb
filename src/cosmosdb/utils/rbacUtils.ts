@@ -61,7 +61,7 @@ export async function showRbacPermissionError(accountName: string, principalId?:
           '\n' +
           l10n.t('Please contact the account owner to get the required permissions.');
     const readMoreItem = l10n.t('Learn more');
-    await vscode.window.showErrorMessage(message, { modal: false }, ...[readMoreItem]).then((item) => {
+    await vscode.window.showErrorMessage(message, { modal: false }, readMoreItem).then((item) => {
         if (item === readMoreItem) {
             void vscode.env.openExternal(vscode.Uri.parse('https://aka.ms/cosmos-native-rbac'));
         }
@@ -95,7 +95,7 @@ async function askForRbacPermissions(
     const result = await context.ui.showWarningMessage(
         l10n.t('No required RBAC permissions'),
         options,
-        ...[setPermissionItem],
+        setPermissionItem,
     );
     return result === setPermissionItem;
 }

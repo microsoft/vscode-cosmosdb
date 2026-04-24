@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["mocha", "node"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "main.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist", "out", "**/__mocks__"]
+}

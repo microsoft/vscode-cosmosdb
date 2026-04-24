@@ -70,7 +70,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
             const selected = data.optionValue;
             if (selected) {
                 const [databaseId, containerId] = selected.split('/');
-                void onSetConnection(databaseId, containerId);
+                onSetConnection(databaseId, containerId);
             }
         },
         [onSetConnection],
@@ -164,7 +164,7 @@ export const ConnectionButton = (props: ToolbarOverflowItemProps<HTMLDivElement>
                                                 key={containerId}
                                                 name={'containerId'}
                                                 value={containerId}
-                                                onClick={() => void onSetConnection(databaseId, containerId)}
+                                                onClick={() => onSetConnection(databaseId, containerId)}
                                             >
                                                 {containerId}
                                             </MenuItemCheckbox>

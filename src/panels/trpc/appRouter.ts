@@ -211,7 +211,7 @@ function buildCommonRouter(procedure: any, routerFn: any) {
                 }),
             )
             .mutation(({ input }: { input: { experienceKind: ExperienceKind; triggerAction: string } }) => {
-                void openSurvey(input.experienceKind, input.triggerAction);
+                openSurvey(input.experienceKind, input.triggerAction);
             }),
 
         showInformationMessage: procedure

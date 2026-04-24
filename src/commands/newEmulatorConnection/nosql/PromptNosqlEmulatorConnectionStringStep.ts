@@ -29,7 +29,7 @@ export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptSt
         context.valuesToMask.push(context.connectionString);
     }
 
-    //eslint-disable-next-line @typescript-eslint/require-await
+     
     private async validateConnectionString(connectionString: string): Promise<string | null | undefined> {
         try {
             parseCosmosDBConnectionString(connectionString);

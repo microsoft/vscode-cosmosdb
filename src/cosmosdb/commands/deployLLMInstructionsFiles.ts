@@ -68,7 +68,7 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
         console.log('deployLLMInstructionsFiles to', promptFolder);
 
         const manifest: IDeploymentManifest = {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+             
             extensionVersion: ext.context.extension.packageJSON.version as string,
             deploymentTimestamp: Date.now(),
             files: {},

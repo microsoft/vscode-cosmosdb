@@ -65,7 +65,7 @@ export const toStringUniversal = (value: unknown): string => {
 
     // Handle primitives
     if (typeof value !== 'object') {
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+         
         return String(value);
     }
 

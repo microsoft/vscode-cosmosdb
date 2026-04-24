@@ -66,7 +66,7 @@ export const ToolbarOverflowButton = function ToolbarOverflowButton(props: Toolb
                 <ToolbarButton
                     ref={ref}
                     {...props.toolbarButtonProps}
-                    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                     
                     onClick={onClick}
                     aria-label={formattedAriaLabel}
                     aria-keyshortcuts={hotkey}
@@ -84,7 +84,7 @@ export const ToolbarOverflowButton = function ToolbarOverflowButton(props: Toolb
         return (
             <MenuItem
                 {...props.menuItemProps}
-                // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                 
                 onClick={onClick}
                 secondaryContent={hotkey}
                 aria-label={formattedAriaLabel}

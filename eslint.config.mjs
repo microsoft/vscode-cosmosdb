@@ -22,6 +22,8 @@ export default defineConfig([
             'dist',
             'out',
             'node_modules',
+            // packages/ may exist locally before PR0 merges — exclude from lint
+            'packages',
             '**/__mocks__/**/*',
             '**/*.d.ts',
             '**/jest.config.js',

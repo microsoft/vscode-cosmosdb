@@ -24,6 +24,7 @@
     "dist",
     "out",
     "node_modules",
+    "packages",
     "**/__mocks__/**/*",
     "**/*.d.ts",
     "**/jest.config.js",

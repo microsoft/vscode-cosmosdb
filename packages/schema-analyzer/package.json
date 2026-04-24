@@ -1,0 +1,63 @@
+{
+  "name": "@cosmosdb/schema-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Schema inference and analysis for JSON/NoSQL and BSON/MongoDB documents — extracts structure, types, and statistics from document collections",
+  "main": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./json": {
+      "import": "./dist/esm/json/index.js",
+      "types": "./dist/types/json/index.d.ts"
+    },
+    "./bson": {
+      "import": "./dist/esm/bson/index.js",
+      "types": "./dist/types/bson/index.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "json": [
+        "dist/types/json/index.d.ts"
+      ],
+      "bson": [
+        "dist/types/bson/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "denque": "^2.1.0"
+  },
+  "peerDependencies": {
+    "mongodb": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "mongodb": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15",
+    "mongodb": "^6.16.0",
+    "vitest": "^4.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

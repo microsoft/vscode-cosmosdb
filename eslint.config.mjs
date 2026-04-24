@@ -22,6 +22,9 @@ export default defineConfig([
             'dist',
             'out',
             'node_modules',
+            // packages/ are inert in this PR — no monorepo wiring yet (Phase 0).
+            // Lint will be re-enabled in Phase 1 when pnpm workspace is configured.
+            'packages',
             '**/__mocks__/**/*',
             '**/*.d.ts',
             '**/jest.config.js',

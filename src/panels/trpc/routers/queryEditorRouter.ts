@@ -530,6 +530,12 @@ export const queryEditorRouterDef = queryEditorRouter({
         ctx.state.query = input.query;
     }),
 
+    updateSelectedText: queryEditorProcedure
+        .input(z.object({ selectedQuery: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            ctx.state.selectedQuery = input.selectedQuery || undefined;
+        }),
+
     generateQuery: queryEditorProcedure
         .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
         .mutation(async ({ input, ctx }) => {
@@ -702,16 +708,20 @@ export const queryEditorRouterDef = queryEditorRouter({
         return { modelName: selectedModel?.name ?? 'Copilot' };
     }),
 
-    openCopilotExplainQuery: queryEditorProcedure.mutation(async ({ ctx }) => {
-        // Fire-and-forget: separate telemetry event
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
-            telCtx.errorHandling.suppressDisplay = true;
-        });
+    openCopilotExplainQuery: queryEditorProcedure
+        .input(z.object({ query: z.string().optional() }).optional())
+        .mutation(async ({ input, ctx }) => {
+            // Fire-and-forget: separate telemetry event
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
+                telCtx.errorHandling.suppressDisplay = true;
+            });
 
-        const query = ctx.state.query?.trim();
-        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
-        await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
-    }),
+            const query = (input?.query || ctx.state.selectedQuery || ctx.state.query)?.trim();
+            const chatQuery = query
+                ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
+                : '@cosmosdb /explainQuery';
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
+        }),
 
     saveCSV: queryEditorProcedure
         .input(

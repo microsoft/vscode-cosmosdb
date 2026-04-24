@@ -153,6 +153,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
+        void this.safeMutate(() => this.trpcClient.queryEditor.updateSelectedText.mutate({ selectedQuery: query }));
     }
 
     public async connectToDatabase(): Promise<void> {
@@ -289,8 +290,8 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
-    public async openCopilotExplainQuery(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate());
+    public async openCopilotExplainQuery(query?: string): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate({ query }));
     }
 
     public async closeGenerateInput(): Promise<void> {

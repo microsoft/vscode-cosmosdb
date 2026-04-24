@@ -33,7 +33,8 @@ export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTML
     };
 
     const handleExplainClick = () => {
-        void dispatcher.openCopilotExplainQuery();
+        const query = state.querySelectedValue || state.queryValue;
+        void dispatcher.openCopilotExplainQuery(query);
     };
 
     // Generate query icon
@@ -61,7 +62,7 @@ export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTML
                     <MenuItem
                         icon={<ChatSparkle20Regular />}
                         onClick={handleExplainClick}
-                        disabled={!state.queryValue.trim()}
+                        disabled={!(state.querySelectedValue || state.queryValue).trim()}
                     >
                         {l10n.t('Explain query')}
                     </MenuItem>

@@ -176,6 +176,10 @@ export class QueryEditorTab extends BaseTab {
         return this.state.query;
     };
 
+    public getSelectedQuery = (): string | undefined => {
+        return this.state.selectedQuery;
+    };
+
     public isActive(): boolean {
         return this.panel.active;
     }

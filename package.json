@@ -49,7 +49,7 @@
     "clean": "git clean -dfx",
     "compile": "tsc -watch",
     "package": "node scripts/package-vsix.mjs",
-    "lint": "oxlint && eslint --quiet .",
+    "lint": "oxlint --quiet && eslint --quiet .",
     "lint-fix": "oxlint --fix && eslint . --fix",
     "prettier": "prettier -c \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",
     "prettier-fix": "prettier -w \"(src|test|l10n|docs)/**/*.@(js|ts|jsx|tsx|json|md)\" \"./*.@(js|ts|jsx|tsx|json|md)\"",

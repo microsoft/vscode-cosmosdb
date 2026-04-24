@@ -91,7 +91,6 @@ To use the tool, you need to add a script to your package.json file:
 Then, you can run the script to collect strings for localization:
 
 ```bash
-
 npm run l10n
 ```
 

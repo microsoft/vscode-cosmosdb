@@ -93,11 +93,6 @@
         "group": "Cosmos DB Extension Watch"
       }
     },
-    {
-      "label": "Pretest and Watch",
-      "dependsOn": ["Pretest", "Watch"]
-    },
-
     // vite-watch:views kept for cases where a static build-watch is preferred
     // (e.g. when the dev server is not needed and DEVSERVER is false)
     {

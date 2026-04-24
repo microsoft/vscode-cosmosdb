@@ -58,7 +58,11 @@ export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTML
                     <MenuItem icon={generateIcon} onClick={handleGenerateClick}>
                         {l10n.t('Generate query')}
                     </MenuItem>
-                    <MenuItem icon={<ChatSparkle20Regular />} onClick={handleExplainClick}>
+                    <MenuItem
+                        icon={<ChatSparkle20Regular />}
+                        onClick={handleExplainClick}
+                        disabled={!state.queryValue.trim()}
+                    >
                         {l10n.t('Explain query')}
                     </MenuItem>
                 </MenuList>

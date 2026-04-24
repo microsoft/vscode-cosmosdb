@@ -14,7 +14,7 @@ import { CosmosDBTenantStep } from './CosmosDBTenantStep';
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export async function newConnection(context: IActionContext, node?: CosmosDBAttachAccountResourceItem): Promise<void> {
-    const parentId: string = node?.parentId ?? ext.cosmosDBWorkspaceBranchDataResource.id;
+    const parentId: string = node?.parentId ?? ext.cosmosDBWorkspaceBranchDataResource?.id ?? '';
 
     const wizardContext: NewConnectionWizardContext = {
         ...context,

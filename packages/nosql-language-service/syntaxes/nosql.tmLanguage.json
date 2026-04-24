@@ -1,0 +1,167 @@
+{
+    "name": "CosmosDB NoSQL",
+    "scopeName": "source.nosql",
+    "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#operators" },
+        { "include": "#builtinFunctions" },
+        { "include": "#keywords" },
+        { "include": "#identifiers" }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-dash.nosql",
+                    "match": "--.*$"
+                },
+                {
+                    "name": "comment.block.nosql",
+                    "begin": "/\\*",
+                    "end": "\\*/"
+                }
+            ]
+        },
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.single.nosql",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.nosql",
+                            "match": "\\\\."
+                        },
+                        {
+                            "name": "constant.character.escape.nosql",
+                            "match": "''"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.double.nosql",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.nosql",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.nosql",
+                    "match": "\\b\\d+(\\.\\d+)?([eE][-+]?\\d+)?\\b"
+                }
+            ]
+        },
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.comparison.nosql",
+                    "match": "!=|<>|<=|>=|[<>=!]"
+                },
+                {
+                    "name": "keyword.operator.arithmetic.nosql",
+                    "match": "[+\\-*/%]"
+                },
+                {
+                    "name": "keyword.operator.logical.nosql",
+                    "match": "\\|\\||&&|\\?\\?"
+                },
+                {
+                    "name": "keyword.operator.ternary.nosql",
+                    "match": "[?:]"
+                }
+            ]
+        },
+        "builtinFunctions": {
+            "patterns": [
+                {
+                    "name": "support.function.aggregate.nosql",
+                    "match": "(?i)\\b(AVG|COUNT|MAX|MIN|SUM)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.math.nosql",
+                    "match": "(?i)\\b(ABS|ACOS|ASIN|ATAN|ATN2|CEILING|COS|COT|DEGREES|EXP|FLOOR|INTADD|INTBITAND|INTBITLEFTSHIFT|INTBITNOT|INTBITOR|INTBITRIGHTSHIFT|INTBITXOR|INTDIV|INTMOD|INTMUL|INTSUB|LOG|LOG10|NUMBERBIN|PI|POWER|RADIANS|RAND|ROUND|SIGN|SIN|SQRT|SQUARE|TAN|TRUNC)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.typecheck.nosql",
+                    "match": "(?i)\\b(IS_ARRAY|IS_BOOL|IS_DEFINED|IS_FINITE_NUMBER|IS_INTEGER|IS_NULL|IS_NUMBER|IS_OBJECT|IS_PRIMITIVE|IS_STRING|STRINGTONULL|STRINGTONUMBER|STRINGTOOBJECT)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.string.nosql",
+                    "match": "(?i)\\b(CONCAT|CONTAINS|ENDSWITH|INDEX_OF|LEFT|LENGTH|LOWER|LTRIM|REGEXMATCH|REPLACE|REPLICATE|REVERSE|RIGHT|RTRIM|STARTSWITH|STRINGEQUALS|STRINGJOIN|STRINGSPLIT|STRINGTOARRAY|STRINGTOBOOLEAN|SUBSTRING|TOSTRING|TRIM|UPPER)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.array.nosql",
+                    "match": "(?i)\\b(ARRAY_CONCAT|ARRAY_CONTAINS_ALL|ARRAY_CONTAINS_ANY|ARRAY_CONTAINS|ARRAY_LENGTH|ARRAY_SLICE|CHOOSE|OBJECTTOARRAY|SETINTERSECT|SETUNION)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.datetime.nosql",
+                    "match": "(?i)\\b(DATETIMEADD|DATETIMEBIN|DATETIMEDIFF|DATETIMEFROMPARTS|DATETIMEPART|DATETIMETOTICKS|DATETIMETOTIMESTAMP|GETCURRENTDATETIME|GETCURRENTDATETIMESTATIC|GETCURRENTTICKS|GETCURRENTTICKSSTATIC|GETCURRENTTIMESTAMP|GETCURRENTTIMESTAMPSTATIC|TICKSTODATETIME|TIMESTAMPTODATETIME)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.spatial.nosql",
+                    "match": "(?i)\\b(ST_AREA|ST_DISTANCE|ST_INTERSECTS|ST_ISVALID|ST_ISVALIDDETAILED|ST_WITHIN)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.item.nosql",
+                    "match": "(?i)\\b(DOCUMENTID)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.fulltext.nosql",
+                    "match": "(?i)\\b(FULLTEXTCONTAINS|FULLTEXTCONTAINSALL|FULLTEXTCONTAINSANY|FULLTEXTSCORE|RRF)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.conditional.nosql",
+                    "match": "(?i)\\b(IIF)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.vector.nosql",
+                    "match": "(?i)\\b(VECTORDISTANCE)\\b(?=\\s*\\()"
+                }
+            ]
+        },
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.clause.nosql",
+                    "match": "(?i)\\b(SELECT|DISTINCT|TOP|FROM|WHERE|ORDER\\s+BY\\s+RANK|ORDER\\s+BY|GROUP\\s+BY|OFFSET|LIMIT|JOIN)\\b"
+                },
+                {
+                    "name": "keyword.other.nosql",
+                    "match": "(?i)\\b(IN|AS|VALUE|EXISTS|BETWEEN|LIKE)\\b"
+                },
+                {
+                    "name": "keyword.operator.logical.nosql",
+                    "match": "(?i)\\b(AND|OR|NOT)\\b"
+                },
+                {
+                    "name": "keyword.other.order.nosql",
+                    "match": "(?i)\\b(ASC|DESC)\\b"
+                },
+                {
+                    "name": "constant.language.nosql",
+                    "match": "(?i)\\b(NULL|TRUE|FALSE|UNDEFINED)\\b"
+                }
+            ]
+        },
+        "identifiers": {
+            "patterns": [
+                {
+                    "name": "variable.other.nosql",
+                    "match": "\\b[a-zA-Z_]\\w*\\b"
+                }
+            ]
+        }
+    }
+}
+

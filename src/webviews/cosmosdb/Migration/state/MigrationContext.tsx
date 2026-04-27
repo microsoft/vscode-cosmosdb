@@ -971,6 +971,15 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
             channel.on('accountProvisioningStarted', () => {
                 dispatch({ type: 'SET_ACCOUNT_PROVISIONING_STATE', payload: 'in-progress' });
                 dispatch({ type: 'SET_ACCOUNT_PROVISIONING_ERROR', payload: null });
+                // Reset everything that depends on the previous account so a
+                // re-provision starts from a clean slate. The connection-test
+                // banner and the sample-data section both gate on these,
+                // mirroring the post-fresh-provision UI exactly.
+                dispatch({ type: 'SET_CONNECTION_VERIFIED', payload: false });
+                dispatch({ type: 'SET_CONNECTION_TEST_STATE', payload: 'locked' });
+                dispatch({ type: 'SET_CONNECTION_TEST_ERROR', payload: null });
+                dispatch({ type: 'SET_CONNECTION_TEST_DOCUMENTATION_URL', payload: null });
+                dispatch({ type: 'SET_PROVISIONING_STATE', payload: 'locked' });
             }),
         );
 

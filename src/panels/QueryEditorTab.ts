@@ -197,7 +197,7 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
-    public async updateQuery(query: string): Promise<void> {
+    public updateQuery(query: string): void {
         this.state.query = query;
         this.state.isLastQueryAIGenerated = true;
         this.state.lastAIGeneratedQuery = query;

@@ -51,7 +51,6 @@ export type BaseRouterContext = {
 export type QueryEditorMutableState = {
     connection?: NoSqlQueryConnection;
     query?: string;
-    selectedQuery?: string;
     isLastQueryAIGenerated: boolean;
     lastAIGeneratedQuery?: string;
     lastGenerationFailed: boolean;
@@ -94,8 +93,10 @@ export type DocumentRouterContext = BaseRouterContext & {
  * Telemetry middleware is already baked into each procedure, so individual
  * `.use(trpcToTelemetry)` calls are not needed here.
  */
-
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildCommonRouter(procedure: any, routerFn: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return routerFn({
         reportEvent: procedure
             .input(
@@ -236,10 +237,12 @@ function buildCommonRouter(procedure: any, routerFn: any) {
             }),
     });
 }
+/* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment */
 
 // ─── Query Editor App Router
 
 export const queryEditorAppRouter = queryEditorRouter({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     common: buildCommonRouter(queryEditorProcedure, queryEditorRouter),
     queryEditor: queryEditorMergeRouters(queryEditorRouterDef, queryEditorEventsRouterDef),
 });
@@ -250,6 +253,7 @@ export { queryEditorCallerFactory };
 // ─── Document App Router ────────────────────────────────────────────────────
 
 export const documentAppRouter = documentRouter({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     common: buildCommonRouter(documentProcedure, documentRouter),
     document: documentRouterDef,
 });

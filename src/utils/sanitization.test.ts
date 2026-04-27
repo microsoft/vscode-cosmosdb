@@ -13,6 +13,7 @@ import {
     safeMarkdownText,
     sanitizeCommandUri,
     sanitizeSqlComment,
+    stripCodeFences,
 } from './sanitization';
 
 describe('sanitization', () => {
@@ -269,6 +270,33 @@ describe('sanitization', () => {
             const result = sanitizeCommandUri(maliciousCommand);
             // Should reject commands with semicolons
             expect(result).toBeNull();
+        });
+    });
+
+    describe('stripCodeFences', () => {
+        it('should strip ```sql fences', () => {
+            expect(stripCodeFences('```sql\nSELECT * FROM c\n```')).toBe('SELECT * FROM c');
+        });
+
+        it('should strip plain ``` fences', () => {
+            expect(stripCodeFences('```\nSELECT * FROM c\n```')).toBe('SELECT * FROM c');
+        });
+
+        it('should return trimmed text when no fences', () => {
+            expect(stripCodeFences('  SELECT * FROM c  ')).toBe('SELECT * FROM c');
+        });
+
+        it('should handle multiline content inside fences', () => {
+            const input = '```sql\n-- comment\nSELECT * FROM c\nWHERE c.id = 1\n```';
+            expect(stripCodeFences(input)).toBe('-- comment\nSELECT * FROM c\nWHERE c.id = 1');
+        });
+
+        it('should handle empty string', () => {
+            expect(stripCodeFences('')).toBe('');
+        });
+
+        it('should handle fences with no content', () => {
+            expect(stripCodeFences('```sql\n```')).toBe('');
         });
     });
 });

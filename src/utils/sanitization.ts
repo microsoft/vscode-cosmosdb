@@ -143,6 +143,20 @@ export function safeErrorDisplay(error: Error | string, prefix: string = '❌'):
  * @param language The language identifier (e.g., 'sql', 'json', 'javascript')
  * @returns The content wrapped in a language-specific code block
  */
+/**
+ * Strips markdown code fences (` ```sql `, ` ``` `, etc.) from a string.
+ * Returns the inner content trimmed. If no fences are found, returns the string trimmed.
+ */
+export function stripCodeFences(text: string): string {
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```sql')) {
+        cleaned = cleaned.replace(/^```sql\n?/, '').replace(/\n?```$/, '');
+    } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
+    }
+    return cleaned.trim();
+}
+
 export function safeCodeBlock(content: string, language: string = ''): string {
     // Escape triple backticks in the content to prevent breaking out of the code fence
     // Replaces ``` with ` `` (space breaks the sequence)

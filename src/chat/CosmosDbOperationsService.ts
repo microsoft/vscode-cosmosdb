@@ -20,7 +20,7 @@ import {
     updateSchemaWithDocument,
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
-import { sanitizeSqlComment } from '../utils/sanitization';
+import { sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
 import {
@@ -1227,12 +1227,6 @@ export class CosmosDbOperationsService {
      * Clean up the LLM response by removing markdown code blocks if present.
      */
     private cleanupQueryResponse(query: string): string {
-        let cleaned = query.trim();
-        if (cleaned.startsWith('```sql')) {
-            cleaned = cleaned.replace(/^```sql\n?/, '').replace(/\n?```$/, '');
-        } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
-        }
-        return cleaned.trim();
+        return stripCodeFences(query);
     }
 }

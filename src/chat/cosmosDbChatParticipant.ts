@@ -10,7 +10,13 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { areAIFeaturesEnabled, getAvailableLanguageModels } from '../utils/copilotUtils';
-import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
+import {
+    safeCodeBlock,
+    safeErrorDisplay,
+    safeJsonDisplay,
+    safeMarkdownText,
+    stripCodeFences,
+} from '../utils/sanitization';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
 import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
@@ -411,7 +417,7 @@ export class CosmosDbChatParticipant {
 
         try {
             // Map intent operation to actual operation
-            let operationName = intent.operation;
+            const operationName = intent.operation;
             let parameters = intent.parameters;
 
             // Resolve any attached references (files, selections, etc.)
@@ -426,7 +432,7 @@ export class CosmosDbChatParticipant {
                 parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
             } else if (operationName === 'explainQuery') {
                 // Prefer inline query (e.g. from the AI button code block), fall back to editor
-                const inlineQuery = (parameters.currentQuery as string | undefined)?.trim();
+                const inlineQuery = stripCodeFences((parameters.currentQuery as string | undefined) ?? '').trim();
                 parameters.currentQuery = inlineQuery || CosmosDbOperationsService.getInstance().getActiveEditorQuery();
             }
 
@@ -562,7 +568,7 @@ export class CosmosDbChatParticipant {
                 // For explainQuery, two scenarios:
                 if (request.prompt.trim()) {
                     // 1) User specifies a query in the prompt (e.g. "@cosmosdb /explainQuery SELECT * FROM c") - use this prompt as query
-                    parameters.currentQuery = request.prompt.trim();
+                    parameters.currentQuery = stripCodeFences(request.prompt).trim();
                     parameters.userPrompt = undefined;
                 } else {
                     // 2) User just says "@cosmosdb /explainQuery" while having an active query editor - use the active editor query

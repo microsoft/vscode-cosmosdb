@@ -2,6 +2,7 @@ name: Node PR Lint, Build and Test
 
 permissions:
     contents: read
+    pull-requests: read
 
 on:
     # Trigger when manually run
@@ -216,6 +217,7 @@ jobs:
                   VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
                   VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
                   ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  GH_TOKEN: ${{ github.token }}
               shell: pwsh
               run: |
                   # Only generate summary if VSIX verification completed
@@ -240,11 +242,28 @@ jobs:
                       $shortSha = $sha.Substring(0, 7)
                       $commitLink = "[``$shortSha``]($serverUrl/$repo/commit/$sha)"
 
+                      # Resolve PR info: prefer the pull_request event payload, otherwise
+                      # ask the API which PR(s) contain this commit (works for push runs).
                       $prNumber = "${{ github.event.pull_request.number }}"
-                      $prLine = if ($prNumber) {
-                          $prTitle = @'
+                      $prTitle = @'
                   ${{ github.event.pull_request.title }}
                   '@
+                      if (-not $prNumber) {
+                          try {
+                              $prJson = gh api "repos/$repo/commits/$sha/pulls" --jq '[.[] | select(.state == "open")] | first | {number, title}' 2>$null
+                              if ($LASTEXITCODE -eq 0 -and $prJson) {
+                                  $pr = $prJson | ConvertFrom-Json
+                                  if ($pr -and $pr.number) {
+                                      $prNumber = "$($pr.number)"
+                                      $prTitle = $pr.title
+                                  }
+                              }
+                          } catch {
+                              Write-Output "⚠️ Could not look up PR for commit ${sha}: $_"
+                          }
+                      }
+
+                      $prLine = if ($prNumber) {
                           # Escape characters that would break markdown link text
                           $prTitleEscaped = $prTitle -replace '\\', '\\' -replace '\]', '\]'
                           "- **Pull Request:** [#$prNumber $prTitleEscaped]($serverUrl/$repo/pull/$prNumber)"

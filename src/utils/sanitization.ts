@@ -182,3 +182,21 @@ export function sanitizeSqlComment(text: string): string {
         .replace(/\t/g, ' ') // Tabs
         .trim();
 }
+
+/**
+ * Comments out a multi-line query by prepending "-- " to each line.
+ * Lines that are already SQL comments (starting with "--") are kept as-is
+ * to avoid double-commenting.
+ *
+ * @param query The query text to comment out
+ * @returns The query with all lines commented out
+ */
+export function commentOutQuery(query: string): string {
+    return query
+        .split('\n')
+        .map((line) => {
+            const sanitized = sanitizeSqlComment(line);
+            return sanitized.startsWith('--') ? sanitized : `-- ${sanitized}`;
+        })
+        .join('\n');
+}

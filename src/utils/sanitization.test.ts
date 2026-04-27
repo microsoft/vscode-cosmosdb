@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    commentOutQuery,
     escapeHtml,
     escapeMarkdown,
     renderAsCodeBlock,
@@ -236,6 +237,30 @@ describe('sanitization', () => {
             const multilinePrompt = 'Show me all users\nwhere status is active\nand age > 18';
             const result = sanitizeSqlComment(multilinePrompt);
             expect(result).toBe('Show me all users where status is active and age > 18');
+        });
+    });
+
+    describe('commentOutQuery', () => {
+        it('should prepend -- to plain lines', () => {
+            const result = commentOutQuery('SELECT * FROM c');
+            expect(result).toBe('-- SELECT * FROM c');
+        });
+
+        it('should not double-comment lines already starting with --', () => {
+            const result = commentOutQuery('-- this is a comment');
+            expect(result).toBe('-- this is a comment');
+        });
+
+        it('should handle mixed commented and uncommented lines', () => {
+            const query = '-- Generated from: show users\nSELECT * FROM c\n-- Previous query:';
+            const result = commentOutQuery(query);
+            expect(result).toBe('-- Generated from: show users\n-- SELECT * FROM c\n-- Previous query:');
+        });
+
+        it('should handle multi-line queries', () => {
+            const query = 'SELECT *\nFROM c\nWHERE c.id = 1';
+            const result = commentOutQuery(query);
+            expect(result).toBe('-- SELECT *\n-- FROM c\n-- WHERE c.id = 1');
         });
     });
 

@@ -31,7 +31,7 @@ import {
     updateSchemaWithDocument,
     type NoSQLDocument,
 } from '../../../utils/json/nosql/SchemaAnalyzer';
-import { sanitizeSqlComment } from '../../../utils/sanitization';
+import { commentOutQuery, sanitizeSqlComment } from '../../../utils/sanitization';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
@@ -599,11 +599,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
 
                 const sanitizedPrompt = sanitizeSqlComment(input.prompt);
-                const sanitizedCurrentQuery = input.currentQuery
-                    .split('\n')
-                    .map((line) => sanitizeSqlComment(line))
-                    .join('\n-- ');
-                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+                const sanitizedCurrentQuery = commentOutQuery(input.currentQuery);
+                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n${sanitizedCurrentQuery}`;
 
                 ctx.state.isLastQueryAIGenerated = true;
                 ctx.state.lastAIGeneratedQuery = finalQuery;

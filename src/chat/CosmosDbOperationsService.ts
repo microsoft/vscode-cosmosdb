@@ -20,7 +20,7 @@ import {
     updateSchemaWithDocument,
     type NoSQLDocument,
 } from '../utils/json/nosql/SchemaAnalyzer';
-import { sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
+import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
 import {
@@ -664,11 +664,8 @@ export class CosmosDbOperationsService {
         const sanitizedPrompt = sanitizeSqlComment(userPrompt);
         let formattedSuggestion: string;
         if (currentQuery) {
-            const sanitizedCurrentQuery = currentQuery
-                .split('\n')
-                .map((line) => sanitizeSqlComment(line))
-                .join('\n-- ');
-            formattedSuggestion = `-- ${l10n.t('Updated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}\n\n-- ${l10n.t('Previous query:')}\n-- ${sanitizedCurrentQuery}`;
+            const sanitizedCurrentQuery = commentOutQuery(currentQuery);
+            formattedSuggestion = `-- ${l10n.t('Updated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}\n\n-- ${l10n.t('Previous query:')}\n${sanitizedCurrentQuery}`;
         } else {
             formattedSuggestion = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}`;
         }

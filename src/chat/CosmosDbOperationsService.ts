@@ -760,7 +760,7 @@ export class CosmosDbOperationsService {
         // Get available language models
         const models = await getAvailableLanguageModels();
         if (models.length === 0) {
-            throw new Error('No language model available');
+            throw new Error(l10n.t('No language model available'));
         }
 
         const model = models[0];
@@ -948,10 +948,16 @@ export class CosmosDbOperationsService {
             const maxTokens = model.maxInputTokens;
             const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
             ext.outputChannel.info(
-                `[Generate Query] model="${model.name}" (${model.family}), ` +
-                    `systemTokens=${systemTokens}, userTokens=${userTokenCount}, ` +
-                    `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
-                    `usage=${ratio}%`,
+                l10n.t(
+                    '[Generate Query] model="{0}" ({1}), systemTokens={2}, userTokens={3}, requestTokens={4}, maxInputTokens={5}, usage={6}%',
+                    model.name,
+                    model.family,
+                    systemTokens,
+                    userTokenCount,
+                    totalTokens,
+                    maxTokens,
+                    ratio,
+                ),
             );
 
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', (ctx) => {
@@ -1001,7 +1007,11 @@ export class CosmosDbOperationsService {
             // LLM requested tool call(s) — invoke and feed results back
             toolRoundsUsed = round + 1;
             ext.outputChannel.info(
-                `[Generate Query] Tool call round ${round + 1}: ${toolCallParts.map((t) => t.name).join(', ')}`,
+                l10n.t(
+                    '[Generate Query] Tool call round {0}: {1}',
+                    round + 1,
+                    toolCallParts.map((t) => t.name).join(', '),
+                ),
             );
 
             // Add assistant message with the tool call parts
@@ -1009,7 +1019,7 @@ export class CosmosDbOperationsService {
 
             // Invoke each tool and add results as user messages
             for (const toolCall of toolCallParts) {
-                ext.outputChannel.info(`[Generate Query] Invoking tool: ${toolCall.name}...`);
+                ext.outputChannel.info(l10n.t('[Generate Query] Invoking tool: {0}...', toolCall.name));
 
                 if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
                     onProgress?.(l10n.t('Analyzing container schema…'));
@@ -1060,7 +1070,9 @@ export class CosmosDbOperationsService {
                             result = await sampleContainerSchema(connection);
                         } catch (error) {
                             const errMsg = parseError(error).message;
-                            ext.outputChannel.error(`[Generate Query] Failed to sample container schema: ${errMsg}`);
+                            ext.outputChannel.error(
+                                l10n.t('[Generate Query] Failed to sample container schema: {0}', errMsg),
+                            );
                             const baseMessage = l10n.t(
                                 'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
                             );
@@ -1088,7 +1100,11 @@ export class CosmosDbOperationsService {
 
                         // Log RU cost to output channel
                         ext.outputChannel.info(
-                            `[Generate Query] Schema sampling cost: ${ruCost.toFixed(2)} RUs (${result.documentCount} documents)`,
+                            l10n.t(
+                                '[Generate Query] Schema sampling cost: {0} RUs ({1} documents)',
+                                ruCost.toFixed(2),
+                                result.documentCount,
+                            ),
                         );
 
                         // Stream RU cost to the chat window
@@ -1136,13 +1152,17 @@ export class CosmosDbOperationsService {
                                 const fieldCount = parsed.schema ? Object.keys(parsed.schema).length : 0;
                                 const ruInfo = parsed.requestCharge ? `, ${parsed.requestCharge.toFixed(2)} RUs` : '';
                                 ext.outputChannel.info(
-                                    `[Generate Query] Tool result: schema with ${fieldCount} top-level fields${ruInfo}`,
+                                    l10n.t(
+                                        '[Generate Query] Tool result: schema with {0} top-level fields{1}',
+                                        fieldCount,
+                                        ruInfo,
+                                    ),
                                 );
                             } catch {
-                                ext.outputChannel.info(`[Generate Query] Tool result: (schema)`);
+                                ext.outputChannel.info(l10n.t('[Generate Query] Tool result: (schema)'));
                             }
                         } else {
-                            ext.outputChannel.info(`[Generate Query] Tool result: (non-schema tool)`);
+                            ext.outputChannel.info(l10n.t('[Generate Query] Tool result: (non-schema tool)'));
                         }
                     }
                 }

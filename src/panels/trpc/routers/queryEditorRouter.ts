@@ -600,7 +600,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
                 const sanitizedPrompt = sanitizeSqlComment(input.prompt);
                 const sanitizedCurrentQuery = commentOutQuery(input.currentQuery);
-                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n${sanitizedCurrentQuery}`;
+                const finalQuery = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${generatedQuery.trim()}\n\n-- ${l10n.t('Previous query:')}\n${sanitizedCurrentQuery}`;
 
                 ctx.state.isLastQueryAIGenerated = true;
                 ctx.state.lastAIGeneratedQuery = finalQuery;
@@ -649,7 +649,7 @@ export const queryEditorRouterDef = queryEditorRouter({
     closeGenerateInput: queryEditorProcedure
         .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
         .mutation(async ({ input, ctx }) => {
-            ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
+            ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
                 if (input) {

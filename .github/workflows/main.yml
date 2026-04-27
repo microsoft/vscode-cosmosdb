@@ -125,6 +125,7 @@ jobs:
               run: npm run package
 
             - name: 🔍 Verify VSIX File
+              id: verify-vsix
               shell: pwsh
               run: |
                   # Find VSIX file
@@ -155,20 +156,38 @@ jobs:
 
                   Write-Output "✅ VSIX filename is correct: $vsixFileName"
 
-                  # Set output for job summary
-                  echo "VSIX_FILE=$vsixFileName" >> $env:GITHUB_ENV
-                  echo "VSIX_SIZE=$vsixFileSize" >> $env:GITHUB_ENV
-                  echo "PACKAGE_VERSION=$($packageJson.version)" >> $env:GITHUB_ENV
-                  echo "PACKAGE_PREVIEW=$($packageJson.preview)" >> $env:GITHUB_ENV
+                  # Compute a short commit SHA (7 chars) and a filesystem-safe branch slug.
+                  # Use head_ref for pull_request events, otherwise ref_name.
+                  $rawRef = if ("${{ github.event_name }}" -eq "pull_request") { "${{ github.head_ref }}" } else { "${{ github.ref_name }}" }
+                  $branchSlug = ($rawRef -replace '[^A-Za-z0-9._-]', '-').Trim('-')
+                  $shortSha = "${{ github.sha }}".Substring(0, 7)
 
-            - name: 📤 Upload Artifacts
+                  # Artifact name convention:
+                  # - main / rel/* : <name>-<version>-<sha7>
+                  # - everything else: <branch-slug>-<version>-<sha7>
+                  $isRelease = ($rawRef -eq 'main') -or ($rawRef -like 'rel/*')
+                  if ($isRelease) {
+                      $artifactName = "$($packageJson.name)-$($packageJson.version)-$shortSha"
+                  } else {
+                      $artifactName = "$branchSlug-$($packageJson.version)-$shortSha"
+                  }
+
+                  Write-Output "📛 Artifact name: $artifactName"
+
+                  # Expose values as step outputs for downstream steps
+                  "vsix_file=$vsixFileName" >> $env:GITHUB_OUTPUT
+                  "vsix_size=$vsixFileSize" >> $env:GITHUB_OUTPUT
+                  "package_version=$($packageJson.version)" >> $env:GITHUB_OUTPUT
+                  "package_preview=$($packageJson.preview)" >> $env:GITHUB_OUTPUT
+                  "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
+
+            - name: 📤 Upload VSIX
               uses: actions/upload-artifact@v7
               with:
-                  name: Artifacts
-                  path: |
-                      **/*.vsix
-                      **/*.tgz
-                      !**/node_modules
+                  name: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  path: ${{ steps.verify-vsix.outputs.vsix_file }}
+                  if-no-files-found: error
+                  compression-level: 0
 
             - name: 🧪 Unit Tests
               id: unit-tests
@@ -191,6 +210,12 @@ jobs:
 
             - name: 📊 Generate Job Summary
               if: always()
+              env:
+                  PACKAGE_VERSION: ${{ steps.verify-vsix.outputs.package_version }}
+                  PACKAGE_PREVIEW: ${{ steps.verify-vsix.outputs.package_preview }}
+                  VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
+                  VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
+                  ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
               shell: pwsh
               run: |
                   # Only generate summary if VSIX verification completed
@@ -216,6 +241,7 @@ jobs:
                   - **Preview:** $env:PACKAGE_PREVIEW
                   - **VSIX File:** $env:VSIX_FILE
                   - **VSIX Size:** $env:VSIX_SIZE MB
+                  - **Artifact Name:** $env:ARTIFACT_NAME
 
                   ## 🧪 Test Results
                   - **Unit Tests:** $unitTestIcon $unitTestResult

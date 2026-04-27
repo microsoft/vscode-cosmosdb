@@ -183,6 +183,7 @@ jobs:
                   "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
 
             - name: 📤 Upload VSIX
+              id: upload-vsix
               uses: actions/upload-artifact@v7
               with:
                   name: ${{ steps.verify-vsix.outputs.artifact_name }}
@@ -217,6 +218,7 @@ jobs:
                   VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
                   VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
                   ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  ARTIFACT_URL: ${{ steps.upload-vsix.outputs.artifact-url }}
                   GH_TOKEN: ${{ github.token }}
               shell: pwsh
               run: |
@@ -304,7 +306,7 @@ jobs:
                   - **Preview:** $env:PACKAGE_PREVIEW
                   - **VSIX File:** $env:VSIX_FILE
                   - **VSIX Size:** $env:VSIX_SIZE MB
-                  - **Artifact Name:** $env:ARTIFACT_NAME.zip
+                  - **Artifact:** [$env:ARTIFACT_NAME.zip]($env:ARTIFACT_URL)
 
                   ## 🧪 Test Results
                   - **Unit Tests:** $unitTestIcon $unitTestResult

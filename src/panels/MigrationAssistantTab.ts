@@ -59,6 +59,7 @@ import {
     cancelProvisioning,
     populateSampleData,
     provisionAccount,
+    refineBicepParams,
     testConnection,
 } from './migration/steps/phase4Provisioning';
 import { getAccessPatternsTemplateContent } from './migration/templates/accessPatternsTemplate';
@@ -358,6 +359,8 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.checkGitignore();
             case 'openFile':
                 return this.openFile(payload.params[0] as string);
+            case 'openGeneratedBicep':
+                return this.openGeneratedBicep();
             case 'previewMarkdown':
                 return this.previewMarkdown(payload.params[0] as string);
             case 'updateMigrationInstructions':
@@ -506,6 +509,12 @@ export class MigrationAssistantTab extends BaseTab {
             const sampleDataPath = path.join(this.projectService.getProvisioningPath(), 'sample-data.json');
             const hasSampleData = await MigrationProjectService.fileExists(vscode.Uri.file(sampleDataPath));
 
+            // Check if the generated Bicep export exists on disk (drives the
+            // "Open generated Bicep template" link in Phase 4).
+            const hasBicep = await MigrationProjectService.fileExists(
+                vscode.Uri.file(this.projectService.getBicepPath()),
+            );
+
             // Check if code-migration-plan.md exists on disk
             const codeMigrationPlanPath = path.join(this.workspacePath, MIGRATION_FOLDER, 'code-migration-plan.md');
             const hasCodeMigrationPlan = await MigrationProjectService.fileExists(
@@ -528,6 +537,7 @@ export class MigrationAssistantTab extends BaseTab {
                         hasSchemaConversion,
                         schemaConversionResult,
                         hasSampleData,
+                        hasBicep,
                         hasVolumetricsTemplate,
                         hasAccessPatternsTemplate,
                         isAIFeaturesEnabled: ext.isAIFeaturesEnabled,
@@ -676,6 +686,8 @@ export class MigrationAssistantTab extends BaseTab {
         const sampleDataPath = path.join(this.projectService.getProvisioningPath(), 'sample-data.json');
         const hasSampleData = await MigrationProjectService.fileExists(vscode.Uri.file(sampleDataPath));
 
+        const hasBicep = await MigrationProjectService.fileExists(vscode.Uri.file(this.projectService.getBicepPath()));
+
         this.fileStateGeneration++;
 
         // Check if code-migration-plan.md exists on disk
@@ -696,6 +708,7 @@ export class MigrationAssistantTab extends BaseTab {
                     hasAssessmentSummary,
                     hasSchemaConversion,
                     hasSampleData,
+                    hasBicep,
                     hasCodeMigrationPlan,
                     codeMigrationPlanPath,
                     fileStateGeneration: this.fileStateGeneration,
@@ -1154,6 +1167,23 @@ export class MigrationAssistantTab extends BaseTab {
             this.selectedSubscription = subscription;
             await this.saveProject();
 
+            // Refine the generated Bicep export with the values the user just
+            // picked so the manual `az deployment group create` invocation has
+            // them ready. Subscription / RG go in as breadcrumb comments;
+            // location is a Bicep param.
+            await refineBicepParams(
+                {
+                    project: this.project!,
+                    projectService: this.projectService,
+                    channel: this.channel,
+                },
+                {
+                    subscriptionId: subscription.subscriptionId,
+                    resourceGroup: resourceGroupName,
+                    location,
+                },
+            );
+
             await this.channel.postMessage({
                 type: 'event',
                 name: 'resourceGroupSelected',
@@ -1251,6 +1281,24 @@ export class MigrationAssistantTab extends BaseTab {
         }
 
         this.accountProvisioningCancellation = resetCancellationToken(this.accountProvisioningCancellation);
+
+        // Refine the Bicep export with the final account name *before* calling
+        // the SDK so the artifact reflects the user's choice even if SDK
+        // provisioning fails. Also recovers from the case where the user
+        // deleted main.bicep / main.bicepparam between phases 3 and 4.
+        await refineBicepParams(
+            {
+                project: this.project,
+                projectService: this.projectService,
+                channel: this.channel,
+            },
+            {
+                accountName,
+                location: target.location,
+                subscriptionId: target.subscriptionId,
+                resourceGroup: target.resourceGroup,
+            },
+        );
 
         await provisionAccount(
             {
@@ -1431,6 +1479,49 @@ export class MigrationAssistantTab extends BaseTab {
     private async openFile(filePath: string): Promise<void> {
         const uri = vscode.Uri.file(filePath);
         await vscode.window.showTextDocument(uri, { preview: true });
+    }
+
+    private async openGeneratedBicep(): Promise<void> {
+        const bicepPath = this.projectService.getBicepPath();
+        const bicepUri = vscode.Uri.file(bicepPath);
+        try {
+            await vscode.workspace.fs.stat(bicepUri);
+        } catch {
+            await vscode.window.showInformationMessage(
+                l10n.t(
+                    'The generated Bicep template was not found. It will be regenerated the next time you run schema conversion.',
+                ),
+            );
+            return;
+        }
+
+        await vscode.window.showTextDocument(bicepUri, { preview: false });
+
+        // Suggest installing the official Bicep extension if missing — without it
+        // VS Code only offers plain-text editing (no syntax highlighting,
+        // validation or hover docs) for `.bicep` files. The prompt runs
+        // alongside the open editor so the user isn't blocked; once installed,
+        // the tab automatically picks up full language support.
+        const bicepExtensionId = 'ms-azuretools.vscode-bicep';
+        if (!vscode.extensions.getExtension(bicepExtensionId)) {
+            const install = l10n.t('Install Bicep extension');
+            void vscode.window
+                .showInformationMessage(
+                    l10n.t(
+                        'For full Bicep editing support (syntax highlighting, validation, IntelliSense), install the Bicep extension.',
+                    ),
+                    install,
+                )
+                .then((choice) => {
+                    if (choice === install) {
+                        return vscode.commands.executeCommand(
+                            'workbench.extensions.installExtension',
+                            bicepExtensionId,
+                        );
+                    }
+                    return undefined;
+                });
+        }
     }
 
     private async previewMarkdown(filePath: string): Promise<void> {

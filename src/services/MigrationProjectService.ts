@@ -298,6 +298,25 @@ export class MigrationProjectService {
     }
 
     /**
+     * Path to the generated `main.bicep` deployment template inside
+     * `phases/4-provisioning/`. The file is purely an export artifact — it is
+     * never executed by the extension and is intended for users who prefer to
+     * provision manually via `az deployment group create`.
+     */
+    getBicepPath(): string {
+        return path.join(this.getProvisioningPath(), 'main.bicep');
+    }
+
+    /**
+     * Path to the generated `main.bicepparam` companion params file. Holds the
+     * resolved values (account name, location, etc.) that the assistant fills
+     * in incrementally as the user proceeds through Phase 4.
+     */
+    getBicepParamPath(): string {
+        return path.join(this.getProvisioningPath(), 'main.bicepparam');
+    }
+
+    /**
      * List files in a given directory, recursing into subdirectories.
      */
     async listFiles(dirPath: string): Promise<string[]> {

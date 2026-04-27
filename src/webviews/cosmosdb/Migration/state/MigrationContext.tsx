@@ -111,6 +111,9 @@ export interface MigrationState {
     } | null;
     hasSampleData: boolean;
 
+    // Phase 4: Bicep export availability (informational artifact, never executed by the extension)
+    bicepGenerated: boolean;
+
     // Git
     hasGitRepo: boolean | null;
     isInGitignore: boolean | null;
@@ -219,6 +222,7 @@ export type MigrationAction =
               hasAssessmentSummary: boolean;
               hasSchemaConversion: boolean;
               hasSampleData: boolean;
+              hasBicep: boolean;
               hasCodeMigrationPlan: boolean;
               codeMigrationPlanPath: string;
               fileStateGeneration: number;
@@ -273,6 +277,7 @@ const initialState: MigrationState = {
     provisioningError: null,
     provisioningResult: null,
     hasSampleData: false,
+    bicepGenerated: false,
     hasGitRepo: null,
     isInGitignore: null,
     isAIFeaturesEnabled: false,
@@ -556,6 +561,7 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
                 hasVolumetricsTemplate: p.hasVolumetricsTemplate,
                 hasAccessPatternsTemplate: p.hasAccessPatternsTemplate,
                 hasSampleData: p.hasSampleData,
+                bicepGenerated: p.hasBicep,
                 hasCodeMigrationPlan: p.hasCodeMigrationPlan,
                 codeMigrationPlanPath: p.codeMigrationPlanPath,
                 fileStateGeneration: p.fileStateGeneration,
@@ -607,6 +613,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     hasSchemaConversion: boolean;
                     schemaConversionResult: MigrationState['schemaConversionResult'];
                     hasSampleData: boolean;
+                    hasBicep: boolean;
                     hasVolumetricsTemplate: boolean;
                     hasAccessPatternsTemplate: boolean;
                     isAIFeaturesEnabled: boolean;
@@ -697,6 +704,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             provisioningError: null,
                             provisioningResult: null,
                             hasSampleData: data.hasSampleData,
+                            bicepGenerated: data.hasBicep,
                             isAIFeaturesEnabled: data.isAIFeaturesEnabled,
                             consentGiven: data.consentGiven,
                             discoveryInstructions:
@@ -997,6 +1005,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     hasAssessmentSummary: boolean;
                     hasSchemaConversion: boolean;
                     hasSampleData: boolean;
+                    hasBicep: boolean;
                     hasCodeMigrationPlan: boolean;
                     codeMigrationPlanPath: string;
                     fileStateGeneration: number;

@@ -28,6 +28,7 @@ import {
     stripMarkdownPreamble,
     type DebugPromptConfig,
 } from '../helpers/aiHelpers';
+import { buildBicepParams, buildBicepTemplate } from '../helpers/bicepGenerator';
 import {
     saveAnalysisFile,
     saveCosmosModel,
@@ -1074,6 +1075,80 @@ export async function runSchemaConversion(
             ext.outputChannel.appendLog(
                 `[SchemaConversion] Final model saved: ${deploymentModel.containers.length} containers`,
             );
+
+            // Generate the Bicep export artifact alongside `model.json`. The two
+            // files have different lifecycles:
+            //   - `main.bicep` is structural (matches the schema) and is
+            //     regenerated on every Phase 3 run unless the user has edited
+            //     it after the last Phase 3 completion — in which case we
+            //     prompt before overwriting their edits.
+            //   - `main.bicepparam` is owned by the user once it exists (Phase
+            //     4 refines it with their picks); we only seed defaults here
+            //     when no file is present yet.
+            try {
+                const bicepUri = vscode.Uri.file(projectService.getBicepPath());
+                const paramsUri = vscode.Uri.file(projectService.getBicepParamPath());
+                const previousCompletedAt = project.phases.schemaConversion?.completedAt;
+
+                let writeBicep = true;
+                let bicepStat: vscode.FileStat | undefined;
+                try {
+                    bicepStat = await vscode.workspace.fs.stat(bicepUri);
+                } catch {
+                    // File doesn't exist — first generation, write freely.
+                }
+                if (bicepStat) {
+                    const previousMs = previousCompletedAt ? Date.parse(previousCompletedAt) : NaN;
+                    const userModified = Number.isNaN(previousMs) || bicepStat.mtime > previousMs;
+                    if (userModified) {
+                        const replace = l10n.t('Replace');
+                        const keep = l10n.t('Keep my version');
+                        const choice = await vscode.window.showWarningMessage(
+                            l10n.t(
+                                'The generated Bicep template "main.bicep" has been modified since the last schema conversion. Replace it with a freshly generated version?',
+                            ),
+                            { modal: true },
+                            replace,
+                            keep,
+                        );
+                        writeBicep = choice === replace;
+                    }
+                }
+
+                if (writeBicep) {
+                    await vscode.workspace.fs.writeFile(
+                        bicepUri,
+                        Buffer.from(buildBicepTemplate(deploymentModel), 'utf-8'),
+                    );
+                }
+
+                let paramsExisted = true;
+                try {
+                    await vscode.workspace.fs.stat(paramsUri);
+                } catch {
+                    paramsExisted = false;
+                }
+                if (!paramsExisted) {
+                    await vscode.workspace.fs.writeFile(
+                        paramsUri,
+                        Buffer.from(buildBicepParams({ databaseName: deploymentModel.databaseName }), 'utf-8'),
+                    );
+                }
+
+                ext.outputChannel.appendLog(
+                    `[SchemaConversion] Bicep export ready: ${projectService.getBicepPath()} (bicep ${
+                        writeBicep ? 'written' : 'kept'
+                    }, params ${paramsExisted ? 'kept' : 'written'})`,
+                );
+            } catch (bicepError) {
+                // Bicep generation is a non-critical export — never fail the
+                // schema conversion phase if writing the artifact fails.
+                ext.outputChannel.warn(
+                    `[SchemaConversion] Failed to write Bicep export: ${
+                        bicepError instanceof Error ? bicepError.message : String(bicepError)
+                    }`,
+                );
+            }
 
             // Update project.json
             project.phases.schemaConversion = {

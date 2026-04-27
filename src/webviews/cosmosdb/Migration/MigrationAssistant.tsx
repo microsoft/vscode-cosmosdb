@@ -717,6 +717,7 @@ function MigrationAssistantInner() {
     const handleRemoveFromGitignore = useCallback(() => sendCommand('removeFromGitignore'), [sendCommand]);
 
     const handleOpenFile = useCallback((filePath: string) => sendCommand('openFile', filePath), [sendCommand]);
+    const handleOpenGeneratedBicep = useCallback(() => sendCommand('openGeneratedBicep'), [sendCommand]);
     const handlePreviewMarkdown = useCallback(
         (filePath: string) => sendCommand('previewMarkdown', filePath),
         [sendCommand],
@@ -1949,6 +1950,16 @@ function MigrationAssistantInner() {
                                                     disabled={isPhase4Disabled}
                                                 />
                                             </Field>
+                                            {state.bicepGenerated && (
+                                                <Text size={200}>
+                                                    {l10n.t(
+                                                        'Prefer to provision manually? A Bicep template has been generated based on your schema.',
+                                                    )}{' '}
+                                                    <Link onClick={handleOpenGeneratedBicep}>
+                                                        {l10n.t('Open generated Bicep template')}
+                                                    </Link>
+                                                </Text>
+                                            )}
                                         </>
                                     )}
 

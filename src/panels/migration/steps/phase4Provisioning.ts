@@ -44,6 +44,12 @@ import {
     runAgenticLoopWithJsonResult,
     type DebugPromptConfig,
 } from '../helpers/aiHelpers';
+import {
+    buildBicepParams,
+    buildBicepTemplate,
+    mergeBicepParams,
+    type BicepParamValues,
+} from '../helpers/bicepGenerator';
 import { saveAnalysisFile, sendPhaseEvent, sendPhaseProgress } from '../helpers/migrationHelpers';
 import { generateSeedScript, type SampleDataResult } from '../helpers/seedScriptHelpers';
 import { Phase4SampleDataPrompt } from '../prompts';
@@ -985,6 +991,77 @@ function toArmPartitionKey(paths: string[]): ArmContainerPartitionKey {
         kind: paths.length > 1 ? 'MultiHash' : 'Hash',
         version: 2,
     };
+}
+
+// ─── Bicep Export Refinement ────────────────────────────────────────
+
+/**
+ * Merge user-supplied provisioning details (subscription / resource group /
+ * location selected via `selectResourceGroup`, account name entered before
+ * provisioning) into the generated `main.bicepparam`.
+ *
+ * Always rewrites `main.bicepparam` so the latest picks are reflected.
+ * Existing values in the file (including any manual user edits) are preserved
+ * unless overridden by `partial`.
+ *
+ * Resilient to user edits and deletions: if either `main.bicep` or
+ * `main.bicepparam` is missing it is silently regenerated from the current
+ * `model.json` so users who deleted the export between phases still get a
+ * usable artifact.
+ */
+export async function refineBicepParams(ctx: Phase4BaseContext, partial: BicepParamValues): Promise<void> {
+    const { projectService } = ctx;
+
+    try {
+        const bicepUri = vscode.Uri.file(projectService.getBicepPath());
+        const paramsUri = vscode.Uri.file(projectService.getBicepParamPath());
+
+        // Load the model — needed both to (re)generate `main.bicep` if it's
+        // missing and to derive a sensible `databaseName` default for params.
+        let model: CosmosModel | undefined;
+        try {
+            const conversionPath = projectService.getSchemaConversionPath();
+            const modelPath = path.join(conversionPath, 'model.json');
+            const data = await vscode.workspace.fs.readFile(vscode.Uri.file(modelPath));
+            model = JSON.parse(Buffer.from(data).toString('utf-8')) as CosmosModel;
+        } catch {
+            // No model on disk — refinement effectively a no-op; the user will
+            // see the standard "complete Phase 3 first" path elsewhere.
+            return;
+        }
+
+        // Regenerate `main.bicep` if the user removed it.
+        let bicepExists = true;
+        try {
+            await vscode.workspace.fs.stat(bicepUri);
+        } catch {
+            bicepExists = false;
+        }
+        if (!bicepExists) {
+            await vscode.workspace.fs.writeFile(bicepUri, Buffer.from(buildBicepTemplate(model), 'utf-8'));
+        }
+
+        // Read existing params (if any) and merge new values.
+        let existingParams: string | undefined;
+        try {
+            const data = await vscode.workspace.fs.readFile(paramsUri);
+            existingParams = Buffer.from(data).toString('utf-8');
+        } catch {
+            // missing — fall through to a fresh write
+        }
+
+        const merged = existingParams
+            ? mergeBicepParams(existingParams, partial)
+            : buildBicepParams({ databaseName: model.databaseName, ...partial });
+
+        await vscode.workspace.fs.writeFile(paramsUri, Buffer.from(merged, 'utf-8'));
+    } catch (error) {
+        // Bicep refinement is a non-critical export; never fail the user's
+        // primary flow because of it.
+        ext.outputChannel.warn(
+            `[migration] Failed to refine Bicep params: ${error instanceof Error ? error.message : String(error)}`,
+        );
+    }
 }
 
 // ─── Account Provisioning (Azure SDK) ───────────────────────────────

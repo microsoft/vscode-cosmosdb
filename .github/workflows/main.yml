@@ -7,13 +7,14 @@ on:
     # Trigger when manually run
     workflow_dispatch:
 
-    # Trigger on pushes to `main` or `rel/*`
+    # Trigger on pushes to `main`, `rel/*`, or `dev/**`
     push:
         branches:
             - main
             - rel/*
+            - dev/**
 
-    # Trigger on pull requests to `main` or `rel/*`
+    # Trigger on pull requests to `main`, `rel/*`, or `dev/**`
     pull_request:
         branches:
             - main
@@ -23,6 +24,26 @@ on:
 jobs:
     Build:
         runs-on: ubuntu-latest
+
+        # A push to a branch with an open PR fires both `push` and `pull_request`
+        # events. Rather than cancelling one of them (a cancelled run reports
+        # as a failed required check on the PR's head SHA and blocks merge),
+        # we skip the `pull_request` run entirely for same-repo PRs — the
+        # `push` event already builds the head SHA and satisfies the required
+        # `Build` check. For PRs from forks, `push` does not fire in this repo,
+        # so we still let `pull_request` run.
+        if: >-
+            github.event_name != 'pull_request' ||
+            github.event.pull_request.head.repo.full_name != github.repository
+
+        # Concurrency only dedupes runs for the SAME branch across DIFFERENT
+        # commits (e.g. rapid pushes during a rebase). The cancelled older run
+        # is on a stale SHA that is no longer the PR head, so it does not
+        # block the PR. Push and pull_request events for the same SHA are
+        # already deduped by the `if` above, so they never collide here.
+        concurrency:
+            group: build-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+            cancel-in-progress: true
 
         defaults:
             run:

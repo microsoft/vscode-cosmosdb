@@ -6,7 +6,7 @@
 /**
  * Represents a tree element with a storage identifier.
  * This type is used to uniquely identify elements that can be persisted in storage.
- * @property storageId - A string identifier used to reference the element in storage
+ * @property {string} storageId - A string identifier used to reference the element in storage
  */
 export type TreeElementWithStorageId = {
     storageId: string;

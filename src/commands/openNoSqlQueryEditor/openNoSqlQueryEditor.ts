@@ -35,9 +35,7 @@ export async function openNoSqlQueryEditor(
     } else if (isTreeElementWithExperience(nodeOrConnection)) {
         // Case 2: Input is a container node (using proper type guard)
         context.telemetry.properties.experience = nodeOrConnection.experience.api;
-        connection = getConnectionFromNode(
-            nodeOrConnection as CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
-        );
+        connection = getConnectionFromNode(nodeOrConnection);
     } else {
         // Case 3: Input is already a connection
         context.telemetry.properties.experience = API.Core;

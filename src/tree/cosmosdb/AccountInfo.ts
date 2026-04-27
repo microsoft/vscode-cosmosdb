@@ -48,7 +48,7 @@ export async function getAccountInfo(
     } else if (isCosmosDBConnectionString(accountOrConnectionString)) {
         return getAccountInfoForConnectionString(accountOrConnectionString);
     } else {
-        return getAccountInfoForResource(accountOrConnectionString as CosmosDBAccountModel);
+        return getAccountInfoForResource(accountOrConnectionString);
     }
 }
 

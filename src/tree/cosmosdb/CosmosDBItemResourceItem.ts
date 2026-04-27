@@ -68,7 +68,7 @@ export abstract class CosmosDBItemResourceItem
 
     private generateTooltip(): string {
         const doc = this.model.item ?? {};
-        const id: string = (doc.id as string | undefined) ?? (doc._id as string | undefined) ?? '<no id>';
+        const id: string = doc.id ?? (doc._id as string | undefined) ?? '<no id>';
 
         const pkPaths = this.model.container.partitionKey?.paths ?? [];
         const pkValuesRaw = this.getPartitionKeyValuesArray(this.model);

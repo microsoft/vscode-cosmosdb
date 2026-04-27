@@ -496,7 +496,7 @@ export function simplifySchema(schema: JSONSchema): void {
 function simplifySchemaNode(node: JSONSchema): void {
     // Promote a sole anyOf entry into the parent node
     if (node.anyOf && (node.anyOf as JSONSchema[]).length === 1) {
-        const single = (node.anyOf as JSONSchema[])[0] as JSONSchema;
+        const single = (node.anyOf as JSONSchema[])[0];
         for (const [k, v] of Object.entries(single)) {
             (node as Record<string, unknown>)[k] = v;
         }
@@ -506,7 +506,7 @@ function simplifySchemaNode(node: JSONSchema): void {
     // Recurse into remaining anyOf entries (length > 1 case)
     if (node.anyOf) {
         for (const entry of node.anyOf as JSONSchema[]) {
-            simplifySchemaNode(entry as JSONSchema);
+            simplifySchemaNode(entry);
         }
     }
 

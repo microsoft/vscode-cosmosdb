@@ -35,7 +35,7 @@ export class BaseTab {
 
         void this.telemetryContext.reportWebviewEvent('opened', {
             panelId: this.id,
-            ...(telemetryProperties ?? {}),
+            ...telemetryProperties,
         });
     }
 

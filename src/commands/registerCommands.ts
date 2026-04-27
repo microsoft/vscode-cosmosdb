@@ -144,8 +144,8 @@ export function registerChatButtonCommands() {
     // CosmosDbChatParticipant.pendingResults to avoid serializing large
     // objects (connection credentials, query text) into the chat response.
     ext.context.subscriptions.push(
-        vscode.commands.registerCommand('cosmosDB.applyQuerySuggestion', async (resultId: number) => {
-            await callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.applyQuery', async (ctx) => {
+        vscode.commands.registerCommand('cosmosDB.applyQuerySuggestion', (resultId: number) => {
+            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.applyQuery', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
 
                 console.log('[CosmosDB Chat] applyQuerySuggestion called', { resultId });
@@ -171,7 +171,7 @@ export function registerChatButtonCommands() {
 
                 if (activeTab && 'updateQuery' in activeTab) {
                     // Update the query in the existing webview
-                    await activeTab.updateQuery(suggestedQuery);
+                    activeTab.updateQuery(suggestedQuery);
                     void vscode.window.showInformationMessage(l10n.t('✅ Query updated successfully!'));
                 } else {
                     // Fallback: create a new tab if no matching tab is found

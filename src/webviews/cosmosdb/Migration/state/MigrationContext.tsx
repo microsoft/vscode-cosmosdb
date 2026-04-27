@@ -756,6 +756,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     subscriptionName: string;
                     resourceGroup: string;
                     location: string;
+                    locationDisplayName?: string;
                 }) => {
                     dispatch({
                         type: 'SET_TARGET_SUBSCRIPTION',
@@ -763,6 +764,22 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     });
                     dispatch({ type: 'SET_TARGET_RESOURCE_GROUP', payload: data.resourceGroup });
                     dispatch({ type: 'SET_TARGET_LOCATION', payload: data.location });
+                    // Seed the available-locations list with a single entry so the
+                    // dropdown shows the friendly display name ("East US") right
+                    // away, instead of briefly flashing the canonical short name
+                    // ("eastus") until `listCosmosDBLocations` returns and replaces
+                    // the list with the full set of regions.
+                    if (data.location) {
+                        dispatch({
+                            type: 'SET_AVAILABLE_LOCATIONS',
+                            payload: [
+                                {
+                                    name: data.location,
+                                    displayName: data.locationDisplayName ?? data.location,
+                                },
+                            ],
+                        });
+                    }
                 },
             ),
         );

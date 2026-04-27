@@ -1161,7 +1161,9 @@ export class MigrationAssistantTab extends BaseTab {
             await wizard.execute();
 
             const resourceGroupName = wizardContext.resourceGroup?.name ?? wizardContext.newResourceGroupName ?? '';
-            const location = (await LocationListStep.getLocation(wizardContext)).name ?? '';
+            const selectedLocation = await LocationListStep.getLocation(wizardContext);
+            const location = selectedLocation.name ?? '';
+            const locationDisplayName = selectedLocation.displayName ?? location;
 
             this.project!.phases.targetEnvironment = {
                 ...this.project!.phases.targetEnvironment,
@@ -1201,6 +1203,7 @@ export class MigrationAssistantTab extends BaseTab {
                         subscriptionName: subscription.name,
                         resourceGroup: resourceGroupName,
                         location,
+                        locationDisplayName,
                     },
                 ],
             });

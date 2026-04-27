@@ -233,15 +233,43 @@ jobs:
                           "## ❌ Build Status`nSome checks failed. Please review the logs."
                       }
 
+                      # Build commit + PR markdown links
+                      $serverUrl = "${{ github.server_url }}"
+                      $repo = "${{ github.repository }}"
+                      $sha = "${{ github.sha }}"
+                      $shortSha = $sha.Substring(0, 7)
+                      $commitLink = "[``$shortSha``]($serverUrl/$repo/commit/$sha)"
+
+                      $prNumber = "${{ github.event.pull_request.number }}"
+                      $prLine = if ($prNumber) {
+                          $prTitle = @'
+                  ${{ github.event.pull_request.title }}
+                  '@
+                          # Escape characters that would break markdown link text
+                          $prTitleEscaped = $prTitle -replace '\\', '\\' -replace '\]', '\]'
+                          "- **Pull Request:** [#$prNumber $prTitleEscaped]($serverUrl/$repo/pull/$prNumber)"
+                      } else {
+                          $null
+                      }
+
+                      $sourceInfo = @(
+                          "## 🔗 Source"
+                          "- **Commit:** $commitLink"
+                      )
+                      if ($prLine) { $sourceInfo += $prLine }
+                      $sourceSection = $sourceInfo -join "`n"
+
                       $summary = @"
                   # 🎉 Build Summary
+
+                  $sourceSection
 
                   ## 📦 Package Information
                   - **Version:** $env:PACKAGE_VERSION
                   - **Preview:** $env:PACKAGE_PREVIEW
                   - **VSIX File:** $env:VSIX_FILE
                   - **VSIX Size:** $env:VSIX_SIZE MB
-                  - **Artifact Name:** $env:ARTIFACT_NAME
+                  - **Artifact Name:** $env:ARTIFACT_NAME.zip
 
                   ## 🧪 Test Results
                   - **Unit Tests:** $unitTestIcon $unitTestResult

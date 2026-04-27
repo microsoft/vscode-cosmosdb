@@ -35,7 +35,12 @@ export class QueryEditorTab extends BaseTab {
     private readonly state: QueryEditorMutableState;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
-        super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
+        super(
+            panel,
+            QueryEditorTab.viewType,
+            { hasConnection: connection ? 'true' : 'false' },
+            query ? { initialQuery: query } : undefined,
+        );
 
         QueryEditorTab.openTabs.add(this);
 

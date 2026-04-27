@@ -137,13 +137,23 @@ export type QueryEditorState = {
     confirmToolInvocationMessage: string | null; // Message from server asking user to confirm a tool invocation during LLM generation
 };
 
+/**
+ * Read the initial query from the webview's injected state (if any),
+ * falling back to the default. This lets the editor open with the correct
+ * query immediately, without waiting for the async `init` round-trip.
+ */
+function getInitialQueryValue(): string {
+    const injected = typeof __WEBVIEW_INITIAL_STATE__ !== 'undefined' ? __WEBVIEW_INITIAL_STATE__ : undefined;
+    return typeof injected?.initialQuery === 'string' ? injected.initialQuery : DEFAULT_QUERY_VALUE;
+}
+
 export const defaultState: QueryEditorState = {
     dbName: '',
     containerName: '',
     partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
-    queryValue: DEFAULT_QUERY_VALUE,
+    queryValue: getInitialQueryValue(),
     querySelectedValue: '',
     isConnected: false,
     isExecuting: false,

@@ -21,7 +21,12 @@ export class BaseTab {
 
     protected disposables: vscode.Disposable[] = [];
 
-    protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
+    protected constructor(
+        panel: vscode.WebviewPanel,
+        viewType: string,
+        telemetryProperties?: Record<string, string>,
+        initialState?: Record<string, unknown>,
+    ) {
         this.id = uuid();
         this.start = Date.now();
         this.telemetryContext = new TelemetryContext(viewType);
@@ -31,7 +36,7 @@ export class BaseTab {
 
         this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
-        this.panel.webview.html = this.getWebviewContent();
+        this.panel.webview.html = this.getWebviewContent(initialState);
 
         void this.telemetryContext.reportWebviewEvent('opened', {
             panelId: this.id,
@@ -58,7 +63,7 @@ export class BaseTab {
         );
     }
 
-    private getWebviewContent(): string {
+    private getWebviewContent(initialState?: Record<string, unknown>): string {
         const ctx = ext.context;
         const cspSource = this.panel.webview.cspSource;
         const devServer = !!process.env.DEVSERVER;
@@ -103,10 +108,22 @@ export class BaseTab {
             srcUri,
             viewType: this.viewType,
             nonce,
+            initialState,
         });
     }
 
-    private template(params: { csp: string; viewType: string; srcUri: string; title: string; nonce: string }) {
+    private template(params: {
+        csp: string;
+        viewType: string;
+        srcUri: string;
+        title: string;
+        nonce: string;
+        initialState?: Record<string, unknown>;
+    }) {
+        const initialStateScript = params.initialState
+            ? `\n      globalThis.__WEBVIEW_INITIAL_STATE__ = ${JSON.stringify(params.initialState)};`
+            : '';
+
         return `
 <!DOCTYPE html>
 <html lang="en">
@@ -123,7 +140,7 @@ export class BaseTab {
       globalThis.l10n_bundle = ${
           // eslint-disable-next-line no-restricted-syntax
           JSON.stringify(vscode.l10n.bundle ?? {})
-      };
+      };${initialStateScript}
     </script>
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";

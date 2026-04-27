@@ -48,8 +48,11 @@ export const QueryMonaco = () => {
     }, [monaco]);
 
     const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
-        // Update initial editor value as monaco editor doesn't update the value after it's mounted. We need to set it manually here.
-        void dispatcher.insertText(editor.getValue());
+        // Do NOT call dispatcher.insertText() here — that sends updateQueryText
+        // to the server, which overwrites the initial query (e.g. a suggested
+        // query passed via side-by-side open) with the default value before the
+        // init response arrives. The editor value is already driven by
+        // state.queryValue via the controlled `value` prop.
 
         // Set up cursor selection event listener
         disposableRef.current = editor.onDidChangeCursorSelection((event) => {

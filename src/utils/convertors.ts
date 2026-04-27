@@ -7,9 +7,11 @@
  * NOTE: Mostly of these functions are async to be able to move them to backend in the future
  */
 
-import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { parse } from '@cosmosdb/nosql-language-service';
 import * as l10n from '@vscode/l10n';
 import { v4 as uuid } from 'uuid';
+import { CosmosDBHiddenFields } from '../constants';
 import {
     type CosmosDBRecordIdentifier,
     type QueryResultRecord,
@@ -158,17 +160,51 @@ function leftPadIndex(index: number, array: unknown[] | number, padChar: string 
  * We can be 100% sure that all required fields for {@link CosmosDBRecordIdentifier} are present in the record
  * if query has `SELECT *` clause. So we can enable editing only in this case.
  * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
- * '*" is allowed only if the query doesn't have any subset or joins
+ * '*' is allowed only if the query doesn't have any subset or joins.
+ *
+ * Uses the AST parser to precisely detect `SELECT *` — avoids false positives
+ * from arithmetic expressions like `SELECT c.price * c.qty FROM c`.
  * @param query
  */
 export const isSelectStar = (query: string): boolean => {
-    const matches = query.match(/select([\S\s]*)from[\s\S]*$/im);
-    if (matches) {
-        const selectClause = matches[1].split(',').map((s) => s.trim());
-        return selectClause.find((s) => s.endsWith('*')) !== undefined;
-    }
+    const { ast } = parse(query);
+    return ast?.query?.select?.spec?.kind === 'SelectStarSpec';
+};
 
-    return false;
+/**
+ * Returns the list of column names that a query will produce, or `null` if the
+ * number/names of columns cannot be statically determined.
+ *
+ * - `SELECT *`       → `null`  (all document fields, count unknown)
+ * - `SELECT VALUE e` → `null`  (flat scalar array, no named columns)
+ * - `SELECT a, b, c` → `['a', 'b', 'c']`
+ *
+ * Each element is either:
+ *  - the `AS` alias string, if present
+ *  - the last identifier of a property-ref path (`c.foo.bar` → `'bar'`)
+ *  - `null` when the column name cannot be determined statically
+ *    (arithmetic, function calls, object literals without alias, etc.)
+ *
+ * The outer `null` means "we don't know how many columns there will be".
+ * An inner `null` means "we know there is a column here, but not its name".
+ *
+ * @param query - The CosmosDB NoSQL query string
+ */
+export const getQueryColumns = (query: string): (string | null)[] | null => {
+    const { ast } = parse(query);
+    const spec = ast?.query?.select?.spec;
+    if (!spec || spec.kind !== 'SelectListSpec') {
+        return null;
+    }
+    return spec.items.map((item) => {
+        if (item.alias) {
+            return item.alias.value;
+        }
+        if (item.expression.kind === 'PropertyRefScalarExpression') {
+            return item.expression.identifier.value;
+        }
+        return null;
+    });
 };
 
 export const queryResultToJSON = (queryResult: SerializedQueryResult | null, selection?: number[]): string => {
@@ -345,22 +381,91 @@ const documentToTreeRow = async (
 };
 
 /**
+ * Describes the homogeneity of a document collection.
+ *
+ * - `'empty'`     — no documents at all
+ * - `'primitive'` — every document is a scalar or null (e.g. `SELECT VALUE c.name`)
+ * - `'object'`    — every document is a plain object or array
+ * - `'mixed'`     — collection contains both primitives and objects (inconsistent)
+ */
+export type DocumentCollectionKind = 'empty' | 'primitive' | 'object' | 'mixed';
+
+/**
+ * Checks whether all documents in an array have the same structural kind:
+ * either all are plain objects/arrays, or all are scalars/null.
+ * A mixed result is flagged as inconsistent.
+ */
+export const getDocumentCollectionKind = (documents: QueryResultRecord[]): DocumentCollectionKind => {
+    if (documents.length === 0) return 'empty';
+
+    let hasObjects = false;
+    let hasPrimitives = false;
+
+    for (const doc of documents) {
+        if (doc !== null && typeof doc === 'object' && !Array.isArray(doc)) {
+            hasObjects = true;
+        } else {
+            hasPrimitives = true; // null, scalars, and arrays — no named keys
+        }
+        if (hasObjects && hasPrimitives) return 'mixed';
+    }
+
+    return hasObjects ? 'object' : 'primitive';
+};
+
+/**
  * Get the headers for the table (don't take into account the nested objects)
- * @param documents
+ *
+ * If `query` is provided and the SELECT clause projects a fixed set of columns
+ * (i.e. not `SELECT *` / `SELECT VALUE`), those column names are returned in
+ * declaration order, ignoring the `options` sorting/partition-key settings —
+ * the user already decided the shape of the result set.
+ *
+ * When the column set cannot be determined statically (or no `query` is given),
+ * the function falls back to scanning all documents for keys as before.
+ * Documents that are not plain objects (null, scalars, arrays) are skipped
+ * during the scan.
+ *
+ * @param documents  Result documents — `QueryResultRecord[]` i.e. `JSONValue[]`
  * @param partitionKey
  * @param options
+ * @param query  Optional query string used to derive column names from the AST
  */
 export const getTableHeaders = (
-    documents: ItemDefinition[],
+    documents: QueryResultRecord[],
     partitionKey: PartitionKeyDefinition | undefined,
     options: ColumnOptions,
+    query?: string,
 ): string[] => {
+    // Fast path: query has a statically-known set of projected columns
+    if (query !== undefined) {
+        const queryColumns = getQueryColumns(query);
+        if (queryColumns !== null) {
+            // Columns without a resolvable name (arithmetic, function calls, etc.)
+            // get a synthetic fallback name: _value1, _value2, …
+            let unnamedCounter = 0;
+            return queryColumns.map((col) => col ?? `_value${++unnamedCounter}`);
+        }
+    }
+
+    // Consistency check: if all documents are primitives (e.g. SELECT VALUE c.name → ["Alice", "Bob"])
+    // there are no object keys to extract, but we can represent the single value as _value1.
+    // Mixed collections are non-actionable.
+    const collectionKind = getDocumentCollectionKind(documents);
+    if (collectionKind === 'empty' || collectionKind === 'mixed') {
+        return [];
+    }
+
+    if (collectionKind === 'primitive') {
+        return ['_value1'];
+    }
+
     const keys = new Set<string>();
     const serviceKeys = new Set<string>();
 
     documents.forEach((doc) => {
-        Object.keys(doc).forEach((key) => {
-            if (key.startsWith('_')) {
+        Object.keys(doc as object).forEach((key) => {
+            if (CosmosDBHiddenFields.includes(key)) {
                 serviceKeys.add(key);
             } else {
                 keys.add(key);
@@ -530,7 +635,7 @@ export const queryResultToTable = async (
         options.ShowPartitionKey = 'first';
     }
 
-    const headers = getTableHeaders(queryResult.documents, partitionKey, options);
+    const headers = getTableHeaders(queryResult.documents, partitionKey, options, queryResult.query);
     const dataset = await getTableDataset(queryResult.documents, partitionKey, options);
 
     return { headers, dataset };

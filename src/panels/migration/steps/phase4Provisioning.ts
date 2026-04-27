@@ -15,6 +15,7 @@ import {
     type IndexingPolicy as CosmosIndexingPolicy,
 } from '@azure/cosmos';
 import { VSCodeAzureSubscriptionProvider } from '@microsoft/vscode-azext-azureauth';
+import { getResourceGroupFromId } from '@microsoft/vscode-azext-azureutils';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
@@ -28,6 +29,8 @@ import { getSignedInPrincipalIdForSubscription } from '../../../cosmosdb/utils/a
 import {
     addCosmosDBOperatorRoleAssignment,
     addRbacContributorPermission,
+    hasCosmosDBOperatorRoleAssignment,
+    hasDataContributorRoleAssignment,
     isRbacException,
 } from '../../../cosmosdb/utils/rbacUtils';
 import { ext } from '../../../extensionVariables';
@@ -1122,37 +1125,73 @@ export async function provisionAccount(
             const { createCosmosDBManagementClient } = await import('../../../utils/azureClients');
             const mgmtClient = await createCosmosDBManagementClient(context, subscription);
 
-            // Bridge the VS Code CancellationToken to an AbortController so the ARM SDK
-            // stops polling (and rejects with an AbortError) when the user cancels. The
-            // in-progress Azure-side deployment is not torn down — only our wait is.
-            const abortController = new AbortController();
-            const cancellationListener = token?.onCancellationRequested(() => abortController.abort());
-
-            const result = await mgmtClient.databaseAccounts
-                .beginCreateOrUpdateAndWait(
-                    resourceGroup,
-                    accountName,
-                    {
-                        location,
-                        databaseAccountOfferType: 'Standard',
-                        locations: [{ locationName: location, failoverPriority: 0, isZoneRedundant: false }],
-                        kind: 'GlobalDocumentDB',
-                        capabilities: capacityMode === 'serverless' ? [{ name: 'EnableServerless' }] : [],
-                        disableLocalAuth: true,
-                    },
-                    { abortSignal: abortController.signal },
-                )
-                .finally(() => {
-                    cancellationListener?.dispose();
-                });
-
-            if (token?.isCancellationRequested) {
-                // Cancelled while we were waiting; the cancel handler already emitted
-                // `accountProvisioningCancelled`, so just exit quietly.
+            // Pre-flight: Cosmos DB account names are globally unique. Calling
+            // `beginCreateOrUpdate` with a taken name either silently updates an
+            // existing account in this subscription or fails with an opaque
+            // error when the conflict is in someone else's subscription. Detect
+            // both cases up-front so we can offer a sensible recovery path.
+            const reuseExistingAccount = await detectExistingAccountConflict(mgmtClient, accountName, channel);
+            if (reuseExistingAccount === 'cancel') {
                 return undefined;
             }
 
-            const endpoint = result.documentEndpoint;
+            // The user may have asked to reuse an existing account that lives in a
+            // different resource group than the one selected during phase 4. Honor
+            // the live account's RG for everything that follows (RBAC scope,
+            // project state) so we point at the actual resource.
+            const effectiveResourceGroup = reuseExistingAccount?.resourceGroup ?? resourceGroup;
+            const effectiveLocation = reuseExistingAccount?.location ?? location;
+
+            let endpoint: string | undefined;
+
+            if (reuseExistingAccount) {
+                await sendPhaseProgress(
+                    channel,
+                    'Provisioning',
+                    'accountProvisioningProgress',
+                    l10n.t('Reusing existing Cosmos DB account "{0}"…', accountName),
+                );
+                endpoint = reuseExistingAccount.endpoint;
+                if (!endpoint) {
+                    // `databaseAccounts.list()` may omit `documentEndpoint` on
+                    // some accounts; fetch the full resource to be sure.
+                    const fullAccount = await mgmtClient.databaseAccounts.get(effectiveResourceGroup, accountName);
+                    endpoint = fullAccount.documentEndpoint;
+                }
+            } else {
+                // Bridge the VS Code CancellationToken to an AbortController so the ARM SDK
+                // stops polling (and rejects with an AbortError) when the user cancels. The
+                // in-progress Azure-side deployment is not torn down — only our wait is.
+                const abortController = new AbortController();
+                const cancellationListener = token?.onCancellationRequested(() => abortController.abort());
+
+                const result = await mgmtClient.databaseAccounts
+                    .beginCreateOrUpdateAndWait(
+                        resourceGroup,
+                        accountName,
+                        {
+                            location,
+                            databaseAccountOfferType: 'Standard',
+                            locations: [{ locationName: location, failoverPriority: 0, isZoneRedundant: false }],
+                            kind: 'GlobalDocumentDB',
+                            capabilities: capacityMode === 'serverless' ? [{ name: 'EnableServerless' }] : [],
+                            disableLocalAuth: true,
+                        },
+                        { abortSignal: abortController.signal },
+                    )
+                    .finally(() => {
+                        cancellationListener?.dispose();
+                    });
+
+                if (token?.isCancellationRequested) {
+                    // Cancelled while we were waiting; the cancel handler already emitted
+                    // `accountProvisioningCancelled`, so just exit quietly.
+                    return undefined;
+                }
+
+                endpoint = result.documentEndpoint;
+            }
+
             if (!endpoint) {
                 throw new Error(l10n.t('Account was created but no endpoint was returned.'));
             }
@@ -1161,13 +1200,21 @@ export async function provisionAccount(
             // tenantId so that connection tests acquire an AAD token from the
             // tenant that owns the account — the signed-in user's default tenant
             // may differ and would be rejected by the account's auth policy.
+            //
+            // When reusing an existing account, mark the target as `'azure'` so
+            // the UI flips to the "Azure Cosmos DB Account" view (matching the
+            // flow of picking an account via `selectAccount`). The user can then
+            // test the connection and proceed without going through provisioning
+            // again. Newly-created accounts keep `'provision'` so phase 4
+            // continues to attribute the account to this migration.
+            const isReuse = reuseExistingAccount !== undefined;
             project.phases.targetEnvironment = {
                 ...project.phases.targetEnvironment,
-                type: 'provision',
+                type: isReuse ? 'azure' : 'provision',
                 endpoint,
                 accountName,
-                resourceGroup,
-                location,
+                resourceGroup: effectiveResourceGroup,
+                location: effectiveLocation,
                 subscriptionId: subscription.subscriptionId,
                 subscriptionName: subscription.name,
                 tenantId: subscription.tenantId,
@@ -1175,9 +1222,23 @@ export async function provisionAccount(
             };
             await projectService.save(project);
 
+            if (isReuse) {
+                // Mirror the `selectAccount` flow so the webview switches to the
+                // "Azure Cosmos DB Account" option pre-filled with this endpoint.
+                // `accountProvisioningCancelled` resets the provisioning UI state
+                // (no "completed" banner) since we did not actually create anything.
+                await sendPhaseEvent(channel, 'accountSelected', [{ endpoint, accountName }]);
+                await sendPhaseEvent(channel, 'accountProvisioningCancelled');
+                // Skip auto RBAC assignment and the auto-test in the caller —
+                // existing accounts already have role assignments managed by
+                // their owner; if the user is missing access, the test-connection
+                // flow surfaces and offers to fix it on demand.
+                return undefined;
+            }
+
             // Auto-assign data plane (Data Contributor) and control plane (Cosmos DB Operator)
             // RBAC roles to the signed-in user. Best-effort; failures are surfaced but non-fatal.
-            await assignRbacAfterProvisioning(channel, accountName, resourceGroup, context, subscription);
+            await assignRbacAfterProvisioning(channel, accountName, effectiveResourceGroup, context, subscription);
 
             await sendPhaseEvent(channel, 'accountProvisioningCompleted', [{ endpoint }]);
             return endpoint;
@@ -1196,6 +1257,79 @@ export async function provisionAccount(
 }
 
 // ─── RBAC Helpers ───────────────────────────────────────────────────
+
+/**
+ * Checks whether a Cosmos DB account with `accountName` already exists. When it
+ * does, asks the user whether to reuse it or cancel and pick a different name.
+ *
+ * Cosmos DB account names are globally unique. The conflict can be in:
+ *  - the user's own subscription (we can offer to reuse the account)
+ *  - some other subscription/tenant (the user must pick a different name)
+ *
+ * Side effects: emits `accountProvisioningCancelled` (user-cancel) or
+ * `accountProvisioningError` (name taken globally) so the webview reflects the
+ * outcome without the caller having to coordinate event emission.
+ *
+ * Return values:
+ *  - `'cancel'`            — user dismissed; caller should abort
+ *  - `undefined`           — no conflict; caller should create the account
+ *  - `{ resourceGroup, … }` — reuse existing account at the returned coords
+ */
+async function detectExistingAccountConflict(
+    mgmtClient: CosmosDBManagementClient,
+    accountName: string,
+    channel: Channel,
+): Promise<'cancel' | undefined | { resourceGroup: string; endpoint?: string; location?: string }> {
+    const exists = (await mgmtClient.databaseAccounts.checkNameExists(accountName)).body;
+    if (!exists) {
+        return undefined;
+    }
+
+    // Look up the account in the user's subscription. `list()` enumerates
+    // across resource groups so we don't have to know the RG up-front and can
+    // honor a reuse request even when the user picked a different RG in the UI.
+    let existingInSubscription: { resourceGroup: string; endpoint?: string; location?: string } | undefined;
+    for await (const account of mgmtClient.databaseAccounts.list()) {
+        if (account.name?.toLowerCase() === accountName.toLowerCase() && account.id) {
+            existingInSubscription = {
+                resourceGroup: getResourceGroupFromId(account.id),
+                endpoint: account.documentEndpoint,
+                location: account.location,
+            };
+            break;
+        }
+    }
+
+    if (!existingInSubscription) {
+        // Conflict is in another subscription/tenant — the user cannot reuse it.
+        const errorMessage = l10n.t(
+            'A Cosmos DB account named "{0}" already exists in another Azure subscription. Account names must be globally unique; please choose a different name.',
+            accountName,
+        );
+        await sendPhaseEvent(channel, 'accountProvisioningError', [errorMessage]);
+        return 'cancel';
+    }
+
+    const reuseItem: vscode.MessageItem = { title: l10n.t('Reuse Account') };
+    const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+    const choice = await vscode.window.showWarningMessage(
+        l10n.t(
+            'A Cosmos DB account named "{0}" already exists in resource group "{1}". Reuse it, or cancel and choose a different name?',
+            accountName,
+            existingInSubscription.resourceGroup,
+        ),
+        { modal: true },
+        reuseItem,
+        cancelItem,
+    );
+
+    if (choice !== reuseItem) {
+        await sendPhaseEvent(channel, 'accountProvisioningCancelled');
+        return 'cancel';
+    }
+
+    return existingInSubscription;
+}
 
 /**
  * Silently assigns post-provisioning RBAC roles to the signed-in user:
@@ -1261,6 +1395,17 @@ async function assignRbacAfterProvisioning(
     // successfully and the user can always assign missing roles manually.
     const dataPlanePromise = (async () => {
         try {
+            // Skip the create call if the role is already assigned (e.g.
+            // when reusing an existing account). Saves an ARM round-trip
+            // and avoids creating a duplicate assignment with a fresh UUID.
+            if (
+                await hasDataContributorRoleAssignment(accountName, principalId, resourceGroup, context, subscription)
+            ) {
+                ext.outputChannel.appendLog(
+                    `[Migration] Principal ${principalId} already has the Data Contributor role on account ${accountName}; skipping assignment.`,
+                );
+                return;
+            }
             await addRbacContributorPermission(accountName, principalId, resourceGroup, context, subscription);
             ext.outputChannel.appendLog(
                 `[Migration] Successfully assigned Data Contributor role to principal ${principalId} on account ${accountName}.`,
@@ -1288,6 +1433,12 @@ async function assignRbacAfterProvisioning(
 
     const controlPlanePromise = (async () => {
         try {
+            if (await hasCosmosDBOperatorRoleAssignment(principalId, resourceGroup, context, subscription)) {
+                ext.outputChannel.appendLog(
+                    `[Migration] Principal ${principalId} already has the Cosmos DB Operator role on resource group ${resourceGroup}; skipping assignment.`,
+                );
+                return;
+            }
             await addCosmosDBOperatorRoleAssignment(principalId, resourceGroup, context, subscription);
             ext.outputChannel.appendLog(
                 `[Migration] Successfully assigned Cosmos DB Operator role to principal ${principalId} on resource group ${resourceGroup}.`,

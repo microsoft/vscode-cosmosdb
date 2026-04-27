@@ -37,6 +37,12 @@ import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
  */
 const COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID = '230815da-be43-4aae-9cb4-875f7bd000aa';
 
+/**
+ * Built-in "Cosmos DB Built-in Data Contributor" data-plane role definition ID.
+ * Predefined by the service; identical for every Cosmos DB account.
+ */
+const COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID = '00000000-0000-0000-0000-000000000002';
+
 export async function ensureRbacPermissionV2(
     fullId: string,
     subscription: AzureSubscription,
@@ -127,7 +133,7 @@ export async function addRbacContributorPermission(
     context: IActionContext,
     subscription: AzureSubscription,
 ): Promise<string | undefined> {
-    const defaultRoleId = '00000000-0000-0000-0000-000000000002'; // this is a predefined role with read and write access to data plane resources
+    const defaultRoleId = COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID;
     const fullAccountId = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${databaseAccount}`;
 
     const createUpdateSqlRoleAssignmentParameters: SqlRoleAssignmentCreateUpdateParameters = {
@@ -135,14 +141,6 @@ export async function addRbacContributorPermission(
         roleDefinitionId: fullAccountId + '/sqlRoleDefinitions/' + defaultRoleId,
         scope: fullAccountId,
     };
-
-    /*
-    // TODO: find a better way to check if a role assignment for the current user already exists,
-    // iterating over all role assignments and definitions is not efficient.
-    const rbac = client.sqlResources.listSqlRoleAssignments(resourceGroup, databaseAccount)
-    for await (const role of rbac) {
-        console.log(role);
-    }*/
 
     const roleAssignmentId = randomUUID();
     const client = await createCosmosDBClient(context, subscription);
@@ -154,6 +152,36 @@ export async function addRbacContributorPermission(
     );
 
     return create.id;
+}
+
+/**
+ * Returns true when `principalId` already holds the built-in
+ * "Cosmos DB Built-in Data Contributor" role on the given account.
+ *
+ * Lists existing data-plane role assignments and matches by principal +
+ * role definition ID. Used to skip a redundant create call when reusing
+ * an existing account during provisioning.
+ */
+export async function hasDataContributorRoleAssignment(
+    databaseAccount: string,
+    principalId: string,
+    resourceGroup: string,
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<boolean> {
+    const fullAccountId = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${databaseAccount}`;
+    const expectedRoleDefinitionId = `${fullAccountId}/sqlRoleDefinitions/${COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID}`;
+    const client = await createCosmosDBClient(context, subscription);
+
+    for await (const assignment of client.sqlResources.listSqlRoleAssignments(resourceGroup, databaseAccount)) {
+        if (
+            assignment.principalId === principalId &&
+            assignment.roleDefinitionId?.toLowerCase() === expectedRoleDefinitionId.toLowerCase()
+        ) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -202,4 +230,35 @@ export async function addCosmosDBOperatorRoleAssignment(
         }
         throw error;
     }
+}
+
+/**
+ * Returns true when `principalId` already holds the built-in
+ * "Cosmos DB Operator" Azure RBAC role at the given resource group scope
+ * (or inherited from a parent scope, e.g. the subscription).
+ *
+ * Used to skip a redundant create call when reusing an existing account.
+ */
+export async function hasCosmosDBOperatorRoleAssignment(
+    principalId: string,
+    resourceGroup: string,
+    context: IActionContext,
+    subscription: AzureSubscription,
+): Promise<boolean> {
+    const resourceGroupScope = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}`;
+    const expectedRoleDefinitionSuffix = `/providers/Microsoft.Authorization/roleDefinitions/${COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID}`;
+
+    const subContext = createSubscriptionContext(subscription);
+    const authClient = await createAuthorizationManagementClient([context, subContext]);
+
+    // `atScope()` returns assignments at this scope or any parent scope so we
+    // also detect roles inherited from the subscription/management group.
+    for await (const assignment of authClient.roleAssignments.listForScope(resourceGroupScope, {
+        filter: `atScope() and assignedTo('${principalId}')`,
+    })) {
+        if (assignment.roleDefinitionId?.toLowerCase().endsWith(expectedRoleDefinitionSuffix.toLowerCase())) {
+            return true;
+        }
+    }
+    return false;
 }

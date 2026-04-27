@@ -39,6 +39,7 @@ import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
 import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
+import { CosmosDBShellMcpHost, getCosmosDBShellMcpEndpoint } from './cosmosDBShellMcpEndpoint';
 
 // Track the connection string associated with each open Cosmos DB Shell terminal.
 // An empty string indicates a terminal launched via the command palette that has not
@@ -561,13 +562,13 @@ function isPortReachable(port: string): Promise<boolean> {
             socket.destroy();
             resolve(false);
         });
-        socket.connect(parseInt(port, 10), '127.0.0.1');
+        socket.connect(parseInt(port, 10), CosmosDBShellMcpHost);
     });
 }
 
 function isMcpShellServer(port: string): Promise<boolean> {
     return new Promise((resolve) => {
-        const req = http.get(`http://127.0.0.1:${port}/sse`, { timeout: 3000 }, (res) => {
+        const req = http.get(`${getCosmosDBShellMcpEndpoint(port)}/sse`, { timeout: 3000 }, (res) => {
             const contentType = res.headers['content-type'] ?? '';
             res.destroy();
             resolve(contentType.startsWith('text/event-stream'));
@@ -720,7 +721,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
                     return [
                         new vscode.McpHttpServerDefinition(
                             McpServerName,
-                            vscode.Uri.parse(`http://localhost:${mcpPort}`),
+                            vscode.Uri.parse(getCosmosDBShellMcpEndpoint(mcpPort)),
                             {
                                 API_VERSION: '1.0.0',
                             },

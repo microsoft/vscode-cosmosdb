@@ -249,17 +249,33 @@ jobs:
                   ${{ github.event.pull_request.title }}
                   '@
                       if (-not $prNumber) {
-                          try {
-                              $prJson = gh api "repos/$repo/commits/$sha/pulls" --jq '[.[] | select(.state == "open")] | first | {number, title}' 2>$null
-                              if ($LASTEXITCODE -eq 0 -and $prJson) {
-                                  $pr = $prJson | ConvertFrom-Json
-                                  if ($pr -and $pr.number) {
-                                      $prNumber = "$($pr.number)"
-                                      $prTitle = $pr.title
+                          # /commits/{sha}/pulls is eventually consistent — the PR <-> commit
+                          # association can lag a few seconds after a push. Retry briefly.
+                          $headers = @{
+                              Authorization          = "Bearer $env:GH_TOKEN"
+                              Accept                 = 'application/vnd.github+json'
+                              'X-GitHub-Api-Version' = '2022-11-28'
+                              'User-Agent'           = 'vscode-cosmosdb-ci'
+                          }
+                          $apiUrl = "${serverUrl}/api/v3/repos/$repo/commits/$sha/pulls"
+                          if ($serverUrl -eq 'https://github.com') {
+                              $apiUrl = "https://api.github.com/repos/$repo/commits/$sha/pulls"
+                          }
+
+                          for ($attempt = 1; $attempt -le 3; $attempt++) {
+                              try {
+                                  $prs = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
+                                  $openPr = @($prs | Where-Object { $_.state -eq 'open' })[0]
+                                  if ($openPr) {
+                                      $prNumber = "$($openPr.number)"
+                                      $prTitle = $openPr.title
+                                      break
                                   }
+                                  Write-Output "ℹ️ Attempt ${attempt}: no open PR found for $sha yet."
+                              } catch {
+                                  Write-Output "⚠️ Attempt ${attempt}: PR lookup failed: $_"
                               }
-                          } catch {
-                              Write-Output "⚠️ Could not look up PR for commit ${sha}: $_"
+                              if ($attempt -lt 3) { Start-Sleep -Seconds 3 }
                           }
                       }
 
@@ -303,6 +319,8 @@ jobs:
                       if ($unitTestResult -ne "success" -or $integrationTestResult -ne "success") {
                           exit 1
                       }
+                      exit 0
                   } else {
                       Write-Output "⚠️ Skipping job summary - VSIX verification did not complete"
+                      exit 0
                   }

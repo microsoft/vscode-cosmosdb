@@ -697,8 +697,12 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             accountProvisioningState: target?.endpoint ? 'complete' : 'available',
                             accountProvisioningProgress: null,
                             accountProvisioningError: null,
-                            connectionVerified: false,
-                            connectionTestState: discoveryComplete ? 'available' : 'locked',
+                            connectionVerified: target?.verified ?? false,
+                            connectionTestState: target?.verified
+                                ? 'complete'
+                                : discoveryComplete
+                                  ? 'available'
+                                  : 'locked',
                             provisioningState: data.hasSampleData ? 'complete' : 'locked',
                             provisioningProgress: null,
                             provisioningError: null,

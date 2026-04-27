@@ -1300,7 +1300,7 @@ export class MigrationAssistantTab extends BaseTab {
             },
         );
 
-        await provisionAccount(
+        const endpoint = await provisionAccount(
             {
                 project: this.project,
                 projectService: this.projectService,
@@ -1312,6 +1312,12 @@ export class MigrationAssistantTab extends BaseTab {
             this.selectedSubscription,
             this.accountProvisioningCancellation.token,
         );
+
+        // If provisioning succeeded, automatically run a connection test so the user
+        // doesn't need a separate "Test Connection" click for the provision flow.
+        if (endpoint && !this.accountProvisioningCancellation.token.isCancellationRequested) {
+            await this.testConnection();
+        }
     }
 
     private cancelProvisioning(): void {

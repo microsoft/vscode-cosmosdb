@@ -2025,7 +2025,7 @@ function MigrationAssistantInner() {
                                             <>
                                                 {state.connectionTestState === 'in-progress' ? (
                                                     <ProgressBar />
-                                                ) : (
+                                                ) : state.targetType === 'provision' ? null : (
                                                     <Button
                                                         appearance="primary"
                                                         size="small"
@@ -2034,8 +2034,7 @@ function MigrationAssistantInner() {
                                                         disabled={
                                                             isPhase4Disabled ||
                                                             !state.targetType ||
-                                                            (state.targetType === 'azure' && !state.targetEndpoint) ||
-                                                            (state.targetType === 'provision' && !state.targetEndpoint)
+                                                            (state.targetType === 'azure' && !state.targetEndpoint)
                                                         }
                                                     >
                                                         {l10n.t('Test Connection')}

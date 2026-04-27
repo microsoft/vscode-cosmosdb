@@ -49,10 +49,10 @@ export const QueryMonaco = () => {
 
     const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
         // Do NOT call dispatcher.insertText() here — that sends updateQueryText
-        // to the server, which overwrites the initial query (e.g. a suggested
-        // query passed via side-by-side open) with the default value before the
-        // init response arrives. The editor value is already driven by
-        // state.queryValue via the controlled `value` prop.
+        // to the server, which overwrites the server-side initial query with the
+        // default value. The editor already renders the correct text because
+        // __WEBVIEW_INITIAL_STATE__.initialQuery is read into defaultState at
+        // module load time, so state.queryValue is correct from the first render.
 
         // Set up cursor selection event listener
         disposableRef.current = editor.onDidChangeCursorSelection((event) => {

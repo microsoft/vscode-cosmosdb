@@ -91,6 +91,7 @@ export interface MigrationState {
     targetSubscriptionName: string;
     targetResourceGroup: string;
     targetLocation: string;
+    availableLocations: { name: string; displayName: string }[];
     accountProvisioningState: PhaseState;
     accountProvisioningProgress: string | null;
     accountProvisioningError: string | null;
@@ -186,6 +187,7 @@ export type MigrationAction =
     | { type: 'SET_TARGET_SUBSCRIPTION'; payload: { id: string; name: string } }
     | { type: 'SET_TARGET_RESOURCE_GROUP'; payload: string }
     | { type: 'SET_TARGET_LOCATION'; payload: string }
+    | { type: 'SET_AVAILABLE_LOCATIONS'; payload: { name: string; displayName: string }[] }
     | { type: 'SET_ACCOUNT_PROVISIONING_STATE'; payload: PhaseState }
     | { type: 'SET_ACCOUNT_PROVISIONING_PROGRESS'; payload: string | null }
     | { type: 'SET_ACCOUNT_PROVISIONING_ERROR'; payload: string | null }
@@ -265,6 +267,7 @@ const initialState: MigrationState = {
     targetSubscriptionName: '',
     targetResourceGroup: '',
     targetLocation: 'eastus',
+    availableLocations: [],
     accountProvisioningState: 'locked',
     accountProvisioningProgress: null,
     accountProvisioningError: null,
@@ -458,6 +461,8 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
             return { ...state, targetResourceGroup: action.payload };
         case 'SET_TARGET_LOCATION':
             return { ...state, targetLocation: action.payload };
+        case 'SET_AVAILABLE_LOCATIONS':
+            return { ...state, availableLocations: action.payload };
         case 'SET_ACCOUNT_PROVISIONING_STATE':
             return { ...state, accountProvisioningState: action.payload };
         case 'SET_ACCOUNT_PROVISIONING_PROGRESS':
@@ -760,6 +765,12 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     dispatch({ type: 'SET_TARGET_LOCATION', payload: data.location });
                 },
             ),
+        );
+
+        disposables.push(
+            channel.on('locationsList', (locations: { name: string; displayName: string }[]) => {
+                dispatch({ type: 'SET_AVAILABLE_LOCATIONS', payload: locations });
+            }),
         );
 
         disposables.push(

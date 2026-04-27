@@ -329,6 +329,10 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.selectAccount();
             case 'selectResourceGroup':
                 return this.selectResourceGroup();
+            case 'listCosmosDBLocations':
+                return this.listCosmosDBLocations();
+            case 'setTargetLocation':
+                return this.setTargetLocation(payload.params[0] as string);
             case 'testConnection':
                 return this.testConnection();
             case 'provisionAccount':
@@ -1026,20 +1030,24 @@ export class MigrationAssistantTab extends BaseTab {
     ): Promise<void> {
         if (!this.project) return;
 
-        // Merge-only: when a parameter is `undefined`, keep the previously persisted value.
-        // This lets users switch between "Azure account" and "Provision new" without losing
-        // previously selected fields (endpoint, resource group, account name, location, …).
-        // The "Azure Cosmos DB Account" and "Provision new…" options intentionally share
-        // the same `endpoint` property, so a successfully provisioned endpoint is prefilled
+        // Merge-only: when a parameter is `undefined` *or* `null`, keep the previously
+        // persisted value. The webview's `sendCommand` serialises args via JSON, which
+        // converts trailing `undefined` array entries to `null`; treating `null` the
+        // same as `undefined` here ensures partial updates (e.g. account-name-only
+        // edits via `handleAccountNameChange`) don't clobber resource group / endpoint
+        // / location with `null`. This lets users switch between "Azure account" and
+        // "Provision new" without losing previously selected fields. The "Azure Cosmos
+        // DB Account" and "Provision new…" options intentionally share the same
+        // `endpoint` property, so a successfully provisioned endpoint is prefilled
         // when the user switches back to the existing-account option.
         const existing = this.project.phases.targetEnvironment;
         this.project.phases.targetEnvironment = {
             ...existing,
             type,
-            ...(endpoint !== undefined && { endpoint }),
-            ...(resourceGroup !== undefined && { resourceGroup }),
-            ...(accountName !== undefined && { accountName }),
-            ...(location !== undefined && { location }),
+            ...(endpoint !== undefined && endpoint !== null && { endpoint }),
+            ...(resourceGroup !== undefined && resourceGroup !== null && { resourceGroup }),
+            ...(accountName !== undefined && accountName !== null && { accountName }),
+            ...(location !== undefined && location !== null && { location }),
             verified: false,
         };
         await this.saveProject();
@@ -1196,6 +1204,68 @@ export class MigrationAssistantTab extends BaseTab {
                     },
                 ],
             });
+
+            // Best-effort: fetch the full Cosmos DB region list for the chosen
+            // subscription so the webview can populate its location dropdown. A
+            // failure here is non-fatal — the UI will fall back to showing only
+            // the resource group's default location.
+            void this.listCosmosDBLocations();
+        });
+    }
+
+    /**
+     * Lists every Azure region in which Cosmos DB is offered for the currently
+     * selected subscription and posts them to the webview as a `locationsList`
+     * event. Results are sorted by display name.
+     */
+    private async listCosmosDBLocations(): Promise<void> {
+        if (!this.selectedSubscription) return;
+        const subscription = this.selectedSubscription;
+        await callWithTelemetryAndErrorHandling('migration.listCosmosDBLocations', async (context) => {
+            const { createCosmosDBManagementClient } = await import('../utils/azureClients');
+            const mgmtClient = await createCosmosDBManagementClient(context, subscription);
+            // The Cosmos DB regions API returns the region's display label on `name`
+            // (e.g. `East US`) and the canonical short name only as the last segment
+            // of `id` (e.g. `eastus`). The resource group's location is the short
+            // name, so we extract it from the id to map correctly.
+            const locations: { name: string; displayName: string }[] = [];
+            for await (const loc of mgmtClient.locations.list()) {
+                const shortName = loc.id?.split('/').pop();
+                if (shortName) {
+                    locations.push({ name: shortName, displayName: loc.name ?? shortName });
+                }
+            }
+            locations.sort((a, b) => a.displayName.localeCompare(b.displayName));
+            await this.channel.postMessage({
+                type: 'event',
+                name: 'locationsList',
+                params: [locations],
+            });
+        });
+    }
+
+    /**
+     * Persists the user's location selection and refreshes the Bicep export so
+     * the generated `main.bicepparam` reflects the chosen region.
+     */
+    private async setTargetLocation(location: string): Promise<void> {
+        if (!this.project || !location) return;
+        const existing = this.project.phases.targetEnvironment;
+        if (!existing) return;
+        await callWithTelemetryAndErrorHandling('migration.setTargetLocation', async () => {
+            this.project!.phases.targetEnvironment = {
+                ...existing,
+                location,
+            };
+            await this.saveProject();
+            await refineBicepParams(
+                {
+                    project: this.project!,
+                    projectService: this.projectService,
+                    channel: this.channel,
+                },
+                { location },
+            );
         });
     }
 

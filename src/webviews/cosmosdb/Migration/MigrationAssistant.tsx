@@ -667,6 +667,16 @@ function MigrationAssistantInner() {
 
     const handleSelectResourceGroup = useCallback(() => sendCommand('selectResourceGroup'), [sendCommand]);
 
+    const handleLocationChange = useCallback(
+        (_e: unknown, data: OptionOnSelectData) => {
+            const location = data.optionValue;
+            if (!location) return;
+            dispatch({ type: 'SET_TARGET_LOCATION', payload: location });
+            sendCommand('setTargetLocation', location);
+        },
+        [dispatch, sendCommand],
+    );
+
     const handleAccountNameChange = useCallback(
         (value: string) => {
             dispatch({ type: 'SET_TARGET_ACCOUNT_NAME', payload: value });
@@ -1942,13 +1952,35 @@ function MigrationAssistantInner() {
                                                 />
                                             </Field>
                                             <Field label={l10n.t('Location')}>
-                                                <Input
-                                                    size="small"
-                                                    value={state.targetLocation}
-                                                    readOnly
-                                                    placeholder={l10n.t('Determined by the selected resource group')}
-                                                    disabled={isPhase4Disabled}
-                                                />
+                                                {state.availableLocations.length > 0 ? (
+                                                    <Dropdown
+                                                        size="small"
+                                                        value={
+                                                            state.availableLocations.find(
+                                                                (loc) => loc.name === state.targetLocation,
+                                                            )?.displayName ?? state.targetLocation
+                                                        }
+                                                        selectedOptions={[state.targetLocation]}
+                                                        onOptionSelect={handleLocationChange}
+                                                        disabled={isPhase4Disabled}
+                                                    >
+                                                        {state.availableLocations.map((loc) => (
+                                                            <Option key={loc.name} value={loc.name}>
+                                                                {loc.displayName}
+                                                            </Option>
+                                                        ))}
+                                                    </Dropdown>
+                                                ) : (
+                                                    <Input
+                                                        size="small"
+                                                        value={state.targetLocation}
+                                                        readOnly
+                                                        placeholder={l10n.t(
+                                                            'Determined by the selected resource group',
+                                                        )}
+                                                        disabled={isPhase4Disabled}
+                                                    />
+                                                )}
                                             </Field>
                                             {state.bicepGenerated && (
                                                 <Text size={200}>

@@ -1097,6 +1097,20 @@ export async function provisionAccount(
                 throw new Error(accountNameError);
             }
 
+            // A missing resource group or location produces a malformed ARM URL
+            // (e.g. `/resourceGroups//providers/...`) that ARM dispatches to the
+            // generic Microsoft.Resources provider, which rejects the request
+            // with a misleading "InvalidApiVersionParameter" error instead of a
+            // useful "resource group missing" one. Catch this up-front.
+            if (!resourceGroup) {
+                throw new Error(
+                    l10n.t('No resource group selected. Please pick a resource group before provisioning.'),
+                );
+            }
+            if (!location) {
+                throw new Error(l10n.t('No location selected. Please pick a location before provisioning.'));
+            }
+
             // Read the model to determine the capacity mode (serverless vs provisioned)
             let capacityMode: 'serverless' | 'provisioned' = 'serverless';
             try {
@@ -1249,7 +1263,30 @@ export async function provisionAccount(
                 return undefined;
             }
             const errorMessage = error instanceof Error ? error.message : String(error);
-            ext.outputChannel.error(`[Migration] Account provisioning failed: ${errorMessage}`);
+            // ARM SDK errors are `RestError` instances with extra fields that
+            // identify the exact failing request (URL, HTTP method, status,
+            // x-ms-request-id). Surface them so we can tell which call along
+            // the create→poll→GET chain actually failed.
+            const restDetails = (() => {
+                if (!error || typeof error !== 'object') return '';
+                const e = error as {
+                    statusCode?: number;
+                    code?: string;
+                    request?: { url?: string; method?: string };
+                    response?: { status?: number; headers?: { get?: (name: string) => string | undefined } };
+                };
+                const parts: string[] = [];
+                const method = e.request?.method;
+                const url = e.request?.url;
+                if (method || url) parts.push(`${method ?? '?'} ${url ?? '?'}`);
+                const status = e.statusCode ?? e.response?.status;
+                if (status !== undefined) parts.push(`status=${status}`);
+                if (e.code) parts.push(`code=${e.code}`);
+                const requestId = e.response?.headers?.get?.('x-ms-request-id');
+                if (requestId) parts.push(`x-ms-request-id=${requestId}`);
+                return parts.length ? ` [${parts.join(' ')}]` : '';
+            })();
+            ext.outputChannel.error(`[Migration] Account provisioning failed: ${errorMessage}${restDetails}`);
             await sendPhaseEvent(channel, 'accountProvisioningError', [errorMessage]);
             return undefined;
         }

@@ -247,17 +247,40 @@ chore: remove now-redundant ColumnOptions.TruncateValues from object path
 
 ---
 
-## Open questions
+## Resolved design decisions
 
-1. **`TableRecord[key]: unknown`** — downstream React components currently read
-   cell values as `string`. Need to audit `ResultPanel` / `DataGrid` usage and
-   add `toStringUniversal` calls at render time.
+### 1. `TableRecord[key]: unknown` — safe to change ✅
 
-2. **`SELECT VALUE { ... }`** returns objects but `getQueryColumns` returns
-   `null` (spec is `SelectValueSpec`). Should `getQueryColumns` be extended to
-   handle `ObjectCreateScalarExpression` and return the property names?
+`ResultTabViewTable` already wraps each `TableRecord` as `__rawData` in a
+`GridRow` and calls `toStringUniversal(value)` at render time (line 131).
+`csvConverter.ts` already has `typeof value === 'string'` guard.
 
-3. **Partition key injection** for `SELECT c.id, c.name` (SelectListSpec):
-   should we still inject the partition key virtual column, or only for
-   `SELECT *`?
+**Action:** remove pre-serialisation from `getTableDataset`. Change index
+signature to `[key: string]: unknown`. Zero UI changes required.
+
+### 2. Extend `getQueryColumns` for `SELECT VALUE { ... }` ✅
+
+`SELECT VALUE { "x": c.id, "y": c.name }` produces objects with static keys.
+The AST `ObjectCreateScalarExpression.properties[].name.value` is always a
+string literal — names are statically knowable.
+
+**Action:** add a `SelectValueSpec` branch to `getQueryColumns`:
+```typescript
+if (spec.kind === 'SelectValueSpec') {
+    if (spec.expression.kind === 'ObjectCreateScalarExpression') {
+        return spec.expression.properties.map((p) => p.name.value);
+    }
+    return null; // scalar / array / function → primitive path
+}
+```
+This also allows `getQueryKind` to return `'object'` for `SELECT VALUE { ... }`.
+
+### 3. Partition key injection — only for `SELECT *` ✅
+
+For `SELECT c.id, c.name FROM c` the partition key field is absent from results.
+Injecting a virtual PK column would show `undefined` for all rows — useless.
+
+**Action:** `ShowPartitionKey: 'first'` is only set when `getQueryKind` returns
+`'object'` AND the spec is `SelectStarSpec`. For `SelectListSpec` and
+`SelectValueSpec` → always `'none'`.
 

@@ -69,7 +69,7 @@ The database schema files provided are of type: ${schemaTypes}
 
 If you cannot determine a field, return an empty string "" (or an empty array [] for frameworks). Do NOT use "Unknown" or placeholder values.
 
-Respond ONLY with a JSON object in this exact format:
+Your FINAL response must be ONLY a JSON object in this exact format:
 {
   "projectName": "string",
   "projectType": "string",

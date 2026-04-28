@@ -100,7 +100,7 @@ IMPORTANT:
 - Every container in the model MUST have a corresponding entry in the output
 - Every entity type within a container must have at least 3 sample documents
 - Document field names must use camelCase matching the "target" attributes in the model
-- Respond ONLY with the JSON object, no additional text`,
+- Your FINAL response must be ONLY the JSON object, no additional text`,
                 ),
             ),
             vscpp(

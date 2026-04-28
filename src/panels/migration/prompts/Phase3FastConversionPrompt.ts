@@ -253,7 +253,7 @@ IMPORTANT:
 - Do NOT include partition key candidates, scores, or analysis text in the model JSON — include candidate evaluation details in the summary under "Partition Key Decisions" instead. The model JSON partitionKeys entries should contain only the final "path".
 - Include indexingPolicy on every container
 - Include maxThroughput (autoscale max RU/s) on every container
-- Respond ONLY with the JSON object`,
+- Your FINAL response must be ONLY the JSON object`,
                 ),
             ),
             vscpp(

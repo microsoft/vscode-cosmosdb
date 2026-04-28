@@ -94,7 +94,7 @@ added to each container:
     "fullTextIndexes": [{ "path": "/description" }]
   }
 
-IMPORTANT: Respond ONLY with the JSON object.`,
+IMPORTANT: Your FINAL response must be ONLY the JSON object.`,
                 ),
             ),
             vscpp(

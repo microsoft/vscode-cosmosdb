@@ -61,7 +61,7 @@ Respond with a JSON object:
   "summary": "string - overall migration assessment summary"
 }
 
-IMPORTANT: Respond ONLY with the JSON object.`,
+IMPORTANT: Your FINAL response must be ONLY the JSON object.`,
                 ),
             ),
             vscpp(

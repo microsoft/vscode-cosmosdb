@@ -146,7 +146,7 @@ IMPORTANT:
 - Entities with isEmbeddedOnly=true do NOT need the partition key attribute
 - Do NOT recommend HPK unless the workload clearly benefits from it
 - Partition keys are immutable — once a container is created, its partition key cannot be changed. To change the partition key configuration, a new container must be created with the desired partition key, the data copied over, and application code updated. Flag this as a critical design consideration in the analysis.
-- Respond ONLY with the JSON object.`,
+- Your FINAL response must be ONLY the JSON object.`,
                 ),
             ),
             vscpp(

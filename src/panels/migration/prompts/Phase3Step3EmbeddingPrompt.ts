@@ -81,7 +81,7 @@ The "updatedModel" field should be the COMPLETE cosmos-model.json with each rela
     "rationale": "Embedded because parent and child are always read together..."
   }
 
-IMPORTANT: Respond ONLY with the JSON object.`,
+IMPORTANT: Your FINAL response must be ONLY the JSON object.`,
                 ),
             ),
             vscpp(

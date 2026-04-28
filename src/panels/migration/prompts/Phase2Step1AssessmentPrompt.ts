@@ -144,7 +144,7 @@ Respond with a JSON object in EXACTLY this format:
   ]
 }
 
-IMPORTANT: Respond ONLY with the JSON object. Do not wrap it in a code block.`,
+IMPORTANT: Your FINAL response must be ONLY the JSON object. Do not wrap it in a code block.`,
                 ),
             ),
             vscpp(

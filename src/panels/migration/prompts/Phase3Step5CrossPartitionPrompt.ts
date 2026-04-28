@@ -94,7 +94,7 @@ Example structure:
 If no cross-partition queries are identified, state that all queries are
 well-aligned with their partition keys.
 
-IMPORTANT: Respond ONLY with the markdown content, no JSON wrapping, no code fences.
+IMPORTANT: Your FINAL response must be ONLY the markdown content, no JSON wrapping, no code fences.
 Your response MUST begin with a Markdown heading (\`#\`). Do not include any preamble,
 thinking, or commentary before the heading.`,
                 ),

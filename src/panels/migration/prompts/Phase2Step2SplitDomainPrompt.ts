@@ -60,7 +60,7 @@ export class Phase2Step2SplitDomainPrompt extends PromptElement<Phase2Step2Split
                         `      "name": "string",\n      "description": "string",\n` +
                         `      "tables": ["table1", "table2"],\n` +
                         `      "rationale": "string",\n      "aggregateRoot": "string"\n` +
-                        `    }\n  ]\n}\n\nIMPORTANT: Respond ONLY with the JSON object.`,
+                        `    }\n  ]\n}\n\nIMPORTANT: Your FINAL response must be ONLY the JSON object.`,
                 ),
             ),
         );

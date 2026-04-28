@@ -96,7 +96,7 @@ After your investigation, respond with ONLY a JSON object in this format:
 }
 
 IMPORTANT:
-- Respond ONLY with the JSON object after you have finished your investigation.
+- Your FINAL response must be ONLY the JSON object after you have finished your investigation.
 - Do not wrap it in a code block.
 - If you find at least one clear reference to any table in this domain, set isMapped to true.
 - If no references are found after a thorough search, set isMapped to false.`,

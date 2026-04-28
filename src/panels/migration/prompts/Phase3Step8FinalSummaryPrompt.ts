@@ -142,7 +142,7 @@ Respond with a JSON object in EXACTLY this format (no markdown, no code fences).
   "modelModified": true
 }
 
-IMPORTANT: Respond ONLY with the JSON object. Because you must always set
+IMPORTANT: Your FINAL response must be ONLY the JSON object. Because you must always set
 \`databaseName\`, the model is always modified — always include the full model.`,
                 ),
             ),

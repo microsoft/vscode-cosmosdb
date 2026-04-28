@@ -96,7 +96,7 @@ Example structure:
 
 **Notes:** With embedded order items, the JOIN is eliminated.
 
-IMPORTANT: Respond ONLY with the markdown content, no JSON wrapping, no code fences.
+IMPORTANT: Your FINAL response must be ONLY the markdown content, no JSON wrapping, no code fences.
 Your response MUST begin with a Markdown heading (\`#\`). Do not include any preamble,
 thinking, or commentary before the heading.`,
                 ),

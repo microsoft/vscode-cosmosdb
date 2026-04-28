@@ -105,7 +105,7 @@ IMPORTANT:
 - The "sourceTable" should use the fully-qualified name (schema.table)
 - Include an "id" attribute mapped from the primary key with "isId": true
 - Do NOT include relationships, accessPatterns, or crossPartitionQueries — those are handled by subsequent steps
-- Respond ONLY with the JSON object`,
+- Your FINAL response must be ONLY the JSON object`,
                 ),
             ),
             vscpp(

@@ -50,12 +50,12 @@ export function getSelectedModel(options?: GetSelectedModelOptions): Promise<vsc
  * files are loaded as overrides — enabling rapid prompt iteration at
  * runtime without recompilation.
  *
- * Controlled by the hidden setting `azureDatabases.migration.debugPrompts`
+ * Controlled by the hidden setting `cosmosDB.migration.debugPrompts`
  * (not registered in `package.json` — edit `settings.json` directly to enable).
  * Defaults to `false` for production use.
  */
 export function isDebugPromptsEnabled(): boolean {
-    return vscode.workspace.getConfiguration('azureDatabases').get<boolean>('migration.debugPrompts', false);
+    return vscode.workspace.getConfiguration('cosmosDB').get<boolean>('migration.debugPrompts', false);
 }
 
 /**

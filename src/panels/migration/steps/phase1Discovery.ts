@@ -293,6 +293,11 @@ async function generateDiscoveryReport(
     const customToolNames = new Set(customTools.map((t) => t.name));
     const tools = [...getRegisteredChatTools(customToolNames), ...customTools];
     ext.outputChannel.appendLog(`[Discovery] Tools (${tools.length}):\n${tools.map((t) => `  ${t.name}`).join('\n')}`);
+    ext.outputChannel.debug(
+        `[Discovery] Report generation: schemaFiles=${schemaFiles.length}, ` +
+            `accessPatternFiles=${accessPatternFiles.length}, volumetricFiles=${volumetricFiles.length}`,
+    );
+    const reportStartTime = Date.now();
     const executeToolCall = createToolExecutor(
         { schemaFiles, accessPatternFiles },
         '[Discovery]',
@@ -354,6 +359,11 @@ async function generateDiscoveryReport(
     );
 
     if (token.isCancellationRequested || !fullText.trim()) return;
+
+    ext.outputChannel.debug(
+        `[Discovery] Report generation completed in ${Date.now() - reportStartTime}ms, ` +
+            `responseLength=${fullText.length} chars`,
+    );
 
     // Save discovery report (strip any LLM preamble before the first heading)
     const outputPath = path.join(discoveryDir, 'discovery-report.md');
@@ -509,6 +519,11 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
             const schemaFileTypes = [
                 ...new Set(schemaFiles.map((f) => path.extname(f).replace('.', '')).filter(Boolean)),
             ];
+            ext.outputChannel.debug(
+                `[Discovery] Application analysis: ${schemaFiles.length} schema files ` +
+                    `(types: ${schemaFileTypes.join(', ') || 'none'})`,
+            );
+            const analysisStartTime = Date.now();
             let schemaContext = '';
             for (const file of schemaFiles.slice(0, SCHEMA_PREVIEW_FILE_LIMIT)) {
                 try {
@@ -535,6 +550,13 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
                 'Analysis',
                 undefined,
                 mkDebug('step1-analysis'),
+            );
+
+            ext.outputChannel.debug(
+                `[Discovery] Application analysis completed in ${Date.now() - analysisStartTime}ms: ` +
+                    `language=${analysis.language ?? 'unknown'}, ` +
+                    `frameworks=[${(analysis.frameworks ?? []).join(', ')}], ` +
+                    `databaseType=${analysis.databaseType ?? 'unknown'}`,
             );
 
             // Update project.json

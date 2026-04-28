@@ -220,6 +220,13 @@ export async function renderWithDebug(
         inputTokenCount += Math.ceil(SYSTEM_DEFENSE_RULES.length / 4);
     }
 
+    ext.outputChannel.debug(
+        `[Migration] renderWithDebug: ${messages.length} messages, ` +
+            `inputTokenCount=${inputTokenCount}, budget=${model.maxInputTokens} ` +
+            `(${Math.round((inputTokenCount / model.maxInputTokens) * 100)}%)` +
+            (debugConfig ? `, step="${debugConfig.stepName}"` : ''),
+    );
+
     return { messages, inputTokenCount };
 }
 
@@ -236,6 +243,12 @@ async function runPromptFromMessages(
     inputTokenCount: number,
     modelOptions?: Record<string, unknown>,
 ): Promise<string> {
+    ext.outputChannel.debug(
+        `[Migration] ${label}: sending ${messages.length} messages to model="${model.name}" (${model.family}), ` +
+            `inputTokenCount=${inputTokenCount}`,
+    );
+    const startTime = Date.now();
+
     const response = await model.sendRequest(
         messages,
         { modelOptions: { ...DEFAULT_MODEL_OPTIONS, ...modelOptions } },
@@ -246,6 +259,11 @@ async function runPromptFromMessages(
         if (token.isCancellationRequested) throw new vscode.CancellationError();
         fullText += chunk;
     }
+
+    const elapsed = Date.now() - startTime;
+    ext.outputChannel.debug(
+        `[Migration] ${label}: response received in ${elapsed}ms, ` + `responseLength=${fullText.length} chars`,
+    );
 
     await logLlmTokenUsage(model, {
         caller: `migration.${label}`,
@@ -318,6 +336,10 @@ export async function runPromptWithJsonResult<T>(
     }
 
     const parsed = JSON.parse(jsonString) as T;
+    ext.outputChannel.debug(
+        `[Migration] ${label}: JSON extracted successfully, ` +
+            `keys=[${Object.keys(parsed as Record<string, unknown>).join(', ')}]`,
+    );
 
     if (isDebugPromptsEnabled() && debugConfig) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, JSON.stringify(parsed, null, 2), 'json');
@@ -376,6 +398,10 @@ export async function runAgenticLoopWithJsonResult<T>(
     }
 
     const parsed = JSON.parse(jsonString) as T;
+    ext.outputChannel.debug(
+        `[Migration] ${label}: JSON extracted successfully (agentic), ` +
+            `keys=[${Object.keys(parsed as Record<string, unknown>).join(', ')}]`,
+    );
 
     if (isDebugPromptsEnabled() && debugConfig) {
         await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, JSON.stringify(parsed, null, 2), 'json');
@@ -431,6 +457,13 @@ export async function runAgenticLoop(
     debugConfig?: DebugPromptConfig,
     toolSystemMessage?: string | null,
 ): Promise<AgenticLoopResult> {
+    ext.outputChannel.debug(
+        `[Migration] ${label}: agentic loop starting — model="${model.name}" (${model.family}), ` +
+            `tools=[${tools.map((t) => t.name).join(', ')}], maxRounds=${maxRounds}, ` +
+            `initialMessages=${messages.length}`,
+    );
+    const loopStartTime = Date.now();
+
     if (tools.length > 0 && (toolSystemMessage ?? DEFAULT_TOOL_SYSTEM_PROMPT)) {
         // Insert the tool-system message after the defense-rules message (index 0)
         // so `SYSTEM_DEFENSE_RULES` stays at the top — it declares itself as the
@@ -454,6 +487,8 @@ export async function runAgenticLoop(
         if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
         totalRounds = round + 1;
 
+        const roundStartTime = Date.now();
+
         // Count input tokens for this round (full messages array sent to the model)
         try {
             lastRoundInputTokens = 0;
@@ -464,6 +499,11 @@ export async function runAgenticLoop(
         } catch {
             // Token counting may fail; don't block the workflow
         }
+
+        ext.outputChannel.debug(
+            `[Migration] ${label}: round ${round + 1}/${maxRounds} — ` +
+                `messages=${messages.length}, inputTokens=${lastRoundInputTokens}`,
+        );
 
         const response = await model.sendRequest(
             messages,
@@ -494,6 +534,15 @@ export async function runAgenticLoop(
         }
 
         const isLastRound = toolCalls.length === 0;
+        const roundElapsed = Date.now() - roundStartTime;
+
+        ext.outputChannel.debug(
+            `[Migration] ${label}: round ${round + 1} completed in ${roundElapsed}ms — ` +
+                `toolCalls=${toolCalls.length}` +
+                (toolCalls.length > 0 ? ` [${toolCalls.map((tc) => tc.name).join(', ')}]` : '') +
+                `, textLength=${lastRoundText.length}` +
+                (isLastRound ? ' (final round)' : ''),
+        );
 
         if (onRound && textParts.length > 0) {
             await onRound(round, lastRoundText, isLastRound);
@@ -514,8 +563,13 @@ export async function runAgenticLoop(
         // Execute each tool call and add results
         const toolResults: vscode.LanguageModelToolResultPart[] = [];
         for (const toolCall of toolCalls) {
+            const toolStartTime = Date.now();
             const result = await executeToolCall(toolCall);
-            ext.outputChannel.debug(`[${label}] Tool result for ${toolCall.name}:\n${result}`);
+            const toolElapsed = Date.now() - toolStartTime;
+            ext.outputChannel.debug(
+                `[${label}] Tool ${toolCall.name} completed in ${toolElapsed}ms, ` +
+                    `resultLength=${result.length} chars`,
+            );
             toolResults.push(
                 new vscode.LanguageModelToolResultPart(toolCall.callId, [new vscode.LanguageModelTextPart(result)]),
             );
@@ -568,6 +622,14 @@ export async function runAgenticLoop(
         cumulativeInputTokens,
         cumulativeOutputTokens,
         lastRoundInputTokens,
+    );
+
+    const loopElapsed = Date.now() - loopStartTime;
+    ext.outputChannel.debug(
+        `[Migration] ${label}: agentic loop finished — ` +
+            `rounds=${totalRounds}/${maxRounds}, elapsed=${loopElapsed}ms, ` +
+            `completedNaturally=${String(completedNaturally)}, ` +
+            `responseLength=${lastRoundText.length} chars`,
     );
 
     if (isDebugPromptsEnabled() && debugConfig && lastRoundText) {

@@ -273,6 +273,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                 `[Assessment] Selected model: id="${model.id}", name="${model.name}", maxInputTokens=${model.maxInputTokens}`,
             );
 
+            const assessmentStartTime = Date.now();
             await sendPhaseEvent(channel, 'assessmentStarted');
 
             if (token.isCancellationRequested) return;
@@ -315,6 +316,11 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             // 3. Read access pattern files
             const accessPatternsPath = projectService.getAccessPatternsPath(project);
             const accessPatternFiles = await projectService.listFiles(accessPatternsPath);
+            ext.outputChannel.debug(
+                `[Assessment] Input sizes: discoveryReport=${discoveryReport.length} chars, ` +
+                    `DDL=${allDDL.length} chars, schemaFiles=${schemaFiles.length}, ` +
+                    `accessPatternFiles=${accessPatternFiles.length}`,
+            );
             let accessPatternsText = '';
             for (const file of accessPatternFiles) {
                 try {
@@ -398,6 +404,9 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
 
             ext.outputChannel.appendLog(
                 `[Assessment] Step 2: ${domainIdentificationResult.domains.length} domains identified`,
+            );
+            ext.outputChannel.debug(
+                `[Assessment] Domains: ${domainIdentificationResult.domains.map((d) => `${d.name}(${d.tables.length} tables)`).join(', ')}`,
             );
 
             // Assign pre-parsed access patterns to domains based on table overlap
@@ -684,6 +693,8 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                 token,
                 assessmentDebugDir,
             );
+
+            ext.outputChannel.debug(`[Assessment] Total assessment elapsed: ${Date.now() - assessmentStartTime}ms`);
 
             // Update isMapped on domainFiles from mapping results
             for (const df of domainFiles) {

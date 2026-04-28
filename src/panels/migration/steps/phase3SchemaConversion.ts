@@ -655,6 +655,12 @@ export async function runSchemaConversion(
                     domainExhausted = true;
                 };
 
+                const domainStartTime = Date.now();
+                ext.outputChannel.debug(
+                    `[SchemaConversion] Starting domain "${domainName}" (${di + 1}/${filteredDomainFiles.length}), ` +
+                        `inputLength=${domainContent.length} chars, mode=${thoroughAnalysis ? 'thorough' : 'fast'}`,
+                );
+
                 if (thoroughAnalysis) {
                     // ── Thorough mode: 7 sequential sub-steps ────────────
 
@@ -965,6 +971,10 @@ export async function runSchemaConversion(
                 ext.outputChannel.appendLog(
                     `[SchemaConversion] Completed domain "${domainName}" (${di + 1}/${domainFiles.length})`,
                 );
+                ext.outputChannel.debug(
+                    `[SchemaConversion] Domain "${domainName}" finished in ${Date.now() - domainStartTime}ms` +
+                        (domainExhausted ? ' (rounds exhausted in one or more sub-steps)' : ''),
+                );
             }
 
             if (token.isCancellationRequested) return;
@@ -1028,6 +1038,13 @@ export async function runSchemaConversion(
             const finalMkDebug = createMkDebug(isDebugPromptsEnabled(), finalDebugDir);
             const finalDebugConfig = finalMkDebug('step8-final-summary');
 
+            ext.outputChannel.debug(
+                `[SchemaConversion] Generating final summary: ` +
+                    `${domainModels.length} domain models, ${merged.containers.length} merged containers, ` +
+                    `${conflicts.length} conflicts`,
+            );
+            const finalSummaryStartTime = Date.now();
+
             let finalExhausted = false;
             const finalResult = await runFinalSummary(
                 model,
@@ -1074,6 +1091,10 @@ export async function runSchemaConversion(
 
             ext.outputChannel.appendLog(
                 `[SchemaConversion] Final model saved: ${deploymentModel.containers.length} containers`,
+            );
+            ext.outputChannel.debug(
+                `[SchemaConversion] Final summary generated in ${Date.now() - finalSummaryStartTime}ms, ` +
+                    `modelModified=${String(finalResult.modelModified)}`,
             );
 
             // Generate the Bicep export artifact alongside `model.json`. The two

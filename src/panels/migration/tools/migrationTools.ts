@@ -281,13 +281,43 @@ export function createToolExecutor(
 
     return async (toolCall: vscode.LanguageModelToolCallPart): Promise<string> => {
         const input = toolCall.input as Record<string, string>;
+        const tag = logPrefix ?? '[Migration]';
 
         if (logPrefix) {
             ext.outputChannel.appendLog(
                 `${logPrefix} Tool: ${toolCall.name}, params: ${JSON.stringify(toolCall.input)}`,
             );
+        } else {
+            ext.outputChannel.debug(`${tag} Tool: ${toolCall.name}, params: ${JSON.stringify(toolCall.input)}`);
         }
 
+        const toolStartTime = Date.now();
+        let result: string;
+
+        const finishToolLog = (res: string): string => {
+            const elapsed = Date.now() - toolStartTime;
+            const preview = res.length > 200 ? res.slice(0, 200) + '…' : res;
+            ext.outputChannel.debug(
+                `${tag} Tool ${toolCall.name} result: ${res.length} chars, ${elapsed}ms — ${preview}`,
+            );
+            return res;
+        };
+
+        try {
+            result = await executeToolCallInner(toolCall, input);
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            ext.outputChannel.debug(`${tag} Tool ${toolCall.name} threw: ${message} (${Date.now() - toolStartTime}ms)`);
+            throw e;
+        }
+
+        return finishToolLog(result);
+    };
+
+    async function executeToolCallInner(
+        toolCall: vscode.LanguageModelToolCallPart,
+        input: Record<string, string>,
+    ): Promise<string> {
         switch (toolCall.name) {
             // ── Schema tools ──
             case 'listSchemaFiles': {
@@ -492,12 +522,12 @@ export function createToolExecutor(
             default: {
                 // Fall back to VS Code registered chat tools
                 try {
-                    const result = await vscode.lm.invokeTool(
+                    const vsCodeResult = await vscode.lm.invokeTool(
                         toolCall.name,
                         { input: toolCall.input, toolInvocationToken: undefined },
                         token ?? new vscode.CancellationTokenSource().token,
                     );
-                    return serializeToolResult(result);
+                    return serializeToolResult(vsCodeResult);
                 } catch (e) {
                     const message = e instanceof Error ? e.message : String(e);
                     if (logPrefix) {
@@ -507,5 +537,5 @@ export function createToolExecutor(
                 }
             }
         }
-    };
+    }
 }

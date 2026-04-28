@@ -831,14 +831,27 @@ function resolveTargetConnection(target: NonNullable<ProjectJson['phases']['targ
 }
 
 /**
+ * Sanitize indexing policy paths: replace non-terminal asterisk (invalid array
+ * traversal) with bracket notation. Cosmos DB only accepts /[]/ for array
+ * traversal; asterisk is valid only as the final (terminal) path segment.
+ *
+ * E.g. "/lineItems/STAR/productSnapshot/?" becomes "/lineItems/[]/productSnapshot/?"
+ */
+function sanitizeIndexingPaths(paths: { path: string }[]): { path: string }[] {
+    return paths.map(({ path: p }) => ({
+        path: p.replace(/\/\*\//g, '/[]/'),
+    }));
+}
+
+/**
  * Convert our CosmosModel IndexingPolicy to the @azure/cosmos SDK format.
  */
 function toCosmosIndexingPolicy(policy: NonNullable<IndexingPolicy>): CosmosIndexingPolicy {
     return {
         indexingMode: (policy.indexingMode ?? 'consistent') as CosmosIndexingPolicy['indexingMode'],
         automatic: policy.automatic ?? true,
-        includedPaths: policy.includedPaths,
-        excludedPaths: policy.excludedPaths,
+        includedPaths: sanitizeIndexingPaths(policy.includedPaths),
+        excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),
         compositeIndexes: policy.compositeIndexes,
     };
 }
@@ -976,8 +989,8 @@ function toArmIndexingPolicy(policy: NonNullable<IndexingPolicy>): ArmIndexingPo
     return {
         indexingMode: (policy.indexingMode ?? 'consistent') as ArmIndexingPolicy['indexingMode'],
         automatic: policy.automatic ?? true,
-        includedPaths: policy.includedPaths,
-        excludedPaths: policy.excludedPaths,
+        includedPaths: sanitizeIndexingPaths(policy.includedPaths),
+        excludedPaths: sanitizeIndexingPaths(policy.excludedPaths),
         compositeIndexes: policy.compositeIndexes,
     };
 }

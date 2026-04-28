@@ -138,6 +138,12 @@ For EACH relationship between entities:
 
 ## Step 6: Indexing Policy Design
 
+**MANDATORY:** Before designing indexing policies, you MUST use \`loadSkillSupplementaryFile\` (with
+skillPath \`skills/cosmosdb-best-practices/SKILL.md\`) to load \`rules/index-path-syntax.md\` and any
+other relevant indexing rules (e.g., \`rules/index-exclude-unused.md\`, \`rules/index-composite.md\`,
+\`rules/index-composite-direction.md\`). These contain critical syntax and design constraints —
+failure to follow them produces invalid paths that cause container creation to fail with a BadRequest error.
+
 For EACH container:
 
 - Start with "/*" (index everything), selectively exclude large/unused paths.

@@ -52,6 +52,12 @@ For EACH container in the current cosmos model:
    - Aggregate functions (COUNT, SUM, AVG)
    - Full-text search queries
 
+**MANDATORY:** Before designing indexing policies, you MUST use \`loadSkillSupplementaryFile\` (with
+skillPath \`skills/cosmosdb-best-practices/SKILL.md\`) to load \`rules/index-path-syntax.md\` and any
+other relevant indexing rules (e.g., \`rules/index-exclude-unused.md\`, \`rules/index-composite.md\`,
+\`rules/index-composite-direction.md\`). These contain critical syntax and design constraints —
+failure to follow them produces invalid paths that cause container creation to fail with a BadRequest error.
+
 2. **Design included paths** — Include paths that are frequently queried.
    Start with "/*" (index everything) and selectively exclude large or unused paths.
 

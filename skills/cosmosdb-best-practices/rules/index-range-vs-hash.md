@@ -45,20 +45,23 @@ var indexingPolicy = new IndexingPolicy
 {
     IndexingMode = IndexingMode.Consistent,
     Automatic = true,
-    
+
     // Just specify paths - Cosmos DB handles index types
+    // NOTE on path syntax: /? = scalar, /* = terminal wildcard (everything below),
+    //   /[] = array traversal. NEVER use * mid-path for arrays.
+    //   See index-path-syntax rule for details.
     IncludedPaths =
     {
         new IncludedPath { Path = "/category/?" },    // Equality queries
         new IncludedPath { Path = "/price/?" },       // Range queries
         new IncludedPath { Path = "/createdAt/?" },   // ORDER BY
-        new IncludedPath { Path = "/tags/*" }         // Array elements
+        new IncludedPath { Path = "/tags/*" }         // Terminal wildcard — everything under /tags
     },
-    
+
     ExcludedPaths =
     {
         new ExcludedPath { Path = "/description/?" },  // Large text, not queried
-        new ExcludedPath { Path = "/metadata/*" }      // Nested object, not queried
+        new ExcludedPath { Path = "/metadata/*" }      // Terminal wildcard — everything under /metadata
     }
 };
 ```
@@ -73,7 +76,7 @@ var indexingPolicy = new IndexingPolicy
     {
         new IncludedPath { Path = "/*" }  // Index everything by default
     },
-    
+
     // Composite indexes for multi-property ORDER BY
     CompositeIndexes =
     {
@@ -83,7 +86,7 @@ var indexingPolicy = new IndexingPolicy
             new CompositePath { Path = "/price", Order = CompositePathSortOrder.Descending }
         }
     },
-    
+
     // Spatial indexes for geo queries
     SpatialIndexes =
     {

@@ -7,17 +7,22 @@
  * NOTE: Mostly of these functions are async to be able to move them to backend in the future
  */
 
-import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
-import { parse } from '@cosmosdb/nosql-language-service';
+import { type ItemDefinition, type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
+import { isEmptyObject } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
-import { CosmosDBHiddenFields } from '../constants';
-import {
-    type CosmosDBRecordIdentifier,
-    type QueryResultRecord,
-    type SerializedQueryResult,
-} from '../cosmosdb/types/queryResult';
+import { CosmosDBHiddenFields } from '../cosmosdb/cosmosdb-shared-constants';
+import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey, extractPartitionKeyValues, getDocumentId } from './document';
+import {
+    QueryResultMismatchError,
+    getDocumentCollectionKind,
+    getQueryColumns,
+    getQueryResultKind,
+    isSelectStar,
+} from './queryAnalysis';
+import { sanitizeDisplayString } from './sanitization';
+import { leftPadIndex, toStringUniversal } from './strings';
 
 export type StatsItem = {
     metric: string;
@@ -69,215 +74,14 @@ export type ColumnOptions = {
 
 const MAX_TREE_LEVEL_LENGTH = 100;
 
-export const toStringUniversal = (value: unknown): string => {
-    // Handle null/undefined explicitly
-    if (value === null) return 'null';
-    if (value === undefined) return 'undefined';
-
-    // Handle primitives
-    if (typeof value !== 'object') {
-        // oxlint-disable-next-line typescript/no-base-to-string
-        return String(value);
-    }
-
-    // Handle Error objects - extract message
-    if (value instanceof Error) {
-        return value.message || value.toString();
-    }
-
-    // Try JSON.stringify for objects/arrays
-    try {
-        return JSON.stringify(value, null, 2); // Pretty print with indentation
-    } catch {
-        // Circular reference or other JSON error
-        // Try Object.prototype.toString for better type info
-        const typeString = Object.prototype.toString.call(value);
-
-        // Try to get constructor name
-        try {
-            const constructor = (value as Record<string, unknown>)?.constructor?.name;
-            if (constructor && constructor !== 'Object') {
-                return `[${constructor}]`;
-            }
-        } catch {
-            // Ignore
-        }
-
-        return typeString; // e.g., "[object Array]", "[object Date]"
-    }
-};
-
 /**
- * Checks if a value is a NonePartitionKey (empty object used by Cosmos DB SDK)
+ * Checks if a value is a NonePartitionKey (empty object used by Cosmos DB SDK).
  * NonePartitionKeyLiteral from @azure/cosmos is defined as {} and represents
- * a partition key value for items without a value for partition key
- * @param value The value to check
- * @returns true if the value is a None partition key
+ * a partition key value for items without a value for partition key.
  */
 const isNonePartitionKey = (value: unknown): boolean => {
     return isEmptyObject(value);
 };
-
-/**
- * Checks if a value is an empty object '{}'.
- * @param value The value to check
- * @returns true if the value is an empty object
- */
-const isEmptyObject = (value: unknown): boolean => {
-    return typeof value === 'object' && value !== null && Object.keys(value).length === 0;
-};
-
-/**
- * Truncates a string if it exceeds the specified maximum length.
- * @param value The string to truncate
- * @param maxLength Maximum length of the string (default: MAX_TREE_LEVEL_LENGTH)
- * @param suffix Suffix to append to truncated strings (default: "…")
- * @returns The truncated string with suffix if truncated, or original string
- */
-export const truncateString = (value: string, maxLength = MAX_TREE_LEVEL_LENGTH, suffix = '…'): string => {
-    if (!value) {
-        return '';
-    }
-
-    if (value.length <= maxLength) {
-        return value;
-    }
-
-    return value.substring(0, maxLength - suffix.length) + suffix;
-};
-
-/**
- * Strips C0 and C1 control characters from a string except for common whitespace
- * (tab `\t` and newline `\n` are preserved). Safe to call on any string value
- * before storing it in a table cell.
- */
-export const sanitiseDisplayString = (value: string): string => {
-    // Remove control characters except \t (0x09) and \n (0x0a)
-    // oxlint-disable-next-line no-control-regex
-    return value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
-};
-
-/**
- * Creates a left-padded string representation of an index based on array length
- * @param {number} index - The index to pad
- * @param {Array|number} array - The array or its length to determine padding width
- * @param {string} padChar - Character to use for padding
- * @returns {string} - Padded index string
- */
-function leftPadIndex(index: number, array: unknown[] | number, padChar: string = '0'): string {
-    // Get array length or use the number directly
-    const arrayLength = Array.isArray(array) ? array.length : array;
-
-    // Calculate the number of digits needed
-    const maxDigits = Math.floor(Math.log10(arrayLength - 1) + 1);
-
-    // Convert index to string and add padding
-    return String(index).padStart(maxDigits, padChar);
-}
-
-/**
- * We can retrieve the document id to open it in a separate tab only if record contains {@link CosmosDBRecordIdentifier}
- * We can be 100% sure that all required fields for {@link CosmosDBRecordIdentifier} are present in the record
- * if query has `SELECT *` clause. So we can enable editing only in this case.
- * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
- * '*' is allowed only if the query doesn't have any subset or joins.
- *
- * Uses the AST parser to precisely detect `SELECT *` — avoids false positives
- * from arithmetic expressions like `SELECT c.price * c.qty FROM c`.
- * @param query
- */
-export const isSelectStar = (query: string): boolean => {
-    const { ast } = parse(query);
-    return ast?.query?.select?.spec?.kind === 'SelectStarSpec';
-};
-
-/**
- * Returns the list of column names that a query will produce, or `null` if the
- * number/names of columns cannot be statically determined.
- *
- * - `SELECT *`       → `null`  (all document fields, count unknown)
- * - `SELECT VALUE e` → `null`  (flat scalar array, no named columns)
- * - `SELECT a, b, c` → `['a', 'b', 'c']`
- *
- * Each element is either:
- *  - the `AS` alias string, if present
- *  - the last identifier of a property-ref path (`c.foo.bar` → `'bar'`)
- *  - `null` when the column name cannot be determined statically
- *    (arithmetic, function calls, object literals without alias, etc.)
- *
- * The outer `null` means "we don't know how many columns there will be".
- * An inner `null` means "we know there is a column here, but not its name".
- *
- * @param query - The CosmosDB NoSQL query string
- */
-export const getQueryColumns = (query: string): (string | null)[] | null => {
-    const { ast } = parse(query);
-    const spec = ast?.query?.select?.spec;
-    if (!spec) return null;
-
-    if (spec.kind === 'SelectListSpec') {
-        return spec.items.map((item) => {
-            if (item.alias) {
-                return item.alias.value;
-            }
-            if (item.expression.kind === 'PropertyRefScalarExpression') {
-                return item.expression.identifier.value;
-            }
-            return null;
-        });
-    }
-
-    // SELECT VALUE { "x": expr, "y": expr } → statically-known object keys
-    if (spec.kind === 'SelectValueSpec') {
-        if (spec.expression.kind === 'ObjectCreateScalarExpression') {
-            return spec.expression.properties.map((p) => p.name.value);
-        }
-        return null; // scalar / array / function call → primitive path
-    }
-
-    // SelectStarSpec → column names come from scanning documents
-    return null;
-};
-
-/**
- * What shape of documents a query is statically expected to produce.
- *
- * - `'unknown'`   — no query string, parse error, or cannot determine statically
- * - `'object'`    — SELECT *, SELECT list, SELECT VALUE { ... }
- *                   → each document is a plain object with named keys
- * - `'primitive'` — SELECT VALUE <scalar / array / function>
- *                   → each document is a scalar, null, or array (no named keys)
- */
-export type QueryResultKind = 'unknown' | 'object' | 'primitive';
-
-/**
- * Determines the expected result shape for a CosmosDB NoSQL query by inspecting its AST.
- */
-export const getQueryResultKind = (query: string | undefined | null): QueryResultKind => {
-    if (!query) return 'unknown';
-    const { ast } = parse(query);
-    if (!ast) return 'unknown';
-
-    const spec = ast.query.select.spec;
-    if (spec.kind === 'SelectStarSpec' || spec.kind === 'SelectListSpec') return 'object';
-    if (spec.kind === 'SelectValueSpec') {
-        // { ... } literal → still produces objects
-        if (spec.expression.kind === 'ObjectCreateScalarExpression') return 'object';
-        return 'primitive';
-    }
-    return 'unknown';
-};
-
-/**
- * Thrown when the actual data returned by CosmosDB does not match the shape
- * that the query was statically determined to produce.
- */
-export class QueryResultMismatchError extends Error {
-    constructor(queryKind: QueryResultKind, dataKind: DocumentCollectionKind) {
-        super(`Query expected "${queryKind}" results but received "${dataKind}" data`);
-        this.name = 'QueryResultMismatchError';
-    }
-}
 
 export const queryResultToJSON = (queryResult: SerializedQueryResult | null, selection?: number[]): string => {
     if (!queryResult) {
@@ -432,17 +236,17 @@ const valueToTreeRow = (id: string, field: string, value: unknown): TreeRow => {
  * Caller must ensure the document is a plain object (not null / scalar / array).
  */
 const documentToTreeRow = async (
-    document: ItemDefinition,
+    document: JSONObject,
     partitionKey: PartitionKeyDefinition | undefined,
     rootId: string,
 ): Promise<TreeRow> => {
-    const headers = getTableHeaders([document], partitionKey, {
+    const headers = buildTableHeadersFromObjectDocuments([document], partitionKey, {
         ShowPartitionKey: 'first',
         ShowServiceColumns: 'last',
         Sorting: 'ascending',
         TruncateValues: MAX_TREE_LEVEL_LENGTH,
     });
-    const partitionKeyValues = extractPartitionKeyValues(document as unknown as ItemDefinition, partitionKey);
+    const partitionKeyValues = extractPartitionKeyValues(document, partitionKey);
 
     // Build children for all headers
     const children: TreeRow[] = [];
@@ -460,7 +264,7 @@ const documentToTreeRow = async (
     // Return root document row with children
     return {
         id: rootId,
-        documentId: getDocumentId(document as unknown as ItemDefinition, partitionKey),
+        documentId: getDocumentId(document, partitionKey),
         field:
             typeof document['id'] === 'string' && document['id']
                 ? document['id']
@@ -470,39 +274,6 @@ const documentToTreeRow = async (
         children: children.length > 0 ? children : undefined,
         isExpanded: false,
     };
-};
-
-/**
- * Describes the homogeneity of a document collection.
- *
- * - `'empty'`     — no documents at all
- * - `'primitive'` — every document is a scalar or null (e.g. `SELECT VALUE c.name`)
- * - `'object'`    — every document is a plain object or array
- * - `'mixed'`     — collection contains both primitives and objects (inconsistent)
- */
-export type DocumentCollectionKind = 'empty' | 'primitive' | 'object' | 'mixed';
-
-/**
- * Checks whether all documents in an array have the same structural kind:
- * either all are plain objects/arrays, or all are scalars/null.
- * A mixed result is flagged as inconsistent.
- */
-export const getDocumentCollectionKind = (documents: QueryResultRecord[]): DocumentCollectionKind => {
-    if (documents.length === 0) return 'empty';
-
-    let hasObjects = false;
-    let hasPrimitives = false;
-
-    for (const doc of documents) {
-        if (doc !== null && typeof doc === 'object' && !Array.isArray(doc)) {
-            hasObjects = true;
-        } else {
-            hasPrimitives = true; // null, scalars, and arrays — no named keys
-        }
-        if (hasObjects && hasPrimitives) return 'mixed';
-    }
-
-    return hasObjects ? 'object' : 'primitive';
 };
 
 /**
@@ -521,37 +292,13 @@ export const getDocumentCollectionKind = (documents: QueryResultRecord[]): Docum
  * @param documents  Result documents — `QueryResultRecord[]` i.e. `JSONValue[]`
  * @param partitionKey
  * @param options
- * @param query  Optional query string used to derive column names from the AST
  */
-export const getTableHeaders = (
-    documents: QueryResultRecord[],
+const buildTableHeadersFromObjectDocuments = (
+    documents: JSONObject[],
     partitionKey: PartitionKeyDefinition | undefined,
     options: ColumnOptions,
-    query?: string,
 ): string[] => {
-    // Fast path: query has a statically-known set of projected columns
-    if (query !== undefined) {
-        const queryColumns = getQueryColumns(query);
-        if (queryColumns !== null) {
-            // Columns without a resolvable name (arithmetic, function calls, etc.)
-            // get a synthetic fallback name: _value1, _value2, …
-            let unnamedCounter = 0;
-            return queryColumns.map((col) => col ?? `_value${++unnamedCounter}`);
-        }
-    }
-
-    // Consistency check: if all documents are primitives (e.g. SELECT VALUE c.name → ["Alice", "Bob"])
-    // there are no object keys to extract, but we can represent the single value as _value1.
-    // Mixed collections are non-actionable.
-    const collectionKind = getDocumentCollectionKind(documents);
-    if (collectionKind === 'empty' || collectionKind === 'mixed') {
-        return [];
-    }
-
-    if (collectionKind === 'primitive') {
-        return ['_value1'];
-    }
-
+    // At this point the caller guarantees all documents are plain objects (collectionKind === 'object').
     const keys = new Set<string>();
     const serviceKeys = new Set<string>();
 
@@ -633,26 +380,11 @@ export const getTableHeaders = (
  * The UI layer is responsible for calling `toStringUniversal` / `truncateString`
  * at render time; this function stores raw values.
  */
-export const getTableDataset = async (
-    documents: QueryResultRecord[],
+const buildTableRowsFromObjectDocuments = async (
+    documents: JSONObject[],
     partitionKey: PartitionKeyDefinition | undefined,
     options: ColumnOptions,
 ): Promise<TableRecord[]> => {
-    const collectionKind = getDocumentCollectionKind(documents);
-
-    if (collectionKind === 'empty' || collectionKind === 'mixed') {
-        return [];
-    }
-
-    // ── Primitive path ───────────────────────────────────────────────────────
-    if (collectionKind === 'primitive') {
-        return documents.map((doc) => ({
-            __id: uuid(),
-            _value1: typeof doc === 'string' ? sanitiseDisplayString(doc) : doc,
-        }));
-    }
-
-    // ── Object path ──────────────────────────────────────────────────────────
     const injectPartitionKey = options.ShowPartitionKey === 'first' && !!partitionKey;
 
     const result = new Array<TableRecord>();
@@ -685,7 +417,7 @@ export const getTableDataset = async (
 
             // Copy all document fields as raw values; sanitise strings
             Object.entries(doc).forEach(([key, value]) => {
-                row[key] = typeof value === 'string' ? sanitiseDisplayString(value) : value;
+                row[key] = typeof value === 'string' ? sanitizeDisplayString(value) : value;
             });
 
             result.push(row);
@@ -748,7 +480,7 @@ export const queryResultToTable = async (
         const headers = ['_value1'];
         const dataset: TableRecord[] = queryResult.documents.map((doc) => ({
             __id: uuid(),
-            _value1: typeof doc === 'string' ? sanitiseDisplayString(doc) : doc,
+            _value1: typeof doc === 'string' ? sanitizeDisplayString(doc) : doc,
         }));
         return { headers, dataset };
     }
@@ -762,13 +494,27 @@ export const queryResultToTable = async (
     if (dataKind === 'mixed') {
         return { headers: [], dataset: [] };
     }
+
     const effectiveOptions = { ...options };
     if (isSelectStar(query)) {
         effectiveOptions.ShowPartitionKey = 'first';
     }
 
-    const headers = getTableHeaders(queryResult.documents, partitionKey, effectiveOptions, query);
-    const dataset = await getTableDataset(queryResult.documents, partitionKey, effectiveOptions);
+    // Fast path: query can have a statically-known set of projected columns
+    const queryColumns =
+        getQueryColumns(query) ??
+        buildTableHeadersFromObjectDocuments(queryResult.documents as JSONObject[], partitionKey, effectiveOptions);
+
+    // Columns without a resolvable name (arithmetic, function calls, etc.)
+    // get a synthetic fallback name: _value1, _value2, …
+    let unnamedCounter = 0;
+    const headers = queryColumns.map((col) => col ?? `_value${++unnamedCounter}`);
+
+    const dataset = await buildTableRowsFromObjectDocuments(
+        queryResult.documents as JSONObject[],
+        partitionKey,
+        effectiveOptions,
+    );
 
     return { headers, dataset };
 };

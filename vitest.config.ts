@@ -9,16 +9,13 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
     resolve: {
         alias: {
-            // Map the `vscode` module to our manual mock so every test file that
-            // imports from 'vscode' gets the mock by default.
-            // Individual tests may override this by calling vi.mock('vscode', factory).
-            vscode: path.resolve(__dirname, 'src/__mocks__/vscode.js'),
+            vscode: path.resolve(__dirname, 'src/__mocks__/vscode.ts'),
+            '@cosmosdb/nosql-language-service': path.resolve(__dirname, 'packages/nosql-language-service/src/index.ts'),
         },
     },
     test: {
         globals: true,
         environment: 'node',
-        // packages/* tests require pnpm workspace deps (e.g. chevrotain) — excluded until Phase 1 (pnpm)
-        include: ['src/**/*.test.ts'],
+        include: ['src/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
     },
 });

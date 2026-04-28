@@ -19,7 +19,7 @@ structures by scanning document keys at runtime. This leads to:
 
 ---
 
-## Phase 1 — `getQueryKind` (AST → expected result shape)
+## Phase 1 — `getQueryResultKind` (AST → expected result shape)
 
 ### New type
 
@@ -38,29 +38,29 @@ export type QueryResultKind = 'unknown' | 'object' | 'primitive';
 
 ### AST mapping
 
-| Query form | spec kind | expression | `QueryResultKind` |
-|---|---|---|---|
-| `SELECT *` | `SelectStarSpec` | — | `'object'` |
-| `SELECT a, b` | `SelectListSpec` | — | `'object'` |
-| `SELECT VALUE { ... }` | `SelectValueSpec` | `ObjectCreateScalarExpression` | `'object'` |
-| `SELECT VALUE c.name` | `SelectValueSpec` | `PropertyRefScalarExpression` | `'primitive'` |
-| `SELECT VALUE 1+2` | `SelectValueSpec` | `BinaryScalarExpression` | `'primitive'` |
-| `SELECT VALUE [...]` | `SelectValueSpec` | `ArrayCreateScalarExpression` | `'primitive'` |
-| parse error / empty | — | — | `'unknown'` |
+| Query form             | spec kind         | expression                     | `QueryResultKind` |
+| ---------------------- | ----------------- | ------------------------------ | ----------------- |
+| `SELECT *`             | `SelectStarSpec`  | —                              | `'object'`        |
+| `SELECT a, b`          | `SelectListSpec`  | —                              | `'object'`        |
+| `SELECT VALUE { ... }` | `SelectValueSpec` | `ObjectCreateScalarExpression` | `'object'`        |
+| `SELECT VALUE c.name`  | `SelectValueSpec` | `PropertyRefScalarExpression`  | `'primitive'`     |
+| `SELECT VALUE 1+2`     | `SelectValueSpec` | `BinaryScalarExpression`       | `'primitive'`     |
+| `SELECT VALUE [...]`   | `SelectValueSpec` | `ArrayCreateScalarExpression`  | `'primitive'`     |
+| parse error / empty    | —                 | —                              | `'unknown'`       |
 
 ### Implementation sketch
 
 ```typescript
-export const getQueryKind = (query: string | undefined | null): QueryResultKind => {
-    if (!query) return 'unknown';
-    const { ast, errors } = parse(query);
-    if (errors.length > 0 || !ast) return 'unknown';
+export const getQueryResultKind = (query: string | undefined | null): QueryResultKind => {
+  if (!query) return 'unknown';
+  const { ast, errors } = parse(query);
+  if (errors.length > 0 || !ast) return 'unknown';
 
-    const spec = ast.query.select.spec;
-    if (spec.kind === 'SelectStarSpec' || spec.kind === 'SelectListSpec') return 'object';
-    // SelectValueSpec — depends on the expression
-    if (spec.expression.kind === 'ObjectCreateScalarExpression') return 'object';
-    return 'primitive';
+  const spec = ast.query.select.spec;
+  if (spec.kind === 'SelectStarSpec' || spec.kind === 'SelectListSpec') return 'object';
+  // SelectValueSpec — depends on the expression
+  if (spec.expression.kind === 'ObjectCreateScalarExpression') return 'object';
+  return 'primitive';
 };
 ```
 
@@ -87,10 +87,10 @@ any         'empty'     → return empty result immediately
 
 ```typescript
 export class QueryResultMismatchError extends Error {
-    constructor(queryKind: QueryResultKind, dataKind: DocumentCollectionKind) {
-        super(`Query expected "${queryKind}" results but got "${dataKind}" data`);
-        this.name = 'QueryResultMismatchError';
-    }
+  constructor(queryKind: QueryResultKind, dataKind: DocumentCollectionKind) {
+    super(`Query expected "${queryKind}" results but got "${dataKind}" data`);
+    this.name = 'QueryResultMismatchError';
+  }
 }
 ```
 
@@ -102,10 +102,10 @@ export class QueryResultMismatchError extends Error {
 
 ```typescript
 export type TableRecord = {
-    __id: string;
-    __documentId?: CosmosDBRecordIdentifier;
-    [key: string]: string | CosmosDBRecordIdentifier | undefined | null;
-    // ↑ metadata and data mixed; all values pre-serialised to string
+  __id: string;
+  __documentId?: CosmosDBRecordIdentifier;
+  [key: string]: string | CosmosDBRecordIdentifier | undefined | null;
+  // ↑ metadata and data mixed; all values pre-serialised to string
 };
 ```
 
@@ -114,8 +114,8 @@ export type TableRecord = {
 ```typescript
 /** Row metadata — never overlaps with document field names */
 export type TableRowMeta = {
-    __id: string;
-    __documentId?: CosmosDBRecordIdentifier;
+  __id: string;
+  __documentId?: CosmosDBRecordIdentifier;
 };
 
 /**
@@ -125,11 +125,12 @@ export type TableRowMeta = {
  * `truncateString` at render time.
  */
 export type TableRecord = TableRowMeta & {
-    [key: string]: unknown;
+  [key: string]: unknown;
 };
 ```
 
 **Benefits:**
+
 - `getTableDataset` no longer copies and serialises every field
 - Original values are preserved for sorting, filtering, copy-as-JSON
 - TypeScript stops fighting the index signature
@@ -139,7 +140,7 @@ export type TableRecord = TableRowMeta & {
 
 ## Phase 4 — Refactor `getTableDataset`
 
-Use `getDocumentCollectionKind` + `getQueryKind` reconciliation instead of
+Use `getDocumentCollectionKind` + `getQueryResultKind` reconciliation instead of
 per-document branching.
 
 ### Object path (current documents are plain objects)
@@ -147,8 +148,8 @@ per-document branching.
 ```typescript
 // For each doc:
 const row: TableRecord = {
-    __id: uuid(),
-    __documentId: getDocumentId(doc, partitionKey) ?? undefined,
+  __id: uuid(),
+  __documentId: getDocumentId(doc, partitionKey) ?? undefined
 };
 // Inject partition key virtual columns (keep string conversion here — these
 // are synthetic columns not present in the actual document)
@@ -161,8 +162,8 @@ result.push(row);
 
 ```typescript
 const row: TableRecord = {
-    __id: uuid(),
-    _value1: doc,   // raw value; UI serialises
+  __id: uuid(),
+  _value1: doc // raw value; UI serialises
 };
 result.push(row);
 ```
@@ -177,20 +178,20 @@ result.push(row);
 
 ```typescript
 export const queryResultToTree = async (
-    queryResult: SerializedQueryResult | null,
-    partitionKey: PartitionKeyDefinition | undefined,
+  queryResult: SerializedQueryResult | null,
+  partitionKey: PartitionKeyDefinition | undefined
 ): Promise<TreeRow[]> => {
-    if (!queryResult?.documents?.length) return [];
+  if (!queryResult?.documents?.length) return [];
 
-    const queryKind = getQueryKind(queryResult.query);
-    const dataKind  = getDocumentCollectionKind(queryResult.documents);
+  const queryKind = getQueryResultKind(queryResult.query);
+  const dataKind = getDocumentCollectionKind(queryResult.documents);
 
-    // Tree view only supports object documents
-    if (queryKind === 'primitive' || dataKind !== 'object') return [];
-    if (queryKind === 'object' && dataKind !== 'object') {
-        throw new QueryResultMismatchError(queryKind, dataKind);
-    }
-    // ...existing tree building loop
+  // Tree view only supports object documents
+  if (queryKind === 'primitive' || dataKind !== 'object') return [];
+  if (queryKind === 'object' && dataKind !== 'object') {
+    throw new QueryResultMismatchError(queryKind, dataKind);
+  }
+  // ...existing tree building loop
 };
 ```
 
@@ -203,16 +204,16 @@ webview without breaking layout or introducing XSS vectors.
 
 ### Rules
 
-| Case | Action |
-|---|---|
-| Already a string | Trim control characters (`\x00–\x1f` except `\t\n`) |
-| Nested object / array | `JSON.stringify` → then apply string rules |
-| Very long value | `truncateString(value, TruncateValues)` |
-| `null` / `undefined` | Keep as-is (UI renders `null` / em-dash) |
+| Case                  | Action                                              |
+| --------------------- | --------------------------------------------------- |
+| Already a string      | Trim control characters (`\x00–\x1f` except `\t\n`) |
+| Nested object / array | `JSON.stringify` → then apply string rules          |
+| Very long value       | `truncateString(value, TruncateValues)`             |
+| `null` / `undefined`  | Keep as-is (UI renders `null` / em-dash)            |
 
 ### Where
 
-Add `sanitiseDisplayString(value: string): string` helper in `convertors.ts`.
+Add `sanitizeDisplayString(value: string): string` helper in `convertors.ts`.
 Call it inside `getTableDataset` when writing string-typed values, **not** when
 storing raw values (the raw value stays raw). The sanitised version goes into a
 separate `display` layer or is applied only when `TruncateValues > 0`.
@@ -234,12 +235,12 @@ pass `queryKind` instead of re-parsing the query string twice.
 ## Commit sequence
 
 ```
-feat: add getQueryKind + QueryResultKind type
+feat: add getQueryResultKind + QueryResultKind type
 feat: add QueryResultMismatchError
 refactor: reconcile queryKind vs dataKind in queryResultToTable/queryResultToTree
 refactor: simplify TableRecord — split meta, store raw values
 refactor: rewrite getTableDataset using kind-based paths
-feat: add sanitiseDisplayString, apply to string cell values
+feat: add sanitizeDisplayString, apply to string cell values
 refactor: guard documentToTreeRow for object-only results
 refactor: move isSelectStar logic into getTableHeaders via queryKind
 chore: remove now-redundant ColumnOptions.TruncateValues from object path
@@ -265,22 +266,23 @@ The AST `ObjectCreateScalarExpression.properties[].name.value` is always a
 string literal — names are statically knowable.
 
 **Action:** add a `SelectValueSpec` branch to `getQueryColumns`:
+
 ```typescript
 if (spec.kind === 'SelectValueSpec') {
-    if (spec.expression.kind === 'ObjectCreateScalarExpression') {
-        return spec.expression.properties.map((p) => p.name.value);
-    }
-    return null; // scalar / array / function → primitive path
+  if (spec.expression.kind === 'ObjectCreateScalarExpression') {
+    return spec.expression.properties.map((p) => p.name.value);
+  }
+  return null; // scalar / array / function → primitive path
 }
 ```
-This also allows `getQueryKind` to return `'object'` for `SELECT VALUE { ... }`.
+
+This also allows `getQueryResultKind` to return `'object'` for `SELECT VALUE { ... }`.
 
 ### 3. Partition key injection — only for `SELECT *` ✅
 
 For `SELECT c.id, c.name FROM c` the partition key field is absent from results.
 Injecting a virtual PK column would show `undefined` for all rows — useless.
 
-**Action:** `ShowPartitionKey: 'first'` is only set when `getQueryKind` returns
+**Action:** `ShowPartitionKey: 'first'` is only set when `getQueryResultKind` returns
 `'object'` AND the spec is `SelectStarSpec`. For `SelectListSpec` and
 `SelectValueSpec` → always `'none'`.
-

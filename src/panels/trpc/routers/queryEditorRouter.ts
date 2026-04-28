@@ -4,6 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import {
+    getSchemaFromDocument,
+    simplifySchema,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
@@ -16,24 +23,18 @@ import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosm
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
-import { DocumentTab } from '../../../panels/DocumentTab';
-import { QueryEditorTab } from '../../../panels/QueryEditorTab';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
-import { isSelectStar, toStringUniversal } from '../../../utils/convertors';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
-import { type JSONSchema } from '../../../utils/json/JSONSchema';
-import {
-    getSchemaFromDocument,
-    simplifySchema,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../../../utils/json/nosql/SchemaAnalyzer';
+import { isSelectStar } from '../../../utils/queryAnalysis';
 import { sanitizeSqlComment } from '../../../utils/sanitization';
+import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
+import { DocumentTab } from '../../DocumentTab';
+import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
 import {
     CosmosDBRecordIdentifierSchema,

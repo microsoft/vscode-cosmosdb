@@ -42,7 +42,7 @@ import { z } from 'zod';
 
 export const MyInputSchema = z.object({
   name: z.string(),
-  value: z.number(),
+  value: z.number()
 });
 ```
 
@@ -55,7 +55,7 @@ import { type MyResult } from '../../../../myModule';
 
 export const MyResultSchema = z.object({
   id: z.string(),
-  data: z.string().nullable(),
+  data: z.string().nullable()
 }) as unknown as z.ZodType<MyResult>;
 ```
 
@@ -92,7 +92,7 @@ export const myPanelRouter = router({
       // ctx is typed as MyPanelRouterContext — no casts needed
       // Return the result directly — prefer request-response over push events
       return { id: input.name, data: 'done' };
-    }),
+    })
 });
 ```
 
@@ -110,7 +110,7 @@ Events should only be used for **server-initiated push** that cannot be a mutati
 import { z } from 'zod';
 
 export const MyPanelEventSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('settingsChanged'), value: z.boolean() }),
+  z.object({ type: z.literal('settingsChanged'), value: z.boolean() })
 ]);
 
 export type MyPanelEvent = z.infer<typeof MyPanelEventSchema>;
@@ -121,7 +121,7 @@ export const myPanelEventsRouter = router({
       if (ctx.signal?.aborted) return;
       yield event;
     }
-  }),
+  })
 });
 ```
 
@@ -139,7 +139,7 @@ export const appRouter = router({
   // If you have both a router and an events router:
   myPanel: mergeRouters(myPanelRouter, myPanelEventsRouter),
   // If you only have one router:
-  myPanel: myPanelRouter,
+  myPanel: myPanelRouter
 });
 ```
 
@@ -189,7 +189,7 @@ export class MyPanelContextProvider extends BaseContextProvider {
             this.dispatch({ type: 'setSettings', value: event.value });
             break;
         }
-      },
+      }
     });
   }
 }

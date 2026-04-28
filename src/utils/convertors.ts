@@ -253,7 +253,7 @@ export type QueryResultKind = 'unknown' | 'object' | 'primitive';
 /**
  * Determines the expected result shape for a CosmosDB NoSQL query by inspecting its AST.
  */
-export const getQueryKind = (query: string | undefined | null): QueryResultKind => {
+export const getQueryResultKind = (query: string | undefined | null): QueryResultKind => {
     if (!query) return 'unknown';
     const { ast } = parse(query);
     if (!ast) return 'unknown';
@@ -308,7 +308,7 @@ export const queryResultToTree = async (
         return [];
     }
 
-    const queryKind = getQueryKind(queryResult.query);
+    const queryKind = getQueryResultKind(queryResult.query);
     const dataKind = getDocumentCollectionKind(queryResult.documents);
 
     // Tree view only makes sense for structured object documents
@@ -328,7 +328,7 @@ export const queryResultToTree = async (
 
     for (let i = 0; i < docsLength; i++) {
         // dataKind === 'object' is guaranteed by the guard above
-        const doc = queryResult.documents[i] as Record<string, unknown>;
+        const doc = queryResult.documents[i] as ItemDefinition;
         const docRow = await documentToTreeRow(doc, partitionKey, leftPadIndex(i, docsLength));
         rows.push(docRow);
 
@@ -432,11 +432,11 @@ const valueToTreeRow = (id: string, field: string, value: unknown): TreeRow => {
  * Caller must ensure the document is a plain object (not null / scalar / array).
  */
 const documentToTreeRow = async (
-    document: Record<string, unknown>,
+    document: ItemDefinition,
     partitionKey: PartitionKeyDefinition | undefined,
     rootId: string,
 ): Promise<TreeRow> => {
-    const headers = getTableHeaders([document as QueryResultRecord], partitionKey, {
+    const headers = getTableHeaders([document], partitionKey, {
         ShowPartitionKey: 'first',
         ShowServiceColumns: 'last',
         Sorting: 'ascending',
@@ -448,7 +448,7 @@ const documentToTreeRow = async (
     const children: TreeRow[] = [];
     for (let index = 0; index < headers.length; index++) {
         const header = headers[index];
-        const value = header.startsWith('/') ? partitionKeyValues[header] : document[header];
+        const value = header.startsWith('/') ? partitionKeyValues[header] : (document[header] as unknown);
         children.push(valueToTreeRow(`${rootId}-${leftPadIndex(index, headers.length)}`, header, value));
 
         // Yield to the event loop periodically to avoid UI freezes
@@ -704,17 +704,18 @@ export const getTableDataset = async (
  *
  * Reconciliation matrix (queryKind × dataKind):
  *
- * | queryKind   | dataKind   | Action                                      |
- * |-------------|------------|---------------------------------------------|
- * | any         | empty      | return empty immediately                    |
- * | object      | object     | normal object path                          |
- * | object      | primitive  | throw QueryResultMismatchError              |
- * | object      | mixed      | throw QueryResultMismatchError              |
- * | primitive   | primitive  | _value1 scalar path, no partition key       |
- * | primitive   | object     | throw QueryResultMismatchError              |
- * | unknown     | object     | fallback: scan document keys (legacy)       |
- * | unknown     | primitive  | _value1 column                              |
- * | unknown     | mixed      | return empty (cannot render safely)         |
+ * | queryKind   | dataKind   | Action                                              |
+ * |-------------|------------|-----------------------------------------------------|
+ * | any         | empty      | return empty immediately                            |
+ * | object      | object     | normal object path + partition key for SELECT *     |
+ * | object      | primitive  | throw QueryResultMismatchError                      |
+ * | object      | mixed      | throw QueryResultMismatchError                      |
+ * | primitive   | primitive  | _value1 scalar path, no partition key               |
+ * | primitive   | object     | scan keys (SELECT VALUE c.obj where obj is object)  |
+ * | primitive   | mixed      | _value1 column (schemaless — field varies per doc)  |
+ * | unknown     | object     | fallback: scan document keys (legacy)               |
+ * | unknown     | primitive  | _value1 column                                      |
+ * | unknown     | mixed      | return empty (cannot render safely)                 |
  *
  * `ShowPartitionKey: 'first'` is automatically set **only** for `SELECT *`
  * (i.e. when `queryKind === 'object'` AND the spec is `SelectStarSpec`).
@@ -734,7 +735,7 @@ export const queryResultToTable = async (
     }
 
     const query = queryResult.query ?? '';
-    const queryKind = getQueryKind(query);
+    const queryKind = getQueryResultKind(query);
     const dataKind = getDocumentCollectionKind(queryResult.documents);
 
     // Empty data — nothing to show
@@ -742,23 +743,27 @@ export const queryResultToTable = async (
         return { headers: [], dataset: [] };
     }
 
-    // Mixed data — inconsistent result set, cannot render safely
+    // Mixed data — only a real error if query statically promised named-key objects.
+    // For SELECT VALUE (primitive) the field itself could be anything in a schemaless DB.
+    // For unknown queryKind we cannot render mixed data safely.
     if (dataKind === 'mixed') {
-        if (queryKind !== 'unknown') {
+        if (queryKind === 'object') {
             throw new QueryResultMismatchError(queryKind, dataKind);
         }
-        return { headers: [], dataset: [] };
+        if (queryKind === 'unknown') {
+            return { headers: [], dataset: [] };
+        }
+        // queryKind === 'primitive': SELECT VALUE c.field where field varies — use _value1
     }
 
-    // Mismatch between what query promised and what data we got
+    // SELECT * / SELECT list returned scalars — that's a real server-side error
     if (queryKind === 'object' && dataKind === 'primitive') {
         throw new QueryResultMismatchError(queryKind, dataKind);
     }
-    if (queryKind === 'primitive' && dataKind === 'object') {
-        throw new QueryResultMismatchError(queryKind, dataKind);
-    }
 
-    // Activate partition key injection only for SELECT *
+    // SELECT VALUE c.field where field happens to be an object in all documents:
+    // treat the same as unknown — scan document keys for headers.
+    // (No partition key injection — SELECT VALUE doesn't return full documents.)
     const effectiveOptions = { ...options };
     if (isSelectStar(query)) {
         effectiveOptions.ShowPartitionKey = 'first';

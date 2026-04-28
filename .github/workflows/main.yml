@@ -29,21 +29,27 @@ jobs:
         # A push to a branch with an open PR fires both `push` and `pull_request`
         # events. Rather than cancelling one of them (a cancelled run reports
         # as a failed required check on the PR's head SHA and blocks merge),
-        # we skip the `pull_request` run entirely for same-repo PRs — the
-        # `push` event already builds the head SHA and satisfies the required
-        # `Build` check. For PRs from forks, `push` does not fire in this repo,
-        # so we still let `pull_request` run.
+        # we skip the `pull_request` run for same-repo PRs only when the PR
+        # head branch is also covered by this workflow's `push.branches`
+        # filters, because only those branches already get a `push` run in
+        # this repo. For PRs from forks, or same-repo PRs from other head
+        # branches such as `feature/*`, we still let `pull_request` run.
         if: >-
             github.event_name != 'pull_request' ||
-            github.event.pull_request.head.repo.full_name != github.repository
+            github.event.pull_request.head.repo.full_name != github.repository ||
+            startsWith(github.head_ref, 'rel/') ||
+            startsWith(github.head_ref, 'dev/')
 
         # Concurrency only dedupes runs for the SAME branch across DIFFERENT
         # commits (e.g. rapid pushes during a rebase). The cancelled older run
         # is on a stale SHA that is no longer the PR head, so it does not
         # block the PR. Push and pull_request events for the same SHA are
         # already deduped by the `if` above, so they never collide here.
+        # For `pull_request` events, scope the group by PR number and head
+        # repo so that two forks pushing branches with the same name do not
+        # cancel each other.
         concurrency:
-            group: build-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+            group: build-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) || github.ref_name }}
             cancel-in-progress: true
 
         defaults:

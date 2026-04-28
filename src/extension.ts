@@ -126,16 +126,12 @@ export async function activateInternal(
         // The chat participant is always registered, but will show helpful error messages
         // if AI features are not available (Copilot not installed, not signed in, or disabled)
         CosmosDbOperationsService.initialize(context);
-        ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
 
-        // Always create the chat participant so users can see why it's not working
-        const chatParticipant = new CosmosDbChatParticipant(context);
-        void chatParticipant; // Acknowledge the variable is intentionally unused after creation
-
-        // Register language model tools for the chat participant
-        registerSampleDataTool(context);
-
-        // Listen for changes to extension availability (Copilot install/uninstall)
+        // Register the availability-change listener BEFORE the initial async check.
+        // This prevents a race where Copilot finishes initializing (fires
+        // onDidChangeChatModels) during the `await areAIFeaturesEnabled()` below —
+        // without the listener in place that event would be lost and
+        // `ext.isAIFeaturesEnabled` would stay `false` forever.
         context.subscriptions.push(
             onCopilotAvailabilityChanged((available) => {
                 ext.isAIFeaturesEnabled = available;
@@ -144,6 +140,15 @@ export async function activateInternal(
                 void MigrationAssistantTab.notifyAIFeaturesChanged(available);
             }),
         );
+
+        ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
+
+        // Always create the chat participant so users can see why it's not working
+        const chatParticipant = new CosmosDbChatParticipant(context);
+        void chatParticipant; // Acknowledge the variable is intentionally unused after creation
+
+        // Register language model tools for the chat participant
+        registerSampleDataTool(context);
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));

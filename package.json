@@ -115,8 +115,8 @@
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
     "mocha-multi-reporters": "~1.5.1",
-    "oxlint": "~1.61.0",
-    "oxlint-tsgolint": "~0.21.1",
+    "oxlint": "~1.62.0",
+    "oxlint-tsgolint": "~0.22.1",
     "prettier": "~3.8.1",
     "prettier-plugin-organize-imports": "~4.3.0",
     "react": "~19.2.1",
@@ -149,12 +149,12 @@
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",
-    "@trpc/client": "~11.16.0",
-    "@trpc/server": "~11.16.0",
+    "@trpc/client": "~11.17.0",
+    "@trpc/server": "~11.17.0",
     "@vscode/l10n": "~0.0.18",
     "allotment": "~1.20.4",
     "denque": "~2.1.0",
-    "es-toolkit": "~1.46.1",
+    "es-toolkit": "~1.46.0",
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
     "react-hotkeys-hook": "5.1.0",
@@ -173,9 +173,8 @@
     },
     "serialize-javascript": "~7.0.4",
     "test-exclude": "~7.0.1",
-    "@microsoft/1ds-core-js": "~4.3.11",
-    "@microsoft/1ds-post-js": "~4.3.11",
-    "@microsoft/applicationinsights-web-basic": "~3.3.11"
+    "@microsoft/applicationinsights-web-basic": "~3.3.11",
+    "uuid": "~14.0.0"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

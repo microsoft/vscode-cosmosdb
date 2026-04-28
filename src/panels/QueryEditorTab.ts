@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
@@ -11,7 +12,6 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
-import { type JSONSchema } from '../utils/json/JSONSchema';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
 import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';

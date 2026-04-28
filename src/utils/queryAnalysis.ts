@@ -10,7 +10,7 @@
  * document arrays returned by the server.
  */
 
-import { parse } from '@cosmosdb/nosql-language-service';
+import { parse, type SqlObjectProperty, type SqlSelectItem } from '@cosmosdb/nosql-language-service';
 import { type QueryResultRecord } from '../cosmosdb/types/queryResult';
 
 // ─── Query shape ─────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export const getQueryColumns = (query: string): (string | null)[] | null => {
     if (!spec) return null;
 
     if (spec.kind === 'SelectListSpec') {
-        return spec.items.map((item) => {
+        return spec.items.map((item: SqlSelectItem) => {
             if (item.alias) {
                 return item.alias.value;
             }
@@ -76,7 +76,7 @@ export const getQueryColumns = (query: string): (string | null)[] | null => {
     // SELECT VALUE { "x": expr, "y": expr } → statically-known object keys
     if (spec.kind === 'SelectValueSpec') {
         if (spec.expression.kind === 'ObjectCreateScalarExpression') {
-            return spec.expression.properties.map((p) => p.name.value);
+            return spec.expression.properties.map((p: SqlObjectProperty) => p.name.value);
         }
         return null; // scalar / array / function call → primitive path
     }

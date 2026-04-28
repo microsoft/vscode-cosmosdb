@@ -3,22 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export const isWindows: boolean = process.platform.startsWith('win');
-export const isLinux: boolean = process.platform.startsWith('linux');
-export const isMacOS: boolean = process.platform.startsWith('darwin');
-
 import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
 import { Uri, type IconPath } from 'vscode';
 import { ext } from './extensionVariables';
-// Re-export shared constants so existing extension-side code doesn't need to change its import paths
-export {
-    CosmosDBHiddenFields,
-    SCHEMA_STORAGE_KEY,
-    SERVERLESS_CAPABILITY_NAME,
-    wellKnownEmulatorPassword,
-} from './cosmosdb/cosmosdb-shared-constants';
+
+export const isWindows: boolean = process.platform.startsWith('win');
+export const isLinux: boolean = process.platform.startsWith('linux');
+export const isMacOS: boolean = process.platform.startsWith('darwin');
 
 export namespace Links {
     export const LocalConnectionDebuggingTips: string = 'https://aka.ms/AA5zah5';

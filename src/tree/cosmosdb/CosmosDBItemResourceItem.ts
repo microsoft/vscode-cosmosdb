@@ -7,7 +7,7 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { CosmosDBHiddenFields } from '../../constants';
+import { CosmosDBHiddenFields } from '../../cosmosdb/cosmosdb-shared-constants';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { truncateString } from '../../utils/strings';

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type TRPCClient } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
 import {
@@ -13,7 +14,6 @@ import {
     type QueryMetadata,
     type SerializedQueryResult,
 } from '../../../../cosmosdb/types/queryResult';
-import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { type QueryEditorAppRouter, type QueryEditorEvent } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
@@ -333,7 +333,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             }
 
             this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: result.isSurveyCandidate });
-            this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: result.isAIFeaturesEnabled ?? false });
+            this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: result.isAIFeaturesEnabled });
             this.dispatch({
                 type: 'setSchemaBasedOnQueries',
                 isSchemaBasedOnQueries: result.isSchemaBasedOnQueries,

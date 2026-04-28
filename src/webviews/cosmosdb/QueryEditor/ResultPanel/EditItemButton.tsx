@@ -6,7 +6,7 @@
 import { EditRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
-import { type CosmosDBRecordIdentifier } from '../../../../cosmosdb/types/queryResult';
+import { type CosmosDBRecordIdentifier, isCosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
 import { getDocumentId } from '../../../../utils/document';
 import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
@@ -24,7 +24,8 @@ export const EditItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
         return state.selectedRows
             .map((rowIndex): CosmosDBRecordIdentifier | undefined => {
                 const document = state.currentQueryResult?.documents[rowIndex];
-                return document ? getDocumentId(document, state.partitionKey) : undefined;
+                if (!document || !isCosmosDBRecord(document)) return undefined;
+                return getDocumentId(document, state.partitionKey);
             })
             .filter((document) => document !== undefined);
     }, [state]);

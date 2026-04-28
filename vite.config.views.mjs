@@ -20,10 +20,34 @@ const __dirname = path.dirname(__filename);
  */
 function noExtensionImportsPlugin() {
     const NODE_BUILTINS = new Set([
-        'fs', 'path', 'os', 'crypto', 'stream', 'http', 'https', 'net',
-        'tls', 'events', 'assert', 'util', 'buffer', 'url', 'querystring',
-        'child_process', 'cluster', 'dns', 'domain', 'readline', 'repl',
-        'string_decoder', 'timers', 'tty', 'v8', 'vm', 'worker_threads', 'zlib',
+        'fs',
+        'path',
+        'os',
+        'crypto',
+        'stream',
+        'http',
+        'https',
+        'net',
+        'tls',
+        'events',
+        'assert',
+        'util',
+        'buffer',
+        'url',
+        'querystring',
+        'child_process',
+        'cluster',
+        'dns',
+        'domain',
+        'readline',
+        'repl',
+        'string_decoder',
+        'timers',
+        'tty',
+        'v8',
+        'vm',
+        'worker_threads',
+        'zlib',
     ]);
 
     return {
@@ -33,13 +57,13 @@ function noExtensionImportsPlugin() {
             if (source === 'vscode') {
                 throw new Error(
                     `[no-extension-imports] Importing 'vscode' is not allowed in webview code.\n` +
-                    `  Check the import chain that led to this import.`,
+                        `  Check the import chain that led to this import.`,
                 );
             }
             if (source.startsWith('node:') || NODE_BUILTINS.has(source)) {
                 throw new Error(
                     `[no-extension-imports] Importing Node.js built-in '${source}' is not allowed in webview code.\n` +
-                    `  Check the import chain that led to this import.`,
+                        `  Check the import chain that led to this import.`,
                 );
             }
         },
@@ -81,6 +105,20 @@ export default ({ mode }) => {
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
+            alias: {
+                '@cosmosdb/nosql-language-service/monaco': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/providers/monaco/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service/services': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/services/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/index.ts',
+                ),
+            },
         },
         // CSS/SCSS handled natively by Vite (no css-loader/sass-loader needed)
         css: {
@@ -126,4 +164,3 @@ export default ({ mode }) => {
         },
     };
 };
-

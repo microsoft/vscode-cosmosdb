@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
-import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { isSelectStar } from '../../../../utils/queryAnalysis';
 
 export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;

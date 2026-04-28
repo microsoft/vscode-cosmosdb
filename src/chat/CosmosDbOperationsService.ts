@@ -3,22 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { type JSONSchema } from '../utils/json/JSONSchema';
-import {
-    getSchemaFromDocument,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../utils/json/nosql/SchemaAnalyzer';
 import { sanitizeSqlComment } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
@@ -392,7 +387,7 @@ export class CosmosDbOperationsService {
                     const validEntries = propSchema.anyOf.filter(
                         (entry): entry is JSONSchema => typeof entry !== 'boolean',
                     );
-                    const types = validEntries.map((entry: JSONSchema) => entry.type || entry['x-bsonType']);
+                    const types = validEntries.map((entry: JSONSchema) => entry.type || entry['x-dataType']);
                     simplified[key] = types.length === 1 ? types[0] : types;
 
                     // If it's an object, recurse into its properties
@@ -413,11 +408,13 @@ export class CosmosDbOperationsService {
                                     (entry): entry is JSONSchema => typeof entry !== 'boolean',
                                 );
                                 const itemTypes = validItemEntries.map(
-                                    (entry: JSONSchema) => entry.type || entry['x-bsonType'],
+                                    (entry: JSONSchema) => entry.type || entry['x-dataType'],
                                 );
                                 simplified[key] = `array<${itemTypes.join('|')}>`;
-                            } else if (itemsSchema.type) {
-                                simplified[key] = `array<${String(itemsSchema.type)}>`;
+                            } else if (itemsSchema.type && typeof itemsSchema.type === 'string') {
+                                simplified[key] = `array<${itemsSchema.type}>`;
+                            } else if (itemsSchema.type && Array.isArray(itemsSchema.type)) {
+                                simplified[key] = `array<${itemsSchema.type.join('|')}>`;
                             }
                         }
                     }

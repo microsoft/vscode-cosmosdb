@@ -5,7 +5,7 @@
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../constants';
+import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
 import {
     parseCosmosDBConnectionString,
     type ParsedCosmosDBConnectionString,

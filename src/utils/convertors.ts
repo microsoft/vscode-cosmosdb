@@ -40,7 +40,7 @@ export type TableRowMeta = {
 /**
  * A single table row.
  * `__id` and `__documentId` are internal; all other keys are raw document
- * values (not pre-serialised). The UI layer calls `toStringUniversal` at render time.
+ * values (not pre-serialized). The UI layer calls `toStringUniversal` at render time.
  */
 export type TableRecord = TableRowMeta & {
     [key: string]: unknown;
@@ -370,7 +370,7 @@ const buildTableHeadersFromObjectDocuments = (
  * Uses `getDocumentCollectionKind` to determine the data shape:
  *
  * - **object** path  — each document is a plain object; fields are stored as raw
- *   values (not pre-serialised). String values are sanitised (control chars
+ *   values (not pre-serialized). String values are sanitized (control chars
  *   stripped). Partition key virtual columns are injected when
  *   `options.ShowPartitionKey === 'first'`.
  * - **primitive** path — each document (scalar / null / array) is stored under

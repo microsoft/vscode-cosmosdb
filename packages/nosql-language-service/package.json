@@ -61,7 +61,7 @@
     "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
-    "@cosmosdb/schema-analyzer": "workspace:*",
+    "@cosmosdb/schema-analyzer": "*",
     "chevrotain": "^12.0.0"
   },
   "devDependencies": {

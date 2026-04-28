@@ -23,7 +23,7 @@ import { promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
 import { type DocumentMutableState, type DocumentRouterContext } from '../appRouter';
-import { OpenDocumentModeSchema } from '../schemas/documentSchemas';
+import { OpenDocumentModeSchema } from '../schemas';
 import { documentProcedure, documentRouter } from '../trpc';
 
 function isCosmosDBItemDefinition(documentContent: unknown): documentContent is ItemDefinition {

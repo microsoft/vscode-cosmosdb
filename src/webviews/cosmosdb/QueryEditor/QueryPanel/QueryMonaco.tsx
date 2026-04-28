@@ -3,13 +3,25 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/monaco';
 import { useMonaco } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { MonacoEditor, type MonacoEditorType } from '../../../MonacoEditor';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
-import { registerNoSqlCompletionProvider } from './nosqlCompletionProvider';
-import { registerNoSqlHoverProvider } from './nosqlHoverProvider';
-import { NOSQL_LANGUAGE_ID, registerNoSqlLanguage } from './nosqlLanguage';
+
+/** Language ID matching the 'nosql' language contributed in package.json. */
+const NOSQL_LANGUAGE_ID = 'nosql';
+
+/**
+ * Compute the query block text at the given cursor offset using the
+ * language service's multi-query parser. Falls back to the full text
+ * when only a single region exists.
+ */
+function getQueryBlockAtOffset(fullText: string, offset: number, service: SqlLanguageService): string {
+    const region = service.getActiveRegion(fullText, offset);
+    return region ? region.text.trim() : fullText;
+}
 
 export const QueryMonaco = () => {
     const state = useQueryEditorState();
@@ -17,33 +29,38 @@ export const QueryMonaco = () => {
     const monaco = useMonaco();
 
     const disposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
-    const completionDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
-    const hoverDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const cursorDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const languageServiceDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
+    const languageServiceRef = useRef<SqlLanguageService | null>(null);
 
-    // Keep a ref to the latest schema so the completion provider always reads fresh data
+    // Keep a ref to the latest schema so the language service always reads fresh data
     const schemaRef = useRef(state.containerSchema);
     useEffect(() => {
         schemaRef.current = state.containerSchema;
     }, [state.containerSchema]);
 
-    // Register the CosmosDB NoSQL language and completion provider once Monaco is available
+    // Register the CosmosDB NoSQL language and all providers once Monaco is available
     useEffect(() => {
         if (monaco) {
-            registerNoSqlLanguage(monaco);
-
             // Dispose previous providers if any (e.g., hot reload)
-            completionDisposableRef.current?.dispose();
-            completionDisposableRef.current = registerNoSqlCompletionProvider(monaco, () => schemaRef.current);
+            languageServiceDisposableRef.current?.dispose();
 
-            hoverDisposableRef.current?.dispose();
-            hoverDisposableRef.current = registerNoSqlHoverProvider(monaco, () => schemaRef.current);
+            // Create language service with schema access and register all providers
+            // (includes Monarch tokenizer, completions, hover, diagnostics, signature help, formatting)
+            const service = new SqlLanguageService({
+                getSchema: () => schemaRef.current ?? undefined,
+                multiQuery: true,
+            });
+            languageServiceRef.current = service;
+
+            languageServiceDisposableRef.current = registerCosmosDbSql(monaco, service, {
+                languageId: NOSQL_LANGUAGE_ID,
+            });
         }
 
         return () => {
-            completionDisposableRef.current?.dispose();
-            completionDisposableRef.current = null;
-            hoverDisposableRef.current?.dispose();
-            hoverDisposableRef.current = null;
+            languageServiceDisposableRef.current?.dispose();
+            languageServiceDisposableRef.current = null;
         };
     }, [monaco]);
 
@@ -56,6 +73,29 @@ export const QueryMonaco = () => {
             const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
             dispatcher.setSelectedText(selectedContent);
         });
+
+        // Track cursor position changes to always know which query block the cursor is in.
+        // This survives focus loss so the Run button can execute the correct block.
+        cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
+            const model = editor.getModel();
+            const service = languageServiceRef.current;
+            if (model && service) {
+                const offset = model.getOffsetAt(event.position);
+                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                dispatcher.setCurrentQueryBlock(block);
+            }
+        });
+
+        // Compute the initial query block based on the default cursor position
+        {
+            const model = editor.getModel();
+            const service = languageServiceRef.current;
+            if (model && service) {
+                const offset = model.getOffsetAt(editor.getPosition()!);
+                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                dispatcher.setCurrentQueryBlock(block);
+            }
+        }
 
         // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
         // and route them through the extension host so they open in the default browser.
@@ -77,6 +117,7 @@ export const QueryMonaco = () => {
         // Cleanup on unmount
         return () => {
             disposableRef.current?.dispose();
+            cursorDisposableRef.current?.dispose();
         };
     }, []);
 

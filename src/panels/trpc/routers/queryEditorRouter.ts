@@ -212,7 +212,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             return result;
         }),
 
-    stopQuery: queryEditorProcedure.input(z.object({ executionId: z.string() })).mutation(async ({ input, ctx }) => {
+    stopQuery: queryEditorProcedure.input(z.object({ executionId: z.string() })).mutation(({ input, ctx }) => {
         let session: QuerySession | undefined;
 
         if (input.executionId) {
@@ -526,7 +526,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             return { queryHistory: await persistQueryHistory(ctx, input.query) };
         }),
 
-    updateQueryText: queryEditorProcedure.input(z.object({ query: z.string() })).mutation(async ({ input, ctx }) => {
+    updateQueryText: queryEditorProcedure.input(z.object({ query: z.string() })).mutation(({ input, ctx }) => {
         ctx.state.query = input.query;
     }),
 
@@ -629,7 +629,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             }
         }),
 
-    cancelGenerateQuery: queryEditorProcedure.mutation(async ({ ctx }) => {
+    cancelGenerateQuery: queryEditorProcedure.mutation(({ ctx }) => {
         ctx.state.pendingConfirmResolve?.(false);
         ctx.state.pendingConfirmResolve = undefined;
         if (ctx.state.generateQueryCancellation) {
@@ -643,7 +643,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         ctx.state.generateQueryCancellation = undefined;
     }),
 
-    closeGenerateInput: queryEditorProcedure.mutation(async ({ ctx }) => {
+    closeGenerateInput: queryEditorProcedure.mutation(({ ctx }) => {
         ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
         void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
             telCtx.errorHandling.suppressDisplay = true;
@@ -748,7 +748,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             await vscode.env.clipboard.writeText(text);
         }),
 
-    provideFeedback: queryEditorProcedure.mutation(async () => {
+    provideFeedback: queryEditorProcedure.mutation(() => {
         openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
     }),
 

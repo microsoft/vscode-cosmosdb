@@ -13,12 +13,7 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
-import {
-    getCosmosDBKeyCredential,
-    type CosmosDBCredential,
-    type CosmosDBEntraIdCredential,
-    type CosmosDBManagedIdentityCredential,
-} from './CosmosDBCredential';
+import { getCosmosDBKeyCredential, type CosmosDBCredential } from './CosmosDBCredential';
 import { isNoSqlQueryConnection, type NoSqlQueryConnection } from './NoSqlQueryConnection';
 import { getAccessTokenForVSCode } from './utils/azureSessionHelper';
 
@@ -59,7 +54,7 @@ export function getCosmosClient(
         options = arg2 as GetCosmosClientOptions;
     } else {
         // Otherwise, it's an AccountInfo object
-        const accountInfo = arg1 as AccountInfo;
+        const accountInfo = arg1;
         endpoint = accountInfo.endpoint;
         credentials = accountInfo.credentials;
         isEmulator = accountInfo.isEmulator;
@@ -119,13 +114,13 @@ export function getCosmosClient(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,
-                                    (credential as CosmosDBEntraIdCredential).tenantId,
+                                    credential.tenantId,
                                     { createIfNone: forcePrompt },
                                 );
                             }
 
                             case AuthenticationMethod.managedIdentity: {
-                                const { clientId } = credential as CosmosDBManagedIdentityCredential;
+                                const { clientId } = credential;
                                 const auth = new ManagedIdentityCredential({ clientId });
                                 return await auth.getToken(normalizedAuthScopes);
                             }
@@ -170,9 +165,7 @@ export function getCosmosClient(
                 }
 
                 // 3. Last resort - Try EntraID again with forced prompting
-                const entraIdCreds = credentials.filter(
-                    (cred) => cred.type === AuthenticationMethod.entraId,
-                ) as CosmosDBEntraIdCredential[];
+                const entraIdCreds = credentials.filter((cred) => cred.type === AuthenticationMethod.entraId);
 
                 if (entraIdCreds.length > 0) {
                     // Force prompt on Entra ID as last resort

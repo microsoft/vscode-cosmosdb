@@ -255,7 +255,7 @@ function determineSubPosition(clause: ClauseType, textAfterClause: string): SubP
 
     switch (clause) {
         case 'select':
-            if (/^\*/.test(textAfterClause)) return 'post-star';
+            if (textAfterClause.startsWith('*')) return 'post-star';
             if (textAfterClause.length > 0) return 'post-expression';
             return 'initial';
 
@@ -292,7 +292,7 @@ function extractPrecedingToken(stripped: string): string | null {
  * to preserve character positions. This prevents matching keywords inside strings/comments.
  */
 function stripStringsAndComments(text: string): string {
-    const chars = [...text];
+    const chars = Array.from(text);
     let i = 0;
 
     while (i < chars.length) {
@@ -429,12 +429,12 @@ export function extractJoinAliases(text: string): JoinAlias[] {
     const joinRegex = /\bJOIN\s+(\w+)\s+IN\s+(\w+(?:\.\w+)*)/gi;
     let match: RegExpExecArray | null;
     while ((match = joinRegex.exec(stripped)) !== null) {
-        const alias = match[1] as string;
-        const fullPath = match[2] as string;
+        const alias = match[1];
+        const fullPath = match[2];
         const segments: string[] = fullPath.split('.');
         aliases.push({
             alias,
-            sourceAlias: segments[0] as string,
+            sourceAlias: segments[0],
             propertyPath: segments.slice(1),
         });
     }
@@ -660,9 +660,9 @@ export function resolvePropertyAtPath(
     const segments = dotPath.split('.');
     if (segments.length < 2) return undefined;
 
-    const rootAlias = segments[0] as string;
+    const rootAlias = segments[0];
     const propertySegments = segments.slice(1);
-    const propertyName = propertySegments[propertySegments.length - 1] as string;
+    const propertyName = propertySegments[propertySegments.length - 1];
     const parentPath = propertySegments.slice(0, -1);
 
     // Resolve the base schema depending on whether root is the FROM alias or a JOIN alias

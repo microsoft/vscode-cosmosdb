@@ -177,13 +177,13 @@ export function createNoSqlCompletionProvider(
                         : null;
 
                     for (const [name, propSchema] of Object.entries(properties)) {
-                        const typeLabel = getTypeLabel(propSchema as JSONSchema);
+                        const typeLabel = getTypeLabel(propSchema);
                         const hasChildren =
-                            !!(propSchema as JSONSchema).properties ||
-                            !!(propSchema as JSONSchema).anyOf?.some(
+                            !!propSchema.properties ||
+                            !!propSchema.anyOf?.some(
                                 (e) => typeof e !== 'boolean' && (e.type === 'object' || e.properties),
                             );
-                        const sortKey = computePropertySortKey(propSchema as JSONSchema, expectedType);
+                        const sortKey = computePropertySortKey(propSchema, expectedType);
 
                         if (needsBracketNotation(name)) {
                             suggestions.push({

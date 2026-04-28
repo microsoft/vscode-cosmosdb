@@ -40,7 +40,8 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
     }
 
     public getTreeItem(): vscode.TreeItem {
-        return { ...super.getTreeItem(), iconPath: getThemeAgnosticIconURI('CosmosDBAccount.svg') };
+        const base = super.getTreeItem();
+        return Object.assign(base, { iconPath: getThemeAgnosticIconURI('CosmosDBAccount.svg') });
     }
 
     public async getConnectionString(): Promise<string | undefined> {

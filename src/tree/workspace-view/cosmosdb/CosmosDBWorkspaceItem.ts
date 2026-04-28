@@ -59,7 +59,7 @@ export class CosmosDBWorkspaceItem implements TreeElement, TreeElementWithContex
                     const isEmulator: boolean = !!nonNullValue(properties?.isEmulator, 'isEmulator');
                     const connectionString: string = nonNullValue(secrets?.[0], 'connectionString');
                     const tenantId: string | undefined =
-                        typeof properties?.tenantId === 'string' ? (properties.tenantId as string) : undefined;
+                        typeof properties?.tenantId === 'string' ? properties.tenantId : undefined;
                     const experience = getExperienceFromApi(api);
                     const accountModel: CosmosDBAttachedAccountModel = {
                         id: `${this.id}/${id}`, // To enable TreeView.reveal, we need to have a unique nested id

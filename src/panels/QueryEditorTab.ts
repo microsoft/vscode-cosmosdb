@@ -78,7 +78,7 @@ export class QueryEditorTab extends BaseTab {
         this.disposables.push(
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
-                    void this.syncSchemaBasedOnQueriesSetting();
+                    this.syncSchemaBasedOnQueriesSetting();
                 }
             }),
         );
@@ -163,7 +163,7 @@ export class QueryEditorTab extends BaseTab {
     }
 
     public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
-        const activeSession = this.sessions.values().next().value as QuerySession | undefined;
+        const activeSession = this.sessions.values().next().value;
         const result = activeSession?.sessionResult;
         return result?.getSerializedResult(1);
     };

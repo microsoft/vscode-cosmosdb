@@ -9,7 +9,7 @@ import * as l10n from '@vscode/l10n';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
-export const ExplainQueryButton = ({ type = 'button' }: ToolbarOverflowItemProps) => {
+export const ExplainQueryButton = ({ type }: ToolbarOverflowItemProps) => {
     const dispatcher = useQueryEditorDispatcher();
 
     const handleClick = () => {

@@ -29,11 +29,7 @@ import {
     type ServerOptions,
 } from 'vscode-languageclient/node';
 import { AuthenticationMethod } from '../cosmosdb/AuthenticationMethod';
-import {
-    type CosmosDBEntraIdCredential,
-    type CosmosDBKeyCredential,
-    type CosmosDBManagedIdentityCredential,
-} from '../cosmosdb/CosmosDBCredential';
+import { type CosmosDBEntraIdCredential, type CosmosDBManagedIdentityCredential } from '../cosmosdb/CosmosDBCredential';
 import { getAccessTokenForVSCode } from '../cosmosdb/utils/azureSessionHelper';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
@@ -427,22 +423,16 @@ function quoteArg(value: string): string {
 }
 
 function getCosmosDBShellCredential(node: NoSqlContainerResourceItem): string | undefined {
-    const credential = node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.accountKey) as
-        | CosmosDBKeyCredential
-        | undefined;
+    const credential = node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.accountKey);
     return credential?.key;
 }
 
 function getEntraIdCredential(node: NoSqlContainerResourceItem): CosmosDBEntraIdCredential | undefined {
-    return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.entraId) as
-        | CosmosDBEntraIdCredential
-        | undefined;
+    return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.entraId);
 }
 
 function getManagedIdentityCredential(node: NoSqlContainerResourceItem): CosmosDBManagedIdentityCredential | undefined {
-    return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.managedIdentity) as
-        | CosmosDBManagedIdentityCredential
-        | undefined;
+    return node.model.accountInfo.credentials.find((c) => c.type === AuthenticationMethod.managedIdentity);
 }
 
 /**
@@ -533,7 +523,7 @@ function detectCosmosDBShellSupport(command: string): boolean {
             return true;
         }
 
-        ext.outputChannel.appendLine('fail ' + err);
+        ext.outputChannel.appendLine('fail ' + String(err));
         ext.outputChannel.appendLine('while running "' + command + ' --version"');
         if (stdout.trim().length > 0) {
             ext.outputChannel.appendLine('stdout: ' + stdout.trim());
@@ -752,7 +742,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
 
         context.subscriptions.push(didChangeEmitter);
     } catch (err) {
-        ext.outputChannel.appendLine('error while registering MCP server: ' + err);
+        ext.outputChannel.appendLine('error while registering MCP server: ' + String(err));
     }
 }
 

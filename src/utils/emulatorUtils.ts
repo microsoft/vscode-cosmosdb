@@ -76,7 +76,7 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
                     // Store the new item, or abort if it already exists which would be unexpected at this point
                     await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
                 } catch (error) {
-                    throw new Error(`Failed to migrate emulator item "${item.id}": ${error}`);
+                    throw new Error(`Failed to migrate emulator item "${item.id}": ${String(error)}`);
                 }
                 // Delete old item after successful migration
                 await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);

@@ -6,7 +6,7 @@
 import { type IActionContext, type ISubscriptionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { API } from '../../AzureDBExperiences';
 import { type CosmosDBAccountUnsupportedResourceItem } from '../../tree/cosmosdb/CosmosDBAccountUnsupportedResourceItem';
 import { openUrl } from '../../utils/openUrl';

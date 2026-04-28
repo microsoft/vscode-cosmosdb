@@ -13,7 +13,7 @@ import {
     useQueryEditorStateDispatch,
 } from '../state/QueryEditorContext';
 
-export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTMLButtonElement>) => {
+export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatch = useQueryEditorStateDispatch();
     const dispatcher = useQueryEditorDispatcher();

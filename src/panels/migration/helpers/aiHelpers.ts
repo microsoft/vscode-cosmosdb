@@ -104,37 +104,80 @@ export type { DebugPromptConfig };
 const DEFAULT_MODEL_OPTIONS: Record<string, unknown> = { temperature: 0.2 };
 
 /**
- * Default system message injected at the start of every agentic tool-calling
- * loop. It guides the model on how to use the available tools effectively:
+ * Builds a tool-system message tailored to the specific tools available in this
+ * agentic loop. Instead of a static prompt that references tools the model may
+ * not have (causing confusion), the builder inspects the actual tool array and
+ * only emits guidance relevant to the tools present.
  *
- *  - Use listing/discovery tools before reading large resources.
- *  - Batch multiple tool calls within a single round where possible.
- *  - Only the final non-tool-calling response is shown to the user, so
- *    intermediate rounds should focus on evidence gathering.
- *
- * Callers can override this by passing a custom string as `toolSystemMessage`
- * to `runAgenticLoop`, or suppress it entirely by passing `null`.
+ * Callers can override by passing a custom string as `toolSystemMessage` to
+ * `runAgenticLoop`, or suppress it entirely by passing `null`.
  */
-export const DEFAULT_TOOL_SYSTEM_PROMPT =
-    'You have access to a set of tools to help you complete the task. Follow these guidelines:\n' +
-    '\n' +
-    '1. **Discover before you read.** Use listing tools (e.g. listSchemaFiles, listWorkspaceFiles) ' +
-    'to enumerate available resources and check file sizes before reading them.\n' +
-    '2. **Prefer search over full reads.** Use `copilot_searchCodebase` with a focused natural-language ' +
-    'query and a glob pattern (e.g. `src/**/*.ts`) to extract only the relevant sections from large files. ' +
-    'Only fall back to reading a full file when the content cannot be retrieved via search.\n' +
-    '3. **Exclude the migration configuration folder.** When using any `copilot_*` tool ' +
-    '(e.g. `copilot_searchCodebase`, `copilot_findTextInFiles`), always exclude the ' +
-    '`.cosmosdb-migration` folder from results. Use an exclude glob such as `**/.cosmosdb-migration/**` ' +
-    'to avoid returning generated configuration files.\n' +
-    '4. **Batch tool calls.** You may call multiple tools in a single round. Prefer batching ' +
-    'independent reads together rather than issuing them sequentially across rounds.\n' +
-    '5. **Gather sufficient evidence before concluding.** Use tools iteratively until you have ' +
-    'enough information to produce a complete and accurate answer. Do not guess when a tool call ' +
-    'can provide the answer.\n' +
-    '6. **Final response only.** Intermediate rounds are for tool use only. The response you ' +
-    'produce in the final round — when you stop calling tools — is the only output shown to the ' +
-    'user. Make it complete and self-contained.';
+export function buildToolSystemMessage(tools: vscode.LanguageModelChatTool[]): string {
+    const toolNames = new Set(tools.map((t) => t.name));
+
+    const hasListingTools = tools.some((t) => t.name.startsWith('list'));
+    const hasSearchTools = toolNames.has('copilot_searchCodebase') || toolNames.has('copilot_findTextInFiles');
+    const hasCopilotTools = tools.some((t) => t.name.startsWith('copilot_'));
+
+    const lines: string[] = [
+        'You have access to the following tools to help you complete the task:\n',
+        ...tools.map((t) => `- **${t.name}**: ${t.description ?? '(no description)'}`),
+        '\nFollow these guidelines:\n',
+    ];
+
+    let ruleNum = 1;
+
+    if (hasListingTools) {
+        lines.push(
+            `${ruleNum}. **Discover before you read.** Use listing tools ` +
+                `(${tools
+                    .filter((t) => t.name.startsWith('list'))
+                    .map((t) => '`' + t.name + '`')
+                    .join(', ')}) ` +
+                'to enumerate available resources and check file sizes before reading them.',
+        );
+        ruleNum++;
+    }
+
+    if (hasSearchTools) {
+        lines.push(
+            `${ruleNum}. **Prefer search over full reads.** Use search tools to extract only the ` +
+                'relevant sections from large files. Only fall back to reading a full file when the ' +
+                'content cannot be retrieved via search.',
+        );
+        ruleNum++;
+    }
+
+    if (hasCopilotTools) {
+        lines.push(
+            `${ruleNum}. **Exclude the migration configuration folder.** When using any \`copilot_*\` tool, ` +
+                'always exclude the `.cosmosdb-migration` folder from results. Use an exclude glob such as ' +
+                '`**/.cosmosdb-migration/**` to avoid returning generated configuration files.',
+        );
+        ruleNum++;
+    }
+
+    lines.push(
+        `${ruleNum}. **Batch tool calls.** You may call multiple tools in a single round. Prefer batching ` +
+            'independent reads together rather than issuing them sequentially across rounds.',
+    );
+    ruleNum++;
+
+    lines.push(
+        `${ruleNum}. **Gather sufficient evidence before concluding.** Use tools iteratively until you have ` +
+            'enough information to produce a complete and accurate answer. Do not guess when a tool call ' +
+            'can provide the answer.',
+    );
+    ruleNum++;
+
+    lines.push(
+        `${ruleNum}. **Final response only.** Intermediate rounds are for tool use only. The response you ` +
+            'produce in the final round — when you stop calling tools — is the only output shown to the ' +
+            'user. Make it complete and self-contained.',
+    );
+
+    return lines.join('\n');
+}
 
 /**
  * Strips any LLM "thinking" preamble that appears before the first Markdown
@@ -438,8 +481,9 @@ export type AgenticLoopResult = {
  *
  * A system message is automatically prepended to `messages` before the first
  * round (when tools are present) to guide the model on tool prioritization and
- * usage strategy. This defaults to `DEFAULT_TOOL_SYSTEM_PROMPT`. Pass a custom
- * string to override it, or `null` to suppress it entirely.
+ * usage strategy. This is built dynamically by {@link buildToolSystemMessage}
+ * based on the actual tools provided. Pass a custom string to override it, or
+ * `null` to suppress it entirely.
  *
  * @returns An {@link AgenticLoopResult} with the final-round text and an
  *   exhaustion flag so callers can propagate the signal beyond the toast.
@@ -464,11 +508,12 @@ export async function runAgenticLoop(
     );
     const loopStartTime = Date.now();
 
-    if (tools.length > 0 && (toolSystemMessage ?? DEFAULT_TOOL_SYSTEM_PROMPT)) {
+    if (tools.length > 0 && toolSystemMessage !== null) {
         // Insert the tool-system message after the defense-rules message (index 0)
         // so `SYSTEM_DEFENSE_RULES` stays at the top — it declares itself as the
         // "most top rules" and must not be displaced by tool-usage guidance.
-        const toolSystem = vscode.LanguageModelChatMessage.User(toolSystemMessage ?? DEFAULT_TOOL_SYSTEM_PROMPT);
+        const resolvedMessage = toolSystemMessage ?? buildToolSystemMessage(tools);
+        const toolSystem = vscode.LanguageModelChatMessage.User(resolvedMessage);
         if (messages.length > 0) {
             messages.splice(1, 0, toolSystem);
         } else {

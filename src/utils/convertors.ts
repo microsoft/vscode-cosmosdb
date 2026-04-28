@@ -710,9 +710,7 @@ export const getTableDataset = async (
  * | object      | object     | normal object path + partition key for SELECT *     |
  * | object      | primitive  | throw QueryResultMismatchError                      |
  * | object      | mixed      | throw QueryResultMismatchError                      |
- * | primitive   | primitive  | _value1 scalar path, no partition key               |
- * | primitive   | object     | scan keys (SELECT VALUE c.obj where obj is object)  |
- * | primitive   | mixed      | _value1 column (schemaless — field varies per doc)  |
+ * | primitive   | any        | _value1 column — SELECT VALUE means "one value"     |
  * | unknown     | object     | fallback: scan document keys (legacy)               |
  * | unknown     | primitive  | _value1 column                                      |
  * | unknown     | mixed      | return empty (cannot render safely)                 |
@@ -743,27 +741,27 @@ export const queryResultToTable = async (
         return { headers: [], dataset: [] };
     }
 
-    // Mixed data — only a real error if query statically promised named-key objects.
-    // For SELECT VALUE (primitive) the field itself could be anything in a schemaless DB.
-    // For unknown queryKind we cannot render mixed data safely.
-    if (dataKind === 'mixed') {
-        if (queryKind === 'object') {
-            throw new QueryResultMismatchError(queryKind, dataKind);
-        }
-        if (queryKind === 'unknown') {
-            return { headers: [], dataset: [] };
-        }
-        // queryKind === 'primitive': SELECT VALUE c.field where field varies — use _value1
+    // SELECT VALUE — user explicitly asked for value-as-is, always one _value1 column.
+    // The expression may evaluate to a scalar, array, or even a full document object —
+    // all of these are treated as a single opaque value per row.
+    if (queryKind === 'primitive') {
+        const headers = ['_value1'];
+        const dataset: TableRecord[] = queryResult.documents.map((doc) => ({
+            __id: uuid(),
+            _value1: typeof doc === 'string' ? sanitiseDisplayString(doc) : doc,
+        }));
+        return { headers, dataset };
     }
 
-    // SELECT * / SELECT list returned scalars — that's a real server-side error
-    if (queryKind === 'object' && dataKind === 'primitive') {
+    // SELECT * / SELECT list returned mixed or scalar data — real server-side error
+    if (queryKind === 'object' && (dataKind === 'primitive' || dataKind === 'mixed')) {
         throw new QueryResultMismatchError(queryKind, dataKind);
     }
 
-    // SELECT VALUE c.field where field happens to be an object in all documents:
-    // treat the same as unknown — scan document keys for headers.
-    // (No partition key injection — SELECT VALUE doesn't return full documents.)
+    // unknown queryKind with mixed data — cannot render safely
+    if (dataKind === 'mixed') {
+        return { headers: [], dataset: [] };
+    }
     const effectiveOptions = { ...options };
     if (isSelectStar(query)) {
         effectiveOptions.ShowPartitionKey = 'first';

@@ -36,6 +36,9 @@
   "type": "module",
   "main": "./main.mjs",
   "l10n": "./l10n",
+  "workspaces": [
+    "packages/*"
+  ],
   "activationEvents": [
     "onFileSystem:azureDatabases",
     "onView:azureWorkspace",

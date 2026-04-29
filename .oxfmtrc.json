@@ -31,5 +31,13 @@
       }
     }
   ],
-  "ignorePatterns": ["package-lock.json", "package.nls.*.json", "l10n/bundle.l10n.*.json", ".cosmosdb-data/", "skills/", "NOTICE.html", "bundle-analysis/"]
+  "ignorePatterns": [
+    "package-lock.json",
+    "package.nls.*.json",
+    "l10n/bundle.l10n.*.json",
+    ".cosmosdb-data/",
+    "skills/",
+    "NOTICE.html",
+    "bundle-analysis/"
+  ]
 }

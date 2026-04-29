@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import './index.scss';
 import { AriaLiveAnnouncer, useFocusFinders } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { type l10nJsonFormat } from '@vscode/l10n';
@@ -12,6 +11,7 @@ import type * as React from 'react';
 import { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { type WebviewApi } from 'vscode-webview';
+import './index.scss';
 import { DynamicThemeProvider } from './theme/DynamicThemeProvider';
 import { type WebviewState, WithWebviewContext } from './WebviewContext';
 import { WebviewRegistry } from './WebviewRegistry';

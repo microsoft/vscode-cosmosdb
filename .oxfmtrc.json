@@ -15,7 +15,11 @@
     "newlinesBetween": false,
     "partitionByNewline": false,
     "sortSideEffects": false,
-    "groups": ["side_effect", ["builtin", "external", "internal", "subpath"], ["parent", "sibling", "index", "unknown"]]
+    "groups": [
+      "side_effect",
+      ["builtin", "external", "internal", "subpath"],
+      ["side_effect_style", "style", "parent", "sibling", "index", "unknown"]
+    ]
   },
   "overrides": [
     {

@@ -56,7 +56,7 @@
     "package": "node scripts/package-vsix.mjs",
     "check": "concurrently -n build,lint -c blue,yellow \"npm run build\" \"npm run lint\"",
     "lint": "concurrently -n oxlint,eslint -c yellow,green \"oxlint --quiet\" \"eslint --quiet .\"",
-    "lint-fix": "oxlint --fix && eslint --fix .",
+    "lint-fix": "concurrently -n oxlint,eslint -c yellow,green \"oxlint --fix\" \"eslint --fix .\"",
     "prettier": "oxfmt --check",
     "prettier-fix": "oxfmt",
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'commonjs'}))\"",

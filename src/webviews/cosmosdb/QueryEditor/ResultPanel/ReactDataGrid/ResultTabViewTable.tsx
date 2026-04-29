@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import 'react-data-grid/lib/styles.css';
-import './vscodeTheme.scss';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import { isNil } from 'es-toolkit';
@@ -18,6 +16,8 @@ import {
     type ColumnWidths,
     type RenderHeaderCellProps,
 } from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
+import './vscodeTheme.scss';
 import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/queryResult';
 import { type TableData, type TableRecord } from '../../../../../utils/convertors';
 import { toStringUniversal } from '../../../../../utils/strings';

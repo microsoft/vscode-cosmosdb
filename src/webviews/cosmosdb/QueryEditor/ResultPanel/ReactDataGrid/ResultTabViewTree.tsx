@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import 'react-data-grid/lib/styles.css';
-import './vscodeTheme.scss';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { ChevronDownRegular, ChevronRightRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { isNil } from 'es-toolkit';
 import { useCallback, useMemo, useReducer, useState } from 'react';
 import { DataGrid, type Column, type ColumnWidths } from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
+import './vscodeTheme.scss';
 import { toStringUniversal } from '../../../../../utils/strings';
 import { type TreeRow } from '../../../../utils';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';

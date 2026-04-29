@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import 'allotment/dist/style.css';
 import { makeStyles } from '@fluentui/react-components';
 import { Allotment } from 'allotment';
+import 'allotment/dist/style.css';
 import { useHotkeyScope } from '../../common/hotkeys';
 import {
     QueryEditorGlobalHotkeys,

@@ -501,187 +501,228 @@ export async function runAgenticLoop(
     debugConfig?: DebugPromptConfig,
     toolSystemMessage?: string | null,
 ): Promise<AgenticLoopResult> {
-    ext.outputChannel.debug(
-        `[Migration] ${label}: agentic loop starting — model="${model.name}" (${model.family}), ` +
-            `tools=[${tools.map((t) => t.name).join(', ')}], maxRounds=${maxRounds}, ` +
-            `initialMessages=${messages.length}`,
-    );
-    const loopStartTime = Date.now();
-
-    if (tools.length > 0 && toolSystemMessage !== null) {
-        // Insert the tool-system message after the defense-rules message (index 0)
-        // so `SYSTEM_DEFENSE_RULES` stays at the top — it declares itself as the
-        // "most top rules" and must not be displaced by tool-usage guidance.
-        const resolvedMessage = toolSystemMessage ?? buildToolSystemMessage(tools);
-        const toolSystem = vscode.LanguageModelChatMessage.User(resolvedMessage);
-        if (messages.length > 0) {
-            messages.splice(1, 0, toolSystem);
-        } else {
-            messages.push(toolSystem);
-        }
-    }
-
-    let lastRoundText = '';
-    let totalRounds = 0;
-    let completedNaturally = false;
-    let cumulativeInputTokens = 0;
-    let cumulativeOutputTokens = 0;
-    let lastRoundInputTokens = 0;
-
-    for (let round = 0; round < maxRounds; round++) {
-        if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
-        totalRounds = round + 1;
-
-        const roundStartTime = Date.now();
-
-        // Count input tokens for this round (full messages array sent to the model)
-        try {
-            lastRoundInputTokens = 0;
-            for (const msg of messages) {
-                lastRoundInputTokens += await model.countTokens(msg);
-            }
-            cumulativeInputTokens += lastRoundInputTokens;
-        } catch {
-            // Token counting may fail; don't block the workflow
-        }
-
-        ext.outputChannel.debug(
-            `[Migration] ${label}: round ${round + 1}/${maxRounds} — ` +
-                `messages=${messages.length}, inputTokens=${lastRoundInputTokens}`,
-        );
-
-        const response = await model.sendRequest(
-            messages,
-            { tools, modelOptions: { ...DEFAULT_MODEL_OPTIONS, ...modelOptions } },
-            token,
-        );
-
-        const textParts: string[] = [];
-        const toolCalls: vscode.LanguageModelToolCallPart[] = [];
-
-        for await (const part of response.stream) {
-            if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
-
-            if (part instanceof vscode.LanguageModelTextPart) {
-                textParts.push(part.value);
-            } else if (part instanceof vscode.LanguageModelToolCallPart) {
-                toolCalls.push(part);
-            }
-        }
-
-        lastRoundText = textParts.join('');
-
-        // Count output tokens for this round
-        try {
-            cumulativeOutputTokens += await model.countTokens(lastRoundText);
-        } catch {
-            // Token counting may fail; don't block the workflow
-        }
-
-        const isLastRound = toolCalls.length === 0;
-        const roundElapsed = Date.now() - roundStartTime;
-
-        ext.outputChannel.debug(
-            `[Migration] ${label}: round ${round + 1} completed in ${roundElapsed}ms — ` +
-                `toolCalls=${toolCalls.length}` +
-                (toolCalls.length > 0 ? ` [${toolCalls.map((tc) => tc.name).join(', ')}]` : '') +
-                `, textLength=${lastRoundText.length}` +
-                (isLastRound ? ' (final round)' : ''),
-        );
-
-        if (onRound && textParts.length > 0) {
-            await onRound(round, lastRoundText, isLastRound);
-        }
-
-        if (isLastRound) {
-            completedNaturally = true;
-            break;
-        }
-
-        // Add assistant message containing all tool calls
-        messages.push(
-            vscode.LanguageModelChatMessage.Assistant(
-                toolCalls.map((tc) => new vscode.LanguageModelToolCallPart(tc.callId, tc.name, tc.input)),
-            ),
-        );
-
-        // Execute each tool call and add results
-        const toolResults: vscode.LanguageModelToolResultPart[] = [];
-        for (const toolCall of toolCalls) {
-            const toolStartTime = Date.now();
-            const result = await executeToolCall(toolCall);
-            const toolElapsed = Date.now() - toolStartTime;
-            ext.outputChannel.debug(
-                `[${label}] Tool ${toolCall.name} completed in ${toolElapsed}ms, ` +
-                    `resultLength=${result.length} chars`,
-            );
-            toolResults.push(
-                new vscode.LanguageModelToolResultPart(toolCall.callId, [new vscode.LanguageModelTextPart(result)]),
-            );
-        }
-
-        messages.push(vscode.LanguageModelChatMessage.User(toolResults));
-    }
-
-    if (!completedNaturally && !token.isCancellationRequested) {
-        ext.outputChannel.appendLog(
-            `[${label}] Warning: agentic loop exhausted all ${maxRounds} tool-calling rounds ` +
-                `without the model producing a final response. ` +
-                `The model may need more rounds to complete this task.`,
-        );
-
-        // Telemetry: record exhaustion so we can tune the cap across phases.
-        void callWithTelemetryAndErrorHandling('migration.ai.agenticLoop.exhausted', (context) => {
+    // Wrap the entire loop in telemetry so errors, duration, and token usage
+    // are always captured — even on unexpected throws. `rethrow` ensures the
+    // error still propagates to the calling phase handler.
+    const result = await callWithTelemetryAndErrorHandling(
+        'cosmosDB.migration.ai.agenticLoopCompleted',
+        async (context) => {
+            context.errorHandling.rethrow = true;
+            context.errorHandling.suppressDisplay = true;
+            context.errorHandling.forceIncludeInReportIssueCommand = true;
             context.telemetry.properties.phase = label;
             context.telemetry.properties.modelId = model.id;
             context.telemetry.properties.modelFamily = model.family;
             context.telemetry.properties.modelVendor = model.vendor;
-            context.telemetry.properties.maxRounds = String(maxRounds);
+
+            // Pre-populate issueProperties so unexpected AI errors include context in Report Issue
+            context.errorHandling.issueProperties.phase = label;
+            context.errorHandling.issueProperties.modelId = model.id;
+            context.errorHandling.issueProperties.modelFamily = model.family;
+
+            ext.outputChannel.debug(
+                `[Migration] ${label}: agentic loop starting — model="${model.name}" (${model.family}), ` +
+                    `tools=[${tools.map((t) => t.name).join(', ')}], maxRounds=${maxRounds}, ` +
+                    `initialMessages=${messages.length}`,
+            );
+            const loopStartTime = Date.now();
+
+            if (tools.length > 0 && toolSystemMessage !== null) {
+                // Insert the tool-system message after the defense-rules message (index 0)
+                // so `SYSTEM_DEFENSE_RULES` stays at the top — it declares itself as the
+                // "most top rules" and must not be displaced by tool-usage guidance.
+                const resolvedMessage = toolSystemMessage ?? buildToolSystemMessage(tools);
+                const toolSystem = vscode.LanguageModelChatMessage.User(resolvedMessage);
+                if (messages.length > 0) {
+                    messages.splice(1, 0, toolSystem);
+                } else {
+                    messages.push(toolSystem);
+                }
+            }
+
+            let lastRoundText = '';
+            let totalRounds = 0;
+            let completedNaturally = false;
+            let cumulativeInputTokens = 0;
+            let cumulativeOutputTokens = 0;
+            let lastRoundInputTokens = 0;
+
+            for (let round = 0; round < maxRounds; round++) {
+                if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
+                totalRounds = round + 1;
+
+                const roundStartTime = Date.now();
+
+                // Count input tokens for this round (full messages array sent to the model)
+                try {
+                    lastRoundInputTokens = 0;
+                    for (const msg of messages) {
+                        lastRoundInputTokens += await model.countTokens(msg);
+                    }
+                    cumulativeInputTokens += lastRoundInputTokens;
+                } catch {
+                    // Token counting may fail; don't block the workflow
+                }
+
+                ext.outputChannel.debug(
+                    `[Migration] ${label}: round ${round + 1}/${maxRounds} — ` +
+                        `messages=${messages.length}, inputTokens=${lastRoundInputTokens}`,
+                );
+
+                const response = await model.sendRequest(
+                    messages,
+                    { tools, modelOptions: { ...DEFAULT_MODEL_OPTIONS, ...modelOptions } },
+                    token,
+                );
+
+                const textParts: string[] = [];
+                const toolCalls: vscode.LanguageModelToolCallPart[] = [];
+
+                for await (const part of response.stream) {
+                    if (token.isCancellationRequested) return { text: lastRoundText, roundsExhausted: false };
+
+                    if (part instanceof vscode.LanguageModelTextPart) {
+                        textParts.push(part.value);
+                    } else if (part instanceof vscode.LanguageModelToolCallPart) {
+                        toolCalls.push(part);
+                    }
+                }
+
+                lastRoundText = textParts.join('');
+
+                // Count output tokens for this round
+                try {
+                    cumulativeOutputTokens += await model.countTokens(lastRoundText);
+                } catch {
+                    // Token counting may fail; don't block the workflow
+                }
+
+                const isLastRound = toolCalls.length === 0;
+                const roundElapsed = Date.now() - roundStartTime;
+
+                ext.outputChannel.debug(
+                    `[Migration] ${label}: round ${round + 1} completed in ${roundElapsed}ms — ` +
+                        `toolCalls=${toolCalls.length}` +
+                        (toolCalls.length > 0 ? ` [${toolCalls.map((tc) => tc.name).join(', ')}]` : '') +
+                        `, textLength=${lastRoundText.length}` +
+                        (isLastRound ? ' (final round)' : ''),
+                );
+
+                if (onRound && textParts.length > 0) {
+                    await onRound(round, lastRoundText, isLastRound);
+                }
+
+                if (isLastRound) {
+                    completedNaturally = true;
+                    break;
+                }
+
+                // Add assistant message containing all tool calls
+                messages.push(
+                    vscode.LanguageModelChatMessage.Assistant(
+                        toolCalls.map((tc) => new vscode.LanguageModelToolCallPart(tc.callId, tc.name, tc.input)),
+                    ),
+                );
+
+                // Execute each tool call and add results
+                const toolResults: vscode.LanguageModelToolResultPart[] = [];
+                for (const toolCall of toolCalls) {
+                    const toolStartTime = Date.now();
+                    const result = await executeToolCall(toolCall);
+                    const toolElapsed = Date.now() - toolStartTime;
+                    ext.outputChannel.debug(
+                        `[${label}] Tool ${toolCall.name} completed in ${toolElapsed}ms, ` +
+                            `resultLength=${result.length} chars`,
+                    );
+                    toolResults.push(
+                        new vscode.LanguageModelToolResultPart(toolCall.callId, [
+                            new vscode.LanguageModelTextPart(result),
+                        ]),
+                    );
+                }
+
+                messages.push(vscode.LanguageModelChatMessage.User(toolResults));
+            }
+
+            if (!completedNaturally && !token.isCancellationRequested) {
+                ext.outputChannel.appendLog(
+                    `[${label}] Warning: agentic loop exhausted all ${maxRounds} tool-calling rounds ` +
+                        `without the model producing a final response. ` +
+                        `The model may need more rounds to complete this task.`,
+                );
+
+                // Telemetry: record exhaustion as a separate warning-level event for alerting.
+                void callWithTelemetryAndErrorHandling(
+                    'cosmosDB.migration.ai.agenticLoopExhausted',
+                    (exhaustionCtx) => {
+                        exhaustionCtx.telemetry.properties.phase = label;
+                        exhaustionCtx.telemetry.properties.modelId = model.id;
+                        exhaustionCtx.telemetry.properties.modelFamily = model.family;
+                        exhaustionCtx.telemetry.properties.modelVendor = model.vendor;
+                        exhaustionCtx.telemetry.properties.maxRounds = String(maxRounds);
+                        exhaustionCtx.telemetry.measurements.cumulativeInputTokens = cumulativeInputTokens;
+                        exhaustionCtx.telemetry.measurements.cumulativeOutputTokens = cumulativeOutputTokens;
+                        exhaustionCtx.errorHandling.suppressDisplay = true;
+                    },
+                );
+
+                // User-visible warning with an option to open the output channel.
+                const showOutput = l10n.t('Show Output');
+                void vscode.window
+                    .showWarningMessage(
+                        l10n.t(
+                            'The AI step "{label}" reached the {maxRounds}-round tool-call limit without finishing. Results may be incomplete.',
+                            { label, maxRounds },
+                        ),
+                        showOutput,
+                    )
+                    .then((choice) => {
+                        if (choice === showOutput) {
+                            ext.outputChannel.show();
+                        }
+                    });
+            }
+
+            // Log cumulative token usage at the end of the agentic loop
+            logAgenticTokenUsage(
+                model,
+                `${label} (${totalRounds} rounds)`,
+                cumulativeInputTokens,
+                cumulativeOutputTokens,
+                lastRoundInputTokens,
+            );
+
+            const loopElapsed = Date.now() - loopStartTime;
+            ext.outputChannel.debug(
+                `[Migration] ${label}: agentic loop finished — ` +
+                    `rounds=${totalRounds}/${maxRounds}, elapsed=${loopElapsed}ms, ` +
+                    `completedNaturally=${String(completedNaturally)}, ` +
+                    `responseLength=${lastRoundText.length} chars`,
+            );
+
+            // Stamp final metrics on the wrapping telemetry context
+            const completionReason = token.isCancellationRequested
+                ? 'cancelled'
+                : completedNaturally
+                  ? 'natural'
+                  : 'exhausted';
+            context.telemetry.properties.completionReason = completionReason;
             context.telemetry.measurements.cumulativeInputTokens = cumulativeInputTokens;
             context.telemetry.measurements.cumulativeOutputTokens = cumulativeOutputTokens;
-            // Suppress the error popup — this is a soft warning, not a failure.
-            context.errorHandling.suppressDisplay = true;
-        });
+            context.telemetry.measurements.totalRounds = totalRounds;
+            context.telemetry.measurements.durationMs = loopElapsed;
 
-        // User-visible warning with an option to open the output channel.
-        const showOutput = l10n.t('Show Output');
-        void vscode.window
-            .showWarningMessage(
-                l10n.t(
-                    'The AI step "{label}" reached the {maxRounds}-round tool-call limit without finishing. Results may be incomplete.',
-                    { label, maxRounds },
-                ),
-                showOutput,
-            )
-            .then((choice) => {
-                if (choice === showOutput) {
-                    ext.outputChannel.show();
-                }
-            });
-    }
+            if (isDebugPromptsEnabled() && debugConfig && lastRoundText) {
+                await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, lastRoundText, 'md');
+            }
 
-    // Log cumulative token usage at the end of the agentic loop
-    logAgenticTokenUsage(
-        model,
-        `${label} (${totalRounds} rounds)`,
-        cumulativeInputTokens,
-        cumulativeOutputTokens,
-        lastRoundInputTokens,
+            return { text: lastRoundText, roundsExhausted: !completedNaturally && !token.isCancellationRequested };
+        },
     );
 
-    const loopElapsed = Date.now() - loopStartTime;
-    ext.outputChannel.debug(
-        `[Migration] ${label}: agentic loop finished — ` +
-            `rounds=${totalRounds}/${maxRounds}, elapsed=${loopElapsed}ms, ` +
-            `completedNaturally=${String(completedNaturally)}, ` +
-            `responseLength=${lastRoundText.length} chars`,
-    );
-
-    if (isDebugPromptsEnabled() && debugConfig && lastRoundText) {
-        await dumpDebugResponse(debugConfig.debugDir, debugConfig.stepName, lastRoundText, 'md');
-    }
-
-    return { text: lastRoundText, roundsExhausted: !completedNaturally && !token.isCancellationRequested };
+    // callWithTelemetryAndErrorHandling returns undefined on error (after rethrowing),
+    // but since rethrow is set the error will propagate before we reach here.
+    return result!;
 }
 
 /**

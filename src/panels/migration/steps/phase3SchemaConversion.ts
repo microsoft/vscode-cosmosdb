@@ -36,6 +36,12 @@ import {
     sendPhaseProgress,
     stripPartitionKeyCandidates,
 } from '../helpers/migrationHelpers';
+import {
+    enrichErrorContext,
+    incrementRunCount,
+    setAiTelemetryContext,
+    setMigrationTelemetryContext,
+} from '../helpers/migrationTelemetry';
 import { MAX_SCHEMA_TOOL_ROUNDS } from '../migrationConstants';
 import {
     Phase3FastConversionPrompt,
@@ -512,7 +518,13 @@ export async function runSchemaConversion(
 ): Promise<void> {
     const { project, projectService, channel, cancellationToken: token } = ctx;
 
-    await callWithTelemetryAndErrorHandling('migration.ai.schemaConversion', async () => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase3.schemaConversion', async (context) => {
+        setMigrationTelemetryContext(context, project, 'schemaConversion');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
+        incrementRunCount(project, 'schemaConversion');
+        context.telemetry.properties.thoroughAnalysis = String(!!thoroughAnalysis);
+        context.telemetry.properties.includeUnmappedDomains = String(!!includeUnmappedDomains);
         // Check if schema conversion results already exist
         const conversionPath = projectService.getSchemaConversionPath();
         const domainsPath = path.join(conversionPath, 'domains');
@@ -570,6 +582,7 @@ export async function runSchemaConversion(
 
         try {
             const model = await getSelectedModel();
+            setAiTelemetryContext(context, model);
 
             ext.outputChannel.appendLog(
                 `[SchemaConversion] Selected model: id="${model.id}", name="${model.name}", maxInputTokens=${model.maxInputTokens}`,
@@ -1188,6 +1201,12 @@ export async function runSchemaConversion(
                 modelFilePath: path.join(domainsPath, domainName, 'cosmos-model.json'),
             }));
 
+            // Structural metrics
+            const totalContainers = domainModels.reduce((sum, dm) => sum + dm.model.containers.length, 0);
+            context.telemetry.measurements.targetContainerCount = totalContainers;
+            context.telemetry.measurements.domainCount = completedDomains.length;
+            context.telemetry.measurements.skippedDomainCount = domainFiles.length - filteredDomainFiles.length;
+
             await sendPhaseEvent(channel, 'schemaConversionCompleted', [
                 {
                     domains: domainResults,
@@ -1196,10 +1215,12 @@ export async function runSchemaConversion(
                 },
             ]);
         } catch (error) {
-            if (token.isCancellationRequested) return;
+            if (token.isCancellationRequested) throw new vscode.CancellationError();
 
+            enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             await sendPhaseEvent(channel, 'schemaConversionError', [errorMessage]);
+            throw error;
         }
     });
 }

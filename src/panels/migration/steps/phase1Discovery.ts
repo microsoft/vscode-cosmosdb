@@ -23,6 +23,12 @@ import {
 } from '../helpers/aiHelpers';
 import { sendPhaseEvent } from '../helpers/migrationHelpers';
 import {
+    enrichErrorContext,
+    incrementRunCount,
+    setAiTelemetryContext,
+    setMigrationTelemetryContext,
+} from '../helpers/migrationTelemetry';
+import {
     AGENTIC_OVERHEAD_TOKENS,
     MANIFEST_PREVIEW_CHARS,
     SCHEMA_PREVIEW_CHARS_PER_FILE,
@@ -501,9 +507,13 @@ export interface Phase1Context {
 export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> {
     const { project, projectService, channel, cancellationToken: token } = ctx;
 
-    await callWithTelemetryAndErrorHandling('migration.ai.analysis', async () => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase1.analysis', async (context) => {
+        setMigrationTelemetryContext(context, project, 'discovery');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
         try {
             const model = await getSelectedModel();
+            setAiTelemetryContext(context, model);
 
             ext.outputChannel.appendLog(
                 `[Migration] Selected model: id="${model.id}", name="${model.name}", family="${model.family}", maxInputTokens=${model.maxInputTokens}`,
@@ -572,11 +582,13 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
 
             await sendPhaseEvent(channel, 'analysisCompleted', [analysis]);
         } catch (error) {
-            if (token.isCancellationRequested) return;
+            if (token.isCancellationRequested) throw new vscode.CancellationError();
 
+            enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             ext.outputChannel.error(`[Migration] Application analysis failed: ${errorMessage}`);
             await sendPhaseEvent(channel, 'analysisError', [errorMessage]);
+            throw error;
         }
     });
 }
@@ -588,7 +600,11 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
 export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
     const { project, projectService, channel, cancellationToken: token } = ctx;
 
-    await callWithTelemetryAndErrorHandling('migration.ai.discovery', async () => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase1.discovery', async (context) => {
+        setMigrationTelemetryContext(context, project, 'discovery');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
+        incrementRunCount(project, 'discovery');
         // Check if a discovery report already exists and ask for confirmation
         const discoveryReportPath = path.join(projectService.getDiscoveryPath(), 'discovery-report.md');
         if (await MigrationProjectService.fileExists(vscode.Uri.file(discoveryReportPath))) {
@@ -605,6 +621,7 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
 
         try {
             const model = await getSelectedModel();
+            setAiTelemetryContext(context, model);
 
             ext.outputChannel.appendLog(
                 `[Migration] Selected model for discovery: id="${model.id}", name="${model.name}", family="${model.family}", maxInputTokens=${model.maxInputTokens}`,
@@ -616,6 +633,19 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
 
             const schemaPath = projectService.getSchemaPath(project);
             const schemaFiles = await projectService.listFiles(schemaPath);
+
+            // Structural metrics
+            context.telemetry.measurements.sourceTableCount = schemaFiles.length;
+            const appAnalysis = project.phases.discovery.applicationAnalysis;
+            if (appAnalysis?.language) {
+                context.telemetry.properties.sourceLanguage = appAnalysis.language;
+            }
+            if (appAnalysis?.frameworks?.length) {
+                context.telemetry.properties.sourceFramework = appAnalysis.frameworks.join(', ');
+            }
+            if (appAnalysis?.databaseType) {
+                context.telemetry.properties.sourceDbType = appAnalysis.databaseType;
+            }
 
             if (schemaFiles.length === 0) {
                 await sendPhaseEvent(channel, 'discoveryError', ['No schema files found.']);
@@ -656,11 +686,13 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
 
             await sendPhaseEvent(channel, 'discoveryCompleted');
         } catch (error) {
-            if (token.isCancellationRequested) return;
+            if (token.isCancellationRequested) throw new vscode.CancellationError();
 
+            enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             ext.outputChannel.error(`[Migration] Discovery report generation failed: ${errorMessage}`);
             await sendPhaseEvent(channel, 'discoveryError', [errorMessage]);
+            throw error;
         }
     });
 }

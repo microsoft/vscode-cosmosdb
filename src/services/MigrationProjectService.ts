@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as crypto from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { type ParsedAccessPattern } from '../panels/migration/helpers/migrationHelpers';
@@ -24,9 +25,16 @@ export interface ProjectJson {
     version: 1;
     name: string;
     sourceCode: 'parent';
+    sessionId?: string;
     consentGiven?: boolean;
     migrationInstructions?: string;
     migrationMode?: 'plan' | 'start';
+    runCounts?: {
+        discovery?: number;
+        assessment?: number;
+        schemaConversion?: number;
+        provisioning?: number;
+    };
     phases: {
         discovery: {
             status: PhaseStatus;
@@ -111,6 +119,8 @@ export class MigrationProjectService {
             version: 1,
             name,
             sourceCode: 'parent',
+            sessionId: crypto.randomUUID(),
+            runCounts: {},
             phases: {
                 discovery: {
                     status: 'not-started',
@@ -167,7 +177,14 @@ export class MigrationProjectService {
     async load(): Promise<ProjectJson | undefined> {
         try {
             const data = await vscode.workspace.fs.readFile(MigrationProjectService.toUri(this.projectFilePath));
-            return JSON.parse(Buffer.from(data).toString('utf-8')) as ProjectJson;
+            const project = JSON.parse(Buffer.from(data).toString('utf-8')) as ProjectJson;
+
+            if (!project.sessionId) {
+                project.sessionId = crypto.randomUUID();
+                await this.save(project);
+            }
+
+            return project;
         } catch {
             return undefined;
         }
@@ -197,8 +214,12 @@ export class MigrationProjectService {
         // Invalidate cache so the re-initialize below actually re-creates the phase folders.
         this.initialized = false;
 
-        // Re-create folder structure
-        return this.initialize(project.name);
+        // Re-create folder structure with a new sessionId
+        const newProject = await this.initialize(project.name);
+        newProject.sessionId = crypto.randomUUID();
+        newProject.runCounts = {};
+        await this.save(newProject);
+        return newProject;
     }
 
     /**

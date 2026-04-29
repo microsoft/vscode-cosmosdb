@@ -37,6 +37,12 @@ import {
     sendPhaseEvent,
     sendPhaseProgress,
 } from '../helpers/migrationHelpers';
+import {
+    enrichErrorContext,
+    incrementRunCount,
+    setAiTelemetryContext,
+    setMigrationTelemetryContext,
+} from '../helpers/migrationTelemetry';
 import { ASSESSMENT_TOKEN_THRESHOLD, MAX_TOOL_ROUNDS, PROMPT_OVERHEAD_TOKENS } from '../migrationConstants';
 import {
     Phase2Step0AccessPatternExtractionPrompt,
@@ -228,7 +234,11 @@ export interface Phase2Context {
 export async function runAssessment(ctx: Phase2Context): Promise<void> {
     const { project, projectService, channel, cancellationToken: token } = ctx;
 
-    await callWithTelemetryAndErrorHandling('migration.ai.assessment', async () => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase2.assessment', async (context) => {
+        setMigrationTelemetryContext(context, project, 'assessment');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
+        incrementRunCount(project, 'assessment');
         // Check if assessment results already exist and ask for confirmation
         const assessmentPath = projectService.getAssessmentPath();
         const domainsPath = path.join(assessmentPath, 'domains');
@@ -268,6 +278,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
 
         try {
             const model = await getSelectedModel();
+            setAiTelemetryContext(context, model);
 
             ext.outputChannel.appendLog(
                 `[Assessment] Selected model: id="${model.id}", name="${model.name}", maxInputTokens=${model.maxInputTokens}`,
@@ -771,6 +782,10 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             };
             await projectService.save(project);
 
+            // Structural metrics
+            context.telemetry.measurements.domainCount = domainsWithTokens.length;
+            context.telemetry.measurements.accessPatternCount = parsedAccessPatterns.length;
+
             await sendPhaseEvent(channel, 'assessmentCompleted', [
                 {
                     domainFiles,
@@ -778,10 +793,12 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                 },
             ]);
         } catch (error) {
-            if (token.isCancellationRequested) return;
+            if (token.isCancellationRequested) throw new vscode.CancellationError();
 
+            enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             await sendPhaseEvent(channel, 'assessmentError', [errorMessage]);
+            throw error;
         }
     });
 }

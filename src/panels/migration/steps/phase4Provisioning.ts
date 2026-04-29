@@ -54,6 +54,12 @@ import {
     type BicepParamValues,
 } from '../helpers/bicepGenerator';
 import { saveAnalysisFile, sendPhaseEvent, sendPhaseProgress } from '../helpers/migrationHelpers';
+import {
+    enrichErrorContext,
+    extractAccountNameFromEndpoint,
+    incrementRunCount,
+    setMigrationTelemetryContext,
+} from '../helpers/migrationTelemetry';
 import { generateSeedScript, type SampleDataResult } from '../helpers/seedScriptHelpers';
 import { Phase4SampleDataPrompt } from '../prompts';
 import { createToolExecutor, getBestPracticeTools } from '../tools/migrationTools';
@@ -176,7 +182,26 @@ async function withDataPlaneRbacRetry<T>(
 export async function runProvisioning(ctx: Phase4Context): Promise<void> {
     const { project, projectService, channel, client, armTarget, cancellationToken: token } = ctx;
 
-    await callWithTelemetryAndErrorHandling('migration.ai.provisioning', async (context) => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.provisioning', async (context) => {
+        setMigrationTelemetryContext(context, project, 'provisioning');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
+        incrementRunCount(project, 'provisioning');
+
+        // Log target environment info
+        const targetEnv = project.phases.targetEnvironment;
+        if (targetEnv) {
+            context.telemetry.properties.targetType = targetEnv.type;
+            if (targetEnv.type !== 'emulator') {
+                const acctName =
+                    targetEnv.accountName ||
+                    (targetEnv.endpoint ? extractAccountNameFromEndpoint(targetEnv.endpoint) : undefined);
+                if (acctName) context.telemetry.properties.accountName = acctName;
+                if (targetEnv.resourceGroup) context.telemetry.properties.resourceGroup = targetEnv.resourceGroup;
+                if (targetEnv.subscriptionId) context.telemetry.properties.subscriptionId = targetEnv.subscriptionId;
+            }
+        }
+
         // Lazily built on first ARM call. Cached for the lifetime of the phase
         // so we don't re-create the client per DDL operation.
         let cachedMgmtClient: CosmosDBManagementClient | undefined;
@@ -610,6 +635,10 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             };
             await projectService.save(project);
 
+            // Structural metrics
+            context.telemetry.measurements.containersCreated = containersCreated.length;
+            context.telemetry.properties.sampleDataInserted = 'true';
+
             await sendPhaseEvent(channel, 'provisioningCompleted', [
                 {
                     databaseName,
@@ -619,10 +648,12 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 } satisfies ProvisioningResult,
             ]);
         } catch (error) {
-            if (token.isCancellationRequested) return;
+            if (token.isCancellationRequested) throw new vscode.CancellationError();
 
+            enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             await sendPhaseEvent(channel, 'provisioningError', [errorMessage]);
+            throw error;
         }
     });
 }
@@ -637,7 +668,10 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
 export async function testConnection(ctx: Phase4BaseContext, subscription?: AzureSubscription): Promise<void> {
     const { project, projectService, channel } = ctx;
 
-    await callWithTelemetryAndErrorHandling('migration.connection.tested', async (context) => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.connectionTest', async (context) => {
+        setMigrationTelemetryContext(context, project, 'provisioning');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
         if (!project?.phases.targetEnvironment) return;
 
         const target = project.phases.targetEnvironment;
@@ -706,9 +740,12 @@ export async function populateSampleData(
     ctx: Phase4BaseContext,
     provisioningCancellation: vscode.CancellationTokenSource,
 ): Promise<void> {
-    await callWithTelemetryAndErrorHandling('migration.provisioning.started', async () => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.sampleDataPopulation', async (context) => {
         const { project, projectService, channel } = ctx;
         if (!project || !projectService) return;
+        setMigrationTelemetryContext(context, project, 'provisioning');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
 
         const target = project.phases.targetEnvironment;
         if (!target?.verified) return;
@@ -1096,8 +1133,11 @@ export async function provisionAccount(
 ): Promise<string | undefined> {
     const { project, projectService, channel } = ctx;
 
-    return await callWithTelemetryAndErrorHandling('migration.provisionAccount', async (context) => {
+    return await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.accountProvisioning', async (context) => {
         if (!project || !projectService) return undefined;
+        setMigrationTelemetryContext(context, project, 'provisioning');
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.forceIncludeInReportIssueCommand = true;
 
         await sendPhaseEvent(channel, 'accountProvisioningStarted');
 
@@ -1273,8 +1313,9 @@ export async function provisionAccount(
             if (token?.isCancellationRequested) {
                 // User-initiated cancel; `cancelAccountProvisioning` has already emitted
                 // the cancelled event and the Azure SDK surfaces the abort as an error.
-                return undefined;
+                throw new vscode.CancellationError();
             }
+            enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             // ARM SDK errors are `RestError` instances with extra fields that
             // identify the exact failing request (URL, HTTP method, status,
@@ -1301,7 +1342,7 @@ export async function provisionAccount(
             })();
             ext.outputChannel.error(`[Migration] Account provisioning failed: ${errorMessage}${restDetails}`);
             await sendPhaseEvent(channel, 'accountProvisioningError', [errorMessage]);
-            return undefined;
+            throw error;
         }
     });
 }

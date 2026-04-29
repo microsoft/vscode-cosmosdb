@@ -43,6 +43,7 @@ import { type VsCodeLinkRequestMessage } from '../webviews/api/webview-client/vs
 import { BaseTab, type CommandPayload } from './BaseTab';
 import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
 import { resetCancellationToken } from './migration/helpers/migrationHelpers';
+import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
 import { buildCodeMigrationPrompt } from './migration/prompts';
 import {
     cancelAnalysis,
@@ -381,14 +382,18 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private async loadProject(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('migration.loadProject', async () => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.migration.loadProject', async (context) => {
             this.project = await this.projectService.load();
+            const isNewProject = !this.project;
 
             if (!this.project) {
                 // Create an in-memory project; the folder is only created on the first change
                 const folderName = path.basename(this.workspacePath);
                 this.project = this.projectService.createDefaultProject(folderName);
             }
+
+            setMigrationTelemetryContext(context, this.project);
+            context.telemetry.properties.isNewProject = String(isNewProject);
 
             // Gather file lists
             const schemaFiles = await this.projectService.listFiles(this.projectService.getSchemaPath(this.project));
@@ -1056,7 +1061,8 @@ export class MigrationAssistantTab extends BaseTab {
     private async selectAccount(): Promise<void> {
         if (!this.project) return;
 
-        await callWithTelemetryAndErrorHandling('migration.selectAccount', async (context) => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.migration.selectAccount', async (context) => {
+            setMigrationTelemetryContext(context, this.project);
             const source = await vscode.window.showQuickPick(
                 [
                     {
@@ -1135,7 +1141,8 @@ export class MigrationAssistantTab extends BaseTab {
     private async selectResourceGroup(): Promise<void> {
         if (!this.project) return;
 
-        await callWithTelemetryAndErrorHandling('migration.selectResourceGroup', async (context) => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.migration.selectResourceGroup', async (context) => {
+            setMigrationTelemetryContext(context, this.project);
             const subscription = await subscriptionExperience(
                 context,
                 ext.rgApiV2.resources.azureResourceTreeDataProvider,
@@ -1224,7 +1231,8 @@ export class MigrationAssistantTab extends BaseTab {
     private async listCosmosDBLocations(): Promise<void> {
         if (!this.selectedSubscription) return;
         const subscription = this.selectedSubscription;
-        await callWithTelemetryAndErrorHandling('migration.listCosmosDBLocations', async (context) => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.migration.listLocations', async (context) => {
+            setMigrationTelemetryContext(context, this.project);
             const { createCosmosDBManagementClient } = await import('../utils/azureClients');
             const mgmtClient = await createCosmosDBManagementClient(context, subscription);
             // The Cosmos DB regions API returns the region's display label on `name`
@@ -1255,7 +1263,8 @@ export class MigrationAssistantTab extends BaseTab {
         if (!this.project || !location) return;
         const existing = this.project.phases.targetEnvironment;
         if (!existing) return;
-        await callWithTelemetryAndErrorHandling('migration.setTargetLocation', async () => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.migration.setTargetLocation', async (context) => {
+            setMigrationTelemetryContext(context, this.project);
             this.project!.phases.targetEnvironment = {
                 ...existing,
                 location,
@@ -1307,32 +1316,29 @@ export class MigrationAssistantTab extends BaseTab {
             // Re-acquire subscription if not stored (e.g., project loaded from disk).
             // If the project already knows which subscription to use, look it up
             // against the signed-in account silently instead of re-prompting.
-            await callWithTelemetryAndErrorHandling(
-                'migration.provisionAccount.selectSubscription',
-                async (context) => {
-                    if (target.subscriptionId) {
-                        const subscriptionProvider = new VSCodeAzureSubscriptionProvider();
-                        try {
-                            if (!(await subscriptionProvider.isSignedIn())) {
-                                await subscriptionProvider.signIn(target.tenantId);
-                            }
-                            const subscriptions = await subscriptionProvider.getSubscriptions(false);
-                            this.selectedSubscription = subscriptions.find(
-                                (s) => s.subscriptionId === target.subscriptionId,
-                            );
-                        } finally {
-                            subscriptionProvider.dispose();
+            await callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.selectSubscription', async (context) => {
+                if (target.subscriptionId) {
+                    const subscriptionProvider = new VSCodeAzureSubscriptionProvider();
+                    try {
+                        if (!(await subscriptionProvider.isSignedIn())) {
+                            await subscriptionProvider.signIn(target.tenantId);
                         }
-                    }
-
-                    if (!this.selectedSubscription) {
-                        this.selectedSubscription = await subscriptionExperience(
-                            context,
-                            ext.rgApiV2.resources.azureResourceTreeDataProvider,
+                        const subscriptions = await subscriptionProvider.getSubscriptions(false);
+                        this.selectedSubscription = subscriptions.find(
+                            (s) => s.subscriptionId === target.subscriptionId,
                         );
+                    } finally {
+                        subscriptionProvider.dispose();
                     }
-                },
-            );
+                }
+
+                if (!this.selectedSubscription) {
+                    this.selectedSubscription = await subscriptionExperience(
+                        context,
+                        ext.rgApiV2.resources.azureResourceTreeDataProvider,
+                    );
+                }
+            });
         }
 
         if (!this.selectedSubscription) return;

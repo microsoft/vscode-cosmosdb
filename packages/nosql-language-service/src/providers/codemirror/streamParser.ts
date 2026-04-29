@@ -153,4 +153,3 @@ export const cosmosDbSqlStreamParser: StreamParser<NoSqlTokenState> = {
         return null;
     },
 };
-

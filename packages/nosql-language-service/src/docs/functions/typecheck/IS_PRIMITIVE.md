@@ -6,11 +6,13 @@
 Returns a Boolean indicating if the type of the value is a primitive (string, number, Boolean, or null).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| `expression` | any  | Any expression. |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ---

@@ -12,7 +12,6 @@ import { type MonacoNamespace } from './types.js';
 const SEPARATOR_CLASS = 'cosmosdb-query-separator';
 
 function ensureSeparatorStyles(): void {
-     
     const g = globalThis as any;
     if (!g?.document?.createElement) return;
     const STYLE_ID = 'cosmosdb-multiquery-styles';
@@ -25,7 +24,6 @@ function ensureSeparatorStyles(): void {
         `}`,
     ].join('\n');
     g.document.head.appendChild(style);
-     
 }
 
 /**
@@ -141,7 +139,7 @@ export class MonacoMultiQueryDecorator implements Disposable {
                 const id = accessor.addZone({
                     afterLineNumber: lineNumber,
                     heightInLines: 1,
-                     
+
                     domNode: (() => {
                         const g = globalThis as any;
                         const node = g?.document?.createElement?.('div');
@@ -150,7 +148,6 @@ export class MonacoMultiQueryDecorator implements Disposable {
                         }
                         return node ?? g?.document?.createElement?.('div');
                     })(),
-                     
                 });
                 this.viewZoneIds.push(id);
             }
@@ -173,4 +170,3 @@ export class MonacoMultiQueryDecorator implements Disposable {
         this.disposables.length = 0;
     }
 }
-

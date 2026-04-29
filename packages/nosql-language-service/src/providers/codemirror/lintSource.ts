@@ -22,4 +22,3 @@ export function createLintSource(service: SqlLanguageService): (view: EditorView
         }));
     };
 }
-

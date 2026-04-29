@@ -4,7 +4,7 @@
 
 The language service detects identifiers that look like misspelled SQL
 keywords and emits **warnings** (not errors). For example, `SELECT * FORM c`
-produces a warning: *"Did you mean 'FROM'? 'FORM' looks like a typo."*
+produces a warning: _"Did you mean 'FROM'? 'FORM' looks like a typo."_
 
 This is implemented as a **post-lex token scan**, not an AST walk, because
 the parser absorbs typos as valid identifiers (aliases, property names).
@@ -20,30 +20,30 @@ the parser absorbs typos as valid identifiers (aliases, property names).
 
 ## Detected Typos
 
-| Typed      | Suggested  | Distance |
-| ---------- | ---------- | -------- |
-| `FORM`     | `FROM`     | 1        |
-| `WHER`     | `WHERE`    | 1        |
-| `SELCT`    | `SELECT`   | 1        |
-| `GRUOP`    | `GROUP`    | 1        |
-| `ORDR`     | `ORDER`    | 1        |
-| `DISTICT`  | `DISTINCT` | 1        |
-| `JOINN`    | `JOIN`     | 1        |
-| `LIMT`     | `LIMIT`    | 1        |
-| `OFSET`    | `OFFSET`   | 1        |
+| Typed     | Suggested  | Distance |
+| --------- | ---------- | -------- |
+| `FORM`    | `FROM`     | 1        |
+| `WHER`    | `WHERE`    | 1        |
+| `SELCT`   | `SELECT`   | 1        |
+| `GRUOP`   | `GROUP`    | 1        |
+| `ORDR`    | `ORDER`    | 1        |
+| `DISTICT` | `DISTINCT` | 1        |
+| `JOINN`   | `JOIN`     | 1        |
+| `LIMT`    | `LIMIT`    | 1        |
+| `OFSET`   | `OFFSET`   | 1        |
 
 ## False Positive Prevention
 
 The detector avoids false positives by checking **position context**:
 
-| Pattern                      | Flagged? | Why                          |
-| ---------------------------- | -------- | ---------------------------- |
-| `SELECT * FORM c`            | ✅ Yes   | Clause boundary after `*`    |
-| `SELECT c.FORM FROM c`       | ❌ No    | After `.` = property access  |
-| `SELECT c.name AS FORM FROM` | ❌ No    | After `AS` = explicit alias  |
-| `SELECT { form: c.name }`    | ❌ No    | After `:` = object value     |
+| Pattern                      | Flagged? | Why                                  |
+| ---------------------------- | -------- | ------------------------------------ |
+| `SELECT * FORM c`            | ✅ Yes   | Clause boundary after `*`            |
+| `SELECT c.FORM FROM c`       | ❌ No    | After `.` = property access          |
+| `SELECT c.name AS FORM FROM` | ❌ No    | After `AS` = explicit alias          |
+| `SELECT { form: c.name }`    | ❌ No    | After `:` = object value             |
 | `SELECT * FROM doc`          | ❌ No    | `doc` is distance 3 from any keyword |
-| `SELECT c.id FROM c`         | ❌ No    | `c` is < 3 chars             |
+| `SELECT c.id FROM c`         | ❌ No    | `c` is < 3 chars                     |
 
 ## Checked Keywords
 
@@ -82,9 +82,8 @@ Works with both single-query and multi-query modes.
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `src/diagnostics/typoDetection.ts` | Levenshtein + token scan logic |
+| File                                      | Purpose                                              |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `src/diagnostics/typoDetection.ts`        | Levenshtein + token scan logic                       |
 | `tests/diagnostics/typoDetection.test.ts` | 22 tests (detection + false positives + integration) |
-| `src/services/SqlLanguageService.ts` | Integration into `getDiagnostics()` |
-
+| `src/services/SqlLanguageService.ts`      | Integration into `getDiagnostics()`                  |

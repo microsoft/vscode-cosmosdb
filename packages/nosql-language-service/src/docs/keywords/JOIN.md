@@ -3,11 +3,13 @@
 Joins with a nested array or subquery within the same document. Unlike standard SQL JOINs, Cosmos DB JOINs are intra-document (self-joins on arrays).
 
 ## Syntax
+
 ```sql
 FROM c JOIN child IN c.children
 ```
 
 ## Examples
+
 ```sql
 SELECT c.id, child.name
 FROM c

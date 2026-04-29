@@ -10,10 +10,10 @@ Inspects one or more documents and produces a **JSON Schema** (draft-07 compatib
 
 ## Sub-modules
 
-| Import path | Use case | Dependencies |
-|---|---|---|
-| `@cosmosdb/schema-analyzer` | Shared `JSONSchema` types only | None |
-| `@cosmosdb/schema-analyzer/json` | Plain JSON / CosmosDB NoSQL documents | `denque` |
+| Import path                      | Use case                               | Dependencies               |
+| -------------------------------- | -------------------------------------- | -------------------------- |
+| `@cosmosdb/schema-analyzer`      | Shared `JSONSchema` types only         | None                       |
+| `@cosmosdb/schema-analyzer/json` | Plain JSON / CosmosDB NoSQL documents  | `denque`                   |
 | `@cosmosdb/schema-analyzer/bson` | MongoDB API / DocumentDB API documents | `denque`, `mongodb` (peer) |
 
 ## Installation
@@ -28,14 +28,11 @@ pnpm add mongodb
 ## Quick start — JSON
 
 ```typescript
-import {
-  getSchemaFromDocuments,
-  getPropertyNamesAtLevel,
-} from "@cosmosdb/schema-analyzer/json";
+import { getSchemaFromDocuments, getPropertyNamesAtLevel } from '@cosmosdb/schema-analyzer/json';
 
 const schema = getSchemaFromDocuments([
-  { name: "Alice", age: 30, tags: ["admin"] },
-  { name: "Bob", age: 25, active: true },
+  { name: 'Alice', age: 30, tags: ['admin'] },
+  { name: 'Bob', age: 25, active: true }
 ]);
 
 // Get root-level property names
@@ -46,11 +43,11 @@ const props = getPropertyNamesAtLevel(schema, []);
 ## Quick start — BSON
 
 ```typescript
-import { SchemaAnalyzer } from "@cosmosdb/schema-analyzer/bson";
+import { SchemaAnalyzer } from '@cosmosdb/schema-analyzer/bson';
 
 const analyzer = new SchemaAnalyzer();
-analyzer.addDocument({ _id: new ObjectId(), name: "Alice", createdAt: new Date() });
-analyzer.addDocument({ _id: new ObjectId(), name: "Bob", score: new Int32(42) });
+analyzer.addDocument({ _id: new ObjectId(), name: 'Alice', createdAt: new Date() });
+analyzer.addDocument({ _id: new ObjectId(), name: 'Bob', score: new Int32(42) });
 
 const schema = analyzer.getSchema();
 const fields = analyzer.getKnownFields();
@@ -59,26 +56,26 @@ const fields = analyzer.getKnownFields();
 
 ## JSON API
 
-| Export                       | Description                                             |
-| ---------------------------- | ------------------------------------------------------- |
-| `getSchemaFromDocument(doc)` | Build a schema from a single document                   |
-| `getSchemaFromDocuments(docs)` | Build a merged & simplified schema from multiple docs |
+| Export                                  | Description                                            |
+| --------------------------------------- | ------------------------------------------------------ |
+| `getSchemaFromDocument(doc)`            | Build a schema from a single document                  |
+| `getSchemaFromDocuments(docs)`          | Build a merged & simplified schema from multiple docs  |
 | `updateSchemaWithDocument(schema, doc)` | Incrementally merge a document into an existing schema |
-| `simplifySchema(schema)`    | Unwrap single-element `anyOf` arrays                    |
-| `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level |
-| `buildFullPaths(path, names)` | Build dot-separated full paths                        |
-| `inferNoSqlType(value)`     | Infer the NoSQL type of a JS value                      |
+| `simplifySchema(schema)`                | Unwrap single-element `anyOf` arrays                   |
+| `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level           |
+| `buildFullPaths(path, names)`           | Build dot-separated full paths                         |
+| `inferNoSqlType(value)`                 | Infer the NoSQL type of a JS value                     |
 
 ## BSON API
 
-| Export | Description |
-|---|---|
-| `SchemaAnalyzer` | Class-based incremental analyzer with versioning and caching |
-| `BSONTypes` | Enum + namespace with `inferType()`, `toJSONType()`, `toDisplayString()` |
-| `getKnownFields(schema)` | Traverse schema to collect all leaf fields with types |
-| `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level |
-| `buildFullPaths(path, names)` | Build dot-separated full paths |
-| `valueToDisplayString(value, type)` | Convert a BSON value to a human-readable string |
+| Export                                  | Description                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| `SchemaAnalyzer`                        | Class-based incremental analyzer with versioning and caching             |
+| `BSONTypes`                             | Enum + namespace with `inferType()`, `toJSONType()`, `toDisplayString()` |
+| `getKnownFields(schema)`                | Traverse schema to collect all leaf fields with types                    |
+| `getPropertyNamesAtLevel(schema, path)` | List property names at a given nesting level                             |
+| `buildFullPaths(path, names)`           | Build dot-separated full paths                                           |
+| `valueToDisplayString(value, type)`     | Convert a BSON value to a human-readable string                          |
 
 ## License
 

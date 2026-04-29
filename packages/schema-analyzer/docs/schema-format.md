@@ -14,8 +14,8 @@ The output conforms to [JSON Schema draft-07](https://json-schema.org/draft-07/j
   "properties": {
     "fieldName": {
       /* property schema */
-    },
-  },
+    }
+  }
 }
 ```
 
@@ -31,9 +31,9 @@ Each property has an `anyOf` array with one entry per observed type:
     },
     {
       /* type entry 2 */
-    },
+    }
   ],
-  "x-occurrence": 95, // how many documents had this property
+  "x-occurrence": 95 // how many documents had this property
 }
 ```
 
@@ -46,7 +46,7 @@ After `simplifySchema()`, single-type properties are unwrapped:
   "x-typeOccurrence": 95,
   "x-occurrence": 95,
   "x-minLength": 3,
-  "x-maxLength": 128,
+  "x-maxLength": 128
 }
 ```
 
@@ -60,7 +60,7 @@ Each entry in `anyOf` describes one observed type:
   "x-dataType": "string", // JSON analyzer: original type
   // — OR —
   "x-bsonType": "objectid", // BSON analyzer: original BSON type
-  "x-typeOccurrence": 95, // how many times this type was observed
+  "x-typeOccurrence": 95 // how many times this type was observed
 }
 ```
 
@@ -71,7 +71,7 @@ Each entry in `anyOf` describes one observed type:
 ```jsonc
 {
   "x-minLength": 3,
-  "x-maxLength": 128,
+  "x-maxLength": 128
 }
 ```
 
@@ -80,7 +80,7 @@ Each entry in `anyOf` describes one observed type:
 ```jsonc
 {
   "x-minValue": 0,
-  "x-maxValue": 99999,
+  "x-maxValue": 99999
 }
 ```
 
@@ -89,7 +89,7 @@ Each entry in `anyOf` describes one observed type:
 ```jsonc
 {
   "x-trueCount": 72,
-  "x-falseCount": 28,
+  "x-falseCount": 28
 }
 ```
 
@@ -103,8 +103,8 @@ Each entry in `anyOf` describes one observed type:
   "properties": {
     "childField": {
       /* ... */
-    },
-  },
+    }
+  }
 }
 ```
 
@@ -115,8 +115,8 @@ Each entry in `anyOf` describes one observed type:
   "x-minItems": 0,
   "x-maxItems": 50,
   "items": {
-    "anyOf": [{ "type": "string", "x-dataType": "string", "x-typeOccurrence": 120 }],
-  },
+    "anyOf": [{ "type": "string", "x-dataType": "string", "x-typeOccurrence": 120 }]
+  }
 }
 ```
 
@@ -125,7 +125,7 @@ Each entry in `anyOf` describes one observed type:
 ```jsonc
 {
   "x-minDate": 1609459200000, // epoch ms
-  "x-maxDate": 1704067200000,
+  "x-maxDate": 1704067200000
 }
 ```
 
@@ -134,7 +134,7 @@ Each entry in `anyOf` describes one observed type:
 ```jsonc
 {
   "x-minLength": 16,
-  "x-maxLength": 1024,
+  "x-maxLength": 1024
 }
 ```
 
@@ -161,7 +161,7 @@ Output schema (after `simplifySchema()`):
       "x-typeOccurrence": 2,
       "x-occurrence": 2,
       "x-minLength": 3,
-      "x-maxLength": 5,
+      "x-maxLength": 5
     },
     "age": {
       "type": "number",
@@ -169,7 +169,7 @@ Output schema (after `simplifySchema()`):
       "x-typeOccurrence": 2,
       "x-occurrence": 2,
       "x-minValue": 25,
-      "x-maxValue": 30,
+      "x-maxValue": 30
     },
     "tags": {
       "type": "array",
@@ -185,10 +185,10 @@ Output schema (after `simplifySchema()`):
             "x-dataType": "string",
             "x-typeOccurrence": 1,
             "x-minLength": 5,
-            "x-maxLength": 5,
-          },
-        ],
-      },
+            "x-maxLength": 5
+          }
+        ]
+      }
     },
     "active": {
       "type": "boolean",
@@ -196,9 +196,9 @@ Output schema (after `simplifySchema()`):
       "x-typeOccurrence": 1,
       "x-occurrence": 1,
       "x-trueCount": 1,
-      "x-falseCount": 0,
-    },
-  },
+      "x-falseCount": 0
+    }
+  }
 }
 ```
 

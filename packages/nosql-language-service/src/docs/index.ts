@@ -8,7 +8,9 @@
 
 /** Hover documentation for built-in functions (key = uppercase function name). */
 export const functionDocs = new Map<string, string>([
-    ["ABS", `# ABS
+    [
+        'ABS',
+        `# ABS
 
 **Category:** Math
 **Syntax:** \`ABS(number)\`
@@ -31,8 +33,11 @@ SELECT ABS(c.balance) FROM c
 
 ---
 
-📖 **Documentation:** [ABS](https://learn.microsoft.com/en-us/cosmos-db/query/abs)`],
-    ["ACOS", `# ACOS
+📖 **Documentation:** [ABS](https://learn.microsoft.com/en-us/cosmos-db/query/abs)`,
+    ],
+    [
+        'ACOS',
+        `# ACOS
 
 **Category:** Math
 **Syntax:** \`ACOS(number)\`
@@ -49,8 +54,11 @@ Returns radians (numeric).
 
 ---
 
-📖 **Documentation:** [ACOS](https://learn.microsoft.com/en-us/cosmos-db/query/acos)`],
-    ["ARRAY_AVG", `# ARRAY_AVG
+📖 **Documentation:** [ACOS](https://learn.microsoft.com/en-us/cosmos-db/query/acos)`,
+    ],
+    [
+        'ARRAY_AVG',
+        `# ARRAY_AVG
 
 **Category:** Array
 **Syntax:** \`ARRAY_AVG(array)\`
@@ -67,8 +75,11 @@ Returns a numeric value, or \`undefined\` if any element is not numeric.
 
 ---
 
-📖 **Documentation:** [ARRAY_AVG](https://learn.microsoft.com/en-us/cosmos-db/query/array-avg)`],
-    ["ARRAY_CONCAT", `# ARRAY_CONCAT
+📖 **Documentation:** [ARRAY_AVG](https://learn.microsoft.com/en-us/cosmos-db/query/array-avg)`,
+    ],
+    [
+        'ARRAY_CONCAT',
+        `# ARRAY_CONCAT
 
 **Category:** Array
 **Syntax:** \`ARRAY_CONCAT(array1, array2 [, ...])\`
@@ -86,8 +97,11 @@ Returns the concatenated array.
 
 ---
 
-📖 **Documentation:** [ARRAY_CONCAT](https://learn.microsoft.com/en-us/cosmos-db/query/array-concat)`],
-    ["ARRAY_CONTAINS", `# ARRAY_CONTAINS
+📖 **Documentation:** [ARRAY_CONCAT](https://learn.microsoft.com/en-us/cosmos-db/query/array-concat)`,
+    ],
+    [
+        'ARRAY_CONTAINS',
+        `# ARRAY_CONTAINS
 
 **Category:** Array
 **Syntax:** \`ARRAY_CONTAINS(array, value [, partial])\`
@@ -106,8 +120,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ARRAY_CONTAINS](https://learn.microsoft.com/en-us/cosmos-db/query/array-contains)`],
-    ["ARRAY_CONTAINS_ALL", `# ARRAY_CONTAINS_ALL
+📖 **Documentation:** [ARRAY_CONTAINS](https://learn.microsoft.com/en-us/cosmos-db/query/array-contains)`,
+    ],
+    [
+        'ARRAY_CONTAINS_ALL',
+        `# ARRAY_CONTAINS_ALL
 
 **Category:** Array
 **Syntax:** \`ARRAY_CONTAINS_ALL(array, value1, value2, ...)\`
@@ -126,8 +143,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ARRAY_CONTAINS_ALL](https://learn.microsoft.com/en-us/cosmos-db/query/array-contains-all)`],
-    ["ARRAY_CONTAINS_ANY", `# ARRAY_CONTAINS_ANY
+📖 **Documentation:** [ARRAY_CONTAINS_ALL](https://learn.microsoft.com/en-us/cosmos-db/query/array-contains-all)`,
+    ],
+    [
+        'ARRAY_CONTAINS_ANY',
+        `# ARRAY_CONTAINS_ANY
 
 **Category:** Array
 **Syntax:** \`ARRAY_CONTAINS_ANY(array, value1, value2, ...)\`
@@ -146,8 +166,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ARRAY_CONTAINS_ANY](https://learn.microsoft.com/en-us/cosmos-db/query/array-contains-any)`],
-    ["ARRAY_LENGTH", `# ARRAY_LENGTH
+📖 **Documentation:** [ARRAY_CONTAINS_ANY](https://learn.microsoft.com/en-us/cosmos-db/query/array-contains-any)`,
+    ],
+    [
+        'ARRAY_LENGTH',
+        `# ARRAY_LENGTH
 
 **Category:** Array
 **Syntax:** \`ARRAY_LENGTH(array)\`
@@ -164,8 +187,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [ARRAY_LENGTH](https://learn.microsoft.com/en-us/cosmos-db/query/array-length)`],
-    ["ARRAY_MAX", `# ARRAY_MAX
+📖 **Documentation:** [ARRAY_LENGTH](https://learn.microsoft.com/en-us/cosmos-db/query/array-length)`,
+    ],
+    [
+        'ARRAY_MAX',
+        `# ARRAY_MAX
 
 **Category:** Array
 **Syntax:** \`ARRAY_MAX(array)\`
@@ -182,8 +208,11 @@ Returns the maximum value.
 
 ---
 
-📖 **Documentation:** [ARRAY_MAX](https://learn.microsoft.com/en-us/cosmos-db/query/array-max)`],
-    ["ARRAY_MEDIAN", `# ARRAY_MEDIAN
+📖 **Documentation:** [ARRAY_MAX](https://learn.microsoft.com/en-us/cosmos-db/query/array-max)`,
+    ],
+    [
+        'ARRAY_MEDIAN',
+        `# ARRAY_MEDIAN
 
 **Category:** Array
 **Syntax:** \`ARRAY_MEDIAN(array)\`
@@ -200,8 +229,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [ARRAY_MEDIAN](https://learn.microsoft.com/en-us/cosmos-db/query/array-median)`],
-    ["ARRAY_MIN", `# ARRAY_MIN
+📖 **Documentation:** [ARRAY_MEDIAN](https://learn.microsoft.com/en-us/cosmos-db/query/array-median)`,
+    ],
+    [
+        'ARRAY_MIN',
+        `# ARRAY_MIN
 
 **Category:** Array
 **Syntax:** \`ARRAY_MIN(array)\`
@@ -218,8 +250,11 @@ Returns the minimum value.
 
 ---
 
-📖 **Documentation:** [ARRAY_MIN](https://learn.microsoft.com/en-us/cosmos-db/query/array-min)`],
-    ["ARRAY_SLICE", `# ARRAY_SLICE
+📖 **Documentation:** [ARRAY_MIN](https://learn.microsoft.com/en-us/cosmos-db/query/array-min)`,
+    ],
+    [
+        'ARRAY_SLICE',
+        `# ARRAY_SLICE
 
 **Category:** Array
 **Syntax:** \`ARRAY_SLICE(array, start [, length])\`
@@ -238,8 +273,11 @@ Returns an array.
 
 ---
 
-📖 **Documentation:** [ARRAY_SLICE](https://learn.microsoft.com/en-us/cosmos-db/query/array-slice)`],
-    ["ARRAY_SUM", `# ARRAY_SUM
+📖 **Documentation:** [ARRAY_SLICE](https://learn.microsoft.com/en-us/cosmos-db/query/array-slice)`,
+    ],
+    [
+        'ARRAY_SUM',
+        `# ARRAY_SUM
 
 **Category:** Array
 **Syntax:** \`ARRAY_SUM(array)\`
@@ -256,8 +294,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [ARRAY_SUM](https://learn.microsoft.com/en-us/cosmos-db/query/array-sum)`],
-    ["ASIN", `# ASIN
+📖 **Documentation:** [ARRAY_SUM](https://learn.microsoft.com/en-us/cosmos-db/query/array-sum)`,
+    ],
+    [
+        'ASIN',
+        `# ASIN
 
 **Category:** Math
 **Syntax:** \`ASIN(number)\`
@@ -274,8 +315,11 @@ Returns radians (numeric).
 
 ---
 
-📖 **Documentation:** [ASIN](https://learn.microsoft.com/en-us/cosmos-db/query/asin)`],
-    ["ATAN", `# ATAN
+📖 **Documentation:** [ASIN](https://learn.microsoft.com/en-us/cosmos-db/query/asin)`,
+    ],
+    [
+        'ATAN',
+        `# ATAN
 
 **Category:** Math
 **Syntax:** \`ATAN(number)\`
@@ -292,8 +336,11 @@ Returns radians (numeric).
 
 ---
 
-📖 **Documentation:** [ATAN](https://learn.microsoft.com/en-us/cosmos-db/query/atan)`],
-    ["ATN2", `# ATN2
+📖 **Documentation:** [ATAN](https://learn.microsoft.com/en-us/cosmos-db/query/atan)`,
+    ],
+    [
+        'ATN2',
+        `# ATN2
 
 **Category:** Math
 **Syntax:** \`ATN2(y, x)\`
@@ -311,8 +358,11 @@ Returns radians (numeric).
 
 ---
 
-📖 **Documentation:** [ATN2](https://learn.microsoft.com/en-us/cosmos-db/query/atn2)`],
-    ["AVG", `# AVG
+📖 **Documentation:** [ATN2](https://learn.microsoft.com/en-us/cosmos-db/query/atn2)`,
+    ],
+    [
+        'AVG',
+        `# AVG
 
 **Category:** Aggregate
 **Syntax:** \`AVG(expression)\`
@@ -339,8 +389,11 @@ SELECT AVG(c.score) FROM c WHERE c.active = true
 
 ---
 
-📖 **Documentation:** [AVG](https://learn.microsoft.com/en-us/cosmos-db/query/avg)`],
-    ["CEILING", `# CEILING
+📖 **Documentation:** [AVG](https://learn.microsoft.com/en-us/cosmos-db/query/avg)`,
+    ],
+    [
+        'CEILING',
+        `# CEILING
 
 **Category:** Math
 **Syntax:** \`CEILING(number)\`
@@ -363,8 +416,11 @@ SELECT CEILING(-4.8) -- -4
 
 ---
 
-📖 **Documentation:** [CEILING](https://learn.microsoft.com/en-us/cosmos-db/query/ceiling)`],
-    ["CHOOSE", `# CHOOSE
+📖 **Documentation:** [CEILING](https://learn.microsoft.com/en-us/cosmos-db/query/ceiling)`,
+    ],
+    [
+        'CHOOSE',
+        `# CHOOSE
 
 **Category:** Math
 **Syntax:** \`CHOOSE(index, value1, value2, ...)\`
@@ -388,8 +444,11 @@ SELECT CHOOSE(2, "a", "b", "c") -- "b"
 
 ---
 
-📖 **Documentation:** [CHOOSE](https://learn.microsoft.com/en-us/cosmos-db/query/choose)`],
-    ["CONCAT", `# CONCAT
+📖 **Documentation:** [CHOOSE](https://learn.microsoft.com/en-us/cosmos-db/query/choose)`,
+    ],
+    [
+        'CONCAT',
+        `# CONCAT
 
 **Category:** String
 **Syntax:** \`CONCAT(string1, string2 [, ...])\`
@@ -414,8 +473,11 @@ SELECT CONCAT(c.firstName, ' ', c.lastName) FROM c
 
 ---
 
-📖 **Documentation:** [CONCAT](https://learn.microsoft.com/en-us/cosmos-db/query/concat)`],
-    ["CONTAINS", `# CONTAINS
+📖 **Documentation:** [CONCAT](https://learn.microsoft.com/en-us/cosmos-db/query/concat)`,
+    ],
+    [
+        'CONTAINS',
+        `# CONTAINS
 
 **Category:** String
 **Syntax:** \`CONTAINS(string, substring [, ignoreCase])\`
@@ -439,8 +501,11 @@ SELECT * FROM c WHERE CONTAINS(c.name, 'smith', true)
 
 ---
 
-📖 **Documentation:** [CONTAINS](https://learn.microsoft.com/en-us/cosmos-db/query/contains)`],
-    ["CONTAINS_ALL_CI", `# CONTAINS_ALL_CI
+📖 **Documentation:** [CONTAINS](https://learn.microsoft.com/en-us/cosmos-db/query/contains)`,
+    ],
+    [
+        'CONTAINS_ALL_CI',
+        `# CONTAINS_ALL_CI
 
 **Category:** String
 **Syntax:** \`CONTAINS_ALL_CI(string, value1, value2, ...)\`
@@ -459,8 +524,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [CONTAINS_ALL_CI](https://learn.microsoft.com/en-us/cosmos-db/query/contains-all-ci)`],
-    ["CONTAINS_ALL_CS", `# CONTAINS_ALL_CS
+📖 **Documentation:** [CONTAINS_ALL_CI](https://learn.microsoft.com/en-us/cosmos-db/query/contains-all-ci)`,
+    ],
+    [
+        'CONTAINS_ALL_CS',
+        `# CONTAINS_ALL_CS
 
 **Category:** String
 **Syntax:** \`CONTAINS_ALL_CS(string, value1, value2, ...)\`
@@ -479,8 +547,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [CONTAINS_ALL_CS](https://learn.microsoft.com/en-us/cosmos-db/query/contains-all-cs)`],
-    ["CONTAINS_ANY_CI", `# CONTAINS_ANY_CI
+📖 **Documentation:** [CONTAINS_ALL_CS](https://learn.microsoft.com/en-us/cosmos-db/query/contains-all-cs)`,
+    ],
+    [
+        'CONTAINS_ANY_CI',
+        `# CONTAINS_ANY_CI
 
 **Category:** String
 **Syntax:** \`CONTAINS_ANY_CI(string, value1, value2, ...)\`
@@ -499,8 +570,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [CONTAINS_ANY_CI](https://learn.microsoft.com/en-us/cosmos-db/query/contains-any-ci)`],
-    ["CONTAINS_ANY_CS", `# CONTAINS_ANY_CS
+📖 **Documentation:** [CONTAINS_ANY_CI](https://learn.microsoft.com/en-us/cosmos-db/query/contains-any-ci)`,
+    ],
+    [
+        'CONTAINS_ANY_CS',
+        `# CONTAINS_ANY_CS
 
 **Category:** String
 **Syntax:** \`CONTAINS_ANY_CS(string, value1, value2, ...)\`
@@ -519,8 +593,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [CONTAINS_ANY_CS](https://learn.microsoft.com/en-us/cosmos-db/query/contains-any-cs)`],
-    ["COS", `# COS
+📖 **Documentation:** [CONTAINS_ANY_CS](https://learn.microsoft.com/en-us/cosmos-db/query/contains-any-cs)`,
+    ],
+    [
+        'COS',
+        `# COS
 
 **Category:** Math
 **Syntax:** \`COS(number)\`
@@ -537,8 +614,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [COS](https://learn.microsoft.com/en-us/cosmos-db/query/cos)`],
-    ["COT", `# COT
+📖 **Documentation:** [COS](https://learn.microsoft.com/en-us/cosmos-db/query/cos)`,
+    ],
+    [
+        'COT',
+        `# COT
 
 **Category:** Math
 **Syntax:** \`COT(number)\`
@@ -555,8 +635,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [COT](https://learn.microsoft.com/en-us/cosmos-db/query/cot)`],
-    ["COUNT", `# COUNT
+📖 **Documentation:** [COT](https://learn.microsoft.com/en-us/cosmos-db/query/cot)`,
+    ],
+    [
+        'COUNT',
+        `# COUNT
 
 **Category:** Aggregate
 **Syntax:** \`COUNT(expression)\`
@@ -585,8 +668,11 @@ SELECT COUNT(1) FROM c WHERE c.status = "active"
 
 ---
 
-📖 **Documentation:** [COUNT](https://learn.microsoft.com/en-us/cosmos-db/query/count)`],
-    ["COUNTIF", `# COUNTIF
+📖 **Documentation:** [COUNT](https://learn.microsoft.com/en-us/cosmos-db/query/count)`,
+    ],
+    [
+        'COUNTIF',
+        `# COUNTIF
 
 **Category:** Aggregate
 **Syntax:** \`COUNTIF(condition)\`
@@ -608,8 +694,11 @@ SELECT COUNTIF(c.status = "active") FROM c
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["DATETIMEADD", `# DATETIMEADD
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'DATETIMEADD',
+        `# DATETIMEADD
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMEADD(part, number, datetime)\`
@@ -628,8 +717,11 @@ Returns a datetime string.
 
 ---
 
-📖 **Documentation:** [DATETIMEADD](https://learn.microsoft.com/en-us/cosmos-db/query/datetimeadd)`],
-    ["DATETIMEBIN", `# DATETIMEBIN
+📖 **Documentation:** [DATETIMEADD](https://learn.microsoft.com/en-us/cosmos-db/query/datetimeadd)`,
+    ],
+    [
+        'DATETIMEBIN',
+        `# DATETIMEBIN
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMEBIN(datetime, part [, binSize [, origin]])\`
@@ -649,8 +741,11 @@ Returns a datetime string.
 
 ---
 
-📖 **Documentation:** [DATETIMEBIN](https://learn.microsoft.com/en-us/cosmos-db/query/datetimebin)`],
-    ["DATETIMEDIFF", `# DATETIMEDIFF
+📖 **Documentation:** [DATETIMEBIN](https://learn.microsoft.com/en-us/cosmos-db/query/datetimebin)`,
+    ],
+    [
+        'DATETIMEDIFF',
+        `# DATETIMEDIFF
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMEDIFF(part, startDate, endDate)\`
@@ -669,8 +764,11 @@ Returns an integer.
 
 ---
 
-📖 **Documentation:** [DATETIMEDIFF](https://learn.microsoft.com/en-us/cosmos-db/query/datetimediff)`],
-    ["DATETIMEFORMAT", `# DATETIMEFORMAT
+📖 **Documentation:** [DATETIMEDIFF](https://learn.microsoft.com/en-us/cosmos-db/query/datetimediff)`,
+    ],
+    [
+        'DATETIMEFORMAT',
+        `# DATETIMEFORMAT
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMEFORMAT(datetime, format)\`
@@ -688,8 +786,11 @@ Returns a formatted string.
 
 ---
 
-📖 **Documentation:** [DATETIMEFORMAT](https://learn.microsoft.com/en-us/cosmos-db/query/datetimeformat)`],
-    ["DATETIMEFROMPARTS", `# DATETIMEFROMPARTS
+📖 **Documentation:** [DATETIMEFORMAT](https://learn.microsoft.com/en-us/cosmos-db/query/datetimeformat)`,
+    ],
+    [
+        'DATETIMEFROMPARTS',
+        `# DATETIMEFROMPARTS
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMEFROMPARTS(year, month, day [, hour [, minute [, second [, ms]]]])\`
@@ -712,8 +813,11 @@ Returns a datetime string.
 
 ---
 
-📖 **Documentation:** [DATETIMEFROMPARTS](https://learn.microsoft.com/en-us/cosmos-db/query/datetimefromparts)`],
-    ["DATETIMEPART", `# DATETIMEPART
+📖 **Documentation:** [DATETIMEFROMPARTS](https://learn.microsoft.com/en-us/cosmos-db/query/datetimefromparts)`,
+    ],
+    [
+        'DATETIMEPART',
+        `# DATETIMEPART
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMEPART(part, datetime)\`
@@ -731,8 +835,11 @@ Returns an integer.
 
 ---
 
-📖 **Documentation:** [DATETIMEPART](https://learn.microsoft.com/en-us/cosmos-db/query/datetimepart)`],
-    ["DATETIMETOTICKS", `# DATETIMETOTICKS
+📖 **Documentation:** [DATETIMEPART](https://learn.microsoft.com/en-us/cosmos-db/query/datetimepart)`,
+    ],
+    [
+        'DATETIMETOTICKS',
+        `# DATETIMETOTICKS
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMETOTICKS(datetime)\`
@@ -749,8 +856,11 @@ Returns a numeric value (ticks).
 
 ---
 
-📖 **Documentation:** [DATETIMETOTICKS](https://learn.microsoft.com/en-us/cosmos-db/query/datetimetoticks)`],
-    ["DATETIMETOTIMESTAMP", `# DATETIMETOTIMESTAMP
+📖 **Documentation:** [DATETIMETOTICKS](https://learn.microsoft.com/en-us/cosmos-db/query/datetimetoticks)`,
+    ],
+    [
+        'DATETIMETOTIMESTAMP',
+        `# DATETIMETOTIMESTAMP
 
 **Category:** Date/Time
 **Syntax:** \`DATETIMETOTIMESTAMP(datetime)\`
@@ -767,8 +877,11 @@ Returns a numeric value (milliseconds).
 
 ---
 
-📖 **Documentation:** [DATETIMETOTIMESTAMP](https://learn.microsoft.com/en-us/cosmos-db/query/datetimetotimestamp)`],
-    ["DAY", `# DAY
+📖 **Documentation:** [DATETIMETOTIMESTAMP](https://learn.microsoft.com/en-us/cosmos-db/query/datetimetotimestamp)`,
+    ],
+    [
+        'DAY',
+        `# DAY
 
 **Category:** Date/Time
 **Syntax:** \`DAY(datetime)\`
@@ -785,8 +898,11 @@ Returns an integer.
 
 ---
 
-📖 **Documentation:** [DAY](https://learn.microsoft.com/en-us/cosmos-db/query/day)`],
-    ["DEGREES", `# DEGREES
+📖 **Documentation:** [DAY](https://learn.microsoft.com/en-us/cosmos-db/query/day)`,
+    ],
+    [
+        'DEGREES',
+        `# DEGREES
 
 **Category:** Math
 **Syntax:** \`DEGREES(radians)\`
@@ -803,8 +919,11 @@ Returns degrees (numeric).
 
 ---
 
-📖 **Documentation:** [DEGREES](https://learn.microsoft.com/en-us/cosmos-db/query/degrees)`],
-    ["DOCUMENTID", `# DOCUMENTID
+📖 **Documentation:** [DEGREES](https://learn.microsoft.com/en-us/cosmos-db/query/degrees)`,
+    ],
+    [
+        'DOCUMENTID',
+        `# DOCUMENTID
 
 **Category:** Other
 **Syntax:** \`DOCUMENTID(document)\`
@@ -821,8 +940,11 @@ Returns a string.
 
 ---
 
-📖 **Documentation:** [DOCUMENTID](https://learn.microsoft.com/en-us/cosmos-db/query/documentid)`],
-    ["ENDSWITH", `# ENDSWITH
+📖 **Documentation:** [DOCUMENTID](https://learn.microsoft.com/en-us/cosmos-db/query/documentid)`,
+    ],
+    [
+        'ENDSWITH',
+        `# ENDSWITH
 
 **Category:** String
 **Syntax:** \`ENDSWITH(string, suffix [, ignoreCase])\`
@@ -841,8 +963,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ENDSWITH](https://learn.microsoft.com/en-us/cosmos-db/query/endswith)`],
-    ["EXP", `# EXP
+📖 **Documentation:** [ENDSWITH](https://learn.microsoft.com/en-us/cosmos-db/query/endswith)`,
+    ],
+    [
+        'EXP',
+        `# EXP
 
 **Category:** Math
 **Syntax:** \`EXP(number)\`
@@ -859,8 +984,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [EXP](https://learn.microsoft.com/en-us/cosmos-db/query/exp)`],
-    ["FLOOR", `# FLOOR
+📖 **Documentation:** [EXP](https://learn.microsoft.com/en-us/cosmos-db/query/exp)`,
+    ],
+    [
+        'FLOOR',
+        `# FLOOR
 
 **Category:** Math
 **Syntax:** \`FLOOR(number)\`
@@ -883,8 +1011,11 @@ SELECT FLOOR(-4.2) -- -5
 
 ---
 
-📖 **Documentation:** [FLOOR](https://learn.microsoft.com/en-us/cosmos-db/query/floor)`],
-    ["FULLTEXT_CONTAINS", `# FULLTEXT_CONTAINS
+📖 **Documentation:** [FLOOR](https://learn.microsoft.com/en-us/cosmos-db/query/floor)`,
+    ],
+    [
+        'FULLTEXT_CONTAINS',
+        `# FULLTEXT_CONTAINS
 
 **Category:** Full-text search
 **Syntax:** \`FULLTEXT_CONTAINS(field, term)\`
@@ -906,8 +1037,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [FULLTEXT_CONTAINS](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextcontains)`],
-    ["FULLTEXT_CONTAINS_ALL", `# FULLTEXT_CONTAINS_ALL
+📖 **Documentation:** [FULLTEXT_CONTAINS](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextcontains)`,
+    ],
+    [
+        'FULLTEXT_CONTAINS_ALL',
+        `# FULLTEXT_CONTAINS_ALL
 
 **Category:** Full-text search
 **Syntax:** \`FULLTEXT_CONTAINS_ALL(field, term1, term2, ...)\`
@@ -929,8 +1063,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [FULLTEXT_CONTAINS_ALL](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextcontainsall)`],
-    ["FULLTEXT_CONTAINS_ANY", `# FULLTEXT_CONTAINS_ANY
+📖 **Documentation:** [FULLTEXT_CONTAINS_ALL](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextcontainsall)`,
+    ],
+    [
+        'FULLTEXT_CONTAINS_ANY',
+        `# FULLTEXT_CONTAINS_ANY
 
 **Category:** Full-text search
 **Syntax:** \`FULLTEXT_CONTAINS_ANY(field, term1, term2, ...)\`
@@ -952,8 +1089,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [FULLTEXT_CONTAINS_ANY](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextcontainsany)`],
-    ["FULLTEXTSCORE", `# FULLTEXTSCORE
+📖 **Documentation:** [FULLTEXT_CONTAINS_ANY](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextcontainsany)`,
+    ],
+    [
+        'FULLTEXTSCORE',
+        `# FULLTEXTSCORE
 
 **Category:** Full-text search
 **Syntax:** \`FULLTEXTSCORE(field, term)\`
@@ -974,8 +1114,11 @@ Returns a numeric relevance score.
 
 ---
 
-📖 **Documentation:** [FULLTEXTSCORE](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextscore)`],
-    ["GETCURRENTDATETIME", `# GETCURRENTDATETIME
+📖 **Documentation:** [FULLTEXTSCORE](https://learn.microsoft.com/en-us/cosmos-db/query/fulltextscore)`,
+    ],
+    [
+        'GETCURRENTDATETIME',
+        `# GETCURRENTDATETIME
 
 **Category:** Date/Time
 **Syntax:** \`GETCURRENTDATETIME()\`
@@ -993,8 +1136,11 @@ Returns a datetime string (e.g. \`'2024-01-15T12:30:00.0000000Z'\`).
 
 ---
 
-📖 **Documentation:** [GETCURRENTDATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentdatetime)`],
-    ["GETCURRENTDATETIMESTATIC", `# GETCURRENTDATETIMESTATIC
+📖 **Documentation:** [GETCURRENTDATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentdatetime)`,
+    ],
+    [
+        'GETCURRENTDATETIMESTATIC',
+        `# GETCURRENTDATETIMESTATIC
 
 **Category:** Date/Time
 **Syntax:** \`GETCURRENTDATETIMESTATIC()\`
@@ -1009,8 +1155,11 @@ Returns a datetime string.
 
 ---
 
-📖 **Documentation:** [GETCURRENTDATETIMESTATIC](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentdatetimestatic)`],
-    ["GETCURRENTTICKS", `# GETCURRENTTICKS
+📖 **Documentation:** [GETCURRENTDATETIMESTATIC](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentdatetimestatic)`,
+    ],
+    [
+        'GETCURRENTTICKS',
+        `# GETCURRENTTICKS
 
 **Category:** Date/Time
 **Syntax:** \`GETCURRENTTICKS()\`
@@ -1025,8 +1174,11 @@ Returns a numeric value (ticks).
 
 ---
 
-📖 **Documentation:** [GETCURRENTTICKS](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentticks)`],
-    ["GETCURRENTTICKSSTATIC", `# GETCURRENTTICKSSTATIC
+📖 **Documentation:** [GETCURRENTTICKS](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentticks)`,
+    ],
+    [
+        'GETCURRENTTICKSSTATIC',
+        `# GETCURRENTTICKSSTATIC
 
 **Category:** Date/Time
 **Syntax:** \`GETCURRENTTICKSSTATIC()\`
@@ -1041,8 +1193,11 @@ Returns a numeric value (ticks).
 
 ---
 
-📖 **Documentation:** [GETCURRENTTICKSSTATIC](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentticksstatic)`],
-    ["GETCURRENTTIMESTAMP", `# GETCURRENTTIMESTAMP
+📖 **Documentation:** [GETCURRENTTICKSSTATIC](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrentticksstatic)`,
+    ],
+    [
+        'GETCURRENTTIMESTAMP',
+        `# GETCURRENTTIMESTAMP
 
 **Category:** Date/Time
 **Syntax:** \`GETCURRENTTIMESTAMP()\`
@@ -1057,8 +1212,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [GETCURRENTTIMESTAMP](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrenttimestamp)`],
-    ["GETCURRENTTIMESTAMPSTATIC", `# GETCURRENTTIMESTAMPSTATIC
+📖 **Documentation:** [GETCURRENTTIMESTAMP](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrenttimestamp)`,
+    ],
+    [
+        'GETCURRENTTIMESTAMPSTATIC',
+        `# GETCURRENTTIMESTAMPSTATIC
 
 **Category:** Date/Time
 **Syntax:** \`GETCURRENTTIMESTAMPSTATIC()\`
@@ -1073,8 +1231,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [GETCURRENTTIMESTAMPSTATIC](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrenttimestampstatic)`],
-    ["HASH", `# HASH
+📖 **Documentation:** [GETCURRENTTIMESTAMPSTATIC](https://learn.microsoft.com/en-us/cosmos-db/query/getcurrenttimestampstatic)`,
+    ],
+    [
+        'HASH',
+        `# HASH
 
 **Category:** Other
 **Syntax:** \`HASH(expression [, modulo])\`
@@ -1092,8 +1253,11 @@ Returns a numeric hash value.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["IIF", `# IIF
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'IIF',
+        `# IIF
 
 **Category:** Other
 **Syntax:** \`IIF(condition, trueValue, falseValue)\`
@@ -1115,8 +1279,11 @@ Returns \`trueValue\` or \`falseValue\`.
 
 ---
 
-📖 **Documentation:** [IIF](https://learn.microsoft.com/en-us/cosmos-db/query/iif)`],
-    ["INDEX_OF", `# INDEX_OF
+📖 **Documentation:** [IIF](https://learn.microsoft.com/en-us/cosmos-db/query/iif)`,
+    ],
+    [
+        'INDEX_OF',
+        `# INDEX_OF
 
 **Category:** String
 **Syntax:** \`INDEX_OF(string, substring [, start])\`
@@ -1135,8 +1302,11 @@ Returns a numeric value (0-based index, or -1).
 
 ---
 
-📖 **Documentation:** [INDEX_OF](https://learn.microsoft.com/en-us/cosmos-db/query/index-of)`],
-    ["INTADD", `# INTADD
+📖 **Documentation:** [INDEX_OF](https://learn.microsoft.com/en-us/cosmos-db/query/index-of)`,
+    ],
+    [
+        'INTADD',
+        `# INTADD
 
 **Category:** Integer math
 **Syntax:** \`INTADD(left, right)\`
@@ -1154,8 +1324,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTADD](https://learn.microsoft.com/en-us/cosmos-db/query/intadd)`],
-    ["INTBITAND", `# INTBITAND
+📖 **Documentation:** [INTADD](https://learn.microsoft.com/en-us/cosmos-db/query/intadd)`,
+    ],
+    [
+        'INTBITAND',
+        `# INTBITAND
 
 **Category:** Integer math
 **Syntax:** \`INTBITAND(left, right)\`
@@ -1173,8 +1346,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTBITAND](https://learn.microsoft.com/en-us/cosmos-db/query/intbitand)`],
-    ["INTBITLEFTSHIFT", `# INTBITLEFTSHIFT
+📖 **Documentation:** [INTBITAND](https://learn.microsoft.com/en-us/cosmos-db/query/intbitand)`,
+    ],
+    [
+        'INTBITLEFTSHIFT',
+        `# INTBITLEFTSHIFT
 
 **Category:** Integer math
 **Syntax:** \`INTBITLEFTSHIFT(left, right)\`
@@ -1192,8 +1368,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTBITLEFTSHIFT](https://learn.microsoft.com/en-us/cosmos-db/query/intbitleftshift)`],
-    ["INTBITNOT", `# INTBITNOT
+📖 **Documentation:** [INTBITLEFTSHIFT](https://learn.microsoft.com/en-us/cosmos-db/query/intbitleftshift)`,
+    ],
+    [
+        'INTBITNOT',
+        `# INTBITNOT
 
 **Category:** Integer math
 **Syntax:** \`INTBITNOT(value)\`
@@ -1210,8 +1389,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTBITNOT](https://learn.microsoft.com/en-us/cosmos-db/query/intbitnot)`],
-    ["INTBITOR", `# INTBITOR
+📖 **Documentation:** [INTBITNOT](https://learn.microsoft.com/en-us/cosmos-db/query/intbitnot)`,
+    ],
+    [
+        'INTBITOR',
+        `# INTBITOR
 
 **Category:** Integer math
 **Syntax:** \`INTBITOR(left, right)\`
@@ -1229,8 +1411,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTBITOR](https://learn.microsoft.com/en-us/cosmos-db/query/intbitor)`],
-    ["INTBITRIGHTSHIFT", `# INTBITRIGHTSHIFT
+📖 **Documentation:** [INTBITOR](https://learn.microsoft.com/en-us/cosmos-db/query/intbitor)`,
+    ],
+    [
+        'INTBITRIGHTSHIFT',
+        `# INTBITRIGHTSHIFT
 
 **Category:** Integer math
 **Syntax:** \`INTBITRIGHTSHIFT(left, right)\`
@@ -1248,8 +1433,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTBITRIGHTSHIFT](https://learn.microsoft.com/en-us/cosmos-db/query/intbitrightshift)`],
-    ["INTBITXOR", `# INTBITXOR
+📖 **Documentation:** [INTBITRIGHTSHIFT](https://learn.microsoft.com/en-us/cosmos-db/query/intbitrightshift)`,
+    ],
+    [
+        'INTBITXOR',
+        `# INTBITXOR
 
 **Category:** Integer math
 **Syntax:** \`INTBITXOR(left, right)\`
@@ -1267,8 +1455,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTBITXOR](https://learn.microsoft.com/en-us/cosmos-db/query/intbitxor)`],
-    ["INTDIV", `# INTDIV
+📖 **Documentation:** [INTBITXOR](https://learn.microsoft.com/en-us/cosmos-db/query/intbitxor)`,
+    ],
+    [
+        'INTDIV',
+        `# INTDIV
 
 **Category:** Integer math
 **Syntax:** \`INTDIV(left, right)\`
@@ -1286,8 +1477,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTDIV](https://learn.microsoft.com/en-us/cosmos-db/query/intdiv)`],
-    ["INTMOD", `# INTMOD
+📖 **Documentation:** [INTDIV](https://learn.microsoft.com/en-us/cosmos-db/query/intdiv)`,
+    ],
+    [
+        'INTMOD',
+        `# INTMOD
 
 **Category:** Integer math
 **Syntax:** \`INTMOD(left, right)\`
@@ -1305,8 +1499,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTMOD](https://learn.microsoft.com/en-us/cosmos-db/query/intmod)`],
-    ["INTMUL", `# INTMUL
+📖 **Documentation:** [INTMOD](https://learn.microsoft.com/en-us/cosmos-db/query/intmod)`,
+    ],
+    [
+        'INTMUL',
+        `# INTMUL
 
 **Category:** Integer math
 **Syntax:** \`INTMUL(left, right)\`
@@ -1324,8 +1521,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTMUL](https://learn.microsoft.com/en-us/cosmos-db/query/intmul)`],
-    ["INTSUB", `# INTSUB
+📖 **Documentation:** [INTMUL](https://learn.microsoft.com/en-us/cosmos-db/query/intmul)`,
+    ],
+    [
+        'INTSUB',
+        `# INTSUB
 
 **Category:** Integer math
 **Syntax:** \`INTSUB(left, right)\`
@@ -1343,8 +1543,11 @@ Returns a 64-bit integer.
 
 ---
 
-📖 **Documentation:** [INTSUB](https://learn.microsoft.com/en-us/cosmos-db/query/intsub)`],
-    ["IS_ARRAY", `# IS_ARRAY
+📖 **Documentation:** [INTSUB](https://learn.microsoft.com/en-us/cosmos-db/query/intsub)`,
+    ],
+    [
+        'IS_ARRAY',
+        `# IS_ARRAY
 
 **Category:** Type check
 **Syntax:** \`IS_ARRAY(expression)\`
@@ -1361,8 +1564,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_ARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/is-array)`],
-    ["IS_BOOL", `# IS_BOOL
+📖 **Documentation:** [IS_ARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/is-array)`,
+    ],
+    [
+        'IS_BOOL',
+        `# IS_BOOL
 
 **Category:** Type check
 **Syntax:** \`IS_BOOL(expression)\`
@@ -1382,8 +1588,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_BOOL](https://learn.microsoft.com/en-us/cosmos-db/query/is-bool)`],
-    ["IS_DATETIME", `# IS_DATETIME
+📖 **Documentation:** [IS_BOOL](https://learn.microsoft.com/en-us/cosmos-db/query/is-bool)`,
+    ],
+    [
+        'IS_DATETIME',
+        `# IS_DATETIME
 
 **Category:** Type check
 **Syntax:** \`IS_DATETIME(expression)\`
@@ -1400,8 +1609,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_DATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/is-datetime)`],
-    ["IS_DEFINED", `# IS_DEFINED
+📖 **Documentation:** [IS_DATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/is-datetime)`,
+    ],
+    [
+        'IS_DEFINED',
+        `# IS_DEFINED
 
 **Category:** Type check
 **Syntax:** \`IS_DEFINED(expression)\`
@@ -1418,8 +1630,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_DEFINED](https://learn.microsoft.com/en-us/cosmos-db/query/is-defined)`],
-    ["IS_FINITE_NUMBER", `# IS_FINITE_NUMBER
+📖 **Documentation:** [IS_DEFINED](https://learn.microsoft.com/en-us/cosmos-db/query/is-defined)`,
+    ],
+    [
+        'IS_FINITE_NUMBER',
+        `# IS_FINITE_NUMBER
 
 **Category:** Type check
 **Syntax:** \`IS_FINITE_NUMBER(expression)\`
@@ -1436,8 +1651,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_FINITE_NUMBER](https://learn.microsoft.com/en-us/cosmos-db/query/is-finite-number)`],
-    ["IS_INTEGER", `# IS_INTEGER
+📖 **Documentation:** [IS_FINITE_NUMBER](https://learn.microsoft.com/en-us/cosmos-db/query/is-finite-number)`,
+    ],
+    [
+        'IS_INTEGER',
+        `# IS_INTEGER
 
 **Category:** Type check
 **Syntax:** \`IS_INTEGER(expression)\`
@@ -1454,8 +1672,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_INTEGER](https://learn.microsoft.com/en-us/cosmos-db/query/is-integer)`],
-    ["IS_NULL", `# IS_NULL
+📖 **Documentation:** [IS_INTEGER](https://learn.microsoft.com/en-us/cosmos-db/query/is-integer)`,
+    ],
+    [
+        'IS_NULL',
+        `# IS_NULL
 
 **Category:** Type check
 **Syntax:** \`IS_NULL(expression)\`
@@ -1472,8 +1693,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_NULL](https://learn.microsoft.com/en-us/cosmos-db/query/is-null)`],
-    ["IS_NUMBER", `# IS_NUMBER
+📖 **Documentation:** [IS_NULL](https://learn.microsoft.com/en-us/cosmos-db/query/is-null)`,
+    ],
+    [
+        'IS_NUMBER',
+        `# IS_NUMBER
 
 **Category:** Type check
 **Syntax:** \`IS_NUMBER(expression)\`
@@ -1490,8 +1714,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_NUMBER](https://learn.microsoft.com/en-us/cosmos-db/query/is-number)`],
-    ["IS_OBJECT", `# IS_OBJECT
+📖 **Documentation:** [IS_NUMBER](https://learn.microsoft.com/en-us/cosmos-db/query/is-number)`,
+    ],
+    [
+        'IS_OBJECT',
+        `# IS_OBJECT
 
 **Category:** Type check
 **Syntax:** \`IS_OBJECT(expression)\`
@@ -1508,8 +1735,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_OBJECT](https://learn.microsoft.com/en-us/cosmos-db/query/is-object)`],
-    ["IS_PRIMITIVE", `# IS_PRIMITIVE
+📖 **Documentation:** [IS_OBJECT](https://learn.microsoft.com/en-us/cosmos-db/query/is-object)`,
+    ],
+    [
+        'IS_PRIMITIVE',
+        `# IS_PRIMITIVE
 
 **Category:** Type check
 **Syntax:** \`IS_PRIMITIVE(expression)\`
@@ -1526,8 +1756,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_PRIMITIVE](https://learn.microsoft.com/en-us/cosmos-db/query/is-primitive)`],
-    ["IS_STRING", `# IS_STRING
+📖 **Documentation:** [IS_PRIMITIVE](https://learn.microsoft.com/en-us/cosmos-db/query/is-primitive)`,
+    ],
+    [
+        'IS_STRING',
+        `# IS_STRING
 
 **Category:** Type check
 **Syntax:** \`IS_STRING(expression)\`
@@ -1544,8 +1777,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [IS_STRING](https://learn.microsoft.com/en-us/cosmos-db/query/is-string)`],
-    ["LASTINDEXOF", `# LASTINDEXOF
+📖 **Documentation:** [IS_STRING](https://learn.microsoft.com/en-us/cosmos-db/query/is-string)`,
+    ],
+    [
+        'LASTINDEXOF',
+        `# LASTINDEXOF
 
 **Category:** String
 **Syntax:** \`LASTINDEXOF(string, substring [, start])\`
@@ -1564,8 +1800,11 @@ Returns a numeric value (0-based index, or -1).
 
 ---
 
-📖 **Documentation:** [LASTINDEXOF](https://learn.microsoft.com/en-us/cosmos-db/query/lastindexof)`],
-    ["LASTSUBSTRINGAFTER", `# LASTSUBSTRINGAFTER
+📖 **Documentation:** [LASTINDEXOF](https://learn.microsoft.com/en-us/cosmos-db/query/lastindexof)`,
+    ],
+    [
+        'LASTSUBSTRINGAFTER',
+        `# LASTSUBSTRINGAFTER
 
 **Category:** String
 **Syntax:** \`LASTSUBSTRINGAFTER(string, substring)\`
@@ -1583,8 +1822,11 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["LASTSUBSTRINGBEFORE", `# LASTSUBSTRINGBEFORE
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'LASTSUBSTRINGBEFORE',
+        `# LASTSUBSTRINGBEFORE
 
 **Category:** String
 **Syntax:** \`LASTSUBSTRINGBEFORE(string, substring)\`
@@ -1602,8 +1844,11 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["LEFT", `# LEFT
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'LEFT',
+        `# LEFT
 
 **Category:** String
 **Syntax:** \`LEFT(string, length)\`
@@ -1621,8 +1866,11 @@ Returns a string.
 
 ---
 
-📖 **Documentation:** [LEFT](https://learn.microsoft.com/en-us/cosmos-db/query/left)`],
-    ["LENGTH", `# LENGTH
+📖 **Documentation:** [LEFT](https://learn.microsoft.com/en-us/cosmos-db/query/left)`,
+    ],
+    [
+        'LENGTH',
+        `# LENGTH
 
 **Category:** String
 **Syntax:** \`LENGTH(string)\`
@@ -1639,8 +1887,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [LENGTH](https://learn.microsoft.com/en-us/cosmos-db/query/length)`],
-    ["LOG", `# LOG
+📖 **Documentation:** [LENGTH](https://learn.microsoft.com/en-us/cosmos-db/query/length)`,
+    ],
+    [
+        'LOG',
+        `# LOG
 
 **Category:** Math
 **Syntax:** \`LOG(number [, base])\`
@@ -1658,8 +1909,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [LOG](https://learn.microsoft.com/en-us/cosmos-db/query/log)`],
-    ["LOG10", `# LOG10
+📖 **Documentation:** [LOG](https://learn.microsoft.com/en-us/cosmos-db/query/log)`,
+    ],
+    [
+        'LOG10',
+        `# LOG10
 
 **Category:** Math
 **Syntax:** \`LOG10(number)\`
@@ -1676,8 +1930,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [LOG10](https://learn.microsoft.com/en-us/cosmos-db/query/log10)`],
-    ["LOWER", `# LOWER
+📖 **Documentation:** [LOG10](https://learn.microsoft.com/en-us/cosmos-db/query/log10)`,
+    ],
+    [
+        'LOWER',
+        `# LOWER
 
 **Category:** String
 **Syntax:** \`LOWER(string)\`
@@ -1694,8 +1951,11 @@ Returns the lowercase string.
 
 ---
 
-📖 **Documentation:** [LOWER](https://learn.microsoft.com/en-us/cosmos-db/query/lower)`],
-    ["LTRIM", `# LTRIM
+📖 **Documentation:** [LOWER](https://learn.microsoft.com/en-us/cosmos-db/query/lower)`,
+    ],
+    [
+        'LTRIM',
+        `# LTRIM
 
 **Category:** String
 **Syntax:** \`LTRIM(string [, chars])\`
@@ -1713,8 +1973,11 @@ Returns the trimmed string.
 
 ---
 
-📖 **Documentation:** [LTRIM](https://learn.microsoft.com/en-us/cosmos-db/query/ltrim)`],
-    ["MAKELIST", `# MAKELIST
+📖 **Documentation:** [LTRIM](https://learn.microsoft.com/en-us/cosmos-db/query/ltrim)`,
+    ],
+    [
+        'MAKELIST',
+        `# MAKELIST
 
 **Category:** Aggregate
 **Syntax:** \`MAKELIST(expression)\`
@@ -1738,8 +2001,11 @@ GROUP BY c.category
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["MAKESET", `# MAKESET
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'MAKESET',
+        `# MAKESET
 
 **Category:** Aggregate
 **Syntax:** \`MAKESET(expression)\`
@@ -1766,8 +2032,11 @@ GROUP BY c.category
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["MAX", `# MAX
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'MAX',
+        `# MAX
 
 **Category:** Aggregate
 **Syntax:** \`MAX(expression)\`
@@ -1789,8 +2058,11 @@ SELECT MAX(c.price) FROM c
 
 ---
 
-📖 **Documentation:** [MAX](https://learn.microsoft.com/en-us/cosmos-db/query/max)`],
-    ["MIN", `# MIN
+📖 **Documentation:** [MAX](https://learn.microsoft.com/en-us/cosmos-db/query/max)`,
+    ],
+    [
+        'MIN',
+        `# MIN
 
 **Category:** Aggregate
 **Syntax:** \`MIN(expression)\`
@@ -1812,8 +2084,11 @@ SELECT MIN(c.price) FROM c
 
 ---
 
-📖 **Documentation:** [MIN](https://learn.microsoft.com/en-us/cosmos-db/query/min)`],
-    ["MONTH", `# MONTH
+📖 **Documentation:** [MIN](https://learn.microsoft.com/en-us/cosmos-db/query/min)`,
+    ],
+    [
+        'MONTH',
+        `# MONTH
 
 **Category:** Date/Time
 **Syntax:** \`MONTH(datetime)\`
@@ -1830,8 +2105,11 @@ Returns an integer.
 
 ---
 
-📖 **Documentation:** [MONTH](https://learn.microsoft.com/en-us/cosmos-db/query/month)`],
-    ["NUMBERBIN", `# NUMBERBIN
+📖 **Documentation:** [MONTH](https://learn.microsoft.com/en-us/cosmos-db/query/month)`,
+    ],
+    [
+        'NUMBERBIN',
+        `# NUMBERBIN
 
 **Category:** Math
 **Syntax:** \`NUMBERBIN(number, binSize)\`
@@ -1854,8 +2132,11 @@ SELECT NUMBERBIN(13.5, 5) -- 10
 
 ---
 
-📖 **Documentation:** [NUMBERBIN](https://learn.microsoft.com/en-us/cosmos-db/query/numberbin)`],
-    ["OBJECTTOARRAY", `# OBJECTTOARRAY
+📖 **Documentation:** [NUMBERBIN](https://learn.microsoft.com/en-us/cosmos-db/query/numberbin)`,
+    ],
+    [
+        'OBJECTTOARRAY',
+        `# OBJECTTOARRAY
 
 **Category:** Conversion
 **Syntax:** \`OBJECTTOARRAY(object)\`
@@ -1875,8 +2156,11 @@ Returns an array of \`{k: key, v: value}\` objects.
 
 ---
 
-📖 **Documentation:** [OBJECTTOARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/objecttoarray)`],
-    ["PI", `# PI
+📖 **Documentation:** [OBJECTTOARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/objecttoarray)`,
+    ],
+    [
+        'PI',
+        `# PI
 
 **Category:** Math
 **Syntax:** \`PI()\`
@@ -1896,8 +2180,11 @@ SELECT PI() -- 3.14159265358979
 
 ---
 
-📖 **Documentation:** [PI](https://learn.microsoft.com/en-us/cosmos-db/query/pi)`],
-    ["POWER", `# POWER
+📖 **Documentation:** [PI](https://learn.microsoft.com/en-us/cosmos-db/query/pi)`,
+    ],
+    [
+        'POWER',
+        `# POWER
 
 **Category:** Math
 **Syntax:** \`POWER(base, exponent)\`
@@ -1920,8 +2207,11 @@ SELECT POWER(2, 10) -- 1024
 
 ---
 
-📖 **Documentation:** [POWER](https://learn.microsoft.com/en-us/cosmos-db/query/power)`],
-    ["RADIANS", `# RADIANS
+📖 **Documentation:** [POWER](https://learn.microsoft.com/en-us/cosmos-db/query/power)`,
+    ],
+    [
+        'RADIANS',
+        `# RADIANS
 
 **Category:** Math
 **Syntax:** \`RADIANS(degrees)\`
@@ -1938,8 +2228,11 @@ Returns radians (numeric).
 
 ---
 
-📖 **Documentation:** [RADIANS](https://learn.microsoft.com/en-us/cosmos-db/query/radians)`],
-    ["RAND", `# RAND
+📖 **Documentation:** [RADIANS](https://learn.microsoft.com/en-us/cosmos-db/query/radians)`,
+    ],
+    [
+        'RAND',
+        `# RAND
 
 **Category:** Math
 **Syntax:** \`RAND()\`
@@ -1958,8 +2251,11 @@ Returns a numeric value in [0, 1).
 
 ---
 
-📖 **Documentation:** [RAND](https://learn.microsoft.com/en-us/cosmos-db/query/rand)`],
-    ["REGEXEXTRACT", `# REGEXEXTRACT
+📖 **Documentation:** [RAND](https://learn.microsoft.com/en-us/cosmos-db/query/rand)`,
+    ],
+    [
+        'REGEXEXTRACT',
+        `# REGEXEXTRACT
 
 **Category:** String
 **Syntax:** \`REGEXEXTRACT(string, pattern [, modifiers [, groupId]])\`
@@ -1979,8 +2275,11 @@ Returns the matched string, or \`undefined\`.
 
 ---
 
-📖 **Documentation:** [REGEXEXTRACT](https://learn.microsoft.com/en-us/cosmos-db/query/regexmatch)`],
-    ["REGEXEXTRACTALL", `# REGEXEXTRACTALL
+📖 **Documentation:** [REGEXEXTRACT](https://learn.microsoft.com/en-us/cosmos-db/query/regexmatch)`,
+    ],
+    [
+        'REGEXEXTRACTALL',
+        `# REGEXEXTRACTALL
 
 **Category:** String
 **Syntax:** \`REGEXEXTRACTALL(string, pattern [, modifiers [, groups]])\`
@@ -2000,8 +2299,11 @@ Returns an array of match arrays, or \`undefined\`.
 
 ---
 
-📖 **Documentation:** [REGEXEXTRACTALL](https://learn.microsoft.com/en-us/cosmos-db/query/regexmatch)`],
-    ["REGEXMATCH", `# REGEXMATCH
+📖 **Documentation:** [REGEXEXTRACTALL](https://learn.microsoft.com/en-us/cosmos-db/query/regexmatch)`,
+    ],
+    [
+        'REGEXMATCH',
+        `# REGEXMATCH
 
 **Category:** String
 **Syntax:** \`REGEXMATCH(string, pattern [, modifiers])\`
@@ -2020,8 +2322,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [REGEXMATCH](https://learn.microsoft.com/en-us/cosmos-db/query/regexmatch)`],
-    ["REPLACE", `# REPLACE
+📖 **Documentation:** [REGEXMATCH](https://learn.microsoft.com/en-us/cosmos-db/query/regexmatch)`,
+    ],
+    [
+        'REPLACE',
+        `# REPLACE
 
 **Category:** String
 **Syntax:** \`REPLACE(string, find, replacement)\`
@@ -2040,8 +2345,11 @@ Returns the modified string.
 
 ---
 
-📖 **Documentation:** [REPLACE](https://learn.microsoft.com/en-us/cosmos-db/query/replace)`],
-    ["REPLICATE", `# REPLICATE
+📖 **Documentation:** [REPLACE](https://learn.microsoft.com/en-us/cosmos-db/query/replace)`,
+    ],
+    [
+        'REPLICATE',
+        `# REPLICATE
 
 **Category:** String
 **Syntax:** \`REPLICATE(string, count)\`
@@ -2062,8 +2370,11 @@ Returns the repeated string.
 
 ---
 
-📖 **Documentation:** [REPLICATE](https://learn.microsoft.com/en-us/cosmos-db/query/replicate)`],
-    ["REVERSE", `# REVERSE
+📖 **Documentation:** [REPLICATE](https://learn.microsoft.com/en-us/cosmos-db/query/replicate)`,
+    ],
+    [
+        'REVERSE',
+        `# REVERSE
 
 **Category:** String
 **Syntax:** \`REVERSE(string)\`
@@ -2080,8 +2391,11 @@ Returns the reversed string.
 
 ---
 
-📖 **Documentation:** [REVERSE](https://learn.microsoft.com/en-us/cosmos-db/query/reverse)`],
-    ["RIGHT", `# RIGHT
+📖 **Documentation:** [REVERSE](https://learn.microsoft.com/en-us/cosmos-db/query/reverse)`,
+    ],
+    [
+        'RIGHT',
+        `# RIGHT
 
 **Category:** String
 **Syntax:** \`RIGHT(string, length)\`
@@ -2099,8 +2413,11 @@ Returns a string.
 
 ---
 
-📖 **Documentation:** [RIGHT](https://learn.microsoft.com/en-us/cosmos-db/query/right)`],
-    ["ROUND", `# ROUND
+📖 **Documentation:** [RIGHT](https://learn.microsoft.com/en-us/cosmos-db/query/right)`,
+    ],
+    [
+        'ROUND',
+        `# ROUND
 
 **Category:** Math
 **Syntax:** \`ROUND(number [, length])\`
@@ -2123,8 +2440,11 @@ SELECT ROUND(3.14159, 2) -- 3.14
 
 ---
 
-📖 **Documentation:** [ROUND](https://learn.microsoft.com/en-us/cosmos-db/query/round)`],
-    ["RRF", `# RRF
+📖 **Documentation:** [ROUND](https://learn.microsoft.com/en-us/cosmos-db/query/round)`,
+    ],
+    [
+        'RRF',
+        `# RRF
 
 **Category:** Vector/AI
 **Syntax:** \`RRF(score1, score2, ...)\`
@@ -2147,8 +2467,11 @@ Returns a numeric combined score.
 
 ---
 
-📖 **Documentation:** [RRF](https://learn.microsoft.com/en-us/cosmos-db/query/rrf)`],
-    ["RTRIM", `# RTRIM
+📖 **Documentation:** [RRF](https://learn.microsoft.com/en-us/cosmos-db/query/rrf)`,
+    ],
+    [
+        'RTRIM',
+        `# RTRIM
 
 **Category:** String
 **Syntax:** \`RTRIM(string [, chars])\`
@@ -2166,8 +2489,11 @@ Returns the trimmed string.
 
 ---
 
-📖 **Documentation:** [RTRIM](https://learn.microsoft.com/en-us/cosmos-db/query/rtrim)`],
-    ["SETDIFFERENCE", `# SETDIFFERENCE
+📖 **Documentation:** [RTRIM](https://learn.microsoft.com/en-us/cosmos-db/query/rtrim)`,
+    ],
+    [
+        'SETDIFFERENCE',
+        `# SETDIFFERENCE
 
 **Category:** Set
 **Syntax:** \`SETDIFFERENCE(set1, set2)\`
@@ -2188,8 +2514,11 @@ Returns an array.
 
 ---
 
-📖 **Documentation:** [SETDIFFERENCE](https://learn.microsoft.com/en-us/cosmos-db/query/setdifference)`],
-    ["SETEQUAL", `# SETEQUAL
+📖 **Documentation:** [SETDIFFERENCE](https://learn.microsoft.com/en-us/cosmos-db/query/setdifference)`,
+    ],
+    [
+        'SETEQUAL',
+        `# SETEQUAL
 
 **Category:** Set
 **Syntax:** \`SETEQUAL(set1, set2)\`
@@ -2210,8 +2539,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [SETEQUAL](https://learn.microsoft.com/en-us/cosmos-db/query/setequal)`],
-    ["SETINTERSECT", `# SETINTERSECT
+📖 **Documentation:** [SETEQUAL](https://learn.microsoft.com/en-us/cosmos-db/query/setequal)`,
+    ],
+    [
+        'SETINTERSECT',
+        `# SETINTERSECT
 
 **Category:** Set
 **Syntax:** \`SETINTERSECT(set1, set2)\`
@@ -2232,8 +2564,11 @@ Returns an array.
 
 ---
 
-📖 **Documentation:** [SETINTERSECT](https://learn.microsoft.com/en-us/cosmos-db/query/setintersect)`],
-    ["SETUNION", `# SETUNION
+📖 **Documentation:** [SETINTERSECT](https://learn.microsoft.com/en-us/cosmos-db/query/setintersect)`,
+    ],
+    [
+        'SETUNION',
+        `# SETUNION
 
 **Category:** Set
 **Syntax:** \`SETUNION(set1, set2)\`
@@ -2254,8 +2589,11 @@ Returns an array.
 
 ---
 
-📖 **Documentation:** [SETUNION](https://learn.microsoft.com/en-us/cosmos-db/query/setunion)`],
-    ["SIGN", `# SIGN
+📖 **Documentation:** [SETUNION](https://learn.microsoft.com/en-us/cosmos-db/query/setunion)`,
+    ],
+    [
+        'SIGN',
+        `# SIGN
 
 **Category:** Math
 **Syntax:** \`SIGN(number)\`
@@ -2272,8 +2610,11 @@ Returns -1 (negative), 0 (zero), or 1 (positive).
 
 ---
 
-📖 **Documentation:** [SIGN](https://learn.microsoft.com/en-us/cosmos-db/query/sign)`],
-    ["SIN", `# SIN
+📖 **Documentation:** [SIGN](https://learn.microsoft.com/en-us/cosmos-db/query/sign)`,
+    ],
+    [
+        'SIN',
+        `# SIN
 
 **Category:** Math
 **Syntax:** \`SIN(number)\`
@@ -2290,8 +2631,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [SIN](https://learn.microsoft.com/en-us/cosmos-db/query/sin)`],
-    ["SQRT", `# SQRT
+📖 **Documentation:** [SIN](https://learn.microsoft.com/en-us/cosmos-db/query/sin)`,
+    ],
+    [
+        'SQRT',
+        `# SQRT
 
 **Category:** Math
 **Syntax:** \`SQRT(number)\`
@@ -2308,8 +2652,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [SQRT](https://learn.microsoft.com/en-us/cosmos-db/query/sqrt)`],
-    ["SQUARE", `# SQUARE
+📖 **Documentation:** [SQRT](https://learn.microsoft.com/en-us/cosmos-db/query/sqrt)`,
+    ],
+    [
+        'SQUARE',
+        `# SQUARE
 
 **Category:** Math
 **Syntax:** \`SQUARE(number)\`
@@ -2326,8 +2673,11 @@ Returns a numeric value (number * number).
 
 ---
 
-📖 **Documentation:** [SQUARE](https://learn.microsoft.com/en-us/cosmos-db/query/square)`],
-    ["ST_AREA", `# ST_AREA
+📖 **Documentation:** [SQUARE](https://learn.microsoft.com/en-us/cosmos-db/query/square)`,
+    ],
+    [
+        'ST_AREA',
+        `# ST_AREA
 
 **Category:** Spatial
 **Syntax:** \`ST_AREA(polygon)\`
@@ -2344,8 +2694,11 @@ Returns a numeric value (square meters).
 
 ---
 
-📖 **Documentation:** [ST_AREA](https://learn.microsoft.com/en-us/cosmos-db/query/st-area)`],
-    ["ST_DISTANCE", `# ST_DISTANCE
+📖 **Documentation:** [ST_AREA](https://learn.microsoft.com/en-us/cosmos-db/query/st-area)`,
+    ],
+    [
+        'ST_DISTANCE',
+        `# ST_DISTANCE
 
 **Category:** Spatial
 **Syntax:** \`ST_DISTANCE(point1, point2)\`
@@ -2363,8 +2716,11 @@ Returns a numeric value (distance in meters).
 
 ---
 
-📖 **Documentation:** [ST_DISTANCE](https://learn.microsoft.com/en-us/cosmos-db/query/st-distance)`],
-    ["ST_INTERSECTS", `# ST_INTERSECTS
+📖 **Documentation:** [ST_DISTANCE](https://learn.microsoft.com/en-us/cosmos-db/query/st-distance)`,
+    ],
+    [
+        'ST_INTERSECTS',
+        `# ST_INTERSECTS
 
 **Category:** Spatial
 **Syntax:** \`ST_INTERSECTS(geometry1, geometry2)\`
@@ -2382,8 +2738,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ST_INTERSECTS](https://learn.microsoft.com/en-us/cosmos-db/query/st-intersects)`],
-    ["ST_ISVALID", `# ST_ISVALID
+📖 **Documentation:** [ST_INTERSECTS](https://learn.microsoft.com/en-us/cosmos-db/query/st-intersects)`,
+    ],
+    [
+        'ST_ISVALID',
+        `# ST_ISVALID
 
 **Category:** Spatial
 **Syntax:** \`ST_ISVALID(geometry)\`
@@ -2400,8 +2759,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ST_ISVALID](https://learn.microsoft.com/en-us/cosmos-db/query/st-isvalid)`],
-    ["ST_ISVALIDDETAILED", `# ST_ISVALIDDETAILED
+📖 **Documentation:** [ST_ISVALID](https://learn.microsoft.com/en-us/cosmos-db/query/st-isvalid)`,
+    ],
+    [
+        'ST_ISVALIDDETAILED',
+        `# ST_ISVALIDDETAILED
 
 **Category:** Spatial
 **Syntax:** \`ST_ISVALIDDETAILED(geometry)\`
@@ -2418,8 +2780,11 @@ Returns an object: \`{valid: true/false, reason: '...'}\`.
 
 ---
 
-📖 **Documentation:** [ST_ISVALIDDETAILED](https://learn.microsoft.com/en-us/cosmos-db/query/st-isvaliddetailed)`],
-    ["ST_WITHIN", `# ST_WITHIN
+📖 **Documentation:** [ST_ISVALIDDETAILED](https://learn.microsoft.com/en-us/cosmos-db/query/st-isvaliddetailed)`,
+    ],
+    [
+        'ST_WITHIN',
+        `# ST_WITHIN
 
 **Category:** Spatial
 **Syntax:** \`ST_WITHIN(geometry, polygon)\`
@@ -2437,8 +2802,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [ST_WITHIN](https://learn.microsoft.com/en-us/cosmos-db/query/st-within)`],
-    ["STARTSWITH", `# STARTSWITH
+📖 **Documentation:** [ST_WITHIN](https://learn.microsoft.com/en-us/cosmos-db/query/st-within)`,
+    ],
+    [
+        'STARTSWITH',
+        `# STARTSWITH
 
 **Category:** String
 **Syntax:** \`STARTSWITH(string, prefix [, ignoreCase])\`
@@ -2457,8 +2825,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [STARTSWITH](https://learn.microsoft.com/en-us/cosmos-db/query/startswith)`],
-    ["STRINGEQUALS", `# STRINGEQUALS
+📖 **Documentation:** [STARTSWITH](https://learn.microsoft.com/en-us/cosmos-db/query/startswith)`,
+    ],
+    [
+        'STRINGEQUALS',
+        `# STRINGEQUALS
 
 **Category:** String
 **Syntax:** \`STRINGEQUALS(string1, string2 [, ignoreCase])\`
@@ -2480,8 +2851,11 @@ Returns \`true\` or \`false\`.
 
 ---
 
-📖 **Documentation:** [STRINGEQUALS](https://learn.microsoft.com/en-us/cosmos-db/query/stringequals)`],
-    ["STRINGJOIN", `# STRINGJOIN
+📖 **Documentation:** [STRINGEQUALS](https://learn.microsoft.com/en-us/cosmos-db/query/stringequals)`,
+    ],
+    [
+        'STRINGJOIN',
+        `# STRINGJOIN
 
 **Category:** String
 **Syntax:** \`STRINGJOIN(array, separator)\`
@@ -2502,8 +2876,11 @@ Returns a joined string.
 
 ---
 
-📖 **Documentation:** [STRINGJOIN](https://learn.microsoft.com/en-us/cosmos-db/query/stringjoin)`],
-    ["STRINGSPLIT", `# STRINGSPLIT
+📖 **Documentation:** [STRINGJOIN](https://learn.microsoft.com/en-us/cosmos-db/query/stringjoin)`,
+    ],
+    [
+        'STRINGSPLIT',
+        `# STRINGSPLIT
 
 **Category:** String
 **Syntax:** \`STRINGSPLIT(string, separator)\`
@@ -2524,8 +2901,11 @@ Returns an array of strings.
 
 ---
 
-📖 **Documentation:** [STRINGSPLIT](https://learn.microsoft.com/en-us/cosmos-db/query/stringsplit)`],
-    ["STRINGTOARRAY", `# STRINGTOARRAY
+📖 **Documentation:** [STRINGSPLIT](https://learn.microsoft.com/en-us/cosmos-db/query/stringsplit)`,
+    ],
+    [
+        'STRINGTOARRAY',
+        `# STRINGTOARRAY
 
 **Category:** Conversion
 **Syntax:** \`STRINGTOARRAY(string)\`
@@ -2545,8 +2925,11 @@ Returns an array, or \`undefined\` if conversion fails.
 
 ---
 
-📖 **Documentation:** [STRINGTOARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/stringtoarray)`],
-    ["STRINGTOBOOLEAN", `# STRINGTOBOOLEAN
+📖 **Documentation:** [STRINGTOARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/stringtoarray)`,
+    ],
+    [
+        'STRINGTOBOOLEAN',
+        `# STRINGTOBOOLEAN
 
 **Category:** Conversion
 **Syntax:** \`STRINGTOBOOLEAN(string)\`
@@ -2566,8 +2949,11 @@ Returns a Boolean, or \`undefined\` if conversion fails.
 
 ---
 
-📖 **Documentation:** [STRINGTOBOOLEAN](https://learn.microsoft.com/en-us/cosmos-db/query/stringtoboolean)`],
-    ["STRINGTONULL", `# STRINGTONULL
+📖 **Documentation:** [STRINGTOBOOLEAN](https://learn.microsoft.com/en-us/cosmos-db/query/stringtoboolean)`,
+    ],
+    [
+        'STRINGTONULL',
+        `# STRINGTONULL
 
 **Category:** Conversion
 **Syntax:** \`STRINGTONULL(string)\`
@@ -2587,8 +2973,11 @@ Returns \`null\`, or \`undefined\` if conversion fails.
 
 ---
 
-📖 **Documentation:** [STRINGTONULL](https://learn.microsoft.com/en-us/cosmos-db/query/stringtonull)`],
-    ["STRINGTONUMBER", `# STRINGTONUMBER
+📖 **Documentation:** [STRINGTONULL](https://learn.microsoft.com/en-us/cosmos-db/query/stringtonull)`,
+    ],
+    [
+        'STRINGTONUMBER',
+        `# STRINGTONUMBER
 
 **Category:** Conversion
 **Syntax:** \`STRINGTONUMBER(string)\`
@@ -2608,8 +2997,11 @@ Returns a numeric value, or \`undefined\` if conversion fails.
 
 ---
 
-📖 **Documentation:** [STRINGTONUMBER](https://learn.microsoft.com/en-us/cosmos-db/query/stringtonumber)`],
-    ["STRINGTOOBJECT", `# STRINGTOOBJECT
+📖 **Documentation:** [STRINGTONUMBER](https://learn.microsoft.com/en-us/cosmos-db/query/stringtonumber)`,
+    ],
+    [
+        'STRINGTOOBJECT',
+        `# STRINGTOOBJECT
 
 **Category:** Conversion
 **Syntax:** \`STRINGTOOBJECT(string)\`
@@ -2629,8 +3021,11 @@ Returns a JSON object, or \`undefined\` if conversion fails.
 
 ---
 
-📖 **Documentation:** [STRINGTOOBJECT](https://learn.microsoft.com/en-us/cosmos-db/query/stringtoobject)`],
-    ["SUBSTRING", `# SUBSTRING
+📖 **Documentation:** [STRINGTOOBJECT](https://learn.microsoft.com/en-us/cosmos-db/query/stringtoobject)`,
+    ],
+    [
+        'SUBSTRING',
+        `# SUBSTRING
 
 **Category:** String
 **Syntax:** \`SUBSTRING(string, start, length)\`
@@ -2649,8 +3044,11 @@ Returns a string.
 
 ---
 
-📖 **Documentation:** [SUBSTRING](https://learn.microsoft.com/en-us/cosmos-db/query/substring)`],
-    ["SUBSTRINGAFTER", `# SUBSTRINGAFTER
+📖 **Documentation:** [SUBSTRING](https://learn.microsoft.com/en-us/cosmos-db/query/substring)`,
+    ],
+    [
+        'SUBSTRINGAFTER',
+        `# SUBSTRINGAFTER
 
 **Category:** String
 **Syntax:** \`SUBSTRINGAFTER(string, substring)\`
@@ -2668,8 +3066,11 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["SUBSTRINGBEFORE", `# SUBSTRINGBEFORE
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'SUBSTRINGBEFORE',
+        `# SUBSTRINGBEFORE
 
 **Category:** String
 **Syntax:** \`SUBSTRINGBEFORE(string, substring)\`
@@ -2687,8 +3088,11 @@ Returns a string.
 
 ---
 
-⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`],
-    ["SUM", `# SUM
+⚠️ **Documentation:** No public documentation available yet. This is an internal Cosmos DB SQL function.`,
+    ],
+    [
+        'SUM',
+        `# SUM
 
 **Category:** Aggregate
 **Syntax:** \`SUM(expression)\`
@@ -2710,8 +3114,11 @@ SELECT SUM(c.amount) FROM c
 
 ---
 
-📖 **Documentation:** [SUM](https://learn.microsoft.com/en-us/cosmos-db/query/sum)`],
-    ["TAN", `# TAN
+📖 **Documentation:** [SUM](https://learn.microsoft.com/en-us/cosmos-db/query/sum)`,
+    ],
+    [
+        'TAN',
+        `# TAN
 
 **Category:** Math
 **Syntax:** \`TAN(number)\`
@@ -2728,8 +3135,11 @@ Returns a numeric value.
 
 ---
 
-📖 **Documentation:** [TAN](https://learn.microsoft.com/en-us/cosmos-db/query/tan)`],
-    ["TICKSTODATETIME", `# TICKSTODATETIME
+📖 **Documentation:** [TAN](https://learn.microsoft.com/en-us/cosmos-db/query/tan)`,
+    ],
+    [
+        'TICKSTODATETIME',
+        `# TICKSTODATETIME
 
 **Category:** Date/Time
 **Syntax:** \`TICKSTODATETIME(ticks)\`
@@ -2746,8 +3156,11 @@ Returns a datetime string.
 
 ---
 
-📖 **Documentation:** [TICKSTODATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/tickstodatetime)`],
-    ["TIMESTAMPTODATETIME", `# TIMESTAMPTODATETIME
+📖 **Documentation:** [TICKSTODATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/tickstodatetime)`,
+    ],
+    [
+        'TIMESTAMPTODATETIME',
+        `# TIMESTAMPTODATETIME
 
 **Category:** Date/Time
 **Syntax:** \`TIMESTAMPTODATETIME(timestamp)\`
@@ -2764,8 +3177,11 @@ Returns a datetime string.
 
 ---
 
-📖 **Documentation:** [TIMESTAMPTODATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/timestamptodatetime)`],
-    ["TOSTRING", `# TOSTRING
+📖 **Documentation:** [TIMESTAMPTODATETIME](https://learn.microsoft.com/en-us/cosmos-db/query/timestamptodatetime)`,
+    ],
+    [
+        'TOSTRING',
+        `# TOSTRING
 
 **Category:** String
 **Syntax:** \`TOSTRING(expression)\`
@@ -2782,8 +3198,11 @@ Returns a string.
 
 ---
 
-📖 **Documentation:** [TOSTRING](https://learn.microsoft.com/en-us/cosmos-db/query/tostring)`],
-    ["TRIM", `# TRIM
+📖 **Documentation:** [TOSTRING](https://learn.microsoft.com/en-us/cosmos-db/query/tostring)`,
+    ],
+    [
+        'TRIM',
+        `# TRIM
 
 **Category:** String
 **Syntax:** \`TRIM(string [, chars])\`
@@ -2801,8 +3220,11 @@ Returns the trimmed string.
 
 ---
 
-📖 **Documentation:** [TRIM](https://learn.microsoft.com/en-us/cosmos-db/query/trim)`],
-    ["TRUNC", `# TRUNC
+📖 **Documentation:** [TRIM](https://learn.microsoft.com/en-us/cosmos-db/query/trim)`,
+    ],
+    [
+        'TRUNC',
+        `# TRUNC
 
 **Category:** Math
 **Syntax:** \`TRUNC(number)\`
@@ -2825,8 +3247,11 @@ SELECT TRUNC(-4.8) -- -4
 
 ---
 
-📖 **Documentation:** [TRUNC](https://learn.microsoft.com/en-us/cosmos-db/query/trunc)`],
-    ["UPPER", `# UPPER
+📖 **Documentation:** [TRUNC](https://learn.microsoft.com/en-us/cosmos-db/query/trunc)`,
+    ],
+    [
+        'UPPER',
+        `# UPPER
 
 **Category:** String
 **Syntax:** \`UPPER(string)\`
@@ -2843,8 +3268,11 @@ Returns the uppercase string.
 
 ---
 
-📖 **Documentation:** [UPPER](https://learn.microsoft.com/en-us/cosmos-db/query/upper)`],
-    ["VECTORDISTANCE", `# VECTORDISTANCE
+📖 **Documentation:** [UPPER](https://learn.microsoft.com/en-us/cosmos-db/query/upper)`,
+    ],
+    [
+        'VECTORDISTANCE',
+        `# VECTORDISTANCE
 
 **Category:** Vector/AI
 **Syntax:** \`VECTORDISTANCE(vector1, vector2 [, brute_force [, distanceFunction]])\`
@@ -2864,8 +3292,11 @@ Returns a numeric similarity score.
 
 ---
 
-📖 **Documentation:** [VECTORDISTANCE](https://learn.microsoft.com/en-us/cosmos-db/query/vectordistance)`],
-    ["YEAR", `# YEAR
+📖 **Documentation:** [VECTORDISTANCE](https://learn.microsoft.com/en-us/cosmos-db/query/vectordistance)`,
+    ],
+    [
+        'YEAR',
+        `# YEAR
 
 **Category:** Date/Time
 **Syntax:** \`YEAR(datetime)\`
@@ -2882,12 +3313,15 @@ Returns an integer.
 
 ---
 
-📖 **Documentation:** [YEAR](https://learn.microsoft.com/en-us/cosmos-db/query/year)`],
+📖 **Documentation:** [YEAR](https://learn.microsoft.com/en-us/cosmos-db/query/year)`,
+    ],
 ]);
 
 /** Hover documentation for SQL keywords (key = uppercase keyword name). */
 export const keywordDocs = new Map<string, string>([
-    ["AND", `# AND
+    [
+        'AND',
+        `# AND
 
 Logical conjunction operator. Returns \`true\` when both operands are true.
 
@@ -2906,8 +3340,11 @@ expr1 AND expr2
 
 ---
 
-📖 **Documentation:** [AND](https://learn.microsoft.com/en-us/cosmos-db/query/operators#and-operator)`],
-    ["ARRAY", `# ARRAY
+📖 **Documentation:** [AND](https://learn.microsoft.com/en-us/cosmos-db/query/operators#and-operator)`,
+    ],
+    [
+        'ARRAY',
+        `# ARRAY
 
 Creates an array from a subquery expression.
 
@@ -2923,8 +3360,11 @@ SELECT c.id, ARRAY(SELECT t FROM t IN c.tags) AS tags FROM c
 
 ---
 
-📖 **Documentation:** [ARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`],
-    ["AS", `# AS
+📖 **Documentation:** [ARRAY](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`,
+    ],
+    [
+        'AS',
+        `# AS
 
 Assigns an alias to a collection or expression.
 
@@ -2939,8 +3379,11 @@ SELECT expr AS name
 
 ---
 
-📖 **Documentation:** [AS](https://learn.microsoft.com/en-us/cosmos-db/query/from)`],
-    ["ASC", `# ASC
+📖 **Documentation:** [AS](https://learn.microsoft.com/en-us/cosmos-db/query/from)`,
+    ],
+    [
+        'ASC',
+        `# ASC
 
 Specifies ascending sort order (default) in ORDER BY.
 
@@ -2951,8 +3394,11 @@ ORDER BY expr ASC
 
 ---
 
-📖 **Documentation:** [ASC](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`],
-    ["BETWEEN", `# BETWEEN
+📖 **Documentation:** [ASC](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`,
+    ],
+    [
+        'BETWEEN',
+        `# BETWEEN
 
 Tests if a value is within an inclusive range.
 
@@ -2969,8 +3415,11 @@ SELECT * FROM c WHERE c.age BETWEEN 18 AND 65
 
 ---
 
-📖 **Documentation:** [BETWEEN](https://learn.microsoft.com/en-us/cosmos-db/query/between)`],
-    ["DESC", `# DESC
+📖 **Documentation:** [BETWEEN](https://learn.microsoft.com/en-us/cosmos-db/query/between)`,
+    ],
+    [
+        'DESC',
+        `# DESC
 
 Specifies descending sort order in ORDER BY.
 
@@ -2981,8 +3430,11 @@ ORDER BY expr DESC
 
 ---
 
-📖 **Documentation:** [DESC](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`],
-    ["DISTINCT", `# DISTINCT
+📖 **Documentation:** [DESC](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`,
+    ],
+    [
+        'DISTINCT',
+        `# DISTINCT
 
 Removes duplicate values from the result set.
 
@@ -2993,8 +3445,11 @@ SELECT DISTINCT ...
 
 ---
 
-📖 **Documentation:** [DISTINCT](https://learn.microsoft.com/en-us/cosmos-db/query/distinct)`],
-    ["EXISTS", `# EXISTS
+📖 **Documentation:** [DISTINCT](https://learn.microsoft.com/en-us/cosmos-db/query/distinct)`,
+    ],
+    [
+        'EXISTS',
+        `# EXISTS
 
 Tests if a subquery returns any results.
 
@@ -3011,15 +3466,21 @@ WHERE EXISTS (SELECT VALUE t FROM t IN c.tags WHERE t = 'important')
 
 ---
 
-📖 **Documentation:** [EXISTS](https://learn.microsoft.com/en-us/cosmos-db/query/subquery#exists-expression)`],
-    ["FALSE", `# false
+📖 **Documentation:** [EXISTS](https://learn.microsoft.com/en-us/cosmos-db/query/subquery#exists-expression)`,
+    ],
+    [
+        'FALSE',
+        `# false
 
 Boolean false literal.
 
 ---
 
-📖 **Documentation:** [FALSE](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`],
-    ["FROM", `# FROM
+📖 **Documentation:** [FALSE](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`,
+    ],
+    [
+        'FROM',
+        `# FROM
 
 Specifies the source collection for the query.
 
@@ -3037,8 +3498,11 @@ SELECT * FROM Families f
 
 ---
 
-📖 **Documentation:** [FROM](https://learn.microsoft.com/en-us/cosmos-db/query/from)`],
-    ["GROUP_BY", `# GROUP BY
+📖 **Documentation:** [FROM](https://learn.microsoft.com/en-us/cosmos-db/query/from)`,
+    ],
+    [
+        'GROUP_BY',
+        `# GROUP BY
 
 Groups results by one or more expressions. Used with aggregate functions.
 
@@ -3056,8 +3520,11 @@ GROUP BY c.category
 
 ---
 
-📖 **Documentation:** [GROUP_BY](https://learn.microsoft.com/en-us/cosmos-db/query/group-by)`],
-    ["IN", `# IN
+📖 **Documentation:** [GROUP_BY](https://learn.microsoft.com/en-us/cosmos-db/query/group-by)`,
+    ],
+    [
+        'IN',
+        `# IN
 
 Tests if a value is in a list, or iterates an array in FROM.
 
@@ -3070,8 +3537,11 @@ FROM item IN collection.array
 
 ---
 
-📖 **Documentation:** [IN](https://learn.microsoft.com/en-us/cosmos-db/query/in)`],
-    ["JOIN", `# JOIN
+📖 **Documentation:** [IN](https://learn.microsoft.com/en-us/cosmos-db/query/in)`,
+    ],
+    [
+        'JOIN',
+        `# JOIN
 
 Joins with a nested array or subquery within the same document. Unlike standard SQL JOINs, Cosmos DB JOINs are intra-document (self-joins on arrays).
 
@@ -3090,8 +3560,11 @@ WHERE child.age > 10
 
 ---
 
-📖 **Documentation:** [JOIN](https://learn.microsoft.com/en-us/cosmos-db/query/join)`],
-    ["LIKE", `# LIKE
+📖 **Documentation:** [JOIN](https://learn.microsoft.com/en-us/cosmos-db/query/join)`,
+    ],
+    [
+        'LIKE',
+        `# LIKE
 
 Pattern matching with wildcards.
 
@@ -3112,8 +3585,11 @@ SELECT * FROM c WHERE c.name LIKE '%smith%'
 
 ---
 
-📖 **Documentation:** [LIKE](https://learn.microsoft.com/en-us/cosmos-db/query/like)`],
-    ["LIMIT", `# LIMIT
+📖 **Documentation:** [LIKE](https://learn.microsoft.com/en-us/cosmos-db/query/like)`,
+    ],
+    [
+        'LIMIT',
+        `# LIMIT
 
 Limits the number of results returned (for pagination).
 
@@ -3127,8 +3603,11 @@ OFFSET n LIMIT m
 
 ---
 
-📖 **Documentation:** [LIMIT](https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit)`],
-    ["NOT", `# NOT
+📖 **Documentation:** [LIMIT](https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit)`,
+    ],
+    [
+        'NOT',
+        `# NOT
 
 Logical negation operator.
 
@@ -3150,8 +3629,11 @@ expr NOT LIKE pattern
 
 ---
 
-📖 **Documentation:** [NOT](https://learn.microsoft.com/en-us/cosmos-db/query/operators#not-operator)`],
-    ["NULL", `# null
+📖 **Documentation:** [NOT](https://learn.microsoft.com/en-us/cosmos-db/query/operators#not-operator)`,
+    ],
+    [
+        'NULL',
+        `# null
 
 The JSON null value. Represents an explicitly absent value.
 
@@ -3161,8 +3643,11 @@ The JSON null value. Represents an explicitly absent value.
 
 ---
 
-📖 **Documentation:** [NULL](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`],
-    ["OFFSET", `# OFFSET
+📖 **Documentation:** [NULL](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`,
+    ],
+    [
+        'OFFSET',
+        `# OFFSET
 
 Skips a specified number of results (for pagination).
 
@@ -3177,8 +3662,11 @@ OFFSET n LIMIT m
 
 ---
 
-📖 **Documentation:** [OFFSET](https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit)`],
-    ["OR", `# OR
+📖 **Documentation:** [OFFSET](https://learn.microsoft.com/en-us/cosmos-db/query/offset-limit)`,
+    ],
+    [
+        'OR',
+        `# OR
 
 Logical disjunction operator. Returns \`true\` when either operand is true.
 
@@ -3197,8 +3685,11 @@ expr1 OR expr2
 
 ---
 
-📖 **Documentation:** [OR](https://learn.microsoft.com/en-us/cosmos-db/query/operators#or-operator)`],
-    ["ORDER_BY", `# ORDER BY
+📖 **Documentation:** [OR](https://learn.microsoft.com/en-us/cosmos-db/query/operators#or-operator)`,
+    ],
+    [
+        'ORDER_BY',
+        `# ORDER BY
 
 Sorts the result set by one or more expressions.
 
@@ -3214,8 +3705,11 @@ ORDER BY RANK score_function(...)
 
 ---
 
-📖 **Documentation:** [ORDER_BY](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`],
-    ["SELECT", `# SELECT
+📖 **Documentation:** [ORDER_BY](https://learn.microsoft.com/en-us/cosmos-db/query/order-by)`,
+    ],
+    [
+        'SELECT',
+        `# SELECT
 
 Specifies the fields or expressions to return from the query.
 
@@ -3233,8 +3727,11 @@ SELECT [DISTINCT] [TOP n] <select_spec>
 
 ---
 
-📖 **Documentation:** [SELECT](https://learn.microsoft.com/en-us/cosmos-db/query/select)`],
-    ["TOP", `# TOP
+📖 **Documentation:** [SELECT](https://learn.microsoft.com/en-us/cosmos-db/query/select)`,
+    ],
+    [
+        'TOP',
+        `# TOP
 
 Limits the result to the first N documents.
 
@@ -3248,15 +3745,21 @@ SELECT TOP n ...
 
 ---
 
-📖 **Documentation:** [TOP](https://learn.microsoft.com/en-us/cosmos-db/query/top)`],
-    ["TRUE", `# true
+📖 **Documentation:** [TOP](https://learn.microsoft.com/en-us/cosmos-db/query/top)`,
+    ],
+    [
+        'TRUE',
+        `# true
 
 Boolean true literal.
 
 ---
 
-📖 **Documentation:** [TRUE](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`],
-    ["UNDEFINED", `# undefined
+📖 **Documentation:** [TRUE](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`,
+    ],
+    [
+        'UNDEFINED',
+        `# undefined
 
 The CosmosDB undefined value. Represents a missing/non-existent property.
 
@@ -3267,8 +3770,11 @@ The CosmosDB undefined value. Represents a missing/non-existent property.
 
 ---
 
-📖 **Documentation:** [UNDEFINED](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`],
-    ["VALUE", `# VALUE
+📖 **Documentation:** [UNDEFINED](https://learn.microsoft.com/en-us/cosmos-db/query/constants)`,
+    ],
+    [
+        'VALUE',
+        `# VALUE
 
 Returns scalar values instead of JSON objects.
 
@@ -3285,8 +3791,11 @@ SELECT VALUE c.name FROM c
 
 ---
 
-📖 **Documentation:** [VALUE](https://learn.microsoft.com/en-us/cosmos-db/query/select#select-value)`],
-    ["WHERE", `# WHERE
+📖 **Documentation:** [VALUE](https://learn.microsoft.com/en-us/cosmos-db/query/select#select-value)`,
+    ],
+    [
+        'WHERE',
+        `# WHERE
 
 Filters documents by a Boolean condition.
 
@@ -3303,5 +3812,6 @@ SELECT * FROM c WHERE c.age > 21 AND c.city = 'Seattle'
 
 ---
 
-📖 **Documentation:** [WHERE](https://learn.microsoft.com/en-us/cosmos-db/query/where)`],
+📖 **Documentation:** [WHERE](https://learn.microsoft.com/en-us/cosmos-db/query/where)`,
+    ],
 ]);

@@ -8,7 +8,7 @@ pr: none
 
 # Scheduled nightly build of `main`
 schedules:
-  - cron: "0 0 * * *"
+  - cron: '0 0 * * *'
     displayName: Nightly scheduled build
     always: false # Don't rebuild if there haven't been changes
     branches:
@@ -33,7 +33,7 @@ parameters:
 variables:
   # Required by MicroBuild template
   - name: TeamName
-    value: "Azure Tools for VS Code"
+    value: 'Azure Tools for VS Code'
 
 # Use those templates
 extends:

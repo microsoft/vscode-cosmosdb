@@ -6,11 +6,13 @@
 Returns the internal document ID of the specified document.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type       | Description                    |
+| ---------- | ---------- | ------------------------------ |
 | `document` | identifier | The document alias (e.g. `c`). |
 
 ## Return Value
+
 Returns a string.
 
 ---

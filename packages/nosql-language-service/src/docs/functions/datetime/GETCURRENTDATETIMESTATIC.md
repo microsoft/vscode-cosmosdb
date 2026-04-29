@@ -6,9 +6,11 @@
 Returns the current UTC date and time as an ISO 8601 string, constant for the duration of the query.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a datetime string.
 
 ---

@@ -51,4 +51,3 @@ export class MonacoCompletionProvider implements monacoEditor.languages.Completi
         };
     }
 }
-

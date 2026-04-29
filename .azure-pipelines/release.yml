@@ -23,7 +23,7 @@ resources:
 variables:
   # Required by MicroBuild template
   - name: TeamName
-    value: "Azure Tools for VS Code"
+    value: 'Azure Tools for VS Code'
 
 # Use those templates
 extends:

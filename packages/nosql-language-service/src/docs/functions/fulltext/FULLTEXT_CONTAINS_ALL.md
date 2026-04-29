@@ -6,16 +6,19 @@
 Returns a Boolean indicating whether the field contains all the specified terms.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `field` | expression | The field to search. |
-| `term1` | string | First term. |
-| `term2...` | string | Additional terms. |
+
+| Name       | Type       | Description          |
+| ---------- | ---------- | -------------------- |
+| `field`    | expression | The field to search. |
+| `term1`    | string     | First term.          |
+| `term2...` | string     | Additional terms.    |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ## Notes
+
 - Also available as `FULLTEXTCONTAINSALL`.
 
 ---

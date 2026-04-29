@@ -49,4 +49,3 @@ if (firstDiffLine > 0) {
 }
 console.error('    Run "pnpm run generate-docs" to regenerate it.');
 process.exit(1);
-

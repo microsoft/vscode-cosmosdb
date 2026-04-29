@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "tabWidth": 4,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "insertFinalNewline": true,
+  "endOfLine": "lf",
+  "sortPackageJson": false,
+  "sortImports": {
+    "newlinesBetween": false,
+    "partitionByNewline": false,
+    "sortSideEffects": false,
+    "groups": ["side_effect", ["builtin", "external", "internal", "subpath"], ["parent", "sibling", "index", "unknown"]]
+  },
+  "overrides": [
+    {
+      "files": ["*.md", "*.json", "*.jsonc", "*.yml", "*.yaml"],
+      "options": {
+        "tabWidth": 2,
+        "trailingComma": "none"
+      }
+    }
+  ],
+  "ignorePatterns": ["package-lock.json", "package.nls.*.json", "l10n/bundle.l10n.*.json", ".cosmosdb-data/", "skills/"]
+}

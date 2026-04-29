@@ -83,6 +83,7 @@ providers/codemirror.ts ──→ services/SqlLanguageService
 The library is organized in three layers:
 
 ### Layer 1: Core (zero dependencies beyond Chevrotain)
+
 - `lexer/` — tokenizer
 - `parser/` — grammar → AST
 - `ast/` — node type definitions
@@ -93,6 +94,7 @@ The library is organized in three layers:
 - `completion/` — autocomplete engine (uses `JSONSchema` from `@cosmosdb/schema-analyzer`)
 
 ### Layer 2: Language Service (zero IDE dependencies)
+
 - `services/SqlLanguageService.ts` — facade aggregating
   diagnostics, completions, hover, signature help, formatting
 - `services/types.ts` — generic IDE-agnostic types
@@ -100,6 +102,7 @@ The library is organized in three layers:
 - `services/functionSignatures.ts` — built-in function metadata
 
 ### Layer 3: Provider Adapters (no runtime dep on editor SDK)
+
 - `providers/monaco.ts` — accepts `monaco` namespace at runtime
 - `providers/vscode.ts` — accepts `vscode` module at runtime
 - `providers/codemirror.ts` — returns CM6-compatible sources
@@ -150,28 +153,29 @@ dependencies and tree-shakes cleanly.
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `ast/nodes.ts` | All AST interfaces (30+ types) |
-| `parser/SqlParser.ts` | Full grammar — the core |
-| `lexer/tokens.ts` | Token definitions (50+ tokens) |
-| `completion/SqlCompletion.ts` | Autocomplete engine |
-| `printer/SqlPrinter.ts` | AST → SQL serializer |
-| `visitor/SqlVisitor.ts` | Visitor pattern dispatch |
-| `errors/SqlError.ts` | Error types + source locations |
-| `errors/SqlErrorMessageProvider.ts` | Human-friendly error messages |
-| `diagnostics/typoDetection.ts` | Near-miss keyword warnings |
-| `services/SqlLanguageService.ts` | IDE-agnostic facade |
-| `services/types.ts` | Generic language service types |
-| `services/functionSignatures.ts` | Function hover/sig metadata |
-| `providers/monaco.ts` | Monaco editor adapter |
-| `providers/vscode.ts` | VS Code extension adapter |
-| `providers/codemirror.ts` | CodeMirror 6 adapter |
-| `index.ts` | Public API surface |
+| File                                | Purpose                        |
+| ----------------------------------- | ------------------------------ |
+| `ast/nodes.ts`                      | All AST interfaces (30+ types) |
+| `parser/SqlParser.ts`               | Full grammar — the core        |
+| `lexer/tokens.ts`                   | Token definitions (50+ tokens) |
+| `completion/SqlCompletion.ts`       | Autocomplete engine            |
+| `printer/SqlPrinter.ts`             | AST → SQL serializer           |
+| `visitor/SqlVisitor.ts`             | Visitor pattern dispatch       |
+| `errors/SqlError.ts`                | Error types + source locations |
+| `errors/SqlErrorMessageProvider.ts` | Human-friendly error messages  |
+| `diagnostics/typoDetection.ts`      | Near-miss keyword warnings     |
+| `services/SqlLanguageService.ts`    | IDE-agnostic facade            |
+| `services/types.ts`                 | Generic language service types |
+| `services/functionSignatures.ts`    | Function hover/sig metadata    |
+| `providers/monaco.ts`               | Monaco editor adapter          |
+| `providers/vscode.ts`               | VS Code extension adapter      |
+| `providers/codemirror.ts`           | CodeMirror 6 adapter           |
+| `index.ts`                          | Public API surface             |
 
 ## Grammar Origin
 
 The grammar is a manual port of the LALR(1) grammar in:
+
 ```
 {...}/sql/sql.y
 ```

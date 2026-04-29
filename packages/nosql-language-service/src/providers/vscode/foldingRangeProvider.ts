@@ -31,4 +31,3 @@ export class VSCodeFoldingRangeProvider implements vscodeApi.FoldingRangeProvide
         return ranges;
     }
 }
-

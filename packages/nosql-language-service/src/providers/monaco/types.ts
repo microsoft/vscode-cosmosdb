@@ -81,4 +81,3 @@ export function mapSeverity(monaco: MonacoNamespace, severity: DsSeverity): mona
             return monaco.MarkerSeverity.Error;
     }
 }
-

@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { getPropertyNamesAtLevel, SchemaAnalyzer } from './index.js';
 import { type JSONSchema, type JSONSchemaMap, type JSONSchemaRef } from '../index.js';
 import {
     arraysWithDifferentDataTypes,
@@ -16,6 +15,7 @@ import {
     makeDoc,
     sparseDocumentsArray,
 } from './fixtures.js';
+import { getPropertyNamesAtLevel, SchemaAnalyzer } from './index.js';
 
 // ── Basic schema inference ─────────────────────────────────────────────
 

@@ -65,10 +65,10 @@ npm install @cosmosdb/nosql-language-service
 ### Option A: Use the Core API directly
 
 ```typescript
-import { parse, sqlToString, getCompletions } from "@cosmosdb/nosql-language-service";
+import { parse, sqlToString, getCompletions } from '@cosmosdb/nosql-language-service';
 
 // Parse a query
-const { ast, errors } = parse("SELECT * FROM c WHERE c.age > 21");
+const { ast, errors } = parse('SELECT * FROM c WHERE c.age > 21');
 
 if (errors.length === 0) {
   console.log(ast.query.select.spec.kind); // "SelectStarSpec"
@@ -79,35 +79,35 @@ const sql = sqlToString(ast!);
 console.log(sql); // "SELECT * FROM c WHERE c.age > 21"
 
 // Autocomplete
-const items = getCompletions({ query: "SELECT c.", offset: 9, schema });
+const items = getCompletions({ query: 'SELECT c.', offset: 9, schema });
 ```
 
 ### Option B: Use the Language Service
 
 ```typescript
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
 
 const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
+  getSchema: () => collectionSchema
 });
 
 // All features through a single object
-const diagnostics = service.getDiagnostics("SELECT * FORM c");
-const completions = service.getCompletions("SELECT c.", 9);
-const hover       = service.getHoverInfo("SELECT COUNT(c.id) FROM c", 7);
-const sigHelp     = service.getSignatureHelp("CONTAINS(c.name, ", 18);
-const formatted   = service.format("SELECT  *  FROM  c");
+const diagnostics = service.getDiagnostics('SELECT * FORM c');
+const completions = service.getCompletions('SELECT c.', 9);
+const hover = service.getHoverInfo('SELECT COUNT(c.id) FROM c', 7);
+const sigHelp = service.getSignatureHelp('CONTAINS(c.name, ', 18);
+const formatted = service.format('SELECT  *  FROM  c');
 ```
 
 ### Option C: Use a Provider (Monaco)
 
 ```typescript
-import * as monaco from "monaco-editor";
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
-import { registerCosmosDbSql } from "@cosmosdb/nosql-language-service/monaco";
+import * as monaco from 'monaco-editor';
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/monaco';
 
 const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
+  getSchema: () => collectionSchema
 });
 
 // One line — registers completions, diagnostics, hover,
@@ -118,13 +118,13 @@ const disposable = registerCosmosDbSql(monaco, service);
 ### Option C: Use a Provider (VS Code Extension)
 
 ```typescript
-import * as vscode from "vscode";
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
-import { registerCosmosDbSql } from "@cosmosdb/nosql-language-service/vscode";
+import * as vscode from 'vscode';
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
 
 export function activate(context: vscode.ExtensionContext) {
   const service = new SqlLanguageService({
-    getSchema: () => collectionSchema,
+    getSchema: () => collectionSchema
   });
 
   registerCosmosDbSql(vscode, service, context);
@@ -134,36 +134,36 @@ export function activate(context: vscode.ExtensionContext) {
 ### Option C: Use a Provider (CodeMirror 6)
 
 ```typescript
-import { autocompletion } from "@codemirror/autocomplete";
-import { linter } from "@codemirror/lint";
-import { hoverTooltip } from "@codemirror/view";
-import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
+import { autocompletion } from '@codemirror/autocomplete';
+import { linter } from '@codemirror/lint';
+import { hoverTooltip } from '@codemirror/view';
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
 import {
   createCompletionSource,
   createLintSource,
-  createHoverTooltipSource,
-} from "@cosmosdb/nosql-language-service/codemirror";
+  createHoverTooltipSource
+} from '@cosmosdb/nosql-language-service/codemirror';
 
 const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
+  getSchema: () => collectionSchema
 });
 
 const extensions = [
   autocompletion({ override: [createCompletionSource(service)] }),
   linter(createLintSource(service)),
-  hoverTooltip(createHoverTooltipSource(service)),
+  hoverTooltip(createHoverTooltipSource(service))
 ];
 ```
 
 ## Package Exports
 
-| Import path | What you get |
-|---|---|
-| `@cosmosdb/nosql-language-service` | Core API + `SqlLanguageService` + all types |
-| `@cosmosdb/nosql-language-service/services` | `SqlLanguageService` + types only |
-| `@cosmosdb/nosql-language-service/monaco` | Monaco adapter |
-| `@cosmosdb/nosql-language-service/vscode` | VS Code adapter |
-| `@cosmosdb/nosql-language-service/codemirror` | CodeMirror 6 adapter |
+| Import path                                   | What you get                                |
+| --------------------------------------------- | ------------------------------------------- |
+| `@cosmosdb/nosql-language-service`            | Core API + `SqlLanguageService` + all types |
+| `@cosmosdb/nosql-language-service/services`   | `SqlLanguageService` + types only           |
+| `@cosmosdb/nosql-language-service/monaco`     | Monaco adapter                              |
+| `@cosmosdb/nosql-language-service/vscode`     | VS Code adapter                             |
+| `@cosmosdb/nosql-language-service/codemirror` | CodeMirror 6 adapter                        |
 
 ## API Reference
 
@@ -183,18 +183,18 @@ Get autocomplete suggestions for a cursor position.
 
 ```typescript
 interface CompletionRequest {
-  query: string;           // the full query text
-  offset: number;          // 0-based cursor offset
-  schema?: JSONSchema;     // collection schema (optional)
-  aliases?: string[];      // override auto-detected aliases
+  query: string; // the full query text
+  offset: number; // 0-based cursor offset
+  schema?: JSONSchema; // collection schema (optional)
+  aliases?: string[]; // override auto-detected aliases
 }
 
 interface CompletionItem {
   label: string;
-  kind: "keyword" | "field" | "function" | "snippet" | "alias";
-  detail?: string;         // e.g., field type
-  sortText?: string;       // for priority ordering
-  insertText?: string;     // text to insert (e.g., "COUNT($0)")
+  kind: 'keyword' | 'field' | 'function' | 'snippet' | 'alias';
+  detail?: string; // e.g., field type
+  sortText?: string; // for priority ordering
+  insertText?: string; // text to insert (e.g., "COUNT($0)")
 }
 ```
 
@@ -248,11 +248,11 @@ For full, explicit wiring examples — including diagnostics-only
 setup and standalone adapter usage for Monaco, VS Code, and
 CodeMirror — see [Editor Integration](docs/editor-integration.md).
 
-| Adapter | One-line helper | Explicit diagnostics adapter |
-|---|---|---|
-| Monaco | `registerCosmosDbSql(monaco, service)` | `MonacoDiagnosticsProvider` |
-| VS Code | `registerCosmosDbSql(vscode, service, context)` | `VSCodeDiagnosticsProvider` |
-| CodeMirror 6 | compose extensions manually | `createLintSource(service)` |
+| Adapter      | One-line helper                                 | Explicit diagnostics adapter |
+| ------------ | ----------------------------------------------- | ---------------------------- |
+| Monaco       | `registerCosmosDbSql(monaco, service)`          | `MonacoDiagnosticsProvider`  |
+| VS Code      | `registerCosmosDbSql(vscode, service, context)` | `VSCodeDiagnosticsProvider`  |
+| CodeMirror 6 | compose extensions manually                     | `createLintSource(service)`  |
 
 All providers accept an options object to enable/disable
 individual features (completions, diagnostics, hover,
@@ -261,12 +261,12 @@ signatureHelp, formatting).
 ## Error Handling
 
 ```typescript
-const { ast, errors } = parse("SELECT * FORM c");
+const { ast, errors } = parse('SELECT * FORM c');
 
 for (const err of errors) {
-  console.log(err.code);    // "UNEXPECTED_TOKEN"
+  console.log(err.code); // "UNEXPECTED_TOKEN"
   console.log(err.message); // "expecting FROM but found..."
-  console.log(err.range);   // { start: { offset, line, col }, end: ... }
+  console.log(err.range); // { start: { offset, line, col }, end: ... }
 }
 // ast is still present (partial, via error recovery)
 ```

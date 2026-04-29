@@ -183,8 +183,7 @@ export class SqlErrorMessageProvider implements IParserErrorMessageProvider {
         if (options.customUserDescription) {
             return options.customUserDescription;
         }
-        const actual =
-            options.actual.length > 0 ? actualTokenDisplay(options.actual[0]) : 'end of query';
+        const actual = options.actual.length > 0 ? actualTokenDisplay(options.actual[0]) : 'end of query';
         const labels = uniqueExpectedLabels(options.expectedPathsPerAlt);
         const expected = formatExpectedList(labels);
         return `Unexpected ${actual}. Expected ${expected}.`;
@@ -221,4 +220,3 @@ export class SqlErrorMessageProvider implements IParserErrorMessageProvider {
         return `Expected at least one ${expected} after ${after}.`;
     }
 }
-

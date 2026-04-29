@@ -11,8 +11,8 @@
  */
 
 import { type Document, type WithId } from 'mongodb';
-import { type JSONSchema } from '../JSONSchema.js';
 import { type TypeAdapter, updateSchemaWithDocument as updateSchemaGeneric } from '../core/schemaTraversal.js';
+import { type JSONSchema } from '../JSONSchema.js';
 import { type BSONType, bsonTypeToJSONType, inferBsonType } from './BSONTypes.js';
 
 export { buildFullPaths, getPropertyNamesAtLevel, simplifySchema } from '../core/schemaUtils.js';

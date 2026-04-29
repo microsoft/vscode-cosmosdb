@@ -1,17 +1,17 @@
 steps:
-- task: NodeTool@0
-  displayName: 'Use Node'
-  inputs:
-    versionSource: fromFile
-    versionFilePath: .nvmrc
+  - task: NodeTool@0
+    displayName: 'Use Node'
+    inputs:
+      versionSource: fromFile
+      versionFilePath: .nvmrc
 
-- task: Npm@1
-  displayName: 'npm ci'
-  inputs:
-    command: ci
+  - task: Npm@1
+    displayName: 'npm ci'
+    inputs:
+      command: ci
 
-- task: Npm@1
-  displayName: 'Build'
-  inputs:
-    command: custom
-    customCommand: run build
+  - task: Npm@1
+    displayName: 'Build'
+    inputs:
+      command: custom
+      customCommand: run build

@@ -36,7 +36,7 @@ import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
   getAliases: () => ['c'],
-  multiQuery: true, // enable multi-query document support (semicolon-separated)
+  multiQuery: true // enable multi-query document support (semicolon-separated)
 });
 ```
 
@@ -89,7 +89,7 @@ import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
 import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/monaco';
 
 const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
+  getSchema: () => collectionSchema
 });
 
 const disposable = registerCosmosDbSql(monaco, service, {
@@ -98,7 +98,7 @@ const disposable = registerCosmosDbSql(monaco, service, {
   diagnostics: true,
   hover: true,
   signatureHelp: true,
-  formatting: true,
+  formatting: true
 });
 ```
 
@@ -113,11 +113,11 @@ import {
   MonacoDiagnosticsProvider,
   MonacoFormattingProvider,
   MonacoHoverProvider,
-  MonacoSignatureHelpProvider,
+  MonacoSignatureHelpProvider
 } from '@cosmosdb/nosql-language-service/monaco';
 
 const service = new SqlLanguageService({
-  getSchema: () => collectionSchema,
+  getSchema: () => collectionSchema
 });
 
 monaco.languages.register({ id: LANGUAGE_ID });
@@ -129,8 +129,8 @@ const disposables = [
   monaco.languages.registerDocumentFormattingEditProvider(LANGUAGE_ID, new MonacoFormattingProvider(service)),
   new MonacoDiagnosticsProvider(monaco, service, {
     languageId: LANGUAGE_ID,
-    diagnosticDelay: 200,
-  }),
+    diagnosticDelay: 200
+  })
 ];
 ```
 
@@ -144,7 +144,7 @@ import { MonacoDiagnosticsProvider } from '@cosmosdb/nosql-language-service/mona
 const diagnostics = new MonacoDiagnosticsProvider(monaco, service, {
   languageId: 'cosmosdb-sql',
   owner: 'cosmosdb-sql',
-  diagnosticDelay: 200,
+  diagnosticDelay: 200
 });
 ```
 
@@ -164,8 +164,8 @@ import { MonacoFoldingRangeProvider, MonacoMultiQueryDecorator } from '@cosmosdb
 disposables.push(
   monaco.languages.registerFoldingRangeProvider(LANGUAGE_ID, new MonacoFoldingRangeProvider(service)),
   new MonacoMultiQueryDecorator(monaco, service, {
-    languageId: LANGUAGE_ID,
-  }),
+    languageId: LANGUAGE_ID
+  })
 );
 ```
 
@@ -180,7 +180,7 @@ import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
 
 export function activate(context: vscode.ExtensionContext) {
   const service = new SqlLanguageService({
-    getSchema: () => collectionSchema,
+    getSchema: () => collectionSchema
   });
 
   registerCosmosDbSql(vscode, service, context, {
@@ -189,7 +189,7 @@ export function activate(context: vscode.ExtensionContext) {
     diagnostics: true,
     hover: true,
     signatureHelp: true,
-    formatting: true,
+    formatting: true
   });
 }
 ```
@@ -204,12 +204,12 @@ import {
   VSCodeDiagnosticsProvider,
   VSCodeFormattingProvider,
   VSCodeHoverProvider,
-  VSCodeSignatureHelpProvider,
+  VSCodeSignatureHelpProvider
 } from '@cosmosdb/nosql-language-service/vscode';
 
 export function activate(context: vscode.ExtensionContext) {
   const service = new SqlLanguageService({
-    getSchema: () => collectionSchema,
+    getSchema: () => collectionSchema
   });
 
   const selector = { language: 'cosmosdb-sql', scheme: '*' };
@@ -220,20 +220,20 @@ export function activate(context: vscode.ExtensionContext) {
       new VSCodeCompletionProvider(vscode, service),
       '.',
       ' ',
-      ',',
+      ','
     ),
     vscode.languages.registerHoverProvider(selector, new VSCodeHoverProvider(vscode, service)),
     vscode.languages.registerSignatureHelpProvider(
       selector,
       new VSCodeSignatureHelpProvider(vscode, service),
       '(',
-      ',',
+      ','
     ),
     vscode.languages.registerDocumentFormattingEditProvider(selector, new VSCodeFormattingProvider(vscode, service)),
     new VSCodeDiagnosticsProvider(vscode, service, {
       languageId: 'cosmosdb-sql',
-      diagnosticDelay: 200,
-    }),
+      diagnosticDelay: 200
+    })
   );
 }
 ```
@@ -246,7 +246,7 @@ import { VSCodeDiagnosticsProvider } from '@cosmosdb/nosql-language-service/vsco
 const diagnostics = new VSCodeDiagnosticsProvider(vscode, service, {
   languageId: 'cosmosdb-sql',
   collectionName: 'cosmosdb-sql',
-  diagnosticDelay: 200,
+  diagnosticDelay: 200
 });
 ```
 
@@ -266,8 +266,8 @@ import { VSCodeFoldingRangeProvider, VSCodeMultiQueryDecorator } from '@cosmosdb
 context.subscriptions.push(
   vscode.languages.registerFoldingRangeProvider(selector, new VSCodeFoldingRangeProvider(vscode, service)),
   new VSCodeMultiQueryDecorator(vscode, service, {
-    languageId: 'cosmosdb-sql',
-  }),
+    languageId: 'cosmosdb-sql'
+  })
 );
 ```
 
@@ -286,18 +286,18 @@ import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
 import {
   createCompletionSource,
   createHoverTooltipSource,
-  createLintSource,
+  createLintSource
 } from '@cosmosdb/nosql-language-service/codemirror';
 
 const service = new SqlLanguageService({
   getSchema: () => collectionSchema,
-  multiQuery: true,
+  multiQuery: true
 });
 
 const extensions = [
   autocompletion({ override: [createCompletionSource(service)] }),
   linter(createLintSource(service)),
-  hoverTooltip(createHoverTooltipSource(service)),
+  hoverTooltip(createHoverTooltipSource(service))
 ];
 ```
 
@@ -384,7 +384,7 @@ interface Diagnostic {
 
 ```typescript
 const service = new SqlLanguageService({
-  getSchema: () => schema,
+  getSchema: () => schema
 });
 
 myEditor.onChange((query: string) => {
@@ -394,8 +394,8 @@ myEditor.onChange((query: string) => {
       from: d.range.startOffset,
       to: d.range.endOffset,
       message: d.message,
-      severity: d.severity === 1 ? 'error' : 'warning',
-    })),
+      severity: d.severity === 1 ? 'error' : 'warning'
+    }))
   );
 });
 

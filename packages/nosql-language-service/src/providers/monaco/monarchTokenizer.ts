@@ -121,4 +121,3 @@ export const cosmosDbSqlMonarchTokensProvider: monacoEditor.languages.IMonarchLa
         ],
     },
 };
-

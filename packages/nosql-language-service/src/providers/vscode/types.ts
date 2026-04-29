@@ -80,4 +80,3 @@ export function mapSeverity(vscode: VSCodeNamespace, severity: DsSeverity): vsco
             return vscode.DiagnosticSeverity.Error;
     }
 }
-

@@ -10,6 +10,7 @@
   "arrowParens": "always",
   "insertFinalNewline": true,
   "endOfLine": "lf",
+  "embeddedLanguageFormatting": "off",
   "sortPackageJson": false,
   "sortImports": {
     "newlinesBetween": false,
@@ -30,5 +31,5 @@
       }
     }
   ],
-  "ignorePatterns": ["package-lock.json", "package.nls.*.json", "l10n/bundle.l10n.*.json", ".cosmosdb-data/", "skills/"]
+  "ignorePatterns": ["package-lock.json", "package.nls.*.json", "l10n/bundle.l10n.*.json", ".cosmosdb-data/", "skills/", "NOTICE.html", "bundle-analysis/"]
 }

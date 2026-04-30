@@ -2,18 +2,20 @@ name: Node PR Lint, Build and Test
 
 permissions:
     contents: read
+    pull-requests: read
 
 on:
     # Trigger when manually run
     workflow_dispatch:
 
-    # Trigger on pushes to `main` or `rel/*`
+    # Trigger on pushes to `main`, `rel/*`, or `dev/**`
     push:
         branches:
             - main
             - rel/*
+            - dev/**
 
-    # Trigger on pull requests to `main` or `rel/*`
+    # Trigger on pull requests to `main`, `rel/*`, or `dev/**`
     pull_request:
         branches:
             - main
@@ -23,6 +25,26 @@ on:
 jobs:
     Build:
         runs-on: ubuntu-latest
+
+        # A push to a branch with an open PR fires both `push` and `pull_request`
+        # events. Rather than cancelling one of them (a cancelled run reports
+        # as a failed required check on the PR's head SHA and blocks merge),
+        # we skip the `pull_request` run entirely for same-repo PRs — the
+        # `push` event already builds the head SHA and satisfies the required
+        # `Build` check. For PRs from forks, `push` does not fire in this repo,
+        # so we still let `pull_request` run.
+        if: >-
+            github.event_name != 'pull_request' ||
+            github.event.pull_request.head.repo.full_name != github.repository
+
+        # Concurrency only dedupes runs for the SAME branch across DIFFERENT
+        # commits (e.g. rapid pushes during a rebase). The cancelled older run
+        # is on a stale SHA that is no longer the PR head, so it does not
+        # block the PR. Push and pull_request events for the same SHA are
+        # already deduped by the `if` above, so they never collide here.
+        concurrency:
+            group: build-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+            cancel-in-progress: true
 
         defaults:
             run:
@@ -104,6 +126,7 @@ jobs:
               run: npm run package
 
             - name: 🔍 Verify VSIX File
+              id: verify-vsix
               shell: pwsh
               run: |
                   # Find VSIX file
@@ -134,20 +157,39 @@ jobs:
 
                   Write-Output "✅ VSIX filename is correct: $vsixFileName"
 
-                  # Set output for job summary
-                  echo "VSIX_FILE=$vsixFileName" >> $env:GITHUB_ENV
-                  echo "VSIX_SIZE=$vsixFileSize" >> $env:GITHUB_ENV
-                  echo "PACKAGE_VERSION=$($packageJson.version)" >> $env:GITHUB_ENV
-                  echo "PACKAGE_PREVIEW=$($packageJson.preview)" >> $env:GITHUB_ENV
+                  # Compute a short commit SHA (7 chars) and a filesystem-safe branch slug.
+                  # Use head_ref for pull_request events, otherwise ref_name.
+                  $rawRef = if ("${{ github.event_name }}" -eq "pull_request") { "${{ github.head_ref }}" } else { "${{ github.ref_name }}" }
+                  $branchSlug = ($rawRef -replace '[^A-Za-z0-9._-]', '-').Trim('-')
+                  $shortSha = "${{ github.sha }}".Substring(0, 7)
 
-            - name: 📤 Upload Artifacts
+                  # Artifact name convention:
+                  # - main / rel/* : <name>-<version>-<sha7>
+                  # - everything else: <branch-slug>-<version>-<sha7>
+                  $isRelease = ($rawRef -eq 'main') -or ($rawRef -like 'rel/*')
+                  if ($isRelease) {
+                      $artifactName = "$($packageJson.name)-$($packageJson.version)-$shortSha"
+                  } else {
+                      $artifactName = "$branchSlug-$($packageJson.version)-$shortSha"
+                  }
+
+                  Write-Output "📛 Artifact name: $artifactName"
+
+                  # Expose values as step outputs for downstream steps
+                  "vsix_file=$vsixFileName" >> $env:GITHUB_OUTPUT
+                  "vsix_size=$vsixFileSize" >> $env:GITHUB_OUTPUT
+                  "package_version=$($packageJson.version)" >> $env:GITHUB_OUTPUT
+                  "package_preview=$($packageJson.preview)" >> $env:GITHUB_OUTPUT
+                  "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
+
+            - name: 📤 Upload VSIX
+              id: upload-vsix
               uses: actions/upload-artifact@v7
               with:
-                  name: Artifacts
-                  path: |
-                      **/*.vsix
-                      **/*.tgz
-                      !**/node_modules
+                  name: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  path: ${{ steps.verify-vsix.outputs.vsix_file }}
+                  if-no-files-found: error
+                  compression-level: 0
 
             - name: 🧪 Unit Tests
               id: unit-tests
@@ -170,6 +212,14 @@ jobs:
 
             - name: 📊 Generate Job Summary
               if: always()
+              env:
+                  PACKAGE_VERSION: ${{ steps.verify-vsix.outputs.package_version }}
+                  PACKAGE_PREVIEW: ${{ steps.verify-vsix.outputs.package_preview }}
+                  VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
+                  VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
+                  ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  ARTIFACT_URL: ${{ steps.upload-vsix.outputs.artifact-url }}
+                  GH_TOKEN: ${{ github.token }}
               shell: pwsh
               run: |
                   # Only generate summary if VSIX verification completed
@@ -187,14 +237,76 @@ jobs:
                           "## ❌ Build Status`nSome checks failed. Please review the logs."
                       }
 
+                      # Build commit + PR markdown links
+                      $serverUrl = "${{ github.server_url }}"
+                      $repo = "${{ github.repository }}"
+                      $sha = "${{ github.sha }}"
+                      $shortSha = $sha.Substring(0, 7)
+                      $commitLink = "[``$shortSha``]($serverUrl/$repo/commit/$sha)"
+
+                      # Resolve PR info: prefer the pull_request event payload, otherwise
+                      # ask the API which PR(s) contain this commit (works for push runs).
+                      $prNumber = "${{ github.event.pull_request.number }}"
+                      $prTitle = @'
+                  ${{ github.event.pull_request.title }}
+                  '@
+                      if (-not $prNumber) {
+                          # /commits/{sha}/pulls is eventually consistent — the PR <-> commit
+                          # association can lag a few seconds after a push. Retry briefly.
+                          $headers = @{
+                              Authorization          = "Bearer $env:GH_TOKEN"
+                              Accept                 = 'application/vnd.github+json'
+                              'X-GitHub-Api-Version' = '2022-11-28'
+                              'User-Agent'           = 'vscode-cosmosdb-ci'
+                          }
+                          $apiUrl = "${serverUrl}/api/v3/repos/$repo/commits/$sha/pulls"
+                          if ($serverUrl -eq 'https://github.com') {
+                              $apiUrl = "https://api.github.com/repos/$repo/commits/$sha/pulls"
+                          }
+
+                          for ($attempt = 1; $attempt -le 3; $attempt++) {
+                              try {
+                                  $prs = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
+                                  $openPr = @($prs | Where-Object { $_.state -eq 'open' })[0]
+                                  if ($openPr) {
+                                      $prNumber = "$($openPr.number)"
+                                      $prTitle = $openPr.title
+                                      break
+                                  }
+                                  Write-Output "ℹ️ Attempt ${attempt}: no open PR found for $sha yet."
+                              } catch {
+                                  Write-Output "⚠️ Attempt ${attempt}: PR lookup failed: $_"
+                              }
+                              if ($attempt -lt 3) { Start-Sleep -Seconds 3 }
+                          }
+                      }
+
+                      $prLine = if ($prNumber) {
+                          # Escape characters that would break markdown link text
+                          $prTitleEscaped = $prTitle -replace '\\', '\\' -replace '\]', '\]'
+                          "- **Pull Request:** [#$prNumber $prTitleEscaped]($serverUrl/$repo/pull/$prNumber)"
+                      } else {
+                          $null
+                      }
+
+                      $sourceInfo = @(
+                          "## 🔗 Source"
+                          "- **Commit:** $commitLink"
+                      )
+                      if ($prLine) { $sourceInfo += $prLine }
+                      $sourceSection = $sourceInfo -join "`n"
+
                       $summary = @"
                   # 🎉 Build Summary
+
+                  $sourceSection
 
                   ## 📦 Package Information
                   - **Version:** $env:PACKAGE_VERSION
                   - **Preview:** $env:PACKAGE_PREVIEW
                   - **VSIX File:** $env:VSIX_FILE
                   - **VSIX Size:** $env:VSIX_SIZE MB
+                  - **Artifact:** [$env:ARTIFACT_NAME.zip]($env:ARTIFACT_URL)
 
                   ## 🧪 Test Results
                   - **Unit Tests:** $unitTestIcon $unitTestResult
@@ -209,6 +321,8 @@ jobs:
                       if ($unitTestResult -ne "success" -or $integrationTestResult -ne "success") {
                           exit 1
                       }
+                      exit 0
                   } else {
                       Write-Output "⚠️ Skipping job summary - VSIX verification did not complete"
+                      exit 0
                   }

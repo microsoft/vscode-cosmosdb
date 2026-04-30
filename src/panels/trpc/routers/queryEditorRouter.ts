@@ -25,10 +25,11 @@ import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallen
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
+import { getAvailableLanguageModels } from '../../../utils/copilotUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { isSelectStar } from '../../../utils/queryAnalysis';
-import { sanitizeSqlComment } from '../../../utils/sanitization';
+import { commentOutQuery, sanitizeSqlComment } from '../../../utils/sanitization';
 import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';

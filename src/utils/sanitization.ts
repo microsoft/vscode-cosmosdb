@@ -143,6 +143,20 @@ export function safeErrorDisplay(error: Error | string, prefix: string = '❌'):
  * @param language The language identifier (e.g., 'sql', 'json', 'javascript')
  * @returns The content wrapped in a language-specific code block
  */
+/**
+ * Strips markdown code fences (` ```sql `, ` ``` `, etc.) from a string.
+ * Returns the inner content trimmed. If no fences are found, returns the string trimmed.
+ */
+export function stripCodeFences(text: string): string {
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```sql')) {
+        cleaned = cleaned.replace(/^```sql\n?/, '').replace(/\n?```$/, '');
+    } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
+    }
+    return cleaned.trim();
+}
+
 export function safeCodeBlock(content: string, language: string = ''): string {
     // Escape triple backticks in the content to prevent breaking out of the code fence
     // Replaces ``` with ` `` (space breaks the sequence)
@@ -197,4 +211,22 @@ export function sanitizeSqlComment(text: string): string {
         .replace(/\r/g, ' ') // Mac line endings
         .replace(/\t/g, ' ') // Tabs
         .trim();
+}
+
+/**
+ * Comments out a multi-line query by prepending "-- " to each line.
+ * Lines that are already SQL comments (starting with "--") are kept as-is
+ * to avoid double-commenting.
+ *
+ * @param query The query text to comment out
+ * @returns The query with all lines commented out
+ */
+export function commentOutQuery(query: string): string {
+    return query
+        .split('\n')
+        .map((line) => {
+            const sanitized = sanitizeSqlComment(line);
+            return sanitized.startsWith('--') ? sanitized : `-- ${sanitized}`;
+        })
+        .join('\n');
 }

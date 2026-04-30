@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
@@ -60,10 +61,16 @@ export async function sendChatRequest(
         ctx.telemetry.measurements.maxInputTokens = maxTokens;
 
         ext.outputChannel.info(
-            `[Chat Request] model="${model.name}" (${model.family}), ` +
-                `instructionTokens=${instructionTokens}, userTokens=${userTokens}, ` +
-                `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
-                `usage=${ratio}%`,
+            l10n.t(
+                '[Chat Request] model="{0}" ({1}), instructionTokens={2}, userTokens={3}, requestTokens={4}, maxInputTokens={5}, usage={6}%',
+                model.name,
+                model.family,
+                instructionTokens,
+                userTokens,
+                totalTokens,
+                maxTokens,
+                ratio,
+            ),
         );
     });
 

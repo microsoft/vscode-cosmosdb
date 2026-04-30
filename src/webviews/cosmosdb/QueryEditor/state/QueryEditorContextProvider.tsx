@@ -153,6 +153,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
+        void this.safeMutate(() => this.trpcClient.queryEditor.updateSelectedText.mutate({ selectedQuery: query }));
+    }
+    public setCurrentQueryBlock(queryBlock: string): void {
+        this.dispatch({ type: 'setCurrentQueryBlock', currentQueryBlock: queryBlock });
     }
     public setCurrentQueryBlock(queryBlock: string): void {
         this.dispatch({ type: 'setCurrentQueryBlock', currentQueryBlock: queryBlock });
@@ -292,8 +296,8 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
-    public async openCopilotExplainQuery(): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate());
+    public async openCopilotExplainQuery(query?: string): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate({ query }));
     }
 
     public async closeGenerateInput(): Promise<void> {
@@ -331,7 +335,6 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             if (result.initialQuery) {
                 void this.insertText(result.initialQuery);
             }
-
             this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: result.isSurveyCandidate });
             this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: result.isAIFeaturesEnabled });
             this.dispatch({

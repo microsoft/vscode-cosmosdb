@@ -83,7 +83,7 @@ Available operations: editQuery, explainQuery, generateQuery, generalQuestion, h
 
 Return JSON with operation and parameters. Examples:
 - "improve this query: SELECT * FROM c" → {"operation": "editQuery", "parameters": {"currentQuery": "SELECT * FROM c", "suggestion": "enhanced query"}}
-- "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"query": "SELECT * FROM c"}}
+- "explain this query: SELECT * FROM c" → {"operation": "explainQuery", "parameters": {"currentQuery": "SELECT * FROM c"}}
 - "generate a query to find all active users" → {"operation": "generateQuery", "parameters": {"userPrompt": "find all active users"}}
 - "create a query for orders over $100" → {"operation": "generateQuery", "parameters": {"userPrompt": "orders over $100"}}
 - "help" → {"operation": "help", "parameters": { "topic": "partition key choice" }}

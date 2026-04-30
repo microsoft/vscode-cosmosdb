@@ -7,31 +7,31 @@ import crypto from 'crypto';
 
 // Create a hoisted mutable mock for ext.context so each beforeEach can swap globalState
 // without hitting the write-once setter on the real ExtensionService.
-const mockContext = {
-    globalState: { get: jest.fn(), update: jest.fn() } as {
-        get: jest.Mock;
-        update: jest.Mock;
+const mockContext = vi.hoisted(() => ({
+    globalState: { get: vi.fn(), update: vi.fn() } as {
+        get: ReturnType<typeof vi.fn>;
+        update: ReturnType<typeof vi.fn>;
     },
     extension: { packageJSON: { version: '1.1.1' } },
-};
+}));
 
-jest.mock('../extensionVariables', () => ({
+vi.mock('../extensionVariables', () => ({
     ext: { context: mockContext },
 }));
 
 // Mock the vscode module
-jest.mock('vscode', () => ({
+vi.mock('vscode', () => ({
     env: {
         machineId: 'default-machine-id',
         language: 'en',
-        openExternal: jest.fn(),
+        openExternal: vi.fn(),
     },
     workspace: {
-        getConfiguration: jest.fn(() => ({
-            get: jest.fn().mockReturnValue(true),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        getConfiguration: vi.fn(() => ({
+            get: vi.fn().mockReturnValue(true),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         })),
     },
 }));
@@ -39,7 +39,7 @@ jest.mock('vscode', () => ({
 import { env, workspace } from 'vscode';
 import { getIsSurveyCandidate, getSurveyConfig, getSurveyState, getSurveyStateKeys } from './survey';
 
-let globalState: { get: jest.Mock; update: jest.Mock };
+let globalState: { get: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
 // Using type assertion here to tell TypeScript that we're confident getSurveyConfig() will not return undefined
 // in the test environment.
 const SurveyConfig = getSurveyConfig() as NonNullable<ReturnType<typeof getSurveyConfig>>;
@@ -54,20 +54,20 @@ const previousPatchExtensionVersion = '1.1.0';
 const previousMinorExtensionVersion = '1.0.0';
 const previousMajorExtensionVersion = '0.1.1';
 
-jest.mock('@microsoft/vscode-azext-utils', () => {
+vi.mock('@microsoft/vscode-azext-utils', () => {
     return {
         // Only mock the callWithTelemetryAndErrorHandling function that we need
-        callWithTelemetryAndErrorHandling: jest.fn(async (_eventName, callback: (context: any) => Promise<void>) => {
+        callWithTelemetryAndErrorHandling: vi.fn(async (_eventName, callback: (context: any) => Promise<void>) => {
             await callback({
                 telemetry: { properties: {}, measurements: {} },
                 errorHandling: { issueProperties: {} },
                 ui: {
-                    showWarningMessage: jest.fn(),
-                    onDidFinishPrompt: jest.fn(),
-                    showQuickPick: jest.fn(),
-                    showInputBox: jest.fn(),
-                    showOpenDialog: jest.fn(),
-                    showWorkspaceFolderPick: jest.fn(),
+                    showWarningMessage: vi.fn(),
+                    onDidFinishPrompt: vi.fn(),
+                    showQuickPick: vi.fn(),
+                    showInputBox: vi.fn(),
+                    showOpenDialog: vi.fn(),
+                    showWorkspaceFolderPick: vi.fn(),
                 },
                 valuesToMask: [],
             });
@@ -78,7 +78,7 @@ jest.mock('@microsoft/vscode-azext-utils', () => {
 beforeAll(() => {
     // Verify the exported references are available
     if (!surveyStateRef || !SurveyConfig || !SurveyConfig.settings || !StateKeys) {
-        throw new Error('SurveyState is missing or invalid. Please compile with "test" mode when using webpack.');
+        throw new Error('SurveyState is missing or invalid. Please compile with "test" mode.');
     }
 });
 
@@ -90,8 +90,8 @@ beforeAll(() => {
 describe('Survey Initialization', () => {
     beforeEach(() => {
         globalState = {
-            get: jest.fn(),
-            update: jest.fn(),
+            get: vi.fn(),
+            update: vi.fn(),
         };
         // Update the mocked ext.context so survey.ts sees the fresh globalState
         mockContext.globalState = globalState;
@@ -103,11 +103,11 @@ describe('Survey Initialization', () => {
         // Set up default A/B test mocks for passing
         mockABTestPassing();
 
-        (workspace.getConfiguration as jest.Mock).mockImplementation(() => ({
-            get: jest.fn().mockReturnValue(true),
-            has: jest.fn(),
-            inspect: jest.fn(),
-            update: jest.fn(),
+        (workspace.getConfiguration as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+            get: vi.fn().mockReturnValue(true),
+            has: vi.fn(),
+            inspect: vi.fn(),
+            update: vi.fn(),
         }));
 
         // Set a consistent machine ID
@@ -115,7 +115,7 @@ describe('Survey Initialization', () => {
     });
 
     function resetSurveyState(): void {
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
         // These modifications directly affect the original surveyState object in survey.ts
         surveyStateRef.isCandidate = undefined;
         surveyStateRef.wasPromptedInSession = false;
@@ -127,7 +127,7 @@ describe('Survey Initialization', () => {
 
     // Helper function to create a mock for crypto.createHash that returns a buffer with the specified hash value
     function createHashDigestMock(hashInt: number) {
-        return jest.spyOn(crypto, 'createHash').mockImplementation(
+        return vi.spyOn(crypto, 'createHash').mockImplementation(
             () =>
                 ({
                     update: () => ({
@@ -157,7 +157,7 @@ describe('Survey Initialization', () => {
         createHashDigestMock(hashInt);
 
         // Also mock Math.random as fallback
-        jest.spyOn(Math, 'random').mockReturnValue(randomValue);
+        vi.spyOn(Math, 'random').mockReturnValue(randomValue);
     }
 
     // Helper to mock the crypto hash to always pass A/B test
@@ -414,8 +414,8 @@ describe('Survey Initialization', () => {
         // For these tests we want to force the AB test branch. In order to do that,
         beforeEach(() => {
             globalState = {
-                get: jest.fn(),
-                update: jest.fn(),
+                get: vi.fn(),
+                update: vi.fn(),
             };
             // Update the mocked ext.context so survey.ts sees the fresh globalState
             mockContext.globalState = globalState;
@@ -431,7 +431,7 @@ describe('Survey Initialization', () => {
         }
 
         afterEach(() => {
-            jest.restoreAllMocks();
+            vi.restoreAllMocks();
         });
 
         test.each([
@@ -481,11 +481,11 @@ describe('Survey Initialization', () => {
             (env as any).machineId = 'anyMachine';
 
             // Consistent error implementation
-            jest.spyOn(crypto, 'createHash').mockImplementation(() => {
+            vi.spyOn(crypto, 'createHash').mockImplementation(() => {
                 throw new Error('hash failure');
             });
 
-            jest.spyOn(Math, 'random').mockReturnValue(randomValue);
+            vi.spyOn(Math, 'random').mockReturnValue(randomValue);
             expect(await getIsSurveyCandidate()).toBe(expected);
         });
 
@@ -500,7 +500,7 @@ describe('Survey Initialization', () => {
             const sampleSize = 1000;
 
             // Restore the real hash implementation
-            jest.restoreAllMocks();
+            vi.restoreAllMocks();
 
             let candidateCount = 0;
 

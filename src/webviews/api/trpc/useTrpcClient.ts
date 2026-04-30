@@ -66,7 +66,7 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
      * Be cautious when modifying this function, as it could affect the tRPC client's ability to
      * receive responses correctly.
      */
-    function onReceive(callback: (message: VsCodeLinkResponseMessage) => void): () => void {
+    const onReceive = useCallback((callback: (message: VsCodeLinkResponseMessage) => void) => {
         const handler = (event: MessageEvent) => {
             // a basic type guard here
             if ((event.data as VsCodeLinkResponseMessage).id) {
@@ -79,11 +79,9 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
         return () => {
             window.removeEventListener('message', handler);
         };
-    }
+    }, []);
 
     // Use useMemo to avoid recreating the client on every render
-    // At the moment I'm not sure about the details of WebviewContext implementation,
-    // so it's easier that way.
     const trpcClient = useMemo(
         () =>
             createTRPCClient<TRouter>({
@@ -93,7 +91,7 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
                     vscodeLink<TRouter>({ send, onReceive }),
                 ],
             }),
-        [onError, send],
+        [onError, send, onReceive],
     );
 
     // Return the tRPC client

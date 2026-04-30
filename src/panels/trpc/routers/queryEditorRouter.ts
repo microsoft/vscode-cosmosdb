@@ -109,7 +109,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             throughputBuckets: ctx.state.connection ? [true, true, true, true, true] : undefined,
             initialQuery: ctx.state.query,
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),
-            isAIFeaturesEnabled: ext.isAIFeaturesEnabled,
+            isAIFeaturesEnabled: ext.isAIFeaturesEnabled ?? false,
             isSchemaBasedOnQueries,
             containerSchema: containerSchema as Record<string, unknown> | null,
         };

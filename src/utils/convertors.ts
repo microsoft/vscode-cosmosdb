@@ -65,6 +65,7 @@ export const toStringUniversal = (value: unknown): string => {
 
     // Handle primitives
     if (typeof value !== 'object') {
+        // oxlint-disable-next-line typescript/no-base-to-string
         return String(value);
     }
 

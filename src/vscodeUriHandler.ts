@@ -70,7 +70,7 @@ export async function globalUriHandler(uri: vscode.Uri): Promise<void> {
             );
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
-            throw new Error(l10n.t('Failed to process URI: {0}', errMsg));
+            throw new Error(l10n.t('Failed to process URI: {0}', errMsg), { cause: error });
         }
     });
 }

@@ -3,10 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// eslint-disable-next-line no-undef,@typescript-eslint/no-require-imports
-const vsCodeMock = require('jest-mock-vscode').createVSCodeMock(jest);
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { createVSCodeMock } = require('jest-mock-vscode');
 
+// With globals: true in vitest.config.ts, `vi` is injected as a global in the test environment.
+// jest-mock-vscode is framework-agnostic: it only calls testFramework.fn() internally,
+// so passing `vi` works perfectly with Vitest.
+// eslint-disable-next-line no-undef
+const vsCodeMock = createVSCodeMock(vi);
+
+// eslint-disable-next-line no-undef
 vsCodeMock.l10n = {
-    t: jest.fn(),
+    // eslint-disable-next-line no-undef
+    t: vi.fn((msg) => msg),
 };
+
 module.exports = vsCodeMock;

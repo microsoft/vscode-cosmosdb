@@ -26,8 +26,8 @@
       "*": ["./*"]
     },
     "jsx": "react-jsx",
-    "types": ["jest", "mocha", "node"],
-    "typeRoots": ["node_modules/@types"]
+    "types": ["node", "vitest/globals"],
+    "typeRoots": ["./node_modules/@types", "./node_modules"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "main.ts"],
   "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__"]

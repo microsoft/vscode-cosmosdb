@@ -17,7 +17,7 @@ import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 import { type QueryEditorAppRouter, type QueryEditorEvent } from '../../../api/types';
 import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
 import { type OpenDocumentMode } from '../../Document/state/DocumentState';
-import { DEFAULT_QUERY_VALUE, type DispatchAction, type TableViewMode } from './QueryEditorState';
+import { type DispatchAction, type TableViewMode } from './QueryEditorState';
 
 const DEFAULT_RESULT_VIEW_METADATA: QueryMetadata = {
     countPerPage: DEFAULT_PAGE_SIZE,
@@ -328,12 +328,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
             if (result.initialQuery) {
                 void this.insertText(result.initialQuery);
-            } else {
-                // No initial query from the server — sync the default editor value
-                // so the server-side state.query is set for /editQuery etc.
-                void this.trpcClient.queryEditor.updateQueryText.mutate({ query: DEFAULT_QUERY_VALUE });
             }
-
             this.dispatch({ type: 'setIsSurveyCandidate', isSurveyCandidate: result.isSurveyCandidate });
             this.dispatch({ type: 'setAIFeaturesEnabled', isAIFeaturesEnabled: result.isAIFeaturesEnabled ?? false });
             this.dispatch({

@@ -8,8 +8,6 @@ import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmo
 import { isSelectStar } from '../../../../utils/convertors';
 import { type JSONSchema } from '../../../../utils/json/JSONSchema';
 
-export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
-
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
 export type DispatchAction =
@@ -143,7 +141,7 @@ export const defaultState: QueryEditorState = {
     partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
-    queryValue: DEFAULT_QUERY_VALUE,
+    queryValue: '',
     querySelectedValue: '',
     isConnected: false,
     isExecuting: false,

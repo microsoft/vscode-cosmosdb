@@ -198,7 +198,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
         ): Promise<vscode.LanguageModelToolResult> {
             const connection = getActiveConnection();
             if (!connection) {
-                ext.outputChannel.warn('[Sample Schema Tool] No active Cosmos DB connection.');
+                ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(
                         l10n.t(
@@ -209,7 +209,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             }
 
             if (token.isCancellationRequested) {
-                ext.outputChannel.info('[Sample Schema Tool] Operation cancelled by user.');
+                ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
                 ]);
@@ -218,14 +218,20 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             try {
                 const result = await sampleContainerSchema(connection);
                 ext.outputChannel.info(
-                    `[Sample Schema Tool] Sampled ${result.documentCount} documents from ${result.databaseId}/${result.containerId}, cost: ${(result.requestCharge ?? 0).toFixed(2)} RUs`,
+                    l10n.t(
+                        '[Sample Schema Tool] Sampled {0} documents from {1}/{2}, cost: {3} RUs',
+                        result.documentCount,
+                        result.databaseId,
+                        result.containerId,
+                        (result.requestCharge ?? 0).toFixed(2),
+                    ),
                 );
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                 ]);
             } catch (error) {
                 const message = parseError(error).message;
-                ext.outputChannel.error(`[Sample Schema Tool] Failed to sample data: ${message}`);
+                ext.outputChannel.error(l10n.t('[Sample Schema Tool] Failed to sample data: {0}', message));
                 const baseMessage = l10n.t(
                     'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
                 );

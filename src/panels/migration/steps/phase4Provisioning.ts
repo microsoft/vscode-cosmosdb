@@ -252,6 +252,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             // exists on disk we try to reuse it by comparing file modification times:
             //   • model.json newer than sample-data.json → schema changed, regenerate.
             //   • model.json older/equal → ask the user whether to regenerate.
+            context.telemetry.properties.lastStep = 'sampleData';
             const sampleDataPath = path.join(provisioningPath, 'sample-data.json');
             const sampleDataUri = vscode.Uri.file(sampleDataPath);
             const sampleDataExists = await MigrationProjectService.fileExists(sampleDataUri);
@@ -365,6 +366,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             // ─── Step 3: Generate seed script ───────────────────────
             // Generated before provisioning so the user can run it
             // manually if SDK-based provisioning fails.
+            context.telemetry.properties.lastStep = 'seedScript';
             const baseDatabaseName = model.databaseName ?? project.name;
             const targetType = project.phases.targetEnvironment?.type ?? 'emulator';
 
@@ -387,6 +389,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             // go through ARM (control plane) when the target is an Azure account.
             // The emulator path keeps using the SDK because there is no ARM
             // surface for it.
+            context.telemetry.properties.lastStep = 'createDatabase';
             const databaseName = armTarget
                 ? await resolveUniqueDatabaseNameViaArm(await getMgmtClient(), armTarget, baseDatabaseName)
                 : await withDataPlaneRbacRetry(
@@ -465,6 +468,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             const database = client.database(databaseName);
 
             // ─── Step 5: Create containers ──────────────────────────
+            context.telemetry.properties.lastStep = 'createContainers';
             const containersCreated: string[] = [];
 
             for (const container of model.containers) {
@@ -550,6 +554,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             // Concurrency batch size for item inserts. Chosen to match the upper
             // bound on concurrent requests most Cosmos accounts handle well while
             // staying well below the SDK's parallelism defaults.
+            context.telemetry.properties.lastStep = 'insertData';
             const INSERT_BATCH_SIZE = 50;
             // Maximum number of distinct per-item error messages to surface in
             // a single warning. More than this becomes noise; users can open
@@ -626,6 +631,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             }
 
             // ─── Step 7: Update project state ───────────────────────
+            context.telemetry.properties.lastStep = 'updateProjectState';
             project.phases.provisioning = {
                 status: 'complete',
                 databaseName,

@@ -345,6 +345,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             if (token.isCancellationRequested) return;
 
             // ─── Step 1: Access Pattern Extraction (AI) ───────────────────
+            context.telemetry.properties.lastStep = 'step1.accessPatternExtraction';
             await sendPhaseProgress(
                 channel,
                 'Assessment',
@@ -384,6 +385,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             if (token.isCancellationRequested) return;
 
             // ─── Step 2: Domain Identification (AI + DDD) ─────────────────
+            context.telemetry.properties.lastStep = 'step2.domainIdentification';
             await sendPhaseProgress(
                 channel,
                 'Assessment',
@@ -433,6 +435,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             }
 
             // ─── Step 3: Token Estimation (Programmatic) ──────────────────
+            context.telemetry.properties.lastStep = 'step3.tokenEstimation';
             await sendPhaseProgress(
                 channel,
                 'Assessment',
@@ -471,6 +474,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             }
 
             // ─── Step 4: Domain Splitting (Conditional AI) ────────────────
+            context.telemetry.properties.lastStep = 'step4.domainSplitting';
             const oversizedDomains = domainsWithTokens.filter((d) => d.estimatedTokens > ASSESSMENT_TOKEN_THRESHOLD);
 
             if (oversizedDomains.length > 0) {
@@ -567,6 +571,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             }
 
             // ─── Step 5: Cross-Domain Analysis (AI) ───────────────────────
+            context.telemetry.properties.lastStep = 'step5.crossDomainAnalysis';
             await sendPhaseProgress(
                 channel,
                 'Assessment',
@@ -684,6 +689,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             }
 
             // ─── Step 6: Domain Mapping Detection (AI + Tools) ────────────
+            context.telemetry.properties.lastStep = 'step6.domainMapping';
             await sendPhaseProgress(
                 channel,
                 'Assessment',

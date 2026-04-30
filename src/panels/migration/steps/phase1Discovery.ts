@@ -512,6 +512,7 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
         context.errorHandling.suppressDisplay = true;
         context.errorHandling.forceIncludeInReportIssueCommand = true;
         try {
+            context.telemetry.properties.lastStep = 'applicationAnalysis';
             const model = await getSelectedModel();
             setAiTelemetryContext(context, model);
 
@@ -620,6 +621,7 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
         }
 
         try {
+            context.telemetry.properties.lastStep = 'discoveryReport';
             const model = await getSelectedModel();
             setAiTelemetryContext(context, model);
 

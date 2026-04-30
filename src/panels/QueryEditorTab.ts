@@ -42,7 +42,7 @@ export class QueryEditorTab extends BaseTab {
 
         this.state = {
             connection,
-            query : query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
+            query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
             lastGenerationFailed: false,

@@ -37,9 +37,6 @@ declare module '*.ejs' {
 // Declare the l10n_bundle property injected into globalThis by VS Code webview
 declare var l10n_bundle: unknown;
 
-// Declare the optional initial state injected into globalThis by the extension host
-declare var __WEBVIEW_INITIAL_STATE__: Record<string, unknown> | undefined;
-
 /**
  * Webpack injects this variable at runtime to set the base path for dynamic imports
  * and asset loading. We declare it globally so TypeScript allows assignments to it

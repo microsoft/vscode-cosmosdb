@@ -33,6 +33,7 @@ export class QueryEditorTab extends BaseTab {
     public readonly eventSink: TypedEventSink<QueryEditorEvent>;
 
     private readonly state: QueryEditorMutableState;
+    private static readonly DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
@@ -41,7 +42,7 @@ export class QueryEditorTab extends BaseTab {
 
         this.state = {
             connection,
-            query,
+            query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
             isLastQueryAIGenerated: false,
             lastAIGeneratedQuery: undefined,
             lastGenerationFailed: false,
@@ -176,6 +177,10 @@ export class QueryEditorTab extends BaseTab {
         return this.state.query;
     };
 
+    public getSelectedQuery = (): string | undefined => {
+        return this.state.selectedQuery;
+    };
+
     public isActive(): boolean {
         return this.panel.active;
     }
@@ -193,7 +198,7 @@ export class QueryEditorTab extends BaseTab {
         }
     }
 
-    public async updateQuery(query: string): Promise<void> {
+    public updateQuery(query: string): void {
         this.state.query = query;
         this.state.isLastQueryAIGenerated = true;
         this.state.lastAIGeneratedQuery = query;

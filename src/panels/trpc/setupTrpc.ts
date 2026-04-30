@@ -106,13 +106,10 @@ async function handleSubscriptionMessage<TContext extends BaseRouterContext, TRo
 ) {
     try {
         const callerFactory = createCallerFactory(appRouter);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const caller = callerFactory(context) as Record<string, any>;
+        const caller = callerFactory(context);
+        const rawProcedure: unknown = caller[message.op.path];
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const procedure = caller[message.op.path];
-
-        if (typeof procedure !== 'function') {
+        if (typeof rawProcedure !== 'function') {
             throw new Error(l10n.t('Procedure not found: {name}', { name: message.op.path }));
         }
 
@@ -121,13 +118,13 @@ async function handleSubscriptionMessage<TContext extends BaseRouterContext, TRo
 
         context.signal = abortController.signal;
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        type SubscriptionCaller = (input: unknown) => Promise<AsyncIterableIterator<unknown>>;
+        const procedure = rawProcedure as SubscriptionCaller;
         const asyncIter = await procedure(message.op.input);
 
         void (async () => {
             try {
                 for await (const value of asyncIter) {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                     safePostMessage(panel, { id: message.id, result: value });
                 }
 
@@ -165,20 +162,17 @@ async function handleDefaultMessage<TContext extends BaseRouterContext, TRouter 
 ) {
     try {
         const callerFactory = createCallerFactory(appRouter);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const caller = callerFactory(context) as Record<string, any>;
+        const caller = callerFactory(context);
+        const rawProcedure: unknown = caller[message.op.path];
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const procedure = caller[message.op.path];
-
-        if (typeof procedure !== 'function') {
+        if (typeof rawProcedure !== 'function') {
             throw new Error(l10n.t('Procedure not found: {name}', { name: message.op.path }));
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+        type QueryCaller = (input: unknown) => Promise<unknown>;
+        const procedure = rawProcedure as QueryCaller;
         const result = await procedure(message.op.input);
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const response = { id: message.id, result };
         safePostMessage(panel, response);
     } catch (error) {

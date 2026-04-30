@@ -3,17 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-'use strict';
+import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
+import _StatoscopePlugin from '@statoscope/webpack-plugin';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
+import MonacoWebpackPlugin from 'monaco-editor-webpack-plugin';
+import path from 'path';
+import TerserPlugin from 'terser-webpack-plugin';
+import { fileURLToPath } from 'url';
+import webpack from 'webpack';
 
-const webpack = require('webpack');
-const path = require('path');
-const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
-const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
-const TerserPlugin = require('terser-webpack-plugin');
+const StatoscopeWebpackPlugin = _StatoscopePlugin.default ?? _StatoscopePlugin;
 
-module.exports = (env, { mode }) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default (env, { mode }) => {
     const isDev = mode === 'development';
 
     return {
@@ -30,7 +34,7 @@ module.exports = (env, { mode }) => {
         },
         cache: {
             type: 'filesystem',
-            name: `views-build${isDev ? '-dev' : ''}`, // Unique name for this build
+            name: `views-build${isDev ? '-dev' : ''}`,
             cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/webpack/views'),
             buildDependencies: {
                 config: [__filename],
@@ -42,26 +46,23 @@ module.exports = (env, { mode }) => {
         resolve: {
             roots: [__dirname],
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
-            // Prefer browser-compatible versions of packages
             mainFields: ['browser', 'module', 'main'],
-            // Use 'import' and 'default' conditions (NOT 'node') to get browser versions
-            // This makes uuid use dist/index.js instead of dist-node/index.js
             conditionNames: ['browser', 'import', 'default'],
+            // Map .js imports to .ts files for workspace packages using NodeNext resolution
+            extensionAlias: {
+                '.js': ['.ts', '.js'],
+            },
         },
         optimization: {
-            // Tree-shaking configuration:
-            // - In PRODUCTION: Enabled to reduce bundle size (important for web bundles downloaded over network)
-            // - In DEVELOPMENT: Disabled for faster builds and better debugging
-            usedExports: !isDev, // Only analyze exports in production (saves ~2s in dev)
-            sideEffects: !isDev, // Only analyze side effects in production (saves ~1s in dev)
-            minimize: !isDev, // Only minify in production
+            usedExports: !isDev,
+            sideEffects: !isDev,
+            minimize: !isDev,
             minimizer: !isDev
                 ? [
-                      // TerserPlugin: Minifies JavaScript for smaller bundle sizes (production only)
                       new TerserPlugin({
                           terserOptions: {
                               compress: {
-                                  drop_console: false, // Keep console for debugging
+                                  drop_console: false,
                                   drop_debugger: !isDev,
                                   pure_funcs: isDev ? [] : ['console.debug'],
                               },
@@ -73,46 +74,36 @@ module.exports = (env, { mode }) => {
                           extractComments: false,
                       }),
                   ]
-                : undefined, // No minimizer in development - faster builds, readable code
-            // Code splitting: Separates vendor code into separate chunks for better caching
-            // When users revisit, they only re-download changed app code, not all dependencies
+                : undefined,
             splitChunks: {
                 chunks: 'all',
                 maxInitialRequests: Infinity,
-                minSize: 20000, // Only split chunks larger than 20KB
+                minSize: 20000,
                 cacheGroups: {
-                    // Monaco Editor - separate chunk (~500KB) for better caching
-                    // Changes rarely, so cached separately from app code
                     monaco: {
                         test: /[\\/]node_modules[\\/]monaco-editor[\\/]/,
                         name: 'monaco-editor',
                         priority: 50,
                         reuseExistingChunk: true,
                     },
-                    // React and React DOM - separate chunk (~150KB)
-                    // Core framework, changes rarely
                     react: {
                         test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
                         name: 'react-vendor',
                         priority: 40,
                         reuseExistingChunk: true,
                     },
-                    // FluentUI icons - separate chunk (~200KB)
-                    // Icon font, changes rarely
                     fluentIcons: {
                         test: /[\\/]node_modules[\\/]@fluentui[\\/]react-icons[\\/]/,
                         name: 'fluent-icons',
                         priority: 35,
                         reuseExistingChunk: true,
                     },
-                    // Other FluentUI packages - UI component library
                     fluent: {
                         test: /[\\/]node_modules[\\/]@fluentui[\\/]/,
                         name: 'fluent-ui',
                         priority: 30,
                         reuseExistingChunk: true,
                     },
-                    // All other node_modules - remaining dependencies
                     vendor: {
                         test: /[\\/]node_modules[\\/]/,
                         name: 'vendor',
@@ -121,7 +112,7 @@ module.exports = (env, { mode }) => {
                     },
                 },
             },
-            runtimeChunk: false, // Keep runtime inline (small, changes with each build)
+            runtimeChunk: false,
         },
         module: {
             rules: [
@@ -131,9 +122,15 @@ module.exports = (env, { mode }) => {
                         {
                             loader: 'ts-loader',
                             options: {
-                                // Transpile only, skip type checking
-                                // This allows our custom loader to transform imports
                                 transpileOnly: true,
+                                // Override module settings so that all files are emitted as ESM.
+                                // ts.transpileModule() cannot read the filesystem to check
+                                // package.json "type", so NodeNext defaults to CJS for .ts files,
+                                // which breaks webpack's ESM output (outputModule: true).
+                                compilerOptions: {
+                                    module: 'ESNext',
+                                    moduleResolution: 'Bundler',
+                                },
                             },
                         },
                     ],
@@ -145,14 +142,7 @@ module.exports = (env, { mode }) => {
                 },
                 {
                     test: /\.s[ac]ss$/i,
-                    use: [
-                        // Creates `style` nodes from JS strings
-                        'style-loader',
-                        // Translates CSS into CommonJS
-                        'css-loader',
-                        // Compiles Sass to CSS
-                        'sass-loader',
-                    ],
+                    use: ['style-loader', 'css-loader', 'sass-loader'],
                 },
                 {
                     test: /\.ttf$/,
@@ -177,9 +167,7 @@ module.exports = (env, { mode }) => {
             },
             hot: true,
             host: '127.0.0.1',
-            client: {
-                overlay: true,
-            },
+            client: { overlay: true },
             compress: true,
             port: 18080,
             webSocketServer: 'ws',
@@ -191,7 +179,7 @@ module.exports = (env, { mode }) => {
                     saveStatsTo: 'bundle-analysis/views-stats.json',
                     open: false,
                     statsOptions: {
-                        source: false, // Exclude source code to reduce file size
+                        source: false,
                         reasons: false,
                         chunks: true,
                         chunkModules: true,
@@ -214,7 +202,7 @@ module.exports = (env, { mode }) => {
         ].filter(Boolean),
         devtool: isDev ? 'source-map' : false,
         infrastructureLogging: {
-            level: 'log', // enables logging required for problem matchers
+            level: 'log',
         },
     };
 };

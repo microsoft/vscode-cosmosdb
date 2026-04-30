@@ -16,9 +16,7 @@ import { type Vec3 } from './types';
 
 type MatrixIO = number[][] | number[];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isFlat(A: any): A is number[] {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+function isFlat(A: MatrixIO): A is number[] {
     return !Array.isArray(A[0]);
 }
 

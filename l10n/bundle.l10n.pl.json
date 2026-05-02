@@ -421,7 +421,7 @@
   "No documents found in the container. Schema was not generated.": "Nie znaleziono dokumentów w kontenerze. Schemat nie został wygenerowany.",
   "No history": "Brak historii",
   "No index metrics available": "Brak dostępnych metryk indeksu",
-  "No language model available": "No language model available",
+  "No language model available": "Brak dostępnego modelu językowego",
   "No language model available. Please ensure you have access to Copilot.": "Brak dostępnego modelu językowego. Upewnij się, że masz dostęp do funkcji Copilot.",
   "No language models available. Please ensure you have access to Copilot.": "Brak dostępnych modeli językowych. Upewnij się, że masz dostęp do funkcji Copilot.",
   "No LLM instructions (.md) files found to copy": "Nie znaleziono plików instrukcji LLM (.md) do skopiowania",

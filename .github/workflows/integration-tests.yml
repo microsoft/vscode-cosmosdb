@@ -4,8 +4,9 @@
 # Triggered only when files that could affect query behaviour change, keeping
 # CI cost low on unrelated commits.
 #
-# Seed-population is cached by a hash of the seed files so the slow bulk-import
-# step is skipped on re-runs where data has not changed.
+# The emulator data directory (.cosmosdb-data) is cached by a hash of the seed
+# files. On a cache hit the emulator starts with data already present and
+# seeding is skipped entirely.
 
 name: Integration Tests (Cosmos DB Emulator)
 
@@ -27,27 +28,9 @@ jobs:
     name: Run integration tests
     runs-on: ubuntu-latest
 
-    services:
-      cosmosdb:
-        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
-        ports:
-          - '8081:8081'
-          - '10251:10251'
-          - '10252:10252'
-          - '10253:10253'
-          - '10254:10254'
-        env:
-          AZURE_COSMOS_EMULATOR_PARTITION_COUNT: 3
-          AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: false
-        options: >-
-          --health-cmd "curl -fsk https://localhost:8081/_explorer/emulator.pem -o /dev/null || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 18
-
     env:
       COSMOS_ENDPOINT: https://localhost:8081
-      # The well-known emulator master key
+      # The well-known emulator master key (vnext-preview default)
       COSMOS_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
 
@@ -68,25 +51,45 @@ jobs:
         run: npm run build
         working-directory: packages/nosql-language-service
 
-      # ── Seed caching ────────────────────────────────────────────────────────
-      # The cache key covers all seed JSON files. On a hit the emulator already
-      # has the correct data; on a miss we re-import and save the marker.
+      # ── Emulator data cache ──────────────────────────────────────────────────
+      # Cache key covers all seed JSON files. On a hit the .cosmosdb-data volume
+      # is restored before the container starts, so the emulator already contains
+      # the seeded documents and the import step is skipped.
 
-      - name: Restore seed cache marker
-        id: seed-cache
+      - name: Restore emulator data cache
+        id: data-cache
         uses: actions/cache@v4
         with:
-          path: .emulator-ready
-          key: emulator-seed-${{ hashFiles('packages/nosql-language-service/src/test-fixtures/containers/**') }}
+          path: .cosmosdb-data
+          key: emulator-data-${{ hashFiles('packages/nosql-language-service/src/test-fixtures/containers/**') }}
 
-      - name: Seed emulator (cache miss only)
-        if: steps.seed-cache.outputs.cache-hit != 'true'
+      # ── Start emulator ───────────────────────────────────────────────────────
+
+      - name: Start Cosmos DB Emulator
+        run: docker compose up -d
+
+      - name: Wait for emulator to be ready
+        run: |
+          echo "Waiting for Cosmos DB Emulator..."
+          for i in $(seq 1 30); do
+            if curl -fsk https://localhost:8081/_explorer/emulator.pem -o /dev/null 2>&1; then
+              echo "Emulator is ready after $i attempts."
+              exit 0
+            fi
+            echo "Attempt $i/30 — not ready yet, sleeping 10s..."
+            sleep 10
+          done
+          echo "Emulator did not become ready in time." >&2
+          exit 1
+
+      # ── Seed (cache miss only) ───────────────────────────────────────────────
+
+      - name: Seed emulator
+        if: steps.data-cache.outputs.cache-hit != 'true'
         run: |
           node scripts/import-seed.mjs --container products
           node scripts/import-seed.mjs --container orders
           node scripts/import-seed.mjs --container events
-          mkdir -p .emulator-ready
-          echo "seeded" > .emulator-ready/done
 
       # ── Integration tests ────────────────────────────────────────────────────
 
@@ -94,3 +97,8 @@ jobs:
         run: npx vitest run --reporter=verbose
         working-directory: packages/nosql-language-service
 
+      # ── Cleanup ──────────────────────────────────────────────────────────────
+
+      - name: Stop emulator
+        if: always()
+        run: docker compose down

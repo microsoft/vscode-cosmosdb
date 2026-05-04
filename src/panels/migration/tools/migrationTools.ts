@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
+import { decodeFileBytes } from '../../../utils/decodeFileBytes';
 import { loadSkillSupplementaryFile } from '../bestPractices';
 
 // ─── Tool Definitions ────────────────────────────────────────────────
@@ -345,7 +346,7 @@ export function createToolExecutor(
                 }
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    const rawText = Buffer.from(content).toString('utf-8');
+                    const rawText = decodeFileBytes(content);
                     const fileExt = path.extname(absolutePath).toLowerCase();
                     if (fileExt === '.sql' || fileExt === '.ddl') {
                         const extracted = extractStructuralDDL(rawText);
@@ -385,7 +386,7 @@ export function createToolExecutor(
                 }
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    return Buffer.from(content).toString('utf-8');
+                    return decodeFileBytes(content);
                 } catch {
                     return `Error: Could not read file "${input.fileName}".`;
                 }
@@ -417,7 +418,7 @@ export function createToolExecutor(
                 }
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    return Buffer.from(content).toString('utf-8');
+                    return decodeFileBytes(content);
                 } catch {
                     return `Error: Could not read file "${input.fileName}".`;
                 }
@@ -496,7 +497,7 @@ export function createToolExecutor(
 
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    const text = Buffer.from(content).toString('utf-8');
+                    const text = decodeFileBytes(content);
 
                     if (isChunked) {
                         const lines = text.split('\n');

@@ -383,4 +383,215 @@ describe('extractStructuralDDL', () => {
         `;
         expect(extractStructuralDDL(sql).trim()).toBe('');
     });
+
+    // ── Phase B: Storage / engine clause stripping ──────────────────
+
+    describe('storage clause stripping', () => {
+        it('strips WITH (...) option block on PRIMARY KEY', () => {
+            const sql = `
+                CREATE TABLE Orders (
+                    OrderID INT NOT NULL,
+                    CONSTRAINT [PK_Orders] PRIMARY KEY CLUSTERED ([OrderID])
+                    WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, FILLFACTOR = 90) ON [PRIMARY]
+                );
+            `;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE TABLE Orders');
+            expect(result).toContain('PRIMARY KEY CLUSTERED');
+            expect(result).not.toMatch(/WITH\s*\(/i);
+            expect(result).not.toMatch(/PAD_INDEX/i);
+            expect(result).not.toMatch(/FILLFACTOR/i);
+        });
+
+        it('strips WITH (...) on CREATE INDEX (with nested parens)', () => {
+            const sql = `CREATE INDEX IX_T ON T(C) WITH (DATA_COMPRESSION = PAGE ON PARTITIONS (1 TO 4));`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE INDEX IX_T ON T(C)');
+            expect(result).not.toMatch(/WITH\s*\(/i);
+            expect(result).not.toMatch(/DATA_COMPRESSION/i);
+        });
+
+        it('strips ON [PRIMARY] filegroup placement', () => {
+            const sql = `CREATE TABLE T (id INT) ON [PRIMARY];`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE TABLE T');
+            expect(result).not.toMatch(/ON\s+\[PRIMARY\]/i);
+        });
+
+        it('strips TEXTIMAGE_ON and FILESTREAM_ON', () => {
+            const sql = `CREATE TABLE T (id INT, blob VARBINARY(MAX)) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY] FILESTREAM_ON [PRIMARY];`;
+            const result = extractStructuralDDL(sql);
+            expect(result).not.toMatch(/TEXTIMAGE_ON/i);
+            expect(result).not.toMatch(/FILESTREAM_ON/i);
+        });
+
+        it('strips COLLATE column clauses', () => {
+            const sql = `CREATE TABLE T (name NVARCHAR(50) COLLATE Latin1_General_100_CI_AS NOT NULL);`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('NVARCHAR(50)');
+            expect(result).toContain('NOT NULL');
+            expect(result).not.toMatch(/COLLATE/i);
+        });
+
+        it('strips ROWGUIDCOL and NOT FOR REPLICATION', () => {
+            const sql = `CREATE TABLE T (rowguid UNIQUEIDENTIFIER ROWGUIDCOL NOT NULL, id INT IDENTITY NOT FOR REPLICATION);`;
+            const result = extractStructuralDDL(sql);
+            expect(result).not.toMatch(/ROWGUIDCOL/i);
+            expect(result).not.toMatch(/NOT\s+FOR\s+REPLICATION/i);
+            expect(result).toContain('UNIQUEIDENTIFIER');
+            expect(result).toContain('IDENTITY');
+        });
+    });
+
+    // ── Phase C: CREATE VIEW body summarization ─────────────────────
+
+    describe('CREATE VIEW summarization', () => {
+        it('replaces a simple view body with a references summary', () => {
+            const sql = `
+                CREATE VIEW vw_ActiveOrders AS
+                SELECT * FROM Orders WHERE Status = 'Active';
+            `;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE VIEW vw_ActiveOrders AS');
+            expect(result).toContain('-- references: Orders');
+            expect(result).not.toMatch(/SELECT\s+\*/i);
+            expect(result).not.toMatch(/WHERE/i);
+        });
+
+        it('lists all FROM and JOIN tables', () => {
+            const sql = `
+                CREATE VIEW vw_OrderDetails AS
+                SELECT o.OrderID, c.Name, p.Title
+                FROM Orders o
+                INNER JOIN Customers c ON o.CustID = c.ID
+                LEFT JOIN Products p ON o.ProdID = p.ID;
+            `;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('-- references:');
+            expect(result).toMatch(/Orders/);
+            expect(result).toMatch(/Customers/);
+            expect(result).toMatch(/Products/);
+        });
+
+        it('handles CREATE OR REPLACE VIEW', () => {
+            const sql = `
+                CREATE OR REPLACE VIEW vw_Users AS
+                SELECT id, name FROM users;
+            `;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE OR REPLACE VIEW vw_Users AS');
+            expect(result).toContain('-- references: users');
+        });
+
+        it('summarizes views with no detectable refs as (none detected)', () => {
+            const sql = `CREATE VIEW vw_Const AS SELECT 1 AS X;`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('-- references: (none detected)');
+        });
+    });
+
+    // ── Phase D: drop redundant ALTER TABLE re-enable / CHECK ───────
+
+    describe('redundant ALTER TABLE filtering', () => {
+        it('drops ALTER TABLE … CHECK CONSTRAINT [FK_*] re-enable', () => {
+            const sql = `
+                ALTER TABLE Orders ADD CONSTRAINT FK_Cust FOREIGN KEY (CustID) REFERENCES Customers(ID);
+                ALTER TABLE Orders CHECK CONSTRAINT [FK_Cust];
+            `;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('ADD CONSTRAINT FK_Cust');
+            expect(result).not.toMatch(/CHECK\s+CONSTRAINT\s+\[FK_Cust\]/i);
+        });
+
+        it('drops ALTER TABLE … NOCHECK CONSTRAINT', () => {
+            const sql = `ALTER TABLE Orders NOCHECK CONSTRAINT [FK_Cust];`;
+            const result = extractStructuralDDL(sql);
+            expect(result.trim()).toBe('');
+        });
+
+        it('drops ALTER TABLE … ADD CONSTRAINT [CK_*] CHECK (...)', () => {
+            const sql = `ALTER TABLE Orders WITH CHECK ADD CONSTRAINT [CK_Status] CHECK ((Status >= 1 AND Status <= 7));`;
+            const result = extractStructuralDDL(sql);
+            expect(result.trim()).toBe('');
+        });
+    });
+
+    // ── CHECK constraints in CREATE TABLE are stripped, kept in DOMAIN
+
+    describe('inline CHECK handling', () => {
+        it('strips inline CHECK constraints in CREATE TABLE', () => {
+            const sql = `
+                CREATE TABLE T (
+                    id INT,
+                    status INT CHECK (status BETWEEN 1 AND 7),
+                    CONSTRAINT [CK_T_id] CHECK ((id > 0))
+                );
+            `;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE TABLE T');
+            expect(result).toContain('id INT');
+            expect(result).toContain('status INT');
+            expect(result).not.toMatch(/CHECK\s*\(/i);
+            expect(result).not.toMatch(/BETWEEN/i);
+        });
+
+        it('keeps CHECK clause inside CREATE DOMAIN', () => {
+            const sql = `CREATE DOMAIN positive_int AS INTEGER CHECK (VALUE > 0);`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE DOMAIN positive_int');
+            expect(result).toMatch(/CHECK\s*\(VALUE > 0\)/i);
+        });
+    });
+
+    // ── Phase E: new structural patterns ────────────────────────────
+
+    describe('additional structural patterns', () => {
+        it('extracts CREATE FULLTEXT INDEX', () => {
+            const sql = `CREATE FULLTEXT INDEX ON Documents(Body) KEY INDEX PK_Documents ON ftCatalog;`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE FULLTEXT INDEX');
+            expect(result).toContain('Documents(Body)');
+        });
+
+        it('extracts CREATE SCHEMA', () => {
+            const sql = `CREATE SCHEMA Sales AUTHORIZATION dbo;`;
+            const result = extractStructuralDDL(sql);
+            expect(result).toContain('CREATE SCHEMA Sales');
+        });
+    });
+
+    // ── End-to-end: SSMS-style AdventureWorks fragment ──────────────
+
+    it('strips a realistic AdventureWorks-style table to its essence', () => {
+        const sql = `
+            SET ANSI_NULLS ON
+            GO
+            CREATE TABLE [Sales].[Customer](
+                [CustomerID] [int] IDENTITY(1,1) NOT FOR REPLICATION NOT NULL,
+                [PersonID] [int] NULL,
+                [AccountNumber] [varchar](10) COLLATE Latin1_General_100_CI_AS NOT NULL,
+                [rowguid] [uniqueidentifier] ROWGUIDCOL NOT NULL,
+                CONSTRAINT [PK_Customer_CustomerID] PRIMARY KEY CLUSTERED ([CustomerID] ASC)
+                    WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+            ) ON [PRIMARY];
+            GO
+            ALTER TABLE [Sales].[Customer] WITH CHECK ADD CONSTRAINT [FK_Customer_Person_PersonID] FOREIGN KEY([PersonID]) REFERENCES [Person].[Person] ([BusinessEntityID]);
+            GO
+            ALTER TABLE [Sales].[Customer] CHECK CONSTRAINT [FK_Customer_Person_PersonID];
+            GO
+        `;
+        const result = extractStructuralDDL(sql);
+        expect(result).toContain('CREATE TABLE [Sales].[Customer]');
+        expect(result).toContain('PRIMARY KEY CLUSTERED');
+        expect(result).toContain('FOREIGN KEY([PersonID])');
+        expect(result).toContain('REFERENCES [Person].[Person]');
+        // Noise removed
+        expect(result).not.toMatch(/PAD_INDEX/i);
+        expect(result).not.toMatch(/ALLOW_ROW_LOCKS/i);
+        expect(result).not.toMatch(/ON\s+\[PRIMARY\]/i);
+        expect(result).not.toMatch(/COLLATE/i);
+        expect(result).not.toMatch(/ROWGUIDCOL/i);
+        expect(result).not.toMatch(/NOT\s+FOR\s+REPLICATION/i);
+        expect(result).not.toMatch(/CHECK\s+CONSTRAINT\s+\[FK_/i);
+    });
 });

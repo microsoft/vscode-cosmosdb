@@ -14,13 +14,11 @@ on:
     branches: [main]
     paths:
       - 'packages/**'
-      - 'src/**'
       - 'scripts/import-seed.mjs'
       - '.github/workflows/integration-tests.yml'
   pull_request:
     paths:
       - 'packages/**'
-      - 'src/**'
       - 'scripts/import-seed.mjs'
       - '.github/workflows/integration-tests.yml'
 

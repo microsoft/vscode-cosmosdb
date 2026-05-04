@@ -136,9 +136,9 @@ describe('extractStructuralDDL', () => {
         expect(result).toContain('CREATE DOMAIN positive_int');
     });
 
-    // ── Procedures/Functions/Triggers excluded ──────────────────────
+    // ── Procedures/Functions/Triggers (summarized for access-pattern signal) ──
 
-    it('does NOT extract CREATE PROCEDURE', () => {
+    it('summarizes CREATE PROCEDURE with reads/writes', () => {
         const sql = `
             CREATE PROCEDURE sp_GetOrders
             AS
@@ -147,10 +147,13 @@ describe('extractStructuralDDL', () => {
             END;
         `;
         const result = extract(sql);
-        expect(result.trim()).toBe('');
+        expect(result).toContain('CREATE PROCEDURE sp_GetOrders');
+        expect(result).toContain('reads: Orders');
+        expect(result).toContain('writes: (none)');
+        expect(result).toContain('Cosmos DB best practice');
     });
 
-    it('does NOT extract CREATE FUNCTION', () => {
+    it('summarizes CREATE FUNCTION with signature and RETURNS clause', () => {
         const sql = `
             CREATE FUNCTION fn_GetTotal(@OrderID INT)
             RETURNS DECIMAL AS
@@ -159,19 +162,105 @@ describe('extractStructuralDDL', () => {
             END;
         `;
         const result = extract(sql);
-        expect(result.trim()).toBe('');
+        expect(result).toContain('CREATE FUNCTION fn_GetTotal');
+        expect(result).toContain('RETURNS DECIMAL');
+        expect(result).toContain('reads: Orders');
     });
 
-    it('does NOT extract CREATE TRIGGER', () => {
+    it('summarizes T-SQL TRIGGER (ON <table> AFTER <event> order)', () => {
         const sql = `
             CREATE TRIGGER trg_AfterInsert ON Orders
             AFTER INSERT AS
             BEGIN
-                PRINT 'New order inserted';
+                INSERT INTO AuditLog (msg) VALUES ('inserted');
             END;
         `;
         const result = extract(sql);
-        expect(result.trim()).toBe('');
+        expect(result).toContain('CREATE TRIGGER trg_AfterInsert AFTER INSERT ON Orders');
+        expect(result).toContain('writes: AuditLog');
+    });
+
+    it('summarizes PostgreSQL trigger (BEFORE UPDATE ON <table> order)', () => {
+        const sql = `
+            CREATE TRIGGER trg_audit BEFORE UPDATE ON public.users
+            FOR EACH ROW EXECUTE PROCEDURE audit_fn();
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE TRIGGER trg_audit BEFORE UPDATE ON public.users');
+    });
+
+    it('summarizes PL/pgSQL function with $$ dollar-quoted body', () => {
+        const sql = `
+            CREATE OR REPLACE FUNCTION public.refresh_totals() RETURNS void AS $$
+            BEGIN
+                DELETE FROM totals;
+                INSERT INTO totals SELECT user_id, SUM(amount) FROM orders GROUP BY user_id;
+            END;
+            $$ LANGUAGE plpgsql;
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE FUNCTION public.refresh_totals()');
+        expect(result).toMatch(/writes: (?:totals, orders|orders, totals|totals)/);
+        // DELETE FROM totals + INSERT INTO totals → writes contains totals; orders is read.
+        expect(result).toContain('reads: orders');
+        expect(result).toContain('writes: totals');
+    });
+
+    it('summarizes PL/SQL procedure with BEGIN..END block', () => {
+        const sql = `
+            CREATE OR REPLACE PROCEDURE hr.archive_orders IS
+            BEGIN
+                INSERT INTO orders_archive SELECT * FROM orders WHERE created_at < SYSDATE - 365;
+                DELETE FROM orders WHERE created_at < SYSDATE - 365;
+            END;
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE PROCEDURE hr.archive_orders');
+        expect(result).toContain('writes: orders_archive');
+        expect(result).toContain('orders');
+    });
+
+    it('procedure without DML reports reads/writes (none)', () => {
+        const sql = `
+            CREATE PROCEDURE sp_noop AS BEGIN SET NOCOUNT ON; END;
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE PROCEDURE sp_noop');
+        expect(result).toContain('reads: (none)');
+        expect(result).toContain('writes: (none)');
+    });
+
+    it('disclaimer is omitted when no body objects are present', () => {
+        const sql = `CREATE TABLE t (id INT PRIMARY KEY);`;
+        const result = extract(sql);
+        expect(result).not.toContain('Cosmos DB best practice');
+        expect(result).not.toContain('summarized below');
+    });
+
+    it('classifies DELETE FROM as a write, not a read', () => {
+        const sql = `
+            CREATE PROCEDURE sp_purge AS
+            BEGIN
+                DELETE FROM Orders WHERE Status = 'Done';
+            END;
+        `;
+        const result = extract(sql);
+        expect(result).toContain('writes: Orders');
+        expect(result).toContain('reads: (none)');
+    });
+
+    it('combined schema + procedure: stats counters are populated', () => {
+        const sql = `
+            CREATE TABLE t (id INT);
+            CREATE PROCEDURE p1 AS BEGIN INSERT INTO t (id) VALUES (1); END;
+            CREATE PROCEDURE p2 AS BEGIN SELECT * FROM t; END;
+        `;
+        const { sql: out, stats } = extractStructuralDDL(sql);
+        expect(out).toContain('CREATE TABLE');
+        expect(stats.statementCounts.createProcedure).toBe(2);
+        expect(stats.procedures.summarized).toBe(2);
+        expect(stats.procedures.readsTotal).toBeGreaterThanOrEqual(1);
+        expect(stats.procedures.writesTotal).toBeGreaterThanOrEqual(1);
     });
 
     // ── Comment stripping ───────────────────────────────────────────

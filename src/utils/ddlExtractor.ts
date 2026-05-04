@@ -15,9 +15,14 @@
  * CREATE SEQUENCE, CREATE TYPE, CREATE DOMAIN, CREATE SCHEMA, CREATE EXTENSION,
  * COMMENT ON, and foreign key/constraint definitions.
  *
- * Stored procedures, functions, triggers, packages, synonyms, clusters, database
- * links, and Oracle global temporary tables are intentionally excluded — their
- * bodies/contents are not migration-relevant.
+ * Procedures, functions, and triggers are captured BUT only as one-line summaries
+ * (signature + tables they read/write). Their bodies are NOT translated — Cosmos DB
+ * best practice is to move business logic to the application tier. The summaries
+ * exist to feed Phase 3 access-pattern analysis (which queries the application
+ * runs) and atomicity hints (which tables are written together).
+ *
+ * Packages, synonyms, clusters, database links, and Oracle global temporary tables
+ * are intentionally excluded — their bodies/contents are not migration-relevant.
  *
  * Post-processing applied to captured statements (to reduce token count for large
  * SQL Server / pg_dump / mysqldump / Oracle expdp exports):
@@ -124,6 +129,9 @@ export interface StatementCounts {
     createSchema: number;
     createExtension: number;
     commentOn: number;
+    createProcedure: number;
+    createFunction: number;
+    createTrigger: number;
     /** Captured statements that didn't match any of the above classifiers. */
     other: number;
 }
@@ -177,6 +185,16 @@ export interface ViewCounts {
     referencedTablesTotal: number;
 }
 
+/** Counters for procedure/function/trigger body summarization. */
+export interface ProcedureCounts {
+    /** Total objects (procedures + functions + triggers) summarized. */
+    summarized: number;
+    /** Sum of distinct read-table references across all summarized objects. */
+    readsTotal: number;
+    /** Sum of distinct write-table references across all summarized objects. */
+    writesTotal: number;
+}
+
 /** Result of an extraction call. Returned alongside the cleaned SQL string. */
 export interface ExtractionStats {
     inputChars: number;
@@ -188,6 +206,7 @@ export interface ExtractionStats {
     drops: DropCounts;
     strips: StripCounts;
     views: ViewCounts;
+    procedures: ProcedureCounts;
     /** Anomalies worth logging (e.g. unterminated statement flushed at EOF). */
     warnings: string[];
 }
@@ -217,6 +236,9 @@ function emptyStats(): ExtractionStats {
             createSchema: 0,
             createExtension: 0,
             commentOn: 0,
+            createProcedure: 0,
+            createFunction: 0,
+            createTrigger: 0,
             other: 0,
         },
         drops: {
@@ -245,6 +267,7 @@ function emptyStats(): ExtractionStats {
             mysqlInlineComment: 0,
         },
         views: { summarized: 0, referencedTablesTotal: 0 },
+        procedures: { summarized: 0, readsTotal: 0, writesTotal: 0 },
         warnings: [],
     };
 }
@@ -274,6 +297,12 @@ export function extractStructuralDDL(rawSql: string): ExtractionResult {
 
     // Strip single-line comments (-- ...) and MySQL # comments
     sql = sql.replace(/(?:--.*|#.*)$/gm, '');
+
+    // Pre-pass: extract procedure/function/trigger bodies as one-line summaries
+    // and remove them from `sql` so the line-walk doesn't misinterpret body
+    // statements (SELECT/INSERT/UPDATE inside a body) as top-level DDL.
+    const bodyExtraction = extractBodyObjects(sql, stats);
+    sql = bodyExtraction.strippedSql;
 
     const lines = sql.split('\n');
     const extracted: string[] = [];
@@ -340,7 +369,19 @@ export function extractStructuralDDL(rawSql: string): ExtractionResult {
         if (out) processed.push(out);
     }
 
-    const sqlOut = processed.join('\n\n');
+    let sqlOut = processed.join('\n\n');
+
+    // Append summarized procedure/function/trigger objects (with section header
+    // and a one-line disclaimer about why the bodies are not migrated 1:1).
+    if (bodyExtraction.summaries.length > 0) {
+        const disclaimer =
+            '-- NOTE: Procedure/function/trigger bodies are summarized below for\n' +
+            '-- access-pattern signal only. Cosmos DB best practice is to move business\n' +
+            '-- logic to the application tier; do not translate these 1:1.';
+        const section = bodyExtraction.summaries.join('\n');
+        sqlOut = sqlOut.length > 0 ? `${sqlOut}\n\n${disclaimer}\n${section}` : `${disclaimer}\n${section}`;
+    }
+
     stats.outputChars = sqlOut.length;
     stats.reductionRatio =
         stats.inputChars > 0 ? Math.max(0, Math.min(1, 1 - stats.outputChars / stats.inputChars)) : 0;
@@ -678,4 +719,310 @@ function countParenDelta(line: string): number {
         else if (ch === ')') delta--;
     }
     return delta;
+}
+
+// ── Procedure / function / trigger body-object extraction ──────────────────
+
+/**
+ * Matches the start of a CREATE PROCEDURE / FUNCTION / TRIGGER (any dialect).
+ * Captures: 1=kind keyword.
+ */
+const BODY_OBJECT_START =
+    /\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+|NONEDITIONABLE\s+)?(?:CONSTRAINT\s+)?(PROCEDURE|FUNCTION|TRIGGER)\b/gi;
+
+/** Identifier (quoted, backticked, bracketed, or bare; optionally schema-qualified). */
+const ID_PATTERN =
+    '(?:"[^"]+"|`[^`]+`|\\[[^\\]]+\\]|[A-Za-z_]\\w*)(?:\\.(?:"[^"]+"|`[^`]+`|\\[[^\\]]+\\]|[A-Za-z_]\\w*))*';
+
+interface BodyExtractionResult {
+    strippedSql: string;
+    summaries: string[];
+}
+
+/**
+ * Pre-pass: locate CREATE PROCEDURE / FUNCTION / TRIGGER statements, summarize
+ * each to a one-line entry, and remove the original text from `sql` so that the
+ * subsequent line-walk doesn't see DML statements inside the body as top-level
+ * DDL. Updates stats counters along the way.
+ */
+function extractBodyObjects(sql: string, stats: ExtractionStats): BodyExtractionResult {
+    const summaries: string[] = [];
+    const ranges: Array<{ start: number; end: number }> = [];
+
+    BODY_OBJECT_START.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = BODY_OBJECT_START.exec(sql)) !== null) {
+        const start = m.index;
+        const kind = m[1].toUpperCase() as 'PROCEDURE' | 'FUNCTION' | 'TRIGGER';
+        const end = findBodyEnd(sql, m.index + m[0].length);
+        const bodyText = sql.slice(start, end);
+
+        const summary = summarizeBodyObject(kind, bodyText);
+        if (summary) {
+            summaries.push(summary.line);
+            stats.procedures.summarized++;
+            stats.procedures.readsTotal += summary.readCount;
+            stats.procedures.writesTotal += summary.writeCount;
+            if (kind === 'PROCEDURE') stats.statementCounts.createProcedure++;
+            else if (kind === 'FUNCTION') stats.statementCounts.createFunction++;
+            else stats.statementCounts.createTrigger++;
+        }
+
+        ranges.push({ start, end });
+        BODY_OBJECT_START.lastIndex = end;
+    }
+
+    if (ranges.length === 0) return { strippedSql: sql, summaries };
+
+    // Remove the body-object text from `sql` (in reverse order to keep indices stable).
+    let stripped = sql;
+    for (let i = ranges.length - 1; i >= 0; i--) {
+        const { start, end } = ranges[i];
+        stripped = stripped.slice(0, start) + stripped.slice(end);
+    }
+    return { strippedSql: stripped, summaries };
+}
+
+/**
+ * Locates the end of a procedure/function/trigger body that begins at `pos`
+ * (`pos` is the byte offset immediately after `PROCEDURE`/`FUNCTION`/`TRIGGER`).
+ *
+ * Strategy (first match wins):
+ *   1. PostgreSQL dollar-quoted body `$tag$ ... $tag$` — scan to closing tag and
+ *      then to the next `;`.
+ *   2. PL/SQL / T-SQL / PL-pgSQL `BEGIN ... END[;]` — walk a depth counter on
+ *      `BEGIN`/`END` keywords (skipping `BEGIN TRANSACTION`).
+ *   3. Single-statement body — scan to the next top-level `;`.
+ *   4. Fallback — end of input.
+ */
+function findBodyEnd(sql: string, pos: number): number {
+    // 1. PostgreSQL dollar-quoted body. Look only within a small window after `pos`
+    //    to avoid matching unrelated `$` characters elsewhere in the file.
+    const dollarWindow = sql.slice(pos, Math.min(sql.length, pos + 2000));
+    const dollarOpen = /\$([A-Za-z_]\w*)?\$/.exec(dollarWindow);
+    if (dollarOpen) {
+        const tag = dollarOpen[1] ?? '';
+        const closeRe = new RegExp(`\\$${tag}\\$`, 'g');
+        closeRe.lastIndex = pos + dollarOpen.index + dollarOpen[0].length;
+        const close = closeRe.exec(sql);
+        if (close) {
+            const semi = sql.indexOf(';', close.index + close[0].length);
+            return semi >= 0 ? semi + 1 : close.index + close[0].length;
+        }
+    }
+
+    // 2. BEGIN/END counter
+    const beginRe = /\bBEGIN\b/gi;
+    beginRe.lastIndex = pos;
+    let firstBegin: RegExpExecArray | null = null;
+    let cand: RegExpExecArray | null;
+    while ((cand = beginRe.exec(sql)) !== null) {
+        const after = sql.slice(cand.index + cand[0].length, cand.index + cand[0].length + 16);
+        if (/^\s+(TRANSACTION|TRAN|WORK)\b/i.test(after)) continue;
+        firstBegin = cand;
+        break;
+    }
+    if (firstBegin) {
+        let depth = 1;
+        const tokenRe = /\b(BEGIN|END)\b/gi;
+        tokenRe.lastIndex = firstBegin.index + firstBegin[0].length;
+        let tm: RegExpExecArray | null;
+        while ((tm = tokenRe.exec(sql)) !== null) {
+            const tok = tm[0].toUpperCase();
+            if (tok === 'BEGIN') {
+                const after = sql.slice(tm.index + tm[0].length, tm.index + tm[0].length + 16);
+                if (/^\s+(TRANSACTION|TRAN|WORK)\b/i.test(after)) continue;
+                depth++;
+            } else {
+                depth--;
+                if (depth === 0) {
+                    // Trailing optional name and `;`
+                    const tail = /\s*(?:[A-Za-z_]\w*)?\s*;?/g;
+                    tail.lastIndex = tm.index + tm[0].length;
+                    const tailMatch = tail.exec(sql);
+                    return tailMatch ? tail.lastIndex : tm.index + tm[0].length;
+                }
+            }
+        }
+    }
+
+    // 3. Next top-level `;` (e.g. `CREATE TRIGGER ... EXECUTE PROCEDURE foo();`)
+    const semi = sql.indexOf(';', pos);
+    if (semi >= 0) return semi + 1;
+
+    // 4. Fallback
+    return sql.length;
+}
+
+interface BodySummary {
+    line: string;
+    readCount: number;
+    writeCount: number;
+}
+
+/**
+ * Produces a one-line summary of a body object: signature (or trigger header)
+ * plus comma-separated reads/writes inferred from the body text.
+ */
+function summarizeBodyObject(kind: 'PROCEDURE' | 'FUNCTION' | 'TRIGGER', bodyText: string): BodySummary | undefined {
+    if (kind === 'TRIGGER') {
+        return summarizeTrigger(bodyText);
+    }
+    return summarizeProcOrFunc(kind, bodyText);
+}
+
+function summarizeProcOrFunc(kind: 'PROCEDURE' | 'FUNCTION', bodyText: string): BodySummary | undefined {
+    // Header up to the first AS / IS / RETURN[S] / BEGIN / `;` — whichever comes first.
+    // We always start the captured slice at "CREATE", so re-extract the kind segment to
+    // build a clean signature.
+    const sigMatch = new RegExp(
+        '^\\s*CREATE\\s+(?:OR\\s+REPLACE\\s+)?(?:EDITIONABLE\\s+|NONEDITIONABLE\\s+)?' +
+            `${kind}\\s+(${ID_PATTERN})(\\s*\\([^)]*\\))?` +
+            '(?:\\s+RETURNS?\\s+([A-Za-z_][\\w\\s().,]*?))?' +
+            '(?=\\s+(?:AS|IS|RETURN|BEGIN|LANGUAGE|SECURITY|VOLATILE|STABLE|IMMUTABLE|DETERMINISTIC|NOT\\s+DETERMINISTIC|SQL\\s+SECURITY)\\b|\\s*[;$])',
+        'i',
+    ).exec(bodyText);
+    if (!sigMatch) {
+        // Fall back to a coarse first-N-chars header
+        const truncated = bodyText.slice(0, 120).replace(/\s+/g, ' ').trim();
+        const refs = collectReadsWrites(bodyText);
+        return {
+            line: `${truncated} -- ${formatRefs(refs)};`,
+            readCount: refs.reads.size,
+            writeCount: refs.writes.size,
+        };
+    }
+
+    const name = sigMatch[1];
+    const args = (sigMatch[2] ?? '').replace(/\s+/g, ' ').trim();
+    const returns = sigMatch[3] ? ` RETURNS ${sigMatch[3].replace(/\s+/g, ' ').trim()}` : '';
+    const refs = collectReadsWrites(bodyText);
+
+    const sig = `CREATE ${kind} ${name}${args}${returns}`;
+    return {
+        line: `${sig} -- ${formatRefs(refs)};`,
+        readCount: refs.reads.size,
+        writeCount: refs.writes.size,
+    };
+}
+
+function summarizeTrigger(bodyText: string): BodySummary | undefined {
+    // Two possible header orders:
+    //   PG/MySQL/Oracle: CREATE TRIGGER <name> {BEFORE|AFTER|INSTEAD OF} <events> ON <table>
+    //   T-SQL:           CREATE TRIGGER <name> ON <table> [WITH ...] {AFTER|FOR|INSTEAD OF} <events>
+    const headPrefix =
+        '^\\s*CREATE\\s+(?:OR\\s+REPLACE\\s+)?(?:EDITIONABLE\\s+|NONEDITIONABLE\\s+)?(?:CONSTRAINT\\s+)?TRIGGER\\s+';
+
+    // Try PG/MySQL/Oracle order first.
+    const pgRe = new RegExp(
+        headPrefix +
+            `(${ID_PATTERN})\\s+(BEFORE|AFTER|INSTEAD\\s+OF)\\s+([A-Za-z][A-Za-z\\s,]*?)\\s+ON\\s+(${ID_PATTERN})`,
+        'i',
+    );
+    let name = '';
+    let timing = '';
+    let events = '';
+    let onTable = '';
+    const pg = pgRe.exec(bodyText);
+    if (pg) {
+        name = pg[1];
+        timing = pg[2];
+        events = pg[3];
+        onTable = pg[4];
+    } else {
+        // T-SQL order.
+        const tsqlRe = new RegExp(
+            headPrefix +
+                `(${ID_PATTERN})\\s+ON\\s+(${ID_PATTERN})(?:\\s+WITH\\s+[^,A-Z]*)?` +
+                '\\s+(AFTER|FOR|INSTEAD\\s+OF)\\s+([A-Za-z][A-Za-z\\s,]*?)' +
+                '(?=\\s+(?:WITH|NOT\\s+FOR|AS|FOR\\s+EACH|REFERENCING|WHEN|BEGIN)\\b|\\s*[;$])',
+            'i',
+        );
+        const ts = tsqlRe.exec(bodyText);
+        if (ts) {
+            name = ts[1];
+            onTable = ts[2];
+            timing = ts[3];
+            events = ts[4];
+        }
+    }
+
+    if (!name) {
+        const truncated = bodyText.slice(0, 120).replace(/\s+/g, ' ').trim();
+        const refs = collectReadsWrites(bodyText);
+        return {
+            line: `${truncated} -- ${formatRefs(refs)};`,
+            readCount: refs.reads.size,
+            writeCount: refs.writes.size,
+        };
+    }
+
+    const timingNorm = timing.replace(/\s+/g, ' ').toUpperCase();
+    const eventsNorm = events
+        .split(/\s*(?:,|\bOR\b)\s*/i)
+        .map((e) => e.trim().toUpperCase())
+        .filter((e) => e.length > 0)
+        .join('/');
+
+    const refs = collectReadsWrites(bodyText);
+    const sig = `CREATE TRIGGER ${name} ${timingNorm} ${eventsNorm} ON ${onTable}`;
+    return {
+        line: `${sig} -- ${formatRefs(refs)};`,
+        readCount: refs.reads.size,
+        writeCount: refs.writes.size,
+    };
+}
+
+interface RefBuckets {
+    reads: Set<string>;
+    writes: Set<string>;
+}
+
+/**
+ * Scans body text for table references in DML statements and classifies them:
+ *   - writes: INSERT INTO, UPDATE, DELETE FROM, MERGE INTO, TRUNCATE [TABLE]
+ *   - reads:  FROM, JOIN, USING (excluding the FROM in DELETE FROM, which is masked)
+ */
+function collectReadsWrites(body: string): RefBuckets {
+    const reads = new Set<string>();
+    const writes = new Set<string>();
+
+    // First pass: writes. Capture identifier and remember the keyword span so we
+    // can mask it before the reads pass (so `DELETE FROM t` doesn't contribute `t`
+    // to reads via the bare `FROM`).
+    const writeRe = new RegExp(
+        '\\b(INSERT\\s+INTO|MERGE\\s+INTO|UPDATE|DELETE\\s+FROM|TRUNCATE(?:\\s+TABLE)?)\\s+' + `(${ID_PATTERN})`,
+        'gi',
+    );
+    const masks: Array<[number, number]> = [];
+    let wm: RegExpExecArray | null;
+    while ((wm = writeRe.exec(body)) !== null) {
+        writes.add(wm[2]);
+        masks.push([wm.index, wm.index + wm[0].length]);
+    }
+
+    let masked = body;
+    for (let i = masks.length - 1; i >= 0; i--) {
+        const [a, b] = masks[i];
+        masked = masked.slice(0, a) + ' '.repeat(b - a) + masked.slice(b);
+    }
+
+    const readRe = new RegExp('\\b(?:FROM|JOIN|USING)\\s+' + `(${ID_PATTERN})`, 'gi');
+    let rm: RegExpExecArray | null;
+    while ((rm = readRe.exec(masked)) !== null) {
+        // Don't list "DUAL" (Oracle) as a read — it's the no-table sentinel.
+        if (/^DUAL$/i.test(rm[1])) continue;
+        reads.add(rm[1]);
+    }
+
+    return { reads, writes };
+}
+
+function formatRefs(refs: RefBuckets): string {
+    const parts: string[] = [];
+    if (refs.reads.size > 0) parts.push(`reads: ${Array.from(refs.reads).join(', ')}`);
+    else parts.push('reads: (none)');
+    if (refs.writes.size > 0) parts.push(`writes: ${Array.from(refs.writes).join(', ')}`);
+    else parts.push('writes: (none)');
+    return parts.join('; ');
 }

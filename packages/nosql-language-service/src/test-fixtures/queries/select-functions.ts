@@ -105,6 +105,7 @@ export const fixtures: QueryFixture[] = [
         query: 'SELECT TRIM(c.description) FROM c',
         container: 'products',
         expectAst: fn('TRIM'),
+        knownLimitation: 'TRIM() is not implemented in the vnext-preview Linux emulator',
     },
     {
         id: 'STR-13',
@@ -177,6 +178,7 @@ export const fixtures: QueryFixture[] = [
         query: 'SELECT LOG(c.price) FROM c',
         container: 'products',
         expectAst: fn('LOG'),
+        knownLimitation: 'LOG(0) produces -Infinity which is not valid JSON (error 4001 in vnext-preview)',
     },
     {
         id: 'M-08',

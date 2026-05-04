@@ -54,6 +54,13 @@ export interface QueryFixture {
      * (e.g. unregistered UDF, type mismatch that Cosmos DB rejects).
      */
     expectError?: boolean;
+    /**
+     * When set, the integration test runs but a runtime error is treated as a
+     * known limitation rather than a test failure. The string should describe
+     * why the query may fail (e.g. vnext-preview emulator gap).
+     * The test is still executed and a warning is printed if it throws.
+     */
+    knownLimitation?: string;
 }
 
 // ========================== Negative parser fixtures =========================

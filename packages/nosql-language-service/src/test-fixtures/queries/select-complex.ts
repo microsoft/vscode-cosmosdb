@@ -39,6 +39,7 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
+        knownLimitation: 'FIRST() subquery is not supported in the vnext-preview Linux emulator',
     },
     {
         id: 'SQ-03',
@@ -346,6 +347,7 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
+        knownLimitation: 'UDF not registered in the emulator — runtime 400 expected',
     },
     {
         id: 'UDF-02',
@@ -361,6 +363,7 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
+        knownLimitation: 'UDF not registered in the emulator — runtime 400 expected',
     },
     {
         id: 'UDF-03',
@@ -384,6 +387,7 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
+        knownLimitation: 'UDF not registered in the emulator — runtime 400 expected',
     },
 
     // ── CX series: complex / compositional ─────────────────────────────────

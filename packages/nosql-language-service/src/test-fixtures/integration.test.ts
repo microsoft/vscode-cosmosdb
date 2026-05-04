@@ -33,11 +33,13 @@ import { fixtures as negativeIntegrationFixtures } from './queries/negative-inte
 // ── Environment guard ─────────────────────────────────────────────────────────
 
 const endpoint = process.env.COSMOS_ENDPOINT;
-const masterKey = process.env.COSMOS_KEY;
+const masterKey =
+    process.env.COSMOS_KEY ??
+    'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 const databaseId = process.env.COSMOS_DATABASE ?? 'nosql-test-db';
 
-if (!endpoint || !masterKey) {
-    describe.skip('integration tests (no emulator — set COSMOS_ENDPOINT + COSMOS_KEY to enable)', () => {
+if (!endpoint) {
+    describe.skip('integration tests (no emulator — set COSMOS_ENDPOINT to enable)', () => {
         it.skip('skipped', () => {});
     });
 } else {

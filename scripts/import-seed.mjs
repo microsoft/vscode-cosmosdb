@@ -42,8 +42,14 @@ function hasFlag(name) {
     return args.includes(`--${name}`);
 }
 
+// The well-known emulator master key — same on every installation.
+// Override via COSMOS_KEY env var or --key flag only when connecting to a
+// non-emulator instance.
+const EMULATOR_KEY =
+    'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
+
 const endpoint = flag('endpoint') ?? process.env.COSMOS_ENDPOINT;
-const key = flag('key') ?? process.env.COSMOS_KEY;
+const key = flag('key') ?? process.env.COSMOS_KEY ?? EMULATOR_KEY;
 const databaseId = flag('database') ?? 'nosql-test-db';
 const batchSize = parseInt(flag('batch-size') ?? '100', 10);
 const importAll = hasFlag('all');
@@ -54,10 +60,6 @@ if (!endpoint) {
     process.exit(1);
 }
 
-if (!key) {
-    console.error('ERROR: Cosmos DB key is required. Set COSMOS_KEY or pass --key.');
-    process.exit(1);
-}
 
 if (!importAll && !singleContainer) {
     console.error('ERROR: Specify --container <name> or --all.');

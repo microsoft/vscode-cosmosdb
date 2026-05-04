@@ -124,13 +124,14 @@ export default ({ mode }) => {
                     },
                     { src: 'skills', dest: '.' },
                     {
-                        src: 'packages/nosql-language-service/syntaxes',
-                        dest: 'syntaxes',
-                        rename: (_fileName, _fileExtension, fullPath) => path.basename(fullPath),
+                        src: 'packages/nosql-language-service/syntaxes/nosql.tmLanguage.json',
+                        dest: './syntaxes',
+                        rename: { stripBase: true },
                     },
                     {
                         src: 'packages/nosql-language-service/language-configuration.json',
                         dest: '.',
+                        rename: { stripBase: true },
                     },
                     { src: 'SECURITY.md', dest: '.' },
                     { src: 'SUPPORT.md', dest: '.' },
@@ -146,4 +147,3 @@ export default ({ mode }) => {
         ].filter(Boolean),
     };
 };
-

@@ -24,6 +24,7 @@
 
 import { CosmosClient } from '@azure/cosmos';
 import { readFileSync } from 'node:fs';
+import { cpus } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -61,7 +62,6 @@ if (!endpoint) {
     console.error('ERROR: Cosmos DB endpoint is required. Set COSMOS_ENDPOINT or pass --endpoint.');
     process.exit(1);
 }
-
 
 if (!importAll && !singleContainer) {
     console.error('ERROR: Specify --container <name> or --all.');
@@ -107,6 +107,28 @@ const client = new CosmosClient({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
+ * Runs tasks with at most `concurrency` in-flight at a time.
+ * @template T
+ * @param {(() => Promise<T>)[]} tasks
+ * @param {number} concurrency
+ * @returns {Promise<T[]>}
+ */
+async function pLimit(tasks, concurrency) {
+    const results = [];
+    let index = 0;
+
+    async function worker() {
+        while (index < tasks.length) {
+            const i = index++;
+            results[i] = await tasks[i]();
+        }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, worker));
+    return results;
+}
+
+/**
  * Splits an array into chunks of at most `size` items.
  * @template T
  * @param {T[]} arr
@@ -119,6 +141,24 @@ function chunks(arr, size) {
         result.push(arr.slice(i, i + size));
     }
     return result;
+}
+
+/**
+ * Renders a docker-pull style progress bar to stdout.
+ * @param {string} label
+ * @param {number} done
+ * @param {number} total
+ * @param {number} batch
+ * @param {number} batches
+ */
+function renderProgress(label, done, total, batch, batches) {
+    const BAR_WIDTH = 30;
+    const pct = total === 0 ? 1 : done / total;
+    const filled = Math.round(BAR_WIDTH * pct);
+    const bar = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
+    const pctStr = (pct * 100).toFixed(1).padStart(5);
+    process.stdout.write(`\r${label.padEnd(12)} [${bar}] ${pctStr}%  ${String(done).padStart(6)}/${total}  batch ${batch}/${batches}`);
+    if (done >= total) process.stdout.write('\n');
 }
 
 /**
@@ -146,24 +186,59 @@ async function importContainer(containerName) {
     });
     console.log(`[${containerName}] Container "${containerName}" ready (partition key: ${meta.partitionKeyPath})`);
 
-    // Bulk upsert in batches
-    const batches = chunks(docs, batchSize);
-    let upserted = 0;
-    for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const operations = batch.map((doc) => ({
-            operationType: 'Upsert',
-            resourceBody: doc,
-        }));
+    // ── Resume support ────────────────────────────────────────────────────
+    // Query how many documents already exist. Since upsert is idempotent,
+    // we can safely skip batches that are fully covered by the existing count.
+    // No state file needed — works identically on local and CI.
+    let alreadyInserted = 0;
+    try {
+        const { resources } = await container.items
+            .query('SELECT VALUE COUNT(1) FROM c')
+            .fetchAll();
+        alreadyInserted = resources[0] ?? 0;
+    } catch {
+        // Container empty or query failed — start from the beginning
+    }
+    const skipBatches = Math.floor(alreadyInserted / batchSize);
+    if (skipBatches > 0) {
+        console.log(`[${containerName}] Resuming — ${alreadyInserted} docs already present, skipping first ${skipBatches} batches`);
+    }
 
-        const results = await container.items.bulk(operations);
-        const failed = results.filter((r) => r.statusCode >= 400);
-        if (failed.length > 0) {
-            throw new Error(`[${containerName}] Batch ${i + 1}/${batches.length} had ${failed.length} failed upserts. First error code: ${failed[0].statusCode}`);
+    // ── Upsert with bulk → fallback ───────────────────────────────────────
+    // Tries bulk API first (faster); falls back to individual upserts with
+    // concurrency = min(cpus, 4) if the endpoint does not support it.
+    // Once bulk fails once, all subsequent batches skip it.
+    const batches = chunks(docs, batchSize);
+    let upserted = alreadyInserted;
+    let bulkSupported = true;
+
+    // Concurrency for individual-upsert fallback: cap at 4 to avoid
+    // overwhelming a single-instance endpoint (emulator or small server).
+    // Node.js libuv I/O pool default is also 4.
+    const concurrency = Math.min(cpus().length, 4);
+
+    for (let i = skipBatches; i < batches.length; i++) {
+        const batch = batches[i];
+
+        if (bulkSupported) {
+            try {
+                const operations = batch.map((doc) => ({ operationType: 'Upsert', resourceBody: doc }));
+                const results = await container.items.bulk(operations);
+                const failed = results.filter((r) => r.statusCode >= 400);
+                if (failed.length > 0) {
+                    throw new Error(`${failed.length} failed upserts, first status: ${failed[0].statusCode}`);
+                }
+            } catch (err) {
+                console.warn(`\n[${containerName}] bulk() unsupported (${err.message?.slice(0, 72)}…), switching to individual upserts`);
+                bulkSupported = false;
+                await pLimit(batch.map((doc) => () => container.items.upsert(doc)), concurrency);
+            }
+        } else {
+            await pLimit(batch.map((doc) => () => container.items.upsert(doc)), concurrency);
         }
 
         upserted += batch.length;
-        process.stdout.write(`\r[${containerName}] Upserted ${upserted}/${docs.length} documents (batch ${i + 1}/${batches.length})`);
+        renderProgress(containerName, upserted, docs.length, i + 1, batches.length);
     }
 
     console.log(`\n[${containerName}] ✓ Done — ${upserted} documents imported.`);
@@ -178,4 +253,3 @@ for (const name of containersToImport) {
 }
 
 console.log('\nAll done.');
-

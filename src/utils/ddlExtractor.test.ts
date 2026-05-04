@@ -716,4 +716,416 @@ describe('extractStructuralDDL', () => {
             expect(stats.warnings[0]).toMatch(/unterminated/i);
         });
     });
+
+    // ── Phase F-K: PostgreSQL / MySQL noise stripping ───────────────
+
+    describe('PostgreSQL noise', () => {
+        it('strips WITH (...) option blocks on PostgreSQL tables', () => {
+            const sql = `CREATE TABLE t (id INT) WITH (fillfactor=70, autovacuum_enabled=false);`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/fillfactor/i);
+        });
+
+        it('strips TABLESPACE placement', () => {
+            const sql = `CREATE TABLE t (id INT) TABLESPACE pg_default;`;
+            const result = extract(sql);
+            expect(result).not.toMatch(/TABLESPACE/i);
+            expect(result).toContain('CREATE TABLE t');
+        });
+
+        it('strips COLLATE with quoted name', () => {
+            const sql = `CREATE TABLE t (name TEXT COLLATE "en_US" NOT NULL);`;
+            const result = extract(sql);
+            expect(result).not.toMatch(/COLLATE/i);
+            expect(result).toContain('NOT NULL');
+        });
+
+        it('drops ALTER ... OWNER TO statements', () => {
+            const sql = `
+                ALTER TABLE public.users OWNER TO postgres;
+                ALTER SEQUENCE foo_seq OWNER TO postgres;
+                ALTER VIEW v1 OWNER TO postgres;
+            `;
+            const result = extract(sql);
+            expect(result.trim()).toBe('');
+        });
+
+        it('drops ALTER SEQUENCE ... OWNED BY', () => {
+            const sql = `ALTER SEQUENCE foo_seq OWNED BY t.id;`;
+            const result = extract(sql);
+            expect(result.trim()).toBe('');
+        });
+
+        it('drops ALTER TABLE ... REPLICA IDENTITY', () => {
+            const sql = `ALTER TABLE t REPLICA IDENTITY FULL;`;
+            const result = extract(sql);
+            expect(result.trim()).toBe('');
+        });
+
+        it('skips pg_catalog SELECT calls', () => {
+            const sql = `SELECT pg_catalog.setval('foo_id_seq', 12345, true);`;
+            expect(extract(sql).trim()).toBe('');
+        });
+
+        it('skips psql backslash meta-commands', () => {
+            const sql = `\\connect postgres\n\\restrict\nCREATE TABLE t (id INT);`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/\\connect/);
+        });
+
+        it('captures CREATE EXTENSION', () => {
+            const sql = `CREATE EXTENSION IF NOT EXISTS pgvector;`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE EXTENSION');
+            expect(result).toContain('pgvector');
+        });
+
+        it('captures CREATE FOREIGN TABLE', () => {
+            const sql = `
+                CREATE FOREIGN TABLE remote_users (
+                    id INT,
+                    name TEXT
+                ) SERVER remote_srv;
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE FOREIGN TABLE remote_users');
+            expect(result).toContain('id INT');
+        });
+
+        it('summarizes CREATE MATERIALIZED VIEW like a regular view', () => {
+            const sql = `
+                CREATE MATERIALIZED VIEW mv_stats AS
+                SELECT user_id, COUNT(*) FROM events GROUP BY user_id;
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE MATERIALIZED VIEW mv_stats AS');
+            expect(result).toContain('-- references: events');
+            expect(result).not.toMatch(/COUNT\(\*\)/i);
+        });
+
+        it('summarized matview captures quoted schema-qualified refs', () => {
+            const sql = `CREATE MATERIALIZED VIEW mv AS SELECT * FROM "Sales"."Orders";`;
+            const result = extract(sql);
+            expect(result).toContain('-- references: "Sales"."Orders"');
+        });
+    });
+
+    describe('COMMENT ON handling', () => {
+        it('keeps short COMMENT ON statements', () => {
+            const sql = `COMMENT ON TABLE users IS 'Application users';`;
+            const result = extract(sql);
+            expect(result).toContain("COMMENT ON TABLE users IS 'Application users'");
+        });
+
+        it('drops COMMENT ON whose text exceeds 200 chars', () => {
+            const longText = 'x'.repeat(250);
+            const sql = `COMMENT ON COLUMN t.c IS '${longText}';`;
+            const { sql: out, stats } = extractStructuralDDL(sql);
+            expect(out.trim()).toBe('');
+            expect(stats.drops.commentTooLong).toBe(1);
+        });
+
+        it('handles doubled-quote escapes when measuring length', () => {
+            // 'It''s OK' — literal text length is 7 (apostrophe counts once)
+            const sql = `COMMENT ON TABLE t IS 'It''s OK';`;
+            const result = extract(sql);
+            expect(result).toContain("It''s OK");
+        });
+    });
+
+    describe('MySQL noise', () => {
+        it('strips trailing CREATE TABLE engine/charset/auto_increment options', () => {
+            const sql = `
+                CREATE TABLE users (
+                    id INT,
+                    name VARCHAR(50)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=12345 ROW_FORMAT=DYNAMIC COMMENT='app users';
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE users');
+            expect(result).toContain('VARCHAR(50)');
+            expect(result).not.toMatch(/ENGINE\s*=/i);
+            expect(result).not.toMatch(/CHARSET/i);
+            expect(result).not.toMatch(/AUTO_INCREMENT\s*=/i);
+            expect(result).not.toMatch(/ROW_FORMAT/i);
+        });
+
+        it('strips inline column COMMENT clauses', () => {
+            const sql = `CREATE TABLE t (id INT NOT NULL COMMENT 'primary key', name VARCHAR(50) COMMENT 'display name');`;
+            const result = extract(sql);
+            expect(result).not.toMatch(/COMMENT\s+'/i);
+            expect(result).toContain('id INT NOT NULL');
+        });
+
+        it('skips LOCK TABLES / UNLOCK TABLES', () => {
+            const sql = `LOCK TABLES users WRITE;\nUNLOCK TABLES;\nCREATE TABLE t (id INT);`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/LOCK\s+TABLES/i);
+        });
+
+        it('skips DELIMITER directives', () => {
+            const sql = `DELIMITER //\nCREATE TABLE t (id INT);`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/DELIMITER/i);
+        });
+
+        it('strips CHARACTER SET on column', () => {
+            const sql = `CREATE TABLE t (name VARCHAR(50) CHARACTER SET utf8mb4 NOT NULL);`;
+            const result = extract(sql);
+            expect(result).not.toMatch(/CHARACTER\s+SET/i);
+            expect(result).toContain('NOT NULL');
+        });
+    });
+
+    // ── Phase L: Oracle noise stripping ─────────────────────────────
+
+    describe('Oracle noise', () => {
+        it('strips STORAGE (...) blocks (balanced parens)', () => {
+            const sql = `
+                CREATE TABLE t (id NUMBER) STORAGE (
+                    INITIAL 64K NEXT 1M MINEXTENTS 1 MAXEXTENTS UNLIMITED
+                    PCTINCREASE 0 BUFFER_POOL DEFAULT
+                );
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/STORAGE\s*\(/i);
+            expect(result).not.toMatch(/INITIAL\s+64K/i);
+        });
+
+        it('strips USING INDEX (...) constraint storage block', () => {
+            const sql = `ALTER TABLE t ADD CONSTRAINT pk_t PRIMARY KEY (id) USING INDEX (CREATE INDEX foo ON t(id));`;
+            const result = extract(sql);
+            expect(result).toContain('PRIMARY KEY (id)');
+            expect(result).not.toMatch(/USING\s+INDEX\s*\(/i);
+        });
+
+        it('strips trailing Oracle storage keywords', () => {
+            const sql = `CREATE TABLE t (id NUMBER) PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING NOCACHE NOPARALLEL MONITORING;`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/PCTFREE/i);
+            expect(result).not.toMatch(/PCTUSED/i);
+            expect(result).not.toMatch(/INITRANS/i);
+            expect(result).not.toMatch(/MAXTRANS/i);
+            expect(result).not.toMatch(/NOCOMPRESS/i);
+            expect(result).not.toMatch(/LOGGING/i);
+            expect(result).not.toMatch(/NOCACHE/i);
+            expect(result).not.toMatch(/NOPARALLEL/i);
+            expect(result).not.toMatch(/MONITORING/i);
+        });
+
+        it('strips SEGMENT CREATION DEFERRED/IMMEDIATE', () => {
+            const sql = `CREATE TABLE t (id NUMBER) SEGMENT CREATION DEFERRED;`;
+            const result = extract(sql);
+            expect(result).not.toMatch(/SEGMENT\s+CREATION/i);
+        });
+
+        it('strips Oracle constraint state suffixes', () => {
+            const sql = `ALTER TABLE t ADD CONSTRAINT fk_x FOREIGN KEY (id) REFERENCES p(id) DEFERRABLE INITIALLY DEFERRED ENABLE NOVALIDATE;`;
+            const result = extract(sql);
+            expect(result).toContain('FOREIGN KEY (id)');
+            expect(result).toContain('REFERENCES p(id)');
+            expect(result).not.toMatch(/DEFERRABLE/i);
+            expect(result).not.toMatch(/INITIALLY\s+DEFERRED/i);
+            expect(result).not.toMatch(/\bENABLE\b/i);
+            expect(result).not.toMatch(/NOVALIDATE/i);
+        });
+
+        it('skips PROMPT, SPOOL, WHENEVER, REM, CONNECT', () => {
+            const sql = `
+                PROMPT Creating user table
+                SPOOL output.log
+                WHENEVER SQLERROR EXIT FAILURE
+                REM This is a remark
+                CONNECT scott/tiger
+                CREATE TABLE t (id NUMBER);
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/PROMPT/i);
+            expect(result).not.toMatch(/SPOOL/i);
+            expect(result).not.toMatch(/WHENEVER/i);
+        });
+
+        it('captures CREATE BITMAP INDEX', () => {
+            const sql = `CREATE BITMAP INDEX idx_status ON orders(status);`;
+            const result = extract(sql);
+            expect(result).toContain('CREATE BITMAP INDEX idx_status');
+        });
+
+        it('skips CREATE GLOBAL TEMPORARY TABLE', () => {
+            const sql = `
+                CREATE GLOBAL TEMPORARY TABLE tmp_session (
+                    id NUMBER,
+                    payload VARCHAR2(4000)
+                ) ON COMMIT PRESERVE ROWS;
+                CREATE TABLE persistent (id NUMBER);
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE persistent');
+            expect(result).not.toMatch(/GLOBAL\s+TEMPORARY/i);
+            expect(result).not.toMatch(/tmp_session/i);
+        });
+
+        it('skips CREATE OR REPLACE PACKAGE bodies', () => {
+            const sql = `
+                CREATE OR REPLACE PACKAGE pkg AS
+                    PROCEDURE foo;
+                END pkg;
+                CREATE TABLE t (id NUMBER);
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/PACKAGE/i);
+        });
+
+        it('skips CREATE SYNONYM', () => {
+            const sql = `CREATE OR REPLACE PUBLIC SYNONYM emp FOR scott.employee;`;
+            expect(extract(sql).trim()).toBe('');
+        });
+
+        it('skips CREATE MATERIALIZED VIEW LOG (must precede matview start pattern)', () => {
+            const sql = `
+                CREATE MATERIALIZED VIEW LOG ON orders WITH ROWID, PRIMARY KEY;
+                CREATE MATERIALIZED VIEW mv AS SELECT * FROM orders;
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE MATERIALIZED VIEW mv AS');
+            expect(result).not.toMatch(/MATERIALIZED\s+VIEW\s+LOG/i);
+        });
+
+        it('captures CREATE OR REPLACE FORCE EDITIONABLE VIEW', () => {
+            const sql = `
+                CREATE OR REPLACE FORCE EDITIONABLE VIEW vw AS
+                SELECT id FROM orders;
+            `;
+            const result = extract(sql);
+            expect(result).toContain('VIEW vw');
+            expect(result).toContain('-- references: orders');
+        });
+    });
+
+    // ── End-to-end cross-dialect realism ────────────────────────────
+
+    it('strips a realistic pg_dump fragment to its essence', () => {
+        const sql = `
+            --
+            -- PostgreSQL database dump
+            --
+            SET statement_timeout = 0;
+            SET lock_timeout = 0;
+            SELECT pg_catalog.set_config('search_path', '', false);
+
+            CREATE EXTENSION IF NOT EXISTS pgvector;
+
+            CREATE TABLE public.users (
+                id integer NOT NULL,
+                email text COLLATE "en_US" NOT NULL,
+                embedding vector(1536)
+            ) WITH (fillfactor=70) TABLESPACE pg_default;
+
+            ALTER TABLE public.users OWNER TO postgres;
+
+            CREATE SEQUENCE public.users_id_seq START 1;
+            ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+            ALTER SEQUENCE public.users_id_seq OWNER TO postgres;
+
+            COMMENT ON TABLE public.users IS 'application users';
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE EXTENSION');
+        expect(result).toContain('pgvector');
+        expect(result).toContain('CREATE TABLE public.users');
+        expect(result).toContain('vector(1536)');
+        expect(result).toContain('CREATE SEQUENCE');
+        expect(result).toContain("COMMENT ON TABLE public.users IS 'application users'");
+        // Noise removed
+        expect(result).not.toMatch(/fillfactor/i);
+        expect(result).not.toMatch(/TABLESPACE/i);
+        expect(result).not.toMatch(/COLLATE/i);
+        expect(result).not.toMatch(/OWNER\s+TO/i);
+        expect(result).not.toMatch(/OWNED\s+BY/i);
+        expect(result).not.toMatch(/pg_catalog/i);
+    });
+
+    it('strips a realistic mysqldump fragment to its essence', () => {
+        const sql = `
+            -- MySQL dump 10.13
+            /*!40101 SET NAMES utf8 */;
+            DELIMITER ;;
+            LOCK TABLES \`users\` WRITE;
+            CREATE TABLE \`users\` (
+                \`id\` int NOT NULL AUTO_INCREMENT,
+                \`email\` varchar(255) CHARACTER SET utf8mb4 NOT NULL COMMENT 'login email',
+                PRIMARY KEY (\`id\`)
+            ) ENGINE=InnoDB AUTO_INCREMENT=12345 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC COMMENT='users';
+            UNLOCK TABLES;
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE TABLE `users`');
+        expect(result).toContain('AUTO_INCREMENT');
+        expect(result).toContain('PRIMARY KEY');
+        expect(result).not.toMatch(/ENGINE\s*=/i);
+        expect(result).not.toMatch(/CHARSET/i);
+        expect(result).not.toMatch(/CHARACTER\s+SET/i);
+        expect(result).not.toMatch(/ROW_FORMAT/i);
+        expect(result).not.toMatch(/COMMENT\s+'/i);
+        expect(result).not.toMatch(/LOCK\s+TABLES/i);
+        expect(result).not.toMatch(/DELIMITER/i);
+    });
+
+    it('strips a realistic Oracle expdp fragment to its essence', () => {
+        const sql = `
+            REM Oracle Database 19c
+            PROMPT Creating EMPLOYEES table
+            WHENEVER SQLERROR EXIT FAILURE ROLLBACK;
+
+            CREATE TABLE "HR"."EMPLOYEES" (
+                "EMPLOYEE_ID" NUMBER(6,0) NOT NULL,
+                "FIRST_NAME"  VARCHAR2(20),
+                "LAST_NAME"   VARCHAR2(25) NOT NULL,
+                "EMAIL"       VARCHAR2(25) NOT NULL,
+                CONSTRAINT "EMP_EMP_ID_PK" PRIMARY KEY ("EMPLOYEE_ID") USING INDEX (
+                    CREATE UNIQUE INDEX "EMP_EMP_ID_PK" ON "HR"."EMPLOYEES" ("EMPLOYEE_ID")
+                )
+            )
+            SEGMENT CREATION IMMEDIATE
+            PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255
+            NOCOMPRESS LOGGING
+            STORAGE (INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+                     PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+                     BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+            TABLESPACE "USERS";
+
+            CREATE BITMAP INDEX "EMP_DEPT_IX" ON "HR"."EMPLOYEES" ("DEPARTMENT_ID");
+
+            CREATE OR REPLACE PUBLIC SYNONYM EMP FOR HR.EMPLOYEES;
+            CREATE GLOBAL TEMPORARY TABLE tmp_x (id NUMBER);
+            CREATE MATERIALIZED VIEW LOG ON "HR"."EMPLOYEES" WITH ROWID;
+        `;
+        const result = extract(sql);
+        expect(result).toContain('CREATE TABLE "HR"."EMPLOYEES"');
+        expect(result).toContain('"EMPLOYEE_ID" NUMBER(6,0) NOT NULL');
+        expect(result).toContain('PRIMARY KEY ("EMPLOYEE_ID")');
+        expect(result).toContain('CREATE BITMAP INDEX "EMP_DEPT_IX"');
+        // Noise removed
+        expect(result).not.toMatch(/SEGMENT\s+CREATION/i);
+        expect(result).not.toMatch(/PCTFREE/i);
+        expect(result).not.toMatch(/STORAGE\s*\(/i);
+        expect(result).not.toMatch(/USING\s+INDEX\s*\(/i);
+        expect(result).not.toMatch(/TABLESPACE/i);
+        expect(result).not.toMatch(/NOCOMPRESS/i);
+        expect(result).not.toMatch(/LOGGING/i);
+        // Non-structural objects skipped
+        expect(result).not.toMatch(/SYNONYM/i);
+        expect(result).not.toMatch(/GLOBAL\s+TEMPORARY/i);
+        expect(result).not.toMatch(/MATERIALIZED\s+VIEW\s+LOG/i);
+        expect(result).not.toMatch(/PROMPT/i);
+        expect(result).not.toMatch(/WHENEVER/i);
+    });
 });

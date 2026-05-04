@@ -10,7 +10,6 @@
 // NegativeParserFixture — a query that must produce parse errors.
 // ---------------------------------------------------------------------------
 
-import type { SqlQuery } from '../../ast/nodes.js';
 
 // ========================== Query fixtures ====================================
 
@@ -39,10 +38,12 @@ export interface QueryFixture {
     /** Which seed container this query targets */
     container: 'products' | 'orders' | 'events';
     /**
-     * Partial AST shape to assert in unit tests.
+     * Partial AST shape to assert in unit tests via `toMatchObject`.
      * Only the fields present are checked — deep equality is not required.
+     * Typed as `object` to allow deeply-nested partial discriminated unions
+     * without requiring the full type shape of every intermediate node.
      */
-    expectAst?: Partial<SqlQuery>;
+    expectAst?: object;
     // ── Integration-test fields (Phase 3, unused until then) ──────────────
     /** Minimum number of rows expected from the emulator */
     expectMinRows?: number;

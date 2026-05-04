@@ -1,0 +1,98 @@
+# Integration test workflow — runs the full NoSQL query fixture suite against
+# a real Cosmos DB Emulator Docker container.
+#
+# Triggered only when files that could affect query behaviour change, keeping
+# CI cost low on unrelated commits.
+#
+# Seed-population is cached by a hash of the seed files so the slow bulk-import
+# step is skipped on re-runs where data has not changed.
+
+name: Integration Tests (Cosmos DB Emulator)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'src/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/integration-tests.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'src/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/integration-tests.yml'
+
+jobs:
+  integration:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      cosmosdb:
+        image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+        ports:
+          - '8081:8081'
+          - '10251:10251'
+          - '10252:10252'
+          - '10253:10253'
+          - '10254:10254'
+        env:
+          AZURE_COSMOS_EMULATOR_PARTITION_COUNT: 3
+          AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: false
+        options: >-
+          --health-cmd "curl -fsk https://localhost:8081/_explorer/emulator.pem -o /dev/null || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 18
+
+    env:
+      COSMOS_ENDPOINT: https://localhost:8081
+      # The well-known emulator master key
+      COSMOS_KEY: C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build nosql-language-service
+        run: npm run build
+        working-directory: packages/nosql-language-service
+
+      # ── Seed caching ────────────────────────────────────────────────────────
+      # The cache key covers all seed JSON files. On a hit the emulator already
+      # has the correct data; on a miss we re-import and save the marker.
+
+      - name: Restore seed cache marker
+        id: seed-cache
+        uses: actions/cache@v4
+        with:
+          path: .emulator-ready
+          key: emulator-seed-${{ hashFiles('packages/nosql-language-service/src/test-fixtures/containers/**') }}
+
+      - name: Seed emulator (cache miss only)
+        if: steps.seed-cache.outputs.cache-hit != 'true'
+        run: |
+          node scripts/import-seed.mjs --container products
+          node scripts/import-seed.mjs --container orders
+          node scripts/import-seed.mjs --container events
+          mkdir -p .emulator-ready
+          echo "seeded" > .emulator-ready/done
+
+      # ── Integration tests ────────────────────────────────────────────────────
+
+      - name: Run integration tests
+        run: npx vitest run --reporter=verbose
+        working-directory: packages/nosql-language-service
+

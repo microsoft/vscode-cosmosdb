@@ -74,7 +74,7 @@ if (!endpoint || !masterKey) {
         return resources;
     }
 
-    // ── All §5 positive fixtures ────────────────────────────────────────────
+    // ── All positive fixtures ───────────────────────────────────────────────
 
     const allPositiveFixtures: QueryFixture[] = [
         ...selectBasicFixtures,
@@ -85,7 +85,7 @@ if (!endpoint || !masterKey) {
         ...selectComplexFixtures,
     ];
 
-    describe('integration — §5 queries (must not throw)', () => {
+    describe('integration — positive queries (must not throw)', () => {
         for (const f of allPositiveFixtures) {
             // Skip fixtures with parameters — they need explicit values
             if (f.query.includes('@')) continue;
@@ -107,9 +107,9 @@ if (!endpoint || !masterKey) {
         }
     });
 
-    // ── §6.2 negative integration fixtures ──────────────────────────────────
+    // ── Negative fixtures ────────────────────────────────────────────────────
 
-    describe('integration — §6.2 queries (must return 0 rows or throw)', () => {
+    describe('integration — negative queries (must return 0 rows or throw)', () => {
         for (const f of negativeIntegrationFixtures) {
             it(`${f.id}: ${f.description}`, async () => {
                 if (f.expectError) {

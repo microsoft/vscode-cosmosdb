@@ -44,7 +44,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## WHERE ΓÇö comparisons (W series)
+## WHERE — comparisons (W series)
 
 | ID | Query |
 |----|-------|
@@ -64,7 +64,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## WHERE ΓÇö BETWEEN, IN, LIKE (B series)
+## WHERE — BETWEEN, IN, LIKE (B series)
 
 | ID | Query |
 |----|-------|
@@ -75,10 +75,10 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 | B-05 | `SELECT * FROM c WHERE c.name LIKE "%Headphone%"` |
 | B-06 | `SELECT * FROM c WHERE c.name LIKE "Wireless%"` |
 | B-07 | `SELECT * FROM c WHERE c.name NOT LIKE "%Cheap%"` |
-| B-08 | `SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.category IN ('Electronics', 'Clothing')` ΓÇö ΓÜá∩╕Å parentheses around BETWEEN required to avoid ambiguity with logical AND |
+| B-08 | `SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.category IN ('Electronics', 'Clothing')` — ⚠️ parentheses around BETWEEN required to avoid ambiguity with logical AND |
 | B-09 | `SELECT * FROM c WHERE c.price BETWEEN @min AND @max` |
 
-> **Parser note ΓÇö BETWEEN + AND ambiguity:** `BETWEEN low AND high AND other_condition` is parsed as
+> **Parser note — BETWEEN + AND ambiguity:** `BETWEEN low AND high AND other_condition` is parsed as
 > `BETWEEN low AND (high AND other_condition)` because the parser consumes `AND` greedily as the
 > BETWEEN separator. Always wrap BETWEEN in parentheses when combining with logical AND:
 > `(expr BETWEEN low AND high) AND other`.
@@ -86,7 +86,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## WHERE ΓÇö type checks (T series)
+## WHERE — type checks (T series)
 
 | ID | Query |
 |----|-------|
@@ -101,7 +101,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## WHERE ΓÇö EXISTS subquery (E series)
+## WHERE — EXISTS subquery (E series)
 
 | ID | Query |
 |----|-------|
@@ -219,7 +219,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## Scalar subqueries ΓÇö ARRAY, FIRST, LAST (SQ series)
+## Scalar subqueries — ARRAY, FIRST, LAST (SQ series)
 
 | ID | Query |
 |----|-------|
@@ -230,7 +230,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## Operators ΓÇö arithmetic, bitwise, coalesce, ternary (OP series)
+## Operators — arithmetic, bitwise, coalesce, ternary (OP series)
 
 | ID | Query |
 |----|-------|
@@ -285,7 +285,7 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## Negative ΓÇö parser errors (N series)
+## Negative — parser errors (N series)
 
 | ID | Query | Expected |
 |----|-------|---------|
@@ -307,59 +307,59 @@ Containers: **Products** (flat), **Orders** (nested + arrays), **Events** (spars
 
 ---
 
-## Negative ΓÇö integration / zero-result (I series)
+## Negative — integration / zero-result (I series)
 
 | ID | Query | Container | Why |
 |----|-------|-----------|-----|
-| I-01 | `SELECT * FROM c WHERE c.nonexistent = "value"` | Products | Field does not exist ΓåÆ 0 rows |
-| I-02 | `SELECT * FROM c WHERE c.price > "expensive"` | Products | Type mismatch ΓåÆ 0 rows |
-| I-03 | `SELECT * FROM c WHERE c.tags = "sale"` | Products | Array vs string ΓåÆ 0 rows |
-| I-04 | `SELECT * FROM c WHERE c.status = "unknown"` | Orders | No matching enum value ΓåÆ 0 rows |
+| I-01 | `SELECT * FROM c WHERE c.nonexistent = "value"` | Products | Field does not exist → 0 rows |
+| I-02 | `SELECT * FROM c WHERE c.price > "expensive"` | Products | Type mismatch → 0 rows |
+| I-03 | `SELECT * FROM c WHERE c.tags = "sale"` | Products | Array vs string → 0 rows |
+| I-04 | `SELECT * FROM c WHERE c.status = "unknown"` | Orders | No matching enum value → 0 rows |
 | I-05 | `SELECT * FROM c ORDER BY c.nonexistent ASC` | Events | Sort on undefined path (null sort) |
-| I-06 | `SELECT * FROM c WHERE c.items.name = "Widget"` | Orders | Direct prop on array without JOIN ΓåÆ 0 rows |
-| I-07 | `SELECT udf.notExists(c.id) FROM c` | Products | Unregistered UDF ΓåÆ runtime error |
-| I-08 | `SELECT * FROM c OFFSET 100000 LIMIT 10` | Products | Beyond data size ΓåÆ 0 rows |
-| I-09 | `SELECT TOP 0 * FROM c` | Products | TOP 0 ΓåÆ 0 rows |
-| I-10 | `SELECT * FROM c WHERE SQRT(c.name) > 0` | Products | Math on string ΓåÆ undefined behavior |
+| I-06 | `SELECT * FROM c WHERE c.items.name = "Widget"` | Orders | Direct prop on array without JOIN → 0 rows |
+| I-07 | `SELECT udf.notExists(c.id) FROM c` | Products | Unregistered UDF → runtime error |
+| I-08 | `SELECT * FROM c OFFSET 100000 LIMIT 10` | Products | Beyond data size → 0 rows |
+| I-09 | `SELECT TOP 0 * FROM c` | Products | TOP 0 → 0 rows |
+| I-10 | `SELECT * FROM c WHERE SQRT(c.name) > 0` | Products | Math on string → undefined behavior |
 
 ---
 
 ---
 
-# Smoke Test Selection ΓÇö Top 10
+# Smoke Test Selection — Top 10
 
-Criteria: **maximum feature diversity**, **simple ΓåÆ complex**, independently meaningful even without full data.
+Criteria: **maximum feature diversity**, **simple → complex**, independently meaningful even without full data.
 
 | # | ID | Query | Container | Why this one |
 |---|----|-------|-----------|-------------|
-| 1 | S-01 | `SELECT * FROM c` | Products | Absolute baseline ΓÇö if this fails, nothing works |
-| 2 | W-10 | `SELECT * FROM c WHERE c.price > 10 AND c.price < 100` | Products | Basic WHERE with AND ΓÇö most common real-world pattern |
-| 3 | S-04 + O-03 | `SELECT DISTINCT c.category FROM c ORDER BY c.category ASC` | Products | DISTINCT + ORDER BY ΓÇö two modifiers at once |
-| 4 | B-08 | `SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.category IN ('Electronics', 'Clothing')` | Products | BETWEEN + IN ΓÇö **parentheses required** around BETWEEN |
-| 5 | J-03 | `SELECT c.id, item.name FROM c JOIN item IN c.items WHERE item.quantity > 2` | Orders | Array iterator JOIN + WHERE on iterator var ΓÇö nested data access |
-| 6 | G-03 | `SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category` | Products | GROUP BY + aggregate ΓÇö fundamental analytics pattern |
-| 7 | E-01 | `SELECT c.id FROM c WHERE EXISTS(SELECT VALUE t FROM t IN c.tags WHERE t = "sale")` | Products | EXISTS subquery ΓÇö correlated subquery, non-trivial AST |
-| 8 | SQ-01 | `SELECT c.id, ARRAY(SELECT VALUE i.name FROM i IN c.items) AS itemNames FROM c` | Orders | ARRAY subquery in projection ΓÇö data reshaping |
+| 1 | S-01 | `SELECT * FROM c` | Products | Absolute baseline — if this fails, nothing works |
+| 2 | W-10 | `SELECT * FROM c WHERE c.price > 10 AND c.price < 100` | Products | Basic WHERE with AND — most common real-world pattern |
+| 3 | S-04 + O-03 | `SELECT DISTINCT c.category FROM c ORDER BY c.category ASC` | Products | DISTINCT + ORDER BY — two modifiers at once |
+| 4 | B-08 | `SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.category IN ('Electronics', 'Clothing')` | Products | BETWEEN + IN — **parentheses required** around BETWEEN |
+| 5 | J-03 | `SELECT c.id, item.name FROM c JOIN item IN c.items WHERE item.quantity > 2` | Orders | Array iterator JOIN + WHERE on iterator var — nested data access |
+| 6 | G-03 | `SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category` | Products | GROUP BY + aggregate — fundamental analytics pattern |
+| 7 | E-01 | `SELECT c.id FROM c WHERE EXISTS(SELECT VALUE t FROM t IN c.tags WHERE t = "sale")` | Products | EXISTS subquery — correlated subquery, non-trivial AST |
+| 8 | SQ-01 | `SELECT c.id, ARRAY(SELECT VALUE i.name FROM i IN c.items) AS itemNames FROM c` | Orders | ARRAY subquery in projection — data reshaping |
 | 9 | CX-06 | `SELECT c.type, c.userId, COUNT(1) AS cnt FROM c WHERE c.timestamp BETWEEN @from AND @to GROUP BY c.type, c.userId ORDER BY cnt DESC OFFSET 0 LIMIT 20` | Events | Full query: params + WHERE + GROUP BY + ORDER BY alias + OFFSET LIMIT |
-| 10 | N-01 | `SELECT FROM c` | ΓÇö | Negative: parser must reject, errors[] non-empty |
+| 10 | N-01 | `SELECT FROM c` | — | Negative: parser must reject, errors[] non-empty |
 
 ## Why these 10?
 
-- **S-01** ΓÇö verifies the parser doesn't crash on trivial input.
-- **W-10** ΓÇö compound WHERE covers `AND`, two comparisons, and `>` / `<`.
-- **S-04 + O-03** ΓÇö `DISTINCT` flag + `OrderByClause` both present in the same AST.
-- **B-08** ΓÇö `BetweenScalarExpression` + `InScalarExpression` inside a compound `AND`. Parentheses around BETWEEN are mandatory.
-- **J-03** ΓÇö `JoinCollectionExpression` (array iterator) with a `WHERE` that references the iterator variable ΓÇö the most common NoSQL "flatten" pattern.
-- **G-03** ΓÇö `GroupByClause` + `FunctionCallScalarExpression` (AVG) as a SELECT item.
-- **E-01** ΓÇö `ExistsScalarExpression` wrapping a full nested `SqlQuery` ΓÇö deepest nesting in the AST for most queries.
-- **SQ-01** ΓÇö `ArraySubqueryScalarExpression` in the SELECT projection ΓÇö orthogonal to WHERE-based tests.
-- **CX-06** ΓÇö exercises every major clause simultaneously plus parameters and `ORDER BY` on an aggregate alias.
-- **N-01** ΓÇö confirms error recovery works: `errors` array is non-empty, `ast` is still partially built.
+- **S-01** — verifies the parser doesn't crash on trivial input.
+- **W-10** — compound WHERE covers `AND`, two comparisons, and `>` / `<`.
+- **S-04 + O-03** — `DISTINCT` flag + `OrderByClause` both present in the same AST.
+- **B-08** — `BetweenScalarExpression` + `InScalarExpression` inside a compound `AND`. Parentheses around BETWEEN are mandatory.
+- **J-03** — `JoinCollectionExpression` (array iterator) with a `WHERE` that references the iterator variable — the most common NoSQL "flatten" pattern.
+- **G-03** — `GroupByClause` + `FunctionCallScalarExpression` (AVG) as a SELECT item.
+- **E-01** — `ExistsScalarExpression` wrapping a full nested `SqlQuery` — deepest nesting in the AST for most queries.
+- **SQ-01** — `ArraySubqueryScalarExpression` in the SELECT projection — orthogonal to WHERE-based tests.
+- **CX-06** — exercises every major clause simultaneously plus parameters and `ORDER BY` on an aggregate alias.
+- **N-01** — confirms error recovery works: `errors` array is non-empty, `ast` is still partially built.
 
 ## What these 10 do NOT cover (intentionally deferred)
 
-- String / math / array / date functions (STR, M, A, D) ΓÇö all follow the same `FunctionCallScalarExpression` AST shape; one test suffices at smoke stage.
-- Bitwise operators (OP-06..OP-11) ΓÇö edge feature, rarely broken independently.
-- UDF calls ΓÇö require infrastructure setup to be meaningful.
-- Vector / spatial functions ΓÇö out of scope for this PRD.
+- String / math / array / date functions (STR, M, A, D) — all follow the same `FunctionCallScalarExpression` AST shape; one test suffices at smoke stage.
+- Bitwise operators (OP-06..OP-11) — edge feature, rarely broken independently.
+- UDF calls — require infrastructure setup to be meaningful.
+- Vector / spatial functions — out of scope for this PRD.
 

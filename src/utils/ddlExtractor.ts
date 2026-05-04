@@ -337,10 +337,32 @@ export function extractStructuralDDL(rawSql: string): ExtractionResult {
     //   CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW v ...
     //   CREATE DEFINER=`root`@`%` PROCEDURE p() ...
     // would not match any DDL or body-object pattern and silently disappear.
-    sql = sql.replace(
-        /\bCREATE\s+((?:(?:ALGORITHM\s*=\s*\w+|DEFINER\s*=\s*(?:`[^`]+`|"[^"]+"|'[^']+'|\S+)|SQL\s+SECURITY\s+(?:DEFINER|INVOKER))\s+)+)(?=VIEW|PROCEDURE|FUNCTION|TRIGGER|EVENT)/gi,
-        'CREATE ',
+    //
+    // The replacement is implemented as an iterative loop (rather than a single
+    // regex with a `+` over an alternation) to avoid catastrophic backtracking
+    // (CodeQL js/redos). The DEFINER value is matched as the actual MySQL
+    // syntax `user[@host]` — two atomic segments, no quantifier over the
+    // value alternation — so adjacent matches are unambiguous; only one
+    // prefix token is consumed per iteration.
+    const DEFINER_SEG = '(?:`[^`]*`|"[^"]*"|\'[^\']*\'|[A-Za-z0-9_.-]+)';
+    const DEFINER_HOST_SEG = '(?:`[^`]*`|"[^"]*"|\'[^\']*\'|[A-Za-z0-9_.%-]+)';
+    const PREFIX_TOKEN = new RegExp(
+        '\\bCREATE\\s+(?:' +
+            'ALGORITHM\\s*=\\s*\\w+' +
+            '|DEFINER\\s*=\\s*' +
+            DEFINER_SEG +
+            '(?:@' +
+            DEFINER_HOST_SEG +
+            ')?' +
+            '|SQL\\s+SECURITY\\s+(?:DEFINER|INVOKER)' +
+            ')\\s+(?=ALGORITHM\\b|DEFINER\\b|SQL\\s+SECURITY\\b|VIEW\\b|PROCEDURE\\b|FUNCTION\\b|TRIGGER\\b|EVENT\\b)',
+        'gi',
     );
+    let prev: string;
+    do {
+        prev = sql;
+        sql = sql.replace(PREFIX_TOKEN, 'CREATE ');
+    } while (sql !== prev);
 
     // Pre-pass: extract procedure/function/trigger bodies as one-line summaries
     // and remove them from `sql` so the line-walk doesn't misinterpret body
@@ -681,10 +703,15 @@ function stripStorageNoise(stmt: string, preserveCheck: boolean, stats: Extracti
     s = countingReplace(s, /\s+COMMENT\s+'(?:''|[^'])*'/gi, (n) => (stats.strips.mysqlInlineComment += n));
 
     // MySQL trailing CREATE TABLE options (after the closing `)` of the column list).
-    // Single regex matches any sequence of KEY=VALUE option pairs, possibly followed by ENGINE etc.
+    // Single regex matches any sequence of KEY=VALUE option pairs.
+    //
+    // The unquoted-value branch is `[^\s,'"`)]+` (not `\S+`) so it cannot
+    // overlap with the quoted branches and cannot consume option separators or
+    // the trailing `;`/`)` — this avoids catastrophic backtracking
+    // (CodeQL js/redos) when many option pairs appear in sequence.
     {
         const optionRe =
-            /\)\s*((?:(?:DEFAULT\s+)?(?:ENGINE|CHARSET|CHARACTER\s+SET|COLLATE|AUTO_INCREMENT|ROW_FORMAT|PACK_KEYS|STATS_PERSISTENT|STATS_AUTO_RECALC|STATS_SAMPLE_PAGES|KEY_BLOCK_SIZE|MAX_ROWS|MIN_ROWS|AVG_ROW_LENGTH|TABLESPACE|COMMENT)\s*=\s*(?:'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:[^`]|``)+`|\S+)\s*,?\s*)+)/i;
+            /\)\s*((?:(?:DEFAULT\s+)?(?:ENGINE|CHARSET|CHARACTER\s+SET|COLLATE|AUTO_INCREMENT|ROW_FORMAT|PACK_KEYS|STATS_PERSISTENT|STATS_AUTO_RECALC|STATS_SAMPLE_PAGES|KEY_BLOCK_SIZE|MAX_ROWS|MIN_ROWS|AVG_ROW_LENGTH|TABLESPACE|COMMENT)\s*=\s*(?:'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:[^`]|``)+`|[^\s,'"`)]+)\s*,?\s*)+)/i;
         const m2 = optionRe.exec(s);
         if (m2) {
             stats.strips.mysqlTableOptions++;

@@ -1111,7 +1111,7 @@ describe('extractStructuralDDL', () => {
         });
 
         it('summarizes CREATE PROCEDURE with DEFINER prefix', () => {
-            const sql = "CREATE DEFINER=`root`@`%` PROCEDURE p() BEGIN INSERT INTO t (x) VALUES (1); END;";
+            const sql = 'CREATE DEFINER=`root`@`%` PROCEDURE p() BEGIN INSERT INTO t (x) VALUES (1); END;';
             const result = extract(sql);
             expect(result).toContain('CREATE PROCEDURE p()');
             expect(result).toContain('writes: t');
@@ -1119,7 +1119,7 @@ describe('extractStructuralDDL', () => {
 
         it('summarizes CREATE FUNCTION with DEFINER prefix', () => {
             const sql =
-                "CREATE DEFINER=`root`@`%` FUNCTION f() RETURNS INT DETERMINISTIC BEGIN RETURN (SELECT COUNT(*) FROM t); END;";
+                'CREATE DEFINER=`root`@`%` FUNCTION f() RETURNS INT DETERMINISTIC BEGIN RETURN (SELECT COUNT(*) FROM t); END;';
             const result = extract(sql);
             expect(result).toContain('CREATE FUNCTION f()');
             expect(result).toContain('reads: t');
@@ -1135,10 +1135,45 @@ describe('extractStructuralDDL', () => {
 
         it('summarizes CREATE EVENT with DEFINER and schedule', () => {
             const sql =
-                "CREATE DEFINER=`root`@`%` EVENT ev ON SCHEDULE EVERY 1 DAY DO BEGIN DELETE FROM logs WHERE created < NOW() - INTERVAL 30 DAY; END;";
+                'CREATE DEFINER=`root`@`%` EVENT ev ON SCHEDULE EVERY 1 DAY DO BEGIN DELETE FROM logs WHERE created < NOW() - INTERVAL 30 DAY; END;';
             const result = extract(sql);
             expect(result).toContain('CREATE EVENT ev ON SCHEDULE EVERY 1 DAY');
             expect(result).toContain('writes: logs');
+        });
+
+        it('does not catastrophically backtrack on adversarial DEFINER prefixes', () => {
+            // Worst-case-style input that previously triggered CodeQL js/redos:
+            // many repetitions of `definer="..."` with quote/whitespace ambiguity.
+            const evil = 'CREATE ' + 'DEFINER="!"\tDEFINER="!"\t'.repeat(50) + 'NOT_A_KIND;';
+            const start = Date.now();
+            const result = extract(evil);
+            const elapsed = Date.now() - start;
+            // Should complete in well under a second; allow ample headroom for CI.
+            expect(elapsed).toBeLessThan(1000);
+            // Input had no recognized object kind, so output is empty.
+            expect(result.trim()).toBe('');
+        });
+
+        it('does not catastrophically backtrack on long unquoted DEFINER values', () => {
+            // The unquoted-value class `[A-Za-z0-9_.%-]` previously sat under a
+            // `+` quantifier over the value alternation, allowing many ways to
+            // split a long run of `%` characters. Verify a long value finishes fast.
+            const evil = 'CREATE DEFINER=root@' + '%'.repeat(500) + ' VIEW v AS SELECT 1;';
+            const start = Date.now();
+            extract(evil);
+            const elapsed = Date.now() - start;
+            expect(elapsed).toBeLessThan(1000);
+        });
+
+        it('does not catastrophically backtrack on adversarial MySQL trailing options', () => {
+            // Crafted to stress the previous `\\S+` overlap with quoted branches in
+            // the trailing-options regex.
+            const evil =
+                'CREATE TABLE t (id INT) ' + 'COMMENT="!" CHARSET="!" COLLATE="!" '.repeat(80) + 'NOT_AN_OPTION;';
+            const start = Date.now();
+            extract(evil);
+            const elapsed = Date.now() - start;
+            expect(elapsed).toBeLessThan(1000);
         });
     });
 
@@ -1152,27 +1187,30 @@ describe('extractStructuralDDL', () => {
             ['CREATE PARTITION SCHEME ps AS PARTITION pf TO ([PRIMARY]);', 'PARTITION SCHEME'],
             ['CREATE EVENT TRIGGER et ON ddl_command_start EXECUTE FUNCTION f();', 'EVENT TRIGGER'],
             ['CREATE TYPE BODY tb AS BEGIN NULL; END;', 'TYPE BODY'],
-            ['CREATE LIBRARY lib AS \'/tmp/lib.so\';', 'LIBRARY'],
-            ['CREATE DIRECTORY dir AS \'/tmp\';', 'DIRECTORY'],
+            ["CREATE LIBRARY lib AS '/tmp/lib.so';", 'LIBRARY'],
+            ["CREATE DIRECTORY dir AS '/tmp';", 'DIRECTORY'],
             ['CREATE PROFILE prof LIMIT SESSIONS_PER_USER 5;', 'PROFILE'],
             ['CREATE SERVER fdw_srv FOREIGN DATA WRAPPER pg;', 'SERVER'],
-            ['CREATE COLLATION french (LOCALE = \'fr_FR\');', 'COLLATION'],
+            ["CREATE COLLATION french (LOCALE = 'fr_FR');", 'COLLATION'],
             ['CREATE STATISTICS s ON x, y FROM t;', 'STATISTICS'],
             ['CREATE AGGREGATE my_sum(int) (SFUNC = int4pl, STYPE = int);', 'AGGREGATE'],
             ['CREATE OPERATOR === (LEFTARG = int, RIGHTARG = int, FUNCTION = int4eq);', 'OPERATOR'],
             ['CREATE ASSEMBLY asm FROM 0x4D5A;', 'ASSEMBLY'],
-            ['CREATE LOGIN bob WITH PASSWORD = \'x\';', 'LOGIN'],
+            ["CREATE LOGIN bob WITH PASSWORD = 'x';", 'LOGIN'],
             ['CREATE ROLE admin;', 'ROLE'],
             ['ANALYZE TABLE t;', 'ANALYZE'],
             ['VACUUM FULL;', 'VACUUM'],
             ['REINDEX TABLE t;', 'REINDEX'],
             ['CLUSTER t USING idx_t;', 'CLUSTER'],
             ['LISTEN ch;', 'LISTEN'],
-            ['NOTIFY ch, \'msg\';', 'NOTIFY'],
+            ["NOTIFY ch, 'msg';", 'NOTIFY'],
             ['SAVEPOINT sp1;', 'SAVEPOINT'],
             ['START TRANSACTION READ ONLY;', 'START TRANSACTION'],
-            ['ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly;', 'ALTER DEFAULT PRIVILEGES'],
-            ['SECURITY LABEL ON TABLE t IS \'classified\';', 'SECURITY LABEL'],
+            [
+                'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly;',
+                'ALTER DEFAULT PRIVILEGES',
+            ],
+            ["SECURITY LABEL ON TABLE t IS 'classified';", 'SECURITY LABEL'],
         ])('skips %s', (sql) => {
             expect(extract(sql).trim()).toBe('');
         });

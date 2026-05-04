@@ -161,29 +161,205 @@ function watchForEarlyExit(terminal: vscode.Terminal): void {
     });
 }
 
-export async function launchCosmosDBShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+function isDotNetSdkInstalled(): boolean {
+    try {
+        const output = child.execFileSync('dotnet', ['--list-sdks'], {
+            windowsHide: true,
+            stdio: 'pipe',
+        });
+        return output.toString('utf8').trim().length > 0;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Runs `dotnet tool install --global CosmosDBShell --prerelease` with a progress
+ * notification, streaming output to the extension output channel. Returns true
+ * when the process exits with code 0.
+ */
+async function installCosmosDBShellWithDotNetTool(): Promise<boolean> {
+    return await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: l10n.t('Installing Cosmos DB Shell…'),
+            cancellable: true,
+        },
+        async (_progress, token) => {
+            ext.outputChannel.show(true);
+            ext.outputChannel.appendLine('> dotnet tool install --global CosmosDBShell --prerelease');
+
+            return await new Promise<boolean>((resolve) => {
+                const proc = child.spawn('dotnet', ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'], {
+                    windowsHide: true,
+                    shell: false,
+                });
+
+                token.onCancellationRequested(() => {
+                    proc.kill();
+                });
+
+                proc.stdout?.on('data', (data: Buffer) => {
+                    ext.outputChannel.append(data.toString('utf8'));
+                });
+                proc.stderr?.on('data', (data: Buffer) => {
+                    ext.outputChannel.append(data.toString('utf8'));
+                });
+                proc.on('error', (err) => {
+                    ext.outputChannel.appendLine(`Failed to start dotnet: ${err.message}`);
+                    resolve(false);
+                });
+                proc.on('close', (code) => {
+                    ext.outputChannel.appendLine(`\nProcess exited with code ${code}.`);
+                    resolve(code === 0);
+                });
+            });
+        },
+    );
+}
+
+/**
+ * Prompts the user to install Cosmos DB Shell via `dotnet tool install`, and on
+ * success automatically continues the original launch flow.
+ */
+async function promptToInstallCosmosDBShell(
+    context: IActionContext,
+    node: NoSqlContainerResourceItem | undefined,
+): Promise<void> {
+    const install = l10n.t('Install');
+    const settings = l10n.t('Settings');
+    const selection = await vscode.window.showInformationMessage(
+        l10n.t(
+            'Cosmos DB Shell is not installed. Install it now using `dotnet tool install --global CosmosDBShell --prerelease`?',
+        ),
+        { modal: true },
+        install,
+        settings,
+    );
+
+    if (selection === settings) {
+        void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
+        return;
+    }
+    if (selection !== install) {
+        return;
+    }
+
+    const success = await installCosmosDBShellWithDotNetTool();
+    if (!success) {
+        const showOutput = l10n.t('Show Output');
+        const failureSelection = await vscode.window.showErrorMessage(
+            l10n.t('Failed to install Cosmos DB Shell. See the output for details.'),
+            showOutput,
+        );
+        if (failureSelection === showOutput) {
+            ext.outputChannel.show(true);
+        }
+        return;
+    }
+
+    // On a brand-new install the user's PATH may not yet include `~/.dotnet/tools`
+    // in the current VS Code session. If we still can't resolve the shell, ask to reload.
+    if (!isCosmosDBShellSupportEnabled()) {
+        const reload = l10n.t('Reload Window');
+        const reloadSelection = await vscode.window.showInformationMessage(
+            l10n.t(
+                'Cosmos DB Shell was installed, but its location is not yet on PATH for this VS Code window. Reload the window to pick it up.',
+            ),
+            reload,
+        );
+        if (reloadSelection === reload) {
+            void vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+        return;
+    }
+
+    // Auto-relaunch with the original node so the user lands where they intended.
+    await launchCosmosDBShell(context, node);
+}
+
+/**
+ * Awaits the `.NET Install Tool` SDK acquisition command. Treats any non-rejected
+ * resolution that returns a result as success.
+ */
+async function tryInstallDotNetSdkViaExtension(): Promise<boolean> {
+    try {
+        const result = await vscode.commands.executeCommand<{ dotnetPath?: string } | undefined>(
+            'dotnet.acquireGlobalSDKPublic',
+        );
+        return !!result;
+    } catch (err) {
+        ext.outputChannel.appendLine(`dotnet.acquireGlobalSDKPublic failed: ${String(err)}`);
+        return false;
+    }
+}
+
+async function promptToInstallDotNetSdk(
+    context: IActionContext,
+    node: NoSqlContainerResourceItem | undefined,
+): Promise<void> {
+    const installDotNetSdk = l10n.t('Install .NET SDK');
+    const installDotNetTool = l10n.t('Install .NET Install Tool');
+    const downloadDotNet = l10n.t('Download .NET SDK');
+    const settings = l10n.t('Settings');
+    const dotNetInstallToolExtensionId = 'ms-dotnettools.vscode-dotnet-runtime';
+    const isDotNetInstallToolInstalled = !!vscode.extensions.getExtension(dotNetInstallToolExtensionId);
+    const primaryAction = isDotNetInstallToolInstalled ? installDotNetSdk : installDotNetTool;
+    const selection = await vscode.window.showInformationMessage(
+        l10n.t(
+            'The .NET SDK is required to install Cosmos DB Shell. Install the .NET SDK, download it manually, or configure an existing Cosmos DB Shell path in settings.',
+        ),
+        { modal: true },
+        primaryAction,
+        downloadDotNet,
+        settings,
+    );
+
+    if (selection === installDotNetSdk) {
+        const sdkInstalled = await tryInstallDotNetSdkViaExtension();
+        if (sdkInstalled && isDotNetSdkInstalled()) {
+            // Chain forward: now that the SDK is available, offer the tool install.
+            await promptToInstallCosmosDBShell(context, node);
+        }
+    } else if (selection === installDotNetTool) {
+        void vscode.commands.executeCommand('workbench.extensions.installExtension', dotNetInstallToolExtensionId);
+    } else if (selection === downloadDotNet) {
+        void vscode.env.openExternal(vscode.Uri.parse('https://dot.net/download'));
+    } else if (selection === settings) {
+        void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
+    }
+}
+
+async function promptToResolveMissingCosmosDBShell(
+    context: IActionContext,
+    node: NoSqlContainerResourceItem | undefined,
+): Promise<void> {
+    if (isCosmosDBShellPathFound()) {
+        const settings = l10n.t('Settings');
+        const selection = await vscode.window.showErrorMessage(
+            l10n.t(
+                'Cosmos DB Shell path is configured but the executable could not be run. Please verify the path in settings.',
+            ),
+            settings,
+        );
+        if (selection === settings) {
+            void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
+        }
+        return;
+    }
+
+    if (isDotNetSdkInstalled()) {
+        await promptToInstallCosmosDBShell(context, node);
+    } else {
+        await promptToInstallDotNetSdk(context, node);
+    }
+}
+
+export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {
     const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
 
     if (!isCosmosDBShellInstalled) {
-        const settings = l10n.t('Settings');
-
-        let msg: string;
-        if (!isCosmosDBShellPathFound()) {
-            msg = l10n.t('Cosmos DB Shell path is not found. Please configure the correct path in settings.');
-        } else {
-            msg = l10n.t(
-                'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
-            );
-        }
-
-        void vscode.window.showErrorMessage(msg, settings).then((selection) => {
-            if (selection === settings) {
-                void vscode.commands.executeCommand(
-                    'vscode.open',
-                    vscode.Uri.parse('vscode://settings/cosmosDB.shell.path'),
-                );
-            }
-        });
+        await promptToResolveMissingCosmosDBShell(context, node);
         return;
     }
 

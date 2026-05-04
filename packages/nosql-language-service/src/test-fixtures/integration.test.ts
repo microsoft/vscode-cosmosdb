@@ -33,6 +33,10 @@ import { fixtures as negativeIntegrationFixtures } from './queries/negative-inte
 // ── Environment guard ─────────────────────────────────────────────────────────
 
 const endpoint = process.env.COSMOS_ENDPOINT;
+// The well-known emulator master key — identical on every emulator installation.
+// The emulator ships with a single fixed account and this key cannot be changed.
+// Override via COSMOS_KEY only when connecting to a non-emulator instance.
+// Docs: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator#authentication
 const masterKey =
     process.env.COSMOS_KEY ??
     'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';

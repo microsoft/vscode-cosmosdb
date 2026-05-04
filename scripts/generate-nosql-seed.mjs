@@ -6,10 +6,10 @@
 /**
  * Generates deterministic seed data for the NoSQL parser integration test suite.
  *
- * Produces three containers, each 5-10 MB:
- *   products  — flat e-commerce catalogue (3 000 docs)
- *   orders    — nested objects + line-item arrays (2 500 docs)
- *   events    — sparse time-series (5 000 docs)
+ * Produces three containers (~200 docs each — enough for query-correctness tests):
+ *   products  — flat e-commerce catalogue (200 docs)
+ *   orders    — nested objects + line-item arrays (150 docs)
+ *   events    — sparse time-series (200 docs)
  *
  * Usage:
  *   node scripts/generate-nosql-seed.mjs --container products
@@ -223,7 +223,7 @@ function generateProducts() {
 
     const docs = [];
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 200; i++) {
         const category = h.pick(CATEGORIES);
         const namePool = PRODUCT_NAMES.filter((n) => {
             if (category === 'Electronics') return n.match(/Headphone|Speaker|Watch|Hub|Keyboard|Mouse|Lamp|Stand|Webcam|SSD|Home|Air|Robot|Coffee Grinder|Scale|Blender/);
@@ -326,7 +326,7 @@ function generateOrders() {
 
     const docs = [];
 
-    for (let i = 0; i < 8000; i++) {
+    for (let i = 0; i < 150; i++) {
         const customerId = `cust-${String((i % 500) + 1).padStart(3, '0')}`;
         const status = h.pick(STATUSES);
         const isShippable = status === 'shipped' || status === 'delivered';
@@ -441,7 +441,7 @@ function generateEvents() {
 
     const docs = [];
 
-    for (let i = 0; i < 15000; i++) {
+    for (let i = 0; i < 200; i++) {
         const type = h.pick(TYPE_POOL);
         const userId = `u-${h.int(1, 10)}`;
         const sessionId = makeSessionId(h);

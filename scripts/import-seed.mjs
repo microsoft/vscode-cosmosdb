@@ -20,6 +20,7 @@
  * Optional:
  *   --database   Name of the test database (default: nosql-test-db)
  *   --batch-size Number of documents per bulk batch (default: 100)
+ *   --reset      Drop and recreate the container before importing
  */
 
 import { CosmosClient } from '@azure/cosmos';
@@ -57,6 +58,7 @@ const databaseId = flag('database') ?? 'nosql-test-db';
 const batchSize = parseInt(flag('batch-size') ?? '100', 10);
 const importAll = hasFlag('all');
 const singleContainer = flag('container');
+const reset = hasFlag('reset');
 
 if (!endpoint) {
     console.error('ERROR: Cosmos DB endpoint is required. Set COSMOS_ENDPOINT or pass --endpoint.');
@@ -68,7 +70,12 @@ if (!importAll && !singleContainer) {
     process.exit(1);
 }
 
-// ── Container metadata ────────────────────────────────────────────────────────
+// ── Module-level bulk support flag ───────────────────────────────────────────
+// Once bulk() fails for any container in this run, skip it for all subsequent
+// containers to avoid wasting time on known-unsupported endpoints (e.g. emulator).
+let bulkSupported = true;
+
+
 
 /** @type {Record<string, { partitionKeyPath: string; seedFile: string }>} */
 const CONTAINERS = {
@@ -179,7 +186,15 @@ async function importContainer(containerName) {
     const { database } = await client.databases.createIfNotExists({ id: databaseId });
     console.log(`[${containerName}] Database "${databaseId}" ready`);
 
-    // Ensure container exists
+    // Ensure container exists (optionally reset it first)
+    if (reset) {
+        try {
+            await database.container(containerName).delete();
+            console.log(`[${containerName}] Container dropped (--reset)`);
+        } catch {
+            // Container didn't exist yet — that's fine
+        }
+    }
     const { container } = await database.containers.createIfNotExists({
         id: containerName,
         partitionKey: { paths: [meta.partitionKeyPath] },
@@ -210,7 +225,7 @@ async function importContainer(containerName) {
     // Once bulk fails once, all subsequent batches skip it.
     const batches = chunks(docs, batchSize);
     let upserted = alreadyInserted;
-    let bulkSupported = true;
+    // bulkSupported is module-level — persists across containers in the same run
 
     // Concurrency for individual-upsert fallback: cap at 4 to avoid
     // overwhelming a single-instance endpoint (emulator or small server).

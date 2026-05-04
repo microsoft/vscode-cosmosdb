@@ -10,7 +10,7 @@ import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { type Channel } from '../../Communication/Channel/Channel';
-import { getCosmosDbBestPractices } from '../bestPractices';
+import { getCosmosDbBestPractices, getIndexPathSyntaxRule } from '../bestPractices';
 import {
     type CosmosContainer,
     type CosmosModel,
@@ -176,12 +176,19 @@ async function runConversionSubStep(
     token: vscode.CancellationToken,
     debugConfig?: DebugPromptConfig,
     onExhausted?: () => void,
+    indexPathSyntaxRule?: string,
 ): Promise<SchemaConversionStepResult> {
     const cosmosModelJson = JSON.stringify(cosmosModel);
 
     const { value, roundsExhausted } = await runAgenticLoopWithJsonResult<SchemaConversionStepResult>(
         PromptClass,
-        { domainSummary, cosmosModel: cosmosModelJson, bestPractices, schemaConversionInstructions },
+        {
+            domainSummary,
+            cosmosModel: cosmosModelJson,
+            bestPractices,
+            indexPathSyntaxRule: indexPathSyntaxRule ?? '',
+            schemaConversionInstructions,
+        },
         model,
         tools,
         executeToolCall,
@@ -267,6 +274,7 @@ async function runFastConversion(
     domainName: string,
     domainSummary: string,
     bestPractices: string,
+    indexPathSyntaxRule: string,
     sourceType: string,
     outputRelativePath: string,
     schemaConversionInstructions: string,
@@ -278,7 +286,14 @@ async function runFastConversion(
 ): Promise<FastConversionResult> {
     const { value, roundsExhausted } = await runAgenticLoopWithJsonResult<FastConversionResult>(
         Phase3FastConversionPrompt,
-        { domainSummary, bestPractices, sourceType, outputRelativePath, schemaConversionInstructions },
+        {
+            domainSummary,
+            bestPractices,
+            indexPathSyntaxRule,
+            sourceType,
+            outputRelativePath,
+            schemaConversionInstructions,
+        },
         model,
         tools,
         executeToolCall,
@@ -631,6 +646,7 @@ export async function runSchemaConversion(
             await sendPhaseEvent(channel, 'schemaConversionStarted');
 
             const bestPractices = getCosmosDbBestPractices();
+            const indexPathSyntaxRule = getIndexPathSyntaxRule();
             const sourceType = project.phases.discovery.applicationAnalysis?.databaseType ?? 'Unknown';
             const schemaConversionInstructions = project.phases.schemaConversion?.schemaConversionInstructions ?? '';
             const completedDomains: string[] = [];
@@ -874,6 +890,7 @@ export async function runSchemaConversion(
                         token,
                         mkDebug('step6-indexing'),
                         markDomainExhausted,
+                        indexPathSyntaxRule,
                     );
                     cosmosModel = idxResult.updatedModel;
                     await saveCosmosModel(domainOutputPath, stripPartitionKeyCandidates(cosmosModel));
@@ -950,6 +967,7 @@ export async function runSchemaConversion(
                         domainName,
                         domainContent,
                         bestPractices,
+                        indexPathSyntaxRule,
                         sourceType,
                         summaryRelativePath,
                         schemaConversionInstructions,

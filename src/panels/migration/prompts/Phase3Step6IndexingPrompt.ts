@@ -19,6 +19,7 @@ interface Phase3Step6IndexingPromptProps extends BasePromptElementProps {
     domainSummary: string;
     cosmosModel: string;
     bestPractices: string;
+    indexPathSyntaxRule: string;
     schemaConversionInstructions: string;
 }
 
@@ -40,6 +41,23 @@ export class Phase3Step6IndexingPrompt extends PromptElement<Phase3Step6Indexing
                     `You are an expert Azure Cosmos DB NoSQL architect. Your task is to design the
 indexing policy for each container in the data model.
 
+## Required Preparation (BEFORE producing any output)
+
+You have access to a \`loadSkillSupplementaryFile\` tool that can load detailed indexing rules
+from the Cosmos DB best practices skill. Before drafting the policy, call this tool (you may
+batch multiple calls in one round) to load any indexing rules from the skill overview that are
+relevant to the current model — for example \`rules/index-composite.md\`,
+\`rules/index-composite-direction.md\`, \`rules/index-exclude-unused.md\`, or
+\`rules/index-spatial.md\`. Use \`skillPath\` \`skills/cosmosdb-best-practices/SKILL.md\` for all calls.
+Do this BEFORE emitting the final JSON — once you start producing JSON output you will not
+call tools again.
+
+**CRITICAL — Indexing path syntax:** The "Index Path Syntax" rule is appended verbatim
+below the current data model in this prompt. Read it carefully before authoring any path.
+Using the wrong notation (e.g. \`/lineItems/*/productSnapshot/?\` with \`*\` mid-path)
+causes container creation to fail with a BadRequest. The only valid mid-path array
+notation is \`/[]/\`. The \`*\` wildcard is terminal-only.
+
 ## Instructions
 
 For EACH container in the current cosmos model:
@@ -51,12 +69,6 @@ For EACH container in the current cosmos model:
    - JOIN operations
    - Aggregate functions (COUNT, SUM, AVG)
    - Full-text search queries
-
-**MANDATORY:** Before designing indexing policies, you MUST use \`loadSkillSupplementaryFile\` (with
-skillPath \`skills/cosmosdb-best-practices/SKILL.md\`) to load \`rules/index-path-syntax.md\` and any
-other relevant indexing rules (e.g., \`rules/index-exclude-unused.md\`, \`rules/index-composite.md\`,
-\`rules/index-composite-direction.md\`). These contain critical syntax and design constraints —
-failure to follow them produces invalid paths that cause container creation to fail with a BadRequest error.
 
 2. **Design included paths** — Include paths that are frequently queried.
    Start with "/*" (index everything) and selectively exclude large or unused paths.
@@ -110,6 +122,14 @@ IMPORTANT: Your FINAL response must be ONLY the JSON object.`,
                 vscpp(TextChunk, { priority: 90, breakOn: /\s+/g }, this.props.domainSummary),
                 vscpp(TextChunk, { priority: 85 }, '\n\n# Current Cosmos DB Data Model\n\n'),
                 vscpp(TextChunk, { priority: 80 }, this.props.cosmosModel),
+                vscpp(
+                    TextChunk,
+                    { priority: 92 },
+                    '\n\n# CRITICAL Reference: Cosmos DB Indexing Path Syntax\n\n' +
+                        'The following rule is the authoritative reference for indexing path syntax. ' +
+                        'You MUST follow it when authoring `includedPaths`, `excludedPaths`, and `compositeIndexes`.\n\n',
+                ),
+                vscpp(TextChunk, { priority: 92, breakOn: /\s+/g }, this.props.indexPathSyntaxRule),
                 vscpp(
                     TextChunk,
                     { priority: 62 },

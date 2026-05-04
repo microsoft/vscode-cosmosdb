@@ -18,6 +18,7 @@ declare const vscppf: { isFragment: boolean };
 interface Phase3FastConversionPromptProps extends BasePromptElementProps {
     domainSummary: string;
     bestPractices: string;
+    indexPathSyntaxRule: string;
     sourceType: string;
     outputRelativePath: string;
     schemaConversionInstructions: string;
@@ -47,6 +48,24 @@ export class Phase3FastConversionPrompt extends PromptElement<Phase3FastConversi
 schema conversion for a domain being migrated from a relational database (${this.props.sourceType})
 to Azure Cosmos DB NoSQL. You must analyze the domain and produce a fully optimized data model
 covering all aspects in a single pass.
+
+## Required Preparation (BEFORE producing any output)
+
+You have access to a \`loadSkillSupplementaryFile\` tool that can load detailed rules from the
+Cosmos DB best practices skill. Before drafting the model, call this tool (you may batch
+multiple calls in one round) to load any rules from the skill overview that are clearly
+relevant to this domain's access patterns and entities. At minimum, load deeper guidance for:
+
+- Partition key selection (e.g. \`rules/partition-high-cardinality.md\`,
+  \`rules/partition-hierarchical.md\`) when the domain has multi-tenant or hierarchical data.
+- Embedding decisions (e.g. \`rules/model-embed-related.md\`,
+  \`rules/model-type-discriminator.md\`) when entities have 1:few or polymorphic relationships.
+- Indexing strategies beyond path syntax (e.g. \`rules/index-composite.md\`,
+  \`rules/index-composite-direction.md\`, \`rules/index-exclude-unused.md\`) when the access
+  patterns include multi-property filters, ORDER BY, or large unindexed fields.
+
+Use \`skillPath\` \`skills/cosmosdb-best-practices/SKILL.md\` for all calls. Do this BEFORE
+emitting the final JSON — once you start producing JSON output you will not call tools again.
 
 ## Overview
 
@@ -138,11 +157,11 @@ For EACH relationship between entities:
 
 ## Step 6: Indexing Policy Design
 
-**MANDATORY:** Before designing indexing policies, you MUST use \`loadSkillSupplementaryFile\` (with
-skillPath \`skills/cosmosdb-best-practices/SKILL.md\`) to load \`rules/index-path-syntax.md\` and any
-other relevant indexing rules (e.g., \`rules/index-exclude-unused.md\`, \`rules/index-composite.md\`,
-\`rules/index-composite-direction.md\`). These contain critical syntax and design constraints —
-failure to follow them produces invalid paths that cause container creation to fail with a BadRequest error.
+**CRITICAL — Indexing path syntax:** The "Index Path Syntax" rule is appended verbatim
+below the Domain Summary in this prompt. Read it carefully before authoring any path.
+Using the wrong notation (e.g. \`/lineItems/*/productSnapshot/?\` with \`*\` mid-path)
+causes container creation to fail with a BadRequest. The only valid mid-path array
+notation is \`/[]/\`. The \`*\` wildcard is terminal-only.
 
 For EACH container:
 
@@ -267,6 +286,15 @@ IMPORTANT:
                 { priority: 100 },
                 vscpp(TextChunk, { priority: 95 }, '\n\n# Domain Summary\n\n'),
                 vscpp(TextChunk, { priority: 90, breakOnWhitespace: false }, this.props.domainSummary),
+                vscpp(
+                    TextChunk,
+                    { priority: 92 },
+                    '\n\n# CRITICAL Reference: Cosmos DB Indexing Path Syntax\n\n' +
+                        'The following rule is the authoritative reference for indexing path syntax. ' +
+                        'You MUST follow it when authoring `includedPaths`, `excludedPaths`, and `compositeIndexes` ' +
+                        "in any container's `indexingPolicy`.\n\n",
+                ),
+                vscpp(TextChunk, { priority: 92, breakOnWhitespace: false }, this.props.indexPathSyntaxRule),
                 vscpp(
                     TextChunk,
                     { priority: 62 },

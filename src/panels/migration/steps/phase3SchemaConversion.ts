@@ -653,7 +653,7 @@ export async function runSchemaConversion(
 
             // Set up best practice rule tools for agentic sub-steps
             const tools = getBestPracticeTools();
-            const executeToolCall = createToolExecutor({}, '[SchemaConversion]');
+            const executeToolCall = createToolExecutor({}, '[SchemaConversion]', undefined, undefined, context);
 
             for (let di = 0; di < filteredDomainFiles.length; di++) {
                 if (token.isCancellationRequested) return;

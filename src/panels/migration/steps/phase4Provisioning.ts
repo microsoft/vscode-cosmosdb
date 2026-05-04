@@ -322,7 +322,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                         { cosmosModel: JSON.stringify(model), sourceType, bestPractices: getCosmosDbBestPractices() },
                         aiModel,
                         getBestPracticeTools(),
-                        createToolExecutor({}, '[Provisioning]'),
+                        createToolExecutor({}, '[Provisioning]', undefined, undefined, context),
                         5,
                         token,
                         'Sample Data Generation',

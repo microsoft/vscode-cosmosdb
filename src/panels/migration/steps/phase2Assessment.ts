@@ -3,13 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
+import { decodeFileBytes } from '../../../utils/decodeFileBytes';
 import { type Channel } from '../../Communication/Channel/Channel';
 import { getCosmosDbBestPractices } from '../bestPractices';
 import {
@@ -96,13 +97,14 @@ async function detectDomainMappings(
     channel: Channel,
     token: vscode.CancellationToken,
     assessmentDebugDir: string,
+    phaseContext?: IActionContext,
 ): Promise<Map<string, boolean>> {
     const results = new Map<string, boolean>();
     const customTools = [...getWorkspaceTools(), ...getBestPracticeTools()];
     const customToolNames = new Set(customTools.map((t) => t.name));
     const tools = [...getRegisteredChatTools(customToolNames), ...customTools];
     ext.outputChannel.appendLog(`[Assessment] Tools (${tools.length}):\n${tools.map((t) => `  ${t.name}`).join('\n')}`);
-    const executeToolCall = createToolExecutor({}, '[Assessment]', { language, frameworks }, token);
+    const executeToolCall = createToolExecutor({}, '[Assessment]', { language, frameworks }, token, phaseContext);
     const mkDebug = createMkDebug(isDebugPromptsEnabled(), assessmentDebugDir);
 
     for (const domain of domains) {
@@ -306,10 +308,10 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             for (const file of schemaFiles) {
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(file));
-                    const rawText = Buffer.from(content).toString('utf-8');
+                    const rawText = decodeFileBytes(content).text;
                     const fileExt = path.extname(file).toLowerCase();
                     if (fileExt === '.sql') {
-                        allDDL += extractStructuralDDL(rawText) + '\n';
+                        allDDL += extractStructuralDDL(rawText).sql + '\n';
                     }
                 } catch {
                     // Skip unreadable files
@@ -709,6 +711,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
                 channel,
                 token,
                 assessmentDebugDir,
+                context,
             );
 
             ext.outputChannel.debug(`[Assessment] Total assessment elapsed: ${Date.now() - assessmentStartTime}ms`);

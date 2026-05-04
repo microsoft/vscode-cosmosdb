@@ -3,12 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
 import { decodeFileBytes } from '../../../utils/decodeFileBytes';
 import { loadSkillSupplementaryFile } from '../bestPractices';
+import { formatDdlExtractorSummary, reportDdlExtractorStats } from '../helpers/migrationTelemetry';
 
 // ─── Tool Definitions ────────────────────────────────────────────────
 
@@ -270,19 +272,24 @@ export { CHARS_PER_TOKEN, estimateTokens, MAX_FILE_TOKENS };
  *
  * @param fileMaps Optional lookup maps for file-based tools.
  * @param logPrefix Optional prefix for output channel logging (e.g. "[Discovery]").
+ * @param phaseContext Optional `IActionContext` for the surrounding phase — used
+ * to accumulate DDL extractor rollup measurements (input/output bytes, average
+ * reduction ratio, total statements). When omitted, only per-call telemetry is
+ * emitted.
  */
 export function createToolExecutor(
     fileLists: ToolFileLists = {},
     logPrefix?: string,
     languageContext?: { language?: string; frameworks?: string[] },
     token?: vscode.CancellationToken,
+    phaseContext?: IActionContext,
 ): (toolCall: vscode.LanguageModelToolCallPart) => Promise<string> {
     const { schemaFiles, accessPatternFiles, volumetricFiles } = fileLists;
     const workspaceFileExclude = getWorkspaceFileExclude(languageContext?.language, languageContext?.frameworks);
+    const tag = logPrefix ?? '[Migration]';
 
     return async (toolCall: vscode.LanguageModelToolCallPart): Promise<string> => {
         const input = toolCall.input as Record<string, string>;
-        const tag = logPrefix ?? '[Migration]';
 
         if (logPrefix) {
             ext.outputChannel.appendLog(
@@ -346,10 +353,24 @@ export function createToolExecutor(
                 }
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    const rawText = decodeFileBytes(content);
+                    const decoded = decodeFileBytes(content);
+                    const rawText = decoded.text;
                     const fileExt = path.extname(absolutePath).toLowerCase();
                     if (fileExt === '.sql' || fileExt === '.ddl') {
-                        const extracted = extractStructuralDDL(rawText);
+                        const { sql: extracted, stats } = extractStructuralDDL(rawText);
+                        const baseName = path.basename(absolutePath);
+                        const summary = formatDdlExtractorSummary(baseName, stats, decoded.encoding);
+                        ext.outputChannel.appendLog(`${tag} ${summary}`);
+                        ext.outputChannel.debug(`${tag} DDL extractor stats for ${baseName}: ${JSON.stringify(stats)}`);
+                        for (const w of stats.warnings) {
+                            ext.outputChannel.warn(`${tag} DDL extractor (${baseName}): ${w}`);
+                        }
+                        // Per-call telemetry event + phase rollup (best-effort; never throws to caller)
+                        await callWithTelemetryAndErrorHandling('cosmosDB.migration.ddlExtractor.extract', (ctx) => {
+                            ctx.errorHandling.suppressDisplay = true;
+                            ctx.errorHandling.rethrow = false;
+                            reportDdlExtractorStats(ctx, stats, baseName, decoded.encoding, phaseContext);
+                        });
                         return extracted || rawText;
                     }
                     if (fileExt === '.csv') return rawText.split('\n').slice(0, 2).join('\n');
@@ -386,7 +407,7 @@ export function createToolExecutor(
                 }
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    return decodeFileBytes(content);
+                    return decodeFileBytes(content).text;
                 } catch {
                     return `Error: Could not read file "${input.fileName}".`;
                 }
@@ -418,7 +439,7 @@ export function createToolExecutor(
                 }
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    return decodeFileBytes(content);
+                    return decodeFileBytes(content).text;
                 } catch {
                     return `Error: Could not read file "${input.fileName}".`;
                 }
@@ -497,7 +518,7 @@ export function createToolExecutor(
 
                 try {
                     const content = await vscode.workspace.fs.readFile(vscode.Uri.file(absolutePath));
-                    const text = decodeFileBytes(content);
+                    const text = decodeFileBytes(content).text;
 
                     if (isChunked) {
                         const lines = text.split('\n');

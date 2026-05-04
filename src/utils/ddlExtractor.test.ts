@@ -5,6 +5,11 @@
 
 import { extractStructuralDDL } from './ddlExtractor';
 
+// Convenience wrapper for the legacy assertion shape (string-only).
+function extract(sql: string): string {
+    return extractStructuralDDL(sql).sql;
+}
+
 // ── Baseline: CREATE TABLE ──────────────────────────────────────────
 
 describe('extractStructuralDDL', () => {
@@ -16,7 +21,7 @@ describe('extractStructuralDDL', () => {
                 OrderDate DATE
             );
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE Orders');
         expect(result).toContain('OrderID INT PRIMARY KEY');
     });
@@ -28,7 +33,7 @@ describe('extractStructuralDDL', () => {
                 name VARCHAR(100)
             );
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE IF NOT EXISTS users');
         expect(result).toContain('id SERIAL PRIMARY KEY');
     });
@@ -40,7 +45,7 @@ describe('extractStructuralDDL', () => {
                 Name NVARCHAR(100)
             )
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE Products');
         expect(result).toContain('ProductID INT');
     });
@@ -52,7 +57,7 @@ describe('extractStructuralDDL', () => {
             ALTER TABLE Orders ADD CONSTRAINT FK_Customer
                 FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID);
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('ALTER TABLE Orders');
         expect(result).toContain('FOREIGN KEY');
     });
@@ -61,25 +66,25 @@ describe('extractStructuralDDL', () => {
 
     it('extracts CREATE INDEX', () => {
         const sql = `CREATE INDEX IX_Orders_Date ON Orders(OrderDate);`;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE INDEX IX_Orders_Date');
     });
 
     it('extracts CREATE UNIQUE INDEX', () => {
         const sql = `CREATE UNIQUE INDEX UX_Users_Email ON Users(Email);`;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE UNIQUE INDEX UX_Users_Email');
     });
 
     it('extracts CREATE CLUSTERED INDEX (SQL Server)', () => {
         const sql = `CREATE CLUSTERED INDEX CX_Orders ON Orders(OrderDate);`;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE CLUSTERED INDEX CX_Orders');
     });
 
     it('extracts CREATE NONCLUSTERED INDEX (SQL Server)', () => {
         const sql = `CREATE NONCLUSTERED INDEX IX_Orders_Cust ON Orders(CustomerID);`;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE NONCLUSTERED INDEX');
     });
 
@@ -90,7 +95,7 @@ describe('extractStructuralDDL', () => {
             CREATE VIEW vw_ActiveOrders AS
             SELECT * FROM Orders WHERE Status = 'Active';
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE VIEW vw_ActiveOrders');
     });
 
@@ -99,7 +104,7 @@ describe('extractStructuralDDL', () => {
             CREATE OR REPLACE VIEW vw_Users AS
             SELECT id, name FROM users;
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE OR REPLACE VIEW vw_Users');
     });
 
@@ -107,7 +112,7 @@ describe('extractStructuralDDL', () => {
 
     it('extracts CREATE SEQUENCE', () => {
         const sql = `CREATE SEQUENCE order_id_seq START WITH 1 INCREMENT BY 1;`;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE SEQUENCE order_id_seq');
     });
 
@@ -119,7 +124,7 @@ describe('extractStructuralDDL', () => {
                 'sad', 'ok', 'happy'
             );
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TYPE mood');
     });
 
@@ -127,7 +132,7 @@ describe('extractStructuralDDL', () => {
 
     it('extracts CREATE DOMAIN', () => {
         const sql = `CREATE DOMAIN positive_int AS INTEGER CHECK (VALUE > 0);`;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE DOMAIN positive_int');
     });
 
@@ -141,7 +146,7 @@ describe('extractStructuralDDL', () => {
                 SELECT * FROM Orders;
             END;
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result.trim()).toBe('');
     });
 
@@ -153,7 +158,7 @@ describe('extractStructuralDDL', () => {
                 RETURN (SELECT Total FROM Orders WHERE OrderID = @OrderID);
             END;
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result.trim()).toBe('');
     });
 
@@ -165,7 +170,7 @@ describe('extractStructuralDDL', () => {
                 PRINT 'New order inserted';
             END;
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result.trim()).toBe('');
     });
 
@@ -176,7 +181,7 @@ describe('extractStructuralDDL', () => {
             /* This is a block comment */
             CREATE TABLE T1 (id INT);
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE T1');
         expect(result).not.toContain('block comment');
     });
@@ -186,7 +191,7 @@ describe('extractStructuralDDL', () => {
             -- This is a comment
             CREATE TABLE T1 (id INT); -- inline comment
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE T1');
         expect(result).not.toContain('This is a comment');
     });
@@ -198,7 +203,7 @@ describe('extractStructuralDDL', () => {
                 id INT PRIMARY KEY # auto-increment
             );
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE users');
         expect(result).not.toContain('MySQL comment');
         expect(result).not.toContain('auto-increment');
@@ -211,7 +216,7 @@ describe('extractStructuralDDL', () => {
             CREATE TABLE T1 (id INT);
             INSERT INTO T1 VALUES (1);
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE T1');
         expect(result).not.toContain('INSERT');
     });
@@ -221,29 +226,29 @@ describe('extractStructuralDDL', () => {
             UPDATE T1 SET id = 2 WHERE id = 1;
             CREATE TABLE T2 (id INT);
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).not.toContain('UPDATE');
         expect(result).toContain('CREATE TABLE T2');
     });
 
     it('strips DELETE statements', () => {
         const sql = `DELETE FROM T1 WHERE id = 1;`;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips EXEC/EXECUTE statements', () => {
         const sql = `EXEC sp_GetOrders;`;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips SET statements', () => {
         const sql = `SET NOCOUNT ON;`;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips USE statements', () => {
         const sql = `USE MyDatabase;`;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips GO batch separator', () => {
@@ -251,14 +256,14 @@ describe('extractStructuralDDL', () => {
             CREATE TABLE T1 (id INT);
             GO
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE T1');
         expect(result).not.toMatch(/^\s*GO\s*$/m);
     });
 
     it('strips PRINT statements', () => {
         const sql = `PRINT 'Hello';`;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips transaction commands', () => {
@@ -267,7 +272,7 @@ describe('extractStructuralDDL', () => {
             COMMIT;
             ROLLBACK;
         `;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips GRANT/REVOKE/DENY', () => {
@@ -276,7 +281,7 @@ describe('extractStructuralDDL', () => {
             REVOKE INSERT ON T1 FROM user1;
             DENY DELETE ON T1 TO user1;
         `;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     it('strips DROP statements', () => {
@@ -284,7 +289,7 @@ describe('extractStructuralDDL', () => {
             DROP TABLE IF EXISTS T1;
             DROP INDEX IX_Temp;
         `;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     // ── Multi-statement files ───────────────────────────────────────
@@ -306,7 +311,7 @@ describe('extractStructuralDDL', () => {
 
             INSERT INTO Orders VALUES (1, 1);
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE Customers');
         expect(result).toContain('CREATE TABLE Orders');
         expect(result).not.toContain('INSERT');
@@ -320,7 +325,7 @@ describe('extractStructuralDDL', () => {
                 id INT,
                 name VARCHAR(50)
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE T1');
         expect(result).toContain('id INT');
     });
@@ -354,7 +359,7 @@ describe('extractStructuralDDL', () => {
 
             CREATE INDEX idx_users_email ON users(email);
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE users');
         expect(result).toContain('CREATE SEQUENCE invoice_seq');
         expect(result).toContain('CREATE TYPE status_enum');
@@ -372,7 +377,7 @@ describe('extractStructuralDDL', () => {
     // ── Empty / no-match input ──────────────────────────────────────
 
     it('returns empty string for empty input', () => {
-        expect(extractStructuralDDL('')).toBe('');
+        expect(extract('')).toBe('');
     });
 
     it('returns empty string for non-structural SQL', () => {
@@ -381,7 +386,7 @@ describe('extractStructuralDDL', () => {
             UPDATE T1 SET x = 1;
             DELETE FROM T1;
         `;
-        expect(extractStructuralDDL(sql).trim()).toBe('');
+        expect(extract(sql).trim()).toBe('');
     });
 
     // ── Phase B: Storage / engine clause stripping ──────────────────
@@ -395,7 +400,7 @@ describe('extractStructuralDDL', () => {
                     WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, FILLFACTOR = 90) ON [PRIMARY]
                 );
             `;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE TABLE Orders');
             expect(result).toContain('PRIMARY KEY CLUSTERED');
             expect(result).not.toMatch(/WITH\s*\(/i);
@@ -405,7 +410,7 @@ describe('extractStructuralDDL', () => {
 
         it('strips WITH (...) on CREATE INDEX (with nested parens)', () => {
             const sql = `CREATE INDEX IX_T ON T(C) WITH (DATA_COMPRESSION = PAGE ON PARTITIONS (1 TO 4));`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE INDEX IX_T ON T(C)');
             expect(result).not.toMatch(/WITH\s*\(/i);
             expect(result).not.toMatch(/DATA_COMPRESSION/i);
@@ -413,21 +418,21 @@ describe('extractStructuralDDL', () => {
 
         it('strips ON [PRIMARY] filegroup placement', () => {
             const sql = `CREATE TABLE T (id INT) ON [PRIMARY];`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE TABLE T');
             expect(result).not.toMatch(/ON\s+\[PRIMARY\]/i);
         });
 
         it('strips TEXTIMAGE_ON and FILESTREAM_ON', () => {
             const sql = `CREATE TABLE T (id INT, blob VARBINARY(MAX)) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY] FILESTREAM_ON [PRIMARY];`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).not.toMatch(/TEXTIMAGE_ON/i);
             expect(result).not.toMatch(/FILESTREAM_ON/i);
         });
 
         it('strips COLLATE column clauses', () => {
             const sql = `CREATE TABLE T (name NVARCHAR(50) COLLATE Latin1_General_100_CI_AS NOT NULL);`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('NVARCHAR(50)');
             expect(result).toContain('NOT NULL');
             expect(result).not.toMatch(/COLLATE/i);
@@ -435,7 +440,7 @@ describe('extractStructuralDDL', () => {
 
         it('strips ROWGUIDCOL and NOT FOR REPLICATION', () => {
             const sql = `CREATE TABLE T (rowguid UNIQUEIDENTIFIER ROWGUIDCOL NOT NULL, id INT IDENTITY NOT FOR REPLICATION);`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).not.toMatch(/ROWGUIDCOL/i);
             expect(result).not.toMatch(/NOT\s+FOR\s+REPLICATION/i);
             expect(result).toContain('UNIQUEIDENTIFIER');
@@ -451,7 +456,7 @@ describe('extractStructuralDDL', () => {
                 CREATE VIEW vw_ActiveOrders AS
                 SELECT * FROM Orders WHERE Status = 'Active';
             `;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE VIEW vw_ActiveOrders AS');
             expect(result).toContain('-- references: Orders');
             expect(result).not.toMatch(/SELECT\s+\*/i);
@@ -466,7 +471,7 @@ describe('extractStructuralDDL', () => {
                 INNER JOIN Customers c ON o.CustID = c.ID
                 LEFT JOIN Products p ON o.ProdID = p.ID;
             `;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('-- references:');
             expect(result).toMatch(/Orders/);
             expect(result).toMatch(/Customers/);
@@ -478,14 +483,14 @@ describe('extractStructuralDDL', () => {
                 CREATE OR REPLACE VIEW vw_Users AS
                 SELECT id, name FROM users;
             `;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE OR REPLACE VIEW vw_Users AS');
             expect(result).toContain('-- references: users');
         });
 
         it('summarizes views with no detectable refs as (none detected)', () => {
             const sql = `CREATE VIEW vw_Const AS SELECT 1 AS X;`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('-- references: (none detected)');
         });
     });
@@ -498,20 +503,20 @@ describe('extractStructuralDDL', () => {
                 ALTER TABLE Orders ADD CONSTRAINT FK_Cust FOREIGN KEY (CustID) REFERENCES Customers(ID);
                 ALTER TABLE Orders CHECK CONSTRAINT [FK_Cust];
             `;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('ADD CONSTRAINT FK_Cust');
             expect(result).not.toMatch(/CHECK\s+CONSTRAINT\s+\[FK_Cust\]/i);
         });
 
         it('drops ALTER TABLE … NOCHECK CONSTRAINT', () => {
             const sql = `ALTER TABLE Orders NOCHECK CONSTRAINT [FK_Cust];`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result.trim()).toBe('');
         });
 
         it('drops ALTER TABLE … ADD CONSTRAINT [CK_*] CHECK (...)', () => {
             const sql = `ALTER TABLE Orders WITH CHECK ADD CONSTRAINT [CK_Status] CHECK ((Status >= 1 AND Status <= 7));`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result.trim()).toBe('');
         });
     });
@@ -527,7 +532,7 @@ describe('extractStructuralDDL', () => {
                     CONSTRAINT [CK_T_id] CHECK ((id > 0))
                 );
             `;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE TABLE T');
             expect(result).toContain('id INT');
             expect(result).toContain('status INT');
@@ -537,7 +542,7 @@ describe('extractStructuralDDL', () => {
 
         it('keeps CHECK clause inside CREATE DOMAIN', () => {
             const sql = `CREATE DOMAIN positive_int AS INTEGER CHECK (VALUE > 0);`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE DOMAIN positive_int');
             expect(result).toMatch(/CHECK\s*\(VALUE > 0\)/i);
         });
@@ -548,14 +553,14 @@ describe('extractStructuralDDL', () => {
     describe('additional structural patterns', () => {
         it('extracts CREATE FULLTEXT INDEX', () => {
             const sql = `CREATE FULLTEXT INDEX ON Documents(Body) KEY INDEX PK_Documents ON ftCatalog;`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE FULLTEXT INDEX');
             expect(result).toContain('Documents(Body)');
         });
 
         it('extracts CREATE SCHEMA', () => {
             const sql = `CREATE SCHEMA Sales AUTHORIZATION dbo;`;
-            const result = extractStructuralDDL(sql);
+            const result = extract(sql);
             expect(result).toContain('CREATE SCHEMA Sales');
         });
     });
@@ -580,7 +585,7 @@ describe('extractStructuralDDL', () => {
             ALTER TABLE [Sales].[Customer] CHECK CONSTRAINT [FK_Customer_Person_PersonID];
             GO
         `;
-        const result = extractStructuralDDL(sql);
+        const result = extract(sql);
         expect(result).toContain('CREATE TABLE [Sales].[Customer]');
         expect(result).toContain('PRIMARY KEY CLUSTERED');
         expect(result).toContain('FOREIGN KEY([PersonID])');
@@ -593,5 +598,122 @@ describe('extractStructuralDDL', () => {
         expect(result).not.toMatch(/ROWGUIDCOL/i);
         expect(result).not.toMatch(/NOT\s+FOR\s+REPLICATION/i);
         expect(result).not.toMatch(/CHECK\s+CONSTRAINT\s+\[FK_/i);
+    });
+
+    // ── Stats / observability ───────────────────────────────────────
+
+    describe('ExtractionStats', () => {
+        it('reports input/output sizes and a positive reduction ratio', () => {
+            const sql = `
+                CREATE TABLE T (
+                    id INT,
+                    name NVARCHAR(50) COLLATE Latin1_General_100_CI_AS NOT NULL,
+                    CONSTRAINT [PK_T] PRIMARY KEY CLUSTERED (id)
+                        WITH (PAD_INDEX = OFF, FILLFACTOR = 90) ON [PRIMARY]
+                ) ON [PRIMARY];
+            `;
+            const { sql: out, stats } = extractStructuralDDL(sql);
+            expect(stats.inputChars).toBe(sql.length);
+            expect(stats.outputChars).toBe(out.length);
+            expect(stats.outputChars).toBeLessThan(stats.inputChars);
+            expect(stats.reductionRatio).toBeGreaterThan(0);
+            expect(stats.reductionRatio).toBeLessThanOrEqual(1);
+            expect(stats.durationMs).toBeGreaterThanOrEqual(0);
+        });
+
+        it('returns zeroed stats and ratio 0 for empty input', () => {
+            const { stats } = extractStructuralDDL('');
+            expect(stats.inputChars).toBe(0);
+            expect(stats.outputChars).toBe(0);
+            expect(stats.reductionRatio).toBe(0);
+            expect(stats.warnings).toEqual([]);
+        });
+
+        it('counts kept statements by type', () => {
+            const sql = `
+                CREATE SCHEMA Sales;
+                CREATE TABLE Sales.Orders (id INT);
+                CREATE INDEX IX_Orders ON Sales.Orders(id);
+                CREATE FULLTEXT INDEX ON Sales.Orders(id) KEY INDEX PK_Orders;
+                ALTER TABLE Sales.Orders ADD CONSTRAINT FK_C FOREIGN KEY (id) REFERENCES C(id);
+                CREATE SEQUENCE Sales.Seq START WITH 1;
+                CREATE TYPE Sales.MyType FROM INT;
+                CREATE DOMAIN PosInt AS INT CHECK (VALUE > 0);
+                CREATE VIEW Sales.V AS SELECT * FROM Sales.Orders;
+            `;
+            const { stats } = extractStructuralDDL(sql);
+            expect(stats.statementCounts.createSchema).toBe(1);
+            expect(stats.statementCounts.createTable).toBe(1);
+            expect(stats.statementCounts.createIndex).toBe(1);
+            expect(stats.statementCounts.createFulltextIndex).toBe(1);
+            expect(stats.statementCounts.alterTable).toBe(1);
+            expect(stats.statementCounts.createSequence).toBe(1);
+            expect(stats.statementCounts.createType).toBe(1);
+            expect(stats.statementCounts.createDomain).toBe(1);
+            expect(stats.statementCounts.createView).toBe(1);
+            expect(stats.statementCounts.other).toBe(0);
+        });
+
+        it('counts dropped ALTER TABLE noise', () => {
+            const sql = `
+                ALTER TABLE T CHECK CONSTRAINT [FK_X];
+                ALTER TABLE T NOCHECK CONSTRAINT [FK_Y];
+                ALTER TABLE T WITH CHECK ADD CONSTRAINT [CK_Z] CHECK ((Status > 0));
+            `;
+            const { stats } = extractStructuralDDL(sql);
+            expect(stats.drops.alterTableCheckReenable).toBe(2);
+            expect(stats.drops.alterTableCheckConstraint).toBe(1);
+            expect(stats.statementCounts.alterTable).toBe(0);
+        });
+
+        it('counts noise stripped from kept statements', () => {
+            const sql = `
+                CREATE TABLE T (
+                    id INT IDENTITY NOT FOR REPLICATION,
+                    rowguid UNIQUEIDENTIFIER ROWGUIDCOL NOT NULL,
+                    name NVARCHAR(50) COLLATE Latin1_General_100_CI_AS,
+                    CONSTRAINT [PK_T] PRIMARY KEY (id) WITH (FILLFACTOR = 90) ON [PRIMARY]
+                ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY] FILESTREAM_ON [PRIMARY];
+            `;
+            const { stats } = extractStructuralDDL(sql);
+            expect(stats.strips.withOptionBlocks).toBe(1);
+            expect(stats.strips.collate).toBe(1);
+            expect(stats.strips.rowGuidCol).toBe(1);
+            expect(stats.strips.notForReplication).toBe(1);
+            expect(stats.strips.onPrimary).toBeGreaterThanOrEqual(1);
+            expect(stats.strips.textImageOn).toBe(1);
+            expect(stats.strips.fileStreamOn).toBe(1);
+        });
+
+        it('counts inline CHECK constraints stripped from CREATE TABLE', () => {
+            const sql = `
+                CREATE TABLE T (
+                    id INT,
+                    status INT CHECK (status BETWEEN 1 AND 7),
+                    CONSTRAINT [CK_T] CHECK ((id > 0))
+                );
+            `;
+            const { stats } = extractStructuralDDL(sql);
+            expect(stats.strips.inlineCheckConstraints).toBe(2);
+        });
+
+        it('counts summarized views and total table references', () => {
+            const sql = `
+                CREATE VIEW V1 AS SELECT * FROM A INNER JOIN B ON A.id = B.id;
+                CREATE VIEW V2 AS SELECT 1 AS X;
+                CREATE VIEW V3 AS SELECT * FROM C, D LEFT JOIN E ON C.id = E.id;
+            `;
+            const { stats } = extractStructuralDDL(sql);
+            expect(stats.views.summarized).toBe(3);
+            // V1: A,B = 2; V2: 0; V3: C,E = 2 (D follows comma, not FROM/JOIN)
+            expect(stats.views.referencedTablesTotal).toBeGreaterThanOrEqual(3);
+        });
+
+        it('emits a warning for an unterminated DDL statement', () => {
+            const sql = `CREATE TABLE T (\n    id INT,\n    name NVARCHAR(50)\n`;
+            const { stats } = extractStructuralDDL(sql);
+            expect(stats.warnings.length).toBeGreaterThan(0);
+            expect(stats.warnings[0]).toMatch(/unterminated/i);
+        });
     });
 });

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
+import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { renderPrompt } from '@vscode/prompt-tsx';
 import * as fs from 'fs';
@@ -287,6 +287,7 @@ async function generateDiscoveryReport(
     token: vscode.CancellationToken,
     analysis: AnalysisResult,
     discoveryInstructions?: string,
+    phaseContext?: IActionContext,
 ): Promise<void> {
     // Pre-parse code-evidenced tables from access-patterns.md (if it exists)
     const accessPatternsMdContent = await readFileByName(accessPatternFiles, 'access-patterns.md');
@@ -309,6 +310,7 @@ async function generateDiscoveryReport(
         '[Discovery]',
         { language: analysis.language, frameworks: analysis.frameworks },
         token,
+        phaseContext,
     );
 
     const discoveryDir = projectService.getDiscoveryPath();
@@ -684,6 +686,7 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
                 token,
                 analysis ?? {},
                 project.phases.discovery.discoveryInstructions,
+                context,
             );
 
             await sendPhaseEvent(channel, 'discoveryCompleted');

@@ -109,6 +109,40 @@ const SKIP_PATTERNS = [
     /^\s*CREATE\s+GLOBAL\s+TEMPORARY\s+TABLE\b/i, // session-scoped scratch space
     /^\s*CREATE\s+PUBLICATION\b/i,
     /^\s*CREATE\s+SUBSCRIPTION\b/i,
+    // PostgreSQL row-level security and rewrite rules — not migration-relevant
+    /^\s*CREATE\s+POLICY\b/i,
+    /^\s*ALTER\s+POLICY\b/i,
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?RULE\b/i,
+    // SQL Server / PostgreSQL partitioning metadata — not relevant to Cosmos DB
+    /^\s*CREATE\s+PARTITION\s+(?:FUNCTION|SCHEME)\b/i,
+    // Admin / session ops sometimes emitted by dumps
+    /^\s*ANALYZE\b/i,
+    /^\s*VACUUM\b/i,
+    /^\s*REINDEX\b/i,
+    /^\s*CLUSTER\b/i,
+    /^\s*LISTEN\b/i,
+    /^\s*NOTIFY\b/i,
+    /^\s*SAVEPOINT\b/i,
+    /^\s*START\s+TRANSACTION\b/i,
+    /^\s*RESET\s+/i,
+    /^\s*ALTER\s+DEFAULT\s+PRIVILEGES\b/i,
+    /^\s*SECURITY\s+LABEL\b/i,
+    // Rare object kinds — not migration-relevant
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TYPE\s+BODY\b/i, // must precede CREATE TYPE
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?LIBRARY\b/i,
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?DIRECTORY\b/i,
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?CONTEXT\b/i,
+    /^\s*CREATE\s+PROFILE\b/i,
+    /^\s*CREATE\s+SERVER\b/i,
+    /^\s*CREATE\s+USER\s+MAPPING\b/i,
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?COLLATION\b/i,
+    /^\s*CREATE\s+STATISTICS\b/i,
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?AGGREGATE\b/i,
+    /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?OPERATOR\b/i,
+    /^\s*CREATE\s+EVENT\s+TRIGGER\b/i, // PG event trigger (not the same as MySQL EVENT, which we summarize)
+    /^\s*CREATE\s+ASSEMBLY\b/i, // SQL Server CLR
+    /^\s*CREATE\s+XML\s+SCHEMA\s+COLLECTION\b/i,
+    /^\s*CREATE\s+(?:LOGIN|USER|ROLE|GROUP)\b/i,
 ];
 
 /**
@@ -297,6 +331,16 @@ export function extractStructuralDDL(rawSql: string): ExtractionResult {
 
     // Strip single-line comments (-- ...) and MySQL # comments
     sql = sql.replace(/(?:--.*|#.*)$/gm, '');
+
+    // Strip MySQL/MariaDB DEFINER/ALGORITHM/SQL SECURITY prefixes that mysqldump
+    // emits between `CREATE` and the object kind. Without this, lines like
+    //   CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW v ...
+    //   CREATE DEFINER=`root`@`%` PROCEDURE p() ...
+    // would not match any DDL or body-object pattern and silently disappear.
+    sql = sql.replace(
+        /\bCREATE\s+((?:(?:ALGORITHM\s*=\s*\w+|DEFINER\s*=\s*(?:`[^`]+`|"[^"]+"|'[^']+'|\S+)|SQL\s+SECURITY\s+(?:DEFINER|INVOKER))\s+)+)(?=VIEW|PROCEDURE|FUNCTION|TRIGGER|EVENT)/gi,
+        'CREATE ',
+    );
 
     // Pre-pass: extract procedure/function/trigger bodies as one-line summaries
     // and remove them from `sql` so the line-walk doesn't misinterpret body
@@ -728,7 +772,7 @@ function countParenDelta(line: string): number {
  * Captures: 1=kind keyword.
  */
 const BODY_OBJECT_START =
-    /\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+|NONEDITIONABLE\s+)?(?:CONSTRAINT\s+)?(PROCEDURE|FUNCTION|TRIGGER)\b/gi;
+    /\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:EDITIONABLE\s+|NONEDITIONABLE\s+)?(?:CONSTRAINT\s+)?(PROCEDURE|FUNCTION|TRIGGER|EVENT(?!\s+TRIGGER))\b/gi;
 
 /** Identifier (quoted, backticked, bracketed, or bare; optionally schema-qualified). */
 const ID_PATTERN =
@@ -753,7 +797,7 @@ function extractBodyObjects(sql: string, stats: ExtractionStats): BodyExtraction
     let m: RegExpExecArray | null;
     while ((m = BODY_OBJECT_START.exec(sql)) !== null) {
         const start = m.index;
-        const kind = m[1].toUpperCase() as 'PROCEDURE' | 'FUNCTION' | 'TRIGGER';
+        const kind = m[1].toUpperCase() as 'PROCEDURE' | 'FUNCTION' | 'TRIGGER' | 'EVENT';
         const end = findBodyEnd(sql, m.index + m[0].length);
         const bodyText = sql.slice(start, end);
 
@@ -763,7 +807,9 @@ function extractBodyObjects(sql: string, stats: ExtractionStats): BodyExtraction
             stats.procedures.summarized++;
             stats.procedures.readsTotal += summary.readCount;
             stats.procedures.writesTotal += summary.writeCount;
-            if (kind === 'PROCEDURE') stats.statementCounts.createProcedure++;
+            // MySQL EVENT is treated as a procedure for counting purposes (it's a
+            // scheduled body of SQL — same migration shape: move to app tier as a job).
+            if (kind === 'PROCEDURE' || kind === 'EVENT') stats.statementCounts.createProcedure++;
             else if (kind === 'FUNCTION') stats.statementCounts.createFunction++;
             else stats.statementCounts.createTrigger++;
         }
@@ -864,11 +910,44 @@ interface BodySummary {
  * Produces a one-line summary of a body object: signature (or trigger header)
  * plus comma-separated reads/writes inferred from the body text.
  */
-function summarizeBodyObject(kind: 'PROCEDURE' | 'FUNCTION' | 'TRIGGER', bodyText: string): BodySummary | undefined {
+function summarizeBodyObject(
+    kind: 'PROCEDURE' | 'FUNCTION' | 'TRIGGER' | 'EVENT',
+    bodyText: string,
+): BodySummary | undefined {
     if (kind === 'TRIGGER') {
         return summarizeTrigger(bodyText);
     }
+    if (kind === 'EVENT') {
+        return summarizeEvent(bodyText);
+    }
     return summarizeProcOrFunc(kind, bodyText);
+}
+
+/**
+ * MySQL `CREATE EVENT` summarization. Captures name, schedule clause, and DML refs.
+ */
+function summarizeEvent(bodyText: string): BodySummary | undefined {
+    const m = new RegExp(
+        '^\\s*CREATE\\s+(?:OR\\s+REPLACE\\s+)?EVENT\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?' +
+            `(${ID_PATTERN})\\s+ON\\s+SCHEDULE\\s+([^\\n]+?)(?=\\s+(?:DO|ON\\s+COMPLETION|ENABLE|DISABLE|COMMENT)\\b)`,
+        'i',
+    ).exec(bodyText);
+    const refs = collectReadsWrites(bodyText);
+    if (!m) {
+        const truncated = bodyText.slice(0, 120).replace(/\s+/g, ' ').trim();
+        return {
+            line: `${truncated} -- ${formatRefs(refs)};`,
+            readCount: refs.reads.size,
+            writeCount: refs.writes.size,
+        };
+    }
+    const name = m[1];
+    const schedule = m[2].replace(/\s+/g, ' ').trim();
+    return {
+        line: `CREATE EVENT ${name} ON SCHEDULE ${schedule} -- ${formatRefs(refs)};`,
+        readCount: refs.reads.size,
+        writeCount: refs.writes.size,
+    };
 }
 
 function summarizeProcOrFunc(kind: 'PROCEDURE' | 'FUNCTION', bodyText: string): BodySummary | undefined {

@@ -1099,6 +1099,96 @@ describe('extractStructuralDDL', () => {
         });
     });
 
+    // ── MySQL DEFINER/ALGORITHM/SQL SECURITY prefix stripping ───────
+
+    describe('MySQL CREATE prefixes', () => {
+        it('captures CREATE VIEW with ALGORITHM/DEFINER/SQL SECURITY prefixes', () => {
+            const sql =
+                'CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW v AS SELECT id FROM orders;';
+            const result = extract(sql);
+            expect(result).toContain('VIEW v');
+            expect(result).toContain('-- references: orders');
+        });
+
+        it('summarizes CREATE PROCEDURE with DEFINER prefix', () => {
+            const sql = "CREATE DEFINER=`root`@`%` PROCEDURE p() BEGIN INSERT INTO t (x) VALUES (1); END;";
+            const result = extract(sql);
+            expect(result).toContain('CREATE PROCEDURE p()');
+            expect(result).toContain('writes: t');
+        });
+
+        it('summarizes CREATE FUNCTION with DEFINER prefix', () => {
+            const sql =
+                "CREATE DEFINER=`root`@`%` FUNCTION f() RETURNS INT DETERMINISTIC BEGIN RETURN (SELECT COUNT(*) FROM t); END;";
+            const result = extract(sql);
+            expect(result).toContain('CREATE FUNCTION f()');
+            expect(result).toContain('reads: t');
+        });
+
+        it('summarizes CREATE TRIGGER with DEFINER prefix', () => {
+            const sql =
+                "CREATE DEFINER=`root`@`%` TRIGGER trg BEFORE INSERT ON orders FOR EACH ROW BEGIN INSERT INTO audit (msg) VALUES ('x'); END;";
+            const result = extract(sql);
+            expect(result).toContain('CREATE TRIGGER trg BEFORE INSERT ON orders');
+            expect(result).toContain('writes: audit');
+        });
+
+        it('summarizes CREATE EVENT with DEFINER and schedule', () => {
+            const sql =
+                "CREATE DEFINER=`root`@`%` EVENT ev ON SCHEDULE EVERY 1 DAY DO BEGIN DELETE FROM logs WHERE created < NOW() - INTERVAL 30 DAY; END;";
+            const result = extract(sql);
+            expect(result).toContain('CREATE EVENT ev ON SCHEDULE EVERY 1 DAY');
+            expect(result).toContain('writes: logs');
+        });
+    });
+
+    // ── Skip patterns: rare/admin objects ───────────────────────────
+
+    describe('skip rare and admin statements', () => {
+        it.each([
+            ['CREATE POLICY p1 ON t USING (true);', 'POLICY'],
+            ['CREATE RULE notify_me AS ON UPDATE TO t DO NOTIFY t;', 'RULE'],
+            ['CREATE PARTITION FUNCTION pf (int) AS RANGE LEFT FOR VALUES (1, 2, 3);', 'PARTITION FUNCTION'],
+            ['CREATE PARTITION SCHEME ps AS PARTITION pf TO ([PRIMARY]);', 'PARTITION SCHEME'],
+            ['CREATE EVENT TRIGGER et ON ddl_command_start EXECUTE FUNCTION f();', 'EVENT TRIGGER'],
+            ['CREATE TYPE BODY tb AS BEGIN NULL; END;', 'TYPE BODY'],
+            ['CREATE LIBRARY lib AS \'/tmp/lib.so\';', 'LIBRARY'],
+            ['CREATE DIRECTORY dir AS \'/tmp\';', 'DIRECTORY'],
+            ['CREATE PROFILE prof LIMIT SESSIONS_PER_USER 5;', 'PROFILE'],
+            ['CREATE SERVER fdw_srv FOREIGN DATA WRAPPER pg;', 'SERVER'],
+            ['CREATE COLLATION french (LOCALE = \'fr_FR\');', 'COLLATION'],
+            ['CREATE STATISTICS s ON x, y FROM t;', 'STATISTICS'],
+            ['CREATE AGGREGATE my_sum(int) (SFUNC = int4pl, STYPE = int);', 'AGGREGATE'],
+            ['CREATE OPERATOR === (LEFTARG = int, RIGHTARG = int, FUNCTION = int4eq);', 'OPERATOR'],
+            ['CREATE ASSEMBLY asm FROM 0x4D5A;', 'ASSEMBLY'],
+            ['CREATE LOGIN bob WITH PASSWORD = \'x\';', 'LOGIN'],
+            ['CREATE ROLE admin;', 'ROLE'],
+            ['ANALYZE TABLE t;', 'ANALYZE'],
+            ['VACUUM FULL;', 'VACUUM'],
+            ['REINDEX TABLE t;', 'REINDEX'],
+            ['CLUSTER t USING idx_t;', 'CLUSTER'],
+            ['LISTEN ch;', 'LISTEN'],
+            ['NOTIFY ch, \'msg\';', 'NOTIFY'],
+            ['SAVEPOINT sp1;', 'SAVEPOINT'],
+            ['START TRANSACTION READ ONLY;', 'START TRANSACTION'],
+            ['ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly;', 'ALTER DEFAULT PRIVILEGES'],
+            ['SECURITY LABEL ON TABLE t IS \'classified\';', 'SECURITY LABEL'],
+        ])('skips %s', (sql) => {
+            expect(extract(sql).trim()).toBe('');
+        });
+
+        it('does not strip a real ANALYZE-prefixed identifier (sanity)', () => {
+            // Just ensure CREATE TABLE survives alongside skipped ANALYZE.
+            const sql = `
+                CREATE TABLE t (id INT);
+                ANALYZE TABLE t;
+            `;
+            const result = extract(sql);
+            expect(result).toContain('CREATE TABLE t');
+            expect(result).not.toMatch(/^ANALYZE/im);
+        });
+    });
+
     // ── End-to-end cross-dialect realism ────────────────────────────
 
     it('strips a realistic pg_dump fragment to its essence', () => {

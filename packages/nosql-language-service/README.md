@@ -101,6 +101,7 @@ const formatted   = service.format("SELECT  *  FROM  c");
 
 ### Option C: Use a Provider (Monaco)
 
+
 ```typescript
 import * as monaco from "monaco-editor";
 import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
@@ -115,8 +116,7 @@ const service = new SqlLanguageService({
 const disposable = registerCosmosDbSql(monaco, service);
 ```
 
-### Option C: Use a Provider (VS Code Extension)
-
+### Option D: Use a Provider (VS Code Extension)
 ```typescript
 import * as vscode from "vscode";
 import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
@@ -131,8 +131,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 ```
 
-### Option C: Use a Provider (CodeMirror 6)
-
+### Option E: Use a Provider (CodeMirror 6)
 ```typescript
 import { autocompletion } from "@codemirror/autocomplete";
 import { linter } from "@codemirror/lint";
@@ -317,18 +316,43 @@ pattern matching:
 - [C++ Grammar Parity](docs/cpp-parity.md) — source-of-truth
   grammar contract, locked precedence rules, intentional
   recovery-only deviations
+- [Grammar Discrepancies](docs/grammar-discrepancies.md) —
+  known differences between the TypeScript parser and the C++ reference
+- [Error Messages](docs/error-messages.md) — human-friendly
+  error message provider design
+- [Typo Detection](docs/typo-detection.md) — keyword-typo
+  diagnostic heuristics
 - [Design Decisions](docs/decisions.md) — why Chevrotain,
   why immutable AST, token ordering
+- [Test Suite](docs/test-suite.md) — fixture breakdown,
+  unit vs integration layers, known emulator limitations,
+  how to run tests locally
 
 ## Development
 
 ```bash
 npm install
-npm test            # run tests (vitest)
-npm run test:watch  # watch mode
-npm run build       # compile ESM + CJS
-npm run lint        # type-check
+npm run vitest          # unit tests (no emulator needed)
+npm run vitest:ui       # watch mode with UI
+npm run build           # compile ESM
+npm run lint            # ESLint
 ```
+
+### Integration tests (requires Cosmos DB Emulator)
+
+```bash
+# Start the emulator (from repo root)
+docker compose up -d
+
+# Seed test data (first time or after --reset)
+node scripts/import-seed.mjs --all --endpoint https://localhost:8081
+
+# Run all tests including integration
+cd packages/nosql-language-service
+NODE_TLS_REJECT_UNAUTHORIZED=0 COSMOS_ENDPOINT=https://localhost:8081 npx vitest run
+```
+
+See [docs/test-suite.md](docs/test-suite.md) for the full fixture breakdown.
 
 ## License
 

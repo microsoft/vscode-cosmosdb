@@ -7,15 +7,22 @@
  * NOTE: Mostly of these functions are async to be able to move them to backend in the future
  */
 
-import { type ItemDefinition, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type ItemDefinition, type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
+import { isEmptyObject } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
-import {
-    type CosmosDBRecordIdentifier,
-    type QueryResultRecord,
-    type SerializedQueryResult,
-} from '../cosmosdb/types/queryResult';
+import { CosmosDBHiddenFields } from '../cosmosdb/cosmosdb-shared-constants';
+import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey, extractPartitionKeyValues, getDocumentId } from './document';
+import {
+    QueryResultMismatchError,
+    getDocumentCollectionKind,
+    getQueryColumns,
+    getQueryResultKind,
+    isSelectStar,
+} from './queryAnalysis';
+import { sanitizeDisplayString } from './sanitization';
+import { leftPadIndex, toStringUniversal } from './strings';
 
 export type StatsItem = {
     metric: string;
@@ -24,10 +31,19 @@ export type StatsItem = {
     tooltip: string;
 };
 
-export type TableRecord = {
+/** Row metadata — never overlaps with document field names */
+export type TableRowMeta = {
     __id: string;
     __documentId?: CosmosDBRecordIdentifier;
-    [key: string]: string | CosmosDBRecordIdentifier | undefined | null;
+};
+
+/**
+ * A single table row.
+ * `__id` and `__documentId` are internal; all other keys are raw document
+ * values (not pre-serialized). The UI layer calls `toStringUniversal` at render time.
+ */
+export type TableRecord = TableRowMeta & {
+    [key: string]: unknown;
 };
 
 export type TableData = {
@@ -58,117 +74,13 @@ export type ColumnOptions = {
 
 const MAX_TREE_LEVEL_LENGTH = 100;
 
-export const toStringUniversal = (value: unknown): string => {
-    // Handle null/undefined explicitly
-    if (value === null) return 'null';
-    if (value === undefined) return 'undefined';
-
-    // Handle primitives
-    if (typeof value !== 'object') {
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        return String(value);
-    }
-
-    // Handle Error objects - extract message
-    if (value instanceof Error) {
-        return value.message || value.toString();
-    }
-
-    // Try JSON.stringify for objects/arrays
-    try {
-        return JSON.stringify(value, null, 2); // Pretty print with indentation
-    } catch {
-        // Circular reference or other JSON error
-        // Try Object.prototype.toString for better type info
-        const typeString = Object.prototype.toString.call(value);
-
-        // Try to get constructor name
-        try {
-            const constructor = (value as Record<string, unknown>)?.constructor?.name;
-            if (constructor && constructor !== 'Object') {
-                return `[${constructor}]`;
-            }
-        } catch {
-            // Ignore
-        }
-
-        return typeString; // e.g., "[object Array]", "[object Date]"
-    }
-};
-
 /**
- * Checks if a value is a NonePartitionKey (empty object used by Cosmos DB SDK)
+ * Checks if a value is a NonePartitionKey (empty object used by Cosmos DB SDK).
  * NonePartitionKeyLiteral from @azure/cosmos is defined as {} and represents
- * a partition key value for items without a value for partition key
- * @param value The value to check
- * @returns true if the value is a None partition key
+ * a partition key value for items without a value for partition key.
  */
 const isNonePartitionKey = (value: unknown): boolean => {
     return isEmptyObject(value);
-};
-
-/**
- * Checks if a value is an empty object '{}'.
- * @param value The value to check
- * @returns true if the value is an empty object
- */
-const isEmptyObject = (value: unknown): boolean => {
-    return typeof value === 'object' && value !== null && Object.keys(value).length === 0;
-};
-
-/**
- * Truncates a string if it exceeds the specified maximum length.
- * @param value The string to truncate
- * @param maxLength Maximum length of the string (default: MAX_TREE_LEVEL_LENGTH)
- * @param suffix Suffix to append to truncated strings (default: "…")
- * @returns The truncated string with suffix if truncated, or original string
- */
-export const truncateString = (value: string, maxLength = MAX_TREE_LEVEL_LENGTH, suffix = '…'): string => {
-    if (!value) {
-        return '';
-    }
-
-    if (value.length <= maxLength) {
-        return value;
-    }
-
-    return value.substring(0, maxLength - suffix.length) + suffix;
-};
-
-/**
- * Creates a left-padded string representation of an index based on array length
- * @param {number} index - The index to pad
- * @param {Array|number} array - The array or its length to determine padding width
- * @param {string} padChar - Character to use for padding
- * @returns {string} - Padded index string
- */
-function leftPadIndex(index: number, array: unknown[] | number, padChar: string = '0'): string {
-    // Get array length or use the number directly
-    const arrayLength = Array.isArray(array) ? array.length : array;
-
-    // Calculate the number of digits needed
-    const maxDigits = Math.floor(Math.log10(arrayLength - 1) + 1);
-
-    // Convert index to string and add padding
-    return String(index).padStart(maxDigits, padChar);
-}
-
-/**
- * We can retrieve the document id to open it in a separate tab only if record contains {@link CosmosDBRecordIdentifier}
- * We can be 100% sure that all required fields for {@link CosmosDBRecordIdentifier} are present in the record
- * if query has `SELECT *` clause. So we can enable editing only in this case.
- * Based on documentation https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/select
- * '*" is allowed only if the query doesn't have any subset or joins
- * @param query
- */
-export const isSelectStar = (query: string): boolean => {
-    const matches = query.match(/select([\S\s]*)from[\s\S]*$/im);
-    if (matches) {
-        const selectClause = matches[1].split(',').map((s) => s.trim());
-        return selectClause.find((s) => s.endsWith('*')) !== undefined;
-    }
-
-    return false;
 };
 
 export const queryResultToJSON = (queryResult: SerializedQueryResult | null, selection?: number[]): string => {
@@ -196,7 +108,22 @@ export const queryResultToTree = async (
     queryResult: SerializedQueryResult | null,
     partitionKey: PartitionKeyDefinition | undefined,
 ): Promise<TreeRow[]> => {
-    if (!queryResult) {
+    if (!queryResult?.documents?.length) {
+        return [];
+    }
+
+    const queryKind = getQueryResultKind(queryResult.query);
+    const dataKind = getDocumentCollectionKind(queryResult.documents);
+
+    // Tree view only makes sense for structured object documents
+    if (dataKind === 'empty' || dataKind === 'primitive') {
+        return [];
+    }
+    if (queryKind === 'object' && dataKind !== 'object') {
+        throw new QueryResultMismatchError(queryKind, dataKind);
+    }
+    if (dataKind !== 'object') {
+        // unknown queryKind with mixed/primitive data — cannot render as tree
         return [];
     }
 
@@ -204,7 +131,8 @@ export const queryResultToTree = async (
     const docsLength = queryResult.documents.length;
 
     for (let i = 0; i < docsLength; i++) {
-        const doc = queryResult.documents[i];
+        // dataKind === 'object' is guaranteed by the guard above
+        const doc = queryResult.documents[i] as ItemDefinition;
         const docRow = await documentToTreeRow(doc, partitionKey, leftPadIndex(i, docsLength));
         rows.push(docRow);
 
@@ -304,14 +232,15 @@ const valueToTreeRow = (id: string, field: string, value: unknown): TreeRow => {
 };
 
 /**
- * Convert a document to a hierarchical TreeRow
+ * Convert a document to a hierarchical TreeRow.
+ * Caller must ensure the document is a plain object (not null / scalar / array).
  */
 const documentToTreeRow = async (
-    document: QueryResultRecord,
+    document: JSONObject,
     partitionKey: PartitionKeyDefinition | undefined,
     rootId: string,
 ): Promise<TreeRow> => {
-    const headers = getTableHeaders([document], partitionKey, {
+    const headers = buildTableHeadersFromObjectDocuments([document], partitionKey, {
         ShowPartitionKey: 'first',
         ShowServiceColumns: 'last',
         Sorting: 'ascending',
@@ -323,7 +252,7 @@ const documentToTreeRow = async (
     const children: TreeRow[] = [];
     for (let index = 0; index < headers.length; index++) {
         const header = headers[index];
-        const value = header.startsWith('/') ? partitionKeyValues[header] : document[header];
+        const value = header.startsWith('/') ? partitionKeyValues[header] : (document[header] as unknown);
         children.push(valueToTreeRow(`${rootId}-${leftPadIndex(index, headers.length)}`, header, value));
 
         // Yield to the event loop periodically to avoid UI freezes
@@ -336,7 +265,10 @@ const documentToTreeRow = async (
     return {
         id: rootId,
         documentId: getDocumentId(document, partitionKey),
-        field: document['id'] ? `${document['id']}` : `${rootId} (Index number, id is missing)`,
+        field:
+            typeof document['id'] === 'string' && document['id']
+                ? document['id']
+                : `${rootId} (Index number, id is missing)`,
         value: '',
         type: 'Document',
         children: children.length > 0 ? children : undefined,
@@ -346,21 +278,33 @@ const documentToTreeRow = async (
 
 /**
  * Get the headers for the table (don't take into account the nested objects)
- * @param documents
+ *
+ * If `query` is provided and the SELECT clause projects a fixed set of columns
+ * (i.e. not `SELECT *` / `SELECT VALUE`), those column names are returned in
+ * declaration order, ignoring the `options` sorting/partition-key settings —
+ * the user already decided the shape of the result set.
+ *
+ * When the column set cannot be determined statically (or no `query` is given),
+ * the function falls back to scanning all documents for keys as before.
+ * Documents that are not plain objects (null, scalars, arrays) are skipped
+ * during the scan.
+ *
+ * @param documents  Result documents — `QueryResultRecord[]` i.e. `JSONValue[]`
  * @param partitionKey
  * @param options
  */
-export const getTableHeaders = (
-    documents: ItemDefinition[],
+const buildTableHeadersFromObjectDocuments = (
+    documents: JSONObject[],
     partitionKey: PartitionKeyDefinition | undefined,
     options: ColumnOptions,
 ): string[] => {
+    // At this point the caller guarantees all documents are plain objects (collectionKind === 'object').
     const keys = new Set<string>();
     const serviceKeys = new Set<string>();
 
     documents.forEach((doc) => {
-        Object.keys(doc).forEach((key) => {
-            if (key.startsWith('_')) {
+        Object.keys(doc as object).forEach((key) => {
+            if (CosmosDBHiddenFields.includes(key)) {
                 serviceKeys.add(key);
             } else {
                 keys.add(key);
@@ -421,73 +365,64 @@ export const getTableHeaders = (
 };
 
 /**
- * Get the dataset for the table (don't take into account the nested objects)
- * Uses __id as the unique id of the document
- * Includes the nested partition key values as columns
- * @param documents
- * @param partitionKey
- * @param options
+ * Get the dataset for the table.
+ *
+ * Uses `getDocumentCollectionKind` to determine the data shape:
+ *
+ * - **object** path  — each document is a plain object; fields are stored as raw
+ *   values (not pre-serialized). String values are sanitized (control chars
+ *   stripped). Partition key virtual columns are injected when
+ *   `options.ShowPartitionKey === 'first'`.
+ * - **primitive** path — each document (scalar / null / array) is stored under
+ *   the synthetic key `_value1`.
+ * - **empty / mixed** — returns an empty array.
+ *
+ * The UI layer is responsible for calling `toStringUniversal` / `truncateString`
+ * at render time; this function stores raw values.
  */
-export const getTableDataset = async (
-    documents: QueryResultRecord[],
+const buildTableRowsFromObjectDocuments = async (
+    documents: JSONObject[],
     partitionKey: PartitionKeyDefinition | undefined,
     options: ColumnOptions,
 ): Promise<TableRecord[]> => {
-    const result = new Array<TableRecord>();
-    const truncateValues = options.TruncateValues > 0;
+    const injectPartitionKey = options.ShowPartitionKey === 'first' && !!partitionKey;
 
-    // Process documents in chunks to avoid UI freezes
-    const chunkSize = 1000; // Process 1000 documents per chunk
+    const result = new Array<TableRecord>();
+    const chunkSize = 1000;
+
     for (let i = 0; i < documents.length; i += chunkSize) {
-        // Create a slice of documents to process in this batch
         const chunk = documents.slice(i, i + chunkSize);
 
-        // Process each document in the chunk
-        chunk.forEach((doc) => {
-            // Emulate the unique id of the document
+        chunk.forEach((docRaw) => {
+            // collectionKind === 'object' is guaranteed by the guard above
+            const doc = docRaw as Record<string, unknown>;
             const row: TableRecord = {
                 __id: uuid(),
-                __documentId: getDocumentId(doc, partitionKey),
+                __documentId: getDocumentId(docRaw as unknown as ItemDefinition, partitionKey) ?? undefined,
             };
 
-            if (partitionKey) {
-                const partitionKeyPaths = (partitionKey?.paths ?? []).map((path) =>
+            // Inject virtual partition key columns (only for SELECT *)
+            if (injectPartitionKey) {
+                const partitionKeyPaths = (partitionKey.paths ?? []).map((path) =>
                     path.startsWith('/') ? path.slice(1) : path,
                 );
-                const partitionKeyValues = extractPartitionKey(doc, partitionKey);
+                const partitionKeyValues = extractPartitionKey(docRaw as unknown as ItemDefinition, partitionKey);
                 const valuesArray = Array.isArray(partitionKeyValues) ? partitionKeyValues : [partitionKeyValues];
 
                 partitionKeyPaths.forEach((path, index) => {
                     const value: unknown = valuesArray[index];
-                    // Check if the value is the NonePartitionKey (empty object from Cosmos DB SDK)
-                    if (isNonePartitionKey(value)) {
-                        row[path] = undefined; // represent None partition key as undefined
-                    } else {
-                        row[path] = toStringUniversal(value ?? '');
-                    }
+                    row[path] = isNonePartitionKey(value) ? undefined : (value ?? undefined);
                 });
             }
 
+            // Copy all document fields as raw values; sanitise strings
             Object.entries(doc).forEach(([key, value]) => {
-                if (value === null || value === undefined) {
-                    row[key] = value;
-                } else if (Array.isArray(value)) {
-                    row[key] = truncateValues ? `(elements: ${value.length})` : JSON.stringify(value);
-                    return;
-                } else if (typeof value === 'object') {
-                    const jsonString = JSON.stringify(value);
-                    row[key] = truncateValues ? truncateString(jsonString, options.TruncateValues) : jsonString;
-                    return;
-                } else {
-                    const stringValue = String(value);
-                    row[key] = truncateValues ? truncateString(stringValue, options.TruncateValues) : stringValue;
-                }
+                row[key] = typeof value === 'string' ? sanitizeDisplayString(value) : value;
             });
 
             result.push(row);
         });
 
-        // Yield to the event loop after each chunk by using setTimeout with 0ms
         if (i + chunkSize < documents.length) {
             await new Promise((resolve) => setTimeout(resolve, 0));
         }
@@ -497,18 +432,23 @@ export const getTableDataset = async (
 };
 
 /**
- * Prepare the table data from the query result
- * @param queryResult
- * @param partitionKey
- * @param options
- * Default options are:
- * The id is always the first column (if it does not exist in partition key),
- * then the partition key, when each column has / prefix,
- * then the user columns without _ prefix,
- * then the service columns with _ prefix
- * then values will be truncated to MAX_TREE_LEVEL_LENGTH characters, arrays will be truncated to (elements: n)
+ * Prepare the table data from the query result.
  *
- * !Warning! If query has `SELECT *` clause, the id and partition key fields will be shown first despite the options
+ * Reconciliation matrix (queryKind × dataKind):
+ *
+ * | queryKind   | dataKind   | Action                                              |
+ * |-------------|------------|-----------------------------------------------------|
+ * | any         | empty      | return empty immediately                            |
+ * | object      | object     | normal object path + partition key for SELECT *     |
+ * | object      | primitive  | throw QueryResultMismatchError                      |
+ * | object      | mixed      | throw QueryResultMismatchError                      |
+ * | primitive   | any        | _value1 column — SELECT VALUE means "one value"     |
+ * | unknown     | object     | fallback: scan document keys (legacy)               |
+ * | unknown     | primitive  | _value1 column                                      |
+ * | unknown     | mixed      | return empty (cannot render safely)                 |
+ *
+ * `ShowPartitionKey: 'first'` is automatically set **only** for `SELECT *`
+ * (i.e. when `queryKind === 'object'` AND the spec is `SelectStarSpec`).
  */
 export const queryResultToTable = async (
     queryResult: SerializedQueryResult | null,
@@ -520,18 +460,61 @@ export const queryResultToTable = async (
         TruncateValues: MAX_TREE_LEVEL_LENGTH,
     },
 ): Promise<TableData> => {
-    if (!queryResult || !queryResult.documents) {
+    if (!queryResult?.documents?.length) {
         return { headers: [], dataset: [] };
     }
 
-    if (isSelectStar(queryResult.query ?? '')) {
-        // If the query is a SELECT *, we can show the id and partition key fields
-        // and reorder the columns
-        options.ShowPartitionKey = 'first';
+    const query = queryResult.query ?? '';
+    const queryKind = getQueryResultKind(query);
+    const dataKind = getDocumentCollectionKind(queryResult.documents);
+
+    // Empty data — nothing to show
+    if (dataKind === 'empty') {
+        return { headers: [], dataset: [] };
     }
 
-    const headers = getTableHeaders(queryResult.documents, partitionKey, options);
-    const dataset = await getTableDataset(queryResult.documents, partitionKey, options);
+    // SELECT VALUE — user explicitly asked for value-as-is, always one _value1 column.
+    // The expression may evaluate to a scalar, array, or even a full document object —
+    // all of these are treated as a single opaque value per row.
+    if (queryKind === 'primitive') {
+        const headers = ['_value1'];
+        const dataset: TableRecord[] = queryResult.documents.map((doc) => ({
+            __id: uuid(),
+            _value1: typeof doc === 'string' ? sanitizeDisplayString(doc) : doc,
+        }));
+        return { headers, dataset };
+    }
+
+    // SELECT * / SELECT list returned mixed or scalar data — real server-side error
+    if (queryKind === 'object' && (dataKind === 'primitive' || dataKind === 'mixed')) {
+        throw new QueryResultMismatchError(queryKind, dataKind);
+    }
+
+    // unknown queryKind with mixed data — cannot render safely
+    if (dataKind === 'mixed') {
+        return { headers: [], dataset: [] };
+    }
+
+    const effectiveOptions = { ...options };
+    if (isSelectStar(query)) {
+        effectiveOptions.ShowPartitionKey = 'first';
+    }
+
+    // Fast path: query can have a statically-known set of projected columns
+    const queryColumns =
+        getQueryColumns(query) ??
+        buildTableHeadersFromObjectDocuments(queryResult.documents as JSONObject[], partitionKey, effectiveOptions);
+
+    // Columns without a resolvable name (arithmetic, function calls, etc.)
+    // get a synthetic fallback name: _value1, _value2, …
+    let unnamedCounter = 0;
+    const headers = queryColumns.map((col) => col ?? `_value${++unnamedCounter}`);
+
+    const dataset = await buildTableRowsFromObjectDocuments(
+        queryResult.documents as JSONObject[],
+        partitionKey,
+        effectiveOptions,
+    );
 
     return { headers, dataset };
 };

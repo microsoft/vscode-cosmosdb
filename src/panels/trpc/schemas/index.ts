@@ -9,7 +9,6 @@ export {
     JSONValueSchema,
     QueryExecutionResultSchema,
     QueryMetadataSchema,
-    QueryResultRecordSchema,
     SerializedQueryMetricsSchema,
     SerializedQueryResultSchema,
 } from './querySchemas';

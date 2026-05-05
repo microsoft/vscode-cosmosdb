@@ -16,19 +16,19 @@ type StopOperation<TInput = unknown> = Omit<Operation<TInput>, 'type'> & {
 
 /**
  * Messages sent from the webview/client to the extension/server.
- * @param id - A unique identifier for the message.
+ * @property {string} id - A unique identifier for the message.
  */
 export interface VsCodeLinkRequestMessage {
     id: string;
     // TODO, when tRPC v12 is released, 'subscription.stop' should be supported natively, until then, we're adding it manually.
-    op: Operation<unknown> | StopOperation<unknown>;
+    op: Operation | StopOperation;
 }
 
 /**
  * Messages sent back from the extension/server to the webview/client.
  * Each message sent back is a **response** to a previous VsCodeLinkRequestMessage.
  *
- * @param id - The unique identifier of the message from the original request.
+ * @property {string} id - The unique identifier of the message from the original request.
  */
 export interface VsCodeLinkResponseMessage {
     id: string;

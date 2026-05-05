@@ -23,6 +23,7 @@ services:
             PROTOCOL: https-insecure
             # Persistent storage path inside container
             DATA_PATH: /usr/cosmos/data
+            NODE_TLS_REJECT_UNAUTHORIZED: 0
         volumes:
             # Mount local directory for data persistence
             - ./.cosmosdb-data:/usr/cosmos/data

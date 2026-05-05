@@ -37,8 +37,6 @@ function vscodeLink<TRouter extends AnyRouter>(options: VSCodeLinkOptions): TRPC
     return (_runtime) => {
         // Since this is a terminating link, we do not deconstruct 'next'
         return ({ op }) => {
-            void op;
-
             /**
              * For each message sent from the client to the server, the function below will be called.
              * A separate event handler is created for each message to handle the response from the server

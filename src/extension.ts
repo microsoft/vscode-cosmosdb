@@ -5,6 +5,8 @@
 
 'use strict';
 
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
@@ -30,9 +32,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
-import { SCHEMA_STORAGE_KEY } from './constants';
-import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
-import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
+import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import {
     CosmosDBShellExtension,
@@ -103,8 +103,8 @@ export async function activateInternal(
 
         registerCommands();
 
-        context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
-        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
+        const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
+        registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',

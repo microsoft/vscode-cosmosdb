@@ -1,33 +1,10 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    // Module settings
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "target": "ES2024",
     "outDir": "out",
-    "lib": ["ES2024", "dom", "dom.iterable", "webworker"],
-
-    // TS 7.0 defaults (can be removed entirely, shown for clarity)
-    "strict": true, // ON by default in TS 7.0
-    "esModuleInterop": true, // ON by default in TS 7.0
-    "skipLibCheck": true, // ON by default in TS 7.0
-
-    // Additional strictness (not part of TS 7.0 defaults)
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-
-    // Other options
-    "sourceMap": true,
     "rootDir": ".",
-    "resolveJsonModule": true,
-    "alwaysStrict": true,
-    "paths": {
-      "*": ["./*"]
-    },
-    "jsx": "react-jsx",
-    "types": ["jest", "mocha", "node"],
-    "typeRoots": ["node_modules/@types"]
+    "types": ["node", "vitest/globals"],
+    "typeRoots": ["./types", "./node_modules/@types", "./node_modules"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "main.ts"],
   "exclude": ["node_modules", ".vscode-test", "out", "dist", "test", "src/**/*.test.ts", "**/__mocks__"]

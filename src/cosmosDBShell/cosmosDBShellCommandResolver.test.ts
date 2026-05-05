@@ -4,17 +4,18 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as fs from 'fs';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
 
-jest.mock('fs', () => ({
-    existsSync: jest.fn(),
-    readFileSync: jest.fn(),
-    statSync: jest.fn(),
+vi.mock('fs', () => ({
+    existsSync: vi.fn(),
+    readFileSync: vi.fn(),
+    statSync: vi.fn(),
 }));
 
 describe('cosmosDBShellCommandResolver', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         configureMockFiles([]);
     });
 
@@ -24,7 +25,7 @@ describe('cosmosDBShellCommandResolver', () => {
             'C:\\Users\\test\\.dotnet\\tools\\.store\\cosmosdbshell.win-x64\\1.0.0\\cosmosdbshell.win-x64\\1.0.0\\tools\\any\\win-x64\\CosmosDBShell.exe';
 
         configureMockFiles([commandShimPath, resolvedExePath]);
-        (fs.readFileSync as jest.Mock).mockReturnValue(
+        (fs.readFileSync as Mock).mockReturnValue(
             '@echo off\n"%~dp0.store\\cosmosdbshell.win-x64\\1.0.0\\cosmosdbshell.win-x64\\1.0.0\\tools\\any\\win-x64\\CosmosDBShell.exe" %*',
         );
 
@@ -60,10 +61,8 @@ describe('cosmosDBShellCommandResolver', () => {
 function configureMockFiles(filePaths: string[]): void {
     const knownFiles = new Set(filePaths.map((filePath) => filePath.toLowerCase()));
 
-    (fs.existsSync as jest.Mock).mockImplementation((candidatePath: string) =>
-        knownFiles.has(candidatePath.toLowerCase()),
-    );
-    (fs.statSync as jest.Mock).mockImplementation((candidatePath: string) => ({
+    (fs.existsSync as Mock).mockImplementation((candidatePath: string) => knownFiles.has(candidatePath.toLowerCase()));
+    (fs.statSync as Mock).mockImplementation((candidatePath: string) => ({
         isFile: () => knownFiles.has(candidatePath.toLowerCase()),
     }));
 }

@@ -3,23 +3,19 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { type JSONSchema } from '../utils/json/JSONSchema';
-import {
-    getSchemaFromDocument,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../utils/json/nosql/SchemaAnalyzer';
-import { sanitizeSqlComment } from '../utils/sanitization';
+import { getAvailableLanguageModels } from '../utils/copilotUtils';
+import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
 import {
@@ -392,7 +388,7 @@ export class CosmosDbOperationsService {
                     const validEntries = propSchema.anyOf.filter(
                         (entry): entry is JSONSchema => typeof entry !== 'boolean',
                     );
-                    const types = validEntries.map((entry: JSONSchema) => entry.type || entry['x-bsonType']);
+                    const types = validEntries.map((entry: JSONSchema) => entry.type || entry['x-dataType']);
                     simplified[key] = types.length === 1 ? types[0] : types;
 
                     // If it's an object, recurse into its properties
@@ -413,11 +409,13 @@ export class CosmosDbOperationsService {
                                     (entry): entry is JSONSchema => typeof entry !== 'boolean',
                                 );
                                 const itemTypes = validItemEntries.map(
-                                    (entry: JSONSchema) => entry.type || entry['x-bsonType'],
+                                    (entry: JSONSchema) => entry.type || entry['x-dataType'],
                                 );
                                 simplified[key] = `array<${itemTypes.join('|')}>`;
-                            } else if (itemsSchema.type) {
-                                simplified[key] = `array<${String(itemsSchema.type)}>`;
+                            } else if (itemsSchema.type && typeof itemsSchema.type === 'string') {
+                                simplified[key] = `array<${itemsSchema.type}>`;
+                            } else if (itemsSchema.type && Array.isArray(itemsSchema.type)) {
+                                simplified[key] = `array<${itemsSchema.type.join('|')}>`;
                             }
                         }
                     }
@@ -438,8 +436,7 @@ export class CosmosDbOperationsService {
         activeEditor: QueryEditorTab;
         connection: NoSqlQueryConnection;
         currentResult: ReturnType<QueryEditorTab['getCurrentQueryResults']>;
-        sessionQuery: string | undefined;
-        editorQuery: string | undefined;
+        query: string | undefined;
         hasResults: boolean;
     } {
         const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
@@ -459,16 +456,16 @@ export class CosmosDbOperationsService {
         }
 
         const currentResult = activeEditor.getCurrentQueryResults();
-        const sessionQuery = currentResult?.query;
         const editorQuery = activeEditor.getCurrentQuery();
+        const selectedQuery = activeEditor.getSelectedQuery();
+        const query = (selectedQuery || editorQuery)?.trim() || undefined;
         const hasResults = !!(currentResult?.documents && currentResult.documents.length > 0);
 
         return {
             activeEditor,
             connection,
             currentResult,
-            sessionQuery,
-            editorQuery,
+            query,
             hasResults,
         };
     }
@@ -483,6 +480,20 @@ export class CosmosDbOperationsService {
         }
         const activeEditor = getActiveQueryEditor(activeQueryEditors);
         return getConnectionFromQueryTab(activeEditor);
+    }
+
+    /**
+     * Returns the resolved query from the active query editor, using the priority:
+     * selected text > full editor content.
+     * Returns undefined if no query editor is open or no query is available.
+     */
+    public getActiveEditorQuery(): string | undefined {
+        try {
+            const { query } = this.getActiveQueryEditorContext();
+            return query;
+        } catch {
+            return undefined;
+        }
     }
 
     /**
@@ -505,11 +516,10 @@ export class CosmosDbOperationsService {
 
             switch (operationName) {
                 case 'editQuery': {
-                    const { activeEditor, connection, currentResult, sessionQuery, editorQuery, hasResults } =
-                        this.getActiveQueryEditorContext();
+                    const currentQuery = (parameters.currentQuery as string | undefined)?.trim();
+                    const { activeEditor, connection, currentResult, hasResults } = this.getActiveQueryEditorContext();
 
-                    const actualQuery = sessionQuery || editorQuery || (parameters.currentQuery as string);
-                    if (!actualQuery) {
+                    if (!currentQuery) {
                         return l10n.t(
                             'No query found to edit. Please write or execute a query in the query editor first.',
                         );
@@ -524,7 +534,7 @@ export class CosmosDbOperationsService {
                             documentCount: hasResults ? currentResult?.documents?.length : undefined,
                             requestCharge: hasResults ? currentResult?.requestCharge : undefined,
                         },
-                        actualQuery,
+                        currentQuery,
                         true,
                         onProgress,
                         onConfirm,
@@ -534,25 +544,36 @@ export class CosmosDbOperationsService {
                     );
                 }
                 case 'explainQuery': {
-                    const { connection, currentResult, sessionQuery, editorQuery, hasResults } =
-                        this.getActiveQueryEditorContext();
+                    const currentQuery = (parameters.currentQuery as string | undefined)?.trim();
 
-                    const actualQuery = sessionQuery || editorQuery || (parameters.currentQuery as string);
-                    if (!actualQuery) {
+                    if (!currentQuery) {
                         return l10n.t('There is no query to analyze');
                     }
 
-                    const currentSchema = hasResults
-                        ? this.extractSchemaFromResults(currentResult!.documents)
-                        : undefined;
+                    // Try to get editor context, but don't require it for inline queries
+                    let connection: NoSqlQueryConnection | undefined;
+                    let currentSchema: JSONSchema | undefined;
+                    let documentCount: number | undefined;
+                    let requestCharge: number | undefined;
+                    try {
+                        const editorCtx = this.getActiveQueryEditorContext();
+                        connection = editorCtx.connection;
+                        if (editorCtx.hasResults) {
+                            currentSchema = this.extractSchemaFromResults(editorCtx.currentResult!.documents);
+                            documentCount = editorCtx.currentResult?.documents?.length;
+                            requestCharge = editorCtx.currentResult?.requestCharge;
+                        }
+                    } catch {
+                        // No active editor — proceed without editor context
+                    }
 
                     return await this.handleExplainQuery(
-                        actualQuery,
+                        currentQuery,
                         parameters.userPrompt as string,
                         connection,
                         {
-                            documentCount: hasResults ? currentResult?.documents?.length : undefined,
-                            requestCharge: hasResults ? currentResult?.requestCharge : undefined,
+                            documentCount,
+                            requestCharge,
                             schema: currentSchema,
                         },
                         parameters.additionalContext as string | undefined,
@@ -563,12 +584,10 @@ export class CosmosDbOperationsService {
                         activeEditor: genEditor,
                         connection: genConnection,
                         currentResult: genResult,
-                        sessionQuery: genSessionQuery,
-                        editorQuery: genEditorQuery,
+                        query: genCurrentQuery,
                         hasResults: genHasResults,
                     } = this.getActiveQueryEditorContext();
                     const genHistoryContext = this.getQueryHistoryContext(genEditor);
-                    const genCurrentQuery = genSessionQuery || genEditorQuery;
 
                     return await this.handleEditQuery(
                         parameters.userPrompt as string,
@@ -642,11 +661,8 @@ export class CosmosDbOperationsService {
         const sanitizedPrompt = sanitizeSqlComment(userPrompt);
         let formattedSuggestion: string;
         if (currentQuery) {
-            const sanitizedCurrentQuery = currentQuery
-                .split('\n')
-                .map((line) => sanitizeSqlComment(line))
-                .join('\n-- ');
-            formattedSuggestion = `-- ${l10n.t('Updated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}\n\n-- ${l10n.t('Previous query:')}\n-- ${sanitizedCurrentQuery}`;
+            const sanitizedCurrentQuery = commentOutQuery(currentQuery);
+            formattedSuggestion = `-- ${l10n.t('Updated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}\n\n-- ${l10n.t('Previous query:')}\n${sanitizedCurrentQuery}`;
         } else {
             formattedSuggestion = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${suggestion.trim()}`;
         }
@@ -673,7 +689,7 @@ export class CosmosDbOperationsService {
     private async handleExplainQuery(
         currentQuery: string,
         userPrompt: string | undefined,
-        connection: NoSqlQueryConnection,
+        connection: NoSqlQueryConnection | undefined,
         resultContext: {
             documentCount?: number;
             requestCharge?: number;
@@ -692,8 +708,10 @@ export class CosmosDbOperationsService {
 
         // Build context header for better user understanding
         let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
-        queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
-        queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
+        if (connection) {
+            queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
+            queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
+        }
         if (resultContext.documentCount !== undefined) {
             queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
             if (resultContext.requestCharge) {
@@ -728,7 +746,7 @@ export class CosmosDbOperationsService {
     private async generateQueryExplanationWithLLM(
         query: string,
         userPrompt: string,
-        connection: NoSqlQueryConnection,
+        connection: NoSqlQueryConnection | undefined,
         resultContext?: {
             documentCount?: number;
             requestCharge?: number;
@@ -737,15 +755,18 @@ export class CosmosDbOperationsService {
         additionalContext?: string,
     ): Promise<string> {
         // Get available language models
-        const models = await vscode.lm.selectChatModels({});
+        const models = await getAvailableLanguageModels();
         if (models.length === 0) {
-            throw new Error('No language model available');
+            throw new Error(l10n.t('No language model available'));
         }
 
         const model = models[0];
 
         // Build user content (payload) - separated from system instructions
-        let contextInfo = `**Database:** ${connection.databaseId}\n**Container:** ${connection.containerId}\n`;
+        let contextInfo = '';
+        if (connection) {
+            contextInfo += `**Database:** ${connection.databaseId}\n**Container:** ${connection.containerId}\n`;
+        }
         if (resultContext?.documentCount !== undefined) {
             contextInfo += `**Last execution:** ${resultContext.documentCount} documents`;
             if (resultContext.requestCharge) {
@@ -852,7 +873,7 @@ export class CosmosDbOperationsService {
         const source = options?.source;
         const operation = options?.operation;
 
-        const models = await vscode.lm.selectChatModels();
+        const models = await getAvailableLanguageModels(modelId);
         if (models.length === 0) {
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
@@ -861,8 +882,8 @@ export class CosmosDbOperationsService {
             throw new Error(l10n.t('No language model available. Please ensure you have access to Copilot.'));
         }
 
-        // Use specified model or first available
-        const model = modelId ? (models.find((m) => m.id === modelId) ?? models[0]) : models[0];
+        // Use specified model or first available (preferred model is moved to front by getAvailableLanguageModels)
+        const model = models[0];
 
         // Load query language reference for comprehensive syntax guidance
         const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
@@ -924,10 +945,16 @@ export class CosmosDbOperationsService {
             const maxTokens = model.maxInputTokens;
             const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
             ext.outputChannel.info(
-                `[Generate Query] model="${model.name}" (${model.family}), ` +
-                    `systemTokens=${systemTokens}, userTokens=${userTokenCount}, ` +
-                    `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
-                    `usage=${ratio}%`,
+                l10n.t(
+                    '[Generate Query] model="{0}" ({1}), systemTokens={2}, userTokens={3}, requestTokens={4}, maxInputTokens={5}, usage={6}%',
+                    model.name,
+                    model.family,
+                    systemTokens,
+                    userTokenCount,
+                    totalTokens,
+                    maxTokens,
+                    ratio,
+                ),
             );
 
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', (ctx) => {
@@ -977,7 +1004,11 @@ export class CosmosDbOperationsService {
             // LLM requested tool call(s) — invoke and feed results back
             toolRoundsUsed = round + 1;
             ext.outputChannel.info(
-                `[Generate Query] Tool call round ${round + 1}: ${toolCallParts.map((t) => t.name).join(', ')}`,
+                l10n.t(
+                    '[Generate Query] Tool call round {0}: {1}',
+                    round + 1,
+                    toolCallParts.map((t) => t.name).join(', '),
+                ),
             );
 
             // Add assistant message with the tool call parts
@@ -985,14 +1016,14 @@ export class CosmosDbOperationsService {
 
             // Invoke each tool and add results as user messages
             for (const toolCall of toolCallParts) {
-                ext.outputChannel.info(`[Generate Query] Invoking tool: ${toolCall.name}...`);
+                ext.outputChannel.info(l10n.t('[Generate Query] Invoking tool: {0}...', toolCall.name));
 
                 if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
                     onProgress?.(l10n.t('Analyzing container schema…'));
 
                     void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingRequested', (ctx) => {
                         ctx.errorHandling.suppressDisplay = true;
-                        ctx.telemetry.properties.source = onConfirm ? 'queryEditor' : 'chatParticipant';
+                        ctx.telemetry.properties.source = source ?? 'unknown';
                     });
                 }
 
@@ -1006,28 +1037,28 @@ export class CosmosDbOperationsService {
                         if (onConfirm) {
                             const confirmed = await onConfirm(l10n.t(SAMPLE_DATA_CONFIRMATION_MESSAGE));
                             if (!confirmed) {
-                                schemaSamplingUserAllowed = false;
                                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingDenied', (ctx) => {
                                     ctx.errorHandling.suppressDisplay = true;
-                                    ctx.telemetry.properties.source = 'queryEditor';
+                                    ctx.telemetry.properties.source = source ?? 'unknown';
+                                    schemaSamplingUserAllowed = false;
+                                    toolResult = new vscode.LanguageModelToolResult([
+                                        new vscode.LanguageModelTextPart(
+                                            l10n.t('User declined to sample the container schema.'),
+                                        ),
+                                    ]);
+                                    messages.push(
+                                        vscode.LanguageModelChatMessage.User([
+                                            new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
+                                        ]),
+                                    );
                                 });
-                                toolResult = new vscode.LanguageModelToolResult([
-                                    new vscode.LanguageModelTextPart(
-                                        l10n.t('User declined to sample the container schema.'),
-                                    ),
-                                ]);
-                                messages.push(
-                                    vscode.LanguageModelChatMessage.User([
-                                        new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
-                                    ]),
-                                );
                                 continue;
                             }
                         }
                         schemaSamplingUserAllowed = true;
                         void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingAllowed', (ctx) => {
                             ctx.errorHandling.suppressDisplay = true;
-                            ctx.telemetry.properties.source = onConfirm ? 'queryEditor' : 'chatParticipant';
+                            ctx.telemetry.properties.source = source ?? 'unknown';
                         });
 
                         const schemaSamplingStart = Date.now();
@@ -1036,7 +1067,9 @@ export class CosmosDbOperationsService {
                             result = await sampleContainerSchema(connection);
                         } catch (error) {
                             const errMsg = parseError(error).message;
-                            ext.outputChannel.error(`[Generate Query] Failed to sample container schema: ${errMsg}`);
+                            ext.outputChannel.error(
+                                l10n.t('[Generate Query] Failed to sample container schema: {0}', errMsg),
+                            );
                             const baseMessage = l10n.t(
                                 'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
                             );
@@ -1064,7 +1097,11 @@ export class CosmosDbOperationsService {
 
                         // Log RU cost to output channel
                         ext.outputChannel.info(
-                            `[Generate Query] Schema sampling cost: ${ruCost.toFixed(2)} RUs (${result.documentCount} documents)`,
+                            l10n.t(
+                                '[Generate Query] Schema sampling cost: {0} RUs ({1} documents)',
+                                ruCost.toFixed(2),
+                                result.documentCount,
+                            ),
                         );
 
                         // Stream RU cost to the chat window
@@ -1112,13 +1149,17 @@ export class CosmosDbOperationsService {
                                 const fieldCount = parsed.schema ? Object.keys(parsed.schema).length : 0;
                                 const ruInfo = parsed.requestCharge ? `, ${parsed.requestCharge.toFixed(2)} RUs` : '';
                                 ext.outputChannel.info(
-                                    `[Generate Query] Tool result: schema with ${fieldCount} top-level fields${ruInfo}`,
+                                    l10n.t(
+                                        '[Generate Query] Tool result: schema with {0} top-level fields{1}',
+                                        fieldCount,
+                                        ruInfo,
+                                    ),
                                 );
                             } catch {
-                                ext.outputChannel.info(`[Generate Query] Tool result: (schema)`);
+                                ext.outputChannel.info(l10n.t('[Generate Query] Tool result: (schema)'));
                             }
                         } else {
-                            ext.outputChannel.info(`[Generate Query] Tool result: (non-schema tool)`);
+                            ext.outputChannel.info(l10n.t('[Generate Query] Tool result: (non-schema tool)'));
                         }
                     }
                 }
@@ -1159,7 +1200,7 @@ export class CosmosDbOperationsService {
             if (schemaSamplingUserAllowed !== undefined) {
                 ctx.telemetry.properties.schemaSamplingUserAllowed = String(schemaSamplingUserAllowed);
             }
-            ctx.telemetry.measurements.duration = llmDurationMs;
+            ctx.telemetry.measurements.llmDurationMs = llmDurationMs;
             ctx.telemetry.measurements.toolRoundsUsed = toolRoundsUsed;
             ctx.telemetry.measurements.queryHistorySize = historyContext?.executions?.length ?? 0;
             if (schemaSamplingExecuted) {
@@ -1200,12 +1241,6 @@ export class CosmosDbOperationsService {
      * Clean up the LLM response by removing markdown code blocks if present.
      */
     private cleanupQueryResponse(query: string): string {
-        let cleaned = query.trim();
-        if (cleaned.startsWith('```sql')) {
-            cleaned = cleaned.replace(/^```sql\n?/, '').replace(/\n?```$/, '');
-        } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
-        }
-        return cleaned.trim();
+        return stripCodeFences(query);
     }
 }

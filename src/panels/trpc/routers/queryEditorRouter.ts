@@ -4,6 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import {
+    getSchemaFromDocument,
+    simplifySchema,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
@@ -16,24 +23,19 @@ import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosm
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
-import { DocumentTab } from '../../../panels/DocumentTab';
-import { QueryEditorTab } from '../../../panels/QueryEditorTab';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
-import { isSelectStar, toStringUniversal } from '../../../utils/convertors';
+import { getAvailableLanguageModels } from '../../../utils/copilotUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
-import { type JSONSchema } from '../../../utils/json/JSONSchema';
-import {
-    getSchemaFromDocument,
-    simplifySchema,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../../../utils/json/nosql/SchemaAnalyzer';
-import { sanitizeSqlComment } from '../../../utils/sanitization';
+import { isSelectStar } from '../../../utils/queryAnalysis';
+import { commentOutQuery, sanitizeSqlComment } from '../../../utils/sanitization';
+import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
+import { DocumentTab } from '../../DocumentTab';
+import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
 import {
     CosmosDBRecordIdentifierSchema,
@@ -108,7 +110,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             throughputBuckets: ctx.state.connection ? [true, true, true, true, true] : undefined,
             initialQuery: ctx.state.query,
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),
-            isAIFeaturesEnabled: ext.isAIFeaturesEnabled,
+            isAIFeaturesEnabled: ext.isAIFeaturesEnabled ?? false,
             isSchemaBasedOnQueries,
             containerSchema: containerSchema as Record<string, unknown> | null,
         };
@@ -211,7 +213,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             return result;
         }),
 
-    stopQuery: queryEditorProcedure.input(z.object({ executionId: z.string() })).mutation(async ({ input, ctx }) => {
+    stopQuery: queryEditorProcedure.input(z.object({ executionId: z.string() })).mutation(({ input, ctx }) => {
         let session: QuerySession | undefined;
 
         if (input.executionId) {
@@ -525,9 +527,15 @@ export const queryEditorRouterDef = queryEditorRouter({
             return { queryHistory: await persistQueryHistory(ctx, input.query) };
         }),
 
-    updateQueryText: queryEditorProcedure.input(z.object({ query: z.string() })).mutation(async ({ input, ctx }) => {
+    updateQueryText: queryEditorProcedure.input(z.object({ query: z.string() })).mutation(({ input, ctx }) => {
         ctx.state.query = input.query;
     }),
+
+    updateSelectedText: queryEditorProcedure
+        .input(z.object({ selectedQuery: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            ctx.state.selectedQuery = input.selectedQuery || undefined;
+        }),
 
     generateQuery: queryEditorProcedure
         .input(z.object({ prompt: z.string(), currentQuery: z.string() }))
@@ -544,7 +552,8 @@ export const queryEditorRouterDef = queryEditorRouter({
             const token = ctx.state.generateQueryCancellation.token;
 
             try {
-                const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
+                const models = await getAvailableLanguageModels(savedModelId ?? undefined);
                 if (models.length === 0) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
                 }
@@ -557,8 +566,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                     return { generatedQuery: false as const };
                 }
 
-                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-                const model = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+                const model = models[0];
 
                 const service = CosmosDbOperationsService.getInstance();
                 const historyContext = ctx.state.connection
@@ -592,11 +600,8 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
 
                 const sanitizedPrompt = sanitizeSqlComment(input.prompt);
-                const sanitizedCurrentQuery = input.currentQuery
-                    .split('\n')
-                    .map((line) => sanitizeSqlComment(line))
-                    .join('\n-- ');
-                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
+                const sanitizedCurrentQuery = commentOutQuery(input.currentQuery);
+                const finalQuery = `-- ${l10n.t('Generated from: {0}', sanitizedPrompt)}\n${generatedQuery.trim()}\n\n-- ${l10n.t('Previous query:')}\n${sanitizedCurrentQuery}`;
 
                 ctx.state.isLastQueryAIGenerated = true;
                 ctx.state.lastAIGeneratedQuery = finalQuery;
@@ -628,7 +633,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             }
         }),
 
-    cancelGenerateQuery: queryEditorProcedure.mutation(async ({ ctx }) => {
+    cancelGenerateQuery: queryEditorProcedure.mutation(({ ctx }) => {
         ctx.state.pendingConfirmResolve?.(false);
         ctx.state.pendingConfirmResolve = undefined;
         if (ctx.state.generateQueryCancellation) {
@@ -642,24 +647,30 @@ export const queryEditorRouterDef = queryEditorRouter({
         ctx.state.generateQueryCancellation = undefined;
     }),
 
-    closeGenerateInput: queryEditorProcedure.mutation(async ({ ctx }) => {
-        ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
-            telCtx.errorHandling.suppressDisplay = true;
-        });
-        // Cancel any pending generation
-        ctx.state.pendingConfirmResolve?.(false);
-        ctx.state.pendingConfirmResolve = undefined;
-        ctx.state.generateQueryCancellation?.cancel();
-        ctx.state.generateQueryCancellation?.dispose();
-        ctx.state.generateQueryCancellation = undefined;
-    }),
+    closeGenerateInput: queryEditorProcedure
+        .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
+        .mutation(async ({ input, ctx }) => {
+            ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
+                telCtx.errorHandling.suppressDisplay = true;
+                if (input) {
+                    telCtx.telemetry.properties.hadEnteredPrompt = String(input.hadEnteredPrompt);
+                    telCtx.telemetry.properties.hadExecutedGenerateQuery = String(input.hadExecutedGenerateQuery);
+                }
+            });
+            // Cancel any pending generation
+            ctx.state.pendingConfirmResolve?.(false);
+            ctx.state.pendingConfirmResolve = undefined;
+            ctx.state.generateQueryCancellation?.cancel();
+            ctx.state.generateQueryCancellation?.dispose();
+            ctx.state.generateQueryCancellation = undefined;
+        }),
 
     getSelectedModelName: queryEditorProcedure.query(async () => {
         try {
-            const models = await vscode.lm.selectChatModels();
             const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-            const selectedModel = savedModelId ? (models.find((m) => m.id === savedModelId) ?? models[0]) : models[0];
+            const models = await getAvailableLanguageModels(savedModelId ?? undefined);
+            const selectedModel = models.length > 0 ? models[0] : undefined;
             return { modelName: selectedModel?.name ?? 'Copilot' };
         } catch {
             return { modelName: 'Copilot' };
@@ -668,7 +679,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getAvailableModels: queryEditorProcedure.query(async () => {
         try {
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+            const models = await getAvailableLanguageModels();
             const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
 
             const modelList = models
@@ -690,21 +701,25 @@ export const queryEditorRouterDef = queryEditorRouter({
             telCtx.telemetry.properties.modelId = input.modelId;
         });
 
-        const models = await vscode.lm.selectChatModels();
-        const selectedModel = models.find((m) => m.id === input.modelId);
+        const models = await getAvailableLanguageModels(input.modelId);
+        const selectedModel = models.length > 0 ? models[0] : undefined;
         return { modelName: selectedModel?.name ?? 'Copilot' };
     }),
 
-    openCopilotExplainQuery: queryEditorProcedure.mutation(async ({ ctx }) => {
-        // Fire-and-forget: separate telemetry event
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
-            telCtx.errorHandling.suppressDisplay = true;
-        });
+    openCopilotExplainQuery: queryEditorProcedure
+        .input(z.object({ query: z.string().optional() }).optional())
+        .mutation(async ({ input }) => {
+            // Fire-and-forget: separate telemetry event
+            void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
+                telCtx.errorHandling.suppressDisplay = true;
+            });
 
-        const query = ctx.state.query?.trim();
-        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
-        await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
-    }),
+            const query = input?.query?.trim();
+            const chatQuery = query
+                ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
+                : '@cosmosdb /explainQuery';
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
+        }),
 
     saveCSV: queryEditorProcedure
         .input(
@@ -747,7 +762,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             await vscode.env.clipboard.writeText(text);
         }),
 
-    provideFeedback: queryEditorProcedure.mutation(async () => {
+    provideFeedback: queryEditorProcedure.mutation(() => {
         openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
     }),
 

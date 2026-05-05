@@ -87,6 +87,11 @@
     ],
 
     "import/consistent-type-specifier-style": ["error", "prefer-inline"],
+    "import/no-duplicates": "error",
+    "import/no-empty-named-blocks": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-self-import": "error",
+
     "license-header/header": [
       "error",
       [
@@ -152,7 +157,9 @@
         "typescript/consistent-type-imports": "error",
         "typescript/no-base-to-string": "warn",
         "typescript/no-restricted-types": "error",
-        "typescript/unbound-method": "warn"
+        "typescript/unbound-method": "warn",
+
+        "import/first": ["error", "absolute-first"]
       }
     },
     {
@@ -233,7 +240,9 @@
         "react/exhaustive-deps": "warn",
 
         // Enabling some rules
-        "react/no-array-index-key": "warn"
+        "react/no-array-index-key": "warn",
+
+        "import/first": ["error", "absolute-first"]
 
         // "jsx-a11y/interactive-supports-focus": "error", // This rule is not exist yet in oxlint
         // "jsx-a11y/no-interactive-element-to-noninteractive-role": "error", // This rule is not exist yet in oxlint
@@ -242,7 +251,7 @@
       }
     },
     {
-      "files": ["src/**/*.test.ts", "**/__mocks__/**/*.js"],
+      "files": ["src/**/*.test.ts", "packages/**/*.test.ts", "**/__mocks__/**/*.ts"],
       "env": {
         "browser": false
       },
@@ -306,7 +315,9 @@
         "typescript/unbound-method": "off",
         "typescript/no-floating-promises": "off",
 
-        "vitest/require-mock-type-parameters": "off" // ???
+        "vitest/require-mock-type-parameters": "off", // ???
+
+        "import/first": ["off"]
       }
     },
     {

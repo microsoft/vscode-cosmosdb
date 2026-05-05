@@ -87,13 +87,15 @@ export abstract class CosmosDBAccountAttachedResourceItem
             }
         }
 
-        return Object.assign(treeItem, {
+        return {
+            // oxlint-disable-next-line typescript/no-misused-spread
+            ...treeItem,
             description: description,
             tooltip: new vscode.MarkdownString(tooltipMessage),
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : getThemeAgnosticIconURI('CosmosDBAccount.svg'),
-        });
+        };
     }
 
     public getConnectionString(): Promise<string> {

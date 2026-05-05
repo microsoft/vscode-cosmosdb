@@ -13,6 +13,7 @@
   "files.trimTrailingWhitespace": true,
   "search.exclude": {
     "out": true,
+    "dist": true,
     "**/node_modules": true,
     ".vscode-test": true
   },

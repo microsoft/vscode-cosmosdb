@@ -6,6 +6,13 @@
 import * as vscode from 'vscode';
 
 /**
+ * Master switch to control whether third-party (non-Copilot) language models are allowed.
+ * When false, all model selection is restricted to `{ vendor: 'copilot' }`.
+ * When true, all available models (including 3P) are returned.
+ */
+const allow3pModels = false;
+
+/**
  * GitHub Copilot extension IDs
  *
  * Note: The main GitHub Copilot extension (GitHub.copilot) is not detectable via vscode.extensions.getExtension().
@@ -44,6 +51,31 @@ export async function areCopilotModelsAvailable(): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+/**
+ * Returns the list of available language models, filtered by the {@link allow3pModels} switch.
+ * When the switch is off only Copilot (1P) models are returned.
+ *
+ * If a `preferredModelId` is supplied, the matching model is returned first.
+ * When the preferred model is not found in the list it is silently ignored and the
+ * first model in the filtered list is used instead.
+ */
+export async function getAvailableLanguageModels(preferredModelId?: string): Promise<vscode.LanguageModelChat[]> {
+    const selector: vscode.LanguageModelChatSelector = allow3pModels ? {} : { vendor: 'copilot' };
+    const models = await vscode.lm.selectChatModels(selector);
+
+    if (preferredModelId && models.length > 0) {
+        const preferredIndex = models.findIndex((m) => m.id === preferredModelId);
+        if (preferredIndex > 0) {
+            // Move the preferred model to the front so callers can just use models[0]
+            const [preferred] = models.splice(preferredIndex, 1);
+            models.unshift(preferred);
+        }
+        // If preferredIndex === -1, the model wasn't found — fall through to default order
+    }
+
+    return models;
 }
 
 /**

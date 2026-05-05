@@ -3,6 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import { getSchemaFromDocument, type NoSQLDocument, updateSchemaWithDocument } from '@cosmosdb/schema-analyzer/json';
 import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -10,12 +12,6 @@ import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { type JSONSchema } from '../utils/json/JSONSchema';
-import {
-    getSchemaFromDocument,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../utils/json/nosql/SchemaAnalyzer';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -124,8 +120,7 @@ function simplifySchemaForTool(schema: JSONSchema): Record<string, unknown> {
     }
 
     for (const [key, value] of Object.entries(schema.properties as Record<string, JSONSchema>)) {
-        const propSchema = value;
-        const anyOfEntries = propSchema.anyOf as JSONSchema[] | undefined;
+        const anyOfEntries = value.anyOf as JSONSchema[] | undefined;
 
         if (anyOfEntries && anyOfEntries.length > 0) {
             // Check if any entry is an object type with nested properties
@@ -198,7 +193,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
         ): Promise<vscode.LanguageModelToolResult> {
             const connection = getActiveConnection();
             if (!connection) {
-                ext.outputChannel.warn('[Sample Schema Tool] No active Cosmos DB connection.');
+                ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(
                         l10n.t(
@@ -209,7 +204,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             }
 
             if (token.isCancellationRequested) {
-                ext.outputChannel.info('[Sample Schema Tool] Operation cancelled by user.');
+                ext.outputChannel.info(l10n.t('[Sample Schema Tool] Operation cancelled by user.'));
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(l10n.t('Operation cancelled.')),
                 ]);
@@ -218,14 +213,20 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             try {
                 const result = await sampleContainerSchema(connection);
                 ext.outputChannel.info(
-                    `[Sample Schema Tool] Sampled ${result.documentCount} documents from ${result.databaseId}/${result.containerId}, cost: ${(result.requestCharge ?? 0).toFixed(2)} RUs`,
+                    l10n.t(
+                        '[Sample Schema Tool] Sampled {0} documents from {1}/{2}, cost: {3} RUs',
+                        result.documentCount,
+                        result.databaseId,
+                        result.containerId,
+                        (result.requestCharge ?? 0).toFixed(2),
+                    ),
                 );
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                 ]);
             } catch (error) {
                 const message = parseError(error).message;
-                ext.outputChannel.error(`[Sample Schema Tool] Failed to sample data: ${message}`);
+                ext.outputChannel.error(l10n.t('[Sample Schema Tool] Failed to sample data: {0}', message));
                 const baseMessage = l10n.t(
                     'Unable to sample the container schema. Query generation will continue without schema information, which may affect accuracy.',
                 );

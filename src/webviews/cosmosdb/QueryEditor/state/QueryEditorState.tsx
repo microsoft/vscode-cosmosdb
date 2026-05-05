@@ -4,11 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
-import { isSelectStar } from '../../../../utils/convertors';
-import { type JSONSchema } from '../../../../utils/json/JSONSchema';
-
-export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
+import { isSelectStar } from '../../../../utils/queryAnalysis';
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
@@ -98,6 +96,10 @@ export type DispatchAction =
           isAIFeaturesEnabled: boolean;
       }
     | {
+          type: 'setCurrentQueryBlock';
+          currentQueryBlock: string;
+      }
+    | {
           type: 'setConfirmToolInvocationMessage';
           message: string | null;
       };
@@ -109,6 +111,7 @@ export type QueryEditorState = {
     queryHistory: string[];
     queryValue: string;
     querySelectedValue: string;
+    currentQueryBlock: string; // The query block text under the cursor (persisted across focus loss)
     isConnected: boolean;
     isExecuting: boolean;
     isEditMode: boolean; // Query or selected query is start select (select * from c)
@@ -143,8 +146,9 @@ export const defaultState: QueryEditorState = {
     partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
-    queryValue: DEFAULT_QUERY_VALUE,
+    queryValue: '',
     querySelectedValue: '',
+    currentQueryBlock: '',
     isConnected: false,
     isExecuting: false,
     isEditMode: false,
@@ -233,6 +237,8 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, selectedRows: action.selectedRows };
         case 'setQuerySelectedValue':
             return { ...state, querySelectedValue: action.selectedValue };
+        case 'setCurrentQueryBlock':
+            return { ...state, currentQueryBlock: action.currentQueryBlock };
         case 'setIsSurveyCandidate':
             return { ...state, isSurveyCandidate: action.isSurveyCandidate };
         case 'selectBucket':

@@ -10,10 +10,10 @@ import { isNil } from 'es-toolkit';
 import { useCallback, useMemo, useReducer, useState } from 'react';
 import { DataGrid, type Column, type ColumnWidths } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
-import './vscodeTheme.scss';
 import { toStringUniversal } from '../../../../../utils/strings';
 import { type TreeRow } from '../../../../utils';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
+import './vscodeTheme.scss';
 
 const useStyles = makeStyles({
     wrapper: {

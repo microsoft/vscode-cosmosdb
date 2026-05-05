@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import {
+    commentOutQuery,
     escapeHtml,
     escapeMarkdown,
     renderAsCodeBlock,
@@ -14,6 +15,7 @@ import {
     sanitizeCommandUri,
     sanitizeDisplayString,
     sanitizeSqlComment,
+    stripCodeFences,
 } from './sanitization';
 
 describe('sanitization', () => {
@@ -239,6 +241,30 @@ describe('sanitization', () => {
         });
     });
 
+    describe('commentOutQuery', () => {
+        it('should prepend -- to plain lines', () => {
+            const result = commentOutQuery('SELECT * FROM c');
+            expect(result).toBe('-- SELECT * FROM c');
+        });
+
+        it('should not double-comment lines already starting with --', () => {
+            const result = commentOutQuery('-- this is a comment');
+            expect(result).toBe('-- this is a comment');
+        });
+
+        it('should handle mixed commented and uncommented lines', () => {
+            const query = '-- Generated from: show users\nSELECT * FROM c\n-- Previous query:';
+            const result = commentOutQuery(query);
+            expect(result).toBe('-- Generated from: show users\n-- SELECT * FROM c\n-- Previous query:');
+        });
+
+        it('should handle multi-line queries', () => {
+            const query = 'SELECT *\nFROM c\nWHERE c.id = 1';
+            const result = commentOutQuery(query);
+            expect(result).toBe('-- SELECT *\n-- FROM c\n-- WHERE c.id = 1');
+        });
+    });
+
     describe('XSS prevention scenarios', () => {
         it('should prevent XSS via error messages', () => {
             const maliciousError = new Error('Error: <img src=x onerror=alert(document.cookie)>');
@@ -339,6 +365,33 @@ describe('sanitization', () => {
             const sanitised = sanitizeDisplayString(malicious);
             expect(sanitised).toBe("=CMD|' /C calc'!visible text");
             expect(sanitised).not.toContain('\x00');
+        });
+    });
+
+    describe('stripCodeFences', () => {
+        it('should strip ```sql fences', () => {
+            expect(stripCodeFences('```sql\nSELECT * FROM c\n```')).toBe('SELECT * FROM c');
+        });
+
+        it('should strip plain ``` fences', () => {
+            expect(stripCodeFences('```\nSELECT * FROM c\n```')).toBe('SELECT * FROM c');
+        });
+
+        it('should return trimmed text when no fences', () => {
+            expect(stripCodeFences('  SELECT * FROM c  ')).toBe('SELECT * FROM c');
+        });
+
+        it('should handle multiline content inside fences', () => {
+            const input = '```sql\n-- comment\nSELECT * FROM c\nWHERE c.id = 1\n```';
+            expect(stripCodeFences(input)).toBe('-- comment\nSELECT * FROM c\nWHERE c.id = 1');
+        });
+
+        it('should handle empty string', () => {
+            expect(stripCodeFences('')).toBe('');
+        });
+
+        it('should handle fences with no content', () => {
+            expect(stripCodeFences('```sql\n```')).toBe('');
         });
     });
 });

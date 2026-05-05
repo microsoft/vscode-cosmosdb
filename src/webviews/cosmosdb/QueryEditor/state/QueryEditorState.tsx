@@ -8,8 +8,6 @@ import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
 import { isSelectStar } from '../../../../utils/queryAnalysis';
 
-export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
-
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
 export type DispatchAction =
@@ -148,7 +146,7 @@ export const defaultState: QueryEditorState = {
     partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
-    queryValue: DEFAULT_QUERY_VALUE,
+    queryValue: '',
     querySelectedValue: '',
     currentQueryBlock: '',
     isConnected: false,

@@ -51,6 +51,7 @@ export type BaseRouterContext = {
 export type QueryEditorMutableState = {
     connection?: NoSqlQueryConnection;
     query?: string;
+    selectedQuery?: string;
     isLastQueryAIGenerated: boolean;
     lastAIGeneratedQuery?: string;
     lastGenerationFailed: boolean;

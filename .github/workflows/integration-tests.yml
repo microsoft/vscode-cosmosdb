@@ -113,3 +113,11 @@ jobs:
       - name: Stop emulator
         if: always()
         run: docker compose down
+
+      # The init container runs chown 1000:1000 on .cosmosdb-data, which makes
+      # the files unreadable by the runner when actions/cache tries to tar them.
+      # Fix permissions so the post-job cache save succeeds.
+      - name: Fix emulator data permissions for cache
+        if: always()
+        run: sudo chmod -R a+rX .cosmosdb-data || true
+

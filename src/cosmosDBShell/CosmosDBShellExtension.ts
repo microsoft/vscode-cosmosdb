@@ -442,7 +442,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
 
     const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
     if (containerCommand) {
-        args.push('--k', containerCommand);
+        args.push('-k', containerCommand);
     }
 
     ext.outputChannel.appendLine(`Launching Cosmos DB Shell: ${command} ${args.join(' ')}`);

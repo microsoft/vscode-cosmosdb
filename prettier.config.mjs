@@ -20,9 +20,10 @@ const config = {
     plugins: ['prettier-plugin-organize-imports'],
     overrides: [
         {
-            files: ['*.md', '*.json'],
+            files: ['*.md', '*.json', '*.jsonc'],
             options: {
                 tabWidth: 2,
+                trailingComma: 'none',
             },
         },
     ],

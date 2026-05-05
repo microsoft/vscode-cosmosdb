@@ -4,6 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
+import {
+    getSchemaFromDocument,
+    simplifySchema,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
@@ -16,25 +23,19 @@ import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosm
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
-import { DocumentTab } from '../../../panels/DocumentTab';
-import { QueryEditorTab } from '../../../panels/QueryEditorTab';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
-import { isSelectStar, toStringUniversal } from '../../../utils/convertors';
 import { getAvailableLanguageModels } from '../../../utils/copilotUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
-import { type JSONSchema } from '../../../utils/json/JSONSchema';
-import {
-    getSchemaFromDocument,
-    simplifySchema,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../../../utils/json/nosql/SchemaAnalyzer';
+import { isSelectStar } from '../../../utils/queryAnalysis';
 import { commentOutQuery, sanitizeSqlComment } from '../../../utils/sanitization';
+import { toStringUniversal } from '../../../utils/strings';
 import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../../utils/surveyTypes';
 import * as vscodeUtil from '../../../utils/vscodeUtils';
+import { DocumentTab } from '../../DocumentTab';
+import { QueryEditorTab } from '../../QueryEditorTab';
 import { type QueryEditorRouterContext } from '../appRouter';
 import {
     CosmosDBRecordIdentifierSchema,
@@ -212,7 +213,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             return result;
         }),
 
-    stopQuery: queryEditorProcedure.input(z.object({ executionId: z.string() })).mutation(async ({ input, ctx }) => {
+    stopQuery: queryEditorProcedure.input(z.object({ executionId: z.string() })).mutation(({ input, ctx }) => {
         let session: QuerySession | undefined;
 
         if (input.executionId) {
@@ -526,7 +527,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             return { queryHistory: await persistQueryHistory(ctx, input.query) };
         }),
 
-    updateQueryText: queryEditorProcedure.input(z.object({ query: z.string() })).mutation(async ({ input, ctx }) => {
+    updateQueryText: queryEditorProcedure.input(z.object({ query: z.string() })).mutation(({ input, ctx }) => {
         ctx.state.query = input.query;
     }),
 
@@ -632,7 +633,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             }
         }),
 
-    cancelGenerateQuery: queryEditorProcedure.mutation(async ({ ctx }) => {
+    cancelGenerateQuery: queryEditorProcedure.mutation(({ ctx }) => {
         ctx.state.pendingConfirmResolve?.(false);
         ctx.state.pendingConfirmResolve = undefined;
         if (ctx.state.generateQueryCancellation) {
@@ -761,7 +762,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             await vscode.env.clipboard.writeText(text);
         }),
 
-    provideFeedback: queryEditorProcedure.mutation(async () => {
+    provideFeedback: queryEditorProcedure.mutation(() => {
         openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
     }),
 

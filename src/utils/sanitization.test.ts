@@ -13,6 +13,7 @@ import {
     safeJsonDisplay,
     safeMarkdownText,
     sanitizeCommandUri,
+    sanitizeDisplayString,
     sanitizeSqlComment,
     stripCodeFences,
 } from './sanitization';
@@ -295,6 +296,75 @@ describe('sanitization', () => {
             const result = sanitizeCommandUri(maliciousCommand);
             // Should reject commands with semicolons
             expect(result).toBeNull();
+        });
+    });
+
+    describe('sanitizeDisplayString', () => {
+        it('should leave ordinary text unchanged', () => {
+            expect(sanitizeDisplayString('Hello, World!')).toBe('Hello, World!');
+        });
+
+        it('should preserve tab (\\t)', () => {
+            expect(sanitizeDisplayString('col1\tcol2')).toBe('col1\tcol2');
+        });
+
+        it('should preserve newline (\\n)', () => {
+            expect(sanitizeDisplayString('line1\nline2')).toBe('line1\nline2');
+        });
+
+        it('should preserve carriage return (\\r)', () => {
+            // \r is NOT in the removal range (\x0e starts after \x0d)
+            expect(sanitizeDisplayString('line1\r\nline2')).toBe('line1\r\nline2');
+        });
+
+        it('should remove NUL (\\x00)', () => {
+            expect(sanitizeDisplayString('ab\x00cd')).toBe('abcd');
+        });
+
+        it('should remove BEL (\\x07)', () => {
+            expect(sanitizeDisplayString('ring\x07bell')).toBe('ringbell');
+        });
+
+        it('should remove VT (\\x0b)', () => {
+            expect(sanitizeDisplayString('before\x0bafter')).toBe('beforeafter');
+        });
+
+        it('should remove FF (\\x0c)', () => {
+            expect(sanitizeDisplayString('before\x0cafter')).toBe('beforeafter');
+        });
+
+        it('should remove ESC (\\x1b) — ANSI terminal escape sequences', () => {
+            // An attacker could embed \x1b[31m to colour terminal output
+            expect(sanitizeDisplayString('\x1b[31mred\x1b[0m')).toBe('[31mred[0m');
+        });
+
+        it('should remove DEL (\\x7f)', () => {
+            expect(sanitizeDisplayString('before\x7fafter')).toBe('beforeafter');
+        });
+
+        it('should remove all C0 characters except \\t, \\n, and \\r', () => {
+            // \r (\x0d) is intentionally NOT removed — callers that need CR-free output strip it separately
+            const allBad = Array.from({ length: 32 }, (_, i) => String.fromCharCode(i))
+                .filter((c) => c !== '\t' && c !== '\n' && c !== '\r') // keep these three
+                .join('');
+            const withDel = allBad + '\x7f';
+            expect(sanitizeDisplayString(withDel)).toBe('');
+        });
+
+        it('should handle empty string', () => {
+            expect(sanitizeDisplayString('')).toBe('');
+        });
+
+        it('should handle Unicode text without modification', () => {
+            expect(sanitizeDisplayString('Привет, мир! 你好世界 🌍')).toBe('Привет, мир! 你好世界 🌍');
+        });
+
+        it('removes NUL that could hide a CSV injection payload', () => {
+            // Attacker stores: =CMD|' /C calc'!\x00visible text
+            const malicious = "=CMD|' /C calc'!\x00visible text";
+            const sanitised = sanitizeDisplayString(malicious);
+            expect(sanitised).toBe("=CMD|' /C calc'!visible text");
+            expect(sanitised).not.toContain('\x00');
         });
     });
 

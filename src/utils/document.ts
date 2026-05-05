@@ -13,7 +13,7 @@ import {
     type PrimitivePartitionKeyValue,
 } from '@azure/cosmos';
 import { isEqual } from 'es-toolkit';
-import { type CosmosDBRecordIdentifier, type QueryResultRecord } from '../cosmosdb/types/queryResult';
+import { isCosmosDBRecordIdentifier, type CosmosDBRecordIdentifier } from '../cosmosdb/types/queryResult';
 
 export const extractPartitionKey = (document: ItemDefinition, partitionKey: PartitionKeyDefinition): PartitionKey => {
     const builder = new PartitionKeyBuilder();
@@ -117,36 +117,18 @@ export const extractPartitionKeyValues = (
  * @param partitionKey
  */
 export const getDocumentId = (
-    document: QueryResultRecord,
+    document: ItemDefinition,
     partitionKey: PartitionKeyDefinition | undefined,
 ): CosmosDBRecordIdentifier | undefined => {
-    const documentId = {
-        _rid: typeof document['_rid'] === 'string' ? document['_rid'] : undefined,
-        id: document['id'],
+    if (!isCosmosDBRecordIdentifier(document)) {
+        return undefined;
+    }
+
+    return {
+        _rid: (document as CosmosDBRecordIdentifier)._rid,
+        id: (document as CosmosDBRecordIdentifier).id,
         partitionKey: partitionKey ? extractPartitionKey(document, partitionKey) : undefined,
     };
-
-    // The real unique id of the document is stored in the '_rid' field
-    if (documentId._rid && typeof documentId._rid === 'string' && documentId._rid.length > 0) {
-        return documentId;
-    }
-
-    // Next unique id is the partition key + id
-    if (partitionKey) {
-        if (Array.isArray(documentId.partitionKey) && documentId.partitionKey.some((key) => key === undefined)) {
-            return undefined;
-        }
-
-        if (documentId.partitionKey === undefined) {
-            return undefined;
-        }
-    }
-
-    if (documentId.id && documentId.id.length > 0) {
-        return documentId;
-    }
-
-    return undefined;
 };
 
 /**

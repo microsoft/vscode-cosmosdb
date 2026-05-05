@@ -26,14 +26,6 @@ export const JSONValueSchema: z.ZodType = z.lazy(() =>
     ]),
 );
 
-// ─── QueryResultRecord ──────────────────────────────────────────────────────
-
-/**
- * Matches `QueryResultRecord` (extends `ItemDefinition`).
- * Open-ended record with arbitrary JSON values.
- */
-export const QueryResultRecordSchema = z.record(z.string(), JSONValueSchema.optional());
-
 // ─── CosmosDBRecord ─────────────────────────────────────────────────────────
 
 /**
@@ -73,7 +65,7 @@ export const CosmosDBRecordIdentifierSchema = z.object({
         ])
         .optional(),
     _rid: z.string().optional(),
-}) as unknown as z.ZodType<CosmosDBRecordIdentifier>;
+}) as z.ZodType<CosmosDBRecordIdentifier>;
 
 // ─── SerializedQueryMetrics ─────────────────────────────────────────────────
 
@@ -112,7 +104,7 @@ export const QueryMetadataSchema = z.object({
  */
 export const SerializedQueryResultSchema = z.object({
     activityId: z.string().optional(),
-    documents: z.array(QueryResultRecordSchema),
+    documents: z.array(JSONValueSchema),
     iteration: z.number(),
     metadata: QueryMetadataSchema,
     indexMetrics: z.string(),
@@ -121,7 +113,7 @@ export const SerializedQueryResultSchema = z.object({
     roundTrips: z.number(),
     hasMoreResults: z.boolean(),
     query: z.string(),
-}) as unknown as z.ZodType<SerializedQueryResult>;
+}) as z.ZodType<SerializedQueryResult>;
 
 export const QueryExecutionResultSchema = z.object({
     executionId: z.string(),
@@ -130,4 +122,4 @@ export const QueryExecutionResultSchema = z.object({
     result: SerializedQueryResultSchema.nullable(),
     currentPage: z.number(),
     error: z.string().optional(),
-}) as unknown as z.ZodType<QueryExecutionResult>;
+}) as z.ZodType<QueryExecutionResult>;

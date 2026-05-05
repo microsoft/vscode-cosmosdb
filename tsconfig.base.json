@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    // Module settings
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2024",
+    "lib": ["ES2024", "dom", "dom.iterable", "webworker"],
+
+    // TS 7.0 defaults (can be removed entirely, shown for clarity)
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    // Additional strictness (not part of TS 7.0 defaults)
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    // Other options
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@cosmosdb/schema-analyzer": ["./packages/schema-analyzer/src/index.ts"],
+      "@cosmosdb/schema-analyzer/json": ["./packages/schema-analyzer/src/json/index.ts"],
+      "@cosmosdb/schema-analyzer/*": [
+        "./packages/schema-analyzer/src/*.ts",
+        "./packages/schema-analyzer/src/*/index.ts"
+      ],
+      "@cosmosdb/nosql-language-service": ["./packages/nosql-language-service/src/index.ts"],
+      "@cosmosdb/nosql-language-service/vscode": ["./packages/nosql-language-service/src/providers/vscode/index.ts"],
+      "@cosmosdb/nosql-language-service/monaco": ["./packages/nosql-language-service/src/providers/monaco/index.ts"],
+      "@cosmosdb/nosql-language-service/*": [
+        "./packages/nosql-language-service/src/*.ts",
+        "./packages/nosql-language-service/src/*/index.ts"
+      ]
+    }
+  }
+}

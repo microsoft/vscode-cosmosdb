@@ -36,6 +36,9 @@
   "type": "module",
   "main": "./main.mjs",
   "l10n": "./l10n",
+  "workspaces": [
+    "packages/*"
+  ],
   "activationEvents": [
     "onFileSystem:azureDatabases",
     "onView:azureWorkspace",
@@ -47,6 +50,7 @@
   ],
   "scripts": {
     "build": "tsc --noEmit && tsc -p tsconfig.vitest.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "build:go": "tsgo --noEmit && tsgo -p tsconfig.vitest.json --noEmit && tsgo -p tsconfig.test.json --noEmit",
     "clean": "git clean -dfx",
     "compile": "tsc -watch",
     "package": "node scripts/package-vsix.mjs",
@@ -102,10 +106,10 @@
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-cli": "~0.0.12",
     "@vscode/test-electron": "~2.5.2",
-    "@vscode/vsce": "~3.7.1",
+    "@vscode/vsce": "~3.9.1",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
-    "eslint": "~9.39.1",
+    "eslint": "~10.2.1",
     "eslint-plugin-license-header": "~0.9.0",
     "eslint-plugin-mocha": "~11.2.0",
     "glob": "~12.0.0",
@@ -114,8 +118,8 @@
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
     "mocha-multi-reporters": "~1.5.1",
-    "oxlint": "^1.60.0",
-    "oxlint-tsgolint": "^0.21.1",
+    "oxlint": "~1.62.0",
+    "oxlint-tsgolint": "~0.22.1",
     "prettier": "~3.8.1",
     "prettier-plugin-organize-imports": "~4.3.0",
     "react": "~19.2.1",
@@ -125,11 +129,11 @@
     "sass": "~1.99.0",
     "ts-node": "~10.9.2",
     "typescript": "~6.0.2",
-    "typescript-eslint": "~8.58.0",
-    "vite": "^8.0.10",
-    "vite-bundle-analyzer": "^1.3.7",
-    "vite-plugin-monaco-editor": "^1.1.0",
-    "vite-plugin-static-copy": "^4.1.0",
+    "typescript-eslint": "~8.59.0",
+    "vite": "~8.0.10",
+    "vite-bundle-analyzer": "~1.3.7",
+    "vite-plugin-monaco-editor": "~1.1.0",
+    "vite-plugin-static-copy": "~4.1.0",
     "vitest": "~4.1.5"
   },
   "dependencies": {
@@ -148,12 +152,12 @@
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",
-    "@trpc/client": "~11.16.0",
-    "@trpc/server": "~11.16.0",
+    "@trpc/client": "~11.17.0",
+    "@trpc/server": "~11.17.0",
     "@vscode/l10n": "~0.0.18",
     "allotment": "~1.20.4",
     "denque": "~2.1.0",
-    "es-toolkit": "~1.45.1",
+    "es-toolkit": "~1.46.0",
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
     "react-hotkeys-hook": "5.1.0",
@@ -167,14 +171,14 @@
       "ajv": "~8.18.0"
     },
     "glob": "~12.0.0",
+    "keyborg": "2.6.0",
     "mocha": {
       "diff": "~8.0.3"
     },
     "serialize-javascript": "~7.0.4",
     "test-exclude": "~7.0.1",
-    "@microsoft/1ds-core-js": "~4.3.11",
-    "@microsoft/1ds-post-js": "~4.3.11",
-    "@microsoft/applicationinsights-web-basic": "~3.3.11"
+    "@microsoft/applicationinsights-web-basic": "~3.3.11",
+    "uuid": "~14.0.0"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

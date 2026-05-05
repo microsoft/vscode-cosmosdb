@@ -3,6 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+// This file uses CommonJS on purpose: Vite's CJS interop maps all module.exports properties
+// to named exports, so `import * as vscode from 'vscode'` resolves vscode.window / vscode.commands
+// correctly. An ESM `export default` would wrap everything under `.default` and break tests.
+// The file is excluded from all linters via ignorePatterns ("**/__mocks__/**/*").
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createVSCodeMock } = require('jest-mock-vscode');
 

@@ -7,13 +7,13 @@ import { type ItemDefinition, type JSONObject, type JSONValue, type RequestOptio
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
-import { CosmosDBHiddenFields } from '../../constants';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBItemModel } from '../../tree/cosmosdb/models/CosmosDBItemModel';
 import { extractPartitionKey } from '../../utils/document';
 import { promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { CosmosDBHiddenFields } from '../cosmosdb-shared-constants';
 import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export class DocumentFileDescriptor implements EditableFileSystemItem {

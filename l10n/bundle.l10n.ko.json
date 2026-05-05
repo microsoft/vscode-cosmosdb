@@ -428,7 +428,6 @@
   "No matching resources found.": "일치하는 리소스를 찾을 수 없습니다.",
   "No properties available for filtering.": "필터링할 수 있는 속성이 없습니다.",
   "No properties available for sorting.": "정렬할 수 있는 속성이 없습니다.",
-  "No properties found in the schema at path \"{0}\"": "\"{0}\" 경로의 스키마에서 속성을 찾을 수 없습니다.",
   "No query found to edit. Please write or execute a query in the query editor first.": "편집할 쿼리를 찾을 수 없습니다. 먼저 쿼리 편집기에서 쿼리를 작성하거나 실행하세요.",
   "No required RBAC permissions": "필수 RBAC 권한 없음",
   "No result": "결과 없음",

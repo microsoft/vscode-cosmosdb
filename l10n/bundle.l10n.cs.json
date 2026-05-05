@@ -428,7 +428,6 @@
   "No matching resources found.": "Nenašly se žádné odpovídající prostředky.",
   "No properties available for filtering.": "Nejsou k dispozici žádné vlastnosti pro filtrování.",
   "No properties available for sorting.": "Nejsou k dispozici žádné vlastnosti pro řazení.",
-  "No properties found in the schema at path \"{0}\"": "Ve schématu na cestě „{0}“ nebyly nalezeny žádné vlastnosti.",
   "No query found to edit. Please write or execute a query in the query editor first.": "Nebyl nalezen žádný dotaz, který by bylo možné upravit. Nejprve prosím napište nebo spusťte dotaz v editoru dotazů.",
   "No required RBAC permissions": "Žádná požadovaná oprávnění RBAC",
   "No result": "Žádné výsledky",

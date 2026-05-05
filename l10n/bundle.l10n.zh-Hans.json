@@ -428,7 +428,6 @@
   "No matching resources found.": "未找到匹配的资源。",
   "No properties available for filtering.": "没有可用于筛选的属性。",
   "No properties available for sorting.": "没有可用于排序的属性。",
-  "No properties found in the schema at path \"{0}\"": "在路径“{0}”的架构中未找到属性",
   "No query found to edit. Please write or execute a query in the query editor first.": "找不到要编辑的查询。请先在查询编辑器中编写或执行查询。",
   "No required RBAC permissions": "缺少必需的 RBAC 权限",
   "No result": "无结果",

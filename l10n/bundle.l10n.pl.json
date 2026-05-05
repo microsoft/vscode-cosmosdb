@@ -428,7 +428,6 @@
   "No matching resources found.": "Nie znaleziono pasujących zasobów.",
   "No properties available for filtering.": "Brak dostępnych właściwości do filtrowania.",
   "No properties available for sorting.": "Brak dostępnych właściwości do sortowania.",
-  "No properties found in the schema at path \"{0}\"": "Nie znaleziono właściwości w schemacie pod ścieżką „{0}”",
   "No query found to edit. Please write or execute a query in the query editor first.": "Nie znaleziono zapytania do edycji. Najpierw napisz lub wykonaj zapytanie w Edytorze Power Query.",
   "No required RBAC permissions": "Brak wymaganych uprawnień RBAC",
   "No result": "Brak wyniku",

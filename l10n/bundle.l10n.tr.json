@@ -428,7 +428,6 @@
   "No matching resources found.": "Eşleşen kaynak bulunamadı.",
   "No properties available for filtering.": "Filtreleme için kullanılabilir özellik yok.",
   "No properties available for sorting.": "Sıralama için kullanılabilir özellik yok.",
-  "No properties found in the schema at path \"{0}\"": "\"{0}\" yolunda şemada özellik bulunamadı",
   "No query found to edit. Please write or execute a query in the query editor first.": "Düzenlenecek sorgu bulunamadı. Lütfen önce sorgu düzenleyicisinde bir sorgu yazın veya yürütün.",
   "No required RBAC permissions": "Gerekli RBAC izni yok",
   "No result": "Sonuç yok",

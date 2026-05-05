@@ -428,7 +428,6 @@
   "No matching resources found.": "Es wurden keine übereinstimmenden Ressourcen gefunden.",
   "No properties available for filtering.": "Keine Eigenschaften zum Filtern verfügbar.",
   "No properties available for sorting.": "Es sind keine Eigenschaften zum Sortieren verfügbar.",
-  "No properties found in the schema at path \"{0}\"": "Im Schema wurden im Pfad „{0}“ keine Eigenschaften gefunden.",
   "No query found to edit. Please write or execute a query in the query editor first.": "Keine Abfrage zum Bearbeiten gefunden. Schreiben oder führen Sie zuerst eine Abfrage im Abfrage-Editor aus.",
   "No required RBAC permissions": "Keine erforderlichen RBAC-Berechtigungen",
   "No result": "Kein Ergebnis",

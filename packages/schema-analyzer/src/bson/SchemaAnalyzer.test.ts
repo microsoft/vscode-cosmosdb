@@ -38,23 +38,23 @@ describe('BSON SchemaAnalyzer — basic inference', () => {
         );
 
         // 'name' is a string
-        const nameField = schema.properties?.['name'] as JSONSchema;
+        const nameField = schema.properties!['name'] as JSONSchema;
         expect(nameField?.['x-occurrence']).toBeGreaterThan(0);
         const nameFieldTypes = nameField.anyOf?.map((e) => (e as JSONSchema)['type']);
         expect(nameFieldTypes).toContain('string');
 
         // 'age' is a number
-        const ageField = schema.properties?.['age'] as JSONSchema;
+        const ageField = schema.properties!['age'] as JSONSchema;
         const ageFieldTypes = ageField.anyOf?.map((e) => (e as JSONSchema)['type']);
         expect(ageFieldTypes).toContain('number');
 
         // 'isActive' is a boolean
-        const isActiveField = schema.properties?.['isActive'] as JSONSchema;
+        const isActiveField = schema.properties!['isActive'] as JSONSchema;
         const isActiveTypes = isActiveField.anyOf?.map((e) => (e as JSONSchema)['type']);
         expect(isActiveTypes).toContain('boolean');
 
         // 'description' is optional
-        const descriptionField = schema.properties?.['description'] as JSONSchema | undefined;
+        const descriptionField = schema.properties!['description'] as JSONSchema | undefined;
         expect(descriptionField).toBeDefined();
         expect(descriptionField?.['x-occurrence']).toBeLessThan(sparseDocumentsArray.length);
     });
@@ -67,7 +67,7 @@ describe('BSON SchemaAnalyzer — basic inference', () => {
         expect(Object.keys(schema.properties || {})).toEqual(expect.arrayContaining(expectedFields));
 
         function getBsonType(fieldName: string): string | undefined {
-            const field = schema.properties?.[fieldName] as JSONSchema | undefined;
+            const field = schema.properties![fieldName] as JSONSchema | undefined;
             return field?.anyOf && (field.anyOf[0] as JSONSchema | undefined)?.['x-bsonType'];
         }
 
@@ -107,7 +107,7 @@ describe('BSON SchemaAnalyzer — basic inference', () => {
         const schema = analyzer.getSchema();
 
         function getArrayItemTypes(fieldName: string): string[] | undefined {
-            const field = schema.properties?.[fieldName] as JSONSchema | undefined;
+            const field = schema.properties![fieldName] as JSONSchema | undefined;
             const itemsAnyOf: JSONSchemaRef[] | undefined = (
                 (field?.anyOf?.[0] as JSONSchema | undefined)?.items as JSONSchema | undefined
             )?.anyOf;
@@ -126,18 +126,18 @@ describe('BSON SchemaAnalyzer — basic inference', () => {
         const schema = analyzer.getSchema();
 
         // user.profile.hobbies → string elements
-        const user = schema.properties?.['user'] as JSONSchema;
-        const userProfile = (user?.anyOf?.[0] as JSONSchema)?.properties?.['profile'] as JSONSchema;
-        const hobbies = (userProfile?.anyOf?.[0] as JSONSchema)?.properties?.['hobbies'] as JSONSchema;
+        const user = schema.properties!['user'] as JSONSchema;
+        const userProfile = (user?.anyOf?.[0] as JSONSchema)?.properties!['profile'] as JSONSchema;
+        const hobbies = (userProfile?.anyOf?.[0] as JSONSchema)?.properties!['hobbies'] as JSONSchema;
         const hobbiesItems = (hobbies?.anyOf?.[0] as JSONSchema)?.items as JSONSchema;
         const hobbiesItemTypes = hobbiesItems?.anyOf?.map((e) => (e as JSONSchema).type);
         expect(hobbiesItemTypes).toContain('string');
 
         // orders is an array of objects with nested items array
-        const orders = schema.properties?.['orders'] as JSONSchema;
+        const orders = schema.properties!['orders'] as JSONSchema;
         expect((orders?.anyOf?.[0] as JSONSchema)?.type).toBe('array');
         const orderItemsParent = (orders?.anyOf?.[0] as JSONSchema)?.items as JSONSchema;
-        const orderItems = (orderItemsParent?.anyOf?.[0] as JSONSchema)?.properties?.['items'] as JSONSchema;
+        const orderItems = (orderItemsParent?.anyOf?.[0] as JSONSchema)?.properties!['items'] as JSONSchema;
         expect((orderItems?.anyOf?.[0] as JSONSchema)?.type).toBe('array');
     });
 
@@ -152,17 +152,17 @@ describe('BSON SchemaAnalyzer — basic inference', () => {
         expect(schema.properties).toHaveProperty('user');
 
         // integersArray stats
-        const integersArray = schema.properties?.['integersArray'] as JSONSchema;
+        const integersArray = schema.properties!['integersArray'] as JSONSchema;
         const intType = ((integersArray?.anyOf?.[0] as JSONSchema)?.items as JSONSchema)?.anyOf?.[0] as JSONSchema;
         expect(intType?.['x-minValue']).toBe(1);
         expect(intType?.['x-maxValue']).toBe(5);
 
         // orders.items.price is Decimal128
-        const orders = schema.properties?.['orders'] as JSONSchema;
+        const orders = schema.properties!['orders'] as JSONSchema;
         const orderParent = (orders?.anyOf?.[0] as JSONSchema)?.items as JSONSchema;
-        const orderItems = (orderParent?.anyOf?.[0] as JSONSchema)?.properties?.['items'] as JSONSchema;
+        const orderItems = (orderParent?.anyOf?.[0] as JSONSchema)?.properties!['items'] as JSONSchema;
         const priceParent = ((orderItems?.anyOf?.[0] as JSONSchema)?.items as JSONSchema)?.anyOf?.[0] as JSONSchema;
-        const priceField = priceParent?.properties?.['price'] as JSONSchema;
+        const priceField = priceParent?.properties!['price'] as JSONSchema;
         expect((priceField?.anyOf?.[0] as JSONSchema)?.['x-bsonType']).toBe('decimal128');
     });
 });
@@ -183,8 +183,8 @@ describe('BSON SchemaAnalyzer — schema traversal', () => {
         const analyzer = SchemaAnalyzer.fromDocument(complexDocument);
         const schema = analyzer.getSchema();
 
-        expect(() => getPropertyNamesAtLevel(schema, ['no-entry'])).toThrow();
-        expect(() => getPropertyNamesAtLevel(schema, ['user', 'no-entry'])).toThrow();
+        expect(() => getPropertyNamesAtLevel(schema, ['no-entry'])).toThrow(Error);
+        expect(() => getPropertyNamesAtLevel(schema, ['user', 'no-entry'])).toThrow(Error);
     });
 
     it('handles sparse docs with mixed types at a path', () => {
@@ -364,8 +364,8 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
         a.addDocument(makeDoc({ name: 'Carol' }));
 
         const s = a.getSchema();
-        expect((s.properties?.['name'] as JSONSchema)['x-occurrence']).toBe(3);
-        expect((s.properties?.['age'] as JSONSchema)['x-occurrence']).toBe(2);
+        expect((s.properties!['name'] as JSONSchema)['x-occurrence']).toBe(3);
+        expect((s.properties!['age'] as JSONSchema)['x-occurrence']).toBe(2);
     });
 
     it('counts x-typeOccurrence for polymorphic fields', () => {
@@ -376,7 +376,7 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
         a.addDocument(makeDoc({ value: true }));
 
         const s = a.getSchema();
-        const valueField = s.properties?.['value'] as JSONSchema;
+        const valueField = s.properties!['value'] as JSONSchema;
         const stringEntry = valueField.anyOf?.find((e) => (e as JSONSchema)['x-bsonType'] === 'string') as JSONSchema;
         const boolEntry = valueField.anyOf?.find((e) => (e as JSONSchema)['x-bsonType'] === 'boolean') as JSONSchema;
 
@@ -396,7 +396,7 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
         a.addDocument(makeDoc({ info: { x: 2, y: 3 } }));
 
         const s = a.getSchema();
-        const infoObj = (s.properties?.['info'] as JSONSchema).anyOf?.find(
+        const infoObj = (s.properties!['info'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'object',
         ) as JSONSchema;
         expect(infoObj['x-documentsInspected']).toBe(2);
@@ -408,7 +408,7 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
         a.addDocument(makeDoc({ items: [{ a: 3, b: 4 }] }));
 
         const s = a.getSchema();
-        const arrayEntry = (s.properties?.['items'] as JSONSchema).anyOf?.find(
+        const arrayEntry = (s.properties!['items'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         const objEntry = (arrayEntry.items as JSONSchema).anyOf?.find(
@@ -416,8 +416,8 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
         ) as JSONSchema;
 
         expect(objEntry['x-documentsInspected']).toBe(3);
-        expect((objEntry.properties?.['a'] as JSONSchema)['x-occurrence']).toBe(3);
-        expect((objEntry.properties?.['b'] as JSONSchema)['x-occurrence']).toBe(1);
+        expect((objEntry.properties!['a'] as JSONSchema)['x-occurrence']).toBe(3);
+        expect((objEntry.properties!['b'] as JSONSchema)['x-occurrence']).toBe(1);
     });
 
     it('yields 100% probability for fields in every document', () => {
@@ -425,7 +425,7 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
         for (let i = 0; i < 10; i++) a.addDocument(makeDoc({ name: `user-${i}` }));
 
         const s = a.getSchema();
-        const occ = (s.properties?.['name'] as JSONSchema)['x-occurrence'] as number;
+        const occ = (s.properties!['name'] as JSONSchema)['x-occurrence'] as number;
         const total = s['x-documentsInspected'] as number;
         expect(occ / total).toBe(1);
     });
@@ -438,8 +438,8 @@ describe('BSON SchemaAnalyzer — occurrence counting', () => {
 
         const s = a.getSchema();
         const total = s['x-documentsInspected'] as number;
-        expect(((s.properties?.['a'] as JSONSchema)['x-occurrence'] as number) / total).toBe(1);
-        expect(((s.properties?.['b'] as JSONSchema)['x-occurrence'] as number) / total).toBeCloseTo(1 / 3);
+        expect(((s.properties!['a'] as JSONSchema)['x-occurrence'] as number) / total).toBe(1);
+        expect(((s.properties!['b'] as JSONSchema)['x-occurrence'] as number) / total).toBeCloseTo(1 / 3);
     });
 });
 
@@ -452,7 +452,7 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         a.addDocument(makeDoc({ tags: ['x'] }));
         a.addDocument(makeDoc({ tags: ['p', 'q', 'r', 's', 't'] }));
 
-        const arr = (a.getSchema().properties?.['tags'] as JSONSchema).anyOf?.find(
+        const arr = (a.getSchema().properties!['tags'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         expect(arr['x-minItems']).toBe(1);
@@ -466,7 +466,7 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         a.addDocument(makeDoc({ data: ['z'] }));
 
         const s = a.getSchema();
-        const arr = (s.properties?.['data'] as JSONSchema).anyOf?.find(
+        const arr = (s.properties!['data'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         const items = arr.items as JSONSchema;
@@ -477,8 +477,8 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         expect(strEntry['x-typeOccurrence']).toBe(6);
         expect(objEntry['x-typeOccurrence']).toBe(2);
         expect(objEntry['x-documentsInspected']).toBe(2);
-        expect((objEntry.properties?.['value'] as JSONSchema)['x-occurrence']).toBe(2);
-        expect((objEntry.properties?.['flag'] as JSONSchema)['x-occurrence']).toBe(1);
+        expect((objEntry.properties!['value'] as JSONSchema)['x-occurrence']).toBe(2);
+        expect((objEntry.properties!['flag'] as JSONSchema)['x-occurrence']).toBe(1);
     });
 
     it('preserves global min/max across multiple array instances', () => {
@@ -486,7 +486,7 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         a.addDocument(makeDoc({ scores: [10, 20, 30] }));
         a.addDocument(makeDoc({ scores: [5, 15] }));
 
-        const arr = (a.getSchema().properties?.['scores'] as JSONSchema).anyOf?.find(
+        const arr = (a.getSchema().properties!['scores'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         const numEntry = (arr.items as JSONSchema).anyOf?.find(
@@ -505,7 +505,7 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         a.addDocument(makeDoc({ a: objects }));
 
         const s = a.getSchema();
-        const arr = (s.properties?.['a'] as JSONSchema).anyOf?.find(
+        const arr = (s.properties!['a'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         const objEntry = (arr.items as JSONSchema).anyOf?.find(
@@ -514,7 +514,7 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
 
         expect(objEntry['x-typeOccurrence']).toBe(100);
         expect(objEntry['x-documentsInspected']).toBe(100);
-        expect((objEntry.properties?.['b'] as JSONSchema)['x-occurrence']).toBe(100);
+        expect((objEntry.properties!['b'] as JSONSchema)['x-occurrence']).toBe(100);
     });
 
     it('counts nested arrays (arrays within arrays)', () => {
@@ -529,7 +529,7 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         );
         a.addDocument(makeDoc({ matrix: [[10]] }));
 
-        const outer = (a.getSchema().properties?.['matrix'] as JSONSchema).anyOf?.find(
+        const outer = (a.getSchema().properties!['matrix'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         expect(outer['x-typeOccurrence']).toBe(2);
@@ -570,29 +570,29 @@ describe('BSON SchemaAnalyzer — array statistics', () => {
         );
 
         const s = a.getSchema();
-        const companyObj = (s.properties?.['company'] as JSONSchema).anyOf?.find(
+        const companyObj = (s.properties!['company'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'object',
         ) as JSONSchema;
         expect(companyObj['x-documentsInspected']).toBe(2);
 
-        const deptArr = (companyObj.properties?.['departments'] as JSONSchema).anyOf?.find(
+        const deptArr = (companyObj.properties!['departments'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         const deptObj = (deptArr.items as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'object',
         ) as JSONSchema;
         expect(deptObj['x-documentsInspected']).toBe(3);
-        expect((deptObj.properties?.['name'] as JSONSchema)['x-occurrence']).toBe(3);
-        expect((deptObj.properties?.['employees'] as JSONSchema)['x-occurrence']).toBe(2);
+        expect((deptObj.properties!['name'] as JSONSchema)['x-occurrence']).toBe(3);
+        expect((deptObj.properties!['employees'] as JSONSchema)['x-occurrence']).toBe(2);
 
-        const empArr = (deptObj.properties?.['employees'] as JSONSchema).anyOf?.find(
+        const empArr = (deptObj.properties!['employees'] as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'array',
         ) as JSONSchema;
         const empObj = (empArr.items as JSONSchema).anyOf?.find(
             (e) => (e as JSONSchema)['x-bsonType'] === 'object',
         ) as JSONSchema;
         expect(empObj['x-documentsInspected']).toBe(3);
-        expect((empObj.properties?.['role'] as JSONSchema)['x-occurrence']).toBe(3);
-        expect((empObj.properties?.['level'] as JSONSchema)['x-occurrence']).toBe(1);
+        expect((empObj.properties!['role'] as JSONSchema)['x-occurrence']).toBe(3);
+        expect((empObj.properties!['level'] as JSONSchema)['x-occurrence']).toBe(1);
     });
 });

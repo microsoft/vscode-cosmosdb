@@ -188,9 +188,7 @@ describe('SqlLanguageService with multiQuery', () => {
             expect(hover).not.toBeNull();
             expect(hover!.contents.length).toBeGreaterThan(0);
             // Range should be in document coordinates
-            if (hover!.range) {
-                expect(hover!.range.startOffset).toBeGreaterThanOrEqual(17);
-            }
+            expect(hover!.range?.startOffset).toBeGreaterThanOrEqual(17);
         });
     });
 

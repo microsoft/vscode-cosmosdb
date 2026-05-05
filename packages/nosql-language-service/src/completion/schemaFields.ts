@@ -18,7 +18,7 @@ export function getFieldsFromSchema(schema: JSONSchema | undefined, path: string
     for (const segment of path) {
         const prop = current.properties?.[segment];
         if (!prop || typeof prop === 'boolean') return [];
-        current = prop as JSONSchema;
+        current = prop;
         // If it's an array, look at items
         if (current.type === 'array' && current.items && !Array.isArray(current.items)) {
             current = current.items as JSONSchema;

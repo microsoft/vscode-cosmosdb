@@ -396,5 +396,6 @@ describe('registerCosmosDbSql (Monaco)', () => {
         disposable.dispose();
         // After disposal, a second dispose should be safe (no-op)
         disposable.dispose();
+        expect(typeof disposable.dispose).toBe('function');
     });
 });

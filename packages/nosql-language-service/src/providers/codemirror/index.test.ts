@@ -93,9 +93,8 @@ describe('createCompletionSource', () => {
         const result = source(ctx);
 
         // Either null or a valid completion list
-        if (result !== null) {
-            expect(result.options).toBeDefined();
-        }
+        if (result === null) return;
+        expect(result.options).toBeDefined();
     });
 
     it('maps completion kinds correctly', () => {
@@ -103,11 +102,11 @@ describe('createCompletionSource', () => {
         const ctx = createCompletionContext('SELECT ', 7);
         const result = source(ctx);
 
-        if (result) {
-            for (const opt of result.options) {
-                expect(['keyword', 'property', 'function', 'text', 'variable']).toContain(opt.type);
-            }
-        }
+        if (result === null) return;
+        const allValid = result.options.every((opt) =>
+            ['keyword', 'property', 'function', 'text', 'variable'].includes(opt.type ?? ''),
+        );
+        expect(allValid).toBe(true);
     });
 });
 
@@ -205,12 +204,11 @@ describe('createHoverTooltipSource', () => {
         const view = createViewMock('SELECT * FROM c');
         const result = source(view, 2, 1);
 
-        if (result) {
-            const { dom } = result.create(view);
-            // The content should be escaped, not contain raw < or >
-            // (unless the Markdown itself uses them)
-            expect(dom.innerHTML).not.toContain('<script>');
-        }
+        if (!result) return;
+        const { dom } = result.create(view);
+        // The content should be escaped, not contain raw < or >
+        // (unless the Markdown itself uses them)
+        expect(dom.innerHTML).not.toContain('<script>');
     });
 });
 
@@ -499,13 +497,13 @@ describe('createFormatCommand', () => {
     it('dispatches changes for an unformatted query', () => {
         const cmd = createFormatCommand(service);
         let dispatched = false;
-        const view = {
-            ...createViewMock('select * from c'),
+        const baseMock = createViewMock('select * from c');
+        const view = Object.assign(baseMock, {
             dispatch: (tr: unknown) => {
                 dispatched = true;
                 expect(tr).toHaveProperty('changes');
             },
-        } as unknown as EditorView;
+        }) as unknown as EditorView;
 
         const result = cmd(view);
         // The formatter should produce edits (e.g., uppercasing keywords)

@@ -12,13 +12,13 @@
 
 import { type Document, type WithId } from 'mongodb';
 import { type TypeAdapter, updateSchemaWithDocument as updateSchemaGeneric } from '../core/schemaTraversal.js';
+import { type FieldEntry, getKnownFields as getKnownFieldsGeneric } from '../core/schemaUtils.js';
 import { type JSONSchema } from '../JSONSchema.js';
 import { type BSONType, bsonTypeToJSONType, inferBsonType } from './BSONTypes.js';
 
 export { buildFullPaths, getPropertyNamesAtLevel, simplifySchema } from '../core/schemaUtils.js';
 
 // Re-export getKnownFields pre-bound to BSON's type extension key
-import { type FieldEntry, getKnownFields as getKnownFieldsGeneric } from '../core/schemaUtils.js';
 export type { FieldEntry } from '../core/schemaUtils.js';
 
 function getKnownFieldsBson(schema: JSONSchema): FieldEntry[] {

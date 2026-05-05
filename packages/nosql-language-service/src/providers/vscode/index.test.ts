@@ -386,6 +386,7 @@ describe('registerCosmosDbSql (VS Code)', () => {
         const disposable = registerCosmosDbSql(vscode, service);
         disposable.dispose();
         disposable.dispose();
+        expect(typeof disposable.dispose).toBe('function');
     });
 });
 

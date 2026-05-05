@@ -384,9 +384,10 @@ describe('registerCosmosDbSql (VS Code)', () => {
 
     it('dispose is safe to call multiple times', () => {
         const disposable = registerCosmosDbSql(vscode, service);
-        disposable.dispose();
-        disposable.dispose();
-        expect(typeof disposable.dispose).toBe('function');
+        expect(() => {
+            disposable.dispose();
+            disposable.dispose();
+        }).not.toThrow();
     });
 });
 

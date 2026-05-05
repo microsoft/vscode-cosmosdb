@@ -393,9 +393,10 @@ describe('registerCosmosDbSql (Monaco)', () => {
 
     it('dispose cleans up all registrations', () => {
         const disposable = registerCosmosDbSql(monaco, service);
-        disposable.dispose();
-        // After disposal, a second dispose should be safe (no-op)
-        disposable.dispose();
-        expect(typeof disposable.dispose).toBe('function');
+        expect(() => {
+            disposable.dispose();
+            // After disposal, a second dispose should be safe (no-op)
+            disposable.dispose();
+        }).not.toThrow();
     });
 });

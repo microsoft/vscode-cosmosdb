@@ -4,9 +4,10 @@
 # Triggered only when files that could affect query behaviour change, keeping
 # CI cost low on unrelated commits.
 #
-# The emulator data directory (.cosmosdb-data) is cached by a hash of the seed
-# files. On a cache hit the emulator starts with data already present and
-# seeding is skipped entirely.
+# The emulator always starts with a clean data directory and is seeded fresh.
+# Caching is intentionally skipped: the seed dataset is tiny (~100-200 docs)
+# and cached Postgres data directories cause emulator startup failures due to
+# stale lock files (postmaster.pid).
 
 name: Integration Tests (Cosmos DB Emulator)
 
@@ -56,22 +57,7 @@ jobs:
         run: npm run build
         working-directory: packages/nosql-language-service
 
-      # ── Emulator data cache ──────────────────────────────────────────────────
-      # Cache key covers all seed JSON files. On a hit the .cosmosdb-data volume
-      # is restored before the container starts, so the emulator already contains
-      # the seeded documents and the import step is skipped.
-
-      - name: Restore emulator data cache
-        id: data-cache
-        uses: actions/cache@v4
-        with:
-          path: .cosmosdb-data
-          key: emulator-data-${{ hashFiles('packages/nosql-language-service/src/test-fixtures/containers/**') }}
-
       # ── Start emulator ───────────────────────────────────────────────────────
-
-      - name: Prepare emulator data directory
-        run: mkdir -p .cosmosdb-data
 
       - name: Start Cosmos DB Emulator
         run: docker compose up -d
@@ -93,10 +79,9 @@ jobs:
           docker compose logs cosmosdb-emulator || true
           exit 1
 
-      # ── Seed (cache miss only) ───────────────────────────────────────────────
+      # ── Seed ─────────────────────────────────────────────────────────────────
 
       - name: Seed emulator
-        if: steps.data-cache.outputs.cache-hit != 'true'
         run: |
           node scripts/import-seed.mjs --container products
           node scripts/import-seed.mjs --container orders
@@ -112,12 +97,4 @@ jobs:
 
       - name: Stop emulator
         if: always()
-        run: docker compose down
-
-      # The init container runs chown 1000:1000 on .cosmosdb-data, which makes
-      # the files unreadable by the runner when actions/cache tries to tar them.
-      # Fix permissions so the post-job cache save succeeds.
-      - name: Fix emulator data permissions for cache
-        if: always()
-        run: sudo chmod -R a+rX .cosmosdb-data || true
-
+        run: docker compose down -v

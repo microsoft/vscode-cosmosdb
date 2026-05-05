@@ -1,5 +1,6 @@
 {
   " (Press 'Space' to select and 'Enter' to confirm)": " (Press 'Space' to select and 'Enter' to confirm)",
+  ".NET SDK {0} or newer is required to install Cosmos DB Shell. Install the .NET SDK, download it manually, or configure an existing Cosmos DB Shell path in settings.": ".NET SDK {0} or newer is required to install Cosmos DB Shell. Install the .NET SDK, download it manually, or configure an existing Cosmos DB Shell path in settings.",
   "\"{0}\" is not implemented on \"{1}\".": "\"{0}\" is not implemented on \"{1}\".",
   "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.": "\"registerAzureUtilsExtensionVariables\" must be called before using the vscode-azext-azureutils package.",
   "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.": "\"registerUIExtensionVariables\" must be called before using the @microsoft/vscode-azext-utils package.",
@@ -208,6 +209,7 @@
   "Failed to extract the connection string from the selected node.": "Failed to extract the connection string from the selected node.",
   "Failed to find a matching Azure Resources API for version \"{0}\".": "Failed to find a matching Azure Resources API for version \"{0}\".",
   "Failed to find commandId on generic tree item.": "Failed to find commandId on generic tree item.",
+  "Failed to install .NET SDK {0} or newer. Try downloading it manually from https://dot.net/download.": "Failed to install .NET SDK {0} or newer. Try downloading it manually from https://dot.net/download.",
   "Failed to install Cosmos DB Shell. See the output for details.": "Failed to install Cosmos DB Shell. See the output for details.",
   "Failed to parse index metrics: {error}": "Failed to parse index metrics: {error}",
   "Failed to parse secrets for key {0}:": "Failed to parse secrets for key {0}:",
@@ -481,7 +483,6 @@
   "Table": "Table",
   "Table view": "Table view",
   "Take Survey": "Take Survey",
-  "The .NET SDK is required to install Cosmos DB Shell. Install the .NET SDK, download it manually, or configure an existing Cosmos DB Shell path in settings.": "The .NET SDK is required to install Cosmos DB Shell. Install the .NET SDK, download it manually, or configure an existing Cosmos DB Shell path in settings.",
   "The \"_etag\" field is required to update an item": "The \"_etag\" field is required to update an item",
   "The \"{databaseId}\" database has been deleted.": "The \"{databaseId}\" database has been deleted.",
   "The \"{name}\" database has been created.": "The \"{name}\" database has been created.",

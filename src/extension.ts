@@ -30,6 +30,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/registerCommands';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import {
+    CosmosDBShellExtension,
+    registerCosmosDBShellLanguageServer,
+    registerMcpServer,
+} from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { QueryEditorTab } from './panels/QueryEditorTab';
@@ -62,7 +67,7 @@ export async function activateInternal(
         });
     }
 
-    await callWithTelemetryAndErrorHandling('cosmosDB.activate', (activateContext: IActionContext) => {
+    await callWithTelemetryAndErrorHandling('cosmosDB.activate', async (activateContext: IActionContext) => {
         activateContext.telemetry.properties.isActivationEvent = 'true';
         activateContext.telemetry.measurements.mainFileLoad = (perfStats.loadEndTime - perfStats.loadStartTime) / 1000;
 
@@ -76,6 +81,9 @@ export async function activateInternal(
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
 
         ext.fileSystem = new DatabasesFileSystem();
+
+        const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
+        await cosmosDBShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -106,6 +114,9 @@ export async function activateInternal(
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
+
+        registerMcpServer(context);
+        registerCosmosDBShellLanguageServer(context);
     });
 
     const exportedApi: AzureExtensionApi = { apiVersion: '1.2.0' };

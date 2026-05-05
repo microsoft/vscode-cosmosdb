@@ -37,10 +37,23 @@ import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerRes
 import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
 import { CosmosDBShellMcpHost, getCosmosDBShellMcpEndpoint } from './cosmosDBShellMcpEndpoint';
 
-// Track the connection string associated with each open Cosmos DB Shell terminal.
-// An empty string indicates a terminal launched via the command palette that has not
-// yet been connected to a specific account.
-const terminalConnectionStrings = new Map<vscode.Terminal, string>();
+type AuthKind = 'emulator' | 'accountKey' | 'entraId' | 'managedIdentity' | 'none';
+
+type ShellTerminalState = {
+    /** Endpoint the shell process was launched against, or '' for command-palette launches without a node. */
+    endpoint: string;
+    /** Authentication mode used at launch. Determines which env vars (if any) are baked into the process. */
+    authKind: AuthKind;
+    tenantId?: string;
+    managedIdentityClientId?: string;
+};
+
+// Track per-terminal launch state so we know which Cosmos DB Shell terminals can be reused
+// for a given node. The state describes how the process was *launched* (endpoint + auth
+// mode + env vars baked in), not its current in-shell connection status: a user may have
+// run `disconnect` inside the shell, which VS Code cannot observe. The reuse path therefore
+// always re-issues `connect` before sending further commands.
+const terminalStates = new Map<vscode.Terminal, ShellTerminalState>();
 
 export class CosmosDBShellExtension implements vscode.Disposable {
     private terminalChangeListeners: vscode.Disposable[] = [];
@@ -51,7 +64,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
             listener.dispose();
         });
         this.terminalChangeListeners = [];
-        terminalConnectionStrings.clear();
+        terminalStates.clear();
         return Promise.resolve();
     }
 
@@ -82,8 +95,8 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                     // Check if it was a Cosmos DB Shell terminal
                     if (terminal.name === 'Cosmos DB Shell') {
                         this.updateCosmosDBShellTerminalContext();
-                        // Remove the connection string for this terminal
-                        terminalConnectionStrings.delete(terminal);
+                        // Remove tracked launch state for this terminal
+                        terminalStates.delete(terminal);
                     }
                 });
 
@@ -388,9 +401,9 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         });
         terminal.show();
         watchForEarlyExit(terminal);
-        // Track the command-launched terminal with an empty connection string so it can
-        // be reused later when the user invokes "Launch Cosmos DB Shell" from a tree node.
-        terminalConnectionStrings.set(terminal, '');
+        // Track the command-launched terminal with no endpoint/auth so it can be reused later
+        // when the user invokes "Launch Cosmos DB Shell" from a tree node.
+        terminalStates.set(terminal, { endpoint: '', authKind: 'none' });
         return;
     }
 
@@ -456,8 +469,9 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
 
     terminal.show();
     watchForEarlyExit(terminal);
-    // Store the connection string for this terminal
-    terminalConnectionStrings.set(terminal, rawEndpoint);
+    // Record how this process was launched so future reuse decisions know which env vars
+    // (e.g. COSMOSDB_SHELL_ACCOUNT_KEY / COSMOSDB_SHELL_TOKEN) are baked in.
+    terminalStates.set(terminal, buildTerminalStateForNode(node));
 }
 
 function getGoToContainerCommand(database: DatabaseDefinition, container: ContainerDefinition): string | undefined {
@@ -471,7 +485,7 @@ function getGoToContainerCommand(database: DatabaseDefinition, container: Contai
 
 export async function connectCosmosDBShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
     if (!node) {
-        // No node selected, just launch a new shell without connection
+        // No node selected, just launch a new shell without connection.
         await launchCosmosDBShell(_context, node);
         return;
     }
@@ -482,91 +496,112 @@ export async function connectCosmosDBShell(_context: IActionContext, node?: NoSq
         return;
     }
 
-    // Find an existing Cosmos DB Shell terminal with the same connection string
-    const existingTerminal = findTerminalByConnectionString(rawConnectionString);
-
-    if (existingTerminal) {
-        // Found a terminal with the same connection string, just navigate to the container
-        existingTerminal.show();
+    // Try to reuse an existing Cosmos DB Shell terminal whose launch-time env credentials
+    // are compatible with what this node needs. If none qualifies, fall through to launch a
+    // fresh shell so the right env vars can be baked into the new process.
+    const reusable = findReusableTerminalForNode(node);
+    if (reusable) {
+        const { terminal } = reusable;
+        terminal.show();
+        // Always re-issue `connect` before navigating: the shell may have been disconnected
+        // by the user, or previously associated with a different account on a prior reuse.
+        terminal.sendText(buildInteractiveConnectCommand(node, rawConnectionString), true);
         const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
         if (containerCommand) {
-            existingTerminal.sendText(containerCommand, true);
+            terminal.sendText(containerCommand, true);
         }
+        // Update tracked state to reflect the now-active node.
+        terminalStates.set(terminal, buildTerminalStateForNode(node));
         return;
     }
 
-    // No matching connected terminal. If a command-launched terminal is still unconnected,
-    // reuse it rather than spawning a second shell. We only attempt this when the node's
-    // credentials do not require launch-time environment variables or a pre-fetched token,
-    // because those can only be injected when the terminal is created.
-    const unconnectedTerminal = findUnconnectedCosmosDBShellTerminal();
-    if (unconnectedTerminal && canReuseUnconnectedTerminal(node)) {
-        unconnectedTerminal.show();
-        const connectCommand = buildInteractiveConnectCommand(node, rawConnectionString);
-        unconnectedTerminal.sendText(connectCommand, true);
-        const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
-        if (containerCommand) {
-            unconnectedTerminal.sendText(containerCommand, true);
-        }
-        // Upgrade the tracking entry with the resolved connection string.
-        terminalConnectionStrings.set(unconnectedTerminal, rawConnectionString);
-        return;
-    }
-
-    // Fall back to launching a new shell.
+    // No reusable terminal (none open, or a different launch-time env is required).
     await launchCosmosDBShell(_context, node);
 }
 
 /**
- * Finds an open Cosmos DB Shell terminal that is connected to the given connection string.
+ * Classifies the authentication mode required by a node. This determines which env vars
+ * (if any) the shell process must have been launched with in order to authenticate.
  */
-function findTerminalByConnectionString(connectionString: string): vscode.Terminal | undefined {
-    for (const [terminal, connStr] of terminalConnectionStrings) {
-        // Verify the terminal is still open
-        if (vscode.window.terminals.includes(terminal) && connStr === connectionString) {
-            return terminal;
-        }
+function getNodeAuthKind(node: NoSqlContainerResourceItem): AuthKind {
+    if (node.model.accountInfo.isEmulator) {
+        return 'emulator';
     }
-    return undefined;
+    if (getCosmosDBShellCredential(node)) {
+        return 'accountKey';
+    }
+    if (getEntraIdCredential(node)) {
+        return 'entraId';
+    }
+    if (getManagedIdentityCredential(node)) {
+        return 'managedIdentity';
+    }
+    return 'none';
+}
+
+/** Builds a {@link ShellTerminalState} record describing how a shell would be launched for this node. */
+function buildTerminalStateForNode(node: NoSqlContainerResourceItem): ShellTerminalState {
+    return {
+        endpoint: node.model.accountInfo.endpoint ?? '',
+        authKind: getNodeAuthKind(node),
+        tenantId: getEntraIdCredential(node)?.tenantId,
+        managedIdentityClientId: getManagedIdentityCredential(node)?.clientId,
+    };
 }
 
 /**
- * Finds an open Cosmos DB Shell terminal that was launched without a connection (e.g. via the
- * command palette) and has not yet been associated with a specific account.
+ * Determines whether an already-running Cosmos DB Shell terminal can host the given node.
+ *
+ * Auth modes that need launch-time env vars (account key, Entra ID fallback token) are only
+ * compatible if the terminal was launched for the *same endpoint* with the *same* auth mode
+ * (and tenant for Entra ID) — otherwise the baked-in env would be wrong for the new node.
+ * Auth modes that don't rely on env vars (emulator, managed identity, none) can run in any
+ * tracked terminal via the interactive `connect` command.
  */
-function findUnconnectedCosmosDBShellTerminal(): vscode.Terminal | undefined {
-    for (const [terminal, connStr] of terminalConnectionStrings) {
-        if (connStr === '' && vscode.window.terminals.includes(terminal)) {
-            return terminal;
-        }
-    }
-    return undefined;
-}
+function canReuseTerminalForNode(state: ShellTerminalState, node: NoSqlContainerResourceItem): boolean {
+    const nodeAuth = getNodeAuthKind(node);
 
-/**
- * Determines whether the given node's credentials can be applied to an already-running
- * Cosmos DB Shell terminal. Credentials that depend on launch-time environment variables or
- * a pre-fetched fallback token cannot be injected retroactively.
- */
-function canReuseUnconnectedTerminal(node: NoSqlContainerResourceItem): boolean {
-    const isEmulator = node.model.accountInfo.isEmulator;
-    if (isEmulator) {
+    if (nodeAuth === 'emulator' || nodeAuth === 'managedIdentity' || nodeAuth === 'none') {
         return true;
     }
-    // Account keys are passed via COSMOSDB_SHELL_ACCOUNT_KEY env var and cannot be set on a running terminal.
-    if (getCosmosDBShellCredential(node)) {
+
+    if (state.endpoint !== node.model.accountInfo.endpoint || state.authKind !== nodeAuth) {
         return false;
     }
 
-    // The fresh-launch Entra path also injects COSMOSDB_SHELL_TOKEN as a fallback if the shell cannot
-    // acquire VisualStudioCodeCredential on its own. Reusing an existing terminal would drop that
-    // fallback and make launch order affect whether connection succeeds.
-    if (getEntraIdCredential(node)) {
-        return false;
+    if (nodeAuth === 'entraId') {
+        const cred = getEntraIdCredential(node);
+        if (cred?.tenantId !== state.tenantId) {
+            return false;
+        }
     }
 
-    // Managed identity uses a CLI-only client id but the interactive connect command supports it.
     return true;
+}
+
+/**
+ * Finds the best tracked Cosmos DB Shell terminal to reuse for the given node, preferring
+ * terminals already associated with the same endpoint to keep terminal usage stable.
+ */
+function findReusableTerminalForNode(
+    node: NoSqlContainerResourceItem,
+): { terminal: vscode.Terminal; state: ShellTerminalState } | undefined {
+    const candidates: Array<{ terminal: vscode.Terminal; state: ShellTerminalState; sameEndpoint: boolean }> = [];
+    for (const [terminal, state] of terminalStates) {
+        if (!vscode.window.terminals.includes(terminal)) {
+            continue;
+        }
+        if (!canReuseTerminalForNode(state, node)) {
+            continue;
+        }
+        candidates.push({
+            terminal,
+            state,
+            sameEndpoint: state.endpoint === node.model.accountInfo.endpoint,
+        });
+    }
+    candidates.sort((a, b) => Number(b.sameEndpoint) - Number(a.sameEndpoint));
+    return candidates[0];
 }
 
 /**

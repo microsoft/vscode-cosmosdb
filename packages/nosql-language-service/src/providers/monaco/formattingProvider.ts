@@ -30,4 +30,3 @@ export class MonacoFormattingProvider implements monacoEditor.languages.Document
         }));
     }
 }
-

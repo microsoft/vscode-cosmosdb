@@ -137,4 +137,3 @@ export class MonacoDiagnosticsProvider implements Disposable {
         this.monaco.editor.setModelMarkers(model, this.owner, markers);
     }
 }
-

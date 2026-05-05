@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { type TreeElement } from '../TreeElement';
 import { CosmosDBQueryEditorResourceItem } from '../cosmosdb/CosmosDBQueryEditorResourceItem';
 import { type CosmosDBQueryEditorModel } from '../cosmosdb/models/CosmosDBQueryEditorModel';
+import { type TreeElement } from '../TreeElement';
 
 export class NoSqlQueryEditorResourceItem extends CosmosDBQueryEditorResourceItem {
     constructor(model: CosmosDBQueryEditorModel, experience: Experience) {

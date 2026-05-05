@@ -35,4 +35,3 @@ export class VSCodeHoverProvider implements vscodeApi.HoverProvider {
         return new this.vscode.Hover(md, range);
     }
 }
-

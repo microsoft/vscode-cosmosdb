@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { type TreeElement } from '../TreeElement';
 import { CosmosDBContainerResourceItem } from '../cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBContainerModel } from '../cosmosdb/models/CosmosDBContainerModel';
+import { type TreeElement } from '../TreeElement';
 import { NoSqlItemsResourceItem } from './NoSqlItemsResourceItem';
 import { NoSqlQueryEditorResourceItem } from './NoSqlQueryEditorResourceItem';
 import { NoSqlStoredProceduresResourceItem } from './NoSqlStoredProceduresResourceItem';

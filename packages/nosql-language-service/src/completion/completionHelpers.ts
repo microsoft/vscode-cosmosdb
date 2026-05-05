@@ -73,4 +73,3 @@ export function extractDotExpression(query: string, offset: number): string {
     const match = before.match(/([a-zA-Z_][a-zA-Z0-9_.]*\.?)$/);
     return match ? match[1] : '';
 }
-

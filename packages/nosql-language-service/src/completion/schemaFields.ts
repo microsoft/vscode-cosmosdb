@@ -44,4 +44,3 @@ export function getFieldsFromSchema(schema: JSONSchema | undefined, path: string
 export function getTopLevelFields(schema: JSONSchema | undefined): CompletionItem[] {
     return getFieldsFromSchema(schema, []);
 }
-

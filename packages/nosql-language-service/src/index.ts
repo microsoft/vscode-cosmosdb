@@ -149,8 +149,7 @@ export function parse(query: string): ParseResult {
         const token = e.token;
 
         // Chevrotain returns NaN for virtual EOF tokens — treat NaN as missing
-        const safeOffset = (v: number | undefined, fallback: number) =>
-            v !== undefined && !isNaN(v) ? v : fallback;
+        const safeOffset = (v: number | undefined, fallback: number) => (v !== undefined && !isNaN(v) ? v : fallback);
 
         const startOffset = safeOffset(token.startOffset, query.length);
         const endOffset = safeOffset(token.endOffset, startOffset) + 1;
@@ -173,10 +172,7 @@ export function parse(query: string): ParseResult {
         let code = SqlErrorCode.UnexpectedToken;
         if (startOffset >= query.length) {
             code = SqlErrorCode.UnexpectedEof;
-        } else if (
-            e instanceof MismatchedTokenException ||
-            e instanceof NotAllInputParsedException
-        ) {
+        } else if (e instanceof MismatchedTokenException || e instanceof NotAllInputParsedException) {
             code = SqlErrorCode.MissingKeyword;
         } else if (e.message.includes('Expected') || e.message.includes('expecting')) {
             code = SqlErrorCode.MissingKeyword;

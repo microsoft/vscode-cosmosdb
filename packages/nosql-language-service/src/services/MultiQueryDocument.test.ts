@@ -241,4 +241,3 @@ describe('SqlLanguageService without multiQuery (default)', () => {
         expect(result.ast).toBeDefined();
     });
 });
-

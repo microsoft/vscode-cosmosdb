@@ -222,4 +222,3 @@ export const FUNCTION_CATEGORIES: [string, string[], number][] = [
 
 /** Flat list of all built-in function names */
 export const BUILTIN_FUNCTIONS: string[] = FUNCTION_CATEGORIES.flatMap(([, fns]) => fns);
-

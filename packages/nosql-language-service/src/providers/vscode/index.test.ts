@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as vscodeApi from 'vscode';
+import { SqlLanguageService } from '../../services/SqlLanguageService.js';
 import {
     VSCodeCompletionProvider,
     VSCodeFoldingRangeProvider,
@@ -14,7 +15,6 @@ import {
     registerCosmosDbSql,
     type VSCodeNamespace,
 } from './index.js';
-import { SqlLanguageService } from '../../services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------
 // Lightweight VS Code mock
@@ -437,4 +437,3 @@ describe('VSCodeFoldingRangeProvider', () => {
         expect(ranges[0].end).toBe(4);
     });
 });
-

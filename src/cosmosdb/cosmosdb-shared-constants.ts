@@ -19,5 +19,8 @@ export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
 
 export const SCHEMA_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.schema';
 
+// The well-known emulator master key — identical on every emulator installation.
+// The emulator ships with a single fixed account and this key cannot be changed.
+// Docs: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator#authentication
 export const wellKnownEmulatorPassword =
     'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';

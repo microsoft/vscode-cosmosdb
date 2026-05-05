@@ -112,11 +112,11 @@
     "@vscode/vsce": "~3.9.1",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
-    "eslint": "~10.2.1",
+    "eslint": "~10.3.0",
     "eslint-plugin-license-header": "~0.9.0",
     "eslint-plugin-mocha": "~11.2.0",
     "glob": "~12.0.0",
-    "globals": "~17.5.0",
+    "globals": "~17.6.0",
     "jest-mock-vscode": "~4.12.0",
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
@@ -167,7 +167,7 @@
     "semver": "~7.7.3",
     "uuid": "~14.0.0",
     "vscode-uri": "~3.1.0",
-    "zod": "~4.3.2"
+    "zod": "~4.4.3"
   },
   "overrides": {
     "@prantlf/jsonlint": {

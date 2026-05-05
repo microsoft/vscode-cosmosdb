@@ -85,16 +85,14 @@ describe('createCompletionSource', () => {
         expect(result!.from).toBeDefined();
     });
 
-    it('returns null when no completions available', () => {
+    it('returns null or valid completion list for empty input', () => {
         const source = createCompletionSource(service);
-        // Empty context at offset 0 might still return keywords,
-        // so we test that it at least returns a valid structure
+        // Empty context at offset 0 might still return keywords — either outcome is valid
         const ctx = createCompletionContext('', 0);
         const result = source(ctx);
 
-        // Either null or a valid completion list
-        if (result === null) return;
-        expect(result.options).toBeDefined();
+        // Either null or a list with options — both are acceptable for empty input
+        expect(result === null || Array.isArray(result.options)).toBe(true);
     });
 
     it('maps completion kinds correctly', () => {
@@ -102,6 +100,7 @@ describe('createCompletionSource', () => {
         const ctx = createCompletionContext('SELECT ', 7);
         const result = source(ctx);
 
+        expect(result).not.toBeNull();
         if (result === null) return;
         const allValid = result.options.every((opt) =>
             ['keyword', 'property', 'function', 'text', 'variable'].includes(opt.type ?? ''),
@@ -204,6 +203,7 @@ describe('createHoverTooltipSource', () => {
         const view = createViewMock('SELECT * FROM c');
         const result = source(view, 2, 1);
 
+        expect(result).not.toBeNull();
         if (!result) return;
         const { dom } = result.create(view);
         // The content should be escaped, not contain raw < or >

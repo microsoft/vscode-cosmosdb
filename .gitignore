@@ -153,11 +153,6 @@ publish/
 # in these scripts will be unencrypted
 PublishScripts/
 
-# NuGet Packages
-*.nupkg
-*.nuget.props
-*.nuget.targets
-
 # Microsoft Azure Build Output
 csx/
 *.build.csdef

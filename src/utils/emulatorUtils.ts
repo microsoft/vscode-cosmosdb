@@ -6,7 +6,7 @@
 import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { getExperienceFromApi, type API } from '../AzureDBExperiences';
-import { wellKnownEmulatorPassword } from '../constants';
+import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';

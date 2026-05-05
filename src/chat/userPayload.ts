@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '../utils/json/JSONSchema';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type QueryHistoryContext } from './CosmosDbOperationsService';
 
 /**

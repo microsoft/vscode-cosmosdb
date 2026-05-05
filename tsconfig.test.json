@@ -6,6 +6,13 @@
     "ignoreDeprecations": "6.0",
     "types": ["mocha", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json", "test/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.json",
+    "test/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx"
+  ],
   "exclude": ["node_modules", ".vscode-test", "out", "dist", "src/**/*.test.ts", "**/__mocks__"]
 }

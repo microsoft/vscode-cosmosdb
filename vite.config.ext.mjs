@@ -69,6 +69,23 @@ export default ({ mode }) => {
             conditions: ['import', 'require', 'node'],
             mainFields: ['module', 'main'],
             extensions: ['.ts', '.js'],
+            alias: {
+                '@cosmosdb/nosql-language-service/vscode': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/providers/vscode/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service/services': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/services/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/index.ts',
+                ),
+                '@cosmosdb/schema-analyzer/json': path.resolve(__dirname, 'packages/schema-analyzer/src/json/index.ts'),
+                '@cosmosdb/schema-analyzer/bson': path.resolve(__dirname, 'packages/schema-analyzer/src/bson/index.ts'),
+                '@cosmosdb/schema-analyzer': path.resolve(__dirname, 'packages/schema-analyzer/src/index.ts'),
+            },
         },
         define: {
             'process.env.NODE_ENV': JSON.stringify(mode ?? 'development'),
@@ -106,8 +123,16 @@ export default ({ mode }) => {
                         transform: isDev ? undefined : (content) => content.toString().replace(excludeRegion, ''),
                     },
                     { src: 'skills', dest: '.' },
-                    { src: 'syntaxes', dest: '.' },
-                    { src: 'language-configuration.json', dest: '.' },
+                    {
+                        src: 'packages/nosql-language-service/syntaxes/nosql.tmLanguage.json',
+                        dest: './syntaxes',
+                        rename: { stripBase: true },
+                    },
+                    {
+                        src: 'packages/nosql-language-service/language-configuration.json',
+                        dest: '.',
+                        rename: { stripBase: true },
+                    },
                     { src: 'SECURITY.md', dest: '.' },
                     { src: 'SUPPORT.md', dest: '.' },
                     { src: '.vscodeignore', dest: '.' },
@@ -122,4 +147,3 @@ export default ({ mode }) => {
         ].filter(Boolean),
     };
 };
-

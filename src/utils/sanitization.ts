@@ -165,6 +165,36 @@ export function safeCodeBlock(content: string, language: string = ''): string {
 }
 
 /**
+ * Strips C0 control characters from a string before storing it in a table cell.
+ *
+ * **Why these characters are dangerous / unwanted:**
+ *
+ * | Character(s) | Hex | Risk |
+ * |---|---|---|
+ * | NUL | `\x00` | Truncates strings in many parsers; hides payload tail (CSV injection, path traversal) |
+ * | SOH–BS | `\x01–\x08` | No printable representation; can confuse diff/copy tools and screen readers |
+ * | VT, FF | `\x0b \x0c` | Trigger page/line breaks in some renderers; rarely intentional in data |
+ * | SO–US, DEL | `\x0e–\x1f \x7f` | Include ESC `\x1b` — start of ANSI terminal escape sequences (`\x1b[31m` = red). If the value is ever logged or shown in a terminal, an attacker can overwrite output, change the terminal title, or hide log lines |
+ *
+ * **What is intentionally preserved:**
+ * - `\t` (`\x09`) — tab, meaningful in formatted text
+ * - `\n` (`\x0a`) — newline, meaningful for multi-line cell content
+ * - `\r` (`\x0d`) — carriage return, not in the removed range;
+ *   callers that need CR-free output should strip it separately
+ *
+ * This function is called once per string field when building `TableRecord`
+ * rows; it does **not** need to be called again at render time.
+ *
+ * @param value A raw string field value from a Cosmos DB document
+ * @returns The string with C0 control characters (except TAB and LF) removed
+ */
+export const sanitizeDisplayString = (value: string): string => {
+    // Remove control characters except \t (0x09) and \n (0x0a)
+    // oxlint-disable-next-line no-control-regex
+    return value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+};
+
+/**
  * Sanitizes text for safe use in SQL single-line comments (--).
  * Prevents breaking out of comment context by escaping newlines.
  * This is specifically for query generation where user prompts are embedded in SQL comments.

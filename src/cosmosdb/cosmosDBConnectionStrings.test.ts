@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { wellKnownEmulatorPassword } from '../constants';
 import { parseCosmosDBConnectionString } from './cosmosDBConnectionStrings';
+import { wellKnownEmulatorPassword } from './cosmosdb-shared-constants';
 
 describe('cosmosDBConnectionStrings', () => {
     // Testing different ordering, different use of ';', different casing, etc.

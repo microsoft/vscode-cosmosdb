@@ -34,8 +34,8 @@ export const EditorHotkeys: HotkeyMapping<MyHotkeyCommand>[] = [
     key: 'f5',
     command: 'Execute', // Autocomplete works here
     description: 'Execute action',
-    shortcutDisplay: { windows: 'F5', mac: 'F5' },
-  },
+    shortcutDisplay: { windows: 'F5', mac: 'F5' }
+  }
   // More hotkeys...
 ] as const;
 ```
@@ -48,7 +48,7 @@ Pass your types to hooks to enable type checking:
 // Register a typed scope
 useHotkeyScope<MyHotkeyScope, MyHotkeyCommand>(
   'editor', // IDE validates this is a valid scope
-  EditorHotkeys,
+  EditorHotkeys
 );
 
 // Register a typed command handler
@@ -57,7 +57,7 @@ useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>(
   'Execute', // Valid command autocompleted
   (event) => {
     // Handle command
-  },
+  }
 );
 ```
 

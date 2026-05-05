@@ -12,6 +12,64 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Vite plugin that fails the build immediately if any module in the browser
+ * bundle tries to import from 'vscode' or a Node.js built-in ('node:*', 'fs',
+ * 'path', 'os', …). This catches accidental extension-host code leaking into
+ * the webview bundle at build time rather than at runtime.
+ */
+function noExtensionImportsPlugin() {
+    const NODE_BUILTINS = new Set([
+        'fs',
+        'path',
+        'os',
+        'crypto',
+        'stream',
+        'http',
+        'https',
+        'net',
+        'tls',
+        'events',
+        'assert',
+        'util',
+        'buffer',
+        'url',
+        'querystring',
+        'child_process',
+        'cluster',
+        'dns',
+        'domain',
+        'readline',
+        'repl',
+        'string_decoder',
+        'timers',
+        'tty',
+        'v8',
+        'vm',
+        'worker_threads',
+        'zlib',
+    ]);
+
+    return {
+        name: 'no-extension-imports',
+        enforce: 'pre',
+        resolveId(source) {
+            if (source === 'vscode') {
+                throw new Error(
+                    `[no-extension-imports] Importing 'vscode' is not allowed in webview code.\n` +
+                        `  Check the import chain that led to this import.`,
+                );
+            }
+            if (source.startsWith('node:') || NODE_BUILTINS.has(source)) {
+                throw new Error(
+                    `[no-extension-imports] Importing Node.js built-in '${source}' is not allowed in webview code.\n` +
+                        `  Check the import chain that led to this import.`,
+                );
+            }
+        },
+    };
+}
+
 export default ({ mode }) => {
     const isDev = mode === 'development';
 
@@ -47,6 +105,20 @@ export default ({ mode }) => {
             extensions: ['.js', '.jsx', '.ts', '.tsx'],
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
+            alias: {
+                '@cosmosdb/nosql-language-service/monaco': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/providers/monaco/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service/services': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/services/index.ts',
+                ),
+                '@cosmosdb/nosql-language-service': path.resolve(
+                    __dirname,
+                    'packages/nosql-language-service/src/index.ts',
+                ),
+            },
         },
         // CSS/SCSS handled natively by Vite (no css-loader/sass-loader needed)
         css: {
@@ -55,6 +127,7 @@ export default ({ mode }) => {
             },
         },
         plugins: [
+            noExtensionImportsPlugin(),
             react(),
             // In dev server mode, serve /views.js as a re-export of the real entry so VSCode
             // webview can load it from http://localhost:18080/views.js with full HMR support.

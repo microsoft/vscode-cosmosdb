@@ -175,9 +175,9 @@ function watchForEarlyExit(terminal: vscode.Terminal): void {
     });
 }
 
-function isDotNetSdkInstalled(): boolean {
+function isDotNetSdkInstalled(dotnetPath?: string): boolean {
     try {
-        const output = child.execFileSync('dotnet', ['--list-sdks'], {
+        const output = child.execFileSync(dotnetPath ?? 'dotnet', ['--list-sdks'], {
             windowsHide: true,
             stdio: 'pipe',
         });
@@ -192,7 +192,7 @@ function isDotNetSdkInstalled(): boolean {
  * notification, streaming output to the extension output channel. Returns true
  * when the process exits with code 0.
  */
-async function installCosmosDBShellWithDotNetTool(): Promise<boolean> {
+async function installCosmosDBShellWithDotNetTool(dotnetPath?: string): Promise<boolean> {
     return await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
@@ -201,10 +201,11 @@ async function installCosmosDBShellWithDotNetTool(): Promise<boolean> {
         },
         async (_progress, token) => {
             ext.outputChannel.show(true);
-            ext.outputChannel.appendLine('> dotnet tool install --global CosmosDBShell --prerelease');
+            const dotnetExe = dotnetPath ?? 'dotnet';
+            ext.outputChannel.appendLine(`> ${dotnetExe} tool install --global CosmosDBShell --prerelease`);
 
             return await new Promise<boolean>((resolve) => {
-                const proc = child.spawn('dotnet', ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'], {
+                const proc = child.spawn(dotnetExe, ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'], {
                     windowsHide: true,
                     shell: false,
                 });
@@ -259,7 +260,21 @@ async function promptToInstallCosmosDBShell(
         return;
     }
 
-    const success = await installCosmosDBShellWithDotNetTool();
+    await installAndLaunchCosmosDBShell(context, node);
+}
+
+/**
+ * Runs the `dotnet tool install` for Cosmos DB Shell, then either reloads the window
+ * (if PATH hasn't picked up the new tool yet) or auto-launches the shell to continue
+ * the user's original action. Used both by the explicit install prompt and by the
+ * auto-chain after a fresh .NET SDK acquisition.
+ */
+async function installAndLaunchCosmosDBShell(
+    context: IActionContext,
+    node: NoSqlContainerResourceItem | undefined,
+    dotnetPath?: string,
+): Promise<void> {
+    const success = await installCosmosDBShellWithDotNetTool(dotnetPath);
     if (!success) {
         const showOutput = l10n.t('Show Output');
         const failureSelection = await vscode.window.showErrorMessage(
@@ -293,18 +308,19 @@ async function promptToInstallCosmosDBShell(
 }
 
 /**
- * Awaits the `.NET Install Tool` SDK acquisition command. Treats any non-rejected
- * resolution that returns a result as success.
+ * Awaits the `.NET Install Tool` SDK acquisition command. Returns the resolved
+ * `dotnet` executable path on success, or undefined when the acquisition failed
+ * or did not return a path.
  */
-async function tryInstallDotNetSdkViaExtension(): Promise<boolean> {
+async function tryInstallDotNetSdkViaExtension(): Promise<string | undefined> {
     try {
         const result = await vscode.commands.executeCommand<{ dotnetPath?: string } | undefined>(
             'dotnet.acquireGlobalSDKPublic',
         );
-        return !!result;
+        return result?.dotnetPath;
     } catch (err) {
         ext.outputChannel.appendLine(`dotnet.acquireGlobalSDKPublic failed: ${String(err)}`);
-        return false;
+        return undefined;
     }
 }
 
@@ -330,9 +346,13 @@ async function promptToInstallDotNetSdk(
     );
 
     if (selection === installDotNetSdk) {
-        const sdkInstalled = await tryInstallDotNetSdkViaExtension();
-        if (sdkInstalled && isDotNetSdkInstalled()) {
-            // Chain forward: now that the SDK is available, offer the tool install.
+        const dotnetPath = await tryInstallDotNetSdkViaExtension();
+        if (dotnetPath && isDotNetSdkInstalled(dotnetPath)) {
+            // Chain forward: now that the SDK is available, automatically continue with the
+            // Cosmos DB Shell install using the freshly-acquired dotnet path so we don't have
+            // to wait for PATH to be picked up by this VS Code session.
+            await installAndLaunchCosmosDBShell(context, node, dotnetPath);
+        } else if (isDotNetSdkInstalled()) {
             await promptToInstallCosmosDBShell(context, node);
         }
     } else if (selection === installDotNetTool) {

@@ -428,7 +428,6 @@
   "No matching resources found.": "No se encontraron recursos coincidentes.",
   "No properties available for filtering.": "No hay propiedades disponibles para filtrar.",
   "No properties available for sorting.": "No hay propiedades disponibles para la ordenación.",
-  "No properties found in the schema at path \"{0}\"": "No se encontraron propiedades en el esquema en la ruta \"{0}\"",
   "No query found to edit. Please write or execute a query in the query editor first.": "No se encontró ninguna consulta para editar. Escriba o ejecute primero una consulta en el editor de consultas.",
   "No required RBAC permissions": "No se requieren permisos RBAC",
   "No result": "Sin resultado",

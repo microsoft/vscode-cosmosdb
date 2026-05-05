@@ -428,7 +428,6 @@
   "No matching resources found.": "一致するリソースが見つかりません。",
   "No properties available for filtering.": "フィルター処理に使用できるプロパティがありません。",
   "No properties available for sorting.": "並べ替えに使用できるプロパティがありません。",
-  "No properties found in the schema at path \"{0}\"": "パス \"{0}\" にあるスキーマにプロパティが見つかりません",
   "No query found to edit. Please write or execute a query in the query editor first.": "編集するクエリが見つかりません。まずクエリ エディターでクエリを作成または実行してください。",
   "No required RBAC permissions": "必要な RBAC アクセス許可がありません",
   "No result": "結果がありません",

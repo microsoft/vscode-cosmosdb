@@ -428,7 +428,6 @@
   "No matching resources found.": "Соответствующие ресурсы не найдены.",
   "No properties available for filtering.": "Нет доступных свойств для фильтрации.",
   "No properties available for sorting.": "Нет доступных свойств для сортировки.",
-  "No properties found in the schema at path \"{0}\"": "Свойства не найдены в схеме по пути \"{0}\"",
   "No query found to edit. Please write or execute a query in the query editor first.": "Запрос для редактирования не найден. Сначала напишите или выполните запрос в редакторе запросов.",
   "No required RBAC permissions": "Отсутствуют необходимые разрешения RBAC",
   "No result": "Нет результата",

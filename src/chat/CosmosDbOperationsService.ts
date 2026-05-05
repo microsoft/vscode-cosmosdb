@@ -1037,21 +1037,21 @@ export class CosmosDbOperationsService {
                         if (onConfirm) {
                             const confirmed = await onConfirm(l10n.t(SAMPLE_DATA_CONFIRMATION_MESSAGE));
                             if (!confirmed) {
-                                schemaSamplingUserAllowed = false;
                                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.schemaSamplingDenied', (ctx) => {
                                     ctx.errorHandling.suppressDisplay = true;
                                     ctx.telemetry.properties.source = source ?? 'unknown';
+                                    schemaSamplingUserAllowed = false;
+                                    toolResult = new vscode.LanguageModelToolResult([
+                                        new vscode.LanguageModelTextPart(
+                                            l10n.t('User declined to sample the container schema.'),
+                                        ),
+                                    ]);
+                                    messages.push(
+                                        vscode.LanguageModelChatMessage.User([
+                                            new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
+                                        ]),
+                                    );
                                 });
-                                toolResult = new vscode.LanguageModelToolResult([
-                                    new vscode.LanguageModelTextPart(
-                                        l10n.t('User declined to sample the container schema.'),
-                                    ),
-                                ]);
-                                messages.push(
-                                    vscode.LanguageModelChatMessage.User([
-                                        new vscode.LanguageModelToolResultPart(toolCall.callId, toolResult.content),
-                                    ]),
-                                );
                                 continue;
                             }
                         }
@@ -1200,7 +1200,7 @@ export class CosmosDbOperationsService {
             if (schemaSamplingUserAllowed !== undefined) {
                 ctx.telemetry.properties.schemaSamplingUserAllowed = String(schemaSamplingUserAllowed);
             }
-            ctx.telemetry.measurements.duration = llmDurationMs;
+            ctx.telemetry.measurements.llmDurationMs = llmDurationMs;
             ctx.telemetry.measurements.toolRoundsUsed = toolRoundsUsed;
             ctx.telemetry.measurements.queryHistorySize = historyContext?.executions?.length ?? 0;
             if (schemaSamplingExecuted) {

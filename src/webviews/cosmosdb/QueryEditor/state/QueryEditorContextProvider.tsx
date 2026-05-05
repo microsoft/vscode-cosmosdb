@@ -158,9 +158,6 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     public setCurrentQueryBlock(queryBlock: string): void {
         this.dispatch({ type: 'setCurrentQueryBlock', currentQueryBlock: queryBlock });
     }
-    public setCurrentQueryBlock(queryBlock: string): void {
-        this.dispatch({ type: 'setCurrentQueryBlock', currentQueryBlock: queryBlock });
-    }
 
     public async connectToDatabase(): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.connectToDatabase.mutate());

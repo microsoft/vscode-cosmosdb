@@ -70,21 +70,27 @@ jobs:
 
       # ── Start emulator ───────────────────────────────────────────────────────
 
+      - name: Prepare emulator data directory
+        run: mkdir -p .cosmosdb-data
+
       - name: Start Cosmos DB Emulator
         run: docker compose up -d
 
       - name: Wait for emulator to be ready
         run: |
           echo "Waiting for Cosmos DB Emulator..."
-          for i in $(seq 1 30); do
-            if curl -fsk https://localhost:8081/_explorer/emulator.pem -o /dev/null 2>&1; then
-              echo "Emulator is ready after $i attempts."
+          for i in $(seq 1 60); do
+            # vnext-preview exposes its data plane at /; a 200/401 response means it's up
+            STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost:8081/ 2>/dev/null || true)
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
+              echo "Emulator is ready after $i attempts (HTTP $STATUS)."
               exit 0
             fi
-            echo "Attempt $i/30 — not ready yet, sleeping 10s..."
-            sleep 10
+            echo "Attempt $i/60 — not ready yet (HTTP $STATUS), sleeping 5s..."
+            sleep 5
           done
           echo "Emulator did not become ready in time." >&2
+          docker compose logs cosmosdb-emulator || true
           exit 1
 
       # ── Seed (cache miss only) ───────────────────────────────────────────────

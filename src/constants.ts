@@ -6,7 +6,7 @@
 import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
-import { Uri, type IconPath } from 'vscode';
+import { ThemeIcon, Uri, type IconPath } from 'vscode';
 import { ext } from './extensionVariables';
 
 export const isWindows: boolean = process.platform.startsWith('win');
@@ -40,7 +40,11 @@ export function getThemeAgnosticIconPath(iconName: string): IconPath {
 
 export function getThemeAgnosticIconURI(iconName: string): IconPath {
     const iconPath = Uri.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName);
-    assert.ok(fs.existsSync(iconPath.fsPath), `Icon not found: ${iconPath.fsPath}`);
+    if (!fs.existsSync(iconPath.fsPath)) {
+        ext.outputChannel.warn(`Icon not found: ${iconPath.fsPath}`);
+        return new ThemeIcon('database');
+    }
+
     return {
         light: iconPath,
         dark: iconPath,

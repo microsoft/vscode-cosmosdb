@@ -4,10 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 /**
- * entry-point for mongoClusters-related code. Activated from ./src/extension.ts
- *
- * We'll try to have everything related to mongoClusters-support managed from here.
- * In case of a failure with this plan, this comment section will be updated.
+ * Entry point for Cosmos DB Shell support. Manages command registration, terminal orchestration,
+ * MCP provider wiring, and language server startup.
  */
 import { type ContainerDefinition, type DatabaseDefinition } from '@azure/cosmos';
 import {
@@ -129,9 +127,6 @@ export class CosmosDBShellExtension implements vscode.Disposable {
     }
 }
 
-// Create a singleton instance to access the context updater
-//const cosmosDBShellExt = new CosmosDBShellExtension();
-
 function getCosmosDBShellCommand(): string {
     const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
     return resolveCosmosDBShellCommand(shellPath);
@@ -163,8 +158,13 @@ function isCosmosDBShellPathFound(): boolean {
 function watchForEarlyExit(terminal: vscode.Terminal): void {
     const startTime = Date.now();
     const listener = vscode.window.onDidCloseTerminal((closedTerminal) => {
+        if (closedTerminal !== terminal) {
+            return;
+        }
+
+        clearTimeout(timeout);
         listener.dispose();
-        if (closedTerminal === terminal && Date.now() - startTime < 5000) {
+        if (Date.now() - startTime < 5000) {
             const exitCode = closedTerminal.exitStatus?.code;
             const exitReason = closedTerminal.exitStatus?.reason;
             ext.outputChannel.error(
@@ -172,6 +172,9 @@ function watchForEarlyExit(terminal: vscode.Terminal): void {
             );
         }
     });
+    const timeout = setTimeout(() => {
+        listener.dispose();
+    }, 5000);
 }
 
 /**
@@ -516,7 +519,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     const managedIdentityCredential = isEmulator ? undefined : getManagedIdentityCredential(node);
     const rawEndpoint = node.model.accountInfo.endpoint;
     if (!rawEndpoint) {
-        void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
+        void vscode.window.showErrorMessage(l10n.t('Failed to extract the account endpoint from the selected node.'));
         return;
     }
 
@@ -589,9 +592,9 @@ export async function connectCosmosDBShell(_context: IActionContext, node?: NoSq
         return;
     }
 
-    const rawConnectionString = node.model.accountInfo.endpoint;
-    if (!rawConnectionString) {
-        void vscode.window.showErrorMessage(l10n.t('Failed to extract the connection string from the selected node.'));
+    const rawEndpoint = node.model.accountInfo.endpoint;
+    if (!rawEndpoint) {
+        void vscode.window.showErrorMessage(l10n.t('Failed to extract the account endpoint from the selected node.'));
         return;
     }
 
@@ -604,7 +607,7 @@ export async function connectCosmosDBShell(_context: IActionContext, node?: NoSq
         terminal.show();
         // Always re-issue `connect` before navigating: the shell may have been disconnected
         // by the user, or previously associated with a different account on a prior reuse.
-        terminal.sendText(buildInteractiveConnectCommand(node, rawConnectionString), true);
+        terminal.sendText(buildInteractiveConnectCommand(node, rawEndpoint), true);
         const containerCommand = getGoToContainerCommand(node.model.database, node.model.container);
         if (containerCommand) {
             terminal.sendText(containerCommand, true);

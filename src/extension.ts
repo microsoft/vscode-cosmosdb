@@ -93,6 +93,7 @@ export async function activateInternal(
         ext.fileSystem = new DatabasesFileSystem();
 
         const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
+        context.subscriptions.push(cosmosDBShellSupport);
         await cosmosDBShellSupport.activate();
 
         context.subscriptions.push(

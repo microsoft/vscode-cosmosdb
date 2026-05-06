@@ -8,7 +8,7 @@ import { createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { CosmosDBTimeouts, getThemeAgnosticIconPath } from '../../constants';
+import { CosmosDBTimeouts, getThemeAgnosticIconURI } from '../../constants';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
@@ -75,17 +75,26 @@ export abstract class CosmosDBAccountAttachedResourceItem
         }
 
         const treeItem = super.getTreeItem();
+        const tooltip = new vscode.MarkdownString(tooltipMessage);
         if (treeItem.tooltip) {
-            tooltipMessage = `${String(treeItem.tooltip)}\n${tooltipMessage}`;
+            if (typeof treeItem.tooltip === 'string') {
+                tooltip.value = `${treeItem.tooltip}\n${tooltip.value}`;
+            } else if (treeItem.tooltip instanceof vscode.MarkdownString) {
+                tooltip.value = `${treeItem.tooltip.value}\n${tooltip.value}`;
+                tooltip.isTrusted = treeItem.tooltip.isTrusted;
+                tooltip.supportThemeIcons = treeItem.tooltip.supportThemeIcons;
+                tooltip.supportHtml = treeItem.tooltip.supportHtml;
+                tooltip.baseUri = treeItem.tooltip.baseUri;
+            }
         }
 
         return {
             ...treeItem,
             description: description,
-            tooltip: new vscode.MarkdownString(tooltipMessage),
+            tooltip,
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
-                : getThemeAgnosticIconPath('CosmosDBAccount.svg'),
+                : getThemeAgnosticIconURI('CosmosDBAccount.svg'),
         };
     }
 
@@ -137,7 +146,7 @@ export abstract class CosmosDBAccountAttachedResourceItem
                         "The Cosmos DB emulator is using a self-signed certificate. To connect to the emulator, you must import the emulator's TLS/SSL certificate.", // or disable the 'http.proxyStrictSSL' setting but we don't recommend this for security reasons.
                     );
                     const readMoreItem = l10n.t('Learn more');
-                    void vscode.window.showErrorMessage(message, ...[readMoreItem]).then((item) => {
+                    void vscode.window.showErrorMessage(message, readMoreItem).then((item) => {
                         if (item === readMoreItem) {
                             void vscode.env.openExternal(
                                 vscode.Uri.parse(

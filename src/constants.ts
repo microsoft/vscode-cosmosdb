@@ -10,7 +10,7 @@ export const isMacOS: boolean = /^darwin/.test(process.platform);
 import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
-import { Uri, type IconPath } from 'vscode';
+import { ThemeIcon, Uri, type IconPath } from 'vscode';
 import { ext } from './extensionVariables';
 
 export namespace Links {
@@ -36,6 +36,19 @@ export function getThemeAgnosticIconPath(iconName: string): IconPath {
     assert.ok(fs.existsSync(icon));
 
     return Uri.file(icon);
+}
+
+export function getThemeAgnosticIconURI(iconName: string): IconPath {
+    const iconPath = Uri.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName);
+    if (!fs.existsSync(iconPath.fsPath)) {
+        ext.outputChannel.warn(`Icon not found: ${iconPath.fsPath}`);
+        return new ThemeIcon('database');
+    }
+
+    return {
+        light: iconPath,
+        dark: iconPath,
+    };
 }
 
 export function getResourcesPath(): string {

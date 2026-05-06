@@ -33,6 +33,7 @@
       ]
     }
   },
+  "references": [{ "path": "../schema-analyzer" }],
   "include": ["src"],
   "exclude": ["node_modules", "dist", "tests", "**/*.test.ts"]
 }

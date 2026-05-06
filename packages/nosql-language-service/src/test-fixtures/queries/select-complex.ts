@@ -15,10 +15,7 @@ export const fixtures: QueryFixture[] = [
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [
-                        {},
-                        { expression: { kind: 'ArrayScalarExpression' }, alias: { value: 'itemNames' } },
-                    ],
+                    items: [{}, { expression: { kind: 'ArrayScalarExpression' }, alias: { value: 'itemNames' } }],
                 },
             },
         },
@@ -32,10 +29,7 @@ export const fixtures: QueryFixture[] = [
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [
-                        {},
-                        { expression: { kind: 'FirstScalarExpression' }, alias: { value: 'mostExpensive' } },
-                    ],
+                    items: [{}, { expression: { kind: 'FirstScalarExpression' }, alias: { value: 'mostExpensive' } }],
                 },
             },
         },
@@ -50,10 +44,7 @@ export const fixtures: QueryFixture[] = [
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [
-                        {},
-                        { expression: { kind: 'LastScalarExpression' }, alias: { value: 'lastItem' } },
-                    ],
+                    items: [{}, { expression: { kind: 'LastScalarExpression' }, alias: { value: 'lastItem' } }],
                 },
             },
         },
@@ -67,10 +58,7 @@ export const fixtures: QueryFixture[] = [
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [
-                        {},
-                        { expression: { kind: 'SubqueryScalarExpression' }, alias: { value: 'itemCount' } },
-                    ],
+                    items: [{}, { expression: { kind: 'SubqueryScalarExpression' }, alias: { value: 'itemCount' } }],
                 },
             },
         },
@@ -347,11 +335,11 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
-        knownLimitation: 'UDF not registered in the emulator — runtime 400 expected',
+        knownLimitation: 'Server-side scripts are not supported in the vnext-preview Linux emulator',
     },
     {
         id: 'UDF-02',
-        description: 'UDF call in WHERE',
+        description: 'UDF call with multiple arguments',
         query: 'SELECT * FROM c WHERE udf.isExpensive(c.price, 100)',
         container: 'products',
         expectAst: {
@@ -363,7 +351,7 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
-        knownLimitation: 'UDF not registered in the emulator — runtime 400 expected',
+        knownLimitation: 'Server-side scripts are not supported in the vnext-preview Linux emulator',
     },
     {
         id: 'UDF-03',
@@ -387,7 +375,7 @@ export const fixtures: QueryFixture[] = [
                 },
             },
         },
-        knownLimitation: 'UDF not registered in the emulator — runtime 400 expected',
+        knownLimitation: 'Server-side scripts are not supported in the vnext-preview Linux emulator',
     },
 
     // ── CX series: complex / compositional ─────────────────────────────────
@@ -444,11 +432,7 @@ export const fixtures: QueryFixture[] = [
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [
-                        {},
-                        {},
-                        { expression: { kind: 'ArrayScalarExpression' }, alias: { value: 'wTags' } },
-                    ],
+                    items: [{}, {}, { expression: { kind: 'ArrayScalarExpression' }, alias: { value: 'wTags' } }],
                 },
             },
         },

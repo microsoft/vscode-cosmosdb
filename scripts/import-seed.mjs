@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ── CLI argument parsing ──────────────────────────────────────────────────────
+// (parsed before the TLS guard so we can check --endpoint early)
 
 const args = process.argv.slice(2);
 
@@ -49,8 +50,7 @@ function hasFlag(name) {
 // Override via COSMOS_KEY env var or --key flag only when connecting to a
 // non-emulator instance.
 // Docs: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator#authentication
-const EMULATOR_KEY =
-    'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
+const EMULATOR_KEY = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 
 const endpoint = flag('endpoint') ?? process.env.COSMOS_ENDPOINT;
 const key = flag('key') ?? process.env.COSMOS_KEY ?? EMULATOR_KEY;
@@ -65,6 +65,15 @@ if (!endpoint) {
     process.exit(1);
 }
 
+// ── TLS guard ─────────────────────────────────────────────────────────────────
+// The CosmosDB emulator uses a self-signed certificate.
+// When connecting to localhost, automatically disable TLS verification so users
+// don't need to remember to set NODE_TLS_REJECT_UNAUTHORIZED=0 manually.
+if (new URL(endpoint).hostname === 'localhost' && !process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    console.log('ℹ  localhost endpoint detected — TLS verification disabled (self-signed emulator cert).');
+}
+
 if (!importAll && !singleContainer) {
     console.error('ERROR: Specify --container <name> or --all.');
     process.exit(1);
@@ -75,7 +84,40 @@ if (!importAll && !singleContainer) {
 // containers to avoid wasting time on known-unsupported endpoints (e.g. emulator).
 let bulkSupported = true;
 
-
+/**
+ * UDFs to register per container.
+ * Each entry is { id, body } — body is a JS function string.
+ * These are registered idempotently (create → replace on 409).
+ *
+ * @type {Record<string, { id: string; body: string }[]>}
+ */
+const CONTAINER_UDFS = {
+    products: [
+        {
+            id: 'formatPrice',
+            body: `function formatPrice(price) {
+    if (price === null || price === undefined) return null;
+    return '$' + Number(price).toFixed(2);
+}`,
+        },
+        {
+            id: 'isExpensive',
+            body: `function isExpensive(price, threshold) {
+    if (price === null || price === undefined) return false;
+    if (threshold === null || threshold === undefined) threshold = 100;
+    return Number(price) > Number(threshold);
+}`,
+        },
+        {
+            id: 'categoryLabel',
+            body: `function categoryLabel(category, brand, inStock) {
+    var label = (category || 'Unknown') + ' / ' + (brand || 'Unknown');
+    if (inStock === false) label += ' [Out of stock]';
+    return label;
+}`,
+        },
+    ],
+};
 
 /** @type {Record<string, { partitionKeyPath: string; seedFile: string }>} */
 const CONTAINERS = {
@@ -160,11 +202,13 @@ function chunks(arr, size) {
  */
 function renderProgress(label, done, total, batch, batches) {
     const BAR_WIDTH = 30;
-    const pct = total === 0 ? 1 : done / total;
-    const filled = Math.round(BAR_WIDTH * pct);
+    const pct = total === 0 ? 1 : Math.min(1, done / total);
+    const filled = Math.min(BAR_WIDTH, Math.round(BAR_WIDTH * pct));
     const bar = '█'.repeat(filled) + '░'.repeat(BAR_WIDTH - filled);
     const pctStr = (pct * 100).toFixed(1).padStart(5);
-    process.stdout.write(`\r${label.padEnd(12)} [${bar}] ${pctStr}%  ${String(done).padStart(6)}/${total}  batch ${batch}/${batches}`);
+    process.stdout.write(
+        `\r${label.padEnd(12)} [${bar}] ${pctStr}%  ${String(done).padStart(6)}/${total}  batch ${batch}/${batches}`,
+    );
     if (done >= total) process.stdout.write('\n');
 }
 
@@ -180,7 +224,9 @@ async function importContainer(containerName) {
 
     console.log(`\n[${containerName}] Reading seed file: ${meta.seedFile}`);
     const docs = JSON.parse(readFileSync(meta.seedFile, 'utf8'));
-    console.log(`[${containerName}] Loaded ${docs.length} documents (${(readFileSync(meta.seedFile).length / 1_048_576).toFixed(1)} MB)`);
+    console.log(
+        `[${containerName}] Loaded ${docs.length} documents (${(readFileSync(meta.seedFile).length / 1_048_576).toFixed(1)} MB)`,
+    );
 
     // Ensure database exists
     const { database } = await client.databases.createIfNotExists({ id: databaseId });
@@ -201,22 +247,41 @@ async function importContainer(containerName) {
     });
     console.log(`[${containerName}] Container "${containerName}" ready (partition key: ${meta.partitionKeyPath})`);
 
+    // ── UDF registration ──────────────────────────────────────────────────
+    const udfs = CONTAINER_UDFS[containerName] ?? [];
+    for (const udf of udfs) {
+        try {
+            await container.scripts.userDefinedFunctions.create({ id: udf.id, body: udf.body });
+            console.log(`[${containerName}] UDF "${udf.id}" created`);
+        } catch (err) {
+            if (err.statusCode === 409 || err.code === 409) {
+                // Already exists — replace to keep body up to date
+                await container.scripts.userDefinedFunction(udf.id).replace({ id: udf.id, body: udf.body });
+                console.log(`[${containerName}] UDF "${udf.id}" replaced (already existed)`);
+            } else {
+                console.warn(
+                    `[${containerName}] UDF "${udf.id}" registration failed (statusCode=${err.statusCode ?? err.code}): ${err.message}`,
+                );
+            }
+        }
+    }
+
     // ── Resume support ────────────────────────────────────────────────────
     // Query how many documents already exist. Since upsert is idempotent,
     // we can safely skip batches that are fully covered by the existing count.
     // No state file needed — works identically on local and CI.
     let alreadyInserted = 0;
     try {
-        const { resources } = await container.items
-            .query('SELECT VALUE COUNT(1) FROM c')
-            .fetchAll();
+        const { resources } = await container.items.query('SELECT VALUE COUNT(1) FROM c').fetchAll();
         alreadyInserted = resources[0] ?? 0;
     } catch {
         // Container empty or query failed — start from the beginning
     }
     const skipBatches = Math.floor(alreadyInserted / batchSize);
     if (skipBatches > 0) {
-        console.log(`[${containerName}] Resuming — ${alreadyInserted} docs already present, skipping first ${skipBatches} batches`);
+        console.log(
+            `[${containerName}] Resuming — ${alreadyInserted} docs already present, skipping first ${skipBatches} batches`,
+        );
     }
 
     // ── Upsert with bulk → fallback ───────────────────────────────────────
@@ -244,12 +309,20 @@ async function importContainer(containerName) {
                     throw new Error(`${failed.length} failed upserts, first status: ${failed[0].statusCode}`);
                 }
             } catch (err) {
-                console.warn(`\n[${containerName}] bulk() unsupported (${err.message?.slice(0, 72)}…), switching to individual upserts`);
+                console.warn(
+                    `\n[${containerName}] bulk() unsupported (${err.message?.slice(0, 72)}…), switching to individual upserts`,
+                );
                 bulkSupported = false;
-                await pLimit(batch.map((doc) => () => container.items.upsert(doc)), concurrency);
+                await pLimit(
+                    batch.map((doc) => () => container.items.upsert(doc)),
+                    concurrency,
+                );
             }
         } else {
-            await pLimit(batch.map((doc) => () => container.items.upsert(doc)), concurrency);
+            await pLimit(
+                batch.map((doc) => () => container.items.upsert(doc)),
+                concurrency,
+            );
         }
 
         upserted += batch.length;

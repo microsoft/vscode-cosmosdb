@@ -135,10 +135,7 @@ export const fixtures: QueryFixture[] = [
             select: {
                 spec: {
                     kind: 'SelectListSpec',
-                    items: [
-                        {},
-                        { expression: { kind: 'FunctionCallScalarExpression', name: { value: 'SUM' } } },
-                    ],
+                    items: [{}, { expression: { kind: 'FunctionCallScalarExpression', name: { value: 'SUM' } } }],
                 },
             },
             groupBy: { kind: 'GroupByClause' },
@@ -276,6 +273,71 @@ export const fixtures: QueryFixture[] = [
         expectAst: {
             orderBy: { items: [{ sortOrder: 'Descending' }] },
             offsetLimit: { kind: 'OffsetLimitClause' },
+        },
+    },
+
+    // ── G-08..10: aggregate functions CountIf / MakeList / MakeSet ──────────
+    {
+        id: 'G-08',
+        description: 'CountIf — count in-stock products per category',
+        query: 'SELECT c.category, CountIf(c.inStock) AS inStockCount FROM c GROUP BY c.category',
+        container: 'products',
+        expectAst: {
+            groupBy: { kind: 'GroupByClause' },
+            select: {
+                spec: {
+                    kind: 'SelectListSpec',
+                    items: [
+                        {},
+                        {
+                            expression: { kind: 'FunctionCallScalarExpression', name: { value: 'CountIf' } },
+                            alias: { value: 'inStockCount' },
+                        },
+                    ],
+                },
+            },
+        },
+    },
+    {
+        id: 'G-09',
+        description: 'MakeList — collect brand names per category (may include duplicates)',
+        query: 'SELECT c.category, MakeList(c.brand) AS brands FROM c GROUP BY c.category',
+        container: 'products',
+        expectAst: {
+            groupBy: { kind: 'GroupByClause' },
+            select: {
+                spec: {
+                    kind: 'SelectListSpec',
+                    items: [
+                        {},
+                        {
+                            expression: { kind: 'FunctionCallScalarExpression', name: { value: 'MakeList' } },
+                            alias: { value: 'brands' },
+                        },
+                    ],
+                },
+            },
+        },
+    },
+    {
+        id: 'G-10',
+        description: 'MakeSet — collect distinct brand names per category',
+        query: 'SELECT c.category, MakeSet(c.brand) AS uniqueBrands FROM c GROUP BY c.category',
+        container: 'products',
+        expectAst: {
+            groupBy: { kind: 'GroupByClause' },
+            select: {
+                spec: {
+                    kind: 'SelectListSpec',
+                    items: [
+                        {},
+                        {
+                            expression: { kind: 'FunctionCallScalarExpression', name: { value: 'MakeSet' } },
+                            alias: { value: 'uniqueBrands' },
+                        },
+                    ],
+                },
+            },
         },
     },
 ];

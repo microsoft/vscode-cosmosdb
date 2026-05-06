@@ -245,6 +245,13 @@ export const fixtures: QueryFixture[] = [
         container: 'orders',
         expectAst: { where: { expression: { kind: 'FunctionCallScalarExpression', name: { value: 'IS_OBJECT' } } } },
     },
+    {
+        id: 'T-09',
+        description: 'IS_PRIMITIVE',
+        query: 'SELECT * FROM c WHERE IS_PRIMITIVE(c.price)',
+        container: 'products',
+        expectAst: { where: { expression: { kind: 'FunctionCallScalarExpression', name: { value: 'IS_PRIMITIVE' } } } },
+    },
 
     // ── E series: EXISTS subquery ───────────────────────────────────────────
     {

@@ -21,14 +21,15 @@
 
 import { type Container, CosmosClient, type SqlQuerySpec } from '@azure/cosmos';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { QueryFixture } from './queries/types.js';
+import { fixtures as negativeIntegrationFixtures } from './queries/negative-integration.js';
 import { fixtures as selectBasicFixtures } from './queries/select-basic.js';
+import { fixtures as selectComplexFixtures } from './queries/select-complex.js';
 import { fixtures as selectFromJoinFixtures } from './queries/select-from-join.js';
-import { fixtures as selectWhereFixtures } from './queries/select-where.js';
 import { fixtures as selectFunctionsFixtures } from './queries/select-functions.js';
 import { fixtures as selectGroupByOrderByFixtures } from './queries/select-groupby-orderby.js';
-import { fixtures as selectComplexFixtures } from './queries/select-complex.js';
-import { fixtures as negativeIntegrationFixtures } from './queries/negative-integration.js';
+import { fixtures as selectTypeConversionFixtures } from './queries/select-type-conversion.js';
+import { fixtures as selectWhereFixtures } from './queries/select-where.js';
+import type { QueryFixture } from './queries/types.js';
 
 // ── Environment guard ─────────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ if (!endpoint) {
         ...selectFunctionsFixtures,
         ...selectGroupByOrderByFixtures,
         ...selectComplexFixtures,
+        ...selectTypeConversionFixtures,
     ];
 
     describe('integration — positive queries (must not throw)', () => {
@@ -139,4 +141,3 @@ if (!endpoint) {
         }
     });
 }
-

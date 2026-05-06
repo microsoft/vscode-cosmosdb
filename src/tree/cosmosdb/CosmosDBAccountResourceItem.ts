@@ -3,15 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient } from '@azure/cosmos';
 import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { getThemeAgnosticIconPath } from '../../constants';
 import { AuthenticationMethod } from '../../cosmosdb/AuthenticationMethod';
+import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { getCosmosDBEntraIdCredential } from '../../cosmosdb/CosmosDBCredential';
 import { getSignedInPrincipalIdForAccountEndpoint } from '../../cosmosdb/utils/azureSessionHelper';
 import { ensureRbacPermissionV2, isRbacException, showRbacPermissionError } from '../../cosmosdb/utils/rbacUtils';
-import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { CosmosDBAccountResourceItemBase } from '../azure-resources-view/cosmosdb/CosmosDBAccountResourceItemBase';
 import { type TreeElement } from '../TreeElement';
@@ -31,9 +30,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
 
     public async getChildren(): Promise<TreeElement[]> {
         const accountInfo = await getAccountInfo(this.account);
-        const databases = await withClaimsChallengeHandling(accountInfo, async (cosmosClient) =>
-            this.getDatabases(accountInfo, cosmosClient),
-        );
+        const databases = await this.getDatabases(accountInfo);
         const sortedDatabases = databases.sort((a, b) => a.id.localeCompare(b.id));
 
         return this.getChildrenImpl(accountInfo, sortedDatabases);
@@ -56,18 +53,11 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
         }
     }
 
-    protected async getDatabases(
-        accountInfo: AccountInfo,
-        cosmosClient: CosmosClient,
-    ): Promise<DatabaseResource[]> | never {
-        const getResources = async () => {
-            const result = await cosmosClient.databases.readAll().fetchAll();
-            return result.resources;
-        };
+    protected async getDatabases(accountInfo: AccountInfo): Promise<DatabaseResource[]> | never {
+        const controlPlane = getControlPlane(accountInfo);
 
         try {
-            // Await is required here to ensure that the error is caught in the catch block
-            return await getResources();
+            return await controlPlane.listDatabases();
         } catch (e) {
             if (e instanceof Error && isRbacException(e) && !this.hasShownRbacNotification) {
                 this.hasShownRbacNotification = true;
@@ -81,7 +71,7 @@ export abstract class CosmosDBAccountResourceItem extends CosmosDBAccountResourc
                     e.message.includes(`[${principalId}]`) &&
                     (await ensureRbacPermissionV2(this.id, this.account.subscription, principalId))
                 ) {
-                    return getResources();
+                    return controlPlane.listDatabases();
                 } else {
                     void showRbacPermissionError(this.id, principalId);
                     ext.outputChannel.error(e);

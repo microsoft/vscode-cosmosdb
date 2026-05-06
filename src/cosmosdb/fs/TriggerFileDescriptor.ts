@@ -10,8 +10,7 @@ import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBTriggerModel } from '../../tree/cosmosdb/models/CosmosDBTriggerModel';
-import { nonNullProp } from '../../utils/nonNull';
-import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
+import { getControlPlane } from '../controlPlane';
 
 export async function getTriggerType(context: IActionContext): Promise<TriggerType> {
     const options = Object.keys(TriggerType).map((type) => ({ label: type }));
@@ -48,16 +47,15 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
-        const readResponse = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
-            cosmosClient
-                .database(this.model.database.id)
-                .container(this.model.container.id)
-                .scripts.trigger(this.model.trigger.id)
-                .read(),
+        const controlPlane = getControlPlane(this.model.accountInfo);
+        const existing = await controlPlane.readTrigger(
+            this.model.database.id,
+            this.model.container.id,
+            this.model.trigger.id,
         );
 
-        let triggerType = readResponse.resource?.triggerType;
-        let triggerOperation = readResponse.resource?.triggerOperation;
+        let triggerType = existing?.triggerType;
+        let triggerOperation = existing?.triggerOperation;
 
         if (!triggerType) {
             triggerType = await getTriggerType(context);
@@ -66,18 +64,11 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
             triggerOperation = await getTriggerOperation(context);
         }
 
-        const replace = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
-            cosmosClient
-                .database(this.model.database.id)
-                .container(this.model.container.id)
-                .scripts.trigger(this.model.trigger.id)
-                .replace({
-                    id: this.model.trigger.id,
-                    triggerType: triggerType,
-                    triggerOperation: triggerOperation,
-                    body: content,
-                }),
-        );
-        this.model.trigger = nonNullProp(replace, 'resource');
+        this.model.trigger = await controlPlane.replaceTrigger(this.model.database.id, this.model.container.id, {
+            id: this.model.trigger.id,
+            triggerType,
+            triggerOperation,
+            body: content,
+        });
     }
 }

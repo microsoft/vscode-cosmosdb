@@ -356,6 +356,11 @@ export const queryEditorRouterDef = queryEditorRouter({
             return { connectionList: undefined };
         }
 
+        // TODO: route through CosmosDBControlPlane once NoSqlQueryConnection
+        // carries the Azure subscription/resource-group context required by
+        // ARM. For now this stays on the data plane; on accounts configured
+        // with strict native data-plane RBAC the dropdown may fail to
+        // populate, but the active connection still works for queries.
         const cosmosClient = getCosmosClient(ctx.state.connection);
         const databases = await cosmosClient.databases.readAll().fetchAll();
         const containers = await Promise.allSettled(

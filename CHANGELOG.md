@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.33.3 (Preview)
+
+### Added
+
+- Added support for [Azure Cosmos DB Shell](https://github.com/Azure/cosmosdbshell)
+  - Automatically installs .NET 10 and the CosmosDBShell tool if not available on the system.
+  - Configure a custom path to CosmosDBShell using the `cosmosDB.shell.path` setting.
+  - Run CosmosDBShell using the new `NoSQL: Launch Cosmos DB Shell` command or the Database/Container context menu.
+  - Built-in MCP support, enable using `cosmosDB.shell.MCP.enabled`.
+
 ## 0.33.2 (Preview)
 
 ### Changed

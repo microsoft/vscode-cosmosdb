@@ -75,25 +75,27 @@ export abstract class CosmosDBAccountAttachedResourceItem
         }
 
         const treeItem = super.getTreeItem();
+        const tooltip = new vscode.MarkdownString(tooltipMessage);
         if (treeItem.tooltip) {
-            const existingTooltip =
-                typeof treeItem.tooltip === 'string'
-                    ? treeItem.tooltip
-                    : treeItem.tooltip instanceof vscode.MarkdownString
-                      ? treeItem.tooltip.value
-                      : '';
-            if (existingTooltip) {
-                tooltipMessage = `${existingTooltip}\n${tooltipMessage}`;
+            if (typeof treeItem.tooltip === 'string') {
+                tooltip.value = `${treeItem.tooltip}\n${tooltip.value}`;
+            } else if (treeItem.tooltip instanceof vscode.MarkdownString) {
+                tooltip.value = `${treeItem.tooltip.value}\n${tooltip.value}`;
+                tooltip.isTrusted = treeItem.tooltip.isTrusted;
+                tooltip.supportThemeIcons = treeItem.tooltip.supportThemeIcons;
+                tooltip.supportHtml = treeItem.tooltip.supportHtml;
+                tooltip.baseUri = treeItem.tooltip.baseUri;
             }
         }
 
-        return Object.assign(treeItem, {
+        return {
+            ...treeItem,
             description: description,
-            tooltip: new vscode.MarkdownString(tooltipMessage),
+            tooltip,
             iconPath: this.account.isEmulator
                 ? new vscode.ThemeIcon('plug')
                 : getThemeAgnosticIconURI('CosmosDBAccount.svg'),
-        });
+        };
     }
 
     public getConnectionString(): Promise<string> {

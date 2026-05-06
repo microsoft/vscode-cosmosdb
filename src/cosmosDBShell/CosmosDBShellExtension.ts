@@ -57,14 +57,13 @@ const terminalStates = new Map<vscode.Terminal, ShellTerminalState>();
 export class CosmosDBShellExtension implements vscode.Disposable {
     private terminalChangeListeners: vscode.Disposable[] = [];
 
-    dispose(): Promise<void> {
+    dispose(): void {
         // Dispose all terminal listeners
         this.terminalChangeListeners.forEach((listener) => {
             listener.dispose();
         });
         this.terminalChangeListeners = [];
         terminalStates.clear();
-        return Promise.resolve();
     }
 
     async activate(): Promise<void> {
@@ -1111,14 +1110,15 @@ export function registerCosmosDBShellLanguageServer(context: vscode.ExtensionCon
     );
 
     context.subscriptions.push({
-        dispose: async () => {
-            if (cosmosDBShellLanguageClient) {
-                try {
-                    await cosmosDBShellLanguageClient.stop();
-                } catch (error) {
-                    console.error('Failed to stop the Cosmos DB Shell language client:', error);
-                }
-                cosmosDBShellLanguageClient = undefined;
+        dispose: () => {
+            const languageClient = cosmosDBShellLanguageClient;
+            cosmosDBShellLanguageClient = undefined;
+            if (languageClient) {
+                void languageClient.stop().catch((error: unknown) => {
+                    ext.outputChannel.appendLine(
+                        'Failed to stop the Cosmos DB Shell language client: ' + String(error),
+                    );
+                });
             }
         },
     });

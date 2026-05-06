@@ -343,6 +343,7 @@ async function installAndLaunchCosmosDBShell(
         }
         return;
     }
+    invalidateCosmosDBShellSupportCache();
 
     // On a brand-new install the user's PATH may not yet include `~/.dotnet/tools`
     // in the current VS Code session. If we still can't resolve the shell, ask to reload.
@@ -958,15 +959,12 @@ async function resolveMcpServer(
     }
 
     if (!isCosmosDBShellSupportEnabled()) {
-        showMcpSettingsNotification(
-            l10n.t(
-                'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
-            ),
-            'cosmosDB.shell.path',
-        );
-        throw new Error(
-            'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
-        );
+        await vscode.commands.executeCommand('cosmosDB.launchCosmosDBShell');
+        if (!isCosmosDBShellSupportEnabled()) {
+            throw new Error(
+                'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
+            );
+        }
     }
 
     const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;

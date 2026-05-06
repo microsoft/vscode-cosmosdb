@@ -10,9 +10,9 @@
  * Schema output uses `x-dataType` (not `x-bsonType`) for the original type tag.
  */
 
-import { type JSONSchema } from '../JSONSchema.js';
 import { type TypeAdapter, updateSchemaWithDocument as updateSchemaGeneric } from '../core/schemaTraversal.js';
 import { simplifySchema } from '../core/schemaUtils.js';
+import { type JSONSchema } from '../JSONSchema.js';
 import { type NoSQLTypes, inferNoSqlType, noSqlTypeToJSONType } from './NoSqlTypes.js';
 
 export { buildFullPaths, getPropertyNamesAtLevel, simplifySchema } from '../core/schemaUtils.js';
@@ -102,4 +102,3 @@ export function getSchemaFromDocuments(documents: NoSQLDocument[]): JSONSchema {
     simplifySchema(schema);
     return schema;
 }
-

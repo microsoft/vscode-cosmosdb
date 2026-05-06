@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import Denque from 'denque';
-import  { type JSONSchema7TypeName } from 'json-schema';
+import { type JSONSchema7TypeName } from 'json-schema';
 import { type JSONSchema } from '../JSONSchema.js';
 
 /**
@@ -138,7 +138,11 @@ export function updateSchemaWithDocument<TType extends string>(
                     const isNew = !itemEntry;
 
                     if (!itemEntry) {
-                        itemEntry = createTypeEntry(adapter.toJSONType(elementType), adapter.typeExtensionKey, elementType);
+                        itemEntry = createTypeEntry(
+                            adapter.toJSONType(elementType),
+                            adapter.typeExtensionKey,
+                            elementType,
+                        );
                         if (!itemsSchema.anyOf) {
                             itemsSchema.anyOf = [];
                         }

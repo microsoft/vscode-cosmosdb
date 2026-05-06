@@ -114,10 +114,9 @@ describe('Error recovery — partial AST is returned', () => {
         const { ast } = parse('SELECT c.id, , c.name FROM c');
         expect(ast).toBeDefined();
         expect(ast!.query.select.spec.kind).toBe('SelectListSpec');
-        if (ast!.query.select.spec.kind === 'SelectListSpec') {
-            // Should recover at least some items
-            expect(ast!.query.select.spec.items.length).toBeGreaterThan(0);
-        }
+        if (ast!.query.select.spec.kind !== 'SelectListSpec') return;
+        // Should recover at least some items
+        expect(ast!.query.select.spec.items.length).toBeGreaterThan(0);
     });
 
     it('typo FORM: FROM clause is not present', () => {

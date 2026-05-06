@@ -6,11 +6,13 @@
 Returns the area of a GeoJSON Polygon expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name      | Type    | Description        |
+| --------- | ------- | ------------------ |
 | `polygon` | GeoJSON | A GeoJSON Polygon. |
 
 ## Return Value
+
 Returns a numeric value (square meters).
 
 ---

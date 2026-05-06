@@ -6,13 +6,15 @@
 Returns a Boolean indicating whether the array contains all the specified elements.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `array` | array | The array to search in. |
-| `value1` | any | First value to look for. |
-| `value2...` | any | Additional values. |
+
+| Name        | Type  | Description              |
+| ----------- | ----- | ------------------------ |
+| `array`     | array | The array to search in.  |
+| `value1`    | any   | First value to look for. |
+| `value2...` | any   | Additional values.       |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ---

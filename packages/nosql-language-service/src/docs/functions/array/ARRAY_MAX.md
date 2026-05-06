@@ -6,11 +6,13 @@
 Returns the maximum value among all elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                   |
+| ------- | ----- | ----------------------------- |
 | `array` | array | An array of primitive values. |
 
 ## Return Value
+
 Returns the maximum value.
 
 ---

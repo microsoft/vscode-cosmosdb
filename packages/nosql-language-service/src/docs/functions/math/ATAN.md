@@ -6,11 +6,13 @@
 Returns the angle, in radians, whose tangent is the specified numeric expression. Also called arctangent.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | `number` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---

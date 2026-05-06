@@ -6,14 +6,17 @@
 Returns a Boolean indicating if the type of the value is a Boolean.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| `expression` | any  | Any expression. |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ## Notes
+
 - Also available as `IS_BOOLEAN`.
 
 ---

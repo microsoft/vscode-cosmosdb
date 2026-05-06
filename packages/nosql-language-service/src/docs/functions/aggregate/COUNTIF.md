@@ -6,14 +6,17 @@
 Returns the count of items that satisfy the Boolean condition.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name        | Type    | Description                       |
+| ----------- | ------- | --------------------------------- |
 | `condition` | boolean | A Boolean expression to evaluate. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 ```sql
 SELECT COUNTIF(c.status = "active") FROM c
 ```

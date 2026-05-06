@@ -157,13 +157,13 @@ const extensions = [
 
 ## Package Exports
 
-| Import path | What you get |
-|---|---|
-| `@cosmosdb/nosql-language-service` | Core API + `SqlLanguageService` + all types |
-| `@cosmosdb/nosql-language-service/services` | `SqlLanguageService` + types only |
-| `@cosmosdb/nosql-language-service/monaco` | Monaco adapter |
-| `@cosmosdb/nosql-language-service/vscode` | VS Code adapter |
-| `@cosmosdb/nosql-language-service/codemirror` | CodeMirror 6 adapter |
+| Import path                                   | What you get                                |
+| --------------------------------------------- | ------------------------------------------- |
+| `@cosmosdb/nosql-language-service`            | Core API + `SqlLanguageService` + all types |
+| `@cosmosdb/nosql-language-service/services`   | `SqlLanguageService` + types only           |
+| `@cosmosdb/nosql-language-service/monaco`     | Monaco adapter                              |
+| `@cosmosdb/nosql-language-service/vscode`     | VS Code adapter                             |
+| `@cosmosdb/nosql-language-service/codemirror` | CodeMirror 6 adapter                        |
 
 ## API Reference
 
@@ -248,11 +248,11 @@ For full, explicit wiring examples — including diagnostics-only
 setup and standalone adapter usage for Monaco, VS Code, and
 CodeMirror — see [Editor Integration](docs/editor-integration.md).
 
-| Adapter | One-line helper | Explicit diagnostics adapter |
-|---|---|---|
-| Monaco | `registerCosmosDbSql(monaco, service)` | `MonacoDiagnosticsProvider` |
-| VS Code | `registerCosmosDbSql(vscode, service, context)` | `VSCodeDiagnosticsProvider` |
-| CodeMirror 6 | compose extensions manually | `createLintSource(service)` |
+| Adapter      | One-line helper                                 | Explicit diagnostics adapter |
+| ------------ | ----------------------------------------------- | ---------------------------- |
+| Monaco       | `registerCosmosDbSql(monaco, service)`          | `MonacoDiagnosticsProvider`  |
+| VS Code      | `registerCosmosDbSql(vscode, service, context)` | `VSCodeDiagnosticsProvider`  |
+| CodeMirror 6 | compose extensions manually                     | `createLintSource(service)`  |
 
 All providers accept an options object to enable/disable
 individual features (completions, diagnostics, hover,

@@ -6,11 +6,13 @@
 Returns the sum of all numeric elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                 |
+| ------- | ----- | --------------------------- |
 | `array` | array | An array of numeric values. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---

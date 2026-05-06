@@ -6,11 +6,13 @@
 Returns a Boolean indicating if the property has been assigned a value (i.e., is not `undefined`).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| `expression` | any  | Any expression. |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ---

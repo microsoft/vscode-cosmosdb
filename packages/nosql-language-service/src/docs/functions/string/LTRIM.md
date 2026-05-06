@@ -6,12 +6,14 @@
 Returns a string after removing leading whitespace or specified characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `string` | string | The string to trim. |
-| `chars` | string | Optional characters to trim from the left. |
+
+| Name     | Type   | Description                                |
+| -------- | ------ | ------------------------------------------ |
+| `string` | string | The string to trim.                        |
+| `chars`  | string | Optional characters to trim from the left. |
 
 ## Return Value
+
 Returns the trimmed string.
 
 ---

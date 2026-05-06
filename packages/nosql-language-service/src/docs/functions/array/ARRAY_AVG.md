@@ -6,11 +6,13 @@
 Returns the average value of all numeric elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                 |
+| ------- | ----- | --------------------------- |
 | `array` | array | An array of numeric values. |
 
 ## Return Value
+
 Returns a numeric value, or `undefined` if any element is not numeric.
 
 ---

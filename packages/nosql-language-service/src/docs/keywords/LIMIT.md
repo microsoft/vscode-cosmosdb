@@ -3,11 +3,13 @@
 Limits the number of results returned (for pagination).
 
 ## Syntax
+
 ```sql
 OFFSET n LIMIT m
 ```
 
 ## Notes
+
 - Must be used together with OFFSET.
 
 ---

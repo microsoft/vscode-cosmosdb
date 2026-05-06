@@ -3,6 +3,7 @@
 Specifies descending sort order in ORDER BY.
 
 ## Syntax
+
 ```sql
 ORDER BY expr DESC
 ```

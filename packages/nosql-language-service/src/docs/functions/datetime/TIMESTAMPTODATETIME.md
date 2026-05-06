@@ -6,11 +6,13 @@
 Converts a Unix timestamp (milliseconds) to a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name        | Type    | Description                     |
+| ----------- | ------- | ------------------------------- |
 | `timestamp` | integer | Unix timestamp in milliseconds. |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---

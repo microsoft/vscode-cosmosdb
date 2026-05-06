@@ -1,0 +1,28 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { ArmCosmosDBControlPlane } from './ArmCosmosDBControlPlane';
+import { type CosmosDBControlPlane } from './CosmosDBControlPlane';
+import { DataPlaneCosmosDBControlPlane } from './DataPlaneCosmosDBControlPlane';
+
+export { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBControlPlane';
+
+/**
+ * Returns the appropriate control-plane implementation for an account.
+ *
+ * - Azure-signed-in accounts (with a known subscription and resource group)
+ *   use the ARM management plane. This is required for accounts configured
+ *   with native data-plane RBAC, where data-plane control operations are
+ *   rejected by the service (see issue #2990).
+ * - The local emulator and workspace-attached connection-string accounts use
+ *   the data-plane `CosmosClient` because ARM is not reachable for them.
+ */
+export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane {
+    if (!accountInfo.isEmulator && accountInfo.subscription && accountInfo.resourceGroup) {
+        return new ArmCosmosDBControlPlane(accountInfo.subscription, accountInfo.resourceGroup, accountInfo.name);
+    }
+    return new DataPlaneCosmosDBControlPlane(accountInfo);
+}

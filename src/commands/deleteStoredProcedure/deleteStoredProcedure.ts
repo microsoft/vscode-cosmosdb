@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
+import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBStoredProcedureResourceItem } from '../../tree/cosmosdb/CosmosDBStoredProcedureResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
@@ -49,14 +49,9 @@ export async function cosmosDBDeleteStoredProcedure(
     try {
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
-            await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
-                const response = await cosmosClient
-                    .database(databaseId)
-                    .container(containerId)
-                    .scripts.storedProcedure(procedureId)
-                    .delete();
-                success = response.statusCode === 204;
-            });
+            const controlPlane = getControlPlane(node.model.accountInfo);
+            await controlPlane.deleteStoredProcedure(databaseId, containerId, procedureId);
+            success = true;
         });
 
         if (success) {

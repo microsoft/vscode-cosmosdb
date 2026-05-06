@@ -7,7 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
-import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
+import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
@@ -71,13 +71,9 @@ export async function cosmosDBDeleteContainer(
 async function deleteContainer(node: CosmosDBContainerResourceItem): Promise<boolean> {
     let success = false;
     await ext.state.showDeleting(node.id, async () => {
-        await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
-            const response = await cosmosClient
-                .database(node.model.database.id)
-                .container(node.model.container.id)
-                .delete();
-            success = response.statusCode === 204;
-        });
+        const controlPlane = getControlPlane(node.model.accountInfo);
+        await controlPlane.deleteContainer(node.model.database.id, node.model.container.id);
+        success = true;
     });
 
     return success;

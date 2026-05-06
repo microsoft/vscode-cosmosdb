@@ -7,8 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type Experience } from '../../AzureDBExperiences';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBStoredProcedureModel } from '../../tree/cosmosdb/models/CosmosDBStoredProcedureModel';
-import { nonNullProp } from '../../utils/nonNull';
-import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
+import { getControlPlane } from '../controlPlane';
 
 export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
     public readonly cTime: number = Date.now();
@@ -29,13 +28,11 @@ export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
-        const replace = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
-            cosmosClient
-                .database(this.model.database.id)
-                .container(this.model.container.id)
-                .scripts.storedProcedure(this.model.procedure.id)
-                .replace({ id: this.model.procedure.id, body: content }),
+        const controlPlane = getControlPlane(this.model.accountInfo);
+        this.model.procedure = await controlPlane.replaceStoredProcedure(
+            this.model.database.id,
+            this.model.container.id,
+            { id: this.model.procedure.id, body: content },
         );
-        this.model.procedure = nonNullProp(replace, 'resource');
     }
 }

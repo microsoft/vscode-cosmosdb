@@ -45,7 +45,13 @@ function stripWrappingQuotes(value: string): string {
 
 function resolveWindowsCommand(command: string, env: NodeJS.ProcessEnv): string | undefined {
     if (isExplicitPath(command)) {
-        return isFile(command) ? command : undefined;
+        for (const candidate of getWindowsCommandCandidates(command, env.PATHEXT)) {
+            if (isFile(candidate)) {
+                return candidate;
+            }
+        }
+
+        return undefined;
     }
 
     for (const pathEntry of getPathEntries(env)) {

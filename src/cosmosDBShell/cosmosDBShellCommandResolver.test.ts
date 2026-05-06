@@ -55,6 +55,23 @@ describe('cosmosDBShellCommandResolver', () => {
 
         expect(resolvedCommand).toBe(configuredPath);
     });
+
+    it('applies PATHEXT probing for explicit configured paths without an extension on Windows', () => {
+        const configuredPath = 'C:\\tools\\CosmosDBShell';
+        const executablePath = `${configuredPath}.exe`;
+        configureMockFiles([executablePath]);
+
+        const resolvedCommand = resolveCosmosDBShellCommand(
+            configuredPath,
+            {
+                PATH: '',
+                PATHEXT: '.COM;.EXE;.BAT;.CMD',
+            },
+            true,
+        );
+
+        expect(resolvedCommand).toBe(executablePath);
+    });
 });
 
 function configureMockFiles(filePaths: string[]): void {

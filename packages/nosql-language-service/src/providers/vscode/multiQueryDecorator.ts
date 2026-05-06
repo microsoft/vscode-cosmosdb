@@ -95,4 +95,3 @@ export class VSCodeMultiQueryDecorator implements Disposable {
         this.disposables.length = 0;
     }
 }
-

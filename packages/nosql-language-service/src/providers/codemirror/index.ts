@@ -12,4 +12,3 @@ export { createMultiQuerySeparatorExtension } from './separatorExtension.js';
 export { createSignatureHelpSource } from './signatureHelpSource.js';
 export { cosmosDbSqlStreamParser } from './streamParser.js';
 export type { CodeMirrorOptions, MultiQuerySeparatorDeps } from './types.js';
-

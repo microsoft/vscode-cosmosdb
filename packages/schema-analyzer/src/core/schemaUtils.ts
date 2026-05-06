@@ -270,4 +270,3 @@ export function getPropertyNamesAtLevel(jsonSchema: JSONSchema, path: string[]):
 export function buildFullPaths(path: string[], propertyNames: string[]): string[] {
     return propertyNames.map((name) => path.concat(name).join('.'));
 }
-

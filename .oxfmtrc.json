@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "tabWidth": 4,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "insertFinalNewline": true,
+  "endOfLine": "lf",
+  "embeddedLanguageFormatting": "off",
+  "sortPackageJson": false,
+  "sortImports": {
+    "newlinesBetween": false,
+    "partitionByNewline": false,
+    "sortSideEffects": false,
+    "groups": [
+      "side_effect",
+      ["builtin", "external", "internal", "subpath"],
+      ["side_effect_style", "style", "parent", "sibling", "index", "unknown"]
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["*.md", "*.json", "*.jsonc", "*.yml", "*.yaml"],
+      "options": {
+        "tabWidth": 2,
+        "trailingComma": "none",
+        "singleQuote": false
+      }
+    }
+  ],
+  "ignorePatterns": [
+    ".azure-pipelines",
+    ".config",
+    ".cosmosdb-data",
+    ".github",
+    ".vscode-test",
+    "bundle-analysis",
+    "coverage",
+    "dist",
+    "l10n/bundle.l10n.*.json",
+    "out",
+    "node_modules",
+    "resources",
+    "packages/nosql-language-service/src/docs/index.ts",
+    "skills",
+    "NOTICE.html",
+    "package-lock.json",
+    "package.nls.*.json",
+    "**/*.md"
+  ]
+}

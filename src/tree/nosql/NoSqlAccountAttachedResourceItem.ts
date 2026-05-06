@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { type TreeElement } from '../TreeElement';
 import { type AccountInfo } from '../cosmosdb/AccountInfo';
 import { CosmosDBAccountAttachedResourceItem } from '../cosmosdb/CosmosDBAccountAttachedResourceItem';
 import { type DatabaseResource } from '../cosmosdb/models/CosmosDBTypes';
+import { type TreeElement } from '../TreeElement';
 import { type CosmosDBAttachedAccountModel } from '../workspace-view/cosmosdb/CosmosDBAttachedAccountModel';
 import { NoSqlDatabaseResourceItem } from './NoSqlDatabaseResourceItem';
 

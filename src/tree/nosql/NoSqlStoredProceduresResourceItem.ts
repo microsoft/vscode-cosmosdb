@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { type TreeElement } from '../TreeElement';
 import { CosmosDBStoredProceduresResourceItem } from '../cosmosdb/CosmosDBStoredProceduresResourceItem';
 import { type CosmosDBStoredProceduresModel } from '../cosmosdb/models/CosmosDBStoredProceduresModel';
 import { type StoredProcedureResource } from '../cosmosdb/models/CosmosDBTypes';
+import { type TreeElement } from '../TreeElement';
 import { NoSqlStoredProcedureResourceItem } from './NoSqlStoredProcedureResourceItem';
 
 export class NoSqlStoredProceduresResourceItem extends CosmosDBStoredProceduresResourceItem {

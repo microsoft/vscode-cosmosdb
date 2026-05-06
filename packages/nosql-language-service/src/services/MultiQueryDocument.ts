@@ -146,4 +146,3 @@ class MultiQueryDocumentImpl implements MultiQueryDocument {
         return region.startOffset + localOffset;
     }
 }
-

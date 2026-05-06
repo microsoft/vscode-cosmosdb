@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import fs from 'node:fs';
-
 import { bundlePath, exportSourcePaths } from './constants.mjs';
 import { isDictionaryValid, l10nExportAllStrings, sortObjectByKeys } from './utils.mjs';
 

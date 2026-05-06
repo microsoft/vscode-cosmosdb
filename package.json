@@ -541,7 +541,7 @@
         {
           "//": "[Database] Launch Cosmos DB Shell",
           "command": "cosmosDB.launchCosmosDBShell",
-          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i && vscodeDatabases.cosmosDBShellSupportEnabled",
+          "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && (viewItem =~ /treeitem[.]database(?![a-z.\\/])/i || viewItem =~ /treeitem[.]container(?![a-z.\\/])/i) && viewItem =~ /experience[.]core/i",
           "group": "1@4"
         },
         {

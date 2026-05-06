@@ -2,7 +2,7 @@ name: Node PR Lint, Build and Test
 
 permissions:
     contents: read
-    pull-requests: read
+    pull-requests: write
 
 on:
     # Trigger when manually run
@@ -232,6 +232,7 @@ jobs:
                   SERVER_URL: ${{ github.server_url }}
                   REPO: ${{ github.repository }}
                   SHA: ${{ github.sha }}
+                  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
                   PR_NUMBER: ${{ github.event.pull_request.number }}
                   PR_TITLE: ${{ github.event.pull_request.title }}
               shell: bash
@@ -251,28 +252,17 @@ jobs:
                   commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
 
                   # Resolve PR info: prefer the pull_request event payload, otherwise
-                  # ask the API which PR(s) contain this commit (works for push runs).
-                  if [ -z "${PR_NUMBER:-}" ]; then
-                      api_url="https://api.github.com/repos/${REPO}/commits/${SHA}/pulls"
-                      for attempt in 1 2 3; do
-                          response=$(curl -sf \
-                              -H "Authorization: Bearer ${GH_TOKEN}" \
-                              -H "Accept: application/vnd.github+json" \
-                              -H "X-GitHub-Api-Version: 2022-11-28" \
-                              -H "User-Agent: vscode-cosmosdb-ci" \
-                              "$api_url" 2>/dev/null) || true
-                          if [ -n "$response" ]; then
-                              found_number=$(echo "$response" | jq -r '[.[] | select(.state=="open")] | first | .number // empty')
-                              found_title=$(echo "$response"  | jq -r '[.[] | select(.state=="open")] | first | .title  // empty')
-                              if [ -n "$found_number" ] && [ "$found_number" != "null" ]; then
-                                  PR_NUMBER="$found_number"
-                                  PR_TITLE="$found_title"
-                                  break
-                              fi
-                          fi
-                          echo "ℹ️ Attempt ${attempt}: no open PR found for ${SHA} yet."
-                          [ "$attempt" -lt 3 ] && sleep 3
-                      done
+                  # use `gh pr view` by branch name (works for push events too).
+                  if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+                      pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                          --json number,title 2>/dev/null) || true
+                      if [ -n "$pr_info" ]; then
+                          PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+                          PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
+                          echo "ℹ️ Found PR #${PR_NUMBER}: ${PR_TITLE}"
+                      else
+                          echo "ℹ️ No open PR found for branch '${BRANCH_NAME}'"
+                      fi
                   fi
 
                   # Source section
@@ -313,6 +303,16 @@ jobs:
                   SUMMARY_EOF
 
                   echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
+
+                  # Post (or update) a PR comment if we found a PR
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                          --body "$(cat "$GITHUB_STEP_SUMMARY")" \
+                          --edit-last 2>/dev/null \
+                          || gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")"
+                      echo "✅ PR #${PR_NUMBER} comment posted"
+                  fi
 
                   # Fail the job if any tests failed
                   if [ "$UNIT_TEST_RESULT" != "success" ] || [ "$INTEGRATION_TEST_RESULT" != "success" ]; then

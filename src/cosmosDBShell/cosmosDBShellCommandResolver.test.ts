@@ -58,7 +58,7 @@ describe('cosmosDBShellCommandResolver', () => {
 
     it('applies PATHEXT probing for explicit configured paths without an extension on Windows', () => {
         const configuredPath = 'C:\\tools\\CosmosDBShell';
-        const executablePath = `${configuredPath}.exe`;
+        const executablePath = `${configuredPath}.EXE`;
         configureMockFiles([executablePath]);
 
         const resolvedCommand = resolveCosmosDBShellCommand(

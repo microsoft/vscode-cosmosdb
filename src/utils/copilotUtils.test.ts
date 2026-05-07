@@ -102,9 +102,19 @@ describe('copilotUtils', () => {
     });
 
     describe('areAIFeaturesEnabled', () => {
-        it('returns true when setting is not disabled, Chat extension is installed, and models are available', async () => {
+        it('returns true when setting is not disabled and models are available', async () => {
             mockConfigGet.mockReturnValue(false); // AI features not disabled
             (vscode.extensions.getExtension as jest.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
+            (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([{ id: 'model1' }]);
+
+            await expect(areAIFeaturesEnabled()).resolves.toBe(true);
+        });
+
+        it('returns true when models are available even if Chat extension is not detectable', async () => {
+            // Copilot may be bundled with VS Code and not detectable via getExtension();
+            // model availability alone is sufficient to consider AI features enabled.
+            mockConfigGet.mockReturnValue(false);
+            (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
             (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(true);
@@ -118,18 +128,10 @@ describe('copilotUtils', () => {
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });
 
-        it('returns false when Chat extension is installed but no models available', async () => {
+        it('returns false when no models are available', async () => {
             mockConfigGet.mockReturnValue(false);
             (vscode.extensions.getExtension as jest.Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
             (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([]);
-
-            await expect(areAIFeaturesEnabled()).resolves.toBe(false);
-        });
-
-        it('returns false when Chat extension is not installed', async () => {
-            mockConfigGet.mockReturnValue(false);
-            (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
-            (vscode.lm.selectChatModels as jest.Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });

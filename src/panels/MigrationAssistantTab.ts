@@ -101,6 +101,33 @@ export class MigrationAssistantTab extends BaseTab {
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
         this.setupTrpc();
+
+        // Forward changes to the experimental "show token estimate" setting to the webview
+        // so the UI can show/hide the progress bar live without a panel reload. The estimate
+        // itself is always calculated and logged regardless of this setting.
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration('cosmosDB.experimental.migration.showTokenEstimate')) {
+                    void this.channel.postMessage({
+                        type: 'event',
+                        name: 'showTokenEstimateChanged',
+                        params: [MigrationAssistantTab.getShowTokenEstimateSetting()],
+                    });
+                }
+            }),
+        );
+    }
+
+    /**
+     * Read the experimental setting controlling whether the Discovery token-estimate
+     * progress bar is rendered in the webview. Calculation/logging are independent.
+     */
+    private static getShowTokenEstimateSetting(): boolean {
+        return (
+            vscode.workspace
+                .getConfiguration('cosmosDB')
+                .get<boolean>('experimental.migration.showTokenEstimate', false) ?? false
+        );
     }
 
     /**
@@ -554,6 +581,7 @@ export class MigrationAssistantTab extends BaseTab {
                         hasCodeMigrationPlan,
                         codeMigrationPlanPath,
                         isPhase4Required: IS_PHASE4_REQUIRED,
+                        showTokenEstimate: MigrationAssistantTab.getShowTokenEstimateSetting(),
                     },
                 ],
             });

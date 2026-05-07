@@ -1307,8 +1307,26 @@ function MigrationAssistantInner() {
                                     </div>
                                 )}
 
-                                {state.discoveryState !== 'in-progress' && (
-                                    <div className={styles.buttonRow}>
+                                {state.discoveryState !== 'in-progress' &&
+                                    (state.showTokenEstimate ? (
+                                        <div className={styles.buttonRow}>
+                                            <Button
+                                                appearance="primary"
+                                                size="small"
+                                                icon={<SparkleRegular />}
+                                                onClick={handleRunDiscovery}
+                                                disabled={isDiscoveryDisabled}
+                                            >
+                                                {state.discoveryState === 'complete'
+                                                    ? l10n.t('Re-Generate Report')
+                                                    : l10n.t('Generate Discovery Report')}
+                                            </Button>
+                                            <TokenBudgetBar
+                                                estimate={state.tokenEstimate}
+                                                isEstimating={isEstimating}
+                                            />
+                                        </div>
+                                    ) : (
                                         <Button
                                             appearance="primary"
                                             size="small"
@@ -1320,9 +1338,7 @@ function MigrationAssistantInner() {
                                                 ? l10n.t('Re-Generate Report')
                                                 : l10n.t('Generate Discovery Report')}
                                         </Button>
-                                        <TokenBudgetBar estimate={state.tokenEstimate} isEstimating={isEstimating} />
-                                    </div>
-                                )}
+                                    ))}
 
                                 {state.discoveryError && (
                                     <Text role="alert" className={styles.errorText}>

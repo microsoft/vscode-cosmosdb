@@ -128,6 +128,10 @@ export interface MigrationState {
     // Token estimate for context
     tokenEstimate: { minTokens: number; maxTokens: number; modelMaxTokens: number; estimateGeneration: number } | null;
 
+    // Experimental: show the token-estimate progress bar in the Discovery phase.
+    // Calculation and logging happen regardless; this only toggles the UI.
+    showTokenEstimate: boolean;
+
     // Discovery instructions
     discoveryInstructions: string;
 
@@ -209,6 +213,7 @@ export type MigrationAction =
           type: 'SET_TOKEN_ESTIMATE';
           payload: { minTokens: number; maxTokens: number; modelMaxTokens: number; estimateGeneration: number } | null;
       }
+    | { type: 'SET_SHOW_TOKEN_ESTIMATE'; payload: boolean }
     | { type: 'SET_DISCOVERY_INSTRUCTIONS'; payload: string }
     | { type: 'SET_MIGRATION_INSTRUCTIONS'; payload: string }
     | { type: 'SET_MIGRATION_MODE'; payload: 'plan' | 'start' }
@@ -286,6 +291,7 @@ const initialState: MigrationState = {
     isAIFeaturesEnabled: false,
     fileStateGeneration: 0,
     tokenEstimate: null,
+    showTokenEstimate: false,
     discoveryInstructions: '',
     migrationInstructions: '',
     hasCodeMigrationPlan: false,
@@ -513,6 +519,8 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
             return { ...state, isAIFeaturesEnabled: action.payload };
         case 'SET_TOKEN_ESTIMATE':
             return { ...state, tokenEstimate: action.payload };
+        case 'SET_SHOW_TOKEN_ESTIMATE':
+            return { ...state, showTokenEstimate: action.payload };
         case 'SET_DISCOVERY_INSTRUCTIONS':
             return { ...state, discoveryInstructions: action.payload };
         case 'SET_MIGRATION_INSTRUCTIONS':
@@ -626,6 +634,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     hasCodeMigrationPlan: boolean;
                     codeMigrationPlanPath: string;
                     isPhase4Required: boolean;
+                    showTokenEstimate: boolean;
                 }) => {
                     const discovery = data.project.phases.discovery;
                     const assessment = data.project.phases.assessment;
@@ -725,6 +734,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             // the plan file exists ('start' if present, 'plan' if not).
                             migrationMode: data.project.migrationMode ?? (data.hasCodeMigrationPlan ? 'start' : 'plan'),
                             isPhase4Required: data.isPhase4Required,
+                            showTokenEstimate: data.showTokenEstimate,
                         },
                     });
                 },
@@ -1030,6 +1040,12 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
         disposables.push(
             channel.on('aiFeaturesEnabledChanged', (available: boolean) => {
                 dispatch({ type: 'SET_AI_FEATURES_ENABLED', payload: available });
+            }),
+        );
+
+        disposables.push(
+            channel.on('showTokenEstimateChanged', (show: boolean) => {
+                dispatch({ type: 'SET_SHOW_TOKEN_ESTIMATE', payload: show });
             }),
         );
 

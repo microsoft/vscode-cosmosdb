@@ -865,6 +865,14 @@
             "type": "boolean",
             "default": false,
             "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
+          },
+          "cosmosDB.experimental.migration.showTokenEstimate": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "%cosmosdb.configuration.experimental.migration.showTokenEstimate%",
+            "tags": [
+              "experimental"
+            ]
           }
         }
       },

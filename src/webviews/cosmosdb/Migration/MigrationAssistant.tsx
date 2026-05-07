@@ -1347,7 +1347,10 @@ function MigrationAssistantInner() {
                                 )}
 
                                 {phase1State === 'complete' && (
-                                    <Link
+                                    <Button
+                                        appearance="secondary"
+                                        size="small"
+                                        icon={<DocumentRegular />}
                                         onClick={() =>
                                             handlePreviewMarkdown(
                                                 `${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/discovery-report.md`,
@@ -1355,7 +1358,7 @@ function MigrationAssistantInner() {
                                         }
                                     >
                                         {l10n.t('View Discovery Report')}
-                                    </Link>
+                                    </Button>
                                 )}
                             </div>
                         </AccordionPanel>
@@ -1561,14 +1564,16 @@ function MigrationAssistantInner() {
                                                 ))}
                                             </tbody>
                                         </table>
-                                        <Link
-                                            style={{ fontSize: '12px' }}
+                                        <Button
+                                            appearance="secondary"
+                                            size="small"
+                                            icon={<DocumentRegular />}
                                             onClick={() =>
                                                 handlePreviewMarkdown(state.assessmentResult!.summaryFilePath)
                                             }
                                         >
                                             {l10n.t('View full assessment summary')}
-                                        </Link>
+                                        </Button>
                                     </div>
                                 )}
                             </div>
@@ -1803,24 +1808,30 @@ function MigrationAssistantInner() {
                                         <div
                                             style={{
                                                 display: 'flex',
-                                                gap: '12px',
-                                                fontSize: '12px',
+                                                gap: '8px',
+                                                flexWrap: 'wrap',
                                             }}
                                         >
-                                            <Link
+                                            <Button
+                                                appearance="secondary"
+                                                size="small"
+                                                icon={<DocumentRegular />}
                                                 onClick={() =>
                                                     handlePreviewMarkdown(state.schemaConversionResult!.summaryFilePath)
                                                 }
                                             >
-                                                {l10n.t('View merged summary')}
-                                            </Link>
-                                            <Link
+                                                {l10n.t('View Schema Conversion Summary')}
+                                            </Button>
+                                            <Button
+                                                appearance="secondary"
+                                                size="small"
+                                                icon={<DocumentRegular />}
                                                 onClick={() =>
                                                     handleOpenFile(state.schemaConversionResult!.mergedModelFilePath)
                                                 }
                                             >
-                                                {l10n.t('View merged model')}
-                                            </Link>
+                                                {l10n.t('View Cosmos DB Model')}
+                                            </Button>
                                         </div>
                                     </div>
                                 )}

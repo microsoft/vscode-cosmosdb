@@ -34,6 +34,14 @@ export interface ThroughputResource {
  * Stored procedures, triggers, and user-defined functions are intentionally
  * not included here: they are data-plane resources and callers should access
  * them through the data-plane `CosmosClient` (see `withClaimsChallengeHandling`).
+ *
+ * Error contract: all methods throw on failure. The data-plane implementation
+ * surfaces `ErrorResponse` from `@azure/cosmos`; the ARM implementation
+ * surfaces `RestError` from `@azure/core-rest-pipeline`. A successful return
+ * (including `void`) means the operation completed; callers do not need to
+ * inspect status codes or response headers. Translating those errors into
+ * user-visible notifications is the responsibility of the surrounding
+ * `callWithTelemetryAndErrorHandling` wrapper used by command handlers.
  */
 export interface CosmosDBControlPlane {
     listDatabases(): Promise<DatabaseResource[]>;

@@ -53,11 +53,8 @@ export async function cosmosDBDeleteContainer(
     }
 
     try {
-        const success = await deleteContainer(node);
-
-        if (success) {
-            showConfirmationAsInSettings(successMessage);
-        }
+        await deleteContainer(node);
+        showConfirmationAsInSettings(successMessage);
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');
         let parentId = node.id;
@@ -68,13 +65,9 @@ export async function cosmosDBDeleteContainer(
     }
 }
 
-async function deleteContainer(node: CosmosDBContainerResourceItem): Promise<boolean> {
-    let success = false;
+async function deleteContainer(node: CosmosDBContainerResourceItem): Promise<void> {
     await ext.state.showDeleting(node.id, async () => {
         const controlPlane = getControlPlane(node.model.accountInfo);
         await controlPlane.deleteContainer(node.model.database.id, node.model.container.id);
-        success = true;
     });
-
-    return success;
 }

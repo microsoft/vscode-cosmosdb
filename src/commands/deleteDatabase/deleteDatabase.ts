@@ -44,11 +44,8 @@ export async function cosmosDBDeleteDatabase(
     }
 
     try {
-        const success = await deleteDatabase(node);
-
-        if (success) {
-            showConfirmationAsInSettings(l10n.t('The "{databaseId}" database has been deleted.', { databaseId }));
-        }
+        await deleteDatabase(node);
+        showConfirmationAsInSettings(l10n.t('The "{databaseId}" database has been deleted.', { databaseId }));
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');
         let parentId = node.id;
@@ -59,13 +56,9 @@ export async function cosmosDBDeleteDatabase(
     }
 }
 
-async function deleteDatabase(node: CosmosDBDatabaseResourceItem): Promise<boolean> {
-    let success = false;
+async function deleteDatabase(node: CosmosDBDatabaseResourceItem): Promise<void> {
     await ext.state.showDeleting(node.id, async () => {
         const controlPlane = getControlPlane(node.model.accountInfo);
         await controlPlane.deleteDatabase(node.model.database.id);
-        success = true;
     });
-
-    return success;
 }

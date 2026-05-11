@@ -11,7 +11,6 @@ import {
     type CosmosClient,
     type RequestOptions,
 } from '@azure/cosmos';
-import * as l10n from '@vscode/l10n';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
 import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
 import { nonNullProp } from '../../utils/nonNull';
@@ -52,8 +51,7 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
 
     public async deleteDatabase(databaseId: string): Promise<void> {
         await this.withClient(async (client) => {
-            const response = await client.database(databaseId).delete();
-            assertDeleted(response.statusCode, 'database', databaseId);
+            await client.database(databaseId).delete();
         });
     }
 
@@ -99,8 +97,7 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
 
     public async deleteContainer(databaseId: string, containerId: string): Promise<void> {
         await this.withClient(async (client) => {
-            const response = await client.database(databaseId).container(containerId).delete();
-            assertDeleted(response.statusCode, 'container', `${databaseId}/${containerId}`);
+            await client.database(databaseId).container(containerId).delete();
         });
     }
 
@@ -148,16 +145,4 @@ function mapOfferResource(offer: unknown): ThroughputResource | undefined {
         minimumThroughput,
         raw: offer,
     };
-}
-
-function assertDeleted(statusCode: number | undefined, kind: string, id: string): void {
-    if (statusCode !== 204) {
-        throw new Error(
-            l10n.t('Failed to delete {kind} "{id}": unexpected status code {code}.', {
-                kind,
-                id,
-                code: statusCode ?? 'unknown',
-            }),
-        );
-    }
 }

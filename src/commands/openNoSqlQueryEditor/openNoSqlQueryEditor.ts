@@ -52,6 +52,9 @@ function getConnectionFromNode(node: CosmosDBContainerResourceItem | CosmosDBIte
     const accountInfo = node.model.accountInfo;
 
     return {
+        accountName: accountInfo.name,
+        subscription: accountInfo.subscription,
+        resourceGroup: accountInfo.resourceGroup,
         databaseId: node.model.database.id,
         containerId: node.model.container.id,
         endpoint: accountInfo.endpoint,

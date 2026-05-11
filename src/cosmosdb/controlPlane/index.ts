@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
+import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { ArmCosmosDBControlPlane } from './ArmCosmosDBControlPlane';
 import { type CosmosDBControlPlane } from './CosmosDBControlPlane';
 import { DataPlaneCosmosDBControlPlane } from './DataPlaneCosmosDBControlPlane';
@@ -25,4 +26,18 @@ export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane 
         return new ArmCosmosDBControlPlane(accountInfo.subscription, accountInfo.resourceGroup, accountInfo.name);
     }
     return new DataPlaneCosmosDBControlPlane(accountInfo);
+}
+
+/**
+ * Returns the appropriate control-plane implementation for a query-editor
+ * connection. Mirrors {@link getControlPlane} but takes a
+ * {@link NoSqlQueryConnection}, which carries an optional Azure subscription
+ * and resource group when the connection originated from an Azure-signed-in
+ * account.
+ */
+export function getControlPlaneForConnection(connection: NoSqlQueryConnection): CosmosDBControlPlane {
+    if (!connection.isEmulator && connection.subscription && connection.resourceGroup && connection.accountName) {
+        return new ArmCosmosDBControlPlane(connection.subscription, connection.resourceGroup, connection.accountName);
+    }
+    return new DataPlaneCosmosDBControlPlane(connection);
 }

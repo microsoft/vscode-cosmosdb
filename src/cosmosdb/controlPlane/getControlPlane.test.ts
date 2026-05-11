@@ -16,7 +16,7 @@ class FakeArmControlPlane {
     ) {}
 }
 
-class FakeDataPlaneControlPlane {
+class FakeSdkControlPlane {
     constructor(public accountInfo: AccountInfo) {}
 }
 
@@ -24,8 +24,8 @@ vi.mock('./ArmCosmosDBControlPlane', () => ({
     ArmCosmosDBControlPlane: FakeArmControlPlane,
 }));
 
-vi.mock('./DataPlaneCosmosDBControlPlane', () => ({
-    DataPlaneCosmosDBControlPlane: FakeDataPlaneControlPlane,
+vi.mock('./CosmosDBSdkControlPlane', () => ({
+    CosmosDBSdkControlPlane: FakeSdkControlPlane,
 }));
 
 const { getControlPlane, getControlPlaneForConnection } = await import('./index');
@@ -60,7 +60,7 @@ describe('getControlPlane', () => {
         expect((plane as unknown as FakeArmControlPlane).accountName).toBe('test-account');
     });
 
-    it('returns data-plane control plane for the local emulator even with subscription and resource group', () => {
+    it('returns SDK control plane for the local emulator even with subscription and resource group', () => {
         const plane = getControlPlane(
             makeAccountInfo({
                 isEmulator: true,
@@ -68,30 +68,30 @@ describe('getControlPlane', () => {
                 resourceGroup: 'rg-test',
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane for workspace-attached account (no subscription)', () => {
+    it('returns SDK control plane for workspace-attached account (no subscription)', () => {
         const plane = getControlPlane(makeAccountInfo());
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane when subscription is set but resource group is missing', () => {
+    it('returns SDK control plane when subscription is set but resource group is missing', () => {
         const plane = getControlPlane(
             makeAccountInfo({
                 subscription: fakeSubscription,
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane when resource group is set but subscription is missing', () => {
+    it('returns SDK control plane when resource group is set but subscription is missing', () => {
         const plane = getControlPlane(
             makeAccountInfo({
                 resourceGroup: 'rg-test',
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 });
 
@@ -121,7 +121,7 @@ describe('getControlPlaneForConnection', () => {
         expect((plane as unknown as FakeArmControlPlane).accountName).toBe('test-account');
     });
 
-    it('returns data-plane control plane for the local emulator even with full Azure context', () => {
+    it('returns SDK control plane for the local emulator even with full Azure context', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
                 isEmulator: true,
@@ -130,41 +130,41 @@ describe('getControlPlaneForConnection', () => {
                 resourceGroup: 'rg-test',
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane for workspace-attached connection (no Azure context)', () => {
+    it('returns SDK control plane for workspace-attached connection (no Azure context)', () => {
         const plane = getControlPlaneForConnection(makeConnection());
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane when account name is missing', () => {
+    it('returns SDK control plane when account name is missing', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
                 subscription: fakeSubscription,
                 resourceGroup: 'rg-test',
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane when subscription is missing', () => {
+    it('returns SDK control plane when subscription is missing', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
                 accountName: 'test-account',
                 resourceGroup: 'rg-test',
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 
-    it('returns data-plane control plane when resource group is missing', () => {
+    it('returns SDK control plane when resource group is missing', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
                 accountName: 'test-account',
                 subscription: fakeSubscription,
             }),
         );
-        expect(plane).toBeInstanceOf(FakeDataPlaneControlPlane);
+        expect(plane).toBeInstanceOf(FakeSdkControlPlane);
     });
 });

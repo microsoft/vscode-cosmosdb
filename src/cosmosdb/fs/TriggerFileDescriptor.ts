@@ -49,19 +49,12 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
         const existing = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
-            try {
-                const response = await client
-                    .database(this.model.database.id)
-                    .container(this.model.container.id)
-                    .scripts.trigger(this.model.trigger.id)
-                    .read();
-                return response.resource;
-            } catch (err) {
-                if (isNotFound(err)) {
-                    return undefined;
-                }
-                throw err;
-            }
+            const response = await client
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .scripts.trigger(this.model.trigger.id)
+                .read();
+            return response.resource;
         });
 
         let triggerType = existing?.triggerType;
@@ -88,12 +81,4 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
             return nonNullProp(response, 'resource');
         });
     }
-}
-
-function isNotFound(err: unknown): boolean {
-    if (!err || typeof err !== 'object') {
-        return false;
-    }
-    const e = err as { code?: string | number; statusCode?: number };
-    return e.code === 404 || e.code === '404' || e.statusCode === 404;
 }

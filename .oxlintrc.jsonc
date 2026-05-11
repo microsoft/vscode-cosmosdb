@@ -153,7 +153,11 @@
         // Enabling some rules
         "typescript/consistent-type-imports": "error",
         "typescript/no-base-to-string": "warn",
+        "typescript/no-deprecated": "warn",
         "typescript/no-restricted-types": "error",
+        "typescript/prefer-includes": "error",
+        "typescript/return-await": "warn",
+        "typescript/switch-exhaustiveness-check": "warn",
         "typescript/unbound-method": "warn",
 
         "import/first": ["error", "absolute-first"]

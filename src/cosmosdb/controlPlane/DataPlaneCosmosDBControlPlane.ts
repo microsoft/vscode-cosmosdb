@@ -10,16 +10,9 @@ import {
     type ContainerRequest,
     type CosmosClient,
     type RequestOptions,
-    type StoredProcedureDefinition,
-    type TriggerDefinition,
 } from '@azure/cosmos';
 import { type AccountInfo } from '../../tree/cosmosdb/AccountInfo';
-import {
-    type ContainerResource,
-    type DatabaseResource,
-    type StoredProcedureResource,
-    type TriggerResource,
-} from '../../tree/cosmosdb/models/CosmosDBTypes';
+import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
 import { nonNullProp } from '../../utils/nonNull';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
 import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
@@ -127,109 +120,6 @@ export class DataPlaneCosmosDBControlPlane implements CosmosDBControlPlane {
             // Container may inherit throughput from the database (shared throughput).
             const dbOffer = await client.database(databaseId).readOffer();
             return mapOfferResource(dbOffer.resource);
-        });
-    }
-
-    public async listStoredProcedures(databaseId: string, containerId: string): Promise<StoredProcedureResource[]> {
-        return this.withClient(async (client) => {
-            const result = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.storedProcedures.readAll()
-                .fetchAll();
-            return result.resources;
-        });
-    }
-
-    public async createStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource> {
-        return this.withClient(async (client) => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.storedProcedures.create(definition);
-            return nonNullProp(response, 'resource');
-        });
-    }
-
-    public async replaceStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource> {
-        return this.withClient(async (client) => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.storedProcedure(definition.id!)
-                .replace(definition);
-            return nonNullProp(response, 'resource');
-        });
-    }
-
-    public async deleteStoredProcedure(databaseId: string, containerId: string, procedureId: string): Promise<void> {
-        await this.withClient(async (client) => {
-            await client.database(databaseId).container(containerId).scripts.storedProcedure(procedureId).delete();
-        });
-    }
-
-    public async listTriggers(databaseId: string, containerId: string): Promise<TriggerResource[]> {
-        return this.withClient(async (client) => {
-            const result = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.triggers.readAll()
-                .fetchAll();
-            return result.resources;
-        });
-    }
-
-    public async readTrigger(
-        databaseId: string,
-        containerId: string,
-        triggerId: string,
-    ): Promise<TriggerResource | undefined> {
-        return this.withClient(async (client) => {
-            const response = await client.database(databaseId).container(containerId).scripts.trigger(triggerId).read();
-            return response.resource;
-        });
-    }
-
-    public async createTrigger(
-        databaseId: string,
-        containerId: string,
-        definition: TriggerDefinition,
-    ): Promise<TriggerResource> {
-        return this.withClient(async (client) => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.triggers.create(definition);
-            return nonNullProp(response, 'resource');
-        });
-    }
-
-    public async replaceTrigger(
-        databaseId: string,
-        containerId: string,
-        definition: TriggerDefinition,
-    ): Promise<TriggerResource> {
-        return this.withClient(async (client) => {
-            const response = await client
-                .database(databaseId)
-                .container(containerId)
-                .scripts.trigger(definition.id!)
-                .replace(definition);
-            return nonNullProp(response, 'resource');
-        });
-    }
-
-    public async deleteTrigger(databaseId: string, containerId: string, triggerId: string): Promise<void> {
-        await this.withClient(async (client) => {
-            await client.database(databaseId).container(containerId).scripts.trigger(triggerId).delete();
         });
     }
 }

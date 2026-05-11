@@ -6,8 +6,9 @@
 import { type StoredProcedureDefinition } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { getControlPlane } from '../../cosmosdb/controlPlane';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateStoredProcedureWizardContext> {
@@ -27,8 +28,13 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateStoredProc
                     body: storedProcedureBody!,
                 };
 
-                const controlPlane = getControlPlane(context.accountInfo);
-                context.response = await controlPlane.createStoredProcedure(databaseId, containerId, body);
+                context.response = await withClaimsChallengeHandling(context.accountInfo, async (client) => {
+                    const response = await client
+                        .database(databaseId)
+                        .container(containerId)
+                        .scripts.storedProcedures.create(body);
+                    return nonNullProp(response, 'resource');
+                });
             },
         );
     }

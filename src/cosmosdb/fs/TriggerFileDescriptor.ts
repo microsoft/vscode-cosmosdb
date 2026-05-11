@@ -10,7 +10,8 @@ import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBTriggerModel } from '../../tree/cosmosdb/models/CosmosDBTriggerModel';
-import { getControlPlane } from '../controlPlane';
+import { nonNullProp } from '../../utils/nonNull';
+import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export async function getTriggerType(context: IActionContext): Promise<TriggerType> {
     const options = Object.keys(TriggerType).map((type) => ({ label: type }));
@@ -47,12 +48,21 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
-        const controlPlane = getControlPlane(this.model.accountInfo);
-        const existing = await controlPlane.readTrigger(
-            this.model.database.id,
-            this.model.container.id,
-            this.model.trigger.id,
-        );
+        const existing = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
+            try {
+                const response = await client
+                    .database(this.model.database.id)
+                    .container(this.model.container.id)
+                    .scripts.trigger(this.model.trigger.id)
+                    .read();
+                return response.resource;
+            } catch (err) {
+                if (isNotFound(err)) {
+                    return undefined;
+                }
+                throw err;
+            }
+        });
 
         let triggerType = existing?.triggerType;
         let triggerOperation = existing?.triggerOperation;
@@ -64,11 +74,26 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
             triggerOperation = await getTriggerOperation(context);
         }
 
-        this.model.trigger = await controlPlane.replaceTrigger(this.model.database.id, this.model.container.id, {
-            id: this.model.trigger.id,
-            triggerType,
-            triggerOperation,
-            body: content,
+        this.model.trigger = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
+            const response = await client
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .scripts.trigger(this.model.trigger.id)
+                .replace({
+                    id: this.model.trigger.id,
+                    triggerType,
+                    triggerOperation,
+                    body: content,
+                });
+            return nonNullProp(response, 'resource');
         });
     }
+}
+
+function isNotFound(err: unknown): boolean {
+    if (!err || typeof err !== 'object') {
+        return false;
+    }
+    const e = err as { code?: string | number; statusCode?: number };
+    return e.code === 404 || e.code === '404' || e.statusCode === 404;
 }

@@ -3,13 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ContainerDefinition, type StoredProcedureDefinition, type TriggerDefinition } from '@azure/cosmos';
-import {
-    type ContainerResource,
-    type DatabaseResource,
-    type StoredProcedureResource,
-    type TriggerResource,
-} from '../../tree/cosmosdb/models/CosmosDBTypes';
+import { type ContainerDefinition } from '@azure/cosmos';
+import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
 
 /**
  * A minimal serializable view of a database or container's throughput
@@ -30,10 +25,15 @@ export interface ThroughputResource {
 
 /**
  * Abstraction over Azure Cosmos DB control-plane operations for the SQL
- * (NoSQL) API. Implementations either route through the ARM management plane
- * (preferred for Azure-signed-in accounts) or through the data-plane
- * `CosmosClient` (used for the local emulator and workspace-attached
- * connection-string accounts where ARM is not available).
+ * (NoSQL) API: databases, containers, and throughput. Implementations either
+ * route through the ARM management plane (preferred for Azure-signed-in
+ * accounts) or through the data-plane `CosmosClient` (used for the local
+ * emulator and workspace-attached connection-string accounts where ARM is
+ * not available).
+ *
+ * Stored procedures, triggers, and user-defined functions are intentionally
+ * not included here: they are data-plane resources and callers should access
+ * them through the data-plane `CosmosClient` (see `withClaimsChallengeHandling`).
  */
 export interface CosmosDBControlPlane {
     listDatabases(): Promise<DatabaseResource[]>;
@@ -50,23 +50,4 @@ export interface CosmosDBControlPlane {
 
     readDatabaseThroughput(databaseId: string): Promise<ThroughputResource | undefined>;
     readContainerThroughput(databaseId: string, containerId: string): Promise<ThroughputResource | undefined>;
-
-    listStoredProcedures(databaseId: string, containerId: string): Promise<StoredProcedureResource[]>;
-    createStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource>;
-    replaceStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource>;
-    deleteStoredProcedure(databaseId: string, containerId: string, procedureId: string): Promise<void>;
-
-    listTriggers(databaseId: string, containerId: string): Promise<TriggerResource[]>;
-    readTrigger(databaseId: string, containerId: string, triggerId: string): Promise<TriggerResource | undefined>;
-    createTrigger(databaseId: string, containerId: string, definition: TriggerDefinition): Promise<TriggerResource>;
-    replaceTrigger(databaseId: string, containerId: string, definition: TriggerDefinition): Promise<TriggerResource>;
-    deleteTrigger(databaseId: string, containerId: string, triggerId: string): Promise<void>;
 }

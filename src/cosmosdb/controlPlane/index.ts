@@ -20,6 +20,14 @@ export { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
  *   rejected by the service (see issue #2990).
  * - The local emulator and workspace-attached connection-string accounts use
  *   the data-plane `CosmosClient` because ARM is not reachable for them.
+ *
+ * TODO: workspace-attached accounts that point at a real Azure Cosmos DB
+ * account configured with strict native data-plane RBAC will still fall into
+ * the data-plane branch (no subscription/resource-group context is captured
+ * from a connection string), so control-plane operations will be rejected by
+ * the service. Resolving this requires either prompting the user to associate
+ * the attached account with an Azure subscription or extending the
+ * connection-string import flow to capture that context.
  */
 export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane {
     if (!accountInfo.isEmulator && accountInfo.subscription && accountInfo.resourceGroup) {

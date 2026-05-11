@@ -102,7 +102,7 @@ export async function armCreateContainer(
             conflictResolutionPolicy:
                 definition.conflictResolutionPolicy as SqlContainerCreateUpdateParameters['resource']['conflictResolutionPolicy'],
         },
-        options: throughput && throughput !== 0 ? { throughput } : {},
+        options: throughput !== undefined && throughput !== 0 ? { throughput } : {},
     };
 
     const client = await getArmClient(ctx);

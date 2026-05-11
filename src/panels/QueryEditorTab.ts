@@ -9,8 +9,8 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
+import { getControlPlaneForConnection } from '../cosmosdb/controlPlane';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
-import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
@@ -212,13 +212,12 @@ export class QueryEditorTab extends BaseTab {
                 return;
             }
 
-            const cosmosClient = getCosmosClient(this.connection);
-            const databases = await cosmosClient.databases.readAll().fetchAll();
+            const controlPlane = getControlPlaneForConnection(this.connection);
+            const databases = await controlPlane.listDatabases();
             const containers = await Promise.allSettled(
-                databases.resources.map(async (database) => {
-                    const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
-
-                    return containers.resources.map((container) => [database.id, container.id] as string[]);
+                databases.map(async (database) => {
+                    const dbContainers = await controlPlane.listContainers(database.id);
+                    return dbContainers.map((container) => [database.id, container.id] as string[]);
                 }),
             );
 

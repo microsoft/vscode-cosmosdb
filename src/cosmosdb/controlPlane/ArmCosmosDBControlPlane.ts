@@ -8,26 +8,13 @@ import {
     type SqlContainerCreateUpdateParameters,
     type SqlContainerGetResults,
     type SqlDatabaseGetResults,
-    type SqlStoredProcedureGetResults,
-    type SqlTriggerGetResults,
     type ThroughputSettingsGetResults,
 } from '@azure/arm-cosmosdb';
-import {
-    PartitionKeyDefinitionVersion,
-    PartitionKeyKind,
-    type ContainerDefinition,
-    type StoredProcedureDefinition,
-    type TriggerDefinition,
-} from '@azure/cosmos';
+import { PartitionKeyDefinitionVersion, PartitionKeyKind, type ContainerDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import {
-    type ContainerResource,
-    type DatabaseResource,
-    type StoredProcedureResource,
-    type TriggerResource,
-} from '../../tree/cosmosdb/models/CosmosDBTypes';
+import { type ContainerResource, type DatabaseResource } from '../../tree/cosmosdb/models/CosmosDBTypes';
 import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBControlPlane';
 
@@ -174,161 +161,6 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
         return this.readDatabaseThroughput(databaseId);
     }
 
-    public async listStoredProcedures(databaseId: string, containerId: string): Promise<StoredProcedureResource[]> {
-        const client = await this.getArmClient();
-        const items: StoredProcedureResource[] = [];
-        for await (const sp of client.sqlResources.listSqlStoredProcedures(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-        )) {
-            items.push(toStoredProcedureResource(sp));
-        }
-        return items;
-    }
-
-    public async createStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource> {
-        return this.upsertStoredProcedure(databaseId, containerId, definition);
-    }
-
-    public async replaceStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource> {
-        return this.upsertStoredProcedure(databaseId, containerId, definition);
-    }
-
-    private async upsertStoredProcedure(
-        databaseId: string,
-        containerId: string,
-        definition: StoredProcedureDefinition,
-    ): Promise<StoredProcedureResource> {
-        const client = await this.getArmClient();
-        const procedureId = definition.id!;
-        const response = await client.sqlResources.beginCreateUpdateSqlStoredProcedureAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-            procedureId,
-            {
-                resource: {
-                    id: procedureId,
-                    body: typeof definition.body === 'string' ? definition.body : undefined,
-                },
-                options: {},
-            },
-        );
-        return toStoredProcedureResource(response);
-    }
-
-    public async deleteStoredProcedure(databaseId: string, containerId: string, procedureId: string): Promise<void> {
-        const client = await this.getArmClient();
-        await client.sqlResources.beginDeleteSqlStoredProcedureAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-            procedureId,
-        );
-    }
-
-    public async listTriggers(databaseId: string, containerId: string): Promise<TriggerResource[]> {
-        const client = await this.getArmClient();
-        const items: TriggerResource[] = [];
-        for await (const t of client.sqlResources.listSqlTriggers(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-        )) {
-            items.push(toTriggerResource(t));
-        }
-        return items;
-    }
-
-    public async readTrigger(
-        databaseId: string,
-        containerId: string,
-        triggerId: string,
-    ): Promise<TriggerResource | undefined> {
-        const client = await this.getArmClient();
-        try {
-            const response = await client.sqlResources.getSqlTrigger(
-                this.resourceGroup,
-                this.accountName,
-                databaseId,
-                containerId,
-                triggerId,
-            );
-            return toTriggerResource(response);
-        } catch (err) {
-            if (isNotFound(err)) {
-                return undefined;
-            }
-            throw err;
-        }
-    }
-
-    public async createTrigger(
-        databaseId: string,
-        containerId: string,
-        definition: TriggerDefinition,
-    ): Promise<TriggerResource> {
-        return this.upsertTrigger(databaseId, containerId, definition);
-    }
-
-    public async replaceTrigger(
-        databaseId: string,
-        containerId: string,
-        definition: TriggerDefinition,
-    ): Promise<TriggerResource> {
-        return this.upsertTrigger(databaseId, containerId, definition);
-    }
-
-    private async upsertTrigger(
-        databaseId: string,
-        containerId: string,
-        definition: TriggerDefinition,
-    ): Promise<TriggerResource> {
-        const client = await this.getArmClient();
-        const triggerId = definition.id!;
-        const response = await client.sqlResources.beginCreateUpdateSqlTriggerAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-            triggerId,
-            {
-                resource: {
-                    id: triggerId,
-                    body: typeof definition.body === 'string' ? definition.body : undefined,
-                    triggerType: definition.triggerType,
-                    triggerOperation: definition.triggerOperation,
-                },
-                options: {},
-            },
-        );
-        return toTriggerResource(response);
-    }
-
-    public async deleteTrigger(databaseId: string, containerId: string, triggerId: string): Promise<void> {
-        const client = await this.getArmClient();
-        await client.sqlResources.beginDeleteSqlTriggerAndWait(
-            this.resourceGroup,
-            this.accountName,
-            databaseId,
-            containerId,
-            triggerId,
-        );
-    }
-
     private getArmClient(): Promise<CosmosDBManagementClient> {
         if (!this.armClientPromise) {
             this.armClientPromise = (async () => {
@@ -391,32 +223,6 @@ function toContainerResource(c: SqlContainerGetResults): ContainerResource {
         uniqueKeyPolicy: resource?.uniqueKeyPolicy as unknown as ContainerResource['uniqueKeyPolicy'],
         conflictResolutionPolicy:
             resource?.conflictResolutionPolicy as unknown as ContainerResource['conflictResolutionPolicy'],
-        ...EMPTY_RESOURCE_FIELDS,
-        _rid: resource?.rid ?? '',
-        _ts: resource?.ts ?? 0,
-        _etag: resource?.etag ?? '',
-    };
-}
-
-function toStoredProcedureResource(sp: SqlStoredProcedureGetResults): StoredProcedureResource {
-    const resource = sp.resource;
-    return {
-        id: resource?.id ?? sp.name ?? '',
-        body: resource?.body ?? '',
-        ...EMPTY_RESOURCE_FIELDS,
-        _rid: resource?.rid ?? '',
-        _ts: resource?.ts ?? 0,
-        _etag: resource?.etag ?? '',
-    };
-}
-
-function toTriggerResource(t: SqlTriggerGetResults): TriggerResource {
-    const resource = t.resource;
-    return {
-        id: resource?.id ?? t.name ?? '',
-        body: resource?.body ?? '',
-        triggerType: resource?.triggerType as TriggerResource['triggerType'],
-        triggerOperation: resource?.triggerOperation as TriggerResource['triggerOperation'],
         ...EMPTY_RESOURCE_FIELDS,
         _rid: resource?.rid ?? '',
         _ts: resource?.ts ?? 0,

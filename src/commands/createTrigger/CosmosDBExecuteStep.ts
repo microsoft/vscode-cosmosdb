@@ -6,8 +6,9 @@
 import { type TriggerDefinition } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { getControlPlane } from '../../cosmosdb/controlPlane';
+import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerWizardContext> {
@@ -29,8 +30,13 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerWiz
                     triggerOperation: triggerOperation!,
                 };
 
-                const controlPlane = getControlPlane(context.accountInfo);
-                context.response = await controlPlane.createTrigger(databaseId, containerId, body);
+                context.response = await withClaimsChallengeHandling(context.accountInfo, async (client) => {
+                    const response = await client
+                        .database(databaseId)
+                        .container(containerId)
+                        .scripts.triggers.create(body);
+                    return nonNullProp(response, 'resource');
+                });
             },
         );
     }

@@ -5,6 +5,7 @@
 
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { armCreateDatabase, getArmAccountContext } from '../../cosmosdb/armControlPlane';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
@@ -15,6 +16,7 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateDatabaseWi
     public async execute(context: CreateDatabaseWizardContext): Promise<void> {
         const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { databaseName, nodeId } = context;
+        const armCtx = getArmAccountContext(context.accountInfo);
 
         return ext.state.showCreatingChild(
             nodeId,
@@ -22,9 +24,13 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateDatabaseWi
             async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
-                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
-                    await cosmosClient.databases.create({ id: databaseName });
-                });
+                if (armCtx) {
+                    await armCreateDatabase(armCtx, databaseName!);
+                } else {
+                    await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
+                        await cosmosClient.databases.create({ id: databaseName });
+                    });
+                }
             },
         );
     }

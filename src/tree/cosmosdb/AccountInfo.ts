@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../constants';
 import {
@@ -23,6 +24,18 @@ export interface AccountInfo {
     isEmulator: boolean;
     isServerless: boolean;
     name: string;
+    /**
+     * Azure subscription that hosts this account. Populated only for accounts
+     * surfaced via the Azure Resources view (i.e. `getAccountInfoForResource`),
+     * which means the user is signed in to Azure and we have ARM context.
+     * Together with {@link resourceGroup} this allows control-plane operations
+     * (create/delete database & container, read throughput) to be issued via
+     * ARM, which is required for accounts configured with strict native
+     * data-plane RBAC (see issue #2990).
+     */
+    subscription?: AzureSubscription;
+    /** Resource group of the account. See {@link subscription}. */
+    resourceGroup?: string;
 }
 
 function isCosmosDBAttachedAccountModel(account: unknown): account is CosmosDBAttachedAccountModel {
@@ -117,6 +130,8 @@ async function getAccountInfoForResource(account: CosmosDBAccountModel): Promise
         isEmulator: false,
         isServerless,
         name,
+        subscription: account.subscription,
+        resourceGroup,
     };
 }
 

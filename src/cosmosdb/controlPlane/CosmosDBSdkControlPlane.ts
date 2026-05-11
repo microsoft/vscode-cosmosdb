@@ -20,10 +20,10 @@ import { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
 
 /**
  * Control-plane implementation that routes every operation through the
- * data-plane `CosmosClient`. Used for the local emulator and for
+ * Cosmos DB SDK (`CosmosClient`). Used for the local emulator and for
  * workspace-attached connection-string accounts, where ARM is not reachable.
  */
-export class DataPlaneCosmosDBControlPlane implements CosmosDBControlPlane {
+export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
     public constructor(private readonly accountInfo: AccountInfo | NoSqlQueryConnection) {}
 
     private withClient<T>(callback: (client: CosmosClient) => Promise<T>): Promise<T> {

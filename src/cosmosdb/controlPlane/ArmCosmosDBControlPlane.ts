@@ -432,12 +432,20 @@ function toThroughputResource(response: ThroughputSettingsGetResults): Throughpu
     return {
         throughput: resource.throughput,
         autoscaleMaxThroughput: resource.autoscaleSettings?.maxThroughput,
-        minimumThroughput:
-            typeof resource.minimumThroughput === 'string'
-                ? Number.parseInt(resource.minimumThroughput, 10) || undefined
-                : (resource.minimumThroughput as number | undefined),
+        minimumThroughput: parseMinimumThroughput(resource.minimumThroughput),
         raw: response,
     };
+}
+
+function parseMinimumThroughput(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
 }
 
 function isNotFound(err: unknown): boolean {

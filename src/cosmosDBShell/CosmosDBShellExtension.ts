@@ -267,7 +267,7 @@ async function installCosmosDBShellWithDotNetTool(dotnetPath?: string): Promise<
                     const dotnetExe = dotnetPath ?? 'dotnet';
                     ext.outputChannel.appendLine(`> ${dotnetExe} tool install --global CosmosDBShell --prerelease`);
 
-                    return await new Promise<{ success: boolean; exitCode: number | null; cancelled: boolean }>(
+                    return new Promise<{ success: boolean; exitCode: number | null; cancelled: boolean }>(
                         (resolve) => {
                             let cancelled = false;
                             const proc = child.spawn(

@@ -72,7 +72,8 @@ export class DataPlaneCosmosDBControlPlane implements CosmosDBControlPlane {
         const partitionKeyDefinition = {
             paths: partitionKeyPaths,
             kind:
-                (definition.partitionKey?.kind ?? partitionKeyPaths.length > 1)
+                definition.partitionKey?.kind === PartitionKeyKind.MultiHash ||
+                (definition.partitionKey?.kind === undefined && partitionKeyPaths.length > 1)
                     ? PartitionKeyKind.MultiHash
                     : PartitionKeyKind.Hash,
             version: definition.partitionKey?.version ?? PartitionKeyDefinitionVersion.V2,

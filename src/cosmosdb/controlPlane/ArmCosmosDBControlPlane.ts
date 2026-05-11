@@ -90,7 +90,8 @@ export class ArmCosmosDBControlPlane implements CosmosDBControlPlane {
         const containerId = definition.id!;
         const partitionKeyPaths = definition.partitionKey?.paths ?? [];
         const kind =
-            (definition.partitionKey?.kind ?? partitionKeyPaths.length > 1)
+            definition.partitionKey?.kind === PartitionKeyKind.MultiHash ||
+            (definition.partitionKey?.kind === undefined && partitionKeyPaths.length > 1)
                 ? PartitionKeyKind.MultiHash
                 : PartitionKeyKind.Hash;
         const version = definition.partitionKey?.version ?? PartitionKeyDefinitionVersion.V2;

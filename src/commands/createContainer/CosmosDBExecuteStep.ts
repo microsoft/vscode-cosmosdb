@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PartitionKeyDefinitionVersion, PartitionKeyKind, type RequestOptions } from '@azure/cosmos';
+import { PartitionKeyDefinitionVersion, type RequestOptions } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { armCreateContainer, getArmAccountContext } from '../../cosmosdb/armControlPlane';
+import { armCreateContainer, getArmAccountContext, getPartitionKeyKind } from '../../cosmosdb/armControlPlane';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -31,17 +31,9 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
                 const partitionKeyPaths = partitionKey?.paths ?? [];
-                // Compare to MultiHash explicitly; the previous expression
-                // `(partitionKey?.kind ?? paths.length > 1) ? MultiHash : Hash`
-                // short-circuits on the truthy "Hash" string and would
-                // incorrectly produce MultiHash whenever kind was Hash.
                 const partitionKeyDefinition = {
                     paths: partitionKeyPaths,
-                    kind:
-                        partitionKey?.kind === PartitionKeyKind.MultiHash ||
-                        (partitionKey?.kind === undefined && partitionKeyPaths.length > 1)
-                            ? PartitionKeyKind.MultiHash
-                            : PartitionKeyKind.Hash,
+                    kind: getPartitionKeyKind(partitionKey?.kind, partitionKeyPaths.length),
                     version: PartitionKeyDefinitionVersion.V2,
                 };
 

@@ -83,15 +83,7 @@ export async function armCreateContainer(
 ): Promise<void> {
     const containerId = definition.id!;
     const partitionKeyPaths = definition.partitionKey?.paths ?? [];
-    // The expression `(definition.partitionKey?.kind ?? paths.length > 1) ? MultiHash : Hash`
-    // would short-circuit on the truthy "Hash" string and incorrectly produce
-    // MultiHash whenever kind was explicitly Hash. Compare to MultiHash and
-    // only fall back to the path-count heuristic when kind is undefined.
-    const kind =
-        definition.partitionKey?.kind === PartitionKeyKind.MultiHash ||
-        (definition.partitionKey?.kind === undefined && partitionKeyPaths.length > 1)
-            ? PartitionKeyKind.MultiHash
-            : PartitionKeyKind.Hash;
+    const kind = getPartitionKeyKind(definition.partitionKey?.kind, partitionKeyPaths.length);
     const version = definition.partitionKey?.version ?? PartitionKeyDefinitionVersion.V2;
 
     const parameters: SqlContainerCreateUpdateParameters = {
@@ -180,4 +172,25 @@ function isNotFound(err: unknown): boolean {
     }
     const e = err as { statusCode?: number; code?: string | number };
     return e.statusCode === 404 || e.code === 404 || e.code === 'NotFound' || e.code === 'ResourceNotFound';
+}
+
+/**
+ * Selects the partition-key kind for a new container, fixing the operator-
+ * precedence bug in the previous expression
+ * `(kind ?? paths.length > 1) ? MultiHash : Hash`, which short-circuited on
+ * the truthy `'Hash'` string and incorrectly produced `MultiHash` whenever
+ * `kind` was explicitly `Hash`. Compare to `MultiHash` and only fall back to
+ * the path-count heuristic when `kind` is undefined.
+ *
+ * Shared between the ARM (`armCreateContainer`) and data-plane
+ * (`createContainer/CosmosDBExecuteStep`) paths so the two cannot drift.
+ */
+export function getPartitionKeyKind(kind: PartitionKeyKind | undefined, pathCount: number): PartitionKeyKind {
+    if (kind === PartitionKeyKind.MultiHash) {
+        return PartitionKeyKind.MultiHash;
+    }
+    if (kind === undefined && pathCount > 1) {
+        return PartitionKeyKind.MultiHash;
+    }
+    return PartitionKeyKind.Hash;
 }

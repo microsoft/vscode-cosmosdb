@@ -36,7 +36,13 @@ export async function cosmosDBViewDatabaseOffer(context: IActionContext, node?: 
 
     if (armCtx) {
         const offer = await armReadDatabaseThroughput(armCtx, databaseId);
-        await vscodeUtil.showNewFile(JSON.stringify(offer?.resource, undefined, 2), `offer of ${databaseId}`, '.json');
+        // Coalesce to null so JSON.stringify always returns a string; an offer
+        // can legitimately be absent (e.g., serverless accounts).
+        await vscodeUtil.showNewFile(
+            JSON.stringify(offer?.resource ?? null, undefined, 2),
+            `offer of ${databaseId}`,
+            '.json',
+        );
         return;
     }
 
@@ -72,7 +78,9 @@ export async function cosmosDBViewContainerOffer(context: IActionContext, node?:
         // as the file label only when we got a container-scoped result.
         const label =
             offer?.name && offer.name.includes('/containers/') ? `offer of ${containerId}` : `offer of ${databaseId}`;
-        await vscodeUtil.showNewFile(JSON.stringify(offer?.resource, undefined, 2), label, '.json');
+        // Coalesce to null so JSON.stringify always returns a string; an offer
+        // can legitimately be absent (e.g., serverless accounts).
+        await vscodeUtil.showNewFile(JSON.stringify(offer?.resource ?? null, undefined, 2), label, '.json');
         return;
     }
 

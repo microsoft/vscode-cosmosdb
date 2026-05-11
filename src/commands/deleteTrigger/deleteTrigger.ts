@@ -47,9 +47,13 @@ export async function cosmosDBDeleteTrigger(context: IActionContext, node: Cosmo
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
             await withClaimsChallengeHandling(node.model.accountInfo, async (client) => {
-                await client.database(databaseId).container(containerId).scripts.trigger(triggerId).delete();
+                const response = await client
+                    .database(databaseId)
+                    .container(containerId)
+                    .scripts.trigger(triggerId)
+                    .delete();
+                success = response.statusCode === 204;
             });
-            success = true;
         });
 
         if (success) {

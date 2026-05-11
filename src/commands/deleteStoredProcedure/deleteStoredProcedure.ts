@@ -50,9 +50,13 @@ export async function cosmosDBDeleteStoredProcedure(
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
             await withClaimsChallengeHandling(node.model.accountInfo, async (client) => {
-                await client.database(databaseId).container(containerId).scripts.storedProcedure(procedureId).delete();
+                const response = await client
+                    .database(databaseId)
+                    .container(containerId)
+                    .scripts.storedProcedure(procedureId)
+                    .delete();
+                success = response.statusCode === 204;
             });
-            success = true;
         });
 
         if (success) {

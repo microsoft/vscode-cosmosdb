@@ -192,6 +192,7 @@
   "Failed to create storage account \"{0}\" with sku \"{1}\".": "Failed to create storage account \"{0}\" with sku \"{1}\".",
   "Failed to create user-assigned identity \"{0}\".": "Failed to create user-assigned identity \"{0}\".",
   "Failed to delete {count} document(s) due to \"Request too large\" (429) error. Retrying...": "Failed to delete {count} document(s) due to \"Request too large\" (429) error. Retrying...",
+  "Failed to delete {kind} \"{id}\": unexpected status code {code}.": "Failed to delete {kind} \"{id}\": unexpected status code {code}.",
   "Failed to delete document {id} with status code {statusCode}. Error: {error}": "Failed to delete document {id} with status code {statusCode}. Error: {error}",
   "Failed to delete item \"{0}\".": "Failed to delete item \"{0}\".",
   "Failed to delete secrets for item \"{0}\".": "Failed to delete secrets for item \"{0}\".",

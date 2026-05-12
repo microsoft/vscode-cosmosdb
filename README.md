@@ -2,10 +2,11 @@
 
 <!-- region exclude-from-marketplace -->
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/ms-azuretools.vscode-cosmosdb.svg?label=Version)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
-[![Preview](https://img.shields.io/visual-studio-marketplace/v/ms-azuretools.vscode-cosmosdb?include_prereleases&label=Preview)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/ms-azuretools.vscode-cosmosdb.svg?label=Installs)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
-[![Build Status](https://dev.azure.com/msdata/CosmosDB/_apis/build/status%2FVSCode%20Extensions%2Fvscode-cosmosdb?repoName=microsoft%2Fvscode-cosmosdb&branchName=main)](https://dev.azure.com/msdata/CosmosDB/_build/latest?definitionId=51963&repoName=microsoft%2Fvscode-cosmosdb&branchName=main)
+[![Version](https://vsmarketplacebadges.dev/version/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
+[![Installs](https://vsmarketplacebadges.dev/installs/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
+[![Rating](https://vsmarketplacebadges.dev/rating-star/ms-azuretools.vscode-cosmosdb.svg)](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-cosmosdb)
+[![CI](https://github.com/microsoft/vscode-cosmosdb/actions/workflows/main.yml/badge.svg)](https://github.com/microsoft/vscode-cosmosdb/actions/workflows/main.yml)
+[![License: MIT](https://img.shields.io/github/license/microsoft/vscode-cosmosdb)](LICENSE.md)
 
 <!-- endregion exclude-from-marketplace -->
 

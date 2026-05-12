@@ -3,7 +3,7 @@
 <!-- region exclude-from-marketplace -->
 
 [![CI](https://github.com/microsoft/vscode-cosmosdb/actions/workflows/main.yml/badge.svg)](https://github.com/microsoft/vscode-cosmosdb/actions/workflows/main.yml)
-<a href="https://dev.azure.com/msdata/CosmosDB/_build/latest?definitionId=51963&amp;repoName=microsoft%2Fvscode-cosmosdb&amp;branchName=main"><img src="https://dev.azure.com/msdata/CosmosDB/_apis/build/status%2FVSCode%20Extensions%2Fvscode-cosmosdb?repoName=microsoft%2Fvscode-cosmosdb&amp;branchName=main"></a>
+[![Azure DevOps Build](https://dev.azure.com/msdata/CosmosDB/_apis/build/status%2FVSCode%20Extensions%2Fvscode-cosmosdb?repoName=microsoft%2Fvscode-cosmosdb&branchName=main)](https://dev.azure.com/msdata/CosmosDB/_build/latest?definitionId=51963&repoName=microsoft%2Fvscode-cosmosdb&branchName=main)
 [![License: MIT](https://img.shields.io/github/license/microsoft/vscode-cosmosdb)](LICENSE.md)
 
 <!-- endregion exclude-from-marketplace -->

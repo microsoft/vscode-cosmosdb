@@ -103,7 +103,6 @@ export const l10nExportAllStrings = async (paths) => {
         return;
     }
 
-
     // Log the total count of unique localization keys
     console.log(`Count of localization keys: ${Object.keys(output).length}`);
 

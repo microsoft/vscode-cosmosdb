@@ -7,9 +7,7 @@ import { type EditorView, type Tooltip, type TooltipView } from '@codemirror/vie
 import { type SqlLanguageService } from '../../services/index.js';
 import { createTooltipView, escapeHtml } from './types.js';
 
-export function createSignatureHelpSource(
-    service: SqlLanguageService,
-): (view: EditorView) => Tooltip | null {
+export function createSignatureHelpSource(service: SqlLanguageService): (view: EditorView) => Tooltip | null {
     return (view: EditorView) => {
         const query: string = view.state.doc.toString();
         const offset: number = view.state.selection.main.head;

@@ -13,4 +13,3 @@ export { VSCodeMultiQueryDecorator } from './multiQueryDecorator.js';
 export { registerCosmosDbSql } from './register.js';
 export { VSCodeSignatureHelpProvider } from './signatureHelpProvider.js';
 export type { VSCodeDiagnosticsProviderOptions, VSCodeNamespace, VSCodeRegistrationOptions } from './types.js';
-

@@ -36,4 +36,3 @@ export class VSCodeSignatureHelpProvider implements vscodeApi.SignatureHelpProvi
         return sh;
     }
 }
-

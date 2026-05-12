@@ -93,4 +93,3 @@ export function generateDocsIndexContent() {
 
     return lines.join('\n');
 }
-

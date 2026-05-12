@@ -330,4 +330,3 @@ function hasSelectBefore(tokens: IToken[], fromToken: IToken): boolean {
     }
     return false;
 }
-

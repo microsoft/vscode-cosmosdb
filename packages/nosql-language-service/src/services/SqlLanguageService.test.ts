@@ -43,7 +43,9 @@ describe('SqlLanguageService.getFoldableRegions', () => {
         const regions = service.getFoldableRegions(text);
         // Region 1 starts after the first ;
         // Its content should start at 'S' of 'SELECT 2', not at '\n'
-        const secondRegion = regions.find((r) => text.substring(r.contentStartOffset, r.contentEndOffset) === 'SELECT 2');
+        const secondRegion = regions.find(
+            (r) => text.substring(r.contentStartOffset, r.contentEndOffset) === 'SELECT 2',
+        );
         expect(secondRegion).toBeDefined();
     });
 

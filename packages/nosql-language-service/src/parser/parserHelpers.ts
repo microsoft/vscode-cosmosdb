@@ -34,10 +34,7 @@ export function range(start: IToken | undefined, end: IToken | undefined): Sourc
     return { start: pos(start), end: posEnd(end) };
 }
 
-export function rangeFromNodes(
-    first: SqlNodeBase | undefined,
-    last: SqlNodeBase | undefined,
-): SourceRange | undefined {
+export function rangeFromNodes(first: SqlNodeBase | undefined, last: SqlNodeBase | undefined): SourceRange | undefined {
     if (first?.range && last?.range) {
         return { start: first.range.start, end: last.range.end };
     }
@@ -53,4 +50,3 @@ export function rangeStartEnd(
         end: posEnd(endToken),
     };
 }
-

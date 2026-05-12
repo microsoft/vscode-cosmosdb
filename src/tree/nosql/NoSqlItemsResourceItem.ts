@@ -5,9 +5,9 @@
 
 import { type ItemDefinition } from '@azure/cosmos';
 import { type Experience } from '../../AzureDBExperiences';
-import { type TreeElement } from '../TreeElement';
 import { CosmosDBItemsResourceItem } from '../cosmosdb/CosmosDBItemsResourceItem';
 import { type CosmosDBItemsModel } from '../cosmosdb/models/CosmosDBItemsModel';
+import { type TreeElement } from '../TreeElement';
 import { NoSqlItemResourceItem } from './NoSqlItemResourceItem';
 
 export class NoSqlItemsResourceItem extends CosmosDBItemsResourceItem {

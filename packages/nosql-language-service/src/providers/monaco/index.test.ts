@@ -5,6 +5,7 @@
 
 import type * as monacoEditor from 'monaco-editor';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SqlLanguageService } from '../../services/SqlLanguageService.js';
 import {
     MonacoCompletionProvider,
     MonacoFoldingRangeProvider,
@@ -14,7 +15,6 @@ import {
     registerCosmosDbSql,
     type MonacoNamespace,
 } from './index.js';
-import { SqlLanguageService } from '../../services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------
 // Lightweight Monaco mock
@@ -393,8 +393,10 @@ describe('registerCosmosDbSql (Monaco)', () => {
 
     it('dispose cleans up all registrations', () => {
         const disposable = registerCosmosDbSql(monaco, service);
-        disposable.dispose();
-        // After disposal, a second dispose should be safe (no-op)
-        disposable.dispose();
+        expect(() => {
+            disposable.dispose();
+            // After disposal, a second dispose should be safe (no-op)
+            disposable.dispose();
+        }).not.toThrow();
     });
 });

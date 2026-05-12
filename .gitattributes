@@ -1,5 +1,12 @@
-# Set the default behavior, in case people don't have core.autocrlf set
-* text=auto
+# Normalize all text files to LF on checkout (cross-platform consistency)
+* text=auto eol=lf
 
-# bash scripts need lf line endings, so force that
-*.sh text eol=lf
+# Binary files — no line ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.vsix binary
+*.woff binary
+*.woff2 binary

@@ -30,4 +30,3 @@ export class VSCodeFormattingProvider implements vscodeApi.DocumentFormattingEdi
         );
     }
 }
-

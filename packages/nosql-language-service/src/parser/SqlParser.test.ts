@@ -22,9 +22,8 @@ describe('SqlParser — basic queries', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectListSpec');
-        if (spec.kind === 'SelectListSpec') {
-            expect(spec.items).toHaveLength(2);
-        }
+        if (spec.kind !== 'SelectListSpec') return;
+        expect(spec.items).toHaveLength(2);
     });
 
     it('parses SELECT VALUE c.id FROM c', () => {
@@ -82,13 +81,12 @@ describe('SqlParser — basic queries', () => {
         const { ast, errors } = parse('SELECT udf.myFunc(c.id) FROM c');
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
-        if (spec.kind === 'SelectListSpec') {
-            const expr = spec.items[0].expression;
-            expect(expr.kind).toBe('FunctionCallScalarExpression');
-            if (expr.kind === 'FunctionCallScalarExpression') {
-                expect(expr.udf).toBe(true);
-            }
-        }
+        expect(spec.kind).toBe('SelectListSpec');
+        if (spec.kind !== 'SelectListSpec') return;
+        const expr = spec.items[0].expression;
+        expect(expr.kind).toBe('FunctionCallScalarExpression');
+        if (expr.kind !== 'FunctionCallScalarExpression') return;
+        expect(expr.udf).toBe(true);
     });
 
     it('parses BETWEEN', () => {
@@ -130,9 +128,8 @@ describe('SqlParser — basic queries', () => {
         expect(errors).toHaveLength(0);
         const where = ast!.query.where!.expression;
         expect(where.kind).toBe('BinaryScalarExpression');
-        if (where.kind === 'BinaryScalarExpression') {
-            expect(where.right.kind).toBe('ParameterRefScalarExpression');
-        }
+        if (where.kind !== 'BinaryScalarExpression') return;
+        expect(where.right.kind).toBe('ParameterRefScalarExpression');
     });
 
     it('parses ternary expression', () => {
@@ -210,17 +207,16 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         const { ast, errors } = parse('SELECT c.x LET FROM c');
         expect(errors).toHaveLength(0);
         expect(ast!.query.select.spec.kind).toBe('SelectListSpec');
-        if (ast!.query.select.spec.kind === 'SelectListSpec') {
-            expect(ast!.query.select.spec.items[0].alias?.value).toBe('LET');
-        }
+        if (ast!.query.select.spec.kind !== 'SelectListSpec') return;
+        expect(ast!.query.select.spec.items[0].alias?.value).toBe('LET');
     });
 
     it('accepts RANK as select item alias with AS', () => {
         const { ast, errors } = parse('SELECT c.x AS RANK FROM c');
         expect(errors).toHaveLength(0);
-        if (ast!.query.select.spec.kind === 'SelectListSpec') {
-            expect(ast!.query.select.spec.items[0].alias?.value).toBe('RANK');
-        }
+        expect(ast!.query.select.spec.kind).toBe('SelectListSpec');
+        if (ast!.query.select.spec.kind !== 'SelectListSpec') return;
+        expect(ast!.query.select.spec.items[0].alias?.value).toBe('RANK');
     });
 
     // Fix #5: ORDER BY RANK requires function call
@@ -246,9 +242,8 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         // Left-associative: (c.a = c.b) = c.c
         const where = ast!.query.where!.expression;
         expect(where.kind).toBe('BinaryScalarExpression');
-        if (where.kind === 'BinaryScalarExpression') {
-            expect(where.left.kind).toBe('BinaryScalarExpression'); // (c.a = c.b)
-        }
+        if (where.kind !== 'BinaryScalarExpression') return;
+        expect(where.left.kind).toBe('BinaryScalarExpression'); // (c.a = c.b)
     });
 
     it('parses chained a < b < c', () => {
@@ -262,14 +257,12 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectListSpec');
-        if (spec.kind === 'SelectListSpec') {
-            const expr = spec.items[0].expression;
-            // Right-associative: a ?? (b ?? c)
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.right.kind).toBe('CoalesceScalarExpression'); // (b ?? c) on the right
-            }
-        }
+        if (spec.kind !== 'SelectListSpec') return;
+        const expr = spec.items[0].expression;
+        // Right-associative: a ?? (b ?? c)
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.right.kind).toBe('CoalesceScalarExpression'); // (b ?? c) on the right
     });
 
     it('parses 1 + 2 ?? 3 with coalesce looser than additive operators', () => {
@@ -277,16 +270,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('Add');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Add');
     });
 
     it('parses 1 ?? 2 + 3 with coalesce looser than additive operators', () => {
@@ -294,16 +284,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.right.kind).toBe('BinaryScalarExpression');
-                if (expr.right.kind === 'BinaryScalarExpression') {
-                    expect(expr.right.operator).toBe('Add');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.right.kind).toBe('BinaryScalarExpression');
+        if (expr.right.kind !== 'BinaryScalarExpression') return;
+        expect(expr.right.operator).toBe('Add');
     });
 
     it('parses 1 = 2 ?? 3 with coalesce looser than comparison operators', () => {
@@ -311,16 +298,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('Equal');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Equal');
     });
 
     it('parses 1 ?? 2 = 3 with coalesce looser than comparison operators', () => {
@@ -328,16 +312,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.right.kind).toBe('BinaryScalarExpression');
-                if (expr.right.kind === 'BinaryScalarExpression') {
-                    expect(expr.right.operator).toBe('Equal');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.right.kind).toBe('BinaryScalarExpression');
+        if (expr.right.kind !== 'BinaryScalarExpression') return;
+        expect(expr.right.operator).toBe('Equal');
     });
 
     it('parses 1 AND 2 ?? 3 with coalesce looser than logical AND', () => {
@@ -345,16 +326,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('And');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('And');
     });
 
     it('parses 1 ?? 2 AND 3 with coalesce looser than logical AND', () => {
@@ -362,16 +340,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.right.kind).toBe('BinaryScalarExpression');
-                if (expr.right.kind === 'BinaryScalarExpression') {
-                    expect(expr.right.operator).toBe('And');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.right.kind).toBe('BinaryScalarExpression');
+        if (expr.right.kind !== 'BinaryScalarExpression') return;
+        expect(expr.right.operator).toBe('And');
     });
 
     it('parses -1 ?? 2 with coalesce looser than unary minus', () => {
@@ -379,13 +354,11 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.left.kind).toBe('LiteralScalarExpression');
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.left.kind).toBe('LiteralScalarExpression');
     });
 
     it('parses ~1 ?? 2 with coalesce looser than unary bitwise not', () => {
@@ -393,16 +366,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.left.kind).toBe('UnaryScalarExpression');
-                if (expr.left.kind === 'UnaryScalarExpression') {
-                    expect(expr.left.operator).toBe('BitwiseNot');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.left.kind).toBe('UnaryScalarExpression');
+        if (expr.left.kind !== 'UnaryScalarExpression') return;
+        expect(expr.left.operator).toBe('BitwiseNot');
     });
 
     it('parses NOT 1 ?? 2 with coalesce looser than unary NOT', () => {
@@ -410,16 +380,13 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('CoalesceScalarExpression');
-            if (expr.kind === 'CoalesceScalarExpression') {
-                expect(expr.left.kind).toBe('UnaryScalarExpression');
-                if (expr.left.kind === 'UnaryScalarExpression') {
-                    expect(expr.left.operator).toBe('Not');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('CoalesceScalarExpression');
+        if (expr.kind !== 'CoalesceScalarExpression') return;
+        expect(expr.left.kind).toBe('UnaryScalarExpression');
+        if (expr.left.kind !== 'UnaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Not');
     });
 
     // Fix #3: BETWEEN/LIKE/LET bounds accept full binary expressions
@@ -428,10 +395,9 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const where = ast!.query.where!.expression;
         expect(where.kind).toBe('LikeScalarExpression');
-        if (where.kind === 'LikeScalarExpression') {
-            // pattern should be a StringConcat binary expression
-            expect(where.pattern.kind).toBe('BinaryScalarExpression');
-        }
+        if (where.kind !== 'LikeScalarExpression') return;
+        // pattern should be a StringConcat binary expression
+        expect(where.pattern.kind).toBe('BinaryScalarExpression');
     });
 
     it('parses NOT LIKE with || string concat', () => {
@@ -518,17 +484,14 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('BinaryScalarExpression');
-            if (expr.kind === 'BinaryScalarExpression') {
-                expect(expr.operator).toBe('Add');
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('BitwiseOr');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('BinaryScalarExpression');
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe('Add');
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('BitwiseOr');
     });
 
     it('parses 1 + 2 | 3 with C++ same-level precedence', () => {
@@ -536,17 +499,14 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('BinaryScalarExpression');
-            if (expr.kind === 'BinaryScalarExpression') {
-                expect(expr.operator).toBe('BitwiseOr');
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('Add');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('BinaryScalarExpression');
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe('BitwiseOr');
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Add');
     });
 
     it('parses 1 & 2 + 3 with C++ same-level precedence', () => {
@@ -554,17 +514,14 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('BinaryScalarExpression');
-            if (expr.kind === 'BinaryScalarExpression') {
-                expect(expr.operator).toBe('Add');
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('BitwiseAnd');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('BinaryScalarExpression');
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe('Add');
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('BitwiseAnd');
     });
 
     it('keeps multiplicative operators tighter than same-level bitwise/additive operators', () => {
@@ -572,21 +529,17 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            expect(expr.kind).toBe('BinaryScalarExpression');
-            if (expr.kind === 'BinaryScalarExpression') {
-                expect(expr.operator).toBe('BitwiseOr');
-                expect(expr.left.kind).toBe('BinaryScalarExpression');
-                if (expr.left.kind === 'BinaryScalarExpression') {
-                    expect(expr.left.operator).toBe('Add');
-                    expect(expr.left.right.kind).toBe('BinaryScalarExpression');
-                    if (expr.left.right.kind === 'BinaryScalarExpression') {
-                        expect(expr.left.right.operator).toBe('Multiply');
-                    }
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        expect(expr.kind).toBe('BinaryScalarExpression');
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe('BitwiseOr');
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        if (expr.left.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Add');
+        expect(expr.left.right.kind).toBe('BinaryScalarExpression');
+        if (expr.left.right.kind !== 'BinaryScalarExpression') return;
+        expect(expr.left.right.operator).toBe('Multiply');
     });
 
     it('parses NOT 1 = 2 as (NOT 1) = 2, matching C++ unary precedence', () => {
@@ -594,18 +547,15 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectValueSpec');
-        if (spec.kind === 'SelectValueSpec') {
-            const expr = spec.expression;
-            // C++ sql.y: NOT is at unary_expression level, so NOT binds first
-            expect(expr.kind).toBe('BinaryScalarExpression');
-            if (expr.kind === 'BinaryScalarExpression') {
-                expect(expr.operator).toBe('Equal');
-                expect(expr.left.kind).toBe('UnaryScalarExpression');
-                if (expr.left.kind === 'UnaryScalarExpression') {
-                    expect(expr.left.operator).toBe('Not');
-                }
-            }
-        }
+        if (spec.kind !== 'SelectValueSpec') return;
+        const expr = spec.expression;
+        // C++ sql.y: NOT is at unary_expression level, so NOT binds first
+        expect(expr.kind).toBe('BinaryScalarExpression');
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe('Equal');
+        expect(expr.left.kind).toBe('UnaryScalarExpression');
+        if (expr.left.kind !== 'UnaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Not');
     });
 
     it('parses NOT c.x IN (...) as (NOT c.x) IN (...), matching C++ unary precedence', () => {
@@ -614,12 +564,10 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         const expr = ast!.query.where!.expression;
         // C++ sql.y: NOT is at unary level, binds only to c.x
         expect(expr.kind).toBe('InScalarExpression');
-        if (expr.kind === 'InScalarExpression') {
-            expect(expr.expression.kind).toBe('UnaryScalarExpression');
-            if (expr.expression.kind === 'UnaryScalarExpression') {
-                expect(expr.expression.operator).toBe('Not');
-            }
-        }
+        if (expr.kind !== 'InScalarExpression') return;
+        expect(expr.expression.kind).toBe('UnaryScalarExpression');
+        if (expr.expression.kind !== 'UnaryScalarExpression') return;
+        expect(expr.expression.operator).toBe('Not');
     });
 
     it('parses NOT c.x BETWEEN ... as (NOT c.x) BETWEEN ..., matching C++ unary precedence', () => {
@@ -628,12 +576,10 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         const expr = ast!.query.where!.expression;
         // C++ sql.y: NOT is at unary level, binds only to c.x
         expect(expr.kind).toBe('BetweenScalarExpression');
-        if (expr.kind === 'BetweenScalarExpression') {
-            expect(expr.expression.kind).toBe('UnaryScalarExpression');
-            if (expr.expression.kind === 'UnaryScalarExpression') {
-                expect(expr.expression.operator).toBe('Not');
-            }
-        }
+        if (expr.kind !== 'BetweenScalarExpression') return;
+        expect(expr.expression.kind).toBe('UnaryScalarExpression');
+        if (expr.expression.kind !== 'UnaryScalarExpression') return;
+        expect(expr.expression.operator).toBe('Not');
     });
 
     it('parses NOT c.x LIKE ... as (NOT c.x) LIKE ..., matching C++ unary precedence', () => {
@@ -642,12 +588,10 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         const expr = ast!.query.where!.expression;
         // C++ sql.y: NOT is at unary level, binds only to c.x
         expect(expr.kind).toBe('LikeScalarExpression');
-        if (expr.kind === 'LikeScalarExpression') {
-            expect(expr.expression.kind).toBe('UnaryScalarExpression');
-            if (expr.expression.kind === 'UnaryScalarExpression') {
-                expect(expr.expression.operator).toBe('Not');
-            }
-        }
+        if (expr.kind !== 'LikeScalarExpression') return;
+        expect(expr.expression.kind).toBe('UnaryScalarExpression');
+        if (expr.expression.kind !== 'UnaryScalarExpression') return;
+        expect(expr.expression.operator).toBe('Not');
     });
 
     it('parses NOT a AND b as (NOT a) AND b, matching C++ unary precedence', () => {
@@ -655,13 +599,11 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const expr = ast!.query.where!.expression;
         expect(expr.kind).toBe('BinaryScalarExpression');
-        if (expr.kind === 'BinaryScalarExpression') {
-            expect(expr.operator).toBe('And');
-            expect(expr.left.kind).toBe('UnaryScalarExpression');
-            if (expr.left.kind === 'UnaryScalarExpression') {
-                expect(expr.left.operator).toBe('Not');
-            }
-        }
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe('And');
+        expect(expr.left.kind).toBe('UnaryScalarExpression');
+        if (expr.left.kind !== 'UnaryScalarExpression') return;
+        expect(expr.left.operator).toBe('Not');
     });
 
     it('parses repeated NOT recursively', () => {
@@ -669,12 +611,10 @@ describe('SqlParser — grammar discrepancy fixes', () => {
         expect(errors).toHaveLength(0);
         const expr = ast!.query.where!.expression;
         expect(expr.kind).toBe('UnaryScalarExpression');
-        if (expr.kind === 'UnaryScalarExpression') {
-            expect(expr.operator).toBe('Not');
-            expect(expr.operand.kind).toBe('UnaryScalarExpression');
-            if (expr.operand.kind === 'UnaryScalarExpression') {
-                expect(expr.operand.operator).toBe('Not');
-            }
-        }
+        if (expr.kind !== 'UnaryScalarExpression') return;
+        expect(expr.operator).toBe('Not');
+        expect(expr.operand.kind).toBe('UnaryScalarExpression');
+        if (expr.operand.kind !== 'UnaryScalarExpression') return;
+        expect(expr.operand.operator).toBe('Not');
     });
 });

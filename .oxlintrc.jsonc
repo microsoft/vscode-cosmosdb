@@ -34,22 +34,19 @@
   "ignorePatterns": [
     ".azure-pipelines",
     ".config",
+    ".cosmosdb-data/",
     ".github",
     ".vscode-test",
+    "bundle-analysis/",
     "coverage",
     "dist",
-    "docs",
-    "l10n",
     "out",
     "node_modules",
-    "packages",
     "resources",
     "scripts",
     "skills",
     "**/__mocks__/**/*",
-    "**/*.d.ts",
-    "**/vitest.config.ts",
-    "**/main.js"
+    "**/*.d.ts"
   ],
   "rules": {
     // These rules from ESLint are disabled by default in oxlint,
@@ -156,7 +153,11 @@
         // Enabling some rules
         "typescript/consistent-type-imports": "error",
         "typescript/no-base-to-string": "warn",
+        "typescript/no-deprecated": "warn",
         "typescript/no-restricted-types": "error",
+        "typescript/prefer-includes": "error",
+        "typescript/return-await": "warn",
+        "typescript/switch-exhaustiveness-check": "warn",
         "typescript/unbound-method": "warn",
 
         "import/first": ["error", "absolute-first"]

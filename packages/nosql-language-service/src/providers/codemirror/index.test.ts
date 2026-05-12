@@ -6,8 +6,17 @@
 import { type CompletionContext } from '@codemirror/autocomplete';
 import { type EditorView } from '@codemirror/view';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createCompletionSource, createFormatCommand, createHoverTooltipSource, createLintSource, createMultiQueryFoldService, createMultiQuerySeparatorExtension, createSignatureHelpSource, type MultiQuerySeparatorDeps } from './index.js';
 import { SqlLanguageService } from '../../services/SqlLanguageService.js';
+import {
+    createCompletionSource,
+    createFormatCommand,
+    createHoverTooltipSource,
+    createLintSource,
+    createMultiQueryFoldService,
+    createMultiQuerySeparatorExtension,
+    createSignatureHelpSource,
+    type MultiQuerySeparatorDeps,
+} from './index.js';
 
 // ---------------------------------------------------------------------------
 // Lightweight CodeMirror 6 mock helpers
@@ -76,17 +85,14 @@ describe('createCompletionSource', () => {
         expect(result!.from).toBeDefined();
     });
 
-    it('returns null when no completions available', () => {
+    it('returns null or valid completion list for empty input', () => {
         const source = createCompletionSource(service);
-        // Empty context at offset 0 might still return keywords,
-        // so we test that it at least returns a valid structure
+        // Empty context at offset 0 might still return keywords — either outcome is valid
         const ctx = createCompletionContext('', 0);
         const result = source(ctx);
 
-        // Either null or a valid completion list
-        if (result !== null) {
-            expect(result.options).toBeDefined();
-        }
+        // Either null or a list with options — both are acceptable for empty input
+        expect(result === null || Array.isArray(result.options)).toBe(true);
     });
 
     it('maps completion kinds correctly', () => {
@@ -94,11 +100,12 @@ describe('createCompletionSource', () => {
         const ctx = createCompletionContext('SELECT ', 7);
         const result = source(ctx);
 
-        if (result) {
-            for (const opt of result.options) {
-                expect(['keyword', 'property', 'function', 'text', 'variable']).toContain(opt.type);
-            }
-        }
+        expect(result).not.toBeNull();
+        if (result === null) return;
+        const allValid = result.options.every((opt) =>
+            ['keyword', 'property', 'function', 'text', 'variable'].includes(opt.type ?? ''),
+        );
+        expect(allValid).toBe(true);
     });
 });
 
@@ -196,12 +203,12 @@ describe('createHoverTooltipSource', () => {
         const view = createViewMock('SELECT * FROM c');
         const result = source(view, 2, 1);
 
-        if (result) {
-            const { dom } = result.create(view);
-            // The content should be escaped, not contain raw < or >
-            // (unless the Markdown itself uses them)
-            expect(dom.innerHTML).not.toContain('<script>');
-        }
+        expect(result).not.toBeNull();
+        if (!result) return;
+        const { dom } = result.create(view);
+        // The content should be escaped, not contain raw < or >
+        // (unless the Markdown itself uses them)
+        expect(dom.innerHTML).not.toContain('<script>');
     });
 });
 
@@ -490,13 +497,13 @@ describe('createFormatCommand', () => {
     it('dispatches changes for an unformatted query', () => {
         const cmd = createFormatCommand(service);
         let dispatched = false;
-        const view = {
-            ...createViewMock('select * from c'),
+        const baseMock = createViewMock('select * from c');
+        const view = Object.assign(baseMock, {
             dispatch: (tr: unknown) => {
                 dispatched = true;
                 expect(tr).toHaveProperty('changes');
             },
-        } as unknown as EditorView;
+        }) as unknown as EditorView;
 
         const result = cmd(view);
         // The formatter should produce edits (e.g., uppercasing keywords)
@@ -553,4 +560,3 @@ describe('createSignatureHelpSource', () => {
         expect(result).toBeNull();
     });
 });
-

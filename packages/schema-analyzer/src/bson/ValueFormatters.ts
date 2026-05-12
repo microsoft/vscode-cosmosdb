@@ -72,4 +72,3 @@ export function valueToDisplayString(value: unknown, type: BSONType): string {
         }
     }
 }
-

@@ -6,11 +6,13 @@
 Returns the result of bitwise NOT (~value) on a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type    | Description          |
+| ------- | ------- | -------------------- |
 | `value` | integer | The value to negate. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---

@@ -6,11 +6,13 @@
 Returns the exponent (e^number) of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | `number` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---

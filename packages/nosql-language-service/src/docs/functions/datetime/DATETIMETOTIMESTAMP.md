@@ -6,11 +6,13 @@
 Converts the specified datetime string to a Unix timestamp (milliseconds since epoch).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | `datetime` | string | A datetime string. |
 
 ## Return Value
+
 Returns a numeric value (milliseconds).
 
 ---

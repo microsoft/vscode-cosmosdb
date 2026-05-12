@@ -6,11 +6,13 @@
 Returns the base-10 logarithm of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description                    |
+| -------- | ------- | ------------------------------ |
 | `number` | numeric | A positive numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---

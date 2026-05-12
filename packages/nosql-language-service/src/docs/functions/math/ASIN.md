@@ -6,11 +6,13 @@
 Returns the angle, in radians, whose sine is the specified numeric expression. Also called arcsine.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description             |
+| -------- | ------- | ----------------------- |
 | `number` | numeric | Value between -1 and 1. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---

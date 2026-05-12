@@ -32,4 +32,3 @@ export class VSCodeCompletionProvider implements vscodeApi.CompletionItemProvide
         });
     }
 }
-

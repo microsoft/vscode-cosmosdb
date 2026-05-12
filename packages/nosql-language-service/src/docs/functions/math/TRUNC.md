@@ -6,14 +6,17 @@
 Returns a numeric value truncated to the closest integer (toward zero).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | `number` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns an integer numeric value.
 
 ## Examples
+
 ```sql
 SELECT TRUNC(4.8)  -- 4
 SELECT TRUNC(-4.8) -- -4

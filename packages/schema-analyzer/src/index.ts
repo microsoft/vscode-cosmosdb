@@ -40,4 +40,3 @@ export {
     getSchemaAtPath,
     simplifySchema,
 } from './core/schemaUtils.js';
-

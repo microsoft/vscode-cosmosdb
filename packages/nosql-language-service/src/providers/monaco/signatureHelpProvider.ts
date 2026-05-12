@@ -44,4 +44,3 @@ export class MonacoSignatureHelpProvider implements monacoEditor.languages.Signa
         };
     }
 }
-

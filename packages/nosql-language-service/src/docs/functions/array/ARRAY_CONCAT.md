@@ -6,12 +6,14 @@
 Returns an array that is the result of concatenating two or more array values.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `array1` | array | First array. |
+
+| Name     | Type  | Description   |
+| -------- | ----- | ------------- |
+| `array1` | array | First array.  |
 | `array2` | array | Second array. |
 
 ## Return Value
+
 Returns the concatenated array.
 
 ---

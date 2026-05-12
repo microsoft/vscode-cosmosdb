@@ -7,9 +7,9 @@ import { SaveRegular } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import type React from 'react';
 import { useCallback, useMemo } from 'react';
+import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { HotkeyCommandService, useCommandHotkey } from '../../common/hotkeys';
 import { type DocumentHotkeyCommand, type DocumentHotkeyScope } from './DocumentHotkeys';
 import { useDocumentDispatcher, useDocumentState } from './state/DocumentContext';
 

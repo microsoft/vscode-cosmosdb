@@ -16,14 +16,17 @@ export const functionDocs = new Map<string, string>([
 Returns the absolute (positive) value of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description             |
+| -------- | ------- | ----------------------- |
 | \`number\` | numeric | The numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT ABS(-5) -- 5
 SELECT ABS(c.balance) FROM c
@@ -40,11 +43,13 @@ SELECT ABS(c.balance) FROM c
 Returns the angle, in radians, whose cosine is the specified numeric expression. Also called arccosine.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description             |
+| -------- | ------- | ----------------------- |
 | \`number\` | numeric | Value between -1 and 1. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---
@@ -58,11 +63,13 @@ Returns radians (numeric).
 Returns the average value of all numeric elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                 |
+| ------- | ----- | --------------------------- |
 | \`array\` | array | An array of numeric values. |
 
 ## Return Value
+
 Returns a numeric value, or \`undefined\` if any element is not numeric.
 
 ---
@@ -76,12 +83,14 @@ Returns a numeric value, or \`undefined\` if any element is not numeric.
 Returns an array that is the result of concatenating two or more array values.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`array1\` | array | First array. |
+
+| Name     | Type  | Description   |
+| -------- | ----- | ------------- |
+| \`array1\` | array | First array.  |
 | \`array2\` | array | Second array. |
 
 ## Return Value
+
 Returns the concatenated array.
 
 ---
@@ -95,13 +104,15 @@ Returns the concatenated array.
 Returns a Boolean indicating whether the array contains the specified value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`array\` | array | The array to search in. |
-| \`value\` | any | The value to search for. |
+
+| Name      | Type    | Description                                    |
+| --------- | ------- | ---------------------------------------------- |
+| \`array\`   | array   | The array to search in.                        |
+| \`value\`   | any     | The value to search for.                       |
 | \`partial\` | boolean | Optional. \`true\` for partial match on objects. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -115,13 +126,15 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating whether the array contains all the specified elements.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`array\` | array | The array to search in. |
-| \`value1\` | any | First value to look for. |
-| \`value2...\` | any | Additional values. |
+
+| Name        | Type  | Description              |
+| ----------- | ----- | ------------------------ |
+| \`array\`     | array | The array to search in.  |
+| \`value1\`    | any   | First value to look for. |
+| \`value2...\` | any   | Additional values.       |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -135,13 +148,15 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating whether the array contains any of the specified elements.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`array\` | array | The array to search in. |
-| \`value1\` | any | First value to look for. |
-| \`value2...\` | any | Additional values. |
+
+| Name        | Type  | Description              |
+| ----------- | ----- | ------------------------ |
+| \`array\`     | array | The array to search in.  |
+| \`value1\`    | any   | First value to look for. |
+| \`value2...\` | any   | Additional values.       |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -155,11 +170,13 @@ Returns \`true\` or \`false\`.
 Returns the number of elements in the specified array expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description           |
+| ------- | ----- | --------------------- |
 | \`array\` | array | The array expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -173,11 +190,13 @@ Returns a numeric value.
 Returns the maximum value among all elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                   |
+| ------- | ----- | ----------------------------- |
 | \`array\` | array | An array of primitive values. |
 
 ## Return Value
+
 Returns the maximum value.
 
 ---
@@ -191,11 +210,13 @@ Returns the maximum value.
 Returns the median value among all numeric elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                 |
+| ------- | ----- | --------------------------- |
 | \`array\` | array | An array of numeric values. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -209,11 +230,13 @@ Returns a numeric value.
 Returns the minimum value among all elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                   |
+| ------- | ----- | ----------------------------- |
 | \`array\` | array | An array of primitive values. |
 
 ## Return Value
+
 Returns the minimum value.
 
 ---
@@ -227,13 +250,15 @@ Returns the minimum value.
 Returns part of an array expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`array\` | array | The array to slice. |
-| \`start\` | integer | 0-based start index. Negative values count from end. |
-| \`length\` | integer | Optional max number of elements. |
+
+| Name     | Type    | Description                                          |
+| -------- | ------- | ---------------------------------------------------- |
+| \`array\`  | array   | The array to slice.                                  |
+| \`start\`  | integer | 0-based start index. Negative values count from end. |
+| \`length\` | integer | Optional max number of elements.                     |
 
 ## Return Value
+
 Returns an array.
 
 ---
@@ -247,11 +272,13 @@ Returns an array.
 Returns the sum of all numeric elements in the specified array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type  | Description                 |
+| ------- | ----- | --------------------------- |
 | \`array\` | array | An array of numeric values. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -265,11 +292,13 @@ Returns a numeric value.
 Returns the angle, in radians, whose sine is the specified numeric expression. Also called arcsine.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description             |
+| -------- | ------- | ----------------------- |
 | \`number\` | numeric | Value between -1 and 1. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---
@@ -283,11 +312,13 @@ Returns radians (numeric).
 Returns the angle, in radians, whose tangent is the specified numeric expression. Also called arctangent.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---
@@ -301,12 +332,14 @@ Returns radians (numeric).
 Returns the angle, in radians, between the positive x-axis and the ray from the origin to the point (y, x).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`y\` | numeric | Y coordinate. |
-| \`x\` | numeric | X coordinate. |
+
+| Name | Type    | Description   |
+| ---- | ------- | ------------- |
+| \`y\`  | numeric | Y coordinate. |
+| \`x\`  | numeric | X coordinate. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---
@@ -320,20 +353,24 @@ Returns radians (numeric).
 Returns the average of the values in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name         | Type    | Description           |
+| ------------ | ------- | --------------------- |
 | \`expression\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT AVG(c.price) FROM c
 SELECT AVG(c.score) FROM c WHERE c.active = true
 \`\`\`
 
 ## Notes
+
 - Non-numeric values are skipped.
 - Returns \`undefined\` if no numeric values are found.
 
@@ -348,14 +385,17 @@ SELECT AVG(c.score) FROM c WHERE c.active = true
 Returns the smallest integer value greater than or equal to the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns an integer numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT CEILING(4.2)  -- 5
 SELECT CEILING(-4.8) -- -4
@@ -372,16 +412,19 @@ SELECT CEILING(-4.8) -- -4
 Returns the item at the specified 1-based index from a list of values. Returns \`undefined\` if index is out of bounds.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`index\` | integer | 1-based index (positive integer). |
-| \`value1\` | any | First value in the list. |
-| \`value2\` | any | Second value (and more optional). |
+
+| Name     | Type    | Description                       |
+| -------- | ------- | --------------------------------- |
+| \`index\`  | integer | 1-based index (positive integer). |
+| \`value1\` | any     | First value in the list.          |
+| \`value2\` | any     | Second value (and more optional). |
 
 ## Return Value
+
 Returns the value at the specified index position.
 
 ## Examples
+
 \`\`\`sql
 SELECT CHOOSE(2, "a", "b", "c") -- "b"
 \`\`\`
@@ -397,17 +440,20 @@ SELECT CHOOSE(2, "a", "b", "c") -- "b"
 Returns a string that is the result of concatenating two or more string values.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string1\` | string | First string. |
+
+| Name      | Type   | Description    |
+| --------- | ------ | -------------- |
+| \`string1\` | string | First string.  |
 | \`string2\` | string | Second string. |
 
 Additional strings can follow.
 
 ## Return Value
+
 Returns the concatenated string.
 
 ## Examples
+
 \`\`\`sql
 SELECT CONCAT(c.firstName, ' ', c.lastName) FROM c
 \`\`\`
@@ -423,16 +469,19 @@ SELECT CONCAT(c.firstName, ' ', c.lastName) FROM c
 Returns a Boolean indicating whether the first string expression contains the second.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`substring\` | string | The string to search for. |
+
+| Name         | Type    | Description                                    |
+| ------------ | ------- | ---------------------------------------------- |
+| \`string\`     | string  | The string to search in.                       |
+| \`substring\`  | string  | The string to search for.                      |
 | \`ignoreCase\` | boolean | Optional. Case-insensitive search when \`true\`. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Examples
+
 \`\`\`sql
 SELECT * FROM c WHERE CONTAINS(c.name, 'smith', true)
 \`\`\`
@@ -448,13 +497,15 @@ SELECT * FROM c WHERE CONTAINS(c.name, 'smith', true)
 Returns a Boolean indicating if the source string contains all values using case-insensitive search.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`value1\` | string | First string to look for. |
-| \`value2...\` | string | Additional strings. |
+
+| Name        | Type   | Description               |
+| ----------- | ------ | ------------------------- |
+| \`string\`    | string | The string to search in.  |
+| \`value1\`    | string | First string to look for. |
+| \`value2...\` | string | Additional strings.       |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -468,13 +519,15 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the source string contains all values using case-sensitive search.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`value1\` | string | First string to look for. |
-| \`value2...\` | string | Additional strings. |
+
+| Name        | Type   | Description               |
+| ----------- | ------ | ------------------------- |
+| \`string\`    | string | The string to search in.  |
+| \`value1\`    | string | First string to look for. |
+| \`value2...\` | string | Additional strings.       |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -488,13 +541,15 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the source string contains any of the values using case-insensitive search.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`value1\` | string | First string to look for. |
-| \`value2...\` | string | Additional strings. |
+
+| Name        | Type   | Description               |
+| ----------- | ------ | ------------------------- |
+| \`string\`    | string | The string to search in.  |
+| \`value1\`    | string | First string to look for. |
+| \`value2...\` | string | Additional strings.       |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -508,13 +563,15 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the source string contains any of the values using case-sensitive search.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`value1\` | string | First string to look for. |
-| \`value2...\` | string | Additional strings. |
+
+| Name        | Type   | Description               |
+| ----------- | ------ | ------------------------- |
+| \`string\`    | string | The string to search in.  |
+| \`value1\`    | string | First string to look for. |
+| \`value2...\` | string | Additional strings.       |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -528,11 +585,13 @@ Returns \`true\` or \`false\`.
 Returns the trigonometric cosine of the specified angle in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description       |
+| -------- | ------- | ----------------- |
 | \`number\` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -546,11 +605,13 @@ Returns a numeric value.
 Returns the trigonometric cotangent of the specified angle in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description       |
+| -------- | ------- | ----------------- |
 | \`number\` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -564,20 +625,24 @@ Returns a numeric value.
 Returns the count of values in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| \`expression\` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT COUNT(c.id) FROM c
 SELECT COUNT(1) FROM c WHERE c.status = "active"
 \`\`\`
 
 ## Notes
+
 - \`COUNT(1)\` counts all documents including those with
   \`undefined\` values.
 - \`COUNT(c.field)\` counts only documents where \`c.field\`
@@ -594,14 +659,17 @@ SELECT COUNT(1) FROM c WHERE c.status = "active"
 Returns the count of items that satisfy the Boolean condition.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name        | Type    | Description                       |
+| ----------- | ------- | --------------------------------- |
 | \`condition\` | boolean | A Boolean expression to evaluate. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT COUNTIF(c.status = "active") FROM c
 \`\`\`
@@ -617,13 +685,15 @@ SELECT COUNTIF(c.status = "active") FROM c
 Adds a specified number value to a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`part\` | string | \`'year'\`, \`'month'\`, \`'day'\`, \`'hour'\`, \`'minute'\`, \`'second'\`, \`'millisecond'\`. |
-| \`number\` | integer | The amount to add. |
-| \`datetime\` | string | UTC date/time ISO 8601 string. |
+
+| Name       | Type    | Description                                                                      |
+| ---------- | ------- | -------------------------------------------------------------------------------- |
+| \`part\`     | string  | \`'year'\`, \`'month'\`, \`'day'\`, \`'hour'\`, \`'minute'\`, \`'second'\`, \`'millisecond'\`. |
+| \`number\`   | integer | The amount to add.                                                               |
+| \`datetime\` | string  | UTC date/time ISO 8601 string.                                                   |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---
@@ -637,14 +707,16 @@ Returns a datetime string.
 Rounds (bins) a datetime value to a multiple of the specified date/time part.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`datetime\` | string | The datetime string. |
-| \`part\` | string | The datetime part to bin by. |
-| \`binSize\` | integer | Optional bin size (default: 1). |
-| \`origin\` | string | Optional origin datetime (default: \`'1970-01-01T00:00:00.000000Z'\`). |
+
+| Name       | Type    | Description                                                          |
+| ---------- | ------- | -------------------------------------------------------------------- |
+| \`datetime\` | string  | The datetime string.                                                 |
+| \`part\`     | string  | The datetime part to bin by.                                         |
+| \`binSize\`  | integer | Optional bin size (default: 1).                                      |
+| \`origin\`   | string  | Optional origin datetime (default: \`'1970-01-01T00:00:00.000000Z'\`). |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---
@@ -658,13 +730,15 @@ Returns a datetime string.
 Returns the difference, as a signed integer, of the specified date/time part between two date/time values.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`part\` | string | The datetime part (\`'year'\`, \`'month'\`, etc.). |
-| \`startDate\` | string | Start datetime string. |
-| \`endDate\` | string | End datetime string. |
+
+| Name        | Type   | Description                                    |
+| ----------- | ------ | ---------------------------------------------- |
+| \`part\`      | string | The datetime part (\`'year'\`, \`'month'\`, etc.). |
+| \`startDate\` | string | Start datetime string.                         |
+| \`endDate\`   | string | End datetime string.                           |
 
 ## Return Value
+
 Returns an integer.
 
 ---
@@ -678,12 +752,14 @@ Returns an integer.
 Formats a datetime string according to the specified format string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`datetime\` | string | The datetime string. |
-| \`format\` | string | The format specifier string. |
+
+| Name       | Type   | Description                  |
+| ---------- | ------ | ---------------------------- |
+| \`datetime\` | string | The datetime string.         |
+| \`format\`   | string | The format specifier string. |
 
 ## Return Value
+
 Returns a formatted string.
 
 ---
@@ -697,17 +773,19 @@ Returns a formatted string.
 Constructs a datetime string from individual numeric parts.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`year\` | integer | Year value. |
-| \`month\` | integer | Month value. |
-| \`day\` | integer | Day value. |
-| \`hour\` | integer | Optional hour (default: 0). |
-| \`minute\` | integer | Optional minute (default: 0). |
-| \`second\` | integer | Optional second (default: 0). |
-| \`ms\` | integer | Optional fractional second (default: 0). |
+
+| Name     | Type    | Description                              |
+| -------- | ------- | ---------------------------------------- |
+| \`year\`   | integer | Year value.                              |
+| \`month\`  | integer | Month value.                             |
+| \`day\`    | integer | Day value.                               |
+| \`hour\`   | integer | Optional hour (default: 0).              |
+| \`minute\` | integer | Optional minute (default: 0).            |
+| \`second\` | integer | Optional second (default: 0).            |
+| \`ms\`     | integer | Optional fractional second (default: 0). |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---
@@ -721,12 +799,14 @@ Returns a datetime string.
 Returns the value of the specified date/time part for the provided datetime.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`part\` | string | A datetime part (\`'year'\`, \`'month'\`, \`'day'\`, etc.). |
-| \`datetime\` | string | A datetime string. |
+
+| Name       | Type   | Description                                           |
+| ---------- | ------ | ----------------------------------------------------- |
+| \`part\`     | string | A datetime part (\`'year'\`, \`'month'\`, \`'day'\`, etc.). |
+| \`datetime\` | string | A datetime string.                                    |
 
 ## Return Value
+
 Returns an integer.
 
 ---
@@ -740,11 +820,13 @@ Returns an integer.
 Converts the specified datetime string to ticks (100-nanosecond intervals since Unix epoch).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | \`datetime\` | string | A datetime string. |
 
 ## Return Value
+
 Returns a numeric value (ticks).
 
 ---
@@ -758,11 +840,13 @@ Returns a numeric value (ticks).
 Converts the specified datetime string to a Unix timestamp (milliseconds since epoch).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | \`datetime\` | string | A datetime string. |
 
 ## Return Value
+
 Returns a numeric value (milliseconds).
 
 ---
@@ -776,11 +860,13 @@ Returns a numeric value (milliseconds).
 Returns the day component (1-31) of a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | \`datetime\` | string | A datetime string. |
 
 ## Return Value
+
 Returns an integer.
 
 ---
@@ -794,11 +880,13 @@ Returns an integer.
 Returns the corresponding angle in degrees for an angle specified in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name      | Type    | Description       |
+| --------- | ------- | ----------------- |
 | \`radians\` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns degrees (numeric).
 
 ---
@@ -812,11 +900,13 @@ Returns degrees (numeric).
 Returns the internal document ID of the specified document.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type       | Description                    |
+| ---------- | ---------- | ------------------------------ |
 | \`document\` | identifier | The document alias (e.g. \`c\`). |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -830,13 +920,15 @@ Returns a string.
 Returns a Boolean indicating whether the first string expression ends with the second.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to check. |
-| \`suffix\` | string | The suffix to look for. |
+
+| Name         | Type    | Description                     |
+| ------------ | ------- | ------------------------------- |
+| \`string\`     | string  | The string to check.            |
+| \`suffix\`     | string  | The suffix to look for.         |
 | \`ignoreCase\` | boolean | Optional case-insensitive flag. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -850,11 +942,13 @@ Returns \`true\` or \`false\`.
 Returns the exponent (e^number) of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -868,14 +962,17 @@ Returns a numeric value.
 Returns the largest integer less than or equal to the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns an integer numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT FLOOR(4.8)  -- 4
 SELECT FLOOR(-4.2) -- -5
@@ -892,15 +989,18 @@ SELECT FLOOR(-4.2) -- -5
 Returns a Boolean indicating whether the field contains the specified term using full-text search.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`field\` | expression | The field to search. |
-| \`term\` | string | The term to search for. |
+
+| Name    | Type       | Description             |
+| ------- | ---------- | ----------------------- |
+| \`field\` | expression | The field to search.    |
+| \`term\`  | string     | The term to search for. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Notes
+
 - Also available as \`FULLTEXTCONTAINS\`.
 - Requires a full-text index on the field.
 
@@ -915,16 +1015,19 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating whether the field contains all the specified terms.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`field\` | expression | The field to search. |
-| \`term1\` | string | First term. |
-| \`term2...\` | string | Additional terms. |
+
+| Name       | Type       | Description          |
+| ---------- | ---------- | -------------------- |
+| \`field\`    | expression | The field to search. |
+| \`term1\`    | string     | First term.          |
+| \`term2...\` | string     | Additional terms.    |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Notes
+
 - Also available as \`FULLTEXTCONTAINSALL\`.
 
 ---
@@ -938,16 +1041,19 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating whether the field contains any of the specified terms.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`field\` | expression | The field to search. |
-| \`term1\` | string | First term. |
-| \`term2...\` | string | Additional terms. |
+
+| Name       | Type       | Description          |
+| ---------- | ---------- | -------------------- |
+| \`field\`    | expression | The field to search. |
+| \`term1\`    | string     | First term.          |
+| \`term2...\` | string     | Additional terms.    |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Notes
+
 - Also available as \`FULLTEXTCONTAINSANY\`.
 
 ---
@@ -961,15 +1067,18 @@ Returns \`true\` or \`false\`.
 Returns the BM25 relevance score for the specified full-text search.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type       | Description         |
+| ------- | ---------- | ------------------- |
 | \`field\` | expression | The field to score. |
-| \`term\` | string | The search term. |
+| \`term\`  | string     | The search term.    |
 
 ## Return Value
+
 Returns a numeric relevance score.
 
 ## Notes
+
 - Used with \`ORDER BY RANK\` for relevance ranking.
 
 ---
@@ -983,12 +1092,15 @@ Returns a numeric relevance score.
 Returns the current UTC date and time as an ISO 8601 string.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a datetime string (e.g. \`'2024-01-15T12:30:00.0000000Z'\`).
 
 ## Notes
+
 - Non-deterministic. Use \`GETCURRENTDATETIMESTATIC\` for a value that stays constant within a query.
 
 ---
@@ -1002,9 +1114,11 @@ Returns a datetime string (e.g. \`'2024-01-15T12:30:00.0000000Z'\`).
 Returns the current UTC date and time as an ISO 8601 string, constant for the duration of the query.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a datetime string.
 
 ---
@@ -1018,9 +1132,11 @@ Returns a datetime string.
 Returns the current UTC date/time in ticks.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a numeric value (ticks).
 
 ---
@@ -1034,9 +1150,11 @@ Returns a numeric value (ticks).
 Returns the current UTC date/time in ticks, constant for the duration of the query.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a numeric value (ticks).
 
 ---
@@ -1050,9 +1168,11 @@ Returns a numeric value (ticks).
 Returns the current UTC date/time as a Unix timestamp (milliseconds since epoch).
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -1066,9 +1186,11 @@ Returns a numeric value.
 Returns the current UTC date/time as a Unix timestamp, constant for the duration of the query.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -1082,12 +1204,14 @@ Returns a numeric value.
 Returns a hash value of the specified expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | The value to hash. |
-| \`modulo\` | integer | Optional modulo (result will be in 0..modulo-1). |
+
+| Name         | Type    | Description                                      |
+| ------------ | ------- | ------------------------------------------------ |
+| \`expression\` | any     | The value to hash.                               |
+| \`modulo\`     | integer | Optional modulo (result will be in 0..modulo-1). |
 
 ## Return Value
+
 Returns a numeric hash value.
 
 ---
@@ -1101,16 +1225,19 @@ Returns a numeric hash value.
 Returns one of two values depending on a Boolean condition.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`condition\` | boolean | The condition to evaluate. |
-| \`trueValue\` | any | Returned if condition is \`true\`. |
-| \`falseValue\` | any | Returned if condition is not \`true\`. |
+
+| Name         | Type    | Description                          |
+| ------------ | ------- | ------------------------------------ |
+| \`condition\`  | boolean | The condition to evaluate.           |
+| \`trueValue\`  | any     | Returned if condition is \`true\`.     |
+| \`falseValue\` | any     | Returned if condition is not \`true\`. |
 
 ## Return Value
+
 Returns \`trueValue\` or \`falseValue\`.
 
 ## Notes
+
 - If \`condition\` is not a Boolean, returns \`falseValue\`.
 
 ---
@@ -1124,13 +1251,15 @@ Returns \`trueValue\` or \`falseValue\`.
 Returns the starting position of the first occurrence of the second string expression within the first, or -1 if not found.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`substring\` | string | The string to search for. |
-| \`start\` | integer | Optional 0-based start position. |
+
+| Name        | Type    | Description                      |
+| ----------- | ------- | -------------------------------- |
+| \`string\`    | string  | The string to search in.         |
+| \`substring\` | string  | The string to search for.        |
+| \`start\`     | integer | Optional 0-based start position. |
 
 ## Return Value
+
 Returns a numeric value (0-based index, or -1).
 
 ---
@@ -1144,12 +1273,14 @@ Returns a numeric value (0-based index, or -1).
 Returns the result of integer addition (left + right) as a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| \`left\`  | integer | Left operand.  |
 | \`right\` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1163,12 +1294,14 @@ Returns a 64-bit integer.
 Returns the result of bitwise AND on two 64-bit integers.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| \`left\`  | integer | Left operand.  |
 | \`right\` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1182,12 +1315,14 @@ Returns a 64-bit integer.
 Returns the result of left bit-shift (left << right) on two 64-bit integers.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | The value to shift. |
+
+| Name    | Type    | Description              |
+| ------- | ------- | ------------------------ |
+| \`left\`  | integer | The value to shift.      |
 | \`right\` | integer | Number of bits to shift. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1201,11 +1336,13 @@ Returns a 64-bit integer.
 Returns the result of bitwise NOT (~value) on a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type    | Description          |
+| ------- | ------- | -------------------- |
 | \`value\` | integer | The value to negate. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1219,12 +1356,14 @@ Returns a 64-bit integer.
 Returns the result of bitwise OR on two 64-bit integers.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| \`left\`  | integer | Left operand.  |
 | \`right\` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1238,12 +1377,14 @@ Returns a 64-bit integer.
 Returns the result of right bit-shift (left >> right) on two 64-bit integers.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | The value to shift. |
+
+| Name    | Type    | Description              |
+| ------- | ------- | ------------------------ |
+| \`left\`  | integer | The value to shift.      |
 | \`right\` | integer | Number of bits to shift. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1257,12 +1398,14 @@ Returns a 64-bit integer.
 Returns the result of bitwise XOR on two 64-bit integers.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| \`left\`  | integer | Left operand.  |
 | \`right\` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1276,12 +1419,14 @@ Returns a 64-bit integer.
 Returns the result of integer division (left / right) as a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Dividend. |
-| \`right\` | integer | Divisor. |
+
+| Name    | Type    | Description |
+| ------- | ------- | ----------- |
+| \`left\`  | integer | Dividend.   |
+| \`right\` | integer | Divisor.    |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1295,12 +1440,14 @@ Returns a 64-bit integer.
 Returns the result of integer modulo (left %% right) as a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Dividend. |
-| \`right\` | integer | Divisor. |
+
+| Name    | Type    | Description |
+| ------- | ------- | ----------- |
+| \`left\`  | integer | Dividend.   |
+| \`right\` | integer | Divisor.    |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1311,15 +1458,17 @@ Returns a 64-bit integer.
 **Category:** Integer math
 **Syntax:** \`INTMUL(left, right)\`
 
-Returns the result of integer multiplication (left * right) as a 64-bit integer.
+Returns the result of integer multiplication (left \\* right) as a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| \`left\`  | integer | Left operand.  |
 | \`right\` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1333,12 +1482,14 @@ Returns a 64-bit integer.
 Returns the result of integer subtraction (left - right) as a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`left\` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| \`left\`  | integer | Left operand.  |
 | \`right\` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---
@@ -1352,11 +1503,13 @@ Returns a 64-bit integer.
 Returns a Boolean indicating if the type of the value is an array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1370,14 +1523,17 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a Boolean.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Notes
+
 - Also available as \`IS_BOOLEAN\`.
 
 ---
@@ -1391,11 +1547,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a datetime string (ISO 8601 format).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1409,11 +1567,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the property has been assigned a value (i.e., is not \`undefined\`).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1427,11 +1587,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a finite number (not NaN or Infinity).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1445,11 +1607,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is an integer (INT64).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1463,11 +1627,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is \`null\`.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1481,11 +1647,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a number.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1499,11 +1667,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a JSON object.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1517,11 +1687,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a primitive (string, number, Boolean, or null).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1535,11 +1707,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the type of the value is a string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| \`expression\` | any  | Any expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -1553,13 +1727,15 @@ Returns \`true\` or \`false\`.
 Returns the starting position of the last occurrence of the second string, or -1 if not found.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search in. |
-| \`substring\` | string | The string to search for. |
-| \`start\` | integer | Optional position to start searching backward from. |
+
+| Name        | Type    | Description                                         |
+| ----------- | ------- | --------------------------------------------------- |
+| \`string\`    | string  | The string to search in.                            |
+| \`substring\` | string  | The string to search for.                           |
+| \`start\`     | integer | Optional position to start searching backward from. |
 
 ## Return Value
+
 Returns a numeric value (0-based index, or -1).
 
 ---
@@ -1573,12 +1749,14 @@ Returns a numeric value (0-based index, or -1).
 Returns the part of a string after the last occurrence of another string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name        | Type   | Description                  |
+| ----------- | ------ | ---------------------------- |
+| \`string\`    | string | The source string.           |
 | \`substring\` | string | The substring to search for. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -1592,12 +1770,14 @@ Returns a string.
 Returns the part of a string before the last occurrence of another string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name        | Type   | Description                  |
+| ----------- | ------ | ---------------------------- |
+| \`string\`    | string | The source string.           |
 | \`substring\` | string | The substring to search for. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -1611,12 +1791,14 @@ Returns a string.
 Returns the left part of a string with the specified number of characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name     | Type    | Description                   |
+| -------- | ------- | ----------------------------- |
+| \`string\` | string  | The source string.            |
 | \`length\` | integer | Number of characters to take. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -1630,11 +1812,13 @@ Returns a string.
 Returns the number of characters of the specified string expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description            |
+| -------- | ------ | ---------------------- |
 | \`string\` | string | The string expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -1648,12 +1832,14 @@ Returns a numeric value.
 Returns the natural logarithm of the specified numeric expression, or the logarithm using the specified base.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`number\` | numeric | A positive numeric expression. |
-| \`base\` | numeric | Optional logarithm base (default: e). |
+
+| Name     | Type    | Description                           |
+| -------- | ------- | ------------------------------------- |
+| \`number\` | numeric | A positive numeric expression.        |
+| \`base\`   | numeric | Optional logarithm base (default: e). |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -1667,11 +1853,13 @@ Returns a numeric value.
 Returns the base-10 logarithm of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description                    |
+| -------- | ------- | ------------------------------ |
 | \`number\` | numeric | A positive numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -1685,11 +1873,13 @@ Returns a numeric value.
 Returns a string expression after converting uppercase characters to lowercase.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description            |
+| -------- | ------ | ---------------------- |
 | \`string\` | string | The string expression. |
 
 ## Return Value
+
 Returns the lowercase string.
 
 ---
@@ -1703,12 +1893,14 @@ Returns the lowercase string.
 Returns a string after removing leading whitespace or specified characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to trim. |
-| \`chars\` | string | Optional characters to trim from the left. |
+
+| Name     | Type   | Description                                |
+| -------- | ------ | ------------------------------------------ |
+| \`string\` | string | The string to trim.                        |
+| \`chars\`  | string | Optional characters to trim from the left. |
 
 ## Return Value
+
 Returns the trimmed string.
 
 ---
@@ -1722,14 +1914,17 @@ Returns the trimmed string.
 Aggregates values into an array. Used within GROUP BY queries.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| \`expression\` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns an array of all values within the group.
 
 ## Examples
+
 \`\`\`sql
 SELECT c.category, MAKELIST(c.name)
 FROM c
@@ -1747,14 +1942,17 @@ GROUP BY c.category
 Aggregates distinct values into an array. Used within GROUP BY queries.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| \`expression\` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns an array of distinct values within the group.
 
 ## Examples
+
 \`\`\`sql
 SELECT c.category, MAKESET(c.tag)
 FROM c
@@ -1762,6 +1960,7 @@ GROUP BY c.category
 \`\`\`
 
 ## Notes
+
 - Unlike MAKELIST, MAKESET removes duplicate values.
 
 ---
@@ -1775,14 +1974,17 @@ GROUP BY c.category
 Returns the maximum value in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| \`expression\` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns the maximum value, respecting CosmosDB type ordering.
 
 ## Examples
+
 \`\`\`sql
 SELECT MAX(c.price) FROM c
 \`\`\`
@@ -1798,14 +2000,17 @@ SELECT MAX(c.price) FROM c
 Returns the minimum value in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| \`expression\` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns the minimum value, respecting CosmosDB type ordering.
 
 ## Examples
+
 \`\`\`sql
 SELECT MIN(c.price) FROM c
 \`\`\`
@@ -1821,11 +2026,13 @@ SELECT MIN(c.price) FROM c
 Returns the month component (1-12) of a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | \`datetime\` | string | A datetime string. |
 
 ## Return Value
+
 Returns an integer.
 
 ---
@@ -1839,15 +2046,18 @@ Returns an integer.
 Rounds a numeric value down to a multiple of the specified bin size.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`number\` | numeric | The numeric value to bin. |
-| \`binSize\` | numeric | The bin size. |
+
+| Name      | Type    | Description               |
+| --------- | ------- | ------------------------- |
+| \`number\`  | numeric | The numeric value to bin. |
+| \`binSize\` | numeric | The bin size.             |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT NUMBERBIN(13.5, 5) -- 10
 \`\`\`
@@ -1863,14 +2073,17 @@ SELECT NUMBERBIN(13.5, 5) -- 10
 Converts a JSON object to an array of {k, v} pairs.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description    |
+| -------- | ------ | -------------- |
 | \`object\` | object | A JSON object. |
 
 ## Return Value
+
 Returns an array of \`{k: key, v: value}\` objects.
 
 ## Notes
+
 - Also available as \`OBJECT_TO_ARRAY\`.
 
 ---
@@ -1884,12 +2097,15 @@ Returns an array of \`{k: key, v: value}\` objects.
 Returns the constant value of PI (3.14159265358979...).
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns the numeric constant PI.
 
 ## Examples
+
 \`\`\`sql
 SELECT PI() -- 3.14159265358979
 \`\`\`
@@ -1905,15 +2121,18 @@ SELECT PI() -- 3.14159265358979
 Returns the value of the specified expression raised to the given power.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`base\` | numeric | The base number. |
+
+| Name       | Type    | Description         |
+| ---------- | ------- | ------------------- |
+| \`base\`     | numeric | The base number.    |
 | \`exponent\` | numeric | The exponent value. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT POWER(2, 10) -- 1024
 \`\`\`
@@ -1929,11 +2148,13 @@ SELECT POWER(2, 10) -- 1024
 Returns radians when a numeric expression in degrees is entered.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name      | Type    | Description       |
+| --------- | ------- | ----------------- |
 | \`degrees\` | numeric | Angle in degrees. |
 
 ## Return Value
+
 Returns radians (numeric).
 
 ---
@@ -1947,12 +2168,15 @@ Returns radians (numeric).
 Returns a randomly generated numeric value between 0 and 1.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a numeric value in [0, 1).
 
 ## Notes
+
 - RAND is a non-deterministic function. Repeated calls
   may return different results.
 
@@ -1967,14 +2191,16 @@ Returns a numeric value in [0, 1).
 Returns the first match for a regular expression from a source string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search. |
-| \`pattern\` | string | The regex pattern. |
-| \`modifiers\` | string | Optional regex modifiers (\`'i'\`, \`'m'\`, \`'s'\`, \`'x'\`). |
-| \`groupId\` | integer | Optional capture group ID (default: 0). |
+
+| Name        | Type    | Description                                            |
+| ----------- | ------- | ------------------------------------------------------ |
+| \`string\`    | string  | The string to search.                                  |
+| \`pattern\`   | string  | The regex pattern.                                     |
+| \`modifiers\` | string  | Optional regex modifiers (\`'i'\`, \`'m'\`, \`'s'\`, \`'x'\`). |
+| \`groupId\`   | integer | Optional capture group ID (default: 0).                |
 
 ## Return Value
+
 Returns the matched string, or \`undefined\`.
 
 ---
@@ -1988,14 +2214,16 @@ Returns the matched string, or \`undefined\`.
 Returns all matches for a regular expression from a source string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to search. |
-| \`pattern\` | string | The regex pattern. |
-| \`modifiers\` | string | Optional regex modifiers. |
-| \`groups\` | array | Optional array of capture group IDs. |
+
+| Name        | Type   | Description                          |
+| ----------- | ------ | ------------------------------------ |
+| \`string\`    | string | The string to search.                |
+| \`pattern\`   | string | The regex pattern.                   |
+| \`modifiers\` | string | Optional regex modifiers.            |
+| \`groups\`    | array  | Optional array of capture group IDs. |
 
 ## Return Value
+
 Returns an array of match arrays, or \`undefined\`.
 
 ---
@@ -2009,13 +2237,15 @@ Returns an array of match arrays, or \`undefined\`.
 Returns a Boolean indicating whether a string matches a regular expression pattern.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to test. |
-| \`pattern\` | string | The regex pattern. |
+
+| Name        | Type   | Description                                                                                       |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------- |
+| \`string\`    | string | The string to test.                                                                               |
+| \`pattern\`   | string | The regex pattern.                                                                                |
 | \`modifiers\` | string | Optional: \`'i'\` (ignore case), \`'m'\` (multiline), \`'s'\` (single-line), \`'x'\` (ignore whitespace). |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -2029,13 +2259,15 @@ Returns \`true\` or \`false\`.
 Replaces all occurrences of a specified string value with another string value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
-| \`find\` | string | The substring to find. |
+
+| Name          | Type   | Description             |
+| ------------- | ------ | ----------------------- |
+| \`string\`      | string | The source string.      |
+| \`find\`        | string | The substring to find.  |
 | \`replacement\` | string | The replacement string. |
 
 ## Return Value
+
 Returns the modified string.
 
 ---
@@ -2049,15 +2281,18 @@ Returns the modified string.
 Repeats a string value a specified number of times.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to replicate. |
-| \`count\` | integer | Number of repetitions. |
+
+| Name     | Type    | Description              |
+| -------- | ------- | ------------------------ |
+| \`string\` | string  | The string to replicate. |
+| \`count\`  | integer | Number of repetitions.   |
 
 ## Return Value
+
 Returns the repeated string.
 
 ## Notes
+
 - Maximum result length is 10,000 characters.
 
 ---
@@ -2071,11 +2306,13 @@ Returns the repeated string.
 Returns the reverse order of a string value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description            |
+| -------- | ------ | ---------------------- |
 | \`string\` | string | The string to reverse. |
 
 ## Return Value
+
 Returns the reversed string.
 
 ---
@@ -2089,12 +2326,14 @@ Returns the reversed string.
 Returns the right part of a string with the specified number of characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name     | Type    | Description                   |
+| -------- | ------- | ----------------------------- |
+| \`string\` | string  | The source string.            |
 | \`length\` | integer | Number of characters to take. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -2108,15 +2347,18 @@ Returns a string.
 Returns a numeric value, rounded to the specified length or precision.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`number\` | numeric | The value to round. |
+
+| Name     | Type    | Description                           |
+| -------- | ------- | ------------------------------------- |
+| \`number\` | numeric | The value to round.                   |
 | \`length\` | integer | Optional decimal places (default: 0). |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT ROUND(3.14159, 2) -- 3.14
 \`\`\`
@@ -2132,17 +2374,20 @@ SELECT ROUND(3.14159, 2) -- 3.14
 Reciprocal Rank Fusion — combines multiple ranking scores into a single score.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`score1\` | numeric | First score expression. |
+
+| Name     | Type    | Description              |
+| -------- | ------- | ------------------------ |
+| \`score1\` | numeric | First score expression.  |
 | \`score2\` | numeric | Second score expression. |
 
 Additional scores may follow.
 
 ## Return Value
+
 Returns a numeric combined score.
 
 ## Notes
+
 - Used with \`ORDER BY RANK\` for hybrid search queries.
 
 ---
@@ -2156,12 +2401,14 @@ Returns a numeric combined score.
 Returns a string after removing trailing whitespace or specified characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to trim. |
-| \`chars\` | string | Optional characters to trim from the right. |
+
+| Name     | Type   | Description                                 |
+| -------- | ------ | ------------------------------------------- |
+| \`string\` | string | The string to trim.                         |
+| \`chars\`  | string | Optional characters to trim from the right. |
 
 ## Return Value
+
 Returns the trimmed string.
 
 ---
@@ -2175,15 +2422,18 @@ Returns the trimmed string.
 Returns a set containing elements from the first set that are not in the second set, with no duplicates.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`set1\` | array | The first set. |
+
+| Name   | Type  | Description     |
+| ------ | ----- | --------------- |
+| \`set1\` | array | The first set.  |
 | \`set2\` | array | The second set. |
 
 ## Return Value
+
 Returns an array.
 
 ## Notes
+
 - Also available as \`SET_DIFFERENCE\`.
 
 ---
@@ -2197,15 +2447,18 @@ Returns an array.
 Returns a Boolean indicating whether the two sets are equal after removing duplicates.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`set1\` | array | The first set. |
+
+| Name   | Type  | Description     |
+| ------ | ----- | --------------- |
+| \`set1\` | array | The first set.  |
 | \`set2\` | array | The second set. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Notes
+
 - Also available as \`SET_EQUAL\`.
 
 ---
@@ -2219,15 +2472,18 @@ Returns \`true\` or \`false\`.
 Returns an array of elements in the intersection of both sets, with no duplicates.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`set1\` | array | The first set. |
+
+| Name   | Type  | Description     |
+| ------ | ----- | --------------- |
+| \`set1\` | array | The first set.  |
 | \`set2\` | array | The second set. |
 
 ## Return Value
+
 Returns an array.
 
 ## Notes
+
 - Also available as \`SET_INTERSECT\`.
 
 ---
@@ -2241,15 +2497,18 @@ Returns an array.
 Returns an array of elements in the union of both sets, with no duplicates.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`set1\` | array | The first set. |
+
+| Name   | Type  | Description     |
+| ------ | ----- | --------------- |
+| \`set1\` | array | The first set.  |
 | \`set2\` | array | The second set. |
 
 ## Return Value
+
 Returns an array.
 
 ## Notes
+
 - Also available as \`SET_UNION\`.
 
 ---
@@ -2263,11 +2522,13 @@ Returns an array.
 Returns the sign value (-1, 0, 1) of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns -1 (negative), 0 (zero), or 1 (positive).
 
 ---
@@ -2281,11 +2542,13 @@ Returns -1 (negative), 0 (zero), or 1 (positive).
 Returns the trigonometric sine of the specified angle in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description       |
+| -------- | ------- | ----------------- |
 | \`number\` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -2299,11 +2562,13 @@ Returns a numeric value.
 Returns the square root of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description                        |
+| -------- | ------- | ---------------------------------- |
 | \`number\` | numeric | A non-negative numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -2317,12 +2582,14 @@ Returns a numeric value.
 Returns the square of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
-Returns a numeric value (number * number).
+
+Returns a numeric value (number \\* number).
 
 ---
 
@@ -2335,11 +2602,13 @@ Returns a numeric value (number * number).
 Returns the area of a GeoJSON Polygon expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name      | Type    | Description        |
+| --------- | ------- | ------------------ |
 | \`polygon\` | GeoJSON | A GeoJSON Polygon. |
 
 ## Return Value
+
 Returns a numeric value (square meters).
 
 ---
@@ -2353,12 +2622,14 @@ Returns a numeric value (square meters).
 Returns the distance between two GeoJSON Point expressions.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`point1\` | GeoJSON | First GeoJSON point. |
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
+| \`point1\` | GeoJSON | First GeoJSON point.  |
 | \`point2\` | GeoJSON | Second GeoJSON point. |
 
 ## Return Value
+
 Returns a numeric value (distance in meters).
 
 ---
@@ -2372,12 +2643,14 @@ Returns a numeric value (distance in meters).
 Returns a Boolean indicating whether two GeoJSON objects intersect.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`geometry1\` | GeoJSON | First geometry. |
+
+| Name        | Type    | Description      |
+| ----------- | ------- | ---------------- |
+| \`geometry1\` | GeoJSON | First geometry.  |
 | \`geometry2\` | GeoJSON | Second geometry. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -2391,11 +2664,13 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating if the specifiedGeoJSON object is valid.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type    | Description           |
+| ---------- | ------- | --------------------- |
 | \`geometry\` | GeoJSON | A GeoJSON expression. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -2409,11 +2684,13 @@ Returns \`true\` or \`false\`.
 Returns a JSON object with a Boolean \`valid\` property and a \`reason\` string if the geometry is invalid.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type    | Description           |
+| ---------- | ------- | --------------------- |
 | \`geometry\` | GeoJSON | A GeoJSON expression. |
 
 ## Return Value
+
 Returns an object: \`{valid: true/false, reason: '...'}\`.
 
 ---
@@ -2427,12 +2704,14 @@ Returns an object: \`{valid: true/false, reason: '...'}\`.
 Returns a Boolean indicating whether the first GeoJSON object is within the second.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`geometry\` | GeoJSON | The geometry to test. |
-| \`polygon\` | GeoJSON | The containing polygon. |
+
+| Name       | Type    | Description             |
+| ---------- | ------- | ----------------------- |
+| \`geometry\` | GeoJSON | The geometry to test.   |
+| \`polygon\`  | GeoJSON | The containing polygon. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -2446,13 +2725,15 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating whether the first string expression starts with the second.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to check. |
-| \`prefix\` | string | The prefix to look for. |
+
+| Name         | Type    | Description                     |
+| ------------ | ------- | ------------------------------- |
+| \`string\`     | string  | The string to check.            |
+| \`prefix\`     | string  | The prefix to look for.         |
 | \`ignoreCase\` | boolean | Optional case-insensitive flag. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ---
@@ -2466,16 +2747,19 @@ Returns \`true\` or \`false\`.
 Returns a Boolean indicating whether the first string matches the second.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string1\` | string | The first string. |
-| \`string2\` | string | The second string. |
+
+| Name         | Type    | Description                     |
+| ------------ | ------- | ------------------------------- |
+| \`string1\`    | string  | The first string.               |
+| \`string2\`    | string  | The second string.              |
 | \`ignoreCase\` | boolean | Optional case-insensitive flag. |
 
 ## Return Value
+
 Returns \`true\` or \`false\`.
 
 ## Notes
+
 - Also available as \`STRING_EQUALS\`.
 
 ---
@@ -2489,15 +2773,18 @@ Returns \`true\` or \`false\`.
 Concatenates all string elements of an array using the specified separator.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`array\` | array | Array of strings to join. |
-| \`separator\` | string | The separator string. |
+
+| Name        | Type   | Description               |
+| ----------- | ------ | ------------------------- |
+| \`array\`     | array  | Array of strings to join. |
+| \`separator\` | string | The separator string.     |
 
 ## Return Value
+
 Returns a joined string.
 
 ## Notes
+
 - Also available as \`STRING_JOIN\`.
 
 ---
@@ -2511,15 +2798,18 @@ Returns a joined string.
 Returns an array of substrings obtained by splitting the source string by the specified delimiter.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name        | Type   | Description           |
+| ----------- | ------ | --------------------- |
+| \`string\`    | string | The source string.    |
 | \`separator\` | string | The delimiter string. |
 
 ## Return Value
+
 Returns an array of strings.
 
 ## Notes
+
 - Also available as \`STRING_SPLIT\`.
 
 ---
@@ -2533,14 +2823,17 @@ Returns an array of strings.
 Converts a JSON string expression to an array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description                |
+| -------- | ------ | -------------------------- |
 | \`string\` | string | A valid JSON array string. |
 
 ## Return Value
+
 Returns an array, or \`undefined\` if conversion fails.
 
 ## Notes
+
 - Also available as \`STRING_TO_ARRAY\`.
 
 ---
@@ -2554,14 +2847,17 @@ Returns an array, or \`undefined\` if conversion fails.
 Converts a string expression (\`'true'\` / \`'false'\`) to a Boolean value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description            |
+| -------- | ------ | ---------------------- |
 | \`string\` | string | \`'true'\` or \`'false'\`. |
 
 ## Return Value
+
 Returns a Boolean, or \`undefined\` if conversion fails.
 
 ## Notes
+
 - Also available as \`STRING_TO_BOOLEAN\`.
 
 ---
@@ -2575,14 +2871,17 @@ Returns a Boolean, or \`undefined\` if conversion fails.
 Converts a string expression (\`'null'\`) to \`null\`.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | \`'null'\`. |
+
+| Name     | Type   | Description |
+| -------- | ------ | ----------- |
+| \`string\` | string | \`'null'\`.   |
 
 ## Return Value
+
 Returns \`null\`, or \`undefined\` if conversion fails.
 
 ## Notes
+
 - Also available as \`STRING_TO_NULL\`.
 
 ---
@@ -2596,14 +2895,17 @@ Returns \`null\`, or \`undefined\` if conversion fails.
 Converts a string expression to a numeric value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description                     |
+| -------- | ------ | ------------------------------- |
 | \`string\` | string | A string representing a number. |
 
 ## Return Value
+
 Returns a numeric value, or \`undefined\` if conversion fails.
 
 ## Notes
+
 - Also available as \`STRING_TO_NUMBER\`.
 
 ---
@@ -2617,14 +2919,17 @@ Returns a numeric value, or \`undefined\` if conversion fails.
 Converts a JSON string expression to an object.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description                 |
+| -------- | ------ | --------------------------- |
 | \`string\` | string | A valid JSON object string. |
 
 ## Return Value
+
 Returns a JSON object, or \`undefined\` if conversion fails.
 
 ## Notes
+
 - Also available as \`STRING_TO_OBJECT\`.
 
 ---
@@ -2638,13 +2943,15 @@ Returns a JSON object, or \`undefined\` if conversion fails.
 Returns part of a string expression starting at the specified 0-based position.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
-| \`start\` | integer | 0-based start position. |
+
+| Name     | Type    | Description                      |
+| -------- | ------- | -------------------------------- |
+| \`string\` | string  | The source string.               |
+| \`start\`  | integer | 0-based start position.          |
 | \`length\` | integer | Number of characters to extract. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -2658,12 +2965,14 @@ Returns a string.
 Returns the part of a string after the first occurrence of another string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name        | Type   | Description                  |
+| ----------- | ------ | ---------------------------- |
+| \`string\`    | string | The source string.           |
 | \`substring\` | string | The substring to search for. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -2677,12 +2986,14 @@ Returns a string.
 Returns the part of a string before the first occurrence of another string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The source string. |
+
+| Name        | Type   | Description                  |
+| ----------- | ------ | ---------------------------- |
+| \`string\`    | string | The source string.           |
 | \`substring\` | string | The substring to search for. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -2696,14 +3007,17 @@ Returns a string.
 Returns the sum of all values in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name         | Type    | Description           |
+| ------------ | ------- | --------------------- |
 | \`expression\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT SUM(c.amount) FROM c
 \`\`\`
@@ -2719,11 +3033,13 @@ SELECT SUM(c.amount) FROM c
 Returns the tangent of the specified angle in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description       |
+| -------- | ------- | ----------------- |
 | \`number\` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---
@@ -2737,11 +3053,13 @@ Returns a numeric value.
 Converts a ticks value to a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type    | Description                       |
+| ------- | ------- | --------------------------------- |
 | \`ticks\` | integer | Number of ticks since Unix epoch. |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---
@@ -2755,11 +3073,13 @@ Returns a datetime string.
 Converts a Unix timestamp (milliseconds) to a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name        | Type    | Description                     |
+| ----------- | ------- | ------------------------------- |
 | \`timestamp\` | integer | Unix timestamp in milliseconds. |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---
@@ -2773,11 +3093,13 @@ Returns a datetime string.
 Returns the string representation of the specified value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`expression\` | any | The value to convert to string. |
+
+| Name         | Type | Description                     |
+| ------------ | ---- | ------------------------------- |
+| \`expression\` | any  | The value to convert to string. |
 
 ## Return Value
+
 Returns a string.
 
 ---
@@ -2791,12 +3113,14 @@ Returns a string.
 Returns a string after removing leading and trailing whitespace or specified characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`string\` | string | The string to trim. |
-| \`chars\` | string | Optional characters to trim. |
+
+| Name     | Type   | Description                  |
+| -------- | ------ | ---------------------------- |
+| \`string\` | string | The string to trim.          |
+| \`chars\`  | string | Optional characters to trim. |
 
 ## Return Value
+
 Returns the trimmed string.
 
 ---
@@ -2810,14 +3134,17 @@ Returns the trimmed string.
 Returns a numeric value truncated to the closest integer (toward zero).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | \`number\` | numeric | A numeric expression. |
 
 ## Return Value
+
 Returns an integer numeric value.
 
 ## Examples
+
 \`\`\`sql
 SELECT TRUNC(4.8)  -- 4
 SELECT TRUNC(-4.8) -- -4
@@ -2834,11 +3161,13 @@ SELECT TRUNC(-4.8) -- -4
 Returns a string expression after converting lowercase characters to uppercase.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description            |
+| -------- | ------ | ---------------------- |
 | \`string\` | string | The string expression. |
 
 ## Return Value
+
 Returns the uppercase string.
 
 ---
@@ -2852,14 +3181,16 @@ Returns the uppercase string.
 Returns the similarity score between two vectors.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| \`vector1\` | array | First vector (array of numbers). |
-| \`vector2\` | array | Second vector (array of numbers). |
-| \`brute_force\` | boolean | Optional. Force brute-force search. |
-| \`distanceFunction\` | string | Optional: \`'cosine'\`, \`'euclidean'\`, or \`'dotproduct'\`. |
+
+| Name               | Type    | Description                                             |
+| ------------------ | ------- | ------------------------------------------------------- |
+| \`vector1\`          | array   | First vector (array of numbers).                        |
+| \`vector2\`          | array   | Second vector (array of numbers).                       |
+| \`brute_force\`      | boolean | Optional. Force brute-force search.                     |
+| \`distanceFunction\` | string  | Optional: \`'cosine'\`, \`'euclidean'\`, or \`'dotproduct'\`. |
 
 ## Return Value
+
 Returns a numeric similarity score.
 
 ---
@@ -2873,11 +3204,13 @@ Returns a numeric similarity score.
 Returns the year component of a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | \`datetime\` | string | A datetime string. |
 
 ## Return Value
+
 Returns an integer.
 
 ---
@@ -2892,6 +3225,7 @@ export const keywordDocs = new Map<string, string>([
 Logical conjunction operator. Returns \`true\` when both operands are true.
 
 ## Syntax
+
 \`\`\`sql
 expr1 AND expr2
 \`\`\`
@@ -2899,7 +3233,7 @@ expr1 AND expr2
 ## Operator Precedence
 
 | Operator | Priority |
-|----------|----------|
+| -------- | -------- |
 | NOT      | 1        |
 | **AND**  | **2**    |
 | OR       | 3        |
@@ -2912,11 +3246,13 @@ expr1 AND expr2
 Creates an array from a subquery expression.
 
 ## Syntax
+
 \`\`\`sql
 ARRAY (SELECT ...)
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT c.id, ARRAY(SELECT t FROM t IN c.tags) AS tags FROM c
 \`\`\`
@@ -2929,12 +3265,14 @@ SELECT c.id, ARRAY(SELECT t FROM t IN c.tags) AS tags FROM c
 Assigns an alias to a collection or expression.
 
 ## Syntax
+
 \`\`\`sql
 FROM collection AS alias
 SELECT expr AS name
 \`\`\`
 
 ## Notes
+
 - The \`AS\` keyword is optional: \`FROM c alias\` works too.
 
 ---
@@ -2945,6 +3283,7 @@ SELECT expr AS name
 Specifies ascending sort order (default) in ORDER BY.
 
 ## Syntax
+
 \`\`\`sql
 ORDER BY expr ASC
 \`\`\`
@@ -2957,12 +3296,14 @@ ORDER BY expr ASC
 Tests if a value is within an inclusive range.
 
 ## Syntax
+
 \`\`\`sql
 expr BETWEEN low AND high
 expr NOT BETWEEN low AND high
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT * FROM c WHERE c.age BETWEEN 18 AND 65
 \`\`\`
@@ -2975,6 +3316,7 @@ SELECT * FROM c WHERE c.age BETWEEN 18 AND 65
 Specifies descending sort order in ORDER BY.
 
 ## Syntax
+
 \`\`\`sql
 ORDER BY expr DESC
 \`\`\`
@@ -2987,6 +3329,7 @@ ORDER BY expr DESC
 Removes duplicate values from the result set.
 
 ## Syntax
+
 \`\`\`sql
 SELECT DISTINCT ...
 \`\`\`
@@ -2999,11 +3342,13 @@ SELECT DISTINCT ...
 Tests if a subquery returns any results.
 
 ## Syntax
+
 \`\`\`sql
 EXISTS (SELECT ...)
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT * FROM c
 WHERE EXISTS (SELECT VALUE t FROM t IN c.tags WHERE t = 'important')
@@ -3024,12 +3369,14 @@ Boolean false literal.
 Specifies the source collection for the query.
 
 ## Syntax
+
 \`\`\`sql
 FROM collection [AS alias]
 FROM collection alias
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT * FROM c
 SELECT * FROM Families f
@@ -3043,11 +3390,13 @@ SELECT * FROM Families f
 Groups results by one or more expressions. Used with aggregate functions.
 
 ## Syntax
+
 \`\`\`sql
 GROUP BY expr [, ...]
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT c.category, COUNT(1) as count
 FROM c
@@ -3062,6 +3411,7 @@ GROUP BY c.category
 Tests if a value is in a list, or iterates an array in FROM.
 
 ## Syntax
+
 \`\`\`sql
 expr IN (value1, value2, ...)
 expr NOT IN (value1, value2, ...)
@@ -3076,11 +3426,13 @@ FROM item IN collection.array
 Joins with a nested array or subquery within the same document. Unlike standard SQL JOINs, Cosmos DB JOINs are intra-document (self-joins on arrays).
 
 ## Syntax
+
 \`\`\`sql
 FROM c JOIN child IN c.children
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT c.id, child.name
 FROM c
@@ -3096,16 +3448,19 @@ WHERE child.age > 10
 Pattern matching with wildcards.
 
 ## Syntax
+
 \`\`\`sql
 expr LIKE pattern [ESCAPE char]
 expr NOT LIKE pattern
 \`\`\`
 
 ## Wildcards
+
 - \`%\` — matches zero or more characters
 - \`_\` — matches exactly one character
 
 ## Examples
+
 \`\`\`sql
 SELECT * FROM c WHERE c.name LIKE '%smith%'
 \`\`\`
@@ -3118,11 +3473,13 @@ SELECT * FROM c WHERE c.name LIKE '%smith%'
 Limits the number of results returned (for pagination).
 
 ## Syntax
+
 \`\`\`sql
 OFFSET n LIMIT m
 \`\`\`
 
 ## Notes
+
 - Must be used together with OFFSET.
 
 ---
@@ -3133,6 +3490,7 @@ OFFSET n LIMIT m
 Logical negation operator.
 
 ## Syntax
+
 \`\`\`sql
 NOT expr
 expr NOT IN (...)
@@ -3143,7 +3501,7 @@ expr NOT LIKE pattern
 ## Operator Precedence
 
 | Operator | Priority |
-|----------|----------|
+| -------- | -------- |
 | **NOT**  | **1**    |
 | AND      | 2        |
 | OR       | 3        |
@@ -3156,6 +3514,7 @@ expr NOT LIKE pattern
 The JSON null value. Represents an explicitly absent value.
 
 ## Notes
+
 - \`null\` is different from \`undefined\` (missing property).
 - Use \`IS_NULL()\` to check for null values.
 
@@ -3167,11 +3526,13 @@ The JSON null value. Represents an explicitly absent value.
 Skips a specified number of results (for pagination).
 
 ## Syntax
+
 \`\`\`sql
 OFFSET n LIMIT m
 \`\`\`
 
 ## Notes
+
 - Must be used together with LIMIT.
 - Can use parameters: \`OFFSET @skip LIMIT @take\`
 
@@ -3183,6 +3544,7 @@ OFFSET n LIMIT m
 Logical disjunction operator. Returns \`true\` when either operand is true.
 
 ## Syntax
+
 \`\`\`sql
 expr1 OR expr2
 \`\`\`
@@ -3190,7 +3552,7 @@ expr1 OR expr2
 ## Operator Precedence
 
 | Operator | Priority |
-|----------|----------|
+| -------- | -------- |
 | NOT      | 1        |
 | AND      | 2        |
 | **OR**   | **3**    |
@@ -3203,12 +3565,14 @@ expr1 OR expr2
 Sorts the result set by one or more expressions.
 
 ## Syntax
+
 \`\`\`sql
 ORDER BY expr [ASC|DESC] [, ...]
 ORDER BY RANK score_function(...)
 \`\`\`
 
 ## Notes
+
 - Default sort order is ascending (ASC).
 - \`ORDER BY RANK\` is used with full-text and vector search scoring functions.
 
@@ -3220,11 +3584,13 @@ ORDER BY RANK score_function(...)
 Specifies the fields or expressions to return from the query.
 
 ## Syntax
+
 \`\`\`sql
 SELECT [DISTINCT] [TOP n] <select_spec>
 \`\`\`
 
 ## Variants
+
 - \`SELECT *\` — return all fields
 - \`SELECT VALUE expr\` — return scalar values
 - \`SELECT expr [AS alias], ...\` — return specific fields
@@ -3239,11 +3605,13 @@ SELECT [DISTINCT] [TOP n] <select_spec>
 Limits the result to the first N documents.
 
 ## Syntax
+
 \`\`\`sql
 SELECT TOP n ...
 \`\`\`
 
 ## Notes
+
 - Can use a parameter: \`SELECT TOP @limit\`
 
 ---
@@ -3261,6 +3629,7 @@ Boolean true literal.
 The CosmosDB undefined value. Represents a missing/non-existent property.
 
 ## Notes
+
 - \`undefined\` is different from \`null\`.
 - Use \`IS_DEFINED()\` to check if a property exists.
 - Properties with value \`undefined\` are not included in query results.
@@ -3273,11 +3642,13 @@ The CosmosDB undefined value. Represents a missing/non-existent property.
 Returns scalar values instead of JSON objects.
 
 ## Syntax
+
 \`\`\`sql
 SELECT VALUE <expression>
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT VALUE c.name FROM c
 -- Returns: ['Alice', 'Bob'] instead of [{name:'Alice'}, ...]
@@ -3291,11 +3662,13 @@ SELECT VALUE c.name FROM c
 Filters documents by a Boolean condition.
 
 ## Syntax
+
 \`\`\`sql
 WHERE <condition>
 \`\`\`
 
 ## Examples
+
 \`\`\`sql
 SELECT * FROM c WHERE c.status = 'active'
 SELECT * FROM c WHERE c.age > 21 AND c.city = 'Seattle'

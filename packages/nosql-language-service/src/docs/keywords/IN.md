@@ -3,6 +3,7 @@
 Tests if a value is in a list, or iterates an array in FROM.
 
 ## Syntax
+
 ```sql
 expr IN (value1, value2, ...)
 expr NOT IN (value1, value2, ...)

@@ -16,4 +16,3 @@ export { MonacoMultiQueryDecorator } from './multiQueryDecorator.js';
 export { registerCosmosDbSql } from './register.js';
 export { MonacoSignatureHelpProvider } from './signatureHelpProvider.js';
 export type { MonacoDiagnosticsProviderOptions, MonacoNamespace, MonacoRegistrationOptions } from './types.js';
-

@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-
 import { getDocumentTreeItemLabel } from './vscodeUtils';
 
 describe('Document Label Tests', () => {

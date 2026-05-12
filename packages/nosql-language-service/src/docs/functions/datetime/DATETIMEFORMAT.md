@@ -6,12 +6,14 @@
 Formats a datetime string according to the specified format string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `datetime` | string | The datetime string. |
-| `format` | string | The format specifier string. |
+
+| Name       | Type   | Description                  |
+| ---------- | ------ | ---------------------------- |
+| `datetime` | string | The datetime string.         |
+| `format`   | string | The format specifier string. |
 
 ## Return Value
+
 Returns a formatted string.
 
 ---

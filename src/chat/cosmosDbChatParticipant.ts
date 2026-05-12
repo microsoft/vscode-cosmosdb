@@ -17,9 +17,9 @@ import {
     safeMarkdownText,
     stripCodeFences,
 } from '../utils/sanitization';
+import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
-import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import {
     CHAT_PARTICIPANT_SYSTEM_PROMPT,
     INTENT_EXTRACTION_PROMPT,

@@ -6,14 +6,16 @@
 Returns the similarity score between two vectors.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `vector1` | array | First vector (array of numbers). |
-| `vector2` | array | Second vector (array of numbers). |
-| `brute_force` | boolean | Optional. Force brute-force search. |
-| `distanceFunction` | string | Optional: `'cosine'`, `'euclidean'`, or `'dotproduct'`. |
+
+| Name               | Type    | Description                                             |
+| ------------------ | ------- | ------------------------------------------------------- |
+| `vector1`          | array   | First vector (array of numbers).                        |
+| `vector2`          | array   | Second vector (array of numbers).                       |
+| `brute_force`      | boolean | Optional. Force brute-force search.                     |
+| `distanceFunction` | string  | Optional: `'cosine'`, `'euclidean'`, or `'dotproduct'`. |
 
 ## Return Value
+
 Returns a numeric similarity score.
 
 ---

@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { detectTypos } from './typoDetection.js';
 import { SqlLanguageService } from '../services/SqlLanguageService.js';
+import { detectTypos } from './typoDetection.js';
 
 // ========================== detectTypos unit tests ============================
 
@@ -164,4 +164,3 @@ describe('SqlLanguageService typo warnings', () => {
         expect(warnings).toHaveLength(0);
     });
 });
-

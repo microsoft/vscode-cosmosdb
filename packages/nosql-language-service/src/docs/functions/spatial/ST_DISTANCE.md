@@ -6,12 +6,14 @@
 Returns the distance between two GeoJSON Point expressions.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `point1` | GeoJSON | First GeoJSON point. |
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
+| `point1` | GeoJSON | First GeoJSON point.  |
 | `point2` | GeoJSON | Second GeoJSON point. |
 
 ## Return Value
+
 Returns a numeric value (distance in meters).
 
 ---

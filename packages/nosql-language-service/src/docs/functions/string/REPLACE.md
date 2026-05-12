@@ -6,13 +6,15 @@
 Replaces all occurrences of a specified string value with another string value.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `string` | string | The source string. |
-| `find` | string | The substring to find. |
+
+| Name          | Type   | Description             |
+| ------------- | ------ | ----------------------- |
+| `string`      | string | The source string.      |
+| `find`        | string | The substring to find.  |
 | `replacement` | string | The replacement string. |
 
 ## Return Value
+
 Returns the modified string.
 
 ---

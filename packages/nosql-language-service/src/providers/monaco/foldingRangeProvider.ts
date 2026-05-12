@@ -34,4 +34,3 @@ export class MonacoFoldingRangeProvider implements monacoEditor.languages.Foldin
         return ranges;
     }
 }
-

@@ -6,12 +6,14 @@
 Returns a Boolean indicating whether the first GeoJSON object is within the second.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `geometry` | GeoJSON | The geometry to test. |
-| `polygon` | GeoJSON | The containing polygon. |
+
+| Name       | Type    | Description             |
+| ---------- | ------- | ----------------------- |
+| `geometry` | GeoJSON | The geometry to test.   |
+| `polygon`  | GeoJSON | The containing polygon. |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ---

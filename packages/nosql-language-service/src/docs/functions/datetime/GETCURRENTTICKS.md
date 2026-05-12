@@ -6,9 +6,11 @@
 Returns the current UTC date/time in ticks.
 
 ## Parameters
+
 None.
 
 ## Return Value
+
 Returns a numeric value (ticks).
 
 ---

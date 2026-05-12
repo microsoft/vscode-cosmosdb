@@ -6,20 +6,24 @@
 Returns the count of values in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| `expression` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ## Examples
+
 ```sql
 SELECT COUNT(c.id) FROM c
 SELECT COUNT(1) FROM c WHERE c.status = "active"
 ```
 
 ## Notes
+
 - `COUNT(1)` counts all documents including those with
   `undefined` values.
 - `COUNT(c.field)` counts only documents where `c.field`

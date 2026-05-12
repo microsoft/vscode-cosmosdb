@@ -6,14 +6,17 @@
 Converts a string expression (`'null'`) to `null`.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `string` | string | `'null'`. |
+
+| Name     | Type   | Description |
+| -------- | ------ | ----------- |
+| `string` | string | `'null'`.   |
 
 ## Return Value
+
 Returns `null`, or `undefined` if conversion fails.
 
 ## Notes
+
 - Also available as `STRING_TO_NULL`.
 
 ---

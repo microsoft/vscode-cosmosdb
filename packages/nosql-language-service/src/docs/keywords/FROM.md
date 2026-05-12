@@ -3,12 +3,14 @@
 Specifies the source collection for the query.
 
 ## Syntax
+
 ```sql
 FROM collection [AS alias]
 FROM collection alias
 ```
 
 ## Examples
+
 ```sql
 SELECT * FROM c
 SELECT * FROM Families f

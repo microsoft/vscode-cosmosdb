@@ -6,14 +6,17 @@
 Returns the minimum value in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| `expression` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns the minimum value, respecting CosmosDB type ordering.
 
 ## Examples
+
 ```sql
 SELECT MIN(c.price) FROM c
 ```

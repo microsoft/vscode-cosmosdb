@@ -6,11 +6,13 @@
 Returns the square root of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description                        |
+| -------- | ------- | ---------------------------------- |
 | `number` | numeric | A non-negative numeric expression. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---

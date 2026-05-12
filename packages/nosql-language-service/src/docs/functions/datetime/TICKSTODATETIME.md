@@ -6,11 +6,13 @@
 Converts a ticks value to a datetime string.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name    | Type    | Description                       |
+| ------- | ------- | --------------------------------- |
 | `ticks` | integer | Number of ticks since Unix epoch. |
 
 ## Return Value
+
 Returns a datetime string.
 
 ---

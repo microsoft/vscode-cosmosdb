@@ -49,7 +49,6 @@
     "skills",
     "NOTICE.html",
     "package-lock.json",
-    "package.nls.*.json",
-    "**/*.md"
+    "package.nls.*.json"
   ]
 }

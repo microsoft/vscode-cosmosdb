@@ -267,36 +267,34 @@ async function installCosmosDBShellWithDotNetTool(dotnetPath?: string): Promise<
                     const dotnetExe = dotnetPath ?? 'dotnet';
                     ext.outputChannel.appendLine(`> ${dotnetExe} tool install --global CosmosDBShell --prerelease`);
 
-                    return await new Promise<{ success: boolean; exitCode: number | null; cancelled: boolean }>(
-                        (resolve) => {
-                            let cancelled = false;
-                            const proc = child.spawn(
-                                dotnetExe,
-                                ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'],
-                                { windowsHide: true, shell: false },
-                            );
+                    return new Promise<{ success: boolean; exitCode: number | null; cancelled: boolean }>((resolve) => {
+                        let cancelled = false;
+                        const proc = child.spawn(
+                            dotnetExe,
+                            ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'],
+                            { windowsHide: true, shell: false },
+                        );
 
-                            token.onCancellationRequested(() => {
-                                cancelled = true;
-                                proc.kill();
-                            });
+                        token.onCancellationRequested(() => {
+                            cancelled = true;
+                            proc.kill();
+                        });
 
-                            proc.stdout?.on('data', (data: Buffer) => {
-                                ext.outputChannel.append(data.toString('utf8'));
-                            });
-                            proc.stderr?.on('data', (data: Buffer) => {
-                                ext.outputChannel.append(data.toString('utf8'));
-                            });
-                            proc.on('error', (err) => {
-                                ext.outputChannel.appendLine(`Failed to start dotnet: ${err.message}`);
-                                resolve({ success: false, exitCode: null, cancelled });
-                            });
-                            proc.on('close', (code) => {
-                                ext.outputChannel.appendLine(`\nProcess exited with code ${code}.`);
-                                resolve({ success: code === 0, exitCode: code, cancelled });
-                            });
-                        },
-                    );
+                        proc.stdout?.on('data', (data: Buffer) => {
+                            ext.outputChannel.append(data.toString('utf8'));
+                        });
+                        proc.stderr?.on('data', (data: Buffer) => {
+                            ext.outputChannel.append(data.toString('utf8'));
+                        });
+                        proc.on('error', (err) => {
+                            ext.outputChannel.appendLine(`Failed to start dotnet: ${err.message}`);
+                            resolve({ success: false, exitCode: null, cancelled });
+                        });
+                        proc.on('close', (code) => {
+                            ext.outputChannel.appendLine(`\nProcess exited with code ${code}.`);
+                            resolve({ success: code === 0, exitCode: code, cancelled });
+                        });
+                    });
                 },
             );
             telemetryContext.telemetry.measurements.durationMs = Date.now() - startedAt;

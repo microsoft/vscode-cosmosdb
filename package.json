@@ -95,6 +95,7 @@
     }
   },
   "devDependencies": {
+    "@types/json-schema": "~7.0.15",
     "@types/mocha": "~10.0.10",
     "@types/node": "~22.19.13",
     "@types/react": "~19.2.7",
@@ -109,11 +110,11 @@
     "@vscode/vsce": "~3.9.1",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
-    "eslint": "~10.2.1",
+    "eslint": "~10.3.0",
     "eslint-plugin-license-header": "~0.9.0",
     "eslint-plugin-mocha": "~11.2.0",
     "glob": "~12.0.0",
-    "globals": "~17.5.0",
+    "globals": "~17.6.0",
     "jest-mock-vscode": "~4.12.0",
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
@@ -156,7 +157,6 @@
     "@trpc/server": "~11.17.0",
     "@vscode/l10n": "~0.0.18",
     "allotment": "~1.20.4",
-    "denque": "~2.1.0",
     "es-toolkit": "~1.46.0",
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
@@ -165,7 +165,7 @@
     "uuid": "~14.0.0",
     "vscode-languageclient": "~9.0.1",
     "vscode-uri": "~3.1.0",
-    "zod": "~4.3.2"
+    "zod": "~4.4.3"
   },
   "overrides": {
     "@prantlf/jsonlint": {

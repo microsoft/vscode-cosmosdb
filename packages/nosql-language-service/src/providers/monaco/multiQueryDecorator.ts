@@ -12,20 +12,17 @@ import { type MonacoNamespace } from './types.js';
 const SEPARATOR_CLASS = 'cosmosdb-query-separator';
 
 function ensureSeparatorStyles(): void {
-     
-    const g = globalThis as any;
-    if (!g?.document?.createElement) return;
+    if (typeof document === 'undefined') return;
     const STYLE_ID = 'cosmosdb-multiquery-styles';
-    if (g.document.getElementById(STYLE_ID)) return;
-    const style = g.document.createElement('style');
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = [
         `.${SEPARATOR_CLASS} {`,
         `  border-bottom: 2px solid var(--vscode-editorIndentGuide-activeBackground, var(--vscode-editorIndentGuide-background, #606060));`,
         `}`,
     ].join('\n');
-    g.document.head.appendChild(style);
-     
+    document.head.appendChild(style);
 }
 
 /**
@@ -141,16 +138,13 @@ export class MonacoMultiQueryDecorator implements Disposable {
                 const id = accessor.addZone({
                     afterLineNumber: lineNumber,
                     heightInLines: 1,
-                     
+
                     domNode: (() => {
-                        const g = globalThis as any;
-                        const node = g?.document?.createElement?.('div');
-                        if (node) {
-                            node.style.pointerEvents = 'none';
-                        }
-                        return node ?? g?.document?.createElement?.('div');
+                        if (typeof document === 'undefined') return null as unknown as HTMLElement;
+                        const node = document.createElement('div');
+                        node.style.pointerEvents = 'none';
+                        return node;
                     })(),
-                     
                 });
                 this.viewZoneIds.push(id);
             }
@@ -173,4 +167,3 @@ export class MonacoMultiQueryDecorator implements Disposable {
         this.disposables.length = 0;
     }
 }
-

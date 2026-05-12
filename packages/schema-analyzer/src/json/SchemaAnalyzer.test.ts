@@ -93,7 +93,7 @@ describe('JSON getSchemaFromDocument', () => {
 
 describe('JSON getSchemaFromDocuments', () => {
     it('throws on empty input', () => {
-        expect(() => getSchemaFromDocuments([])).toThrow();
+        expect(() => getSchemaFromDocuments([])).toThrow(Error);
     });
 
     it('merges multiple documents and simplifies single-type fields', () => {
@@ -233,7 +233,7 @@ describe('JSON schema utilities', () => {
 
     it('getPropertyNamesAtLevel throws on invalid path', () => {
         const schema = getSchemaFromDocument(docs[0]);
-        expect(() => getPropertyNamesAtLevel(schema, ['nonexistent'])).toThrow();
+        expect(() => getPropertyNamesAtLevel(schema, ['nonexistent'])).toThrow(Error);
     });
 
     it('buildFullPaths constructs dot-notated paths', () => {

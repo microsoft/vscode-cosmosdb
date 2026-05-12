@@ -65,15 +65,6 @@ if (!endpoint) {
     process.exit(1);
 }
 
-// ── TLS guard ─────────────────────────────────────────────────────────────────
-// The CosmosDB emulator uses a self-signed certificate.
-// When connecting to localhost, automatically disable TLS verification so users
-// don't need to remember to set NODE_TLS_REJECT_UNAUTHORIZED=0 manually.
-if (new URL(endpoint).hostname === 'localhost' && !process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-    console.log('ℹ  localhost endpoint detected — TLS verification disabled (self-signed emulator cert).');
-}
-
 if (!importAll && !singleContainer) {
     console.error('ERROR: Specify --container <name> or --all.');
     process.exit(1);

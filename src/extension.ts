@@ -34,6 +34,11 @@ import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataT
 import { registerCommands } from './commands/registerCommands';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import {
+    CosmosDBShellExtension,
+    registerCosmosDBShellLanguageServer,
+    registerMcpServer,
+} from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { QueryEditorTab } from './panels/QueryEditorTab';
@@ -86,6 +91,10 @@ export async function activateInternal(
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
 
         ext.fileSystem = new DatabasesFileSystem();
+
+        const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
+        context.subscriptions.push(cosmosDBShellSupport);
+        await cosmosDBShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -141,6 +150,9 @@ export async function activateInternal(
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
+
+        registerMcpServer(context);
+        registerCosmosDBShellLanguageServer(context);
     });
 
     const exportedApi: AzureExtensionApi = { apiVersion: '1.2.0' };

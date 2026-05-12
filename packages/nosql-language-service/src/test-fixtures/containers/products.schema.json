@@ -1,0 +1,75 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "products.schema.json",
+    "title": "Product",
+    "description": "A product in the e-commerce catalogue. Partition key: category.",
+    "type": "object",
+    "required": ["id", "name", "category", "price", "inStock", "tags", "createdAt", "_partitionKey"],
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "Unique product identifier, e.g. \"prod-0001\"",
+            "pattern": "^prod-\\d+$"
+        },
+        "name": {
+            "type": "string",
+            "description": "Display name of the product"
+        },
+        "category": {
+            "type": "string",
+            "description": "Product category",
+            "enum": ["Electronics", "Clothing", "Books", "Food"]
+        },
+        "brand": {
+            "type": "string",
+            "description": "Brand name. Intentionally absent on ~2% of documents to exercise IS_DEFINED."
+        },
+        "price": {
+            "type": "number",
+            "description": "Price in USD, ≥ 0. One document has price = 0.",
+            "minimum": 0
+        },
+        "rating": {
+            "type": ["number", "null"],
+            "description": "Average rating 0–5. null means unrated (~7% of documents).",
+            "minimum": 0,
+            "maximum": 5
+        },
+        "inStock": {
+            "type": "boolean",
+            "description": "Whether the product is currently in stock"
+        },
+        "tags": {
+            "type": "array",
+            "description": "Free-form tags. Empty array on ~3% of documents.",
+            "items": { "type": "string" }
+        },
+        "description": {
+            "type": ["string", "null"],
+            "description": "Long-form description. null on ~4% of documents to exercise IS_NULL."
+        },
+        "createdAt": {
+            "type": "string",
+            "description": "ISO-8601 creation timestamp",
+            "format": "date-time"
+        },
+        "_partitionKey": {
+            "type": "string",
+            "description": "Partition key — same value as category"
+        }
+    },
+    "additionalProperties": false,
+    "x-cosmosdb": {
+        "partitionKey": "/category",
+        "seedCount": 2000,
+        "trickyDocuments": [
+            { "index": 0, "note": "description: null" },
+            { "index": 1, "note": "brand field absent (IS_DEFINED test)" },
+            { "index": 2, "note": "price: 0 (edge case for > 0 filters)" },
+            { "index": 3, "note": "identical name to index 4 (DISTINCT test)" },
+            { "index": 4, "note": "identical name to index 3 (DISTINCT test)" },
+            { "index": 5, "note": "rating: null AND tags: [] (combined nulls)" }
+        ]
+    }
+}
+

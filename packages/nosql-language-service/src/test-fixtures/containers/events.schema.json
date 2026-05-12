@@ -1,0 +1,86 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "events.schema.json",
+    "title": "Event",
+    "description": "A user activity event (time-series, sparse properties). Partition key: userId.",
+    "type": "object",
+    "required": ["id", "type", "userId", "sessionId", "timestamp", "_partitionKey"],
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "Unique event identifier, e.g. \"evt-00001\"",
+            "pattern": "^evt-\\d+$"
+        },
+        "type": {
+            "type": "string",
+            "description": "Event type. Distribution: click 40%, view 30%, purchase 16%, signup 10%, error 4%",
+            "enum": ["click", "view", "purchase", "signup", "error"]
+        },
+        "userId": {
+            "type": "string",
+            "description": "User identifier, e.g. \"u-3\". 10 distinct users.",
+            "pattern": "^u-\\d+$"
+        },
+        "sessionId": {
+            "type": "string",
+            "description": "Session identifier (UUID-like random string)"
+        },
+        "timestamp": {
+            "type": "string",
+            "description": "ISO-8601 event timestamp. Confined to a 7-day window (2025-01-01..2025-01-07).",
+            "format": "date-time"
+        },
+        "durationMs": {
+            "type": ["number", "null"],
+            "description": "Event duration in milliseconds. null for signup/error events. One document has durationMs: 0 (edge). One document is missing this field entirely to test IS_DEFINED vs IS_NULL.",
+            "minimum": 0
+        },
+        "properties": {
+            "type": "object",
+            "description": "Sparse bag of event-specific properties. Fields present depend on event type.",
+            "properties": {
+                "page": {
+                    "type": "string",
+                    "description": "Present on click and view events"
+                },
+                "productId": {
+                    "type": "string",
+                    "description": "Present on purchase and view events"
+                },
+                "errorCode": {
+                    "type": "string",
+                    "description": "Present on error events only"
+                },
+                "errorMessage": {
+                    "type": "string",
+                    "description": "Present on error events only"
+                },
+                "amount": {
+                    "type": "number",
+                    "description": "Purchase amount. Present on purchase events only."
+                },
+                "referrer": {
+                    "type": "string",
+                    "description": "Referring URL. Present on some click/view events."
+                }
+            },
+            "additionalProperties": false
+        },
+        "_partitionKey": {
+            "type": "string",
+            "description": "Partition key — same value as userId"
+        }
+    },
+    "additionalProperties": false,
+    "x-cosmosdb": {
+        "partitionKey": "/userId",
+        "seedCount": 5000,
+        "trickyDocuments": [
+            { "index": 0, "note": "identical (userId, timestamp) to index 1 (dedup test)" },
+            { "index": 1, "note": "identical (userId, timestamp) to index 0 (dedup test)" },
+            { "index": 2, "note": "durationMs field entirely absent (IS_DEFINED test)" },
+            { "index": 3, "note": "durationMs: 0 (edge for > 0 filters)" }
+        ]
+    }
+}
+

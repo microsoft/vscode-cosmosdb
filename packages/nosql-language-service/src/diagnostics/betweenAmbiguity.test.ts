@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { describe, expect, it } from 'vitest';
-import { detectBetweenAmbiguity } from './betweenAmbiguity.js';
 import { SqlLanguageService } from '../services/SqlLanguageService.js';
 import { DiagnosticSeverity } from '../services/types.js';
+import { detectBetweenAmbiguity } from './betweenAmbiguity.js';
 
 // ========================== detectBetweenAmbiguity unit tests =================
 
@@ -76,17 +76,13 @@ describe('detectBetweenAmbiguity', () => {
     });
 
     it('does not warn on BETWEEN followed by ORDER BY', () => {
-        const warnings = detectBetweenAmbiguity(
-            `SELECT * FROM c WHERE c.price BETWEEN 10 AND 100 ORDER BY c.price`,
-        );
+        const warnings = detectBetweenAmbiguity(`SELECT * FROM c WHERE c.price BETWEEN 10 AND 100 ORDER BY c.price`);
         expect(warnings).toHaveLength(0);
     });
 
     it('does not warn when high expression contains AND inside nested parens', () => {
         // (c.a AND c.b) is the high expression — the AND is inside parens
-        const warnings = detectBetweenAmbiguity(
-            `SELECT * FROM c WHERE c.x BETWEEN c.low AND (c.a + c.b)`,
-        );
+        const warnings = detectBetweenAmbiguity(`SELECT * FROM c WHERE c.x BETWEEN c.low AND (c.a + c.b)`);
         expect(warnings).toHaveLength(0);
     });
 
@@ -107,9 +103,7 @@ describe('SqlLanguageService — BETWEEN_AMBIGUITY diagnostic', () => {
     const service = new SqlLanguageService();
 
     it('emits a Warning diagnostic with code BETWEEN_AMBIGUITY', () => {
-        const diags = service.getDiagnostics(
-            `SELECT * FROM c WHERE c.price BETWEEN 10 AND 100 AND c.inStock = true`,
-        );
+        const diags = service.getDiagnostics(`SELECT * FROM c WHERE c.price BETWEEN 10 AND 100 AND c.inStock = true`);
         const between = diags.filter((d) => d.code === 'BETWEEN_AMBIGUITY');
         expect(between).toHaveLength(1);
         expect(between[0].severity).toBe(DiagnosticSeverity.Warning);
@@ -117,9 +111,7 @@ describe('SqlLanguageService — BETWEEN_AMBIGUITY diagnostic', () => {
     });
 
     it('emits no BETWEEN_AMBIGUITY when correctly parenthesised', () => {
-        const diags = service.getDiagnostics(
-            `SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.inStock = true`,
-        );
+        const diags = service.getDiagnostics(`SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.inStock = true`);
         expect(diags.filter((d) => d.code === 'BETWEEN_AMBIGUITY')).toHaveLength(0);
     });
 
@@ -128,4 +120,3 @@ describe('SqlLanguageService — BETWEEN_AMBIGUITY diagnostic', () => {
         expect(diags.filter((d) => d.code === 'BETWEEN_AMBIGUITY')).toHaveLength(0);
     });
 });
-

@@ -38,11 +38,10 @@ describe('smoke — 10 representative SELECT queries', () => {
         expect(errors).toHaveLength(0);
         const expr = ast!.query.where!.expression;
         expect(expr.kind).toBe('BinaryScalarExpression');
-        if (expr.kind === 'BinaryScalarExpression') {
-            expect(expr.operator).toBe(SqlBinaryScalarOperatorKind.And);
-            expect(expr.left.kind).toBe('BinaryScalarExpression');
-            expect(expr.right.kind).toBe('BinaryScalarExpression');
-        }
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe(SqlBinaryScalarOperatorKind.And);
+        expect(expr.left.kind).toBe('BinaryScalarExpression');
+        expect(expr.right.kind).toBe('BinaryScalarExpression');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -69,11 +68,10 @@ describe('smoke — 10 representative SELECT queries', () => {
         expect(errors).toHaveLength(0);
         const expr = ast!.query.where!.expression;
         expect(expr.kind).toBe('BinaryScalarExpression');
-        if (expr.kind === 'BinaryScalarExpression') {
-            expect(expr.operator).toBe(SqlBinaryScalarOperatorKind.And);
-            expect(expr.left.kind).toBe('BetweenScalarExpression');
-            expect(expr.right.kind).toBe('InScalarExpression');
-        }
+        if (expr.kind !== 'BinaryScalarExpression') return;
+        expect(expr.operator).toBe(SqlBinaryScalarOperatorKind.And);
+        expect(expr.left.kind).toBe('BetweenScalarExpression');
+        expect(expr.right.kind).toBe('InScalarExpression');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -81,9 +79,7 @@ describe('smoke — 10 representative SELECT queries', () => {
     //    Covers: JoinCollectionExpression, nested WhereClause
     // ─────────────────────────────────────────────────────────────────────────
     it('J-03  SELECT c.id, item.name FROM c JOIN item IN c.items WHERE item.quantity > 2', () => {
-        const { ast, errors } = parse(
-            'SELECT c.id, item.name FROM c JOIN item IN c.items WHERE item.quantity > 2',
-        );
+        const { ast, errors } = parse('SELECT c.id, item.name FROM c JOIN item IN c.items WHERE item.quantity > 2');
         expect(errors).toHaveLength(0);
         expect(ast!.query.from!.collection.kind).toBe('JoinCollectionExpression');
         expect(ast!.query.where).toBeDefined();
@@ -95,18 +91,15 @@ describe('smoke — 10 representative SELECT queries', () => {
     //    Covers: GroupByClause, FunctionCallScalarExpression, SelectItemAlias
     // ─────────────────────────────────────────────────────────────────────────
     it('G-03  SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category', () => {
-        const { ast, errors } = parse(
-            'SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category',
-        );
+        const { ast, errors } = parse('SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category');
         expect(errors).toHaveLength(0);
         expect(ast!.query.groupBy).toBeDefined();
         expect(ast!.query.groupBy!.expressions).toHaveLength(1);
         const spec = ast!.query.select.spec;
-        if (spec.kind === 'SelectListSpec') {
-            expect(spec.items).toHaveLength(2);
-            expect(spec.items[1].expression.kind).toBe('FunctionCallScalarExpression');
-            expect(spec.items[1].alias?.value).toBe('avgRating');
-        }
+        if (spec.kind !== 'SelectListSpec') return;
+        expect(spec.items).toHaveLength(2);
+        expect(spec.items[1].expression.kind).toBe('FunctionCallScalarExpression');
+        expect(spec.items[1].alias?.value).toBe('avgRating');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -120,10 +113,9 @@ describe('smoke — 10 representative SELECT queries', () => {
         expect(errors).toHaveLength(0);
         const expr = ast!.query.where!.expression;
         expect(expr.kind).toBe('ExistsScalarExpression');
-        if (expr.kind === 'ExistsScalarExpression') {
-            // The nested query itself must be a valid query with its own FROM
-            expect(expr.subquery.from).toBeDefined();
-        }
+        if (expr.kind !== 'ExistsScalarExpression') return;
+        // The nested query itself must be a valid query with its own FROM
+        expect(expr.subquery.from).toBeDefined();
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -131,17 +123,14 @@ describe('smoke — 10 representative SELECT queries', () => {
     //    Covers: ArrayScalarExpression as a SELECT item (data reshaping)
     // ─────────────────────────────────────────────────────────────────────────
     it('SQ-01  SELECT c.id, ARRAY(SELECT VALUE i.name FROM i IN c.items) AS itemNames FROM c', () => {
-        const { ast, errors } = parse(
-            'SELECT c.id, ARRAY(SELECT VALUE i.name FROM i IN c.items) AS itemNames FROM c',
-        );
+        const { ast, errors } = parse('SELECT c.id, ARRAY(SELECT VALUE i.name FROM i IN c.items) AS itemNames FROM c');
         expect(errors).toHaveLength(0);
         const spec = ast!.query.select.spec;
         expect(spec.kind).toBe('SelectListSpec');
-        if (spec.kind === 'SelectListSpec') {
-            expect(spec.items).toHaveLength(2);
-            expect(spec.items[1].expression.kind).toBe('ArrayScalarExpression');
-            expect(spec.items[1].alias?.value).toBe('itemNames');
-        }
+        if (spec.kind !== 'SelectListSpec') return;
+        expect(spec.items).toHaveLength(2);
+        expect(spec.items[1].expression.kind).toBe('ArrayScalarExpression');
+        expect(spec.items[1].alias?.value).toBe('itemNames');
     });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -178,4 +167,3 @@ describe('smoke — 10 representative SELECT queries', () => {
         expect(errors.length).toBeGreaterThan(0);
     });
 });
-

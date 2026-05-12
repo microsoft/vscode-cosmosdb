@@ -39,7 +39,7 @@ export async function pickAppResource<T extends TreeElement>(
         }
     }
 
-    return await azureResourceExperience<T>(
+    return azureResourceExperience<T>(
         context,
         ext.rgApiV2.resources.azureResourceTreeDataProvider,
         options?.type ? (Array.isArray(options.type) ? options.type : [options.type]) : undefined,

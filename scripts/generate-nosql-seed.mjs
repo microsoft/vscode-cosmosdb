@@ -141,17 +141,49 @@ const PRODUCT_NAMES = [
 ];
 
 const BRANDS = [
-    'TechNova', 'AudioTech', 'SwiftGear', 'PureLife', 'ZenWear',
-    'BoldCraft', 'ApexPro', 'ClearVision', 'NorthEdge', 'UrbanCore',
-    'GreenLeaf', 'SkyForge', 'IronMesh', 'WaveTech', 'SunRidge',
-    'FrostLine', 'StormPeak', 'DeepRoot', 'LunaFlow', 'CrispAir',
+    'TechNova',
+    'AudioTech',
+    'SwiftGear',
+    'PureLife',
+    'ZenWear',
+    'BoldCraft',
+    'ApexPro',
+    'ClearVision',
+    'NorthEdge',
+    'UrbanCore',
+    'GreenLeaf',
+    'SkyForge',
+    'IronMesh',
+    'WaveTech',
+    'SunRidge',
+    'FrostLine',
+    'StormPeak',
+    'DeepRoot',
+    'LunaFlow',
+    'CrispAir',
 ];
 
 const ALL_TAGS = [
-    'sale', 'new', 'bestseller', 'wireless', 'bluetooth', 'eco',
-    'premium', 'lightweight', 'waterproof', 'organic', 'vegan',
-    'limited', 'bundle', 'gift', 'refurbished', 'imported',
-    'handmade', 'certified', 'fast-shipping', 'clearance',
+    'sale',
+    'new',
+    'bestseller',
+    'wireless',
+    'bluetooth',
+    'eco',
+    'premium',
+    'lightweight',
+    'waterproof',
+    'organic',
+    'vegan',
+    'limited',
+    'bundle',
+    'gift',
+    'refurbished',
+    'imported',
+    'handmade',
+    'certified',
+    'fast-shipping',
+    'clearance',
 ];
 
 const DESCRIPTIONS = [
@@ -197,10 +229,13 @@ const SPEC_VALUES = {
 
 function buildSpecifications(h, category) {
     const keys =
-        category === 'Electronics' ? SPEC_KEYS_ELECTRONICS
-        : category === 'Clothing' ? SPEC_KEYS_CLOTHING
-        : category === 'Books' ? SPEC_KEYS_BOOKS
-        : SPEC_KEYS_FOOD;
+        category === 'Electronics'
+            ? SPEC_KEYS_ELECTRONICS
+            : category === 'Clothing'
+              ? SPEC_KEYS_CLOTHING
+              : category === 'Books'
+                ? SPEC_KEYS_BOOKS
+                : SPEC_KEYS_FOOD;
 
     const count = h.int(2, 4);
     const chosen = h.pickN(keys, count);
@@ -217,7 +252,18 @@ function generateProducts() {
     const START = new Date('2023-01-01').getTime();
     const END = new Date('2025-12-31').getTime();
 
-    const CATEGORIES = ['Electronics', 'Electronics', 'Electronics', 'Clothing', 'Clothing', 'Books', 'Books', 'Food', 'Food', 'Food'];
+    const CATEGORIES = [
+        'Electronics',
+        'Electronics',
+        'Electronics',
+        'Clothing',
+        'Clothing',
+        'Books',
+        'Books',
+        'Food',
+        'Food',
+        'Food',
+    ];
 
     const SHARED_NAME = 'Wireless Noise-Cancelling Headphones'; // for indices 3 & 4
 
@@ -226,10 +272,17 @@ function generateProducts() {
     for (let i = 0; i < 200; i++) {
         const category = h.pick(CATEGORIES);
         const namePool = PRODUCT_NAMES.filter((n) => {
-            if (category === 'Electronics') return n.match(/Headphone|Speaker|Watch|Hub|Keyboard|Mouse|Lamp|Stand|Webcam|SSD|Home|Air|Robot|Coffee Grinder|Scale|Blender/);
-            if (category === 'Clothing') return n.match(/Shoes|Yoga|Jacket|Sweater|Backpack|Wallet|Sunglasses|Coat|T-Shirt|Boots/);
-            if (category === 'Books') return n.match(/JavaScript|Clean Code|Pragmatic|Data|Python|Deep|Unix|Reliability|Refactoring|Domain/);
-            return n.match(/Chocolate|Coffee|Protein|Matcha|Honey|Granola|Olive|Water|Almond|Mango|Instant|Cast|Cutting|Stand Mixer/);
+            if (category === 'Electronics')
+                return n.match(
+                    /Headphone|Speaker|Watch|Hub|Keyboard|Mouse|Lamp|Stand|Webcam|SSD|Home|Air|Robot|Coffee Grinder|Scale|Blender/,
+                );
+            if (category === 'Clothing')
+                return n.match(/Shoes|Yoga|Jacket|Sweater|Backpack|Wallet|Sunglasses|Coat|T-Shirt|Boots/);
+            if (category === 'Books')
+                return n.match(/JavaScript|Clean Code|Pragmatic|Data|Python|Deep|Unix|Reliability|Refactoring|Domain/);
+            return n.match(
+                /Chocolate|Coffee|Protein|Matcha|Honey|Granola|Olive|Water|Almond|Mango|Instant|Cast|Cutting|Stand Mixer/,
+            );
         });
         const nameSrc = namePool.length > 0 ? namePool : PRODUCT_NAMES;
 
@@ -306,15 +359,40 @@ const CITIES = [
 ];
 
 const CARRIERS = ['FedEx', 'UPS', 'DHL'];
-const STATUSES = ['pending', 'pending', 'processing', 'shipped', 'shipped', 'shipped', 'delivered', 'delivered', 'delivered', 'cancelled'];
+const STATUSES = [
+    'pending',
+    'pending',
+    'processing',
+    'shipped',
+    'shipped',
+    'shipped',
+    'delivered',
+    'delivered',
+    'delivered',
+    'cancelled',
+];
 
 const ORDER_ITEM_NAMES = [
-    'Wireless Headphones', 'Laptop Stand', 'USB Hub', 'Mechanical Keyboard',
-    'Gaming Mouse', 'LED Strip Lights', 'Smart Plug', 'Power Bank 20000mAh',
-    'Screen Protector', 'Phone Case Premium', 'Desk Organizer', 'Cable Management Kit',
-    'Ergonomic Chair Cushion', 'Monitor Arm Single', 'Webcam Cover Slider',
-    'Microfibre Cleaning Cloth', 'Laptop Bag 15"', 'Wrist Rest Gel',
-    'Desk Mat XL', 'Blue Light Glasses',
+    'Wireless Headphones',
+    'Laptop Stand',
+    'USB Hub',
+    'Mechanical Keyboard',
+    'Gaming Mouse',
+    'LED Strip Lights',
+    'Smart Plug',
+    'Power Bank 20000mAh',
+    'Screen Protector',
+    'Phone Case Premium',
+    'Desk Organizer',
+    'Cable Management Kit',
+    'Ergonomic Chair Cushion',
+    'Monitor Arm Single',
+    'Webcam Cover Slider',
+    'Microfibre Cleaning Cloth',
+    'Laptop Bag 15"',
+    'Wrist Rest Gel',
+    'Desk Mat XL',
+    'Blue Light Glasses',
 ];
 
 function generateOrders() {
@@ -399,9 +477,7 @@ function generateOrders() {
                     unitPrice,
                 };
             });
-            doc.totalAmount = parseFloat(
-                doc.items.reduce((s, x) => s + x.quantity * x.unitPrice, 0).toFixed(2),
-            );
+            doc.totalAmount = parseFloat(doc.items.reduce((s, x) => s + x.quantity * x.unitPrice, 0).toFixed(2));
         }
 
         docs.push(doc);
@@ -412,7 +488,18 @@ function generateOrders() {
 
 // ========================== Events generator ==================================
 
-const EVENT_PAGES = ['/home', '/products', '/cart', '/checkout', '/account', '/blog', '/about', '/search', '/deals', '/wishlist'];
+const EVENT_PAGES = [
+    '/home',
+    '/products',
+    '/cart',
+    '/checkout',
+    '/account',
+    '/blog',
+    '/about',
+    '/search',
+    '/deals',
+    '/wishlist',
+];
 const SESSION_CHARS = 'abcdef0123456789';
 
 function makeSessionId(h) {
@@ -430,9 +517,15 @@ function generateEvents() {
     const SHARED_TS = '2025-01-03T14:30:00.000Z';
 
     const TYPE_POOL = [
-        'click', 'click', 'click', 'click',
-        'view', 'view', 'view',
-        'purchase', 'purchase',
+        'click',
+        'click',
+        'click',
+        'click',
+        'view',
+        'view',
+        'view',
+        'purchase',
+        'purchase',
         'signup',
         'error',
     ];
@@ -526,4 +619,3 @@ if (runAll) {
     console.error('       node scripts/generate-nosql-seed.mjs --all');
     process.exit(1);
 }
-

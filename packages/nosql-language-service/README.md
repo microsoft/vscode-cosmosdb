@@ -101,7 +101,6 @@ const formatted   = service.format("SELECT  *  FROM  c");
 
 ### Option C: Use a Provider (Monaco)
 
-
 ```typescript
 import * as monaco from "monaco-editor";
 import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
@@ -117,6 +116,7 @@ const disposable = registerCosmosDbSql(monaco, service);
 ```
 
 ### Option D: Use a Provider (VS Code Extension)
+
 ```typescript
 import * as vscode from "vscode";
 import { SqlLanguageService } from "@cosmosdb/nosql-language-service";
@@ -132,6 +132,7 @@ export function activate(context: vscode.ExtensionContext) {
 ```
 
 ### Option E: Use a Provider (CodeMirror 6)
+
 ```typescript
 import { autocompletion } from "@codemirror/autocomplete";
 import { linter } from "@codemirror/lint";

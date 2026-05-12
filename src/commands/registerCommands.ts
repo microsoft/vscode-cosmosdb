@@ -73,7 +73,7 @@ export function registerCommands(): void {
     // For Cosmos DB FileSystem
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
-        async (_actionContext: IActionContext, uri?: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+        async (_actionContext: IActionContext, uri?: vscode.Uri) => ext.fileSystem.updateWithoutPrompt(uri),
     );
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);

@@ -7,10 +7,7 @@
     "price": 335.19,
     "rating": 1.7,
     "inStock": true,
-    "tags": [
-      "bundle",
-      "certified"
-    ],
+    "tags": ["bundle", "certified"],
     "description": null,
     "specifications": {
       "isbn": "978-0-596-51774-8",
@@ -26,11 +23,7 @@
     "price": 235.91,
     "rating": 4.3,
     "inStock": true,
-    "tags": [
-      "sale",
-      "premium",
-      "bestseller"
-    ],
+    "tags": ["sale", "premium", "bestseller"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "language": "English",
@@ -49,10 +42,7 @@
     "price": 0,
     "rating": 3.6,
     "inStock": true,
-    "tags": [
-      "refurbished",
-      "certified"
-    ],
+    "tags": ["refurbished", "certified"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "batteryLife": "12 hours",
@@ -69,9 +59,7 @@
     "price": 471.91,
     "rating": 2.7,
     "inStock": false,
-    "tags": [
-      "bestseller"
-    ],
+    "tags": ["bestseller"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "language": "English",
@@ -89,11 +77,7 @@
     "price": 411.11,
     "rating": 1.5,
     "inStock": false,
-    "tags": [
-      "fast-shipping",
-      "waterproof",
-      "limited"
-    ],
+    "tags": ["fast-shipping", "waterproof", "limited"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "servings": "12",
@@ -129,13 +113,7 @@
     "price": 168.62,
     "rating": 1.8,
     "inStock": true,
-    "tags": [
-      "premium",
-      "handmade",
-      "waterproof",
-      "bestseller",
-      "certified"
-    ],
+    "tags": ["premium", "handmade", "waterproof", "bestseller", "certified"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "origin": "Made in Italy",
@@ -152,10 +130,7 @@
     "price": 24.68,
     "rating": 3.8,
     "inStock": false,
-    "tags": [
-      "eco",
-      "lightweight"
-    ],
+    "tags": ["eco", "lightweight"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "isbn": "978-1-491-95042-1",
@@ -172,10 +147,7 @@
     "price": 217.76,
     "rating": 2.7,
     "inStock": true,
-    "tags": [
-      "premium",
-      "fast-shipping"
-    ],
+    "tags": ["premium", "fast-shipping"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "edition": "1st edition",
@@ -193,10 +165,7 @@
     "price": 347.79,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "sale",
-      "limited"
-    ],
+    "tags": ["sale", "limited"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "publisher": "Addison-Wesley",
@@ -214,13 +183,7 @@
     "price": 225.59,
     "rating": 1.6,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "waterproof",
-      "limited",
-      "clearance",
-      "organic"
-    ],
+    "tags": ["bluetooth", "waterproof", "limited", "clearance", "organic"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "edition": "3rd edition",
@@ -239,13 +202,7 @@
     "price": 300.09,
     "rating": 2.4,
     "inStock": true,
-    "tags": [
-      "gift",
-      "premium",
-      "fast-shipping",
-      "limited",
-      "eco"
-    ],
+    "tags": ["gift", "premium", "fast-shipping", "limited", "eco"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "publisher": "O'Reilly",
@@ -262,9 +219,7 @@
     "price": 354.02,
     "rating": 1.6,
     "inStock": true,
-    "tags": [
-      "sale"
-    ],
+    "tags": ["sale"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "allergens": "Contains dairy",
@@ -282,9 +237,7 @@
     "price": 213.09,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "vegan"
-    ],
+    "tags": ["vegan"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "careInstructions": "Machine wash cold",
@@ -302,9 +255,7 @@
     "price": 251.72,
     "rating": 1.4,
     "inStock": false,
-    "tags": [
-      "lightweight"
-    ],
+    "tags": ["lightweight"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "warranty": "90 days",
@@ -323,12 +274,7 @@
     "price": 30.72,
     "rating": null,
     "inStock": true,
-    "tags": [
-      "limited",
-      "clearance",
-      "sale",
-      "lightweight"
-    ],
+    "tags": ["limited", "clearance", "sale", "lightweight"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "dimensions": "10x5x3 cm",
@@ -345,13 +291,7 @@
     "price": 467.73,
     "rating": 3.7,
     "inStock": true,
-    "tags": [
-      "premium",
-      "vegan",
-      "imported",
-      "limited",
-      "gift"
-    ],
+    "tags": ["premium", "vegan", "imported", "limited", "gift"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "powerInput": "9V/3A",
@@ -369,11 +309,7 @@
     "price": 440.05,
     "rating": 2.7,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "limited",
-      "certified"
-    ],
+    "tags": ["handmade", "limited", "certified"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "fit": "Slim",
@@ -390,11 +326,7 @@
     "price": 93.75,
     "rating": 4.4,
     "inStock": false,
-    "tags": [
-      "organic",
-      "new",
-      "vegan"
-    ],
+    "tags": ["organic", "new", "vegan"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "calories": "220 kcal",
@@ -413,10 +345,7 @@
     "price": 341.98,
     "rating": 1.3,
     "inStock": true,
-    "tags": [
-      "refurbished",
-      "eco"
-    ],
+    "tags": ["refurbished", "eco"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "season": "All season",
@@ -434,9 +363,7 @@
     "price": 260,
     "rating": 3,
     "inStock": true,
-    "tags": [
-      "imported"
-    ],
+    "tags": ["imported"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "connectivity": "Wi-Fi 6",
@@ -455,10 +382,7 @@
     "price": 367.61,
     "rating": 4.2,
     "inStock": true,
-    "tags": [
-      "imported",
-      "organic"
-    ],
+    "tags": ["imported", "organic"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "origin": "Made in Italy",
@@ -475,12 +399,7 @@
     "price": 276.5,
     "rating": 3.7,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "bestseller",
-      "gift",
-      "bundle"
-    ],
+    "tags": ["bluetooth", "bestseller", "gift", "bundle"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "certification": "Non-GMO",
@@ -497,10 +416,7 @@
     "price": 163.8,
     "rating": 3.8,
     "inStock": false,
-    "tags": [
-      "certified",
-      "waterproof"
-    ],
+    "tags": ["certified", "waterproof"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "language": "English",
@@ -518,13 +434,7 @@
     "price": 242.77,
     "rating": 3.7,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "premium",
-      "wireless",
-      "vegan",
-      "imported"
-    ],
+    "tags": ["handmade", "premium", "wireless", "vegan", "imported"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "fit": "Oversized",
@@ -542,12 +452,7 @@
     "price": 33.31,
     "rating": 4.6,
     "inStock": false,
-    "tags": [
-      "handmade",
-      "new",
-      "limited",
-      "vegan"
-    ],
+    "tags": ["handmade", "new", "limited", "vegan"],
     "description": null,
     "specifications": {
       "language": "English",
@@ -565,13 +470,7 @@
     "price": 465.62,
     "rating": 2.1,
     "inStock": true,
-    "tags": [
-      "organic",
-      "sale",
-      "bundle",
-      "vegan",
-      "waterproof"
-    ],
+    "tags": ["organic", "sale", "bundle", "vegan", "waterproof"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "connectivity": "Wired",
@@ -590,12 +489,7 @@
     "price": 278.01,
     "rating": 3.4,
     "inStock": false,
-    "tags": [
-      "clearance",
-      "fast-shipping",
-      "certified",
-      "gift"
-    ],
+    "tags": ["clearance", "fast-shipping", "certified", "gift"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "pages": "420",
@@ -614,10 +508,7 @@
     "price": 328.2,
     "rating": 2,
     "inStock": true,
-    "tags": [
-      "refurbished",
-      "sale"
-    ],
+    "tags": ["refurbished", "sale"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "allergens": "Contains gluten",
@@ -634,11 +525,7 @@
     "price": 342.37,
     "rating": 4.5,
     "inStock": true,
-    "tags": [
-      "certified",
-      "waterproof",
-      "premium"
-    ],
+    "tags": ["certified", "waterproof", "premium"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "servings": "24",
@@ -675,9 +562,7 @@
     "price": 29.67,
     "rating": 4,
     "inStock": true,
-    "tags": [
-      "waterproof"
-    ],
+    "tags": ["waterproof"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "batteryLife": "12 hours",
@@ -695,9 +580,7 @@
     "price": 206.19,
     "rating": 3.4,
     "inStock": true,
-    "tags": [
-      "refurbished"
-    ],
+    "tags": ["refurbished"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "isbn": "978-0-13-468599-1",
@@ -714,11 +597,7 @@
     "price": 346.88,
     "rating": 2.4,
     "inStock": false,
-    "tags": [
-      "fast-shipping",
-      "bluetooth",
-      "bestseller"
-    ],
+    "tags": ["fast-shipping", "bluetooth", "bestseller"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "language": "English",
@@ -737,13 +616,7 @@
     "price": 195.52,
     "rating": 1.9,
     "inStock": true,
-    "tags": [
-      "bundle",
-      "premium",
-      "vegan",
-      "lightweight",
-      "organic"
-    ],
+    "tags": ["bundle", "premium", "vegan", "lightweight", "organic"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "certification": "Gluten-Free",
@@ -761,9 +634,7 @@
     "price": 330.48,
     "rating": 3.5,
     "inStock": true,
-    "tags": [
-      "sale"
-    ],
+    "tags": ["sale"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "publisher": "Apress",
@@ -781,10 +652,7 @@
     "price": 108.37,
     "rating": 2.1,
     "inStock": true,
-    "tags": [
-      "premium",
-      "bundle"
-    ],
+    "tags": ["premium", "bundle"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "pages": "768",
@@ -803,13 +671,7 @@
     "price": 203.22,
     "rating": 2.5,
     "inStock": true,
-    "tags": [
-      "limited",
-      "wireless",
-      "sale",
-      "certified",
-      "bestseller"
-    ],
+    "tags": ["limited", "wireless", "sale", "certified", "bestseller"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "language": "English",
@@ -827,11 +689,7 @@
     "price": 194.6,
     "rating": 3.8,
     "inStock": true,
-    "tags": [
-      "premium",
-      "waterproof",
-      "lightweight"
-    ],
+    "tags": ["premium", "waterproof", "lightweight"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "powerInput": "12V/2A",
@@ -850,10 +708,7 @@
     "price": 78.12,
     "rating": 1.2,
     "inStock": true,
-    "tags": [
-      "imported",
-      "vegan"
-    ],
+    "tags": ["imported", "vegan"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "powerInput": "9V/3A",
@@ -871,9 +726,7 @@
     "price": 189.54,
     "rating": 1.5,
     "inStock": false,
-    "tags": [
-      "imported"
-    ],
+    "tags": ["imported"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "warranty": "1 year",
@@ -890,10 +743,7 @@
     "price": 11.44,
     "rating": 2.6,
     "inStock": true,
-    "tags": [
-      "organic",
-      "lightweight"
-    ],
+    "tags": ["organic", "lightweight"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "origin": "Made in Japan",
@@ -912,13 +762,7 @@
     "price": 411.56,
     "rating": 1.8,
     "inStock": true,
-    "tags": [
-      "fast-shipping",
-      "certified",
-      "bluetooth",
-      "bestseller",
-      "sale"
-    ],
+    "tags": ["fast-shipping", "certified", "bluetooth", "bestseller", "sale"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "warranty": "90 days",
@@ -937,10 +781,7 @@
     "price": 450.17,
     "rating": 5,
     "inStock": true,
-    "tags": [
-      "sale",
-      "handmade"
-    ],
+    "tags": ["sale", "handmade"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "fit": "Regular",
@@ -959,12 +800,7 @@
     "price": 295.71,
     "rating": 1.3,
     "inStock": false,
-    "tags": [
-      "bundle",
-      "lightweight",
-      "handmade",
-      "wireless"
-    ],
+    "tags": ["bundle", "lightweight", "handmade", "wireless"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "isbn": "978-0-596-51774-8",
@@ -981,9 +817,7 @@
     "price": 176.68,
     "rating": null,
     "inStock": false,
-    "tags": [
-      "bundle"
-    ],
+    "tags": ["bundle"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "isbn": "978-1-491-95042-1",
@@ -1001,13 +835,7 @@
     "price": 461.1,
     "rating": 2.7,
     "inStock": false,
-    "tags": [
-      "new",
-      "vegan",
-      "certified",
-      "eco",
-      "organic"
-    ],
+    "tags": ["new", "vegan", "certified", "eco", "organic"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "origin": "Made in USA",
@@ -1025,12 +853,7 @@
     "price": 135.62,
     "rating": 1.8,
     "inStock": true,
-    "tags": [
-      "wireless",
-      "eco",
-      "sale",
-      "handmade"
-    ],
+    "tags": ["wireless", "eco", "sale", "handmade"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "warranty": "3 years",
@@ -1049,11 +872,7 @@
     "price": 299.57,
     "rating": 4.9,
     "inStock": true,
-    "tags": [
-      "waterproof",
-      "eco",
-      "refurbished"
-    ],
+    "tags": ["waterproof", "eco", "refurbished"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "edition": "3rd edition",
@@ -1070,9 +889,7 @@
     "price": 194.9,
     "rating": 4.4,
     "inStock": true,
-    "tags": [
-      "bundle"
-    ],
+    "tags": ["bundle"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "origin": "Made in USA",
@@ -1088,13 +905,7 @@
     "price": 429.23,
     "rating": 4.2,
     "inStock": true,
-    "tags": [
-      "lightweight",
-      "bluetooth",
-      "new",
-      "imported",
-      "handmade"
-    ],
+    "tags": ["lightweight", "bluetooth", "new", "imported", "handmade"],
     "description": null,
     "specifications": {
       "servings": "8",
@@ -1112,9 +923,7 @@
     "price": 204.26,
     "rating": 4.8,
     "inStock": false,
-    "tags": [
-      "certified"
-    ],
+    "tags": ["certified"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "publisher": "Manning",
@@ -1133,9 +942,7 @@
     "price": 480.29,
     "rating": 3.3,
     "inStock": true,
-    "tags": [
-      "new"
-    ],
+    "tags": ["new"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "batteryLife": "48 hours",
@@ -1152,12 +959,7 @@
     "price": 494.13,
     "rating": 3.6,
     "inStock": true,
-    "tags": [
-      "wireless",
-      "limited",
-      "organic",
-      "gift"
-    ],
+    "tags": ["wireless", "limited", "organic", "gift"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "weight": "250g",
@@ -1175,12 +977,7 @@
     "price": 436.91,
     "rating": 1.4,
     "inStock": true,
-    "tags": [
-      "eco",
-      "sale",
-      "vegan",
-      "bestseller"
-    ],
+    "tags": ["eco", "sale", "vegan", "bestseller"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "batteryLife": "30 hours",
@@ -1198,10 +995,7 @@
     "price": 262.15,
     "rating": 1.3,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "waterproof"
-    ],
+    "tags": ["handmade", "waterproof"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "warranty": "90 days",
@@ -1218,9 +1012,7 @@
     "price": 427.34,
     "rating": 2.5,
     "inStock": true,
-    "tags": [
-      "vegan"
-    ],
+    "tags": ["vegan"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "certification": "Non-GMO",
@@ -1237,12 +1029,7 @@
     "price": 258.53,
     "rating": 3.5,
     "inStock": false,
-    "tags": [
-      "refurbished",
-      "handmade",
-      "clearance",
-      "gift"
-    ],
+    "tags": ["refurbished", "handmade", "clearance", "gift"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "certification": "USDA Organic",
@@ -1260,9 +1047,7 @@
     "price": 389.71,
     "rating": 2.2,
     "inStock": true,
-    "tags": [
-      "wireless"
-    ],
+    "tags": ["wireless"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "weight": "250g",
@@ -1281,10 +1066,7 @@
     "price": 348,
     "rating": 3.9,
     "inStock": true,
-    "tags": [
-      "waterproof",
-      "bluetooth"
-    ],
+    "tags": ["waterproof", "bluetooth"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "allergens": "Contains nuts",
@@ -1320,11 +1102,7 @@
     "price": 132.07,
     "rating": 3.8,
     "inStock": true,
-    "tags": [
-      "clearance",
-      "vegan",
-      "new"
-    ],
+    "tags": ["clearance", "vegan", "new"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "origin": "Made in Japan",
@@ -1342,9 +1120,7 @@
     "price": 170.54,
     "rating": 3.1,
     "inStock": true,
-    "tags": [
-      "organic"
-    ],
+    "tags": ["organic"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "connectivity": "Wi-Fi 6",
@@ -1361,9 +1137,7 @@
     "price": 317.31,
     "rating": 1.9,
     "inStock": false,
-    "tags": [
-      "gift"
-    ],
+    "tags": ["gift"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "allergens": "Contains gluten",
@@ -1381,10 +1155,7 @@
     "price": 248.36,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "premium",
-      "bluetooth"
-    ],
+    "tags": ["premium", "bluetooth"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "careInstructions": "Hand wash only",
@@ -1401,11 +1172,7 @@
     "price": 413.46,
     "rating": 1.9,
     "inStock": true,
-    "tags": [
-      "imported",
-      "vegan",
-      "waterproof"
-    ],
+    "tags": ["imported", "vegan", "waterproof"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "publisher": "Addison-Wesley",
@@ -1423,11 +1190,7 @@
     "price": 61.91,
     "rating": 4.6,
     "inStock": false,
-    "tags": [
-      "vegan",
-      "eco",
-      "bundle"
-    ],
+    "tags": ["vegan", "eco", "bundle"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "language": "English",
@@ -1444,10 +1207,7 @@
     "price": 54.2,
     "rating": 1.2,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "certified"
-    ],
+    "tags": ["handmade", "certified"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "isbn": "978-0-13-468599-1",
@@ -1464,11 +1224,7 @@
     "price": 158.77,
     "rating": 1.7,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "imported",
-      "vegan"
-    ],
+    "tags": ["bluetooth", "imported", "vegan"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "allergens": "None",
@@ -1487,13 +1243,7 @@
     "price": 226.12,
     "rating": 1.4,
     "inStock": false,
-    "tags": [
-      "organic",
-      "waterproof",
-      "premium",
-      "new",
-      "clearance"
-    ],
+    "tags": ["organic", "waterproof", "premium", "new", "clearance"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "connectivity": "Bluetooth 5.0",
@@ -1510,9 +1260,7 @@
     "price": 203.19,
     "rating": 4,
     "inStock": true,
-    "tags": [
-      "waterproof"
-    ],
+    "tags": ["waterproof"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "weight": "500g",
@@ -1530,13 +1278,7 @@
     "price": 335.36,
     "rating": 1.7,
     "inStock": false,
-    "tags": [
-      "bundle",
-      "waterproof",
-      "bluetooth",
-      "refurbished",
-      "wireless"
-    ],
+    "tags": ["bundle", "waterproof", "bluetooth", "refurbished", "wireless"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "season": "All season",
@@ -1554,9 +1296,7 @@
     "price": 486.97,
     "rating": 4.1,
     "inStock": true,
-    "tags": [
-      "wireless"
-    ],
+    "tags": ["wireless"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "careInstructions": "Dry clean only",
@@ -1575,11 +1315,7 @@
     "price": 256.39,
     "rating": 4.9,
     "inStock": false,
-    "tags": [
-      "wireless",
-      "organic",
-      "bestseller"
-    ],
+    "tags": ["wireless", "organic", "bestseller"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "warranty": "90 days",
@@ -1598,11 +1334,7 @@
     "price": 267.35,
     "rating": 2.2,
     "inStock": true,
-    "tags": [
-      "eco",
-      "premium",
-      "lightweight"
-    ],
+    "tags": ["eco", "premium", "lightweight"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "connectivity": "Wired",
@@ -1621,9 +1353,7 @@
     "price": 222.13,
     "rating": null,
     "inStock": true,
-    "tags": [
-      "fast-shipping"
-    ],
+    "tags": ["fast-shipping"],
     "description": null,
     "specifications": {
       "careInstructions": "Dry clean only",
@@ -1642,13 +1372,7 @@
     "price": 114.45,
     "rating": 1.1,
     "inStock": false,
-    "tags": [
-      "imported",
-      "wireless",
-      "premium",
-      "lightweight",
-      "bluetooth"
-    ],
+    "tags": ["imported", "wireless", "premium", "lightweight", "bluetooth"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "material": "100% Cotton",
@@ -1667,13 +1391,7 @@
     "price": 263.68,
     "rating": 3.8,
     "inStock": true,
-    "tags": [
-      "vegan",
-      "bestseller",
-      "handmade",
-      "gift",
-      "new"
-    ],
+    "tags": ["vegan", "bestseller", "handmade", "gift", "new"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "certification": "Fair Trade",
@@ -1690,11 +1408,7 @@
     "price": 161.45,
     "rating": 2.2,
     "inStock": true,
-    "tags": [
-      "premium",
-      "bestseller",
-      "gift"
-    ],
+    "tags": ["premium", "bestseller", "gift"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "origin": "Made in Japan",
@@ -1713,9 +1427,7 @@
     "price": 95.02,
     "rating": 1,
     "inStock": false,
-    "tags": [
-      "clearance"
-    ],
+    "tags": ["clearance"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "pages": "320",
@@ -1733,13 +1445,7 @@
     "price": 169.28,
     "rating": 1.7,
     "inStock": false,
-    "tags": [
-      "sale",
-      "certified",
-      "lightweight",
-      "premium",
-      "imported"
-    ],
+    "tags": ["sale", "certified", "lightweight", "premium", "imported"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "powerInput": "20V/5A",
@@ -1757,13 +1463,7 @@
     "price": 147,
     "rating": 1.4,
     "inStock": false,
-    "tags": [
-      "sale",
-      "refurbished",
-      "bundle",
-      "organic",
-      "gift"
-    ],
+    "tags": ["sale", "refurbished", "bundle", "organic", "gift"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "calories": "120 kcal",
@@ -1781,13 +1481,7 @@
     "price": 319.61,
     "rating": 1.1,
     "inStock": true,
-    "tags": [
-      "sale",
-      "imported",
-      "eco",
-      "premium",
-      "lightweight"
-    ],
+    "tags": ["sale", "imported", "eco", "premium", "lightweight"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "season": "Summer",
@@ -1805,10 +1499,7 @@
     "price": 25.43,
     "rating": 4.7,
     "inStock": false,
-    "tags": [
-      "new",
-      "limited"
-    ],
+    "tags": ["new", "limited"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "edition": "2nd edition",
@@ -1826,13 +1517,7 @@
     "price": 210.15,
     "rating": 1.1,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "gift",
-      "imported",
-      "bundle",
-      "bestseller"
-    ],
+    "tags": ["bluetooth", "gift", "imported", "bundle", "bestseller"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "isbn": "978-1-491-95042-1",
@@ -1850,9 +1535,7 @@
     "price": 278.97,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "eco"
-    ],
+    "tags": ["eco"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "pages": "640",
@@ -1869,12 +1552,7 @@
     "price": 29.2,
     "rating": 3.4,
     "inStock": true,
-    "tags": [
-      "bestseller",
-      "bundle",
-      "handmade",
-      "wireless"
-    ],
+    "tags": ["bestseller", "bundle", "handmade", "wireless"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "calories": "220 kcal",
@@ -1891,12 +1569,7 @@
     "price": 236.81,
     "rating": 4.9,
     "inStock": true,
-    "tags": [
-      "vegan",
-      "fast-shipping",
-      "bundle",
-      "bestseller"
-    ],
+    "tags": ["vegan", "fast-shipping", "bundle", "bestseller"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "material": "Merino Wool",
@@ -1915,12 +1588,7 @@
     "price": 406.02,
     "rating": 3.2,
     "inStock": true,
-    "tags": [
-      "premium",
-      "gift",
-      "bundle",
-      "fast-shipping"
-    ],
+    "tags": ["premium", "gift", "bundle", "fast-shipping"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "calories": "220 kcal",
@@ -1937,12 +1605,7 @@
     "price": 287.08,
     "rating": 4.6,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "bundle",
-      "gift",
-      "lightweight"
-    ],
+    "tags": ["handmade", "bundle", "gift", "lightweight"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "certification": "Fair Trade",
@@ -1978,13 +1641,7 @@
     "price": 125.83,
     "rating": 1.2,
     "inStock": true,
-    "tags": [
-      "refurbished",
-      "certified",
-      "fast-shipping",
-      "premium",
-      "imported"
-    ],
+    "tags": ["refurbished", "certified", "fast-shipping", "premium", "imported"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "batteryLife": "30 hours",
@@ -2003,12 +1660,7 @@
     "price": 335.24,
     "rating": 3.7,
     "inStock": true,
-    "tags": [
-      "limited",
-      "vegan",
-      "new",
-      "bluetooth"
-    ],
+    "tags": ["limited", "vegan", "new", "bluetooth"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "batteryLife": "12 hours",
@@ -2025,13 +1677,7 @@
     "price": 424.7,
     "rating": 4.5,
     "inStock": true,
-    "tags": [
-      "fast-shipping",
-      "handmade",
-      "wireless",
-      "organic",
-      "premium"
-    ],
+    "tags": ["fast-shipping", "handmade", "wireless", "organic", "premium"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "language": "English",
@@ -2050,12 +1696,7 @@
     "price": 121.46,
     "rating": 3.3,
     "inStock": true,
-    "tags": [
-      "bestseller",
-      "wireless",
-      "premium",
-      "imported"
-    ],
+    "tags": ["bestseller", "wireless", "premium", "imported"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "weight": "2kg",
@@ -2074,10 +1715,7 @@
     "price": 112.68,
     "rating": 1.9,
     "inStock": true,
-    "tags": [
-      "fast-shipping",
-      "premium"
-    ],
+    "tags": ["fast-shipping", "premium"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "batteryLife": "24 hours",
@@ -2094,9 +1732,7 @@
     "price": 316.4,
     "rating": 2.7,
     "inStock": false,
-    "tags": [
-      "bundle"
-    ],
+    "tags": ["bundle"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "season": "Spring/Fall",
@@ -2115,13 +1751,7 @@
     "price": 344.62,
     "rating": 2.8,
     "inStock": true,
-    "tags": [
-      "bundle",
-      "wireless",
-      "handmade",
-      "certified",
-      "waterproof"
-    ],
+    "tags": ["bundle", "wireless", "handmade", "certified", "waterproof"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "weight": "150g",
@@ -2139,9 +1769,7 @@
     "price": 465.21,
     "rating": 1.5,
     "inStock": true,
-    "tags": [
-      "eco"
-    ],
+    "tags": ["eco"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "edition": "4th edition",
@@ -2158,12 +1786,7 @@
     "price": 7.08,
     "rating": 2,
     "inStock": true,
-    "tags": [
-      "clearance",
-      "sale",
-      "bundle",
-      "wireless"
-    ],
+    "tags": ["clearance", "sale", "bundle", "wireless"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "pages": "640",
@@ -2180,10 +1803,7 @@
     "price": 95.58,
     "rating": 4.5,
     "inStock": false,
-    "tags": [
-      "gift",
-      "vegan"
-    ],
+    "tags": ["gift", "vegan"],
     "description": null,
     "specifications": {
       "calories": "350 kcal",
@@ -2200,11 +1820,7 @@
     "price": 14.28,
     "rating": 1.6,
     "inStock": false,
-    "tags": [
-      "certified",
-      "lightweight",
-      "bluetooth"
-    ],
+    "tags": ["certified", "lightweight", "bluetooth"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "calories": "350 kcal",
@@ -2221,12 +1837,7 @@
     "price": 68.15,
     "rating": 4.3,
     "inStock": true,
-    "tags": [
-      "clearance",
-      "premium",
-      "imported",
-      "sale"
-    ],
+    "tags": ["clearance", "premium", "imported", "sale"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "isbn": "978-0-596-51774-8",
@@ -2243,12 +1854,7 @@
     "price": 297.79,
     "rating": 4.1,
     "inStock": true,
-    "tags": [
-      "bundle",
-      "wireless",
-      "organic",
-      "premium"
-    ],
+    "tags": ["bundle", "wireless", "organic", "premium"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "season": "All season",
@@ -2267,12 +1873,7 @@
     "price": 18.85,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "sale",
-      "certified",
-      "limited",
-      "organic"
-    ],
+    "tags": ["sale", "certified", "limited", "organic"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "allergens": "Contains gluten",
@@ -2290,13 +1891,7 @@
     "price": 486.42,
     "rating": null,
     "inStock": true,
-    "tags": [
-      "refurbished",
-      "certified",
-      "new",
-      "eco",
-      "bundle"
-    ],
+    "tags": ["refurbished", "certified", "new", "eco", "bundle"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "careInstructions": "Hand wash only",
@@ -2315,9 +1910,7 @@
     "price": 238.5,
     "rating": 2.1,
     "inStock": true,
-    "tags": [
-      "vegan"
-    ],
+    "tags": ["vegan"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "isbn": "978-0-13-468599-1",
@@ -2334,10 +1927,7 @@
     "price": 76.92,
     "rating": 1.1,
     "inStock": true,
-    "tags": [
-      "wireless",
-      "refurbished"
-    ],
+    "tags": ["wireless", "refurbished"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "weight": "500g",
@@ -2356,9 +1946,7 @@
     "price": 241.26,
     "rating": 1.5,
     "inStock": false,
-    "tags": [
-      "eco"
-    ],
+    "tags": ["eco"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "origin": "Made in Japan",
@@ -2376,13 +1964,7 @@
     "price": 471.66,
     "rating": 3.2,
     "inStock": true,
-    "tags": [
-      "limited",
-      "new",
-      "wireless",
-      "waterproof",
-      "eco"
-    ],
+    "tags": ["limited", "new", "wireless", "waterproof", "eco"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "edition": "1st edition",
@@ -2400,11 +1982,7 @@
     "price": 234.37,
     "rating": 3.5,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "wireless",
-      "handmade"
-    ],
+    "tags": ["bluetooth", "wireless", "handmade"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "allergens": "None",
@@ -2422,10 +2000,7 @@
     "price": 271.55,
     "rating": 1.8,
     "inStock": false,
-    "tags": [
-      "clearance",
-      "handmade"
-    ],
+    "tags": ["clearance", "handmade"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "weight": "1kg",
@@ -2444,12 +2019,7 @@
     "price": 428.46,
     "rating": 3.6,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "gift",
-      "refurbished",
-      "fast-shipping"
-    ],
+    "tags": ["bluetooth", "gift", "refurbished", "fast-shipping"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "origin": "Made in Germany",
@@ -2466,12 +2036,7 @@
     "price": 156.9,
     "rating": 1.5,
     "inStock": true,
-    "tags": [
-      "fast-shipping",
-      "vegan",
-      "premium",
-      "limited"
-    ],
+    "tags": ["fast-shipping", "vegan", "premium", "limited"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "dimensions": "30x20x10 cm",
@@ -2490,9 +2055,7 @@
     "price": 241.02,
     "rating": 2,
     "inStock": false,
-    "tags": [
-      "new"
-    ],
+    "tags": ["new"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "weight": "1kg",
@@ -2510,13 +2073,7 @@
     "price": 418.06,
     "rating": 3,
     "inStock": true,
-    "tags": [
-      "waterproof",
-      "sale",
-      "lightweight",
-      "bestseller",
-      "vegan"
-    ],
+    "tags": ["waterproof", "sale", "lightweight", "bestseller", "vegan"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "weight": "150g",
@@ -2533,11 +2090,7 @@
     "price": 147.31,
     "rating": 4.4,
     "inStock": false,
-    "tags": [
-      "premium",
-      "bundle",
-      "refurbished"
-    ],
+    "tags": ["premium", "bundle", "refurbished"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "publisher": "Apress",
@@ -2556,13 +2109,7 @@
     "price": 28.31,
     "rating": 3.4,
     "inStock": true,
-    "tags": [
-      "gift",
-      "waterproof",
-      "eco",
-      "refurbished",
-      "certified"
-    ],
+    "tags": ["gift", "waterproof", "eco", "refurbished", "certified"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "connectivity": "USB-C",
@@ -2581,12 +2128,7 @@
     "price": 60,
     "rating": 1.6,
     "inStock": true,
-    "tags": [
-      "wireless",
-      "vegan",
-      "new",
-      "clearance"
-    ],
+    "tags": ["wireless", "vegan", "new", "clearance"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "servings": "8",
@@ -2605,11 +2147,7 @@
     "price": 208.99,
     "rating": 3.3,
     "inStock": true,
-    "tags": [
-      "bestseller",
-      "wireless",
-      "premium"
-    ],
+    "tags": ["bestseller", "wireless", "premium"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "fit": "Regular",
@@ -2645,11 +2183,7 @@
     "price": 145.58,
     "rating": 1.7,
     "inStock": false,
-    "tags": [
-      "new",
-      "premium",
-      "certified"
-    ],
+    "tags": ["new", "premium", "certified"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "allergens": "Contains nuts",
@@ -2666,12 +2200,7 @@
     "price": 403.63,
     "rating": 1.3,
     "inStock": true,
-    "tags": [
-      "imported",
-      "clearance",
-      "vegan",
-      "bestseller"
-    ],
+    "tags": ["imported", "clearance", "vegan", "bestseller"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "publisher": "Manning",
@@ -2690,11 +2219,7 @@
     "price": 179.19,
     "rating": 3.3,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "fast-shipping",
-      "limited"
-    ],
+    "tags": ["bluetooth", "fast-shipping", "limited"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "publisher": "Packt",
@@ -2713,9 +2238,7 @@
     "price": 65.31,
     "rating": 1.9,
     "inStock": true,
-    "tags": [
-      "gift"
-    ],
+    "tags": ["gift"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "careInstructions": "Dry clean only",
@@ -2734,13 +2257,7 @@
     "price": 93.32,
     "rating": 1.3,
     "inStock": true,
-    "tags": [
-      "limited",
-      "clearance",
-      "bestseller",
-      "handmade",
-      "vegan"
-    ],
+    "tags": ["limited", "clearance", "bestseller", "handmade", "vegan"],
     "description": null,
     "specifications": {
       "batteryLife": "48 hours",
@@ -2758,12 +2275,7 @@
     "price": 446.6,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "new",
-      "fast-shipping",
-      "eco",
-      "waterproof"
-    ],
+    "tags": ["new", "fast-shipping", "eco", "waterproof"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "dimensions": "20x15x8 cm",
@@ -2781,10 +2293,7 @@
     "price": 453.83,
     "rating": 4.6,
     "inStock": false,
-    "tags": [
-      "bluetooth",
-      "certified"
-    ],
+    "tags": ["bluetooth", "certified"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "connectivity": "USB-C",
@@ -2802,12 +2311,7 @@
     "price": 317.99,
     "rating": 3.4,
     "inStock": false,
-    "tags": [
-      "imported",
-      "sale",
-      "handmade",
-      "organic"
-    ],
+    "tags": ["imported", "sale", "handmade", "organic"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "edition": "3rd edition",
@@ -2826,13 +2330,7 @@
     "price": 199.39,
     "rating": 3.1,
     "inStock": true,
-    "tags": [
-      "new",
-      "bestseller",
-      "limited",
-      "certified",
-      "eco"
-    ],
+    "tags": ["new", "bestseller", "limited", "certified", "eco"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "material": "Polyester blend",
@@ -2851,10 +2349,7 @@
     "price": 31.49,
     "rating": 1.4,
     "inStock": true,
-    "tags": [
-      "certified",
-      "gift"
-    ],
+    "tags": ["certified", "gift"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "allergens": "None",
@@ -2872,13 +2367,7 @@
     "price": 325.9,
     "rating": 1.6,
     "inStock": false,
-    "tags": [
-      "handmade",
-      "sale",
-      "bestseller",
-      "gift",
-      "certified"
-    ],
+    "tags": ["handmade", "sale", "bestseller", "gift", "certified"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "servings": "4",
@@ -2895,10 +2384,7 @@
     "price": 91.86,
     "rating": 4.5,
     "inStock": true,
-    "tags": [
-      "clearance",
-      "vegan"
-    ],
+    "tags": ["clearance", "vegan"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "origin": "Made in USA",
@@ -2915,10 +2401,7 @@
     "price": 121.45,
     "rating": 2.3,
     "inStock": false,
-    "tags": [
-      "clearance",
-      "certified"
-    ],
+    "tags": ["clearance", "certified"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "origin": "Made in USA",
@@ -2937,12 +2420,7 @@
     "price": 461.12,
     "rating": 3.1,
     "inStock": true,
-    "tags": [
-      "bundle",
-      "fast-shipping",
-      "organic",
-      "eco"
-    ],
+    "tags": ["bundle", "fast-shipping", "organic", "eco"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "careInstructions": "Machine wash cold",
@@ -2959,9 +2437,7 @@
     "price": 485.06,
     "rating": null,
     "inStock": true,
-    "tags": [
-      "sale"
-    ],
+    "tags": ["sale"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "batteryLife": "48 hours",
@@ -2980,10 +2456,7 @@
     "price": 473,
     "rating": 4.9,
     "inStock": true,
-    "tags": [
-      "gift",
-      "organic"
-    ],
+    "tags": ["gift", "organic"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "dimensions": "10x5x3 cm",
@@ -3001,12 +2474,7 @@
     "price": 16.26,
     "rating": 1.8,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "lightweight",
-      "limited",
-      "imported"
-    ],
+    "tags": ["bluetooth", "lightweight", "limited", "imported"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "weight": "1kg",
@@ -3025,11 +2493,7 @@
     "price": 363.82,
     "rating": 4.7,
     "inStock": true,
-    "tags": [
-      "imported",
-      "clearance",
-      "premium"
-    ],
+    "tags": ["imported", "clearance", "premium"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "warranty": "2 years",
@@ -3048,10 +2512,7 @@
     "price": 127.05,
     "rating": 1.2,
     "inStock": true,
-    "tags": [
-      "fast-shipping",
-      "waterproof"
-    ],
+    "tags": ["fast-shipping", "waterproof"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "isbn": "978-1-491-95042-1",
@@ -3070,11 +2531,7 @@
     "price": 426.1,
     "rating": 1.8,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "sale",
-      "bestseller"
-    ],
+    "tags": ["handmade", "sale", "bestseller"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "allergens": "Contains dairy",
@@ -3092,11 +2549,7 @@
     "price": 373.75,
     "rating": 2.2,
     "inStock": true,
-    "tags": [
-      "limited",
-      "vegan",
-      "handmade"
-    ],
+    "tags": ["limited", "vegan", "handmade"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "fit": "Slim",
@@ -3115,13 +2568,7 @@
     "price": 235.59,
     "rating": 4.3,
     "inStock": true,
-    "tags": [
-      "bestseller",
-      "wireless",
-      "new",
-      "limited",
-      "imported"
-    ],
+    "tags": ["bestseller", "wireless", "new", "limited", "imported"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "isbn": "978-0-596-51774-8",
@@ -3140,12 +2587,7 @@
     "price": 174.74,
     "rating": 4.8,
     "inStock": false,
-    "tags": [
-      "imported",
-      "refurbished",
-      "bundle",
-      "waterproof"
-    ],
+    "tags": ["imported", "refurbished", "bundle", "waterproof"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "origin": "Made in Japan",
@@ -3164,10 +2606,7 @@
     "price": 307.58,
     "rating": 2.6,
     "inStock": false,
-    "tags": [
-      "lightweight",
-      "waterproof"
-    ],
+    "tags": ["lightweight", "waterproof"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "weight": "2kg",
@@ -3185,12 +2624,7 @@
     "price": 426.05,
     "rating": 3.8,
     "inStock": false,
-    "tags": [
-      "certified",
-      "bundle",
-      "bluetooth",
-      "limited"
-    ],
+    "tags": ["certified", "bundle", "bluetooth", "limited"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "weight": "2kg",
@@ -3207,11 +2641,7 @@
     "price": 403.48,
     "rating": 1.1,
     "inStock": true,
-    "tags": [
-      "gift",
-      "waterproof",
-      "fast-shipping"
-    ],
+    "tags": ["gift", "waterproof", "fast-shipping"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "material": "Merino Wool",
@@ -3230,11 +2660,7 @@
     "price": 92.77,
     "rating": 3.5,
     "inStock": true,
-    "tags": [
-      "waterproof",
-      "wireless",
-      "new"
-    ],
+    "tags": ["waterproof", "wireless", "new"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "origin": "Made in Italy",
@@ -3253,10 +2679,7 @@
     "price": 102.81,
     "rating": 3.3,
     "inStock": false,
-    "tags": [
-      "clearance",
-      "gift"
-    ],
+    "tags": ["clearance", "gift"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "allergens": "Contains dairy",
@@ -3273,12 +2696,7 @@
     "price": 490.16,
     "rating": 2.9,
     "inStock": true,
-    "tags": [
-      "eco",
-      "refurbished",
-      "clearance",
-      "bundle"
-    ],
+    "tags": ["eco", "refurbished", "clearance", "bundle"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "calories": "220 kcal",
@@ -3313,10 +2731,7 @@
     "price": 303.01,
     "rating": 3.4,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "vegan"
-    ],
+    "tags": ["handmade", "vegan"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "calories": "220 kcal",
@@ -3335,9 +2750,7 @@
     "price": 204.68,
     "rating": 2.1,
     "inStock": false,
-    "tags": [
-      "premium"
-    ],
+    "tags": ["premium"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "pages": "320",
@@ -3354,12 +2767,7 @@
     "price": 161.37,
     "rating": 2.6,
     "inStock": true,
-    "tags": [
-      "waterproof",
-      "handmade",
-      "sale",
-      "wireless"
-    ],
+    "tags": ["waterproof", "handmade", "sale", "wireless"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "allergens": "Contains gluten",
@@ -3376,13 +2784,7 @@
     "price": 235.43,
     "rating": 1.2,
     "inStock": true,
-    "tags": [
-      "certified",
-      "waterproof",
-      "clearance",
-      "wireless",
-      "refurbished"
-    ],
+    "tags": ["certified", "waterproof", "clearance", "wireless", "refurbished"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "origin": "Made in USA",
@@ -3399,10 +2801,7 @@
     "price": 187.44,
     "rating": 2.8,
     "inStock": true,
-    "tags": [
-      "imported",
-      "sale"
-    ],
+    "tags": ["imported", "sale"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "publisher": "Packt",
@@ -3420,9 +2819,7 @@
     "price": 152.59,
     "rating": 1.6,
     "inStock": true,
-    "tags": [
-      "bestseller"
-    ],
+    "tags": ["bestseller"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "season": "Spring/Fall",
@@ -3441,10 +2838,7 @@
     "price": 355.9,
     "rating": 1.3,
     "inStock": true,
-    "tags": [
-      "new",
-      "fast-shipping"
-    ],
+    "tags": ["new", "fast-shipping"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "origin": "Made in USA",
@@ -3461,10 +2855,7 @@
     "price": 177.01,
     "rating": 3.1,
     "inStock": false,
-    "tags": [
-      "eco",
-      "bundle"
-    ],
+    "tags": ["eco", "bundle"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "fit": "Slim",
@@ -3482,12 +2873,7 @@
     "price": 359.29,
     "rating": 2.4,
     "inStock": true,
-    "tags": [
-      "handmade",
-      "bluetooth",
-      "sale",
-      "refurbished"
-    ],
+    "tags": ["handmade", "bluetooth", "sale", "refurbished"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "isbn": "978-0-13-468599-1",
@@ -3504,12 +2890,7 @@
     "price": 196.23,
     "rating": 3.2,
     "inStock": false,
-    "tags": [
-      "premium",
-      "new",
-      "clearance",
-      "organic"
-    ],
+    "tags": ["premium", "new", "clearance", "organic"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "batteryLife": "48 hours",
@@ -3528,12 +2909,7 @@
     "price": 214.98,
     "rating": 3.9,
     "inStock": true,
-    "tags": [
-      "eco",
-      "wireless",
-      "bundle",
-      "bluetooth"
-    ],
+    "tags": ["eco", "wireless", "bundle", "bluetooth"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "fit": "Relaxed",
@@ -3552,13 +2928,7 @@
     "price": 239.75,
     "rating": 4.3,
     "inStock": true,
-    "tags": [
-      "refurbished",
-      "fast-shipping",
-      "gift",
-      "new",
-      "waterproof"
-    ],
+    "tags": ["refurbished", "fast-shipping", "gift", "new", "waterproof"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "isbn": "978-0-13-468599-1",
@@ -3575,11 +2945,7 @@
     "price": 48.58,
     "rating": 2.2,
     "inStock": false,
-    "tags": [
-      "bestseller",
-      "vegan",
-      "waterproof"
-    ],
+    "tags": ["bestseller", "vegan", "waterproof"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "language": "English",
@@ -3598,11 +2964,7 @@
     "price": 66.17,
     "rating": 3.6,
     "inStock": true,
-    "tags": [
-      "vegan",
-      "limited",
-      "wireless"
-    ],
+    "tags": ["vegan", "limited", "wireless"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "material": "Nylon",
@@ -3619,10 +2981,7 @@
     "price": 199.76,
     "rating": null,
     "inStock": false,
-    "tags": [
-      "bluetooth",
-      "wireless"
-    ],
+    "tags": ["bluetooth", "wireless"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "careInstructions": "Machine wash cold",
@@ -3641,12 +3000,7 @@
     "price": 239.39,
     "rating": 3.7,
     "inStock": true,
-    "tags": [
-      "new",
-      "waterproof",
-      "sale",
-      "fast-shipping"
-    ],
+    "tags": ["new", "waterproof", "sale", "fast-shipping"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "season": "Winter",
@@ -3665,9 +3019,7 @@
     "price": 32.26,
     "rating": 2.3,
     "inStock": false,
-    "tags": [
-      "waterproof"
-    ],
+    "tags": ["waterproof"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "servings": "24",
@@ -3686,9 +3038,7 @@
     "price": 154.7,
     "rating": 3.2,
     "inStock": true,
-    "tags": [
-      "imported"
-    ],
+    "tags": ["imported"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "origin": "Made in Italy",
@@ -3706,9 +3056,7 @@
     "price": 188.94,
     "rating": 4.6,
     "inStock": true,
-    "tags": [
-      "limited"
-    ],
+    "tags": ["limited"],
     "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
     "specifications": {
       "isbn": "978-0-596-51774-8",
@@ -3726,10 +3074,7 @@
     "price": 160.45,
     "rating": 4.4,
     "inStock": true,
-    "tags": [
-      "lightweight",
-      "wireless"
-    ],
+    "tags": ["lightweight", "wireless"],
     "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
     "specifications": {
       "batteryLife": "72 hours",
@@ -3747,12 +3092,7 @@
     "price": 256.26,
     "rating": 3.6,
     "inStock": false,
-    "tags": [
-      "handmade",
-      "limited",
-      "organic",
-      "refurbished"
-    ],
+    "tags": ["handmade", "limited", "organic", "refurbished"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "certification": "USDA Organic",
@@ -3770,13 +3110,7 @@
     "price": 455.9,
     "rating": 3.7,
     "inStock": true,
-    "tags": [
-      "lightweight",
-      "handmade",
-      "refurbished",
-      "organic",
-      "fast-shipping"
-    ],
+    "tags": ["lightweight", "handmade", "refurbished", "organic", "fast-shipping"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "pages": "640",
@@ -3794,13 +3128,7 @@
     "price": 171.63,
     "rating": 3.8,
     "inStock": true,
-    "tags": [
-      "clearance",
-      "limited",
-      "imported",
-      "wireless",
-      "bestseller"
-    ],
+    "tags": ["clearance", "limited", "imported", "wireless", "bestseller"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "season": "Spring/Fall",
@@ -3818,12 +3146,7 @@
     "price": 222.6,
     "rating": 4.7,
     "inStock": true,
-    "tags": [
-      "bestseller",
-      "lightweight",
-      "premium",
-      "sale"
-    ],
+    "tags": ["bestseller", "lightweight", "premium", "sale"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "material": "Linen",
@@ -3841,11 +3164,7 @@
     "price": 479.95,
     "rating": 3.4,
     "inStock": true,
-    "tags": [
-      "limited",
-      "certified",
-      "eco"
-    ],
+    "tags": ["limited", "certified", "eco"],
     "description": null,
     "specifications": {
       "origin": "Made in USA",
@@ -3863,11 +3182,7 @@
     "price": 73.24,
     "rating": 3.5,
     "inStock": true,
-    "tags": [
-      "bluetooth",
-      "eco",
-      "waterproof"
-    ],
+    "tags": ["bluetooth", "eco", "waterproof"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "pages": "640",
@@ -3886,12 +3201,7 @@
     "price": 274.55,
     "rating": 2.4,
     "inStock": false,
-    "tags": [
-      "certified",
-      "bundle",
-      "waterproof",
-      "organic"
-    ],
+    "tags": ["certified", "bundle", "waterproof", "organic"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "weight": "2kg",
@@ -3908,10 +3218,7 @@
     "price": 393.25,
     "rating": 2.5,
     "inStock": true,
-    "tags": [
-      "lightweight",
-      "fast-shipping"
-    ],
+    "tags": ["lightweight", "fast-shipping"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "origin": "Made in Japan",
@@ -3929,11 +3236,7 @@
     "price": 55.04,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "eco",
-      "handmade",
-      "lightweight"
-    ],
+    "tags": ["eco", "handmade", "lightweight"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "season": "Summer",
@@ -3968,13 +3271,7 @@
     "price": 139.72,
     "rating": 1.4,
     "inStock": false,
-    "tags": [
-      "handmade",
-      "wireless",
-      "limited",
-      "certified",
-      "bundle"
-    ],
+    "tags": ["handmade", "wireless", "limited", "certified", "bundle"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "calories": "120 kcal",
@@ -3991,10 +3288,7 @@
     "price": 385.83,
     "rating": 2.4,
     "inStock": true,
-    "tags": [
-      "bestseller",
-      "wireless"
-    ],
+    "tags": ["bestseller", "wireless"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "dimensions": "5x5x5 cm",
@@ -4011,10 +3305,7 @@
     "price": 406.72,
     "rating": 3.3,
     "inStock": true,
-    "tags": [
-      "imported",
-      "gift"
-    ],
+    "tags": ["imported", "gift"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "powerInput": "20V/5A",
@@ -4033,11 +3324,7 @@
     "price": 486.52,
     "rating": 2.1,
     "inStock": true,
-    "tags": [
-      "new",
-      "clearance",
-      "bestseller"
-    ],
+    "tags": ["new", "clearance", "bestseller"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "servings": "4",
@@ -4055,9 +3342,7 @@
     "price": 445.06,
     "rating": 2.3,
     "inStock": true,
-    "tags": [
-      "gift"
-    ],
+    "tags": ["gift"],
     "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
     "specifications": {
       "publisher": "Packt",
@@ -4074,11 +3359,7 @@
     "price": 191.75,
     "rating": 3.5,
     "inStock": true,
-    "tags": [
-      "limited",
-      "organic",
-      "imported"
-    ],
+    "tags": ["limited", "organic", "imported"],
     "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
     "specifications": {
       "warranty": "Lifetime",
@@ -4096,9 +3377,7 @@
     "price": 292.82,
     "rating": 1.4,
     "inStock": false,
-    "tags": [
-      "organic"
-    ],
+    "tags": ["organic"],
     "description": "With its compact design and powerful performance, this product punches well above its weight class.",
     "specifications": {
       "careInstructions": "Machine wash cold",
@@ -4117,12 +3396,7 @@
     "price": 365.34,
     "rating": 4.3,
     "inStock": true,
-    "tags": [
-      "new",
-      "gift",
-      "certified",
-      "bestseller"
-    ],
+    "tags": ["new", "gift", "certified", "bestseller"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "origin": "Made in Japan",
@@ -4141,11 +3415,7 @@
     "price": 159.81,
     "rating": 2,
     "inStock": true,
-    "tags": [
-      "bundle",
-      "wireless",
-      "eco"
-    ],
+    "tags": ["bundle", "wireless", "eco"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "fit": "Regular",
@@ -4163,11 +3433,7 @@
     "price": 446.18,
     "rating": 1.3,
     "inStock": true,
-    "tags": [
-      "limited",
-      "waterproof",
-      "wireless"
-    ],
+    "tags": ["limited", "waterproof", "wireless"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "pages": "512",
@@ -4185,11 +3451,7 @@
     "price": 115.27,
     "rating": 2,
     "inStock": false,
-    "tags": [
-      "organic",
-      "bestseller",
-      "bundle"
-    ],
+    "tags": ["organic", "bestseller", "bundle"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "isbn": "978-1-491-95042-1",
@@ -4206,9 +3468,7 @@
     "price": 228.56,
     "rating": 2.2,
     "inStock": false,
-    "tags": [
-      "eco"
-    ],
+    "tags": ["eco"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "allergens": "Contains dairy",
@@ -4226,11 +3486,7 @@
     "price": 216.53,
     "rating": 4,
     "inStock": true,
-    "tags": [
-      "clearance",
-      "handmade",
-      "waterproof"
-    ],
+    "tags": ["clearance", "handmade", "waterproof"],
     "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
     "specifications": {
       "origin": "Made in Italy",
@@ -4249,12 +3505,7 @@
     "price": 223.75,
     "rating": 1.2,
     "inStock": false,
-    "tags": [
-      "bluetooth",
-      "lightweight",
-      "refurbished",
-      "limited"
-    ],
+    "tags": ["bluetooth", "lightweight", "refurbished", "limited"],
     "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
     "specifications": {
       "season": "All season",
@@ -4271,11 +3522,7 @@
     "price": 194.59,
     "rating": null,
     "inStock": true,
-    "tags": [
-      "organic",
-      "bundle",
-      "clearance"
-    ],
+    "tags": ["organic", "bundle", "clearance"],
     "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
     "specifications": {
       "batteryLife": "24 hours",
@@ -4292,9 +3539,7 @@
     "price": 397.6,
     "rating": 3,
     "inStock": true,
-    "tags": [
-      "imported"
-    ],
+    "tags": ["imported"],
     "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
     "specifications": {
       "pages": "640",
@@ -4312,13 +3557,7 @@
     "price": 23.07,
     "rating": 1.4,
     "inStock": false,
-    "tags": [
-      "new",
-      "premium",
-      "gift",
-      "bestseller",
-      "organic"
-    ],
+    "tags": ["new", "premium", "gift", "bestseller", "organic"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "language": "English",
@@ -4337,11 +3576,7 @@
     "price": 487.53,
     "rating": 2.9,
     "inStock": true,
-    "tags": [
-      "wireless",
-      "eco",
-      "sale"
-    ],
+    "tags": ["wireless", "eco", "sale"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "publisher": "Packt",
@@ -4360,13 +3595,7 @@
     "price": 77.08,
     "rating": 2.2,
     "inStock": false,
-    "tags": [
-      "bestseller",
-      "premium",
-      "refurbished",
-      "bundle",
-      "bluetooth"
-    ],
+    "tags": ["bestseller", "premium", "refurbished", "bundle", "bluetooth"],
     "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
     "specifications": {
       "warranty": "90 days",

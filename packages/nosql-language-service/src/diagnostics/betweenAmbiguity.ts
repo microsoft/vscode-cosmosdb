@@ -167,4 +167,3 @@ export function detectBetweenAmbiguity(query: string): BetweenAmbiguityWarning[]
 
     return warnings;
 }
-

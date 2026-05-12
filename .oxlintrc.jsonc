@@ -16,16 +16,6 @@
   "options": {
     "typeAware": true
   },
-  "categories": {
-    // This category includes rules that are 100% error
-    "correctness": "error",
-    "perf": "warn",
-    // These categories might be false positive, therefore they are off
-    "pedantic": "off",
-    "restriction": "off",
-    "style": "off",
-    "suspicious": "off"
-  },
   "env": {
     "builtin": true,
     "es2024": true,
@@ -49,46 +39,6 @@
     "**/*.d.ts"
   ],
   "rules": {
-    // These rules from ESLint are disabled by default in oxlint,
-    // But were enabled in ESLint recommended, enabling them here with error level to make sure they are not missed
-    "getter-return": "error",
-    "no-case-declarations": "error",
-    // "no-dupe-args": "error", // This rule is not exist yet in oxlint
-    "no-empty": "error",
-    "no-fallthrough": "error",
-    // "no-octal": "error", // This rule is not exist yet in oxlint
-    "no-prototype-builtins": "error",
-    "no-redeclare": "error",
-    "no-regex-spaces": "error",
-    "no-undef": "error",
-    "no-unexpected-multiline": "error",
-    "no-unreachable": "error",
-
-    // These rules from TSLint are disabled by default in oxlint,
-    // But were enabled in TSLint recommended, enabling them here with error level to make sure they are not missed
-    "no-var": "error",
-    "prefer-const": "error",
-    "prefer-rest-params": "error",
-    "prefer-spread": "error",
-
-    // Enabling/disabling some rules from ESLint with different level for all files, and override them in specific files if needed
-    "no-inner-declarations": "error",
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "eqeqeq": ["error", "always"],
-    "no-shadow": "off",
-
-    // Allow TSDoc/TypeDoc tags that are not part of the standard JSDoc spec
-    "jsdoc/check-tag-names": [
-      "error",
-      { "definedTags": ["remarks", "typeParam", "defaultValue", "internal", "alpha", "beta", "experimental"] }
-    ],
-
-    "import/consistent-type-specifier-style": ["error", "prefer-inline"],
-    "import/no-duplicates": "error",
-    "import/no-empty-named-blocks": "error",
-    "import/no-mutable-exports": "error",
-    "import/no-self-import": "error",
-
     "license-header/header": [
       "error",
       [
@@ -101,36 +51,209 @@
   },
   "overrides": [
     {
-      "files": ["**/*.ts"],
+      "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
-        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
-        "constructor-super": "off",
-        "getter-return": "off",
-        "no-array-constructor": "off",
-        "no-class-assign": "off",
-        "no-const-assign": "off",
-        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
-        "no-dupe-class-members": "off",
-        "no-dupe-keys": "off",
-        "no-func-assign": "off",
-        "no-import-assign": "off",
-        "no-new-native-nonconstructor": "off",
-        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
-        "no-obj-calls": "off",
-        "no-redeclare": "off",
-        "no-setter-return": "off",
-        "no-this-before-super": "off",
-        "no-undef": "off",
-        "no-unreachable": "off",
-        "no-unsafe-negation": "off",
-        "no-unused-expressions": "off",
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
-        "no-with": "off",
+        // Correctness
+        // NOTE: rules omitted below are disabled for TypeScript files — the TypeScript compiler already catches them
+        "eslint/constructor-super": "off",
+        "eslint/getter-return": "off",
+        "eslint/no-class-assign": "off",
+        "eslint/no-const-assign": "off",
+        "eslint/no-dupe-class-members": "off",
+        "eslint/no-dupe-keys": "off",
+        "eslint/no-func-assign": "off",
+        "eslint/no-import-assign": "off",
+        "eslint/no-new-native-nonconstructor": "off",
+        "eslint/no-obj-calls": "off",
+        "eslint/no-setter-return": "off",
+        "eslint/no-this-before-super": "off",
+        "eslint/no-unreachable": "off",
+        "eslint/no-unsafe-negation": "off",
+        "eslint/no-unused-expressions": "off",
+        "eslint/no-with": "off",
+        "eslint/no-redeclare": "off",
+        // Correctness — only enabled rules
+        "eslint/for-direction": "error",
+        "eslint/no-async-promise-executor": "error",
+        "eslint/no-caller": "error",
+        "eslint/no-compare-neg-zero": "error",
+        "eslint/no-cond-assign": "error",
+        "eslint/no-constant-binary-expression": "error",
+        "eslint/no-constant-condition": "error",
+        "eslint/no-control-regex": "error",
+        "eslint/no-debugger": "error",
+        "eslint/no-delete-var": "error",
+        "eslint/no-dupe-else-if": "error",
+        "eslint/no-duplicate-case": "error",
+        "eslint/no-empty-character-class": "error",
+        "eslint/no-empty-pattern": "error",
+        "eslint/no-empty-static-block": "error",
+        "eslint/no-eval": "error",
+        "eslint/no-ex-assign": "error",
+        "eslint/no-extra-boolean-cast": "error",
+        "eslint/no-global-assign": "error",
+        "eslint/no-invalid-regexp": "error",
+        "eslint/no-irregular-whitespace": "error",
+        "eslint/no-iterator": "error",
+        "eslint/no-loss-of-precision": "error",
+        "eslint/no-misleading-character-class": "error",
+        "eslint/no-nonoctal-decimal-escape": "error",
+        "eslint/no-self-assign": "error",
+        "eslint/no-shadow-restricted-names": "error",
+        "eslint/no-sparse-arrays": "error",
+        "eslint/no-unassigned-vars": "error",
+        "eslint/no-unsafe-finally": "error",
+        "eslint/no-unsafe-optional-chaining": "error",
+        "eslint/no-unused-labels": "error",
+        "eslint/no-unused-private-class-members": "error",
+        "eslint/no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_"
+          }
+        ],
+        "eslint/no-useless-backreference": "error",
+        "eslint/no-useless-catch": "error",
+        "eslint/no-useless-escape": "error",
+        "eslint/no-useless-rename": "error",
+        "eslint/require-yield": "error",
+        "eslint/use-isnan": "error",
+        "eslint/valid-typeof": "error",
+        "import/default": "error",
+        "import/namespace": "error",
+        "jsdoc/check-property-names": "error",
+        "jsdoc/check-tag-names": [
+          "error",
+          // Allow TSDoc/TypeDoc tags that are not part of the standard JSDoc spec
+          {
+            "definedTags": ["remarks", "typeParam", "defaultValue", "internal", "alpha", "beta", "experimental"]
+          }
+        ],
+        "jsdoc/implements-on-classes": "error",
+        "jsdoc/no-defaults": "error",
+        "jsdoc/require-property": "error",
+        "jsdoc/require-property-description": "error",
+        "jsdoc/require-property-name": "error",
+        "jsdoc/require-property-type": "error",
+        "jsdoc/require-yields": "error",
+        "jsx_a11y/alt-text": "error",
+        "jsx_a11y/anchor-has-content": "error",
+        "jsx_a11y/anchor-is-valid": "error",
+        "jsx_a11y/aria-activedescendant-has-tabindex": "error",
+        "jsx_a11y/aria-props": "error",
+        "jsx_a11y/aria-proptypes": "error",
+        "jsx_a11y/aria-role": "error",
+        "jsx_a11y/aria-unsupported-elements": "error",
+        "jsx_a11y/autocomplete-valid": "error",
+        "jsx_a11y/click-events-have-key-events": "error",
+        "jsx_a11y/heading-has-content": "error",
+        "jsx_a11y/html-has-lang": "error",
+        "jsx_a11y/iframe-has-title": "error",
+        "jsx_a11y/img-redundant-alt": "error",
+        "jsx_a11y/label-has-associated-control": "error",
+        "jsx_a11y/lang": "error",
+        "jsx_a11y/media-has-caption": "error",
+        "jsx_a11y/mouse-events-have-key-events": "error",
+        "jsx_a11y/no-access-key": "error",
+        "jsx_a11y/no-aria-hidden-on-focusable": "error",
+        "jsx_a11y/no-autofocus": "error",
+        "jsx_a11y/no-distracting-elements": "error",
+        "jsx_a11y/no-noninteractive-tabindex": "error",
+        "jsx_a11y/no-redundant-roles": "error",
+        "jsx_a11y/no-static-element-interactions": "error",
+        "jsx_a11y/prefer-tag-over-role": "error",
+        "jsx_a11y/role-has-required-aria-props": "error",
+        "jsx_a11y/role-supports-aria-props": "error",
+        "jsx_a11y/scope": "error",
+        "jsx_a11y/tabindex-no-positive": "error",
+        "promise/no-callback-in-promise": "error",
+        "promise/no-new-statics": "error",
+        "promise/valid-params": "error",
+        "react/exhaustive-deps": "error",
+        "react/forward-ref-uses-ref": "error",
+        "react/jsx-key": "error",
+        "react/jsx-no-duplicate-props": "error",
+        "react/jsx-no-undef": "error",
+        "react/jsx-props-no-spread-multi": "error",
+        "react/no-children-prop": "error",
+        "react/no-danger-with-children": "error",
+        "react/no-did-mount-set-state": "error",
+        "react/no-did-update-set-state": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-find-dom-node": "error",
+        "react/no-is-mounted": "error",
+        "react/no-render-return-value": "error",
+        "react/no-string-refs": "error",
+        "react/no-this-in-sfc": "error",
+        "react/no-will-update-set-state": "error",
+        "react/void-dom-elements-no-children": "error",
+        "typescript/await-thenable": "error",
+        "typescript/no-array-delete": "error",
+        "typescript/no-base-to-string": "warn",
+        "typescript/no-duplicate-enum-values": "error",
+        "typescript/no-duplicate-type-constituents": "error",
+        "typescript/no-extra-non-null-assertion": "error",
+        "typescript/no-floating-promises": "error",
+        "typescript/no-for-in-array": "error",
+        "typescript/no-implied-eval": "error",
+        "typescript/no-meaningless-void-operator": "error",
+        "typescript/no-misused-new": "error",
+        "typescript/no-misused-spread": "error",
+        "typescript/no-non-null-asserted-optional-chain": "error",
+        "typescript/no-redundant-type-constituents": "error",
+        "typescript/no-this-alias": "error",
+        "typescript/no-unnecessary-parameter-property-assignment": "error",
+        "typescript/no-unsafe-declaration-merging": "error",
+        "typescript/no-unsafe-unary-minus": "error",
+        "typescript/no-useless-default-assignment": "error",
+        "typescript/no-useless-empty-export": "error",
+        "typescript/no-wrapper-object-types": "error",
+        "typescript/prefer-as-const": "error",
+        "typescript/prefer-namespace-keyword": "error",
+        "typescript/require-array-sort-compare": "error",
+        "typescript/restrict-template-expressions": "error",
+        "typescript/triple-slash-reference": "error",
+        "typescript/unbound-method": "warn",
+        "unicorn/no-await-in-promise-methods": "error",
+        "unicorn/no-empty-file": "error",
+        "unicorn/no-invalid-fetch-options": "error",
+        "unicorn/no-invalid-remove-event-listener": "error",
+        "unicorn/no-new-array": "error",
+        "unicorn/no-single-promise-in-promise-methods": "error",
+        "unicorn/no-thenable": "error",
+        "unicorn/no-unnecessary-await": "error",
+        "unicorn/no-useless-fallback-in-spread": "error",
+        "unicorn/no-useless-length-check": "error",
+        "unicorn/no-useless-spread": "error",
+        "unicorn/prefer-set-size": "error",
+        "unicorn/prefer-string-starts-ends-with": "error",
+        "vitest/consistent-each-for": "error",
+        "vitest/expect-expect": "error",
+        "vitest/hoisted-apis-on-top": "error",
+        "vitest/no-conditional-expect": "error",
+        "vitest/no-conditional-tests": "error",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-focused-tests": "error",
+        "vitest/require-awaited-expect-poll": "error",
+        "vitest/require-local-test-context-for-concurrent-snapshots": "error",
+        "vitest/require-mock-type-parameters": "error",
+        "vitest/valid-expect": "error",
+        "vitest/valid-title": "error",
+        "vitest/warn-todo": "error",
 
-        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
-        // enabling them here with error level to make sure they are not missed
+        // Pedantic — only enabled rules
+        "eslint/eqeqeq": ["error", "always"],
+        "eslint/no-case-declarations": "error",
+        "eslint/no-fallthrough": "error",
+        "eslint/no-inner-declarations": "error",
+        "eslint/no-prototype-builtins": "error",
+        "react/display-name": "error",
+        "react/jsx-no-target-blank": "error",
+        "react/no-unescaped-entities": "error",
+        "react/rules-of-hooks": "error",
         "typescript/ban-ts-comment": "error",
         "typescript/no-array-constructor": "error",
+        "typescript/no-deprecated": "warn",
         "typescript/no-empty-object-type": "error",
         "typescript/no-explicit-any": "error",
         "typescript/no-misused-promises": "error",
@@ -146,179 +269,93 @@
         "typescript/no-unsafe-member-access": "error",
         "typescript/no-unsafe-return": "error",
         "typescript/only-throw-error": "error",
-        "typescript/prefer-promise-reject-errors": "error",
-        "typescript/require-await": "warn", // changed by us
-        "typescript/restrict-plus-operands": "error",
-
-        // Enabling some rules
-        "typescript/consistent-type-imports": "error",
-        "typescript/no-base-to-string": "warn",
-        "typescript/no-deprecated": "warn",
-        "typescript/no-restricted-types": "error",
         "typescript/prefer-includes": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/require-await": "warn",
+        "typescript/restrict-plus-operands": "error",
         "typescript/return-await": "warn",
         "typescript/switch-exhaustiveness-check": "warn",
-        "typescript/unbound-method": "warn",
 
-        "import/first": ["error", "absolute-first"]
+        // Style — only enabled rules
+        "eslint/prefer-const": "error",
+        "eslint/prefer-rest-params": "error",
+        "eslint/prefer-spread": "error",
+        "import/consistent-type-specifier-style": ["error", "prefer-inline"],
+        "import/first": ["error", "absolute-first"],
+        "import/no-duplicates": "error",
+        "import/no-mutable-exports": "error",
+        "typescript/consistent-type-imports": "error",
+
+        // Suspicious — only enabled rules
+        "eslint/no-unexpected-multiline": "error",
+        "import/no-empty-named-blocks": "error",
+        "import/no-self-import": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "vitest/no-commented-out-tests": "error",
+
+        // Restriction — only enabled rules
+        "eslint/no-empty": "error",
+        "eslint/no-regex-spaces": "error",
+        "eslint/no-var": "error",
+        "react/no-unknown-property": "error",
+        "typescript/no-restricted-types": "error",
+
+        // Perf — only enabled rules
+        "eslint/no-await-in-loop": "warn",
+        "eslint/no-useless-call": "warn",
+        "react/jsx-no-constructed-context-values": "warn",
+        "react/no-array-index-key": "warn",
+        "react_perf/jsx-no-jsx-as-prop": "warn",
+        "react_perf/jsx-no-new-array-as-prop": "warn",
+        "react_perf/jsx-no-new-function-as-prop": "warn",
+        "react_perf/jsx-no-new-object-as-prop": "warn",
+        "unicorn/prefer-array-find": "warn",
+        "unicorn/prefer-array-flat-map": "warn",
+        "unicorn/prefer-set-has": "warn"
       }
     },
     {
       "files": ["**/*.tsx"],
       "env": {
         "browser": true
-      },
-      "rules": {
-        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
-        "constructor-super": "off",
-        "getter-return": "off",
-        "no-array-constructor": "off",
-        "no-class-assign": "off",
-        "no-const-assign": "off",
-        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
-        "no-dupe-class-members": "off",
-        "no-dupe-keys": "off",
-        "no-func-assign": "off",
-        "no-import-assign": "off",
-        "no-new-native-nonconstructor": "off",
-        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
-        "no-obj-calls": "off",
-        "no-redeclare": "off",
-        "no-setter-return": "off",
-        "no-this-before-super": "off",
-        "no-undef": "off",
-        "no-unreachable": "off",
-        "no-unsafe-negation": "off",
-        "no-unused-expressions": "off",
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
-        "no-with": "off",
-
-        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
-        // enabling them here with error level to make sure they are not missed
-        "typescript/ban-ts-comment": "error",
-        "typescript/no-array-constructor": "error",
-        "typescript/no-empty-object-type": "error",
-        "typescript/no-explicit-any": "error",
-        "typescript/no-misused-promises": "error",
-        "typescript/no-namespace": "warn",
-        "typescript/no-require-imports": "error",
-        "typescript/no-unnecessary-type-assertion": "error",
-        "typescript/no-unnecessary-type-constraint": "error",
-        "typescript/no-unsafe-argument": "error",
-        "typescript/no-unsafe-assignment": "error",
-        "typescript/no-unsafe-call": "error",
-        "typescript/no-unsafe-enum-comparison": "error",
-        "typescript/no-unsafe-function-type": "error",
-        "typescript/no-unsafe-member-access": "error",
-        "typescript/no-unsafe-return": "error",
-        "typescript/only-throw-error": "error",
-        "typescript/prefer-promise-reject-errors": "error",
-        "typescript/require-await": "warn", // changed by us
-        "typescript/restrict-plus-operands": "error",
-
-        // Enabling some rules
-        "typescript/consistent-type-imports": "error",
-        "typescript/no-base-to-string": "warn",
-        "typescript/no-restricted-types": "error",
-        "typescript/unbound-method": "warn",
-
-        // These rules from ESLint for React are disabled by default in oxlint
-        "react/display-name": "error",
-        "react/jsx-no-comment-textnodes": "error",
-        "react/jsx-no-target-blank": "error",
-        // "react/jsx-uses-react": "error", // This rule is not exist yet in oxlint
-        // "react/jsx-uses-vars": "error", // This rule is not exist yet in oxlint
-        // "react/no-deprecated": "error", // This rule is not exist yet in oxlint
-        "react/no-unescaped-entities": "error",
-        "react/no-unknown-property": "error",
-        "react/no-unsafe": "off",
-        // "react/prop-types": "error", // This rule is not exist yet in oxlint
-        "react/react-in-jsx-scope": "off", // Not needed with React 17's new JSX transform
-        "react/require-render-return": "error",
-
-        // These rules from ESLint for React hooks are disabled by default in oxlint
-        "react/rules-of-hooks": "error",
-        "react/exhaustive-deps": "warn",
-
-        // Enabling some rules
-        "react/no-array-index-key": "warn",
-
-        "import/first": ["error", "absolute-first"]
-
-        // "jsx-a11y/interactive-supports-focus": "error", // This rule is not exist yet in oxlint
-        // "jsx-a11y/no-interactive-element-to-noninteractive-role": "error", // This rule is not exist yet in oxlint
-        // "jsx-a11y/no-noninteractive-element-interactions": "error", // This rule is not exist yet in oxlint
-        // "jsx-a11y/no-noninteractive-element-to-interactive-role": "error", // This rule is not exist yet in oxlint
       }
     },
     {
       "files": ["src/**/*.test.ts", "packages/**/*.test.ts", "**/__mocks__/**/*.ts"],
-      "env": {
-        "browser": false
-      },
       "rules": {
-        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
-        "constructor-super": "off",
-        "getter-return": "off",
-        "no-array-constructor": "off",
-        "no-class-assign": "off",
-        "no-const-assign": "off",
-        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
-        "no-dupe-class-members": "off",
-        "no-dupe-keys": "off",
-        "no-func-assign": "off",
-        "no-import-assign": "off",
-        "no-new-native-nonconstructor": "off",
-        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
-        "no-obj-calls": "off",
-        "no-redeclare": "off",
-        "no-setter-return": "off",
-        "no-this-before-super": "off",
-        "no-undef": "off",
-        "no-unreachable": "off",
-        "no-unsafe-negation": "off",
-        "no-unused-expressions": "off",
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
-        "no-with": "off",
-
-        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
-        // enabling them here with error level to make sure they are not missed
-        "typescript/ban-ts-comment": "error",
-        "typescript/no-array-constructor": "error",
-        "typescript/no-empty-object-type": "error",
+        // These files use Vitest, not Jest.
+        // vitest plugin in oxlint activates jest built-in rules as "warn" by default —
+        // disable them all to avoid duplicate/conflicting reports.
+        "jest/expect-expect": "off",
+        "jest/no-conditional-expect": "off",
+        "jest/no-disabled-tests": "off",
+        "jest/no-export": "off",
+        "jest/no-focused-tests": "off",
+        "jest/no-standalone-expect": "off",
+        "jest/prefer-snapshot-hint": "off",
+        "jest/require-to-throw-message": "off",
+        "jest/valid-describe-callback": "off",
+        "jest/valid-expect": "off",
+        "jest/valid-expect-in-promise": "off",
+        "jest/valid-title": "off",
+        // Correctness - only disabled rules
+        "eslint/no-dupe-else-if": "off",
+        "typescript/no-base-to-string": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/unbound-method": "off",
+        "vitest/require-mock-type-parameters": "off",
+        // Pedantic — only disabled rules
         "typescript/no-explicit-any": "off",
-        "typescript/no-misused-promises": "error",
-        "typescript/no-namespace": "warn",
-        "typescript/no-require-imports": "error",
-        "typescript/no-unnecessary-type-assertion": "error",
-        "typescript/no-unnecessary-type-constraint": "error",
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-call": "off",
-        "typescript/no-unsafe-enum-comparison": "error",
-        "typescript/no-unsafe-function-type": "error",
         "typescript/no-unsafe-member-access": "off",
         "typescript/no-unsafe-return": "off",
-        "typescript/only-throw-error": "error",
-        "typescript/prefer-promise-reject-errors": "error",
-        "typescript/require-await": "off", // changed by us
-        "typescript/restrict-plus-operands": "error",
-
-        // Enabling some rules
-        "typescript/consistent-type-imports": "error",
-        "typescript/no-restricted-types": "error",
-
-        // Disabling some rules for test files
-        "no-dupe-else-if": "off",
-        "no-empty": "off",
-
-        "typescript/no-base-to-string": "off",
-        "typescript/unbound-method": "off",
-        "typescript/no-floating-promises": "off",
-
-        "vitest/require-mock-type-parameters": "off", // ???
-
-        "import/first": ["off"]
+        "typescript/require-await": "off",
+        // Style — only disabled rules
+        "import/first": "off",
+        // Restriction — only disabled rules
+        "eslint/no-empty": "off"
       }
     },
     {
@@ -328,65 +365,26 @@
         "mocha": true
       },
       "rules": {
-        // These rules TS recommended disables from ESLint, since they are already handled by TypeScript compiler
-        "constructor-super": "off",
-        "getter-return": "off",
-        "no-array-constructor": "off",
-        "no-class-assign": "off",
-        "no-const-assign": "off",
-        // "no-dupe-args": "off", // This rule is not exist yet in oxlint
-        "no-dupe-class-members": "off",
-        "no-dupe-keys": "off",
-        "no-func-assign": "off",
-        "no-import-assign": "off",
-        "no-new-native-nonconstructor": "off",
-        // "no-new-symbol": "off", // This rule is not exist yet in oxlint
-        "no-obj-calls": "off",
-        "no-redeclare": "off",
-        "no-setter-return": "off",
-        "no-this-before-super": "off",
-        "no-undef": "off",
-        "no-unreachable": "off",
-        "no-unsafe-negation": "off",
-        "no-unused-expressions": "off",
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Allow unused variables if they are prefixed with "_"
-        "no-with": "off",
-
-        // These rules from TSLint are disabled by default in oxlint, but were enabled in TSLint recommended,
-        // enabling them here with error level to make sure they are not missed
-        "typescript/ban-ts-comment": "error",
-        "typescript/no-array-constructor": "error",
-        "typescript/no-empty-object-type": "error",
+        // Correctness - only disabled rules
+        "eslint/no-dupe-else-if": "off",
+        "typescript/no-base-to-string": "off",
+        "typescript/no-floating-promises": "off",
+        "typescript/unbound-method": "off",
+        "vitest/require-mock-type-parameters": "off",
+        "vitest/valid-title": "off",
+        // Pedantic — only disabled rules
         "typescript/no-explicit-any": "off",
-        "typescript/no-misused-promises": "error",
-        "typescript/no-namespace": "warn",
-        "typescript/no-require-imports": "error",
-        "typescript/no-unnecessary-type-assertion": "error",
-        "typescript/no-unnecessary-type-constraint": "error",
         "typescript/no-unsafe-argument": "off",
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-call": "off",
-        "typescript/no-unsafe-enum-comparison": "error",
-        "typescript/no-unsafe-function-type": "error",
         "typescript/no-unsafe-member-access": "off",
         "typescript/no-unsafe-return": "off",
-        "typescript/only-throw-error": "error",
-        "typescript/prefer-promise-reject-errors": "error",
-        "typescript/require-await": "off", // changed by us
-        "typescript/restrict-plus-operands": "error",
-
-        // Enabling some rules
-        "typescript/consistent-type-imports": "error",
-        "typescript/no-restricted-types": "error",
-
-        // Disabling some rules for test files
-        "no-dupe-else-if": "off",
-        "no-empty": "off",
-
-        "typescript/no-base-to-string": "off",
-        "typescript/unbound-method": "off",
-        "typescript/no-floating-promises": "off",
-
+        "typescript/require-await": "off",
+        // Style — only disabled rules
+        "import/first": "off",
+        // Restriction — only disabled rules
+        "eslint/no-empty": "off",
+        // Mocha-specific rules
         "mocha/handle-done-callback": "off",
         "mocha/max-top-level-suites": "off",
         "mocha/no-async-suite": "error",

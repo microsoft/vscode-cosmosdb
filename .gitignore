@@ -3,6 +3,7 @@
 
 # CosmosDB emulator data
 .cosmosdb-data/
+.cosmosdb-logs/
 
 # User-specific files
 *.suo

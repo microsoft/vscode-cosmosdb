@@ -10,7 +10,6 @@
 // NegativeParserFixture — a query that must produce parse errors.
 // ---------------------------------------------------------------------------
 
-
 // ========================== Query fixtures ====================================
 
 /**
@@ -81,4 +80,3 @@ export interface NegativeParserFixture {
      */
     errorContains?: string;
 }
-

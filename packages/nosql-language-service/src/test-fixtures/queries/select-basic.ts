@@ -2,7 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-import type { QueryFixture } from './types.js';
+
+import { type QueryFixture } from './types.js';
 
 export const fixtures: QueryFixture[] = [
     // ── S series: basic SELECT ──────────────────────────────────────────────
@@ -11,7 +12,10 @@ export const fixtures: QueryFixture[] = [
         description: 'SELECT * — star',
         query: 'SELECT * FROM c',
         container: 'products',
-        expectAst: { select: { spec: { kind: 'SelectStarSpec' } }, from: { collection: { kind: 'AliasedCollectionExpression' } } },
+        expectAst: {
+            select: { spec: { kind: 'SelectStarSpec' } },
+            from: { collection: { kind: 'AliasedCollectionExpression' } },
+        },
     },
     {
         id: 'S-02',
@@ -97,6 +101,8 @@ export const fixtures: QueryFixture[] = [
         description: 'FROM subquery',
         query: 'SELECT * FROM (SELECT c.id, c.price FROM c WHERE c.inStock = true) sub',
         container: 'products',
-        expectAst: { from: { collection: { kind: 'AliasedCollectionExpression', collection: { kind: 'SubqueryCollection' } } } },
+        expectAst: {
+            from: { collection: { kind: 'AliasedCollectionExpression', collection: { kind: 'SubqueryCollection' } } },
+        },
     },
 ];

@@ -29,7 +29,7 @@ import { fixtures as selectFunctionsFixtures } from './queries/select-functions.
 import { fixtures as selectGroupByOrderByFixtures } from './queries/select-groupby-orderby.js';
 import { fixtures as selectTypeConversionFixtures } from './queries/select-type-conversion.js';
 import { fixtures as selectWhereFixtures } from './queries/select-where.js';
-import type { QueryFixture } from './queries/types.js';
+import { type QueryFixture } from './queries/types.js';
 
 // ── Environment guard ─────────────────────────────────────────────────────────
 
@@ -43,8 +43,11 @@ const masterKey =
     'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
 const databaseId = process.env.COSMOS_DATABASE ?? 'nosql-test-db';
 
+// oxlint-disable-next-line
 if (!endpoint) {
+    // oxlint-disable-next-line vitest/no-disabled-tests
     describe.skip('integration tests (no emulator — set COSMOS_ENDPOINT to enable)', () => {
+        // oxlint-disable-next-line vitest/no-disabled-tests
         it.skip('skipped', () => {});
     });
 } else {
@@ -72,6 +75,7 @@ if (!endpoint) {
      * Runs a SQL query against the specified container.
      * Returns the items array or throws on error.
      */
+    // oxlint-disable-next-line no-inner-declarations
     async function runQuery(containerName: string, sql: string): Promise<unknown[]> {
         const container = containerCache.get(containerName);
         if (!container) throw new Error(`Container not in cache: ${containerName}`);
@@ -103,11 +107,13 @@ if (!endpoint) {
                     const items = await runQuery(f.container, f.query);
 
                     if (f.expectMinRows !== undefined) {
+                        // oxlint-disable-next-line vitest/no-conditional-expect
                         expect(items.length, `[${f.id}] expected ≥ ${f.expectMinRows} rows`).toBeGreaterThanOrEqual(
                             f.expectMinRows,
                         );
                     }
                     if (f.expectMaxRows !== undefined) {
+                        // oxlint-disable-next-line vitest/no-conditional-expect
                         expect(items.length, `[${f.id}] expected ≤ ${f.expectMaxRows} rows`).toBeLessThanOrEqual(
                             f.expectMaxRows,
                         );
@@ -130,10 +136,12 @@ if (!endpoint) {
             it(`${f.id}: ${f.description}`, async () => {
                 if (f.expectError) {
                     // Expect the SDK to throw (e.g. UDF not registered)
+                    // oxlint-disable-next-line vitest/no-conditional-expect
                     await expect(runQuery(f.container, f.query)).rejects.toThrow();
                 } else {
                     const items = await runQuery(f.container, f.query);
                     if (f.expectMaxRows === 0) {
+                        // oxlint-disable-next-line vitest/no-conditional-expect
                         expect(items.length, `[${f.id}] expected 0 rows`).toBe(0);
                     }
                 }

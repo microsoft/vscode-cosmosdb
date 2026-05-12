@@ -6,9 +6,16 @@ services:
   cosmosdb-init:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
     user: root
-    entrypoint: ["sh", "-c", "chown -R 1000:1000 /usr/cosmos/data"]
+    entrypoint:
+      - sh
+      - -c
+      - |
+        chown -R 1000:1000 /usr/cosmos/data
+        chown -R 1000:1000 /logs
+        find /usr/cosmos/data -name "postmaster.pid" -delete
     volumes:
       - ./.cosmosdb-data:/usr/cosmos/data
+      - ./.cosmosdb-logs:/logs
 
   cosmosdb-emulator:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
@@ -27,3 +34,10 @@ services:
     volumes:
       # Mount local directory for data persistence
       - ./.cosmosdb-data:/usr/cosmos/data
+      # Mount local directory for logs
+      - ./.cosmosdb-logs:/logs
+    tmpfs:
+      # Always-empty in-memory mount: prevents stale PG socket lock files
+      # from surviving container restarts (docker restart keeps overlay layer).
+      # uid/gid=1000 matches the emulator process user so PG can write the socket.
+      - /socket:uid=1000,gid=1000,mode=0755

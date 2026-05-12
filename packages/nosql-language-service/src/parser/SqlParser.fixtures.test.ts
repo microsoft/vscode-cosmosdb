@@ -25,18 +25,19 @@
 
 import { describe, expect, it } from 'vitest';
 import { parse } from '../index.js';
-import type { NegativeParserFixture, QueryFixture } from '../test-fixtures/queries/types.js';
+import { fixtures as negativeParserFixtures } from '../test-fixtures/queries/negative-parser.js';
 import { fixtures as selectBasicFixtures } from '../test-fixtures/queries/select-basic.js';
+import { fixtures as selectComplexFixtures } from '../test-fixtures/queries/select-complex.js';
 import { fixtures as selectFromJoinFixtures } from '../test-fixtures/queries/select-from-join.js';
-import { fixtures as selectWhereFixtures } from '../test-fixtures/queries/select-where.js';
 import { fixtures as selectFunctionsFixtures } from '../test-fixtures/queries/select-functions.js';
 import { fixtures as selectGroupByOrderByFixtures } from '../test-fixtures/queries/select-groupby-orderby.js';
-import { fixtures as selectComplexFixtures } from '../test-fixtures/queries/select-complex.js';
-import { fixtures as negativeParserFixtures } from '../test-fixtures/queries/negative-parser.js';
+import { fixtures as selectWhereFixtures } from '../test-fixtures/queries/select-where.js';
+import { type NegativeParserFixture, type QueryFixture } from '../test-fixtures/queries/types.js';
 
 // ========================== Parametric runners ================================
 
 function runFixtures(suiteName: string, fixtures: QueryFixture[]): void {
+    // oxlint-disable-next-line vitest/valid-title
     describe(suiteName, () => {
         for (const f of fixtures) {
             it(`${f.id}: ${f.description}`, () => {
@@ -46,6 +47,7 @@ function runFixtures(suiteName: string, fixtures: QueryFixture[]): void {
                 expect(ast, `[${f.id}] AST must be defined`).toBeDefined();
 
                 if (f.expectAst) {
+                    // oxlint-disable-next-line vitest/no-conditional-expect
                     expect(ast!.query).toMatchObject(f.expectAst);
                 }
             });
@@ -54,12 +56,14 @@ function runFixtures(suiteName: string, fixtures: QueryFixture[]): void {
 }
 
 function runNegativeFixtures(suiteName: string, fixtures: NegativeParserFixture[]): void {
+    // oxlint-disable-next-line vitest/valid-title
     describe(suiteName, () => {
         for (const f of fixtures) {
             it(`${f.id}: ${f.description}`, () => {
                 const result = parse(f.query);
                 expect(result.errors.length, `[${f.id}] expected parse errors for: ${f.query}`).toBeGreaterThan(0);
                 if (f.errorContains) {
+                    // oxlint-disable-next-line vitest/no-conditional-expect
                     expect(result.errors[0].message).toContain(f.errorContains);
                 }
             });
@@ -72,28 +76,76 @@ function runNegativeFixtures(suiteName: string, fixtures: NegativeParserFixture[
 describe('SqlParser — fixture-driven (Phase 2a)', () => {
     runFixtures('S + F series: basic SELECT and FROM', selectBasicFixtures);
     runFixtures('J series: JOIN and array iterators', selectFromJoinFixtures);
-    runFixtures('W series: WHERE comparisons', selectWhereFixtures.filter((f) => f.id.startsWith('W')));
-    runFixtures('B series: BETWEEN, IN, LIKE', selectWhereFixtures.filter((f) => f.id.startsWith('B')));
-    runFixtures('T series: type-checking functions', selectWhereFixtures.filter((f) => f.id.startsWith('T')));
-    runFixtures('E series: EXISTS subquery', selectWhereFixtures.filter((f) => f.id.startsWith('E')));
+    runFixtures(
+        'W series: WHERE comparisons',
+        selectWhereFixtures.filter((f) => f.id.startsWith('W')),
+    );
+    runFixtures(
+        'B series: BETWEEN, IN, LIKE',
+        selectWhereFixtures.filter((f) => f.id.startsWith('B')),
+    );
+    runFixtures(
+        'T series: type-checking functions',
+        selectWhereFixtures.filter((f) => f.id.startsWith('T')),
+    );
+    runFixtures(
+        'E series: EXISTS subquery',
+        selectWhereFixtures.filter((f) => f.id.startsWith('E')),
+    );
 });
 
 describe('SqlParser — fixture-driven (Phase 2b: functions)', () => {
-    runFixtures('STR series: string functions', selectFunctionsFixtures.filter((f) => f.id.startsWith('STR')));
-    runFixtures('M series: math functions', selectFunctionsFixtures.filter((f) => f.id.startsWith('M')));
-    runFixtures('A series: array functions', selectFunctionsFixtures.filter((f) => f.id.startsWith('A')));
-    runFixtures('D series: date / time functions', selectFunctionsFixtures.filter((f) => f.id.startsWith('D')));
+    runFixtures(
+        'STR series: string functions',
+        selectFunctionsFixtures.filter((f) => f.id.startsWith('STR')),
+    );
+    runFixtures(
+        'M series: math functions',
+        selectFunctionsFixtures.filter((f) => f.id.startsWith('M')),
+    );
+    runFixtures(
+        'A series: array functions',
+        selectFunctionsFixtures.filter((f) => f.id.startsWith('A')),
+    );
+    runFixtures(
+        'D series: date / time functions',
+        selectFunctionsFixtures.filter((f) => f.id.startsWith('D')),
+    );
 });
 
 describe('SqlParser — fixture-driven (Phase 2c: aggregations + complex)', () => {
-    runFixtures('O series: ORDER BY', selectGroupByOrderByFixtures.filter((f) => f.id.startsWith('O')));
-    runFixtures('G series: GROUP BY + aggregations', selectGroupByOrderByFixtures.filter((f) => f.id.startsWith('G')));
-    runFixtures('P series: OFFSET / LIMIT', selectGroupByOrderByFixtures.filter((f) => f.id.startsWith('P')));
-    runFixtures('SQ series: scalar subqueries', selectComplexFixtures.filter((f) => f.id.startsWith('SQ')));
-    runFixtures('OP series: operators', selectComplexFixtures.filter((f) => f.id.startsWith('OP')));
-    runFixtures('PR series: parameters', selectComplexFixtures.filter((f) => f.id.startsWith('PR')));
-    runFixtures('UDF series: user-defined functions', selectComplexFixtures.filter((f) => f.id.startsWith('UDF')));
-    runFixtures('CX series: complex / compositional', selectComplexFixtures.filter((f) => f.id.startsWith('CX')));
+    runFixtures(
+        'O series: ORDER BY',
+        selectGroupByOrderByFixtures.filter((f) => f.id.startsWith('O')),
+    );
+    runFixtures(
+        'G series: GROUP BY + aggregations',
+        selectGroupByOrderByFixtures.filter((f) => f.id.startsWith('G')),
+    );
+    runFixtures(
+        'P series: OFFSET / LIMIT',
+        selectGroupByOrderByFixtures.filter((f) => f.id.startsWith('P')),
+    );
+    runFixtures(
+        'SQ series: scalar subqueries',
+        selectComplexFixtures.filter((f) => f.id.startsWith('SQ')),
+    );
+    runFixtures(
+        'OP series: operators',
+        selectComplexFixtures.filter((f) => f.id.startsWith('OP')),
+    );
+    runFixtures(
+        'PR series: parameters',
+        selectComplexFixtures.filter((f) => f.id.startsWith('PR')),
+    );
+    runFixtures(
+        'UDF series: user-defined functions',
+        selectComplexFixtures.filter((f) => f.id.startsWith('UDF')),
+    );
+    runFixtures(
+        'CX series: complex / compositional',
+        selectComplexFixtures.filter((f) => f.id.startsWith('CX')),
+    );
 });
 
 describe('SqlParser — fixture-driven (Phase 2d: negative parser tests)', () => {

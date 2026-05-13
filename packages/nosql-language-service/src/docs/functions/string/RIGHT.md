@@ -6,12 +6,14 @@
 Returns the right part of a string with the specified number of characters.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `string` | string | The source string. |
+
+| Name     | Type    | Description                   |
+| -------- | ------- | ----------------------------- |
+| `string` | string  | The source string.            |
 | `length` | integer | Number of characters to take. |
 
 ## Return Value
+
 Returns a string.
 
 ---

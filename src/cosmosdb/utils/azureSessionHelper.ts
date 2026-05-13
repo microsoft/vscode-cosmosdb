@@ -20,7 +20,7 @@ async function getSessionForDatabaseAccount(
 ): Promise<vscode.AuthenticationSession | undefined> {
     const endpointUrl = new URL(endpoint);
     const scope = `${endpointUrl.origin}${endpointUrl.pathname}.default`;
-    return await getSessionFromVSCode(scope, tenantId, { createIfNone: false });
+    return getSessionFromVSCode(scope, tenantId, { createIfNone: false });
 }
 
 export type AccessToken = { token: string; expiresOnTimestamp: number };

@@ -6,14 +6,17 @@
 Returns the maximum value in the expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any scalar expression. |
+
+| Name         | Type | Description            |
+| ------------ | ---- | ---------------------- |
+| `expression` | any  | Any scalar expression. |
 
 ## Return Value
+
 Returns the maximum value, respecting CosmosDB type ordering.
 
 ## Examples
+
 ```sql
 SELECT MAX(c.price) FROM c
 ```

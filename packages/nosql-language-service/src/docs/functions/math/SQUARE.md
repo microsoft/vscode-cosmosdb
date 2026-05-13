@@ -6,12 +6,14 @@
 Returns the square of the specified numeric expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description           |
+| -------- | ------- | --------------------- |
 | `number` | numeric | A numeric expression. |
 
 ## Return Value
-Returns a numeric value (number * number).
+
+Returns a numeric value (number \* number).
 
 ---
 

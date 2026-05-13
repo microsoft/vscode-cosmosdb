@@ -97,4 +97,3 @@ export function registerCosmosDbSql(
 
     return composite;
 }
-

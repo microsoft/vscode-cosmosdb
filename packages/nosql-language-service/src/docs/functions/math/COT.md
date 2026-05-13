@@ -6,11 +6,13 @@
 Returns the trigonometric cotangent of the specified angle in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type    | Description       |
+| -------- | ------- | ----------------- |
 | `number` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---

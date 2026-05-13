@@ -3,6 +3,7 @@
 Logical conjunction operator. Returns `true` when both operands are true.
 
 ## Syntax
+
 ```sql
 expr1 AND expr2
 ```
@@ -10,7 +11,7 @@ expr1 AND expr2
 ## Operator Precedence
 
 | Operator | Priority |
-|----------|----------|
+| -------- | -------- |
 | NOT      | 1        |
 | **AND**  | **2**    |
 | OR       | 3        |

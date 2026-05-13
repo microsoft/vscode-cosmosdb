@@ -3,6 +3,7 @@
 Removes duplicate values from the result set.
 
 ## Syntax
+
 ```sql
 SELECT DISTINCT ...
 ```

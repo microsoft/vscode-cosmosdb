@@ -7,8 +7,8 @@ import { Toaster, useId, useToastController } from '@fluentui/react-components';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { type DocumentAppRouter } from '../../../../panels/trpc/appRouter';
 import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
-import { ErrorBoundary } from '../../../utils/ErrorBoundary';
 import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
+import { ErrorBoundary } from '../../../utils/ErrorBoundary';
 import { DocumentContextProvider } from './DocumentContextProvider';
 import { defaultState, dispatch as DocumentPanelDispatch, type DocumentState } from './DocumentState';
 

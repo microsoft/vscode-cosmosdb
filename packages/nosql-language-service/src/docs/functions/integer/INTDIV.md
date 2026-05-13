@@ -6,12 +6,14 @@
 Returns the result of integer division (left / right) as a 64-bit integer.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `left` | integer | Dividend. |
-| `right` | integer | Divisor. |
+
+| Name    | Type    | Description |
+| ------- | ------- | ----------- |
+| `left`  | integer | Dividend.   |
+| `right` | integer | Divisor.    |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---

@@ -6,11 +6,13 @@
 Returns a string expression after converting uppercase characters to lowercase.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name     | Type   | Description            |
+| -------- | ------ | ---------------------- |
 | `string` | string | The string expression. |
 
 ## Return Value
+
 Returns the lowercase string.
 
 ---

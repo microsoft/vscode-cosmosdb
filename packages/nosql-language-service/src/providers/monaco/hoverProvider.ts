@@ -42,4 +42,3 @@ export class MonacoHoverProvider implements monacoEditor.languages.HoverProvider
         };
     }
 }
-

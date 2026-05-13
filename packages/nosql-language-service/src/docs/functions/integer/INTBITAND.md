@@ -6,12 +6,14 @@
 Returns the result of bitwise AND on two 64-bit integers.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `left` | integer | Left operand. |
+
+| Name    | Type    | Description    |
+| ------- | ------- | -------------- |
+| `left`  | integer | Left operand.  |
 | `right` | integer | Right operand. |
 
 ## Return Value
+
 Returns a 64-bit integer.
 
 ---

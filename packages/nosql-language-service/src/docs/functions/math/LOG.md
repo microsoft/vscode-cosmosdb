@@ -6,12 +6,14 @@
 Returns the natural logarithm of the specified numeric expression, or the logarithm using the specified base.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `number` | numeric | A positive numeric expression. |
-| `base` | numeric | Optional logarithm base (default: e). |
+
+| Name     | Type    | Description                           |
+| -------- | ------- | ------------------------------------- |
+| `number` | numeric | A positive numeric expression.        |
+| `base`   | numeric | Optional logarithm base (default: e). |
 
 ## Return Value
+
 Returns a numeric value.
 
 ---

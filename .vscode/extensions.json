@@ -1,9 +1,8 @@
 {
   "recommendations": [
-    "dbaeumer.vscode-eslint",
     "ms-azuretools.vscode-azureresourcegroups",
     "amodio.tsl-problem-matcher",
-    "Orta.vscode-jest",
-    "esbenp.prettier-vscode"
+    "oxc.oxc-vscode",
+    "vitest.explorer"
   ]
 }

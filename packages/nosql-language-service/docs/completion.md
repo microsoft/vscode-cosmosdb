@@ -16,19 +16,19 @@ full grammar. Instead, it uses a lightweight approach:
 
 ## Context Detection
 
-| Context | Detected When | Items Generated |
-|---------|---------------|-----------------|
-| `QueryStart` | Empty query | `SELECT` |
-| `AfterSelect` | Previous token is `SELECT` | `*`, aliases, `TOP`, `DISTINCT`, `VALUE`, functions |
-| `InSelectList` | After comma in SELECT clause | aliases, functions |
-| `AfterFrom` | Previous token is `FROM` | (nothing — user types collection name) |
-| `AfterFromClause` | Identifier after `FROM` | `WHERE`, `ORDER BY`, `JOIN`, `GROUP BY`, `OFFSET` |
-| `AfterDot` | Text matches `alias.` | Schema fields from JSON Schema |
-| `AfterWhere` | Previous token is `WHERE` | aliases, expression keywords, functions |
-| `InExpression` | After operator or keyword | aliases, expression keywords, functions |
-| `AfterOrder` | Previous token is `ORDER` | `BY` |
-| `AfterGroup` | Previous token is `GROUP` | `BY` |
-| `AfterOrderBy` | Previous token is `BY` | aliases |
+| Context           | Detected When                | Items Generated                                     |
+| ----------------- | ---------------------------- | --------------------------------------------------- |
+| `QueryStart`      | Empty query                  | `SELECT`                                            |
+| `AfterSelect`     | Previous token is `SELECT`   | `*`, aliases, `TOP`, `DISTINCT`, `VALUE`, functions |
+| `InSelectList`    | After comma in SELECT clause | aliases, functions                                  |
+| `AfterFrom`       | Previous token is `FROM`     | (nothing — user types collection name)              |
+| `AfterFromClause` | Identifier after `FROM`      | `WHERE`, `ORDER BY`, `JOIN`, `GROUP BY`, `OFFSET`   |
+| `AfterDot`        | Text matches `alias.`        | Schema fields from JSON Schema                      |
+| `AfterWhere`      | Previous token is `WHERE`    | aliases, expression keywords, functions             |
+| `InExpression`    | After operator or keyword    | aliases, expression keywords, functions             |
+| `AfterOrder`      | Previous token is `ORDER`    | `BY`                                                |
+| `AfterGroup`      | Previous token is `GROUP`    | `BY`                                                |
+| `AfterOrderBy`    | Previous token is `BY`       | aliases                                             |
 
 ## Priority Weights
 
@@ -38,39 +38,39 @@ lexicographically.
 
 ### After `SELECT`:
 
-| Priority | Item | Rationale |
-|----------|------|-----------|
-| 1 | `*` | Most common SELECT pattern |
-| 2 | `c` (alias) | User usually types `c.field` |
-| 10 | `TOP` | Common modifier (~20% of queries) |
-| 15 | `DISTINCT` | Less common (~5%) |
-| 20 | `VALUE` | Specialized usage |
-| 50+ | `COUNT`, `SUM` | Aggregate functions |
-| 80+ | `ST_DISTANCE` | Rare spatial functions |
+| Priority | Item           | Rationale                         |
+| -------- | -------------- | --------------------------------- |
+| 1        | `*`            | Most common SELECT pattern        |
+| 2        | `c` (alias)    | User usually types `c.field`      |
+| 10       | `TOP`          | Common modifier (~20% of queries) |
+| 15       | `DISTINCT`     | Less common (~5%)                 |
+| 20       | `VALUE`        | Specialized usage                 |
+| 50+      | `COUNT`, `SUM` | Aggregate functions               |
+| 80+      | `ST_DISTANCE`  | Rare spatial functions            |
 
 ### After `FROM c `:
 
-| Priority | Item | Rationale |
-|----------|------|-----------|
-| 1 | `WHERE` | Vast majority of queries have WHERE |
-| 5 | `ORDER BY` | Very common |
-| 10 | `JOIN` | Common for nested arrays |
-| 15 | `GROUP BY` | Less common |
-| 20 | `OFFSET` | Pagination queries |
+| Priority | Item       | Rationale                           |
+| -------- | ---------- | ----------------------------------- |
+| 1        | `WHERE`    | Vast majority of queries have WHERE |
+| 5        | `ORDER BY` | Very common                         |
+| 10       | `JOIN`     | Common for nested arrays            |
+| 15       | `GROUP BY` | Less common                         |
+| 20       | `OFFSET`   | Pagination queries                  |
 
 ### In WHERE expressions:
 
-| Priority | Item | Rationale |
-|----------|------|-----------|
-| 1 | `c` (alias) | Almost always start with alias |
-| 5 | `AND` | Very common combinator |
-| 8 | `OR` | Common combinator |
-| 12 | `NOT` | Negation |
-| 15 | `IN` | Set membership |
-| 20 | `BETWEEN` | Range check |
-| 22 | `LIKE` | Pattern matching |
-| 25 | `EXISTS` | Subquery existence |
-| 30+ | functions | `IS_DEFINED`, `CONTAINS`, etc. |
+| Priority | Item        | Rationale                      |
+| -------- | ----------- | ------------------------------ |
+| 1        | `c` (alias) | Almost always start with alias |
+| 5        | `AND`       | Very common combinator         |
+| 8        | `OR`        | Common combinator              |
+| 12       | `NOT`       | Negation                       |
+| 15       | `IN`        | Set membership                 |
+| 20       | `BETWEEN`   | Range check                    |
+| 22       | `LIKE`      | Pattern matching               |
+| 25       | `EXISTS`    | Subquery existence             |
+| 30+      | functions   | `IS_DEFINED`, `CONTAINS`, etc. |
 
 ### Schema fields (after `c.`):
 
@@ -84,13 +84,13 @@ Formula: `sortText = pad(1000 - occurrence) + fieldName`
 
 Functions are grouped by category with sub-priorities:
 
-| Sub-priority | Category | Examples |
-|-------------|----------|----------|
-| 0–4 | Aggregate | `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` |
-| 5–14 | Type checking | `IS_DEFINED`, `IS_NULL`, `IS_ARRAY` |
-| 15–25 | String | `CONTAINS`, `STARTSWITH`, `LOWER` |
-| 26–29 | Array | `ARRAY_LENGTH`, `ARRAY_CONTAINS` |
-| 50+ | Others | Spatial, date/time, etc. |
+| Sub-priority | Category      | Examples                            |
+| ------------ | ------------- | ----------------------------------- |
+| 0–4          | Aggregate     | `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` |
+| 5–14         | Type checking | `IS_DEFINED`, `IS_NULL`, `IS_ARRAY` |
+| 15–25        | String        | `CONTAINS`, `STARTSWITH`, `LOWER`   |
+| 26–29        | Array         | `ARRAY_LENGTH`, `ARRAY_CONTAINS`    |
+| 50+          | Others        | Spatial, date/time, etc.            |
 
 ## Alias Detection
 
@@ -101,6 +101,7 @@ The engine auto-detects collection aliases from the query:
 - `JOIN t IN c.tags` → alias `t`
 
 These are used to:
+
 1. Suggest aliases after `SELECT`, `WHERE`, etc.
 2. Gate schema field suggestions — `c.` shows fields, `x.`
    doesn't (unless `x` is a known alias)
@@ -118,6 +119,7 @@ schema.properties.address.properties.geo.properties
 ```
 
 For arrays with object items:
+
 ```
 "SELECT t." (where t IN c.tags) → path within items schema
 schema.properties.tags.items.properties
@@ -167,4 +169,3 @@ function mapKind(kind: CompletionItemKind) {
   }
 }
 ```
-

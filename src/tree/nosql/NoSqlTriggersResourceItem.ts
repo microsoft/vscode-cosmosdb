@@ -4,10 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type Experience } from '../../AzureDBExperiences';
-import { type TreeElement } from '../TreeElement';
 import { CosmosDBTriggersResourceItem } from '../cosmosdb/CosmosDBTriggersResourceItem';
 import { type CosmosDBTriggersModel } from '../cosmosdb/models/CosmosDBTriggersModel';
 import { type TriggerResource } from '../cosmosdb/models/CosmosDBTypes';
+import { type TreeElement } from '../TreeElement';
 import { NoSqlTriggerResourceItem } from './NoSqlTriggerResourceItem';
 
 export class NoSqlTriggersResourceItem extends CosmosDBTriggersResourceItem {

@@ -13,6 +13,7 @@
 
 import { type IToken, type TokenType } from 'chevrotain';
 import { getCompletions, type CompletionItem, type JSONSchema } from '../completion/SqlCompletion.js';
+import { detectBetweenAmbiguity } from '../diagnostics/betweenAmbiguity.js';
 import { detectTypos } from '../diagnostics/typoDetection.js';
 import { parse, type ParseResult } from '../index.js';
 import { SqlLexer } from '../lexer/SqlLexer.js';
@@ -183,6 +184,24 @@ export class SqlLanguageService {
             });
         }
 
+        // Append BETWEEN ambiguity warnings
+        for (const w of detectBetweenAmbiguity(query)) {
+            diagnostics.push({
+                range: {
+                    startOffset: w.range.start.offset,
+                    endOffset: w.range.end.offset,
+                    startLine: w.range.start.line,
+                    startColumn: w.range.start.col,
+                    endLine: w.range.end.line,
+                    endColumn: w.range.end.col,
+                },
+                message: w.message,
+                severity: DiagnosticSeverity.Warning,
+                code: 'BETWEEN_AMBIGUITY',
+                source: 'cosmosdb-sql',
+            });
+        }
+
         return diagnostics;
     }
 
@@ -236,6 +255,29 @@ export class SqlLanguageService {
                     message: typo.message,
                     severity: DiagnosticSeverity.Warning,
                     code: 'POSSIBLE_TYPO',
+                    source: 'cosmosdb-sql',
+                });
+            }
+
+            // BETWEEN ambiguity warnings for this region
+            for (const w of detectBetweenAmbiguity(regionText)) {
+                const docStartOffset = region.startOffset + w.range.start.offset;
+                const docEndOffset = region.startOffset + w.range.end.offset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, docStartOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, docEndOffset);
+
+                diagnostics.push({
+                    range: {
+                        startOffset: docStartOffset,
+                        endOffset: docEndOffset,
+                        startLine,
+                        startColumn,
+                        endLine,
+                        endColumn,
+                    },
+                    message: w.message,
+                    severity: DiagnosticSeverity.Warning,
+                    code: 'BETWEEN_AMBIGUITY',
                     source: 'cosmosdb-sql',
                 });
             }

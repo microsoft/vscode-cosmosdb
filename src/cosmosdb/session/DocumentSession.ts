@@ -18,7 +18,6 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-
 import { ext } from '../../extensionVariables';
 import { extractPartitionKey } from '../../utils/document';
 import { getCosmosDBKeyCredential } from '../CosmosDBCredential';

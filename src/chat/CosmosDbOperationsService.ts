@@ -526,7 +526,7 @@ export class CosmosDbOperationsService {
                     }
                     const historyContext = this.getQueryHistoryContext(activeEditor);
 
-                    return await this.handleEditQuery(
+                    return this.handleEditQuery(
                         parameters.userPrompt as string,
                         connection,
                         historyContext,
@@ -567,7 +567,7 @@ export class CosmosDbOperationsService {
                         // No active editor — proceed without editor context
                     }
 
-                    return await this.handleExplainQuery(
+                    return this.handleExplainQuery(
                         currentQuery,
                         parameters.userPrompt as string,
                         connection,
@@ -589,7 +589,7 @@ export class CosmosDbOperationsService {
                     } = this.getActiveQueryEditorContext();
                     const genHistoryContext = this.getQueryHistoryContext(genEditor);
 
-                    return await this.handleEditQuery(
+                    return this.handleEditQuery(
                         parameters.userPrompt as string,
                         genConnection,
                         genHistoryContext,

@@ -8,9 +8,10 @@
   "editor.formatOnPaste": false,
   "editor.insertSpaces": true,
   "editor.tabSize": 4,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
+  "oxc.fmt.configPath": ".oxfmtrc.json",
   "search.exclude": {
     "out": true,
     "dist": true,
@@ -19,6 +20,7 @@
   },
   "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.tsdk": "node_modules/typescript/lib",
+  "vitest.configFiles": ["vitest.config.ts"],
   "vscode-nmake-tools.workspaceBuildDirectories": ["."],
   "vscode-nmake-tools.installOsRepoRustHelperExtension": false,
   "sarif-viewer.connectToGithubCodeScanning": "off"

@@ -403,14 +403,11 @@ export async function estimateDiscoveryTokens(
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
 ): Promise<{ minTokens: number; maxTokens: number } | null> {
-    const schemaPath = projectService.getSchemaPath(project);
-    const schemaFiles = await projectService.listFiles(schemaPath);
+    const schemaFiles = await projectService.listDiscoveryFiles(project, 'schema-ddl');
     if (schemaFiles.length === 0) return null;
 
-    const accessPatternsPath = projectService.getAccessPatternsPath(project);
-    const accessPatternFiles = await projectService.listFiles(accessPatternsPath);
-    const volumetricsPath = projectService.getVolumetricsPath(project);
-    const volumetricFiles = await projectService.listFiles(volumetricsPath);
+    const accessPatternFiles = await projectService.listDiscoveryFiles(project, 'access-patterns');
+    const volumetricFiles = await projectService.listDiscoveryFiles(project, 'volumetrics');
 
     // Build the same props that generateDiscoveryReport uses
     const accessPatternsMdContent = await readFileByName(accessPatternFiles, 'access-patterns.md');
@@ -527,8 +524,7 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
             if (token.isCancellationRequested) return;
 
             // Read schema files for context
-            const schemaPath = projectService.getSchemaPath(project);
-            const schemaFiles = await projectService.listFiles(schemaPath);
+            const schemaFiles = await projectService.listDiscoveryFiles(project, 'schema-ddl');
             const schemaFileTypes = [
                 ...new Set(schemaFiles.map((f) => path.extname(f).replace('.', '')).filter(Boolean)),
             ];
@@ -635,8 +631,7 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
 
             if (token.isCancellationRequested) return;
 
-            const schemaPath = projectService.getSchemaPath(project);
-            const schemaFiles = await projectService.listFiles(schemaPath);
+            const schemaFiles = await projectService.listDiscoveryFiles(project, 'schema-ddl');
 
             // Structural metrics
             context.telemetry.measurements.sourceTableCount = schemaFiles.length;
@@ -658,10 +653,8 @@ export async function runDiscoveryReport(ctx: Phase1Context): Promise<void> {
 
             const analysis = project.phases.discovery.applicationAnalysis as AnalysisResult | undefined;
 
-            const accessPatternsPath = projectService.getAccessPatternsPath(project);
-            const accessPatternFiles = await projectService.listFiles(accessPatternsPath);
-            const volumetricsPath = projectService.getVolumetricsPath(project);
-            const volumetricFiles = await projectService.listFiles(volumetricsPath);
+            const accessPatternFiles = await projectService.listDiscoveryFiles(project, 'access-patterns');
+            const volumetricFiles = await projectService.listDiscoveryFiles(project, 'volumetrics');
 
             if (USE_CHAT_DISCOVERY) {
                 await dispatchChatDiscovery(
@@ -753,8 +746,9 @@ export async function runAnalyzeWithAI(
             ? projectService.getVolumetricsPath(project)
             : projectService.getAccessPatternsPath(project);
 
-    // Collect source files, excluding the template if it lives in the same directory
-    const allFiles = await projectService.listFiles(sourceFolderPath);
+    // Collect source files, excluding the template if it lives in the same directory.
+    // Honors per-source includedFiles/excludedFiles configuration in project.json.
+    const allFiles = await projectService.listDiscoveryFiles(project, subfolder);
     const nonTemplateFiles =
         sourceFolderPath === templateFolderPath ? allFiles.filter((f) => !f.endsWith(`/${fileName}`)) : allFiles;
 

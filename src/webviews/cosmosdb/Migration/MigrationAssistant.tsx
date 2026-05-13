@@ -35,6 +35,7 @@ import {
     type OptionOnSelectData,
 } from '@fluentui/react-components';
 import {
+    AddRegular,
     CheckmarkCircleFilled,
     ChevronDownRegular,
     ChevronRightRegular,
@@ -42,6 +43,7 @@ import {
     CloudAddRegular,
     DatabaseRegular,
     DismissCircleRegular,
+    DismissRegular,
     DocumentRegular,
     ErrorCircleFilled,
     InfoRegular,
@@ -135,8 +137,42 @@ const useStyles = makeStyles({
     fileLink: {
         fontSize: '12px',
         cursor: 'pointer',
-        display: 'block',
+        display: 'flex',
+        alignItems: 'baseline',
         paddingLeft: '8px',
+        flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+    },
+    filePathDir: {
+        color: 'var(--vscode-descriptionForeground)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        minWidth: 0,
+        flex: '0 1 auto',
+        // Render the directory portion right-to-left so overflow ellipsis appears
+        // on the left, keeping the path tail (next to the file name) visible.
+        direction: 'rtl',
+    },
+    filePathName: {
+        flex: '0 0 auto',
+        whiteSpace: 'nowrap',
+    },
+    fileRow: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+    },
+    fileRowExcluded: {
+        opacity: 0.5,
+    },
+    fileLinkExcluded: {
+        textDecoration: 'line-through',
+    },
+    fileRemoveButton: {
+        minWidth: 'auto',
     },
     fileExpander: {
         display: 'flex',
@@ -326,15 +362,63 @@ function TokenBudgetBar({
 
 function FileListExpander({
     files,
+    excludedFiles,
+    workspacePath,
     onOpenFile,
+    onRemoveFile,
+    onRestoreFile,
+    protectedFileName,
     styles,
 }: {
     files: string[];
+    excludedFiles: string[];
+    workspacePath: string;
     onOpenFile: (filePath: string) => void;
+    onRemoveFile: (filePath: string) => void;
+    onRestoreFile: (filePath: string) => void;
+    protectedFileName?: string;
     styles: ReturnType<typeof useStyles>;
 }) {
     const [expanded, setExpanded] = useState(false);
-    if (files.length === 0) return null;
+    if (files.length === 0 && excludedFiles.length === 0) return null;
+
+    const splitPath = (absolutePath: string): { dir: string; name: string } => {
+        const normalized = absolutePath.replace(/\\/g, '/');
+        const wsNormalized = workspacePath.replace(/\\/g, '/');
+        const relative =
+            wsNormalized && (normalized === wsNormalized || normalized.startsWith(wsNormalized + '/'))
+                ? normalized.slice(wsNormalized.length + 1)
+                : normalized;
+        const lastSep = relative.lastIndexOf('/');
+        if (lastSep < 0) return { dir: '', name: relative };
+        // Keep the separator on the name side so it stays visually anchored next to
+        // the file name even when the directory portion ellipsizes (avoids the
+        // trailing slash being bidi-reordered inside the RTL dir span).
+        return { dir: relative.slice(0, lastSep), name: relative.slice(lastSep) };
+    };
+
+    const renderPath = (absolutePath: string, extraClass?: string) => {
+        const { dir, name } = splitPath(absolutePath);
+        const cleanName = name.startsWith('/') ? name.slice(1) : name;
+        return (
+            <>
+                {dir && (
+                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={dir}>
+                        {/* LRM keeps the LTR rendering for ASCII paths inside the RTL container. */}
+                        {'\u200E' + dir}
+                    </span>
+                )}
+                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={cleanName}>
+                    {name}
+                </span>
+            </>
+        );
+    };
+
+    const basename = (absolutePath: string) => {
+        const { name } = splitPath(absolutePath);
+        return name.startsWith('/') ? name.slice(1) : name;
+    };
 
     return (
         <div>
@@ -352,11 +436,57 @@ function FileListExpander({
             </div>
             {expanded && (
                 <div className={styles.fileList}>
-                    {files.map((f: string, i: number) => (
-                        <Link key={i} className={styles.fileLink} onClick={() => onOpenFile(f)}>
-                            {f.split('/').pop() ?? f}
-                        </Link>
-                    ))}
+                    {files.map((f: string, i: number) => {
+                        const name = basename(f);
+                        return (
+                            <div key={`a-${i}`} className={styles.fileRow}>
+                                <Link className={styles.fileLink} onClick={() => onOpenFile(f)}>
+                                    {renderPath(f)}
+                                </Link>
+                                {name !== protectedFileName && (
+                                    <Tooltip content={l10n.t('Remove file')} relationship="label" withArrow>
+                                        <Button
+                                            appearance="subtle"
+                                            size="small"
+                                            className={styles.fileRemoveButton}
+                                            icon={<DismissRegular />}
+                                            aria-label={l10n.t('Remove file {0}', name)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onRemoveFile(f);
+                                            }}
+                                        />
+                                    </Tooltip>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {excludedFiles.map((f: string, i: number) => {
+                        const name = basename(f);
+                        return (
+                            <div key={`x-${i}`} className={`${styles.fileRow} ${styles.fileRowExcluded}`}>
+                                <Link
+                                    className={`${styles.fileLink} ${styles.fileLinkExcluded}`}
+                                    onClick={() => onOpenFile(f)}
+                                >
+                                    {renderPath(f, styles.fileLinkExcluded)}
+                                </Link>
+                                <Tooltip content={l10n.t('Include file')} relationship="label" withArrow>
+                                    <Button
+                                        appearance="subtle"
+                                        size="small"
+                                        className={styles.fileRemoveButton}
+                                        icon={<AddRegular />}
+                                        aria-label={l10n.t('Include file {0}', name)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onRestoreFile(f);
+                                        }}
+                                    />
+                                </Tooltip>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -727,6 +857,30 @@ function MigrationAssistantInner() {
     const handleRemoveFromGitignore = useCallback(() => sendCommand('removeFromGitignore'), [sendCommand]);
 
     const handleOpenFile = useCallback((filePath: string) => sendCommand('openFile', filePath), [sendCommand]);
+    const handleRemoveSchemaFile = useCallback(
+        (filePath: string) => sendCommand('removeDiscoveryFile', 'schema-ddl', filePath),
+        [sendCommand],
+    );
+    const handleRemoveVolumetricFile = useCallback(
+        (filePath: string) => sendCommand('removeDiscoveryFile', 'volumetrics', filePath),
+        [sendCommand],
+    );
+    const handleRemoveAccessPatternFile = useCallback(
+        (filePath: string) => sendCommand('removeDiscoveryFile', 'access-patterns', filePath),
+        [sendCommand],
+    );
+    const handleRestoreSchemaFile = useCallback(
+        (filePath: string) => sendCommand('restoreDiscoveryFile', 'schema-ddl', filePath),
+        [sendCommand],
+    );
+    const handleRestoreVolumetricFile = useCallback(
+        (filePath: string) => sendCommand('restoreDiscoveryFile', 'volumetrics', filePath),
+        [sendCommand],
+    );
+    const handleRestoreAccessPatternFile = useCallback(
+        (filePath: string) => sendCommand('restoreDiscoveryFile', 'access-patterns', filePath),
+        [sendCommand],
+    );
     const handleOpenGeneratedBicep = useCallback(() => sendCommand('openGeneratedBicep'), [sendCommand]);
     const handlePreviewMarkdown = useCallback(
         (filePath: string) => sendCommand('previewMarkdown', filePath),
@@ -1243,7 +1397,11 @@ function MigrationAssistantInner() {
                                         </Text>
                                         <FileListExpander
                                             files={state.schemaFiles}
+                                            excludedFiles={state.excludedSchemaFiles}
+                                            workspacePath={state.workspacePath}
                                             onOpenFile={handleOpenFile}
+                                            onRemoveFile={handleRemoveSchemaFile}
+                                            onRestoreFile={handleRestoreSchemaFile}
                                             styles={styles}
                                         />
                                     </div>
@@ -1255,7 +1413,12 @@ function MigrationAssistantInner() {
                                         </Text>
                                         <FileListExpander
                                             files={state.volumetricFiles}
+                                            excludedFiles={state.excludedVolumetricFiles}
+                                            workspacePath={state.workspacePath}
                                             onOpenFile={handleOpenFile}
+                                            onRemoveFile={handleRemoveVolumetricFile}
+                                            onRestoreFile={handleRestoreVolumetricFile}
+                                            protectedFileName="volumetrics.md"
                                             styles={styles}
                                         />
                                     </div>
@@ -1267,7 +1430,12 @@ function MigrationAssistantInner() {
                                         </Text>
                                         <FileListExpander
                                             files={state.accessPatternFiles}
+                                            excludedFiles={state.excludedAccessPatternFiles}
+                                            workspacePath={state.workspacePath}
                                             onOpenFile={handleOpenFile}
+                                            onRemoveFile={handleRemoveAccessPatternFile}
+                                            onRestoreFile={handleRestoreAccessPatternFile}
+                                            protectedFileName="access-patterns.md"
                                             styles={styles}
                                         />
                                     </div>

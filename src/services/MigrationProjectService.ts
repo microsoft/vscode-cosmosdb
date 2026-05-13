@@ -41,12 +41,19 @@ export interface ProjectJson {
             discoveryInstructions?: string;
             schemaInventory?: {
                 path?: string;
+                // Whitelist: when present, only these files (relative to `path`) are considered.
+                includedFiles?: string[];
+                excludedFiles?: string[];
             };
             volumetrics?: {
                 path?: string;
+                includedFiles?: string[];
+                excludedFiles?: string[];
             };
             accessPatterns?: {
                 path?: string;
+                includedFiles?: string[];
+                excludedFiles?: string[];
             };
             applicationAnalysis?: {
                 projectName?: string;
@@ -253,6 +260,23 @@ export class MigrationProjectService {
     }
 
     /**
+     * Returns true when the discovery source for the given subfolder points at a folder
+     * inside the workspace (i.e. files are referenced in-place, not copied into
+     * `.cosmosdb-migration`).
+     */
+    isWorkspaceReferenced(project: ProjectJson, subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): boolean {
+        const d = project.phases.discovery;
+        switch (subfolder) {
+            case 'schema-ddl':
+                return d.schemaInventory?.path !== undefined;
+            case 'volumetrics':
+                return d.volumetrics?.path !== undefined;
+            case 'access-patterns':
+                return d.accessPatterns?.path !== undefined;
+        }
+    }
+
+    /**
      * Get the resolved path for schema files (custom path or default subfolder).
      */
     getSchemaPath(project: ProjectJson): string {
@@ -357,6 +381,97 @@ export class MigrationProjectService {
             // Directory does not exist or is unreadable
         }
         return results;
+    }
+
+    /**
+     * List discovery source files for a subfolder, applying the per-source
+     * `includedFiles` allowlist and `excludedFiles` filter from project.json
+     * (paths relative to the resolved base).
+     */
+    async listDiscoveryFiles(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+    ): Promise<string[]> {
+        const base = this.getDiscoverySourcePath(project, subfolder);
+        const all = await this.listFiles(base);
+        const included = this.getIncludedFiles(project, subfolder);
+        let filtered = all;
+        if (included !== undefined) {
+            const allow = new Set(included);
+            filtered = filtered.filter((f) => allow.has(path.relative(base, f)));
+        }
+        const excluded = new Set(this.getExcludedFiles(project, subfolder));
+        if (excluded.size > 0) {
+            filtered = filtered.filter((f) => !excluded.has(path.relative(base, f)));
+        }
+        return filtered;
+    }
+
+    /**
+     * List the absolute paths of the discovery files that are currently excluded
+     * (paths preserved relative to the resolved base; only those still present on
+     * disk are returned). Returns empty when an `includedFiles` allowlist is set,
+     * since the "excluded sibling" concept only applies in folder-selection mode.
+     */
+    async listExcludedDiscoveryFiles(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+    ): Promise<string[]> {
+        if (this.getIncludedFiles(project, subfolder) !== undefined) return [];
+        const excluded = this.getExcludedFiles(project, subfolder);
+        if (excluded.length === 0) return [];
+        const base = this.getDiscoverySourcePath(project, subfolder);
+        const all = new Set((await this.listFiles(base)).map((f) => path.relative(base, f)));
+        return excluded.filter((rel) => all.has(rel)).map((rel) => path.join(base, rel));
+    }
+
+    /**
+     * Resolve the discovery source path for a subfolder (custom path or default).
+     */
+    getDiscoverySourcePath(project: ProjectJson, subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): string {
+        switch (subfolder) {
+            case 'schema-ddl':
+                return this.getSchemaPath(project);
+            case 'volumetrics':
+                return this.getVolumetricsPath(project);
+            case 'access-patterns':
+                return this.getAccessPatternsPath(project);
+        }
+    }
+
+    /**
+     * Read the configured `excludedFiles` list for a discovery source.
+     */
+    getExcludedFiles(project: ProjectJson, subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): string[] {
+        const d = project.phases.discovery;
+        switch (subfolder) {
+            case 'schema-ddl':
+                return d.schemaInventory?.excludedFiles ?? [];
+            case 'volumetrics':
+                return d.volumetrics?.excludedFiles ?? [];
+            case 'access-patterns':
+                return d.accessPatterns?.excludedFiles ?? [];
+        }
+    }
+
+    /**
+     * Read the configured `includedFiles` allowlist for a discovery source.
+     * Returns `undefined` when no allowlist is configured (meaning: all files
+     * under `path` are considered).
+     */
+    getIncludedFiles(
+        project: ProjectJson,
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+    ): string[] | undefined {
+        const d = project.phases.discovery;
+        switch (subfolder) {
+            case 'schema-ddl':
+                return d.schemaInventory?.includedFiles;
+            case 'volumetrics':
+                return d.volumetrics?.includedFiles;
+            case 'access-patterns':
+                return d.accessPatterns?.includedFiles;
+        }
     }
 
     /**

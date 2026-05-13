@@ -306,6 +306,16 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.selectFiles('access-patterns');
             case 'selectAccessPatternFolder':
                 return this.selectFolder('access-patterns');
+            case 'removeDiscoveryFile':
+                return this.removeDiscoveryFile(
+                    payload.params[0] as 'schema-ddl' | 'volumetrics' | 'access-patterns',
+                    payload.params[1] as string,
+                );
+            case 'restoreDiscoveryFile':
+                return this.restoreDiscoveryFile(
+                    payload.params[0] as 'schema-ddl' | 'volumetrics' | 'access-patterns',
+                    payload.params[1] as string,
+                );
             case 'createVolumetricTemplate':
                 return this.createTemplate('volumetrics');
             case 'createAccessPatternTemplate':
@@ -423,12 +433,20 @@ export class MigrationAssistantTab extends BaseTab {
             context.telemetry.properties.isNewProject = String(isNewProject);
 
             // Gather file lists
-            const schemaFiles = await this.projectService.listFiles(this.projectService.getSchemaPath(this.project));
-            const volumetricFiles = await this.projectService.listFiles(
-                this.projectService.getVolumetricsPath(this.project),
+            const schemaFiles = await this.projectService.listDiscoveryFiles(this.project, 'schema-ddl');
+            const volumetricFiles = await this.projectService.listDiscoveryFiles(this.project, 'volumetrics');
+            const accessPatternFiles = await this.projectService.listDiscoveryFiles(this.project, 'access-patterns');
+            const excludedSchemaFiles = await this.projectService.listExcludedDiscoveryFiles(
+                this.project,
+                'schema-ddl',
             );
-            const accessPatternFiles = await this.projectService.listFiles(
-                this.projectService.getAccessPatternsPath(this.project),
+            const excludedVolumetricFiles = await this.projectService.listExcludedDiscoveryFiles(
+                this.project,
+                'volumetrics',
+            );
+            const excludedAccessPatternFiles = await this.projectService.listExcludedDiscoveryFiles(
+                this.project,
+                'access-patterns',
             );
 
             // Check if discovery-report.md exists on disk
@@ -567,6 +585,9 @@ export class MigrationAssistantTab extends BaseTab {
                         schemaFiles,
                         volumetricFiles,
                         accessPatternFiles,
+                        excludedSchemaFiles,
+                        excludedVolumetricFiles,
+                        excludedAccessPatternFiles,
                         hasDiscoveryReport,
                         hasAssessmentSummary,
                         assessmentResult,
@@ -686,12 +707,17 @@ export class MigrationAssistantTab extends BaseTab {
     private async refreshFileState(): Promise<void> {
         if (!this.project) return;
 
-        const schemaFiles = await this.projectService.listFiles(this.projectService.getSchemaPath(this.project));
-        const volumetricFiles = await this.projectService.listFiles(
-            this.projectService.getVolumetricsPath(this.project),
+        const schemaFiles = await this.projectService.listDiscoveryFiles(this.project, 'schema-ddl');
+        const volumetricFiles = await this.projectService.listDiscoveryFiles(this.project, 'volumetrics');
+        const accessPatternFiles = await this.projectService.listDiscoveryFiles(this.project, 'access-patterns');
+        const excludedSchemaFiles = await this.projectService.listExcludedDiscoveryFiles(this.project, 'schema-ddl');
+        const excludedVolumetricFiles = await this.projectService.listExcludedDiscoveryFiles(
+            this.project,
+            'volumetrics',
         );
-        const accessPatternFiles = await this.projectService.listFiles(
-            this.projectService.getAccessPatternsPath(this.project),
+        const excludedAccessPatternFiles = await this.projectService.listExcludedDiscoveryFiles(
+            this.project,
+            'access-patterns',
         );
 
         // Templates always live in the default discovery subfolders, not in custom source paths
@@ -739,6 +765,9 @@ export class MigrationAssistantTab extends BaseTab {
                     schemaFiles,
                     volumetricFiles,
                     accessPatternFiles,
+                    excludedSchemaFiles,
+                    excludedVolumetricFiles,
+                    excludedAccessPatternFiles,
                     hasVolumetricsTemplate,
                     hasAccessPatternsTemplate,
                     hasDiscoveryReport,
@@ -885,9 +914,13 @@ export class MigrationAssistantTab extends BaseTab {
         const allFromSameDir = inWorkspace.length > 0 && uniqueDirs.size === 1 && external.length === 0;
 
         if (allFromSameDir) {
-            // Reference the in-workspace folder by path — no file copying
+            // Reference the in-workspace folder by path — no file copying.
+            // Record the exact files the user picked as an `includedFiles` allowlist
+            // so siblings in the same directory don't leak into the selection and
+            // newly-added siblings don't auto-appear later.
             const relativePath = this.projectService.getRelativePath([...uniqueDirs][0]);
-            this.updateProjectPath(subfolder, relativePath);
+            const includedFiles = inWorkspace.map((uri) => path.basename(uri.fsPath));
+            this.updateProjectPath(subfolder, relativePath, includedFiles);
         } else {
             // Mixed sources or multiple directories — copy everything to the default subfolder
             await this.projectService.copyFilesToSubfolder(fileUris, subfolder);
@@ -936,19 +969,21 @@ export class MigrationAssistantTab extends BaseTab {
         await this.loadProject();
     }
 
-    private updateProjectPath(subfolder: string, relativePath: string): void {
+    private updateProjectPath(subfolder: string, relativePath: string, includedFiles?: string[]): void {
         if (!this.project) return;
 
         const discovery = this.project.phases.discovery;
+        const source: { path: string; includedFiles?: string[] } = { path: relativePath };
+        if (includedFiles && includedFiles.length > 0) source.includedFiles = includedFiles;
         switch (subfolder) {
             case 'schema-ddl':
-                discovery.schemaInventory = { path: relativePath };
+                discovery.schemaInventory = source;
                 break;
             case 'volumetrics':
-                discovery.volumetrics = { path: relativePath };
+                discovery.volumetrics = source;
                 break;
             case 'access-patterns':
-                discovery.accessPatterns = { path: relativePath };
+                discovery.accessPatterns = source;
                 break;
         }
     }
@@ -968,6 +1003,117 @@ export class MigrationAssistantTab extends BaseTab {
                 delete discovery.accessPatterns;
                 break;
         }
+    }
+
+    /**
+     * Remove a single discovery source file from the project.
+     *
+     * - When the source folder is a workspace reference, the file is excluded via
+     *   `excludedFiles` in project.json (the workspace file is left untouched). If
+     *   the removal would leave the source empty, the folder reference is cleared.
+     * - When the source folder lives inside `.cosmosdb-migration`, the file is
+     *   deleted from disk after user confirmation.
+     */
+    private async removeDiscoveryFile(
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+        filePath: string,
+    ): Promise<void> {
+        if (!this.project) return;
+
+        const displayName = path.basename(filePath);
+
+        // Predefined templates are part of the migration scaffolding and must not be removable.
+        if (
+            (subfolder === 'volumetrics' && displayName === 'volumetrics.md') ||
+            (subfolder === 'access-patterns' && displayName === 'access-patterns.md')
+        ) {
+            return;
+        }
+
+        const isWorkspaceRef = this.projectService.isWorkspaceReferenced(this.project, subfolder);
+        const base = this.projectService.getDiscoverySourcePath(this.project, subfolder);
+        const relative = path.relative(base, filePath);
+        const discovery = this.project.phases.discovery;
+
+        if (isWorkspaceRef) {
+            const source =
+                subfolder === 'schema-ddl'
+                    ? discovery.schemaInventory
+                    : subfolder === 'volumetrics'
+                      ? discovery.volumetrics
+                      : discovery.accessPatterns;
+            if (!source) return;
+
+            const remaining = (await this.projectService.listDiscoveryFiles(this.project, subfolder)).filter(
+                (f) => path.relative(base, f) !== relative,
+            );
+
+            if (remaining.length === 0) {
+                // Last visible file: clear the workspace folder reference entirely.
+                this.clearProjectPath(subfolder);
+            } else if (source.includedFiles !== undefined) {
+                // File-pick mode: remove from the allowlist (no "excluded" concept here).
+                source.includedFiles = source.includedFiles.filter((p) => p !== relative);
+            } else {
+                // Folder mode: hide the sibling via excludedFiles so it can be restored.
+                const excluded = new Set(source.excludedFiles ?? []);
+                excluded.add(relative);
+                source.excludedFiles = [...excluded];
+            }
+        } else {
+            const confirm = await vscode.window.showWarningMessage(
+                l10n.t('Delete "{0}" from the migration project? This cannot be undone.', displayName),
+                { modal: true },
+                l10n.t('Delete'),
+            );
+            if (confirm !== l10n.t('Delete')) return;
+
+            try {
+                await vscode.workspace.fs.delete(vscode.Uri.file(filePath), { useTrash: false });
+            } catch (err) {
+                void vscode.window.showErrorMessage(
+                    l10n.t('Failed to delete file: {0}', err instanceof Error ? err.message : String(err)),
+                );
+                return;
+            }
+        }
+
+        await this.saveProject();
+        await this.loadProject();
+    }
+
+    /**
+     * Re-include a previously-excluded discovery file by removing it from
+     * `excludedFiles` in project.json.
+     */
+    private async restoreDiscoveryFile(
+        subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns',
+        filePath: string,
+    ): Promise<void> {
+        if (!this.project) return;
+
+        const discovery = this.project.phases.discovery;
+        const source =
+            subfolder === 'schema-ddl'
+                ? discovery.schemaInventory
+                : subfolder === 'volumetrics'
+                  ? discovery.volumetrics
+                  : discovery.accessPatterns;
+        if (!source?.excludedFiles?.length) return;
+
+        const base = this.projectService.getDiscoverySourcePath(this.project, subfolder);
+        const relative = path.relative(base, filePath);
+        const next = source.excludedFiles.filter((p) => p !== relative);
+        if (next.length === source.excludedFiles.length) return;
+
+        if (next.length === 0) {
+            delete source.excludedFiles;
+        } else {
+            source.excludedFiles = next;
+        }
+
+        await this.saveProject();
+        await this.loadProject();
     }
 
     private async analyzeApplication(): Promise<void> {

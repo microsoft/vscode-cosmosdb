@@ -302,8 +302,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             }
 
             // 2. Build dependency graph from schema DDL files
-            const schemaPath = projectService.getSchemaPath(project);
-            const schemaFiles = await projectService.listFiles(schemaPath);
+            const schemaFiles = await projectService.listDiscoveryFiles(project, 'schema-ddl');
             let allDDL = '';
             for (const file of schemaFiles) {
                 try {
@@ -327,8 +326,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
             );
 
             // 3. Read access pattern files
-            const accessPatternsPath = projectService.getAccessPatternsPath(project);
-            const accessPatternFiles = await projectService.listFiles(accessPatternsPath);
+            const accessPatternFiles = await projectService.listDiscoveryFiles(project, 'access-patterns');
             ext.outputChannel.debug(
                 `[Assessment] Input sizes: discoveryReport=${discoveryReport.length} chars, ` +
                     `DDL=${allDDL.length} chars, schemaFiles=${schemaFiles.length}, ` +

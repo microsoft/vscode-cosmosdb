@@ -29,6 +29,9 @@ export interface MigrationState {
     schemaFiles: string[];
     volumetricFiles: string[];
     accessPatternFiles: string[];
+    excludedSchemaFiles: string[];
+    excludedVolumetricFiles: string[];
+    excludedAccessPatternFiles: string[];
     hasVolumetricsTemplate: boolean;
     hasAccessPatternsTemplate: boolean;
 
@@ -223,6 +226,9 @@ export type MigrationAction =
               schemaFiles: string[];
               volumetricFiles: string[];
               accessPatternFiles: string[];
+              excludedSchemaFiles: string[];
+              excludedVolumetricFiles: string[];
+              excludedAccessPatternFiles: string[];
               hasVolumetricsTemplate: boolean;
               hasAccessPatternsTemplate: boolean;
               hasDiscoveryReport: boolean;
@@ -246,6 +252,9 @@ const initialState: MigrationState = {
     schemaFiles: [],
     volumetricFiles: [],
     accessPatternFiles: [],
+    excludedSchemaFiles: [],
+    excludedVolumetricFiles: [],
+    excludedAccessPatternFiles: [],
     hasVolumetricsTemplate: false,
     hasAccessPatternsTemplate: false,
     analysisState: 'locked',
@@ -571,6 +580,9 @@ function migrationReducer(state: MigrationState, action: MigrationAction): Migra
                 schemaFiles: p.schemaFiles,
                 volumetricFiles: p.volumetricFiles,
                 accessPatternFiles: p.accessPatternFiles,
+                excludedSchemaFiles: p.excludedSchemaFiles,
+                excludedVolumetricFiles: p.excludedVolumetricFiles,
+                excludedAccessPatternFiles: p.excludedAccessPatternFiles,
                 hasVolumetricsTemplate: p.hasVolumetricsTemplate,
                 hasAccessPatternsTemplate: p.hasAccessPatternsTemplate,
                 hasSampleData: p.hasSampleData,
@@ -620,6 +632,9 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     schemaFiles: string[];
                     volumetricFiles: string[];
                     accessPatternFiles: string[];
+                    excludedSchemaFiles: string[];
+                    excludedVolumetricFiles: string[];
+                    excludedAccessPatternFiles: string[];
                     hasDiscoveryReport: boolean;
                     hasAssessmentSummary: boolean;
                     assessmentResult: MigrationState['assessmentResult'];
@@ -674,6 +689,9 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             schemaFiles: data.schemaFiles,
                             volumetricFiles: data.volumetricFiles,
                             accessPatternFiles: data.accessPatternFiles,
+                            excludedSchemaFiles: data.excludedSchemaFiles,
+                            excludedVolumetricFiles: data.excludedVolumetricFiles,
+                            excludedAccessPatternFiles: data.excludedAccessPatternFiles,
                             hasVolumetricsTemplate: data.hasVolumetricsTemplate,
                             hasAccessPatternsTemplate: data.hasAccessPatternsTemplate,
                             analysisResult: effectiveAnalysis,
@@ -1056,6 +1074,9 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                     schemaFiles: string[];
                     volumetricFiles: string[];
                     accessPatternFiles: string[];
+                    excludedSchemaFiles: string[];
+                    excludedVolumetricFiles: string[];
+                    excludedAccessPatternFiles: string[];
                     hasVolumetricsTemplate: boolean;
                     hasAccessPatternsTemplate: boolean;
                     hasDiscoveryReport: boolean;

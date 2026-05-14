@@ -10,7 +10,6 @@
 import { type ItemDefinition, type JSONObject, type PartitionKeyDefinition } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
 import { isEmptyObject } from 'es-toolkit';
-import { v4 as uuid } from 'uuid';
 import { CosmosDBHiddenFields } from '../cosmosdb/cosmosdb-shared-constants';
 import { type CosmosDBRecordIdentifier, type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { extractPartitionKey, extractPartitionKeyValues, getDocumentId } from './document';
@@ -397,7 +396,7 @@ const buildTableRowsFromObjectDocuments = async (
             // collectionKind === 'object' is guaranteed by the guard above
             const doc = docRaw as Record<string, unknown>;
             const row: TableRecord = {
-                __id: uuid(),
+                __id: globalThis.crypto.randomUUID(),
                 __documentId: getDocumentId(docRaw as unknown as ItemDefinition, partitionKey) ?? undefined,
             };
 
@@ -479,7 +478,7 @@ export const queryResultToTable = async (
     if (queryKind === 'primitive') {
         const headers = ['_value1'];
         const dataset: TableRecord[] = queryResult.documents.map((doc) => ({
-            __id: uuid(),
+            __id: globalThis.crypto.randomUUID(),
             _value1: typeof doc === 'string' ? sanitizeDisplayString(doc) : doc,
         }));
         return { headers, dataset };

@@ -123,8 +123,6 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                         <MenuDivider />
                         <MenuList>
                             <Menu
-                                key={`bucket-menu-${state.selectedThroughputBucket ?? 0}`}
-                                defaultCheckedValues={{ throughputBucket: ['0'] }}
                                 checkedValues={{
                                     throughputBucket: state.selectedThroughputBucket
                                         ? [state.selectedThroughputBucket.toString()]

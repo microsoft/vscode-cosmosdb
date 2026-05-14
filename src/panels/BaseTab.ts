@@ -5,7 +5,6 @@
 
 import crypto from 'crypto';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
@@ -22,7 +21,7 @@ export class BaseTab {
     protected disposables: vscode.Disposable[] = [];
 
     protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
-        this.id = uuid();
+        this.id = crypto.randomUUID();
         this.start = Date.now();
         this.telemetryContext = new TelemetryContext(viewType);
 

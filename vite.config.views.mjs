@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import react from '@vitejs/plugin-react';
+import { builtinModules } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { analyzer } from 'vite-bundle-analyzer';
@@ -19,36 +20,9 @@ const __dirname = path.dirname(__filename);
  * the webview bundle at build time rather than at runtime.
  */
 function noExtensionImportsPlugin() {
-    const NODE_BUILTINS = new Set([
-        'fs',
-        'path',
-        'os',
-        'crypto',
-        'stream',
-        'http',
-        'https',
-        'net',
-        'tls',
-        'events',
-        'assert',
-        'util',
-        'buffer',
-        'url',
-        'querystring',
-        'child_process',
-        'cluster',
-        'dns',
-        'domain',
-        'readline',
-        'repl',
-        'string_decoder',
-        'timers',
-        'tty',
-        'v8',
-        'vm',
-        'worker_threads',
-        'zlib',
-    ]);
+    // builtinModules: complete list of Node.js built-in module names maintained by Node.js itself
+    // e.g. ['fs', 'path', 'crypto', 'http', ...] — no need to keep a manual list
+    const NODE_BUILTINS = new Set(builtinModules);
 
     return {
         name: 'no-extension-imports',

@@ -7,7 +7,6 @@ import { AbortError, ErrorResponse, TimeoutError, type QueryIterator } from '@az
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { CosmosDbOperationsService } from '../../chat';
 import { ext } from '../../extensionVariables';
@@ -57,7 +56,7 @@ export class QuerySession {
     constructor(connection: NoSqlQueryConnection, query: string, resultViewMetadata: QueryMetadata) {
         const { databaseId, containerId, endpoint, credentials } = connection;
 
-        this.id = uuid();
+        this.id = crypto.randomUUID();
         this.connection = connection;
         this.databaseId = databaseId;
         this.containerId = containerId;

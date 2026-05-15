@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient } from '@azure/cosmos';
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -30,9 +29,14 @@ export abstract class CosmosDBStoredProceduresResourceItem
     }
 
     public async getChildren(): Promise<TreeElement[]> {
-        const storedProcedures = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
-            this.getStoredProcedures(cosmosClient),
-        );
+        const storedProcedures = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
+            const result = await client
+                .database(this.model.database.id)
+                .container(this.model.container.id)
+                .scripts.storedProcedures.readAll()
+                .fetchAll();
+            return result.resources;
+        });
         const sortedProcedures = storedProcedures.sort((a, b) => a.id.localeCompare(b.id));
 
         return this.getChildrenImpl(sortedProcedures);
@@ -46,16 +50,6 @@ export abstract class CosmosDBStoredProceduresResourceItem
             label: l10n.t('Stored Procedures'),
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
-    }
-
-    protected async getStoredProcedures(cosmosClient: CosmosClient): Promise<StoredProcedureResource[]> {
-        const result = await cosmosClient
-            .database(this.model.database.id)
-            .container(this.model.container.id)
-            .scripts.storedProcedures.readAll()
-            .fetchAll();
-
-        return result.resources;
     }
 
     protected abstract getChildrenImpl(storedProcedures: StoredProcedureResource[]): Promise<TreeElement[]>;

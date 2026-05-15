@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
+import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
@@ -44,11 +44,8 @@ export async function cosmosDBDeleteDatabase(
     }
 
     try {
-        const success = await deleteDatabase(node);
-
-        if (success) {
-            showConfirmationAsInSettings(l10n.t('The "{databaseId}" database has been deleted.', { databaseId }));
-        }
+        await deleteDatabase(node);
+        showConfirmationAsInSettings(l10n.t('The "{databaseId}" database has been deleted.', { databaseId }));
     } finally {
         const lastSlashIndex = node.id.lastIndexOf('/');
         let parentId = node.id;
@@ -59,14 +56,9 @@ export async function cosmosDBDeleteDatabase(
     }
 }
 
-async function deleteDatabase(node: CosmosDBDatabaseResourceItem): Promise<boolean> {
-    let success = false;
+async function deleteDatabase(node: CosmosDBDatabaseResourceItem): Promise<void> {
     await ext.state.showDeleting(node.id, async () => {
-        await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
-            const response = await cosmosClient.database(node.model.database.id).delete();
-            success = response.statusCode === 204;
-        });
+        const controlPlane = getControlPlane(node.model.accountInfo);
+        await controlPlane.deleteDatabase(node.model.database.id);
     });
-
-    return success;
 }

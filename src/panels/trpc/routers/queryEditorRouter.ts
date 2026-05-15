@@ -17,7 +17,7 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { CosmosDbOperationsService } from '../../../chat';
-import { getCosmosClient } from '../../../cosmosdb/getCosmosClient';
+import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
@@ -356,12 +356,12 @@ export const queryEditorRouterDef = queryEditorRouter({
             return { connectionList: undefined };
         }
 
-        const cosmosClient = getCosmosClient(ctx.state.connection);
-        const databases = await cosmosClient.databases.readAll().fetchAll();
+        const controlPlane = getControlPlaneForConnection(ctx.state.connection);
+        const databases = await controlPlane.listDatabases();
         const containers = await Promise.allSettled(
-            databases.resources.map(async (database) => {
-                const dbContainers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
-                return dbContainers.resources.map((container) => [database.id, container.id] as string[]);
+            databases.map(async (database) => {
+                const dbContainers = await controlPlane.listContainers(database.id);
+                return dbContainers.map((container) => [database.id, container.id] as string[]);
             }),
         );
 

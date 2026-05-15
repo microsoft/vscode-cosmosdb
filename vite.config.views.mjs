@@ -56,6 +56,11 @@ export default ({ mode }) => {
             minify: !isDev,
             rollupOptions: {
                 input: path.resolve(__dirname, 'src/webviews/index.tsx'),
+                // Preserve the entry's named exports (e.g. `render`) so the
+                // webview HTML can `import { render } from "./views.js"`.
+                // Without this, app-mode builds treat the entry as side-effect
+                // only and strip its exports.
+                preserveEntrySignatures: 'strict',
                 output: {
                     format: 'es',
                     // Match filename expected by BaseTab.ts

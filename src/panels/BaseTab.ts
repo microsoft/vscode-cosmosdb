@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -74,6 +75,20 @@ export class BaseTab {
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
         const reactPreambleUri = !isProduction && devServer ? `${DEV_SERVER_HOST}/@react-refresh` : null;
 
+        // In production, Vite extracts CSS into separate files under `assets/`.
+        // The dev server injects CSS via JS at runtime, so this is only needed
+        // for built bundles.
+        let cssLinks = '';
+        if (isProduction || !devServer) {
+            const assetsDir = path.join(ctx.extensionPath, dir, 'assets');
+            try {
+                const cssFiles = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.css'));
+                cssLinks = cssFiles.map((f) => `<link rel="stylesheet" href="${uri('assets', f)}" />`).join('\n    ');
+            } catch {
+                // No assets directory — older or non-Vite builds.
+            }
+        }
+
         const csp = (
             isProduction
                 ? [
@@ -104,6 +119,7 @@ export class BaseTab {
             reactPreambleUri,
             viewType: this.viewType,
             nonce,
+            cssLinks,
         });
     }
 
@@ -114,6 +130,7 @@ export class BaseTab {
         reactPreambleUri: string | null;
         title: string;
         nonce: string;
+        cssLinks: string;
     }) {
         const preamble = params.reactPreambleUri
             ? `
@@ -133,6 +150,7 @@ export class BaseTab {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${params.title}</title>
     <meta http-equiv="Content-Security-Policy" content="${params.csp}" />
+    ${params.cssLinks}
   </head>
 
   <body>

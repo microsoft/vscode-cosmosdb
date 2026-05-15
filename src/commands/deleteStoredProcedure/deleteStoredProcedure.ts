@@ -49,8 +49,8 @@ export async function cosmosDBDeleteStoredProcedure(
     try {
         let success = false;
         await ext.state.showDeleting(node.id, async () => {
-            await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
-                const response = await cosmosClient
+            await withClaimsChallengeHandling(node.model.accountInfo, async (client) => {
+                const response = await client
                     .database(databaseId)
                     .container(containerId)
                     .scripts.storedProcedure(procedureId)

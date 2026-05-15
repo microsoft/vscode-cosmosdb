@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import { type CosmosDBContainerResourceItem } from '../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemResourceItem } from '../tree/cosmosdb/CosmosDBItemResourceItem';
 import { type CosmosDBItemsResourceItem } from '../tree/cosmosdb/CosmosDBItemsResourceItem';
@@ -13,6 +13,24 @@ import { type CosmosDBCredential } from './CosmosDBCredential';
 
 export type NoSqlQueryConnection = {
     accountId?: string; // Optional, used to identify the node in the tree
+    /**
+     * Cosmos DB account name. Populated from the source account when the
+     * connection is created from a tree node; required by ARM control-plane
+     * operations.
+     */
+    accountName?: string;
+    /**
+     * Azure subscription context. Populated only for Azure-signed-in accounts;
+     * undefined for the local emulator and workspace-attached connection-string
+     * accounts. Required (together with {@link resourceGroup} and
+     * {@link accountName}) for ARM control-plane operations.
+     */
+    subscription?: AzureSubscription;
+    /**
+     * Resource group name for the Cosmos DB account. Populated together with
+     * {@link subscription}.
+     */
+    resourceGroup?: string;
     databaseId: string;
     containerId: string;
     endpoint: string;
@@ -46,6 +64,9 @@ export function createNoSqlQueryConnection(
 
     return {
         accountId: accountInfo.id,
+        accountName: accountInfo.name,
+        subscription: accountInfo.subscription,
+        resourceGroup: accountInfo.resourceGroup,
         databaseId: databaseId,
         containerId: containerId,
         endpoint: accountInfo.endpoint,

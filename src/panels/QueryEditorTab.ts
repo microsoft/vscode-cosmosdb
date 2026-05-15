@@ -10,7 +10,7 @@ import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
-import { getCosmosClient } from '../cosmosdb/getCosmosClient';
+import { getControlPlaneForConnection } from '../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { DocumentSession } from '../cosmosdb/session/DocumentSession';
 import { QuerySession } from '../cosmosdb/session/QuerySession';
@@ -212,13 +212,13 @@ export class QueryEditorTab extends BaseTab {
                 return;
             }
 
-            const cosmosClient = getCosmosClient(this.connection);
-            const databases = await cosmosClient.databases.readAll().fetchAll();
+            const controlPlane = getControlPlaneForConnection(this.connection);
+            const databases = await controlPlane.listDatabases();
             const containers = await Promise.allSettled(
-                databases.resources.map(async (database) => {
-                    const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
+                databases.map(async (database) => {
+                    const dbContainers = await controlPlane.listContainers(database.id);
 
-                    return containers.resources.map((container) => [database.id, container.id] as string[]);
+                    return dbContainers.map((container) => [database.id, container.id] as string[]);
                 }),
             );
 

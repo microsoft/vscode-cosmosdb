@@ -78,7 +78,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         });
 
         // Step 3: Fire the actual query execution without blocking the UI
-        void (
+        (
             this.trpcClient.queryEditor.runQuery.mutate({
                 executionId: session.executionId,
             }) as Promise<QueryExecutionResponse | undefined>
@@ -176,9 +176,13 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
     public async getConnections(): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.getConnections.query());
-        if (result && 'connectionList' in result) {
-            this.dispatch({ type: 'setConnectionList', connectionList: result.connectionList });
-        }
+        // Always dispatch a list — on failure use an empty map so the dropdown
+        // resolves out of the "Loading…" state. The errorLink middleware shows
+        // the actual error as a toast.
+        this.dispatch({
+            type: 'setConnectionList',
+            connectionList: result && 'connectionList' in result ? result.connectionList : {},
+        });
     }
     public async setConnection(databaseId: string, containerId: string): Promise<void> {
         const result = await this.safeMutate(() =>

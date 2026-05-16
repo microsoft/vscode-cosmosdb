@@ -82,10 +82,20 @@ export class BaseTab {
         if (isProduction || !devServer) {
             const assetsDir = path.join(ctx.extensionPath, dir, 'assets');
             try {
-                const cssFiles = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.css'));
+                // Sort for a stable cascade — `readdirSync` order is not
+                // guaranteed across filesystems.
+                const cssFiles = fs
+                    .readdirSync(assetsDir)
+                    .filter((f) => f.endsWith('.css'))
+                    .sort((a, b) => a.localeCompare(b));
                 cssLinks = cssFiles.map((f) => `<link rel="stylesheet" href="${uri('assets', f)}" />`).join('\n    ');
-            } catch {
-                // No assets directory — older or non-Vite builds.
+            } catch (error) {
+                // No assets directory — older or non-Vite builds. Re-throw
+                // anything other than the missing-directory case so real
+                // filesystem failures aren't silently swallowed.
+                if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+                    throw error;
+                }
             }
         }
 

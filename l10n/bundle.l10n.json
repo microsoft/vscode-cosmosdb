@@ -153,7 +153,6 @@
   "Copy to clipboard": "Copy to clipboard",
   "Cosmos DB Accounts": "Cosmos DB Accounts",
   "Cosmos DB SDK limitations": "Cosmos DB SDK limitations",
-  "Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.": "Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.",
   "Cosmos DB Shell is not installed. Install it now using `dotnet tool install --global CosmosDBShell --prerelease`?": "Cosmos DB Shell is not installed. Install it now using `dotnet tool install --global CosmosDBShell --prerelease`?",
   "Cosmos DB Shell Language Server": "Cosmos DB Shell Language Server",
   "Cosmos DB Shell MCP is not enabled. Enable it in settings to auto-start the shell.": "Cosmos DB Shell MCP is not enabled. Enable it in settings to auto-start the shell.",

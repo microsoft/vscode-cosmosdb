@@ -85,13 +85,11 @@ export class MigrationChannel implements Channel {
 
     public async postMessage(message: { type: 'event'; name: string; params: unknown[] }): Promise<void> {
         if (message.name !== 'command') {
-            console.warn(`[MigrationChannel] Ignoring postMessage with name '${message.name}'`);
-            return;
+            throw new Error(`[MigrationChannel] Unsupported postMessage name '${message.name}'; only 'command' is allowed.`);
         }
         const wrapper = message.params[0] as { commandName: string; params: unknown[] } | undefined;
         if (!wrapper || typeof wrapper.commandName !== 'string') {
-            console.warn('[MigrationChannel] Malformed command payload:', message);
-            return;
+            throw new Error(`[MigrationChannel] Malformed command payload: ${JSON.stringify(message)}`);
         }
         // oxlint-disable-next-line typescript/no-unsafe-member-access, typescript/no-unsafe-call -- generic tRPC client typings
         await (

@@ -7,7 +7,12 @@ import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
 import { type TypedEventSink } from '../../../utils/TypedEventSink';
-import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
+import {
+    type MigrationEvent,
+    type MigrationEventName,
+    type MigrationEventPayloads,
+    type MigrationProgressEventName,
+} from '../../trpc/routers/migrationEventsRouter';
 import { type CosmosModel } from '../cosmosModel';
 
 // ─── File I/O ────────────────────────────────────────────────────────
@@ -63,30 +68,39 @@ export function stripPartitionKeyCandidates(model: CosmosModel): CosmosModel {
 
 // ─── Progress / Events ──────────────────────────────────────────────
 
-export async function sendPhaseProgress(
+export async function sendPhaseProgress<N extends MigrationProgressEventName>(
     channel: TypedEventSink<MigrationEvent>,
     logTag: string,
-    eventName: string,
+    eventName: N,
     message: string,
 ): Promise<void> {
     ext.outputChannel.appendLog(`[${logTag}] ${message}`);
-    channel.emit({
-        type: 'event',
-        name: eventName,
-        params: [message],
-    });
+    emitMigrationEvent(channel, eventName, [message] as MigrationEventPayloads[N]);
 }
 
-export async function sendPhaseEvent(
+export async function sendPhaseEvent<N extends MigrationEventName>(
     channel: TypedEventSink<MigrationEvent>,
-    name: string,
-    params: unknown[] = [],
+    name: N,
+    ...params: MigrationEventPayloads[N] extends [] ? [] : [params: MigrationEventPayloads[N]]
 ): Promise<void> {
-    channel.emit({
-        type: 'event',
-        name,
-        params,
-    });
+    emitMigrationEvent(channel, name, (params[0] ?? []) as MigrationEventPayloads[N]);
+}
+
+/**
+ * Type-safe emit for a single `MigrationEvent`. Use at sites that have a
+ * `TypedEventSink<MigrationEvent>` in hand and need to push a named event
+ * with strongly-typed params (the compiler enforces `params` matches `name`).
+ *
+ * The internal cast bridges a TypeScript limitation: the union is
+ * discriminated by `type` (always `'event'`), so the compiler cannot
+ * narrow object literals by `name` to a single variant.
+ */
+export function emitMigrationEvent<N extends MigrationEventName>(
+    channel: TypedEventSink<MigrationEvent>,
+    name: N,
+    params: MigrationEventPayloads[N],
+): void {
+    channel.emit({ type: 'event', name, params } as MigrationEvent);
 }
 
 // ─── Cancellation ───────────────────────────────────────────────────

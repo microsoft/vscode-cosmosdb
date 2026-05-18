@@ -37,7 +37,7 @@ import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAp
 import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
 import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
-import { resetCancellationToken } from './migration/helpers/migrationHelpers';
+import { emitMigrationEvent, resetCancellationToken } from './migration/helpers/migrationHelpers';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
 import { buildCodeMigrationPrompt } from './migration/prompts';
 import {
@@ -116,11 +116,9 @@ export class MigrationAssistantTab extends BaseTab {
         this.disposables.push(
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration('cosmosDB.experimental.migration.showTokenEstimate')) {
-                    this.eventSink.emit({
-                        type: 'event',
-                        name: 'showTokenEstimateChanged',
-                        params: [MigrationAssistantTab.getShowTokenEstimateSetting()],
-                    });
+                    emitMigrationEvent(this.eventSink, 'showTokenEstimateChanged', [
+                        MigrationAssistantTab.getShowTokenEstimateSetting(),
+                    ]);
                 }
             }),
         );
@@ -244,11 +242,7 @@ export class MigrationAssistantTab extends BaseTab {
      */
     public static async notifyAIFeaturesChanged(available: boolean): Promise<void> {
         for (const instance of MigrationAssistantTab.instances.values()) {
-            instance.eventSink.emit({
-                type: 'event',
-                name: 'aiFeaturesEnabledChanged',
-                params: [available],
-            });
+            emitMigrationEvent(instance.eventSink, 'aiFeaturesEnabledChanged', [available]);
 
             // Refresh available models when AI features become available,
             // since the initial fetch may have returned empty if Copilot wasn't ready.
@@ -544,37 +538,33 @@ export class MigrationAssistantTab extends BaseTab {
                 vscode.Uri.file(codeMigrationPlanPath),
             );
 
-            this.eventSink.emit({
-                type: 'event',
-                name: 'projectLoaded',
-                params: [
-                    {
-                        project: this.project,
-                        workspacePath: this.workspacePath,
-                        schemaFiles,
-                        volumetricFiles,
-                        accessPatternFiles,
-                        excludedSchemaFiles,
-                        excludedVolumetricFiles,
-                        excludedAccessPatternFiles,
-                        hasDiscoveryReport,
-                        hasAssessmentSummary,
-                        assessmentResult,
-                        hasSchemaConversion,
-                        schemaConversionResult,
-                        hasSampleData,
-                        hasBicep,
-                        hasVolumetricsTemplate,
-                        hasAccessPatternsTemplate,
-                        isAIFeaturesEnabled: ext.isAIFeaturesEnabled,
-                        consentGiven: Boolean(this.project.consentGiven),
-                        hasCodeMigrationPlan,
-                        codeMigrationPlanPath,
-                        isPhase4Required: IS_PHASE4_REQUIRED,
-                        showTokenEstimate: MigrationAssistantTab.getShowTokenEstimateSetting(),
-                    },
-                ],
-            });
+            emitMigrationEvent(this.eventSink, 'projectLoaded', [
+                {
+                    project: this.project,
+                    workspacePath: this.workspacePath,
+                    schemaFiles,
+                    volumetricFiles,
+                    accessPatternFiles,
+                    excludedSchemaFiles,
+                    excludedVolumetricFiles,
+                    excludedAccessPatternFiles,
+                    hasDiscoveryReport,
+                    hasAssessmentSummary,
+                    assessmentResult,
+                    hasSchemaConversion,
+                    schemaConversionResult,
+                    hasSampleData,
+                    hasBicep,
+                    hasVolumetricsTemplate,
+                    hasAccessPatternsTemplate,
+                    isAIFeaturesEnabled: Boolean(ext.isAIFeaturesEnabled),
+                    consentGiven: Boolean(this.project.consentGiven),
+                    hasCodeMigrationPlan,
+                    codeMigrationPlanPath,
+                    isPhase4Required: IS_PHASE4_REQUIRED,
+                    showTokenEstimate: MigrationAssistantTab.getShowTokenEstimateSetting(),
+                },
+            ]);
 
             // (Re-)create file watchers using the resolved paths (supports custom folder overrides)
             this.setupFileWatchers();
@@ -726,30 +716,26 @@ export class MigrationAssistantTab extends BaseTab {
         const codeMigrationPlanPath = path.join(this.workspacePath, MIGRATION_FOLDER, 'code-migration-plan.md');
         const hasCodeMigrationPlan = await MigrationProjectService.fileExists(vscode.Uri.file(codeMigrationPlanPath));
 
-        this.eventSink.emit({
-            type: 'event',
-            name: 'filesChanged',
-            params: [
-                {
-                    schemaFiles,
-                    volumetricFiles,
-                    accessPatternFiles,
-                    excludedSchemaFiles,
-                    excludedVolumetricFiles,
-                    excludedAccessPatternFiles,
-                    hasVolumetricsTemplate,
-                    hasAccessPatternsTemplate,
-                    hasDiscoveryReport,
-                    hasAssessmentSummary,
-                    hasSchemaConversion,
-                    hasSampleData,
-                    hasBicep,
-                    hasCodeMigrationPlan,
-                    codeMigrationPlanPath,
-                    fileStateGeneration: this.fileStateGeneration,
-                },
-            ],
-        });
+        emitMigrationEvent(this.eventSink, 'filesChanged', [
+            {
+                schemaFiles,
+                volumetricFiles,
+                accessPatternFiles,
+                excludedSchemaFiles,
+                excludedVolumetricFiles,
+                excludedAccessPatternFiles,
+                hasVolumetricsTemplate,
+                hasAccessPatternsTemplate,
+                hasDiscoveryReport,
+                hasAssessmentSummary,
+                hasSchemaConversion,
+                hasSampleData,
+                hasBicep,
+                hasCodeMigrationPlan,
+                codeMigrationPlanPath,
+                fileStateGeneration: this.fileStateGeneration,
+            },
+        ]);
     }
 
     private async updateProjectName(name: string): Promise<void> {
@@ -1268,16 +1254,12 @@ export class MigrationAssistantTab extends BaseTab {
             };
             await this.saveProject();
 
-            this.eventSink.emit({
-                type: 'event',
-                name: 'accountSelected',
-                params: [
-                    {
-                        endpoint: accountInfo.endpoint,
-                        accountName: accountInfo.name,
-                    },
-                ],
-            });
+            emitMigrationEvent(this.eventSink, 'accountSelected', [
+                {
+                    endpoint: accountInfo.endpoint,
+                    accountName: accountInfo.name,
+                },
+            ]);
         });
     }
 
@@ -1344,19 +1326,15 @@ export class MigrationAssistantTab extends BaseTab {
                 },
             );
 
-            this.eventSink.emit({
-                type: 'event',
-                name: 'resourceGroupSelected',
-                params: [
-                    {
-                        subscriptionId: subscription.subscriptionId,
-                        subscriptionName: subscription.name,
-                        resourceGroup: resourceGroupName,
-                        location,
-                        locationDisplayName,
-                    },
-                ],
-            });
+            emitMigrationEvent(this.eventSink, 'resourceGroupSelected', [
+                {
+                    subscriptionId: subscription.subscriptionId,
+                    subscriptionName: subscription.name,
+                    resourceGroup: resourceGroupName,
+                    location,
+                    locationDisplayName,
+                },
+            ]);
 
             // Best-effort: fetch the full Cosmos DB region list for the chosen
             // subscription so the webview can populate its location dropdown. A
@@ -1390,11 +1368,7 @@ export class MigrationAssistantTab extends BaseTab {
                 }
             }
             locations.sort((a, b) => a.displayName.localeCompare(b.displayName));
-            this.eventSink.emit({
-                type: 'event',
-                name: 'locationsList',
-                params: [locations],
-            });
+            emitMigrationEvent(this.eventSink, 'locationsList', [locations]);
         });
     }
 
@@ -1648,11 +1622,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async getAvailableModels(): Promise<void> {
         const { models, savedModelId } = await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY);
-        this.eventSink.emit({
-            type: 'event',
-            name: 'availableModels',
-            params: [models, savedModelId],
-        });
+        emitMigrationEvent(this.eventSink, 'availableModels', [models, savedModelId]);
     }
 
     private async setSelectedModel(modelId: string): Promise<void> {
@@ -1678,29 +1648,21 @@ export class MigrationAssistantTab extends BaseTab {
                 new vscode.CancellationTokenSource().token,
             );
 
-            this.eventSink.emit({
-                type: 'event',
-                name: 'tokenEstimate',
-                params: [
-                    estimate
-                        ? {
-                              minTokens: estimate.minTokens,
-                              maxTokens: estimate.maxTokens,
-                              modelMaxTokens: model.maxInputTokens,
-                              estimateGeneration: this.fileStateGeneration,
-                          }
-                        : null,
-                ],
-            });
+            emitMigrationEvent(this.eventSink, 'tokenEstimate', [
+                estimate
+                    ? {
+                          minTokens: estimate.minTokens,
+                          maxTokens: estimate.maxTokens,
+                          modelMaxTokens: model.maxInputTokens,
+                          estimateGeneration: this.fileStateGeneration,
+                      }
+                    : null,
+            ]);
         } catch (error) {
             ext.outputChannel.appendLog(
                 `[Migration] estimateContextTokens error: ${error instanceof Error ? error.message : String(error)}`,
             );
-            this.eventSink.emit({
-                type: 'event',
-                name: 'tokenEstimate',
-                params: [null],
-            });
+            emitMigrationEvent(this.eventSink, 'tokenEstimate', [null]);
         }
     }
 
@@ -1759,11 +1721,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async checkGitRepository(): Promise<void> {
         const hasGit = await this.hasGitRepository();
-        this.eventSink.emit({
-            type: 'event',
-            name: 'gitStatus',
-            params: [hasGit],
-        });
+        emitMigrationEvent(this.eventSink, 'gitStatus', [hasGit]);
         if (hasGit) {
             await this.checkGitignore();
         }
@@ -1771,11 +1729,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async checkGitignore(): Promise<void> {
         const isInGitignore = await this.projectService.isInGitignore();
-        this.eventSink.emit({
-            type: 'event',
-            name: 'gitignoreStatus',
-            params: [isInGitignore],
-        });
+        emitMigrationEvent(this.eventSink, 'gitignoreStatus', [isInGitignore]);
     }
 
     private async addToGitignore(): Promise<void> {

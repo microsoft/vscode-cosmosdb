@@ -81,6 +81,7 @@ export const queryEditorRouterDef = queryEditorRouter({
      * throughput buckets, initial query, survey status, and AI features status.
      */
     init: queryEditorProcedure.mutation(async ({ ctx }) => {
+        console.debug(`[QueryEditor] init invoked. hasConnection=${!!ctx.state.connection}`);
         if (ctx.actionContext) {
             ctx.actionContext.telemetry.suppressIfSuccessful = true;
         }
@@ -90,8 +91,14 @@ export const queryEditorRouterDef = queryEditorRouter({
         if (ctx.state.connection) {
             try {
                 connectionState = await resolveConnectionState(ctx);
-            } catch {
-                // Fall through — connection may be stale
+            } catch (error) {
+                // Fall through — connection may be stale. The outer procedure is already
+                // wrapped in telemetry; recovering the UX here intentionally treats this
+                // as a non-fatal condition. Surface the cause via the output channel
+                // for diagnosis.
+                ext.outputChannel.error(
+                    l10n.t('Failed to resolve connection for query editor: {0}', toStringUniversal(error)),
+                );
             }
         } else {
             ctx.panel.title = QueryEditorTab.title;
@@ -353,11 +360,12 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getConnections: queryEditorProcedure.query(async ({ ctx }) => {
         if (!ctx.state.connection) {
-            return { connectionList: undefined };
+            return { connectionList: {} as Record<string, string[]> };
         }
 
         const controlPlane = getControlPlaneForConnection(ctx.state.connection);
         const databases = await controlPlane.listDatabases();
+
         const containers = await Promise.allSettled(
             databases.map(async (database) => {
                 const dbContainers = await controlPlane.listContainers(database.id);
@@ -379,10 +387,9 @@ export const queryEditorRouterDef = queryEditorRouter({
                 {} as Record<string, string[]>,
             );
 
-        if (errors.length > 0 && ctx.actionContext) {
-            ctx.actionContext.telemetry.properties.error = errors
-                .map((error) => toStringUniversal(error.reason))
-                .join(', ');
+        if (errors.length > 0) {
+            const errorSummary = errors.map((error) => toStringUniversal(error.reason)).join(', ');
+            ext.outputChannel.error(l10n.t('Failed to list containers for one or more databases: {0}', errorSummary));
         }
 
         return { connectionList: connections };

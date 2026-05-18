@@ -58,6 +58,9 @@ export async function activateInternal(
 ): Promise<apiUtils.AzureExtensionApiProvider> {
     ext.context = context;
     ext.isBundle = !!process.env.IS_BUNDLE;
+    console.debug(
+        `[COSMOSDB-DEBUG] activate: isBundle=${ext.isBundle} IS_BUNDLE=${process.env.IS_BUNDLE} DEVSERVER=${process.env.DEVSERVER}`,
+    );
 
     ext.outputChannel = createAzExtLogOutputChannel('Azure Cosmos DB');
     context.subscriptions.push(ext.outputChannel);

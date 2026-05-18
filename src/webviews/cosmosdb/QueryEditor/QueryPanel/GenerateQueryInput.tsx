@@ -33,10 +33,10 @@ const useStyles = makeStyles({
     container: {
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: 'rgba(135, 206, 235, 0.1)',
+        backgroundColor: 'var(--vscode-input-background)',
         borderRadius: '6px',
         padding: '8px 12px 4px 12px',
-        border: '1px solid rgba(135, 206, 235, 0.3)',
+        border: '1px solid var(--vscode-input-border, var(--vscode-contrastBorder, transparent))',
         margin: '8px 8px',
         boxSizing: 'border-box',
         gap: '6px',
@@ -140,14 +140,6 @@ const useStyles = makeStyles({
     button: {
         padding: '2px 6px',
         minWidth: 'auto',
-        fontSize: '11px',
-        color: 'var(--vscode-button-foreground)',
-        backgroundColor: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         flexShrink: 0,
         marginRight: '-10px',
     },
@@ -178,7 +170,7 @@ const useStyles = makeStyles({
         gap: '8px',
         padding: '6px 10px',
         backgroundColor: 'var(--vscode-editorWidget-background)',
-        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-contrastBorder, rgba(135, 206, 235, 0.3)))',
+        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-contrastBorder, transparent))',
         borderRadius: '4px',
         fontSize: '12px',
         color: 'var(--vscode-editor-foreground)',
@@ -552,7 +544,8 @@ export const GenerateQueryInput = () => {
                         disabled={!isLoading && !input.trim()}
                         title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
                         aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                        appearance="transparent"
+                        appearance={isLoading ? 'transparent' : 'primary'}
+                        size="small"
                     />
                 </div>
             )}

@@ -3,12 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosClient } from '@azure/cosmos';
 import { createContextValue, createGenericElement } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
+import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { countExperienceUsageForSurvey } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { type TreeElement } from '../TreeElement';
@@ -32,9 +31,8 @@ export abstract class CosmosDBDatabaseResourceItem
     }
 
     async getChildren(): Promise<TreeElement[]> {
-        const containers = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
-            this.getContainers(cosmosClient),
-        );
+        const controlPlane = getControlPlane(this.model.accountInfo);
+        const containers = await controlPlane.listContainers(this.model.database.id);
         const sortedContainers = containers.sort((a, b) => a.id.localeCompare(b.id));
 
         if (containers.length === 0) {
@@ -62,11 +60,6 @@ export abstract class CosmosDBDatabaseResourceItem
             label: this.model.database.id,
             collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
         };
-    }
-
-    protected async getContainers(cosmosClient: CosmosClient): Promise<ContainerResource[]> {
-        const result = await cosmosClient.database(this.model.database.id).containers.readAll().fetchAll();
-        return result.resources;
     }
 
     protected abstract getChildrenImpl(containers: ContainerResource[]): Promise<TreeElement[]>;

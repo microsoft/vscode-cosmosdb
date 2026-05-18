@@ -32,9 +32,8 @@ export const CancelQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElem
                 event.preventDefault();
             }
 
-            if (state.currentExecutionId) {
-                return dispatcher.stopQuery(state.currentExecutionId);
-            }
+            // Pass executionId if available; server will stop the latest session if empty
+            return dispatcher.stopQuery(state.currentExecutionId);
         },
         [dispatcher, state],
     );

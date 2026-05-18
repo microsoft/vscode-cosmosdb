@@ -18,13 +18,10 @@ import {
     type AzureWizardPromptStep,
 } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
-import { getTRPCErrorFromUnknown } from '@trpc/server';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
-
-import { API } from '../AzureDBExperiences';
 import { getCosmosDBEntraIdCredential } from '../cosmosdb/CosmosDBCredential';
 import { ext } from '../extensionVariables';
 import { MIGRATION_FOLDER, MigrationProjectService, type ProjectJson } from '../services/MigrationProjectService';
@@ -37,10 +34,9 @@ import { getAvailableModelsInfo } from '../utils/aiUtils';
 import { sanitizeCosmosDBAccountName } from '../utils/cosmosDBAccountName';
 import { MIGRATION_SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
-import { appRouter, type BaseRouterContext } from '../webviews/api/configuration/appRouter';
-import { createCallerFactory } from '../webviews/api/extension-server/trpc';
-import { type VsCodeLinkRequestMessage } from '../webviews/api/webview-client/vscodeLink';
-import { BaseTab, type CommandPayload } from './BaseTab';
+import { TypedEventSink } from '../utils/TypedEventSink';
+import { BaseTab } from './BaseTab';
+import { MigrationEventChannel, type Channel } from './migration/Channel';
 import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
 import { resetCancellationToken } from './migration/helpers/migrationHelpers';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
@@ -65,6 +61,9 @@ import {
 } from './migration/steps/phase4Provisioning';
 import { getAccessPatternsTemplateContent } from './migration/templates/accessPatternsTemplate';
 import { getVolumetricsTemplateContent } from './migration/templates/volumetricsTemplate';
+import { migrationAppRouter, migrationCallerFactory, type MigrationRouterContext } from './trpc/appRouter';
+import { type MigrationEvent } from './trpc/routers/migrationEventsRouter';
+import { setupTrpc } from './trpc/setupTrpc';
 
 export class MigrationAssistantTab extends BaseTab {
     public static readonly title = 'Cosmos DB Migration Assistant';
@@ -91,6 +90,9 @@ export class MigrationAssistantTab extends BaseTab {
     private fileWatcherDebounceTimer: ReturnType<typeof setTimeout> | undefined;
     private fileStateGeneration = 0;
 
+    private readonly eventSink: TypedEventSink<MigrationEvent>;
+    private readonly channel: Channel;
+
     protected constructor(panel: vscode.WebviewPanel, workspacePath: string) {
         super(panel, MigrationAssistantTab.viewType);
 
@@ -100,7 +102,16 @@ export class MigrationAssistantTab extends BaseTab {
 
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
-        this.setupTrpc();
+        this.eventSink = new TypedEventSink<MigrationEvent>();
+        this.channel = new MigrationEventChannel(this.eventSink);
+
+        const { disposable } = setupTrpc(
+            this.panel,
+            this.buildRouterContext(),
+            migrationAppRouter,
+            migrationCallerFactory,
+        );
+        this.disposables.push(disposable);
 
         // Forward changes to the experimental "show token estimate" setting to the webview
         // so the UI can show/hide the progress bar live without a panel reload. The estimate
@@ -140,55 +151,18 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     /**
-     * Set up tRPC message handling alongside Channel communication.
-     * tRPC messages have `{ id, op }` format while Channel messages have `{ id, payload }`.
+     * Build the router context handed to every migration tRPC procedure.
+     * Includes the event sink (for the `events` subscription) and a command
+     * dispatcher that fans out to the per-command handlers via dispatchCommand.
      */
-    private setupTrpc(): void {
-        this.disposables.push(
-            this.panel.webview.onDidReceiveMessage(async (message: unknown) => {
-                const msg = message as Record<string, unknown>;
-                // Only handle tRPC messages (those with 'op' field, not Channel's 'payload')
-                if (!msg || typeof msg !== 'object' || !('op' in msg) || 'payload' in msg) return;
-
-                const trpcMessage = message as unknown as VsCodeLinkRequestMessage;
-                try {
-                    const context: BaseRouterContext = {
-                        dbExperience: API.Core,
-                        webviewName: 'migration',
-                    };
-                    const callerFactory = createCallerFactory(appRouter);
-                    const caller = callerFactory(context);
-
-                    // Resolve nested router paths (e.g. 'migration.getAvailableModels') by
-                    // walking the caller tree one segment at a time. A flat lookup like
-                    // caller[path] only works for top-level procedures.
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-                    const procedure: any = trpcMessage.op.path
-                        .split('.')
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
-                        .reduce<any>((node, segment) => (node ? node[segment] : node), caller);
-
-                    if (typeof procedure !== 'function') {
-                        throw new Error(l10n.t('Procedure not found: {name}', { name: trpcMessage.op.path }));
-                    }
-
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-                    const result = await procedure(trpcMessage.op.input);
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                    await this.panel.webview.postMessage({ id: trpcMessage.id, result });
-                } catch (error) {
-                    const errorEntry = getTRPCErrorFromUnknown(error);
-                    await this.panel.webview.postMessage({
-                        id: trpcMessage.id,
-                        error: {
-                            code: errorEntry.code,
-                            name: errorEntry.name,
-                            message: errorEntry.message,
-                        },
-                    });
-                }
-            }),
-        );
+    private buildRouterContext(): MigrationRouterContext {
+        return {
+            webviewName: 'migration',
+            telemetryContext: this.telemetryContext,
+            panel: this.panel,
+            eventSink: this.eventSink,
+            dispatchCommand: (commandName, params) => this.dispatchCommand(commandName, params),
+        };
     }
 
     public static render(workspacePath: string, viewColumn = vscode.ViewColumn.Active): MigrationAssistantTab {
@@ -229,6 +203,7 @@ export class MigrationAssistantTab extends BaseTab {
         this.provisioningCancellation?.dispose();
         this.accountProvisioningCancellation?.cancel();
         this.accountProvisioningCancellation?.dispose();
+        this.eventSink.close();
         super.dispose();
     }
 
@@ -286,14 +261,14 @@ export class MigrationAssistantTab extends BaseTab {
         }
     }
 
-    protected async getCommand(payload: CommandPayload): Promise<void> {
-        switch (payload.commandName) {
+    private async dispatchCommand(commandName: string, params: unknown[]): Promise<unknown> {
+        switch (commandName) {
             case 'loadProject':
                 return this.loadProject();
             case 'updateProjectName':
-                return this.updateProjectName(payload.params[0] as string);
+                return this.updateProjectName(params[0] as string);
             case 'updateConsent':
-                return this.updateConsent(payload.params[0] as boolean);
+                return this.updateConsent(params[0] as boolean);
             case 'selectSchemaFiles':
                 return this.selectFiles('schema-ddl');
             case 'selectSchemaFolder':
@@ -308,13 +283,13 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.selectFolder('access-patterns');
             case 'removeDiscoveryFile':
                 return this.removeDiscoveryFile(
-                    payload.params[0] as 'schema-ddl' | 'volumetrics' | 'access-patterns',
-                    payload.params[1] as string,
+                    params[0] as 'schema-ddl' | 'volumetrics' | 'access-patterns',
+                    params[1] as string,
                 );
             case 'restoreDiscoveryFile':
                 return this.restoreDiscoveryFile(
-                    payload.params[0] as 'schema-ddl' | 'volumetrics' | 'access-patterns',
-                    payload.params[1] as string,
+                    params[0] as 'schema-ddl' | 'volumetrics' | 'access-patterns',
+                    params[1] as string,
                 );
             case 'createVolumetricTemplate':
                 return this.createTemplate('volumetrics');
@@ -331,17 +306,17 @@ export class MigrationAssistantTab extends BaseTab {
             case 'analyzeApplication':
                 return this.analyzeApplication();
             case 'updateAnalysisResult':
-                return this.updateAnalysisResult(payload.params[0] as Record<string, unknown>);
+                return this.updateAnalysisResult(params[0] as Record<string, unknown>);
             case 'cancelAnalysis':
                 return this.cancelAnalysis();
             case 'runDiscovery':
                 return this.runDiscovery();
             case 'updateDiscoveryInstructions':
-                return this.updateDiscoveryInstructions(payload.params[0] as string);
+                return this.updateDiscoveryInstructions(params[0] as string);
             case 'updateAssessmentInstructions':
-                return this.updateAssessmentInstructions(payload.params[0] as string);
+                return this.updateAssessmentInstructions(params[0] as string);
             case 'updateSchemaConversionInstructions':
-                return this.updateSchemaConversionInstructions(payload.params[0] as string);
+                return this.updateSchemaConversionInstructions(params[0] as string);
             case 'cancelDiscovery':
                 return this.cancelDiscovery();
             case 'runAssessment':
@@ -349,19 +324,16 @@ export class MigrationAssistantTab extends BaseTab {
             case 'cancelAssessment':
                 return this.cancelAssessment();
             case 'runSchemaConversion':
-                return this.runSchemaConversion(
-                    payload.params[0] as boolean | undefined,
-                    payload.params[1] as boolean | undefined,
-                );
+                return this.runSchemaConversion(params[0] as boolean | undefined, params[1] as boolean | undefined);
             case 'cancelSchemaConversion':
                 return this.cancelSchemaConversion();
             case 'setTargetEnvironment':
                 return this.setTargetEnvironment(
-                    payload.params[0] as 'emulator' | 'azure' | 'provision',
-                    payload.params[1] as string | undefined,
-                    payload.params[2] as string | undefined,
-                    payload.params[3] as string | undefined,
-                    payload.params[4] as string | undefined,
+                    params[0] as 'emulator' | 'azure' | 'provision',
+                    params[1] as string | undefined,
+                    params[2] as string | undefined,
+                    params[3] as string | undefined,
+                    params[4] as string | undefined,
                 );
             case 'selectAccount':
                 return this.selectAccount();
@@ -370,7 +342,7 @@ export class MigrationAssistantTab extends BaseTab {
             case 'listCosmosDBLocations':
                 return this.listCosmosDBLocations();
             case 'setTargetLocation':
-                return this.setTargetLocation(payload.params[0] as string);
+                return this.setTargetLocation(params[0] as string);
             case 'testConnection':
                 return this.testConnection();
             case 'provisionAccount':
@@ -386,7 +358,7 @@ export class MigrationAssistantTab extends BaseTab {
             case 'getAvailableModels':
                 return this.getAvailableModels();
             case 'setSelectedModel':
-                return this.setSelectedModel(payload.params[0] as string);
+                return this.setSelectedModel(params[0] as string);
             case 'estimateContextTokens':
                 return this.estimateContextTokens();
             case 'checkGitRepository':
@@ -400,21 +372,21 @@ export class MigrationAssistantTab extends BaseTab {
             case 'checkGitignore':
                 return this.checkGitignore();
             case 'openFile':
-                return this.openFile(payload.params[0] as string);
+                return this.openFile(params[0] as string);
             case 'openGeneratedBicep':
                 return this.openGeneratedBicep();
             case 'previewMarkdown':
-                return this.previewMarkdown(payload.params[0] as string);
+                return this.previewMarkdown(params[0] as string);
             case 'updateMigrationInstructions':
-                return this.updateMigrationInstructions(payload.params[0] as string);
+                return this.updateMigrationInstructions(params[0] as string);
             case 'setMigrationMode':
-                return this.setMigrationMode(payload.params[0] as 'plan' | 'start');
+                return this.setMigrationMode(params[0] as 'plan' | 'start');
             case 'planMigration':
                 return this.executeMigration('plan');
             case 'startMigration':
                 return this.executeMigration('start');
             default:
-                return super.getCommand(payload);
+                throw new Error(l10n.t('Unknown migration command: {name}', { name: commandName }));
         }
     }
 

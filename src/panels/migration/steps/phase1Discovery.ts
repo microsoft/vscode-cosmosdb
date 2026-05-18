@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
-import { type Channel } from '../../Communication/Channel/Channel';
+import { type Channel } from '../Channel';
 import {
     createMkDebug,
     getSelectedModel,

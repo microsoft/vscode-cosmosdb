@@ -32,12 +32,12 @@ export async function getConfirmationAsInSettings(
         .get<ConfirmationStyle>(ext.settingsKeys.confirmationStyle);
 
     if (deleteConfirmation === ConfirmationStyle.wordConfirmation) {
-        return await getConfirmationWithWordQuestion(title, message, expectedConfirmationWord);
+        return getConfirmationWithWordQuestion(title, message, expectedConfirmationWord);
     } else if (deleteConfirmation === ConfirmationStyle.challengeConfirmation) {
-        return await getConfirmationWithNumberQuiz(title, message);
+        return getConfirmationWithNumberQuiz(title, message);
     }
 
-    return await getConfirmationWithClick(title, message);
+    return getConfirmationWithClick(title, message);
 }
 
 export async function getConfirmationWithWordQuestion(

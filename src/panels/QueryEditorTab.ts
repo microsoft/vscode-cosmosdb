@@ -3,56 +3,26 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
-import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
-import * as l10n from '@vscode/l10n';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-import { CosmosDbOperationsService } from '../chat/CosmosDbOperationsService';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
-import { getCosmosClient } from '../cosmosdb/getCosmosClient';
-import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
-import { DocumentSession } from '../cosmosdb/session/DocumentSession';
-import { QuerySession } from '../cosmosdb/session/QuerySession';
-import {
-    type CosmosDBRecordIdentifier,
-    type QueryMetadata,
-    type SerializedQueryResult,
-} from '../cosmosdb/types/queryResult';
-import { withClaimsChallengeHandling } from '../cosmosdb/withClaimsChallengeHandling';
-import { ext } from '../extensionVariables';
+import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
+import { type QuerySession } from '../cosmosdb/session/QuerySession';
+import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
-import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
-import { getAvailableModelsInfo, getSelectedModel } from '../utils/aiUtils';
-import { isSelectStar, toStringUniversal } from '../utils/convertors';
-import { queryMetricsToCsv, queryResultToCsv } from '../utils/csvConverter';
-import { type JSONSchema } from '../utils/json/JSONSchema';
+import { getIsSurveyDisabledGlobally } from '../utils/survey';
+import { TypedEventSink } from '../utils/TypedEventSink';
+import { BaseTab } from './BaseTab';
 import {
-    getSchemaFromDocument,
-    simplifySchema,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '../utils/json/nosql/SchemaAnalyzer';
-import { SELECTED_MODEL_KEY } from '../utils/modelUtils';
-import { sanitizeSqlComment } from '../utils/sanitization';
-import { getIsSurveyDisabledGlobally, openSurvey, promptAfterActionEventually } from '../utils/survey';
-import { ExperienceKind, UsageImpact } from '../utils/surveyTypes';
-import * as vscodeUtil from '../utils/vscodeUtils';
-import { BaseTab, type CommandPayload } from './BaseTab';
-import { DocumentTab } from './DocumentTab';
-
-const QUERY_HISTORY_SIZE = 10;
-const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
-const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
-const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
-const SCHEMA_GENERATION_PAGE_SIZE = 1000;
-
-type HistoryItem = StorageItem & {
-    properties: {
-        history: string[];
-    };
-};
+    queryEditorAppRouter,
+    queryEditorCallerFactory,
+    type QueryEditorMutableState,
+    type QueryEditorRouterContext,
+} from './trpc/appRouter';
+import { type QueryEditorEvent } from './trpc/routers/queryEditorEventsRouter';
+import { setupTrpc } from './trpc/setupTrpc';
 
 export class QueryEditorTab extends BaseTab {
     public static readonly title = 'Query Editor';
@@ -60,23 +30,25 @@ export class QueryEditorTab extends BaseTab {
     public static readonly openTabs: Set<QueryEditorTab> = new Set<QueryEditorTab>();
 
     public readonly sessions = new Map<string, QuerySession>();
+    public readonly eventSink: TypedEventSink<QueryEditorEvent>;
 
-    private connection: NoSqlQueryConnection | undefined;
-    private query: string | undefined;
-    private isLastQueryAIGenerated: boolean = false;
-    /** The raw AI-generated query text, used to detect if the user modified it before running */
-    private lastAIGeneratedQuery: string | undefined;
-    private lastGenerationFailed: boolean = false;
-    private generateQueryCancellation: vscode.CancellationTokenSource | undefined;
-    private pendingConfirmResolve: ((confirmed: boolean) => void) | undefined;
+    private readonly state: QueryEditorMutableState;
+    private static readonly DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
 
     protected constructor(panel: vscode.WebviewPanel, connection?: NoSqlQueryConnection, query?: string) {
         super(panel, QueryEditorTab.viewType, { hasConnection: connection ? 'true' : 'false' });
 
         QueryEditorTab.openTabs.add(this);
 
-        this.connection = connection;
-        this.query = query;
+        this.state = {
+            connection,
+            query: query ?? QueryEditorTab.DEFAULT_QUERY_VALUE,
+            isLastQueryAIGenerated: false,
+            lastAIGeneratedQuery: undefined,
+            lastGenerationFailed: false,
+            generateQueryCancellation: undefined,
+            pendingConfirmResolve: undefined,
+        };
 
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
@@ -91,6 +63,29 @@ export class QueryEditorTab extends BaseTab {
             this.telemetryContext.addMaskedValue(connection.databaseId);
             this.telemetryContext.addMaskedValue(connection.containerId);
         }
+
+        // Create TypedEventSink for tRPC subscription
+        this.eventSink = new TypedEventSink<QueryEditorEvent>();
+
+        const { disposable } = setupTrpc(
+            this.panel,
+            this.buildRouterContext(),
+            queryEditorAppRouter,
+            queryEditorCallerFactory,
+        );
+        this.disposables.push(disposable);
+
+        // Listen for schema setting changes
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
+                    this.syncSchemaBasedOnQueriesSetting();
+                }
+            }),
+        );
+
+        // Send schema to webview on init
+        void this.sendSchemaToWebview();
     }
 
     public static render(
@@ -102,9 +97,9 @@ export class QueryEditorTab extends BaseTab {
         if (revealTabIfExist && connection) {
             const openTab = [...QueryEditorTab.openTabs].find(
                 (openTab) =>
-                    openTab.connection?.endpoint === connection.endpoint &&
-                    openTab.connection?.databaseId === connection.databaseId &&
-                    openTab.connection?.containerId === connection.containerId,
+                    openTab.state.connection?.endpoint === connection.endpoint &&
+                    openTab.state.connection?.databaseId === connection.databaseId &&
+                    openTab.state.connection?.containerId === connection.containerId,
             );
             if (openTab) {
                 openTab.panel.reveal(viewColumn);
@@ -126,21 +121,64 @@ export class QueryEditorTab extends BaseTab {
         this.sessions.forEach((session) => session.dispose());
         this.sessions.clear();
 
+        this.eventSink.close();
+
         super.dispose();
     }
 
+    private syncSchemaBasedOnQueriesSetting(): void {
+        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
+        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
+        this.eventSink.emit({ type: 'schemaSettingChanged', isSchemaBasedOnQueries: isEnabled });
+    }
+
+    private async sendSchemaToWebview(): Promise<void> {
+        if (!this.state.connection) {
+            this.eventSink.emit({ type: 'schemaUpdated', containerSchema: null });
+            return;
+        }
+
+        const schemaId = this.getSchemaStorageId(this.state.connection);
+        const schemaStorage = SchemaFileStorage.getInstance();
+        const schemaJson = await schemaStorage.readSchema(schemaId);
+
+        const schema: JSONSchema | null = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
+
+        this.eventSink.emit({ type: 'schemaUpdated', containerSchema: schema as Record<string, unknown> | null });
+    }
+
+    private getSchemaStorageId(connection: NoSqlQueryConnection): string {
+        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
+        return crypto.createHash('sha256').update(raw).digest('hex');
+    }
+
+    private buildRouterContext(): QueryEditorRouterContext {
+        return {
+            webviewName: QueryEditorTab.viewType,
+            sessions: this.sessions,
+            telemetryContext: this.telemetryContext,
+            panel: this.panel,
+            eventSink: this.eventSink,
+            state: this.state,
+        };
+    }
+
     public getCurrentQueryResults = (): SerializedQueryResult | undefined => {
-        const activeSession = this.sessions.values().next().value as QuerySession | undefined;
+        const activeSession = this.sessions.values().next().value;
         const result = activeSession?.sessionResult;
         return result?.getSerializedResult(1);
     };
 
     public getConnection = (): NoSqlQueryConnection | undefined => {
-        return this.connection;
+        return this.state.connection;
     };
 
     public getCurrentQuery = (): string | undefined => {
-        return this.query;
+        return this.state.query;
+    };
+
+    public getSelectedQuery = (): string | undefined => {
+        return this.state.selectedQuery;
     };
 
     public isActive(): boolean {
@@ -155,1211 +193,22 @@ export class QueryEditorTab extends BaseTab {
      * Broadcasts AI features availability change to all open QueryEditorTabs
      */
     public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
-        const notifications = Array.from(QueryEditorTab.openTabs).map((tab) =>
-            tab.channel.postMessage({
-                type: 'event',
-                name: 'aiFeaturesEnabledChanged',
-                params: [isAIFeaturesEnabled],
-            }),
-        );
-        await Promise.all(notifications);
+        for (const tab of QueryEditorTab.openTabs) {
+            tab.eventSink.emit({ type: 'aiFeaturesEnabledChanged', isEnabled: isAIFeaturesEnabled });
+        }
     }
 
-    public async updateQuery(query: string): Promise<void> {
-        this.query = query;
-        this.isLastQueryAIGenerated = true;
-        this.lastAIGeneratedQuery = query;
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'fileOpened',
-            params: [query],
-        });
-    }
-
-    protected initController() {
-        super.initController();
-
-        this.channel.on<void>('ready', async () => {
-            // Capture the initial query before any async operations to avoid a race
-            // condition: the webview's Monaco editor fires onMount which sends
-            // updateQueryText with the default "SELECT * FROM c", overwriting
-            // this.query while updateConnection is awaiting a network call.
-            const initialQuery = this.query;
-
-            await this.updateConnection(this.connection);
-            await this.updateQueryHistory();
-            await this.updateThroughputBuckets();
-            await this.syncSchemaBasedOnQueriesSetting();
-            await this.sendSchemaToWebview();
-
-            if (initialQuery) {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'fileOpened',
-                    params: [initialQuery],
-                });
-            }
-            await this.refreshSurveyFeedbackVisibility();
-            // Send AI features availability state
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'aiFeaturesEnabledChanged',
-                params: [ext.isAIFeaturesEnabled],
-            });
-        });
-
-        this.disposables.push(
-            vscode.workspace.onDidChangeConfiguration((e) => {
-                if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
-                    void this.syncSchemaBasedOnQueriesSetting();
-                }
-            }),
-        );
+    public updateQuery(query: string): void {
+        this.state.query = query;
+        this.state.isLastQueryAIGenerated = true;
+        this.state.lastAIGeneratedQuery = query;
+        this.eventSink.emit({ type: 'queryTextPushed', query });
     }
 
     public async refreshSurveyFeedbackVisibility(): Promise<void> {
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'isSurveyCandidateChanged',
-            params: [!getIsSurveyDisabledGlobally()],
-        });
-    }
-
-    private async syncSchemaBasedOnQueriesSetting(): Promise<void> {
-        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'schemaSettingChanged',
-            params: [isEnabled],
-        });
-    }
-
-    /**
-     * Sends the current container schema to the webview for autocompletion.
-     * If no schema exists for the current connection, sends null.
-     */
-    private async sendSchemaToWebview(): Promise<void> {
-        if (!this.connection) {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'schemaUpdated',
-                params: [null],
-            });
-            return;
-        }
-
-        const schemaId = this.getSchemaStorageId(this.connection);
-        const schemaStorage = SchemaFileStorage.getInstance();
-        const schemaJson = await schemaStorage.readSchema(schemaId);
-
-        const schema = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
-
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'schemaUpdated',
-            params: [schema],
-        });
-    }
-
-    protected getCommand(payload: CommandPayload): Promise<void> {
-        const commandName = payload.commandName;
-        switch (commandName) {
-            case 'openFile':
-                return this.openFile();
-            case 'saveFile':
-                return this.saveFile(
-                    payload.params[0] as string,
-                    payload.params[1] as string,
-                    payload.params[2] as string,
-                );
-            case 'duplicateTab':
-                return this.duplicateTab(payload.params[0] as string);
-            case 'copyToClipboard':
-                return this.copyToClipboard(payload.params[0] as string);
-            case 'getConnections':
-                return this.getConnections();
-            case 'setConnection':
-                return this.setConnection(payload.params[0] as string, payload.params[1] as string);
-            case 'connectToDatabase':
-                return this.connectToDatabase();
-            case 'disconnectFromDatabase':
-                return this.disconnectFromDatabase();
-            case 'runQuery':
-                return this.runQuery(payload.params[0] as string, payload.params[1] as QueryMetadata);
-            case 'stopQuery':
-                return this.stopQuery(payload.params[0] as string);
-            case 'nextPage':
-                return this.nextPage(payload.params[0] as string);
-            case 'prevPage':
-                return this.prevPage(payload.params[0] as string);
-            case 'firstPage':
-                return this.firstPage(payload.params[0] as string);
-            case 'openDocument':
-                return this.openDocument(payload.params[0] as string, payload.params[1] as CosmosDBRecordIdentifier);
-            case 'deleteDocument':
-                return this.deleteDocument(payload.params[0] as CosmosDBRecordIdentifier);
-            case 'deleteDocuments':
-                return this.deleteDocuments(payload.params[0] as CosmosDBRecordIdentifier[]);
-            case 'provideFeedback':
-                return this.provideFeedback();
-            case 'generateSchema':
-                return this.generateSchema(payload.params[0] as number | undefined);
-            case 'openSchemaSettings':
-                return this.toggleSchemaBasedOnQueries();
-            case 'showCurrentSchema':
-                return this.showCurrentSchema();
-            case 'deleteCurrentSchema':
-                return this.deleteCurrentSchema();
-            case 'saveCSV':
-                return this.saveCSV(
-                    payload.params[0] as string,
-                    payload.params[1] as SerializedQueryResult | null,
-                    payload.params[2] as PartitionKeyDefinition,
-                    payload.params[3] as number[],
-                );
-            case 'saveMetricsCSV':
-                return this.saveMetricsCSV(
-                    payload.params[0] as string,
-                    payload.params[1] as SerializedQueryResult | null,
-                );
-            case 'copyCSVToClipboard':
-                return this.copyCSVToClipboard(
-                    payload.params[0] as SerializedQueryResult | null,
-                    payload.params[1] as PartitionKeyDefinition,
-                    payload.params[2] as number[],
-                );
-            case 'copyMetricsCSVToClipboard':
-                return this.copyMetricsCSVToClipboard(payload.params[0] as SerializedQueryResult | null);
-            case 'updateQueryHistory':
-                return this.updateQueryHistory(payload.params[0] as string);
-            case 'updateQueryText':
-                this.updateQueryText(payload.params[0] as string);
-                return Promise.resolve();
-            case 'generateQuery':
-                return this.generateQuery(payload.params[0] as string, payload.params[1] as string);
-            case 'cancelGenerateQuery':
-                return this.cancelGenerateQuery();
-            case 'closeGenerateInput':
-                return this.closeGenerateInput();
-            case 'confirmToolInvocationResponse':
-                this.pendingConfirmResolve?.(payload.params[0] as boolean);
-                this.pendingConfirmResolve = undefined;
-                return Promise.resolve();
-            case 'getSelectedModelName':
-                return this.getSelectedModelName();
-            case 'getAvailableModels':
-                return this.getAvailableModels();
-            case 'setSelectedModel':
-                return this.setSelectedModel(payload.params[0] as string);
-            case 'openCopilotExplainQuery':
-                return this.openCopilotExplainQuery();
-            case 'reportFeedback': {
-                const feedback = payload.params[0] as { component: string; feedbackValue: 'up' | 'down' };
-                return this.reportFeedback(feedback.feedbackValue, feedback.component);
-            }
-        }
-
-        return super.getCommand(payload);
-    }
-
-    private async getConnections(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.getConnections', async (context) => {
-            if (!this.connection) {
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'setConnectionList',
-                    params: [],
-                });
-                return;
-            }
-
-            const cosmosClient = getCosmosClient(this.connection);
-            const databases = await cosmosClient.databases.readAll().fetchAll();
-            const containers = await Promise.allSettled(
-                databases.resources.map(async (database) => {
-                    const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
-
-                    return containers.resources.map((container) => [database.id, container.id] as string[]);
-                }),
-            );
-
-            const errors = containers.filter((result) => result.status === 'rejected');
-            const connections = containers
-                .filter((result) => result.status === 'fulfilled')
-                .reduce(
-                    (acc, databaseContainers) => {
-                        databaseContainers.value.forEach(([databaseId, containerId]) => {
-                            acc[databaseId] ??= [];
-                            acc[databaseId].push(containerId);
-                        });
-                        return acc;
-                    },
-                    {} as Record<string, string[]>,
-                );
-
-            if (errors.length > 0) {
-                context.telemetry.properties.error = errors.map((error) => toStringUniversal(error.reason)).join(', ');
-            }
-
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'setConnectionList',
-                params: [connections],
-            });
-        });
-    }
-
-    private setConnection(databaseId: string, containerId: string): Promise<void> {
-        return callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.setConnection', async () => {
-            if (!databaseId || !containerId) {
-                throw new Error(l10n.t('Invalid database or container id'));
-            }
-
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection to set'));
-            }
-
-            await this.updateConnection({ ...this.connection, databaseId, containerId });
-        });
-    }
-
-    private async updateConnection(connection?: NoSqlQueryConnection): Promise<void> {
-        this.connection = connection;
-
-        if (this.connection) {
-            const { databaseId, containerId, endpoint, credentials } = this.connection;
-            const masterKey = getCosmosDBKeyCredential(credentials)?.key;
-
-            this.telemetryContext.addMaskedValue([databaseId, containerId, endpoint, masterKey ?? '']);
-
-            const container = await withClaimsChallengeHandling(this.connection, async (client) =>
-                client.database(databaseId).container(containerId).read(),
-            );
-
-            if (container.resource === undefined) {
-                throw new Error(l10n.t('Container {0} not found', containerId));
-            }
-
-            // Probably need to pass the entire container object to the webview
-            const containerDefinition = container.resource;
-            const params: (PartitionKeyDefinition | string)[] = [databaseId, containerId];
-
-            // If container is old and doesn't have partitionKey, we should pass an undefined
-            if (containerDefinition.partitionKey) {
-                params.push(containerDefinition.partitionKey);
-            }
-
-            this.panel.title = `${databaseId}/${containerId}`;
-
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'databaseConnected',
-                params,
-            });
-        } else {
-            this.panel.title = QueryEditorTab.title;
-            // We will not remove the connection details from the telemetry context
-            // to prevent accidental logging of sensitive information
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'databaseDisconnected',
-                params: [],
-            });
-        }
-    }
-
-    private async openFile(): Promise<void> {
-        const options: vscode.OpenDialogOptions = {
-            canSelectMany: false,
-            openLabel: l10n.t('Select'),
-            canSelectFiles: true,
-            canSelectFolders: false,
-            title: l10n.t('Select query'),
-            filters: {
-                'Query files': ['sql', 'nosql'],
-                'Text files': ['txt'],
-            },
-        };
-
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.openFile', async () => {
-            await vscode.window.showOpenDialog(options).then((fileUri) => {
-                if (fileUri && fileUri[0]) {
-                    return vscode.workspace.openTextDocument(fileUri[0]).then((document) => {
-                        void this.channel.postMessage({
-                            type: 'event',
-                            name: 'fileOpened',
-                            params: [document.getText()],
-                        });
-                    });
-                } else {
-                    return undefined;
-                }
-            });
-        });
-    }
-
-    private async saveFile(text: string, filename: string, ext: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.saveFile', async () => {
-            if (!ext.startsWith('.')) {
-                ext = `.${ext}`;
-            }
-            await vscodeUtil.showNewFile(text, filename, ext);
-        });
-    }
-
-    private async updateQueryHistory(query?: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.updateQueryHistory', async (context) => {
-            context.telemetry.suppressIfSuccessful = true;
-
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const storage = StorageService.get(StorageNames.Default);
-            const containerId = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const historyItems = (await storage.getItems(HISTORY_STORAGE_KEY)) as HistoryItem[];
-            const historyData = historyItems.find((item) => item.id === containerId) ?? {
-                id: containerId,
-                name: containerId,
-                properties: {
-                    history: [] as string[],
-                },
-            };
-
-            // First remove any existing occurrences of this query
-            const queryHistory = historyData.properties.history.filter((item) => item !== query);
-
-            // Add the new query to the beginning (most recent first)
-            if (query) {
-                queryHistory.unshift(query);
-            }
-
-            // Trim to max size if needed
-            if (queryHistory.length > QUERY_HISTORY_SIZE) {
-                queryHistory.length = QUERY_HISTORY_SIZE;
-            }
-
-            historyData.properties.history = queryHistory;
-            await storage.push(HISTORY_STORAGE_KEY, historyData);
-
-            // Update the webview with the new history
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'updateQueryHistory',
-                params: [historyData.properties.history],
-            });
-        });
-    }
-
-    private async updateThroughputBuckets(): Promise<void> {
-        await callWithTelemetryAndErrorHandling(
-            'cosmosDB.nosql.queryEditor.updateThroughputBuckets',
-            async (context) => {
-                context.telemetry.suppressIfSuccessful = true;
-
-                if (!this.connection) {
-                    throw new Error(l10n.t('No connection'));
-                }
-
-                // TODO: Implement logic to fetch throughput buckets
-                // For now, we will just set the buckets to true.
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'updateThroughputBuckets',
-                    params: [[true, true, true, true, true]],
-                });
-            },
-        );
-    }
-
-    private async duplicateTab(text: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.duplicateTab', () => {
-            QueryEditorTab.render(this.connection, this.panel.viewColumn, false, text);
-        });
-    }
-
-    private async copyToClipboard(text: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.copyToClipboard', async () => {
-            await vscode.env.clipboard.writeText(text);
-        });
-    }
-
-    private async connectToDatabase(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.connectToDatabase', async (context) => {
-            await getNoSqlQueryConnection().then(async (connection) => {
-                if (connection) {
-                    const { databaseId, containerId } = connection;
-                    context.telemetry.properties.databaseId = crypto
-                        .createHash('sha256')
-                        .update(databaseId)
-                        .digest('hex');
-                    context.telemetry.properties.containerId = crypto
-                        .createHash('sha256')
-                        .update(containerId)
-                        .digest('hex');
-                    context.telemetry.properties.isEmulator = connection.isEmulator.toString();
-
-                    await this.updateConnection(connection);
-                }
-            });
-        });
-    }
-
-    private async disconnectFromDatabase(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.disconnectFromDatabase', async () => {
-            return this.updateConnection(undefined);
-        });
-    }
-
-    private async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        this.query = query;
-
-        const wasAIGenerated = this.isLastQueryAIGenerated;
-        const wasModified =
-            wasAIGenerated && this.lastAIGeneratedQuery !== undefined && query !== this.lastAIGeneratedQuery;
-        this.isLastQueryAIGenerated = false;
-        this.lastAIGeneratedQuery = undefined;
-
-        const callbackId = 'cosmosDB.nosql.queryEditor.runQuery';
-        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            context.telemetry.properties.isAIGenerated = String(wasAIGenerated);
-            if (wasAIGenerated) {
-                context.telemetry.properties.isQueryModified = String(wasModified);
-            }
-
-            if (options.sessionId) {
-                // Need to check if session exists in the current sessions
-                // Ask the user about losing the current session and starting a new one
-                const existingSession = this.sessions.get(options.sessionId);
-                if (existingSession) {
-                    const message =
-                        l10n.t('All loaded data will be lost. The query will be executed again in new session.') +
-                        '\n' +
-                        l10n.t('Are you sure you want to continue?');
-                    const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
-                    const closeItem: vscode.MessageItem = { title: l10n.t('Close'), isCloseAffordance: true };
-                    const choice = await vscode.window.showWarningMessage(
-                        message,
-                        {
-                            modal: true,
-                        },
-                        continueItem,
-                        closeItem,
-                    );
-
-                    if (choice !== continueItem) {
-                        return;
-                    }
-                }
-            }
-
-            const session = new QuerySession(this.connection, this.channel, query, options);
-
-            context.telemetry.properties.executionId = session.id;
-
-            // Need to stop and remove all previous sessions
-            this.sessions.forEach((existingSession) => existingSession.dispose());
-            this.sessions.clear();
-
-            this.sessions.set(session.id, session);
-
-            await session.run();
-
-            // Merge results into stored schema if setting is enabled and query is SELECT *
-            void this.mergeQueryResultsIntoSchema(session);
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.High, callbackId);
-    }
-
-    private async stopQuery(executionId: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.stopQuery', async (context) => {
-            context.telemetry.properties.executionId = executionId;
-
-            const session = this.sessions.get(executionId);
-            if (!session) {
-                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
-            }
-
-            await session.stop();
-            this.sessions.delete(executionId);
-        });
-    }
-
-    private async nextPage(executionId: string): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.nextPage';
-        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
-            context.telemetry.properties.executionId = executionId;
-
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const session = this.sessions.get(executionId);
-            if (!session) {
-                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
-            }
-
-            await session.nextPage();
-
-            // Merge results into stored schema if setting is enabled and query is SELECT *
-            void this.mergeQueryResultsIntoSchema(session);
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    private async prevPage(executionId: string): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.prevPage';
-        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
-            context.telemetry.properties.executionId = executionId;
-
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const session = this.sessions.get(executionId);
-            if (!session) {
-                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
-            }
-
-            await session.prevPage();
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    private async firstPage(executionId: string): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.firstPage';
-        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
-            context.telemetry.properties.executionId = executionId;
-
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const session = this.sessions.get(executionId);
-            if (!session) {
-                throw new Error(l10n.t('No session found for executionId: {executionId}', { executionId }));
-            }
-
-            await session.firstPage();
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    private async openDocument(mode: string, documentId?: CosmosDBRecordIdentifier): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.openDocument';
-        await callWithTelemetryAndErrorHandling(callbackId, () => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            if (!documentId && mode !== 'add') {
-                throw new Error(l10n.t('Impossible to open an item without an id'));
-            }
-
-            if (mode !== 'edit' && mode !== 'view' && mode !== 'add') {
-                throw new Error(l10n.t('Invalid mode: {0}', mode));
-            }
-
-            DocumentTab.render(this.connection, mode, documentId, this.getNextViewColumn());
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    private async deleteDocument(documentId: CosmosDBRecordIdentifier): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocument';
-        await callWithTelemetryAndErrorHandling(callbackId, async () => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            if (!documentId) {
-                throw new Error(l10n.t('Impossible to delete an item without an id'));
-            }
-
-            const session = new DocumentSession(this.connection, this.channel);
-            await session.delete(documentId);
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    private async deleteDocuments(documentIds: CosmosDBRecordIdentifier[]): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.deleteDocuments';
-        await callWithTelemetryAndErrorHandling(callbackId, async () => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const session = new DocumentSession(this.connection, this.channel);
-            await session.bulkDelete(documentIds);
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    /**
-     * Returns a stable, fixed-length storage key for the current connection's schema.
-     * Hashes endpoint + databaseId + containerId so different accounts with identical
-     * database/container names never collide.
-     */
-    private getSchemaStorageId(connection: NoSqlQueryConnection): string {
-        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
-        return crypto.createHash('sha256').update(raw).digest('hex');
-    }
-
-    /**
-     * When the "Generate schema based on queries" setting is enabled and the query is
-     * a SELECT *, merges the fetched documents into the stored schema for the current container.
-     * If no schema exists yet, creates one from scratch.
-     */
-    private async mergeQueryResultsIntoSchema(session: QuerySession): Promise<void> {
-        if (!this.connection) {
-            return;
-        }
-
-        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-        const isEnabled = config.get<boolean>('generateSchemaBasedOnQueries', false);
-        if (!isEnabled) {
-            return;
-        }
-
-        if (!isSelectStar(session.queryText)) {
-            return;
-        }
-
-        const documents = session.getLastFetchedDocuments();
-        if (!documents || documents.length === 0) {
-            return;
-        }
-
-        const schemaId = this.getSchemaStorageId(this.connection);
-        const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-        const schemaStorage = SchemaFileStorage.getInstance();
-
-        // Load existing schema or start fresh
-        const existingMetadata = schemaStorage.getMetadata(schemaId);
-        const existingSchemaJson = existingMetadata ? await schemaStorage.readSchema(schemaId) : undefined;
-
-        let schema: JSONSchema;
-        let totalDocCount: number;
-
-        if (existingSchemaJson) {
-            schema = JSON.parse(existingSchemaJson) as JSONSchema;
-            totalDocCount = parseInt(existingMetadata!.documentCount, 10) || 0;
-        } else {
-            schema = {};
-            totalDocCount = 0;
-        }
-
-        // Merge each document into the schema
-        for (const doc of documents) {
-            updateSchemaWithDocument(schema, doc as NoSQLDocument);
-        }
-        simplifySchema(schema);
-
-        totalDocCount += documents.length;
-
-        await schemaStorage.saveSchema(
-            schemaId,
-            containerLabel,
-            JSON.stringify(schema),
-            new Date().toISOString(),
-            totalDocCount.toString(),
-        );
-
-        await this.sendSchemaToWebview();
-    }
-
-    private getNextViewColumn(): vscode.ViewColumn {
-        let viewColumn = this.panel.viewColumn ?? vscode.ViewColumn.Active;
-        if (viewColumn === vscode.ViewColumn.Nine) {
-            viewColumn = vscode.ViewColumn.One;
-        } else {
-            viewColumn += 1;
-        }
-
-        return viewColumn;
-    }
-
-    private async provideFeedback(): Promise<void> {
-        openSurvey(ExperienceKind.NoSQL, 'cosmosDB.nosql.queryEditor.provideFeedback');
-        return Promise.resolve();
-    }
-
-    private async generateSchema(limit?: number): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.generateSchema', async (context) => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            // Cap the limit at MAX_SCHEMA_DOCUMENT_LIMIT
-            const effectiveLimit =
-                limit === undefined ? MAX_SCHEMA_DOCUMENT_LIMIT : Math.min(limit, MAX_SCHEMA_DOCUMENT_LIMIT);
-
-            context.telemetry.properties.limit = effectiveLimit.toString();
-
-            const schemaId = this.getSchemaStorageId(this.connection);
-            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const limitLabel = limit
-                ? l10n.t('TOP {0}', effectiveLimit)
-                : l10n.t('ALL (up to {0})', MAX_SCHEMA_DOCUMENT_LIMIT);
-
-            // Check if a schema already exists for this container
-            const schemaStorage = SchemaFileStorage.getInstance();
-            const hasExistingSchema = schemaStorage.hasSchema(schemaId);
-
-            const warningParts: string[] = [
-                l10n.t(
-                    'Generating schema from {0} documents will execute a query against your Azure Cosmos DB container, which consumes Request Units (RUs).',
-                    limitLabel,
-                ),
-            ];
-
-            if (hasExistingSchema) {
-                warningParts.push(l10n.t('The previously saved schema for this container will be replaced.'));
-            }
-
-            warningParts.push(l10n.t('Are you sure you want to continue?'));
-
-            const message = warningParts.join('\n');
-
-            const continueItem: vscode.MessageItem = { title: l10n.t('Continue') };
-            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
-            const choice = await vscode.window.showWarningMessage(message, { modal: true }, continueItem, cancelItem);
-
-            if (choice !== continueItem) {
-                return;
-            }
-
-            const connection = this.connection;
-            const query =
-                effectiveLimit < MAX_SCHEMA_DOCUMENT_LIMIT
-                    ? `SELECT TOP ${effectiveLimit} * FROM c`
-                    : `SELECT * FROM c`;
-
-            const result = await vscode.window.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: l10n.t('Generating schema for {0}', containerLabel),
-                    cancellable: true,
-                },
-                async (progress, token) => {
-                    const iterator = await withClaimsChallengeHandling(connection, (client) =>
-                        Promise.resolve(
-                            client
-                                .database(connection.databaseId)
-                                .container(connection.containerId)
-                                .items.query(query, { maxItemCount: SCHEMA_GENERATION_PAGE_SIZE }),
-                        ),
-                    );
-
-                    let schema: JSONSchema = {};
-                    let totalDocCount = 0;
-                    let isFirstDoc = true;
-
-                    while (iterator.hasMoreResults() && totalDocCount < effectiveLimit) {
-                        if (token.isCancellationRequested) {
-                            break;
-                        }
-
-                        const page = await iterator.fetchNext();
-                        const documents = page.resources ?? [];
-
-                        if (documents.length === 0) {
-                            break;
-                        }
-
-                        for (const doc of documents) {
-                            if (totalDocCount >= effectiveLimit) {
-                                break;
-                            }
-
-                            if (isFirstDoc) {
-                                schema = getSchemaFromDocument(doc as NoSQLDocument);
-                                isFirstDoc = false;
-                            } else {
-                                updateSchemaWithDocument(schema, doc as NoSQLDocument);
-                            }
-                            totalDocCount++;
-                        }
-
-                        const percentage = effectiveLimit
-                            ? Math.round((totalDocCount / effectiveLimit) * 100)
-                            : undefined;
-                        progress.report({
-                            message: l10n.t('{0} documents processed', totalDocCount),
-                            increment: percentage !== undefined ? (documents.length / effectiveLimit) * 100 : undefined,
-                        });
-                    }
-
-                    return { schema, totalDocCount, cancelled: token.isCancellationRequested };
-                },
-            );
-
-            const { schema, totalDocCount, cancelled } = result;
-
-            if (totalDocCount === 0) {
-                void vscode.window.showInformationMessage(
-                    l10n.t('No documents found in the container. Schema was not generated.'),
-                );
-                return;
-            }
-
-            simplifySchema(schema);
-
-            const schemaJson = JSON.stringify(schema);
-            const schemaSizeBytes = Buffer.byteLength(schemaJson, 'utf8');
-
-            if (schemaSizeBytes > SCHEMA_SIZE_WARNING_BYTES) {
-                const sizeMB = (schemaSizeBytes / (1024 * 1024)).toFixed(1);
-                const proceed: vscode.MessageItem = { title: l10n.t('Save anyway') };
-                const discard: vscode.MessageItem = { title: l10n.t('Discard'), isCloseAffordance: true };
-                const sizeChoice = await vscode.window.showWarningMessage(
-                    l10n.t(
-                        'The generated schema is {0} MB, which is very large and may impact performance. Do you want to save it?',
-                        sizeMB,
-                    ),
-                    { modal: true },
-                    proceed,
-                    discard,
-                );
-
-                if (sizeChoice !== proceed) {
-                    return;
-                }
-            }
-
-            await schemaStorage.saveSchema(
-                schemaId,
-                containerLabel,
-                schemaJson,
-                new Date().toISOString(),
-                totalDocCount.toString(),
-            );
-
-            if (cancelled) {
-                void vscode.window.showInformationMessage(
-                    l10n.t(
-                        'Schema generation was cancelled. Partial schema from {0} documents has been saved for {1}.',
-                        totalDocCount,
-                        containerLabel,
-                    ),
-                );
-            } else {
-                void vscode.window.showInformationMessage(
-                    l10n.t('Schema generated from {0} documents and saved for {1}.', totalDocCount, containerLabel),
-                );
-            }
-
-            await this.sendSchemaToWebview();
-        });
-    }
-
-    private async toggleSchemaBasedOnQueries(): Promise<void> {
-        const config = vscode.workspace.getConfiguration('cosmosDB.queryEditor');
-        const current = config.get<boolean>('generateSchemaBasedOnQueries', false);
-        await config.update('generateSchemaBasedOnQueries', !current, vscode.ConfigurationTarget.Global);
-    }
-
-    private async showCurrentSchema(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.showCurrentSchema', async () => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const schemaId = this.getSchemaStorageId(this.connection);
-            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const schemaStorage = SchemaFileStorage.getInstance();
-
-            if (!schemaStorage.hasSchema(schemaId)) {
-                void vscode.window.showInformationMessage(
-                    l10n.t('No schema found for {0}. Use the "Generate schema" option to create one.', containerLabel),
-                );
-                return;
-            }
-
-            const fileUri = schemaStorage.getSchemaFileUri(schemaId);
-            const document = await vscode.workspace.openTextDocument(fileUri);
-            await vscode.window.showTextDocument(document, { preview: true });
-        });
-    }
-
-    private async deleteCurrentSchema(): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.deleteCurrentSchema', async () => {
-            if (!this.connection) {
-                throw new Error(l10n.t('No connection'));
-            }
-
-            const schemaId = this.getSchemaStorageId(this.connection);
-            const containerLabel = `${this.connection.databaseId}/${this.connection.containerId}`;
-            const schemaStorage = SchemaFileStorage.getInstance();
-
-            if (!schemaStorage.hasSchema(schemaId)) {
-                void vscode.window.showInformationMessage(l10n.t('No schema found for {0}.', containerLabel));
-                return;
-            }
-
-            const deleteItem: vscode.MessageItem = { title: l10n.t('Delete') };
-            const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
-            const choice = await vscode.window.showWarningMessage(
-                l10n.t(
-                    'Are you sure you want to delete the schema for {0}? The schema file will be permanently removed from disk. To get the schema back, you will need to generate it again.',
-                    containerLabel,
-                ),
-                { modal: true },
-                deleteItem,
-                cancelItem,
-            );
-
-            if (choice !== deleteItem) {
-                return;
-            }
-
-            await schemaStorage.deleteSchema(schemaId);
-
-            void vscode.window.showInformationMessage(l10n.t('Schema for {0} has been deleted.', containerLabel));
-
-            await this.sendSchemaToWebview();
-        });
-    }
-
-    private async saveCSV(
-        name: string,
-        currentQueryResult: SerializedQueryResult | null,
-        partitionKey?: PartitionKeyDefinition,
-        selection?: number[],
-    ): Promise<void> {
-        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
-        await vscodeUtil.showNewFile(text, name, '.csv');
-    }
-
-    private async saveMetricsCSV(name: string, currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        const text = await queryMetricsToCsv(currentQueryResult);
-        await vscodeUtil.showNewFile(text, name, '.csv');
-    }
-
-    private async copyCSVToClipboard(
-        currentQueryResult: SerializedQueryResult | null,
-        partitionKey?: PartitionKeyDefinition,
-        selection?: number[],
-    ): Promise<void> {
-        const text = await queryResultToCsv(currentQueryResult, partitionKey, selection);
-        await vscode.env.clipboard.writeText(text);
-    }
-
-    private async copyMetricsCSVToClipboard(currentQueryResult: SerializedQueryResult | null): Promise<void> {
-        const text = await queryMetricsToCsv(currentQueryResult);
-        await vscode.env.clipboard.writeText(text);
-    }
-
-    private updateQueryText(query: string): void {
-        this.query = query;
-    }
-
-    private async generateQuery(prompt: string, currentQuery: string): Promise<void> {
-        const callbackId = 'cosmosDB.nosql.queryEditor.generateQuery';
-        const isRetry = this.lastGenerationFailed;
-        await callWithTelemetryAndErrorHandling(callbackId, async (context) => {
-            context.errorHandling.suppressDisplay = true;
-            context.telemetry.properties.isRetry = String(isRetry);
-            this.lastGenerationFailed = false;
-            // Cancel any existing generation
-            this.generateQueryCancellation?.cancel();
-            this.generateQueryCancellation?.dispose();
-            this.generateQueryCancellation = new vscode.CancellationTokenSource();
-            const token = this.generateQueryCancellation.token;
-
-            try {
-                // Check for cancellation
-                if (token.isCancellationRequested) {
-                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
-                        ctx.errorHandling.suppressDisplay = true;
-                        ctx.telemetry.properties.phase = 'beforeLLM';
-                    });
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'queryGenerated',
-                        params: [false],
-                    });
-                    return;
-                }
-
-                const model = await getSelectedModel();
-
-                // Use the shared service for query generation
-                const service = CosmosDbOperationsService.getInstance();
-                const historyContext = service.getQueryHistoryContext(this);
-
-                const generatedQuery = await service.generateQueryWithLLM(prompt, currentQuery, {
-                    modelId: model.id,
-                    historyContext,
-                    cancellationToken: token,
-                    source: 'queryEditor',
-                    operation: 'generateQuery',
-                    onConfirm: async (message: string) => {
-                        await this.channel.postMessage({
-                            type: 'event',
-                            name: 'confirmToolInvocation',
-                            params: [message],
-                        });
-                        return new Promise<boolean>((resolve) => {
-                            this.pendingConfirmResolve = resolve;
-                        });
-                    },
-                });
-
-                // Check for cancellation after LLM call
-                if (token.isCancellationRequested) {
-                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
-                        ctx.errorHandling.suppressDisplay = true;
-                        ctx.telemetry.properties.phase = 'afterLLM';
-                    });
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'queryGenerated',
-                        params: [false],
-                    });
-                    return;
-                }
-
-                // Comment the original prompt and prepend the generated query
-                // Sanitize user inputs to prevent SQL comment injection
-                const sanitizedPrompt = sanitizeSqlComment(prompt);
-                const sanitizedCurrentQuery = currentQuery
-                    .split('\n')
-                    .map((line) => sanitizeSqlComment(line))
-                    .join('\n-- ');
-                const finalQuery = `-- Generated from: ${sanitizedPrompt}\n${generatedQuery.trim()}\n\n-- Previous query:\n-- ${sanitizedCurrentQuery}`;
-
-                this.isLastQueryAIGenerated = true;
-                this.lastAIGeneratedQuery = finalQuery;
-
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryGenerated',
-                    params: [finalQuery, model.name, prompt],
-                });
-            } catch (error) {
-                // Check if it was a cancellation
-                if (token.isCancellationRequested) {
-                    void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
-                        ctx.errorHandling.suppressDisplay = true;
-                        ctx.telemetry.properties.phase = 'exception';
-                    });
-                    await this.channel.postMessage({
-                        type: 'event',
-                        name: 'queryGenerated',
-                        params: [false],
-                    });
-                    return;
-                }
-
-                const errorMessage = parseError(error).message;
-                this.lastGenerationFailed = true;
-                await this.channel.postMessage({
-                    type: 'event',
-                    name: 'queryGenerated',
-                    params: [false],
-                });
-                void vscode.window.showErrorMessage(l10n.t('Failed to generate query: {0}', errorMessage));
-                throw error;
-            }
-        });
-        void promptAfterActionEventually(ExperienceKind.NoSQL, UsageImpact.Medium, callbackId);
-    }
-
-    private cancelGenerateQuery(): Promise<void> {
-        this.pendingConfirmResolve?.(false);
-        this.pendingConfirmResolve = undefined;
-        if (this.generateQueryCancellation) {
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (ctx) => {
-                ctx.errorHandling.suppressDisplay = true;
-                ctx.telemetry.properties.phase = 'userCancel';
-            });
-        }
-        this.generateQueryCancellation?.cancel();
-        this.generateQueryCancellation?.dispose();
-        this.generateQueryCancellation = undefined;
-        return Promise.resolve();
-    }
-
-    private closeGenerateInput(): Promise<void> {
-        ext.outputChannel.info('[Generate Query] Generate query input closed by user.');
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (ctx) => {
-            ctx.errorHandling.suppressDisplay = true;
-        });
-        void this.cancelGenerateQuery();
-        return Promise.resolve();
-    }
-
-    private async getSelectedModelName(): Promise<void> {
-        try {
-            const selectedModel = await getSelectedModel();
-            const modelName = selectedModel?.name ?? 'Copilot';
-
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'selectedModelName',
-                params: [modelName],
-            });
-        } catch {
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'selectedModelName',
-                params: ['Copilot'],
-            });
-        }
-    }
-
-    private async getAvailableModels(): Promise<void> {
-        const { models, savedModelId } = await getAvailableModelsInfo();
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'availableModels',
-            params: [models, savedModelId],
-        });
-    }
-
-    private async setSelectedModel(modelId: string): Promise<void> {
-        await ext.context.globalState.update(SELECTED_MODEL_KEY, modelId);
-
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', (ctx) => {
-            ctx.errorHandling.suppressDisplay = true;
-            ctx.telemetry.properties.modelId = modelId;
-        });
-
-        // Send back confirmation with the model name
-        const models = await vscode.lm.selectChatModels();
-        const selectedModel = models.find((m) => m.id === modelId);
-
-        await this.channel.postMessage({
-            type: 'event',
-            name: 'selectedModelName',
-            params: [selectedModel?.name ?? 'Copilot'],
-        });
-    }
-
-    private async openCopilotExplainQuery(): Promise<void> {
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (ctx) => {
-            ctx.errorHandling.suppressDisplay = true;
-        });
-
-        const query = this.query?.trim();
-        const chatQuery = query ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\`` : '@cosmosdb /explainQuery';
-
-        await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: chatQuery,
-        });
-    }
-
-    private async reportFeedback(feedback: 'up' | 'down', category: string): Promise<void> {
-        await callWithTelemetryAndErrorHandling('cosmosDB.nosql.queryEditor.reportFeedback', (context) => {
-            context.telemetry.properties.feedback = feedback;
-            context.telemetry.properties.category = category;
-            context.telemetry.properties.isAIGenerated = String(this.isLastQueryAIGenerated);
+        this.eventSink.emit({
+            type: 'isSurveyCandidateChanged',
+            isSurveyCandidate: !getIsSurveyDisabledGlobally(),
         });
     }
 }

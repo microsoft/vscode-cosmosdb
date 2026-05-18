@@ -2,13 +2,14 @@
 {
   "version": "0.2.0",
   "configurations": [
+    // ── Vite (default) ───────────────────────────────────────────────────────────
     {
-      "name": "Launch Extension (webpack)",
+      "name": "Launch Extension",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}/dist"],
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.mjs"],
       "preLaunchTask": "Watch",
       "autoAttachChildProcesses": true,
       "debugWebWorkerHost": true,
@@ -30,7 +31,7 @@
       }
     },
     {
-      "name": "Launch Extension + AzureResources (webpack)",
+      "name": "Launch Extension + AzureResources",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
@@ -39,7 +40,7 @@
         "--extensionDevelopmentPath=${workspaceFolder}/dist",
         "--extensionDevelopmentPath=${workspaceFolder}/../vscode-azureresourcegroups"
       ],
-      "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.mjs", "${workspaceFolder}/../vscode-azureresourcegroups/out/**/*.js"],
       "preLaunchTask": "Watch",
       "autoAttachChildProcesses": true,
       "debugWebWorkerHost": true,
@@ -63,6 +64,8 @@
         "STOP_ON_ENTRY": "false" // stop on entry is not allowed for "type": "extensionHost", therefore, it's emulated here (review main.ts)
       }
     },
+
+    // ── Tests ───────────────────────────────────────────────────────────────────
     {
       "name": "Launch Tests",
       "type": "extensionHost",
@@ -77,24 +80,6 @@
       "preLaunchTask": "Pretest",
       "env": {
         "DEBUGTELEMETRY": "true",
-        "ENABLE_LONG_RUNNING_TESTS": "true"
-      }
-    },
-    {
-      "name": "Launch Tests (webpack)",
-      "type": "extensionHost",
-      "request": "launch",
-      "runtimeExecutable": "${execPath}",
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/dist",
-        "--extensionTestsPath=${workspaceFolder}/out/test/index",
-        "${workspaceFolder}/test/test.code-workspace"
-      ],
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "Pretest and Webpack",
-      "env": {
-        "DEBUGTELEMETRY": "true",
-        "DEBUG_WEBPACK": "1",
         "ENABLE_LONG_RUNNING_TESTS": "true"
       }
     },

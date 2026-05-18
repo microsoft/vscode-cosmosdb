@@ -48,16 +48,17 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(context: IActionContext, content: string): Promise<void> {
-        const readResponse = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
-            cosmosClient
+        const existing = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
+            const response = await client
                 .database(this.model.database.id)
                 .container(this.model.container.id)
                 .scripts.trigger(this.model.trigger.id)
-                .read(),
-        );
+                .read();
+            return response.resource;
+        });
 
-        let triggerType = readResponse.resource?.triggerType;
-        let triggerOperation = readResponse.resource?.triggerOperation;
+        let triggerType = existing?.triggerType;
+        let triggerOperation = existing?.triggerOperation;
 
         if (!triggerType) {
             triggerType = await getTriggerType(context);
@@ -66,18 +67,18 @@ export class TriggerFileDescriptor implements EditableFileSystemItem {
             triggerOperation = await getTriggerOperation(context);
         }
 
-        const replace = await withClaimsChallengeHandling(this.model.accountInfo, (cosmosClient) =>
-            cosmosClient
+        this.model.trigger = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
+            const response = await client
                 .database(this.model.database.id)
                 .container(this.model.container.id)
                 .scripts.trigger(this.model.trigger.id)
                 .replace({
                     id: this.model.trigger.id,
-                    triggerType: triggerType,
-                    triggerOperation: triggerOperation,
+                    triggerType,
+                    triggerOperation,
                     body: content,
-                }),
-        );
-        this.model.trigger = nonNullProp(replace, 'resource');
+                });
+            return nonNullProp(response, 'resource');
+        });
     }
 }

@@ -21,8 +21,8 @@ import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { wellKnownEmulatorPassword } from '../../../constants';
 import { AuthenticationMethod } from '../../../cosmosdb/AuthenticationMethod';
+import { wellKnownEmulatorPassword } from '../../../cosmosdb/cosmosdb-shared-constants';
 import { type CosmosDBCredential } from '../../../cosmosdb/CosmosDBCredential';
 import { getCosmosClient } from '../../../cosmosdb/getCosmosClient';
 import { getSignedInPrincipalIdForSubscription } from '../../../cosmosdb/utils/azureSessionHelper';
@@ -37,8 +37,8 @@ import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
-import { type Channel } from '../../Communication/Channel/Channel';
 import { getCosmosDbBestPractices } from '../bestPractices';
+import { type Channel } from '../Channel';
 import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';
 import {
     createMkDebug,
@@ -212,7 +212,7 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
             }
             if (!cachedMgmtClient) {
                 const { createCosmosDBManagementClient } = await import('../../../utils/azureClients');
-                cachedMgmtClient = await createCosmosDBManagementClient(context!, armTarget.subscription);
+                cachedMgmtClient = await createCosmosDBManagementClient(context, armTarget.subscription);
             }
             return cachedMgmtClient;
         };

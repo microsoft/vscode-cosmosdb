@@ -61,7 +61,11 @@ export const ResultTab = ({ className }: ResultTabProps) => {
     const [resultCount, setResultCount] = useState<number>(0);
     const [hasPreviousData, setHasPreviousData] = useState<boolean>(false);
 
-    // Remove the second useEffect entirely and modify the first one
+    // Reset viewData when currentQueryResult changes so pagination always recalculates
+    useEffect(() => {
+        setViewData({});
+    }, [currentQueryResult]);
+
     useEffect(() => {
         // Skip if no query result
         if (!currentQueryResult || currentQueryResult.documents.length === 0) {

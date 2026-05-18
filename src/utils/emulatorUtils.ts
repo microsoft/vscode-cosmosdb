@@ -6,7 +6,7 @@
 import { callWithTelemetryAndErrorHandling, nonNullValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { getExperienceFromApi, type API } from '../AzureDBExperiences';
-import { wellKnownEmulatorPassword } from '../constants';
+import { wellKnownEmulatorPassword } from '../cosmosdb/cosmosdb-shared-constants';
 import { type ParsedCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { StorageNames, StorageService, type StorageItem } from '../services/StorageService';
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
@@ -76,7 +76,7 @@ export async function migrateRawEmulatorItemToHashed(item: StorageItem): Promise
                     // Store the new item, or abort if it already exists which would be unexpected at this point
                     await StorageService.get(StorageNames.Workspace).push(workspaceType, newItem, false);
                 } catch (error) {
-                    throw new Error(`Failed to migrate emulator item "${item.id}": ${error}`);
+                    throw new Error(`Failed to migrate emulator item "${item.id}": ${String(error)}`, { cause: error });
                 }
                 // Delete old item after successful migration
                 await StorageService.get(StorageNames.Workspace).delete(workspaceType, item.id);

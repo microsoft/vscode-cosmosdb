@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
-import { type Channel } from '../../Communication/Channel/Channel';
+import { type Channel } from '../Channel';
 import { type CosmosModel } from '../cosmosModel';
 
 // ─── File I/O ────────────────────────────────────────────────────────

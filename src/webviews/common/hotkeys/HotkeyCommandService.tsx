@@ -97,15 +97,15 @@ export class HotkeyCommandService<Scope extends HotkeyScope, Command extends Hot
 
         // Add hotkeys to the scope
         const scopeHotkeys = this.scopes.get(scope)!;
-        const existingHotkeys = Array.from(scopeHotkeys).map((hk) => hk.key);
-        const existingCommands = Array.from(scopeHotkeys).map((hk) => hk.command);
+        const existingHotkeys = new Set(Array.from(scopeHotkeys).map((hk) => hk.key));
+        const existingCommands = new Set(Array.from(scopeHotkeys).map((hk) => hk.command));
 
         hotkeys.forEach((hotkey) => {
-            if (existingHotkeys.includes(hotkey.key)) {
+            if (existingHotkeys.has(hotkey.key)) {
                 console.warn(`Hotkey ${hotkey.key} is already registered in scope ${scope}`);
                 return;
             }
-            if (existingCommands.includes(hotkey.command)) {
+            if (existingCommands.has(hotkey.command)) {
                 console.warn(`Command ${hotkey.command} is already registered in scope ${scope}`);
                 return;
             }

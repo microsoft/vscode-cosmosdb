@@ -9,8 +9,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
-import { type Channel } from '../../Communication/Channel/Channel';
 import { getCosmosDbBestPractices, getIndexPathSyntaxRule } from '../bestPractices';
+import { type Channel } from '../Channel';
 import {
     type CosmosContainer,
     type CosmosModel,

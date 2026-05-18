@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-jest.mock('vscode', () => {
+import { type Mock } from 'vitest';
+vi.mock('vscode', () => {
     class LanguageModelTextPart {
         value: string;
 
@@ -14,13 +15,13 @@ jest.mock('vscode', () => {
 
     return {
         Uri: {
-            file: jest.fn((fsPath: string) => ({ fsPath })),
+            file: vi.fn((fsPath: string) => ({ fsPath })),
         },
         workspace: {
             fs: {
-                createDirectory: jest.fn().mockResolvedValue(undefined),
-                writeFile: jest.fn().mockResolvedValue(undefined),
-                readFile: jest.fn(),
+                createDirectory: vi.fn().mockResolvedValue(undefined),
+                writeFile: vi.fn().mockResolvedValue(undefined),
+                readFile: vi.fn(),
             },
         },
         LanguageModelTextPart,
@@ -29,7 +30,7 @@ jest.mock('vscode', () => {
             Assistant: 2,
         },
         LanguageModelChatMessage: {
-            User: jest.fn((text: string) => ({
+            User: vi.fn((text: string) => ({
                 role: 1,
                 content: [new LanguageModelTextPart(text)],
             })),
@@ -37,10 +38,10 @@ jest.mock('vscode', () => {
     };
 });
 
-jest.mock('../../../extensionVariables', () => ({
+vi.mock('../../../extensionVariables', () => ({
     ext: {
         outputChannel: {
-            appendLog: jest.fn(),
+            appendLog: vi.fn(),
         },
     },
 }));
@@ -58,9 +59,9 @@ function createMessage(role: number, text: string): vscode.LanguageModelChatMess
 
 describe('dumpDebugPrompt', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
-        (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
-        (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+        vi.clearAllMocks();
+        (vscode.workspace.fs.createDirectory as Mock).mockResolvedValue(undefined);
+        (vscode.workspace.fs.writeFile as Mock).mockResolvedValue(undefined);
     });
 
     it('writes prompt and messages files when no override is active', async () => {

@@ -3,15 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-export const isWindows: boolean = /^win/.test(process.platform);
-export const isLinux: boolean = /^linux/.test(process.platform);
-export const isMacOS: boolean = /^darwin/.test(process.platform);
-
 import * as fs from 'fs';
 import assert from 'node:assert';
 import * as path from 'path';
-import { Uri, type IconPath } from 'vscode';
+import { ThemeIcon, Uri, type IconPath } from 'vscode';
 import { ext } from './extensionVariables';
+
+export const isWindows: boolean = process.platform.startsWith('win');
+export const isLinux: boolean = process.platform.startsWith('linux');
+export const isMacOS: boolean = process.platform.startsWith('darwin');
 
 export namespace Links {
     export const LocalConnectionDebuggingTips: string = 'https://aka.ms/AA5zah5';
@@ -36,6 +36,19 @@ export function getThemeAgnosticIconPath(iconName: string): IconPath {
     assert.ok(fs.existsSync(icon));
 
     return Uri.file(icon);
+}
+
+export function getThemeAgnosticIconURI(iconName: string): IconPath {
+    const iconPath = Uri.joinPath(ext.context.extensionUri, 'resources', 'icons', 'theme-agnostic', iconName);
+    if (!fs.existsSync(iconPath.fsPath)) {
+        ext.outputChannel.warn(`Icon not found: ${iconPath.fsPath}`);
+        return new ThemeIcon('database');
+    }
+
+    return {
+        light: iconPath,
+        dark: iconPath,
+    };
 }
 
 export function getResourcesPath(): string {
@@ -75,18 +88,9 @@ export const defaultTrigger = `function trigger() {
 
 }`;
 
-export const wellKnownEmulatorPassword =
-    'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==';
-
 // Determine if emulator is supported on this platform, historically this was needed to disable emulator support on Silicon Macs
 // which is now supported via Docker. We still keep the check in case there are any other platform specific issues in the future.
 export const isEmulatorSupported = isWindows || isLinux || isMacOS;
-
-export const SERVERLESS_CAPABILITY_NAME = 'EnableServerless';
-
-export const CosmosDBHiddenFields: string[] = ['_rid', '_self', '_etag', '_attachments', '_ts'];
-
-export const SCHEMA_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.schema';
 
 export class HttpStatusCodes {
     /**

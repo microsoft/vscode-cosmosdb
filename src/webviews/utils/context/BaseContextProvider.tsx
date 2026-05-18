@@ -3,29 +3,59 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Link, Toast, ToastBody, ToastTitle, ToastTrigger } from '@fluentui/react-components';
+import { Link, Toast, ToastBody, ToastTitle, ToastTrigger, type useToastController } from '@fluentui/react-components';
+import { type TRPCClient } from '@trpc/client';
+import { type AnyRouter } from '@trpc/server';
 import * as l10n from '@vscode/l10n';
-import type * as React from 'react';
-import { type Channel } from '../../../panels/Communication/Channel/Channel';
-import { getErrorMessage } from '../../../panels/Communication/Channel/CommonChannel';
 
-export class BaseContextProvider {
+export type DispatchToastFn = ReturnType<typeof useToastController>['dispatchToast'];
+
+/**
+ * Common routes interface for the base context provider.
+ * Both QueryEditorAppRouter and DocumentAppRouter include these routes
+ * via the `buildCommonRouter` factory.
+ */
+interface CommonRoutes {
+    common: {
+        showInformationMessage: { mutate: (input: { message: string }) => Promise<void> };
+        showErrorMessage: { mutate: (input: { message: string }) => Promise<void> };
+        openUrl: { mutate: (input: { url: string }) => Promise<void> };
+        reportEvent: {
+            mutate: (input: {
+                eventName: string;
+                properties?: Record<string, string>;
+                measurements?: Record<string, number>;
+            }) => Promise<void>;
+        };
+        reportError: {
+            mutate: (input: { message: string; stack: string; componentStack?: string }) => Promise<void>;
+        };
+        executeReportIssueCommand: { mutate: () => Promise<void> };
+    };
+}
+
+export class BaseContextProvider<TRouter extends AnyRouter = AnyRouter> {
     constructor(
-        protected readonly channel: Channel,
-        protected readonly dispatchToast: (content: React.ReactNode, options?: unknown) => void,
+        protected readonly dispatchToast: DispatchToastFn,
+        protected readonly trpcClient: TRPCClient<TRouter>,
     ) {
         this.initEventListeners();
         this.init();
     }
 
+    /** Type-safe accessor for common routes available on all app routers. */
+    private get common(): CommonRoutes['common'] | undefined {
+        return (this.trpcClient as unknown as CommonRoutes)?.common;
+    }
+
     public async showInformationMessage(message: string) {
-        await this.sendCommand('showInformationMessage', message);
+        await this.common?.showInformationMessage.mutate({ message });
     }
     public async showErrorMessage(message: string) {
-        await this.sendCommand('showErrorMessage', message);
+        await this.common?.showErrorMessage.mutate({ message });
     }
     public async openUrl(url: string) {
-        await this.sendCommand('openUrl', url);
+        await this.common?.openUrl.mutate({ url });
     }
 
     public showToast(title: string, message: string, intent: 'info' | 'error' = 'info') {
@@ -56,70 +86,46 @@ export class BaseContextProvider {
         properties: Record<string, string> = {},
         measurements: Record<string, number> = {},
     ) {
-        await this.sendCommand('reportWebviewEvent', eventName, properties, measurements);
+        await this.common?.reportEvent.mutate({ eventName, properties, measurements });
     }
     public async reportWebviewError(
         message: string,
         stack: string | undefined,
         componentStack: string | null | undefined,
     ) {
-        // Error is not JSON serializable, so the original Error object cannot be sent to the webview host.
-        // Send only the relevant fields
-        await this.sendCommand('reportWebviewError', message, stack, componentStack);
+        await this.common?.reportError.mutate({
+            message,
+            stack: stack ?? '',
+            componentStack: componentStack ?? undefined,
+        });
     }
     public async executeReportIssueCommand() {
-        await this.sendCommand('executeReportIssueCommand');
+        await this.common?.executeReportIssueCommand.mutate();
     }
 
-    public dispose() {
-        this.channel.removeAllListeners();
-    }
-
-    protected async sendCommand(command: string, ...args: unknown[]): Promise<void> {
-        const removeTrailingUndefined = (args: unknown[]) => {
-            while (args.length > 0 && args[args.length - 1] === undefined) {
-                args.pop();
-            }
-            return args;
-        };
-
+    /**
+     * Wraps a tRPC call so that errors are silently caught and the caller
+     * receives `undefined` instead of an exception. Error *display* is handled
+     * globally by the `errorLink` middleware in the tRPC client chain.
+     */
+    protected async safeMutate<T>(fn: () => Promise<T>): Promise<T | undefined> {
         try {
-            // Don't remove await here, we need to catch the error
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'command',
-                params: [
-                    {
-                        commandName: command,
-                        params: removeTrailingUndefined(args),
-                    },
-                ],
-            });
-        } catch (error) {
-            try {
-                await this.showErrorMessage(
-                    l10n.t('Failed to execute command {command}: {error}', {
-                        command,
-                        error: getErrorMessage(error),
-                    }),
-                );
-            } catch {
-                // Ignore
-            }
+            return await fn();
+        } catch {
+            // Error notification is handled by the errorLink middleware
+            return undefined;
         }
     }
 
-    protected initEventListeners(): void {
-        this.channel.on('showInformationMessage', (title: string, message: string) => {
-            this.showToast(title, message, 'info');
-        });
+    public dispose() {
+        // Override in subclasses if cleanup is needed
+    }
 
-        this.channel.on('showErrorMessage', (title: string, message: string) => {
-            this.showToast(title, message, 'error');
-        });
+    protected initEventListeners(): void {
+        // Override in subclasses to set up tRPC event subscriptions
     }
 
     protected init(): void {
-        void this.channel.postMessage({ type: 'event', name: 'ready', params: [] });
+        // Override in subclasses to trigger tRPC initialization
     }
 }

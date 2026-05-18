@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { API } from '../../AzureDBExperiences';
-import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { createNoSqlQueryConnection, type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
@@ -31,13 +31,11 @@ export async function openNoSqlQueryEditor(
         }
 
         context.telemetry.properties.experience = node.experience.api;
-        connection = getConnectionFromNode(node);
+        connection = createNoSqlQueryConnection(node);
     } else if (isTreeElementWithExperience(nodeOrConnection)) {
         // Case 2: Input is a container node (using proper type guard)
         context.telemetry.properties.experience = nodeOrConnection.experience.api;
-        connection = getConnectionFromNode(
-            nodeOrConnection as CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
-        );
+        connection = createNoSqlQueryConnection(nodeOrConnection);
     } else {
         // Case 3: Input is already a connection
         context.telemetry.properties.experience = API.Core;
@@ -45,17 +43,4 @@ export async function openNoSqlQueryEditor(
     }
 
     QueryEditorTab.render(connection);
-}
-
-// Helper function to extract connection from a container node
-function getConnectionFromNode(node: CosmosDBContainerResourceItem | CosmosDBItemsResourceItem): NoSqlQueryConnection {
-    const accountInfo = node.model.accountInfo;
-
-    return {
-        databaseId: node.model.database.id,
-        containerId: node.model.container.id,
-        endpoint: accountInfo.endpoint,
-        credentials: accountInfo.credentials,
-        isEmulator: accountInfo.isEmulator,
-    };
 }

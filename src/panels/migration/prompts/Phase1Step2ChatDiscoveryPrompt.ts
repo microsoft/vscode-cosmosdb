@@ -237,7 +237,7 @@ export function buildChatDiscoveryPrompt(options: ChatDiscoveryPromptOptions): s
                 'CODE-EVIDENCED TABLES (do NOT explore workspace for these):',
                 'The following tables/entities have confirmed code evidence from access-patterns.md.',
                 'Do NOT search the workspace to find references for these tables:',
-                codeEvidencedTables!.join(', '),
+                codeEvidencedTables.join(', '),
             );
         }
     }

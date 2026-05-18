@@ -143,12 +143,56 @@ export function safeErrorDisplay(error: Error | string, prefix: string = '❌'):
  * @param language The language identifier (e.g., 'sql', 'json', 'javascript')
  * @returns The content wrapped in a language-specific code block
  */
+/**
+ * Strips markdown code fences (` ```sql `, ` ``` `, etc.) from a string.
+ * Returns the inner content trimmed. If no fences are found, returns the string trimmed.
+ */
+export function stripCodeFences(text: string): string {
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```sql')) {
+        cleaned = cleaned.replace(/^```sql\n?/, '').replace(/\n?```$/, '');
+    } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
+    }
+    return cleaned.trim();
+}
+
 export function safeCodeBlock(content: string, language: string = ''): string {
     // Escape triple backticks in the content to prevent breaking out of the code fence
     // Replaces ``` with ` `` (space breaks the sequence)
     const escaped = content.replace(/```/g, '` `` ');
     return `\`\`\`${language}\n${escaped}\n\`\`\``;
 }
+
+/**
+ * Strips C0 control characters from a string before storing it in a table cell.
+ *
+ * **Why these characters are dangerous / unwanted:**
+ *
+ * | Character(s) | Hex | Risk |
+ * |---|---|---|
+ * | NUL | `\x00` | Truncates strings in many parsers; hides payload tail (CSV injection, path traversal) |
+ * | SOH–BS | `\x01–\x08` | No printable representation; can confuse diff/copy tools and screen readers |
+ * | VT, FF | `\x0b \x0c` | Trigger page/line breaks in some renderers; rarely intentional in data |
+ * | SO–US, DEL | `\x0e–\x1f \x7f` | Include ESC `\x1b` — start of ANSI terminal escape sequences (`\x1b[31m` = red). If the value is ever logged or shown in a terminal, an attacker can overwrite output, change the terminal title, or hide log lines |
+ *
+ * **What is intentionally preserved:**
+ * - `\t` (`\x09`) — tab, meaningful in formatted text
+ * - `\n` (`\x0a`) — newline, meaningful for multi-line cell content
+ * - `\r` (`\x0d`) — carriage return, not in the removed range;
+ *   callers that need CR-free output should strip it separately
+ *
+ * This function is called once per string field when building `TableRecord`
+ * rows; it does **not** need to be called again at render time.
+ *
+ * @param value A raw string field value from a Cosmos DB document
+ * @returns The string with C0 control characters (except TAB and LF) removed
+ */
+export const sanitizeDisplayString = (value: string): string => {
+    // Remove control characters except \t (0x09) and \n (0x0a)
+    // oxlint-disable-next-line no-control-regex
+    return value.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+};
 
 /**
  * Sanitizes text for safe use in SQL single-line comments (--).
@@ -167,4 +211,22 @@ export function sanitizeSqlComment(text: string): string {
         .replace(/\r/g, ' ') // Mac line endings
         .replace(/\t/g, ' ') // Tabs
         .trim();
+}
+
+/**
+ * Comments out a multi-line query by prepending "-- " to each line.
+ * Lines that are already SQL comments (starting with "--") are kept as-is
+ * to avoid double-commenting.
+ *
+ * @param query The query text to comment out
+ * @returns The query with all lines commented out
+ */
+export function commentOutQuery(query: string): string {
+    return query
+        .split('\n')
+        .map((line) => {
+            const sanitized = sanitizeSqlComment(line);
+            return sanitized.startsWith('--') ? sanitized : `-- ${sanitized}`;
+        })
+        .join('\n');
 }

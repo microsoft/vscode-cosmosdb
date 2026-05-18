@@ -11,7 +11,7 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { CosmosDbChatParticipant } from '../chat/cosmosDbChatParticipant';
+import { CosmosDbChatParticipant } from '../chat';
 import { doubleClickDebounceDelay } from '../constants';
 import {
     deployLLMInstructionsFiles,
@@ -76,7 +76,7 @@ export function registerCommands(): void {
     // For Cosmos DB FileSystem
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
-        async (_actionContext: IActionContext, uri: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+        async (_actionContext: IActionContext, uri?: vscode.Uri) => ext.fileSystem.updateWithoutPrompt(uri),
     );
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
@@ -148,8 +148,8 @@ export function registerChatButtonCommands() {
     // CosmosDbChatParticipant.pendingResults to avoid serializing large
     // objects (connection credentials, query text) into the chat response.
     ext.context.subscriptions.push(
-        vscode.commands.registerCommand('cosmosDB.applyQuerySuggestion', async (resultId: number) => {
-            await callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.applyQuery', async (ctx) => {
+        vscode.commands.registerCommand('cosmosDB.applyQuerySuggestion', (resultId: number) => {
+            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.applyQuery', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
 
                 console.log('[CosmosDB Chat] applyQuerySuggestion called', { resultId });
@@ -175,7 +175,7 @@ export function registerChatButtonCommands() {
 
                 if (activeTab && 'updateQuery' in activeTab) {
                     // Update the query in the existing webview
-                    await activeTab.updateQuery(suggestedQuery);
+                    activeTab.updateQuery(suggestedQuery);
                     void vscode.window.showInformationMessage(l10n.t('✅ Query updated successfully!'));
                 } else {
                     // Fallback: create a new tab if no matching tab is found
@@ -189,7 +189,7 @@ export function registerChatButtonCommands() {
     // Command to open query side-by-side
     ext.context.subscriptions.push(
         vscode.commands.registerCommand('cosmosDB.openQuerySideBySide', (resultId: number) => {
-            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.openSideBySide', async (ctx) => {
+            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.openSideBySide', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
 
                 console.log('[CosmosDB Chat] openQuerySideBySide called', { resultId });

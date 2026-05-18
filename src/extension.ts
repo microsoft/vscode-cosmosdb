@@ -5,6 +5,8 @@
 
 'use strict';
 
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
@@ -30,10 +32,13 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
-import { SCHEMA_STORAGE_KEY } from './constants';
-import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
-import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
+import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import {
+    CosmosDBShellExtension,
+    registerCosmosDBShellLanguageServer,
+    registerMcpServer,
+} from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
 import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
@@ -55,6 +60,9 @@ export async function activateInternal(
 ): Promise<apiUtils.AzureExtensionApiProvider> {
     ext.context = context;
     ext.isBundle = !!process.env.IS_BUNDLE;
+    console.debug(
+        `[COSMOSDB-DEBUG] activate: isBundle=${ext.isBundle} IS_BUNDLE=${process.env.IS_BUNDLE} DEVSERVER=${process.env.DEVSERVER}`,
+    );
 
     ext.outputChannel = createAzExtLogOutputChannel('Azure Cosmos DB');
     context.subscriptions.push(ext.outputChannel);
@@ -90,6 +98,10 @@ export async function activateInternal(
 
         ext.fileSystem = new DatabasesFileSystem();
 
+        const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
+        context.subscriptions.push(cosmosDBShellSupport);
+        await cosmosDBShellSupport.activate();
+
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
         );
@@ -98,8 +110,8 @@ export async function activateInternal(
 
         registerCommands();
 
-        context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
-        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
+        const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
+        registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });
 
         // Auto-detect migration projects in the workspace
         void MigrationAssistantTab.promptToReopen();
@@ -153,6 +165,9 @@ export async function activateInternal(
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
+
+        registerMcpServer(context);
+        registerCosmosDBShellLanguageServer(context);
     });
 
     const exportedApi: AzureExtensionApi = { apiVersion: '1.2.0' };
@@ -162,7 +177,9 @@ export async function activateInternal(
         clientExtensionId: 'ms-azuretools.vscode-cosmosdb',
 
         // Successful retrieval of Azure Resources APIs will be returned here
-        onDidReceiveAzureResourcesApis: (azureResourcesApis: (AzureResourcesExtensionApi | undefined)[]) => {
+        onDidReceiveAzureResourcesApis: (
+            azureResourcesApis: (AzureResourcesExtensionApi | AzureExtensionApi | undefined)[],
+        ) => {
             const [rgApiV2] = azureResourcesApis;
             if (!rgApiV2) {
                 throw new Error(l10n.t('Failed to find a matching Azure Resources API for version "{0}".', v2));

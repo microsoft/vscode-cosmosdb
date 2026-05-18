@@ -3,36 +3,85 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONObject, type JSONValue, type PartitionKey, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONObject, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type TRPCClient } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
-import type * as React from 'react';
-import { type CosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
-import { BaseContextProvider } from '../../../utils/context/BaseContextProvider';
+import { type DocumentAppRouter } from '../../../api/types';
+import { BaseContextProvider, type DispatchToastFn } from '../../../utils/context/BaseContextProvider';
 import { type DispatchAction, type OpenDocumentMode } from './DocumentState';
 
-export class DocumentContextProvider extends BaseContextProvider {
+const emptyPartitionKey: PartitionKeyDefinition = { paths: [] };
+
+export class DocumentContextProvider extends BaseContextProvider<DocumentAppRouter> {
     constructor(
-        channel: Channel,
         private readonly dispatch: (action: DispatchAction) => void,
-        dispatchToast: (content: React.ReactNode, options?: unknown) => void,
+        dispatchToast: DispatchToastFn,
+        trpcClient: TRPCClient<DocumentAppRouter>,
     ) {
-        super(channel, dispatchToast);
+        super(dispatchToast, trpcClient);
     }
 
     public async saveDocument(documentText: string): Promise<void> {
         this.dispatch({ type: 'setSaving', isSaving: true });
 
-        await this.sendCommand('saveDocument', documentText);
+        try {
+            const result = (await this.trpcClient.document.saveDocument.mutate({ documentText })) as {
+                success: boolean;
+                documentContent?: JSONValue;
+                partitionKey?: PartitionKeyDefinition;
+            };
+
+            if (result.success && result.documentContent) {
+                this.dispatch({
+                    type: 'setDocument',
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else {
+                this.dispatch({ type: 'setError', error: l10n.t('Failed to save item') });
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.dispatch({ type: 'setError', error: this.parseError(message) });
+        } finally {
+            this.dispatch({ type: 'setSaving', isSaving: false });
+        }
     }
+
     public async saveDocumentAsFile(documentText: string): Promise<void> {
-        await this.sendCommand('saveDocumentAsFile', documentText);
+        await this.trpcClient.document.saveDocumentAsFile.mutate({ documentText });
     }
+
     public async refreshDocument(): Promise<void> {
         this.dispatch({ type: 'setError', error: undefined });
         this.dispatch({ type: 'setRefreshing', isRefreshing: true });
 
-        await this.sendCommand('refreshDocument');
+        try {
+            const result = (await this.trpcClient.document.refreshDocument.mutate()) as {
+                aborted: boolean;
+                documentContent?: JSONValue;
+                partitionKey?: PartitionKeyDefinition;
+            };
+
+            if (result.aborted) {
+                return;
+            }
+
+            if (result.documentContent) {
+                this.dispatch({
+                    type: 'setDocument',
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.partitionKey ?? emptyPartitionKey,
+                });
+            } else {
+                this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
+            }
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.dispatch({ type: 'setError', error: this.parseError(message) });
+        } finally {
+            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
+        }
     }
 
     public setCurrentDocumentContent(content: string): void {
@@ -46,77 +95,29 @@ export class DocumentContextProvider extends BaseContextProvider {
         }
     }
 
-    public setMode(mode: OpenDocumentMode): Promise<void> {
-        return this.sendCommand('setMode', mode);
+    public async setMode(mode: OpenDocumentMode): Promise<void> {
+        const result = await this.trpcClient.document.setMode.mutate({ mode });
+        this.dispatch({ type: 'setMode', mode: result.mode });
     }
     public async notifyDirty(isDirty: boolean): Promise<void> {
-        await this.sendCommand('setDirty', isDirty);
+        await this.trpcClient.document.setDirty.mutate({ isDirty });
     }
 
-    protected initEventListeners(): void {
-        super.initEventListeners();
-
-        this.channel.on(
-            'initState',
-            (
-                mode: OpenDocumentMode,
-                databaseId: string,
-                containerId: string,
-                documentId: string,
-                partitionKey?: PartitionKey,
-            ) => {
-                if (partitionKey === null) {
-                    partitionKey = undefined;
-                }
-
-                this.dispatch({ type: 'initState', mode, databaseId, containerId, documentId, partitionKey });
-                this.dispatch({ type: 'setRefreshing', isRefreshing: true });
-            },
-        );
-
-        this.channel.on('modeChanged', (mode: OpenDocumentMode) => {
-            this.dispatch({ type: 'setMode', mode });
-        });
-
-        this.channel.on(
-            'setDocument',
-            (_sessionId: string, documentContent: CosmosDBRecord, partitionKey: PartitionKeyDefinition) => {
-                this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-                this.dispatch({ type: 'setSaving', isSaving: false });
-
-                if (documentContent === undefined) {
-                    this.dispatch({ type: 'setError', error: l10n.t('Item content is undefined') });
-                    return;
-                }
-
+    protected init(): void {
+        void this.trpcClient.document.getInitialState.query().then((result) => {
+            this.dispatch({
+                type: 'initState',
+                mode: result.mode,
+                databaseId: result.databaseId,
+                containerId: result.containerId,
+                documentId: result.documentId,
+            });
+            if (result.documentContent) {
                 this.dispatch({
                     type: 'setDocument',
-                    documentContent: JSON.stringify(documentContent, null, 4),
-                    partitionKey,
+                    documentContent: JSON.stringify(result.documentContent, null, 4),
+                    partitionKey: result.documentPartitionKey ?? emptyPartitionKey,
                 });
-            },
-        );
-
-        this.channel.on('documentSaved', () => {
-            this.dispatch({ type: 'setSaving', isSaving: false });
-        });
-
-        this.channel.on('documentError', (_sessionId: string, error: string) => {
-            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-            this.dispatch({ type: 'setSaving', isSaving: false });
-            this.dispatch({ type: 'setError', error: this.parseError(error) });
-        });
-
-        this.channel.on('queryError', (_sessionId: string, _error: string) => {
-            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-            this.dispatch({ type: 'setSaving', isSaving: false });
-        });
-
-        this.channel.on('operationAborted', (_sessionId: string, message?: string) => {
-            this.dispatch({ type: 'setRefreshing', isRefreshing: false });
-            this.dispatch({ type: 'setSaving', isSaving: false });
-            if (message) {
-                void this.showInformationMessage(message);
             }
         });
     }

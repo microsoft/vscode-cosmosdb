@@ -1,3 +1,8 @@
+# Build number / pipeline run name. Set here (instead of via
+# ##vso[build.updatebuildnumber]) because OneBranch's restricted command policy
+# blocks that logging command in inline script tasks.
+name: $(Date:yyyyMMdd).$(Rev:r)
+
 # Trigger the build whenever `main` or `rel/*` is updated
 trigger:
     - main
@@ -90,10 +95,13 @@ extends:
                             ob_sdl_codeql_compiled_enabled: true
                     steps:
                         - task: PowerShell@2
-                          displayName: '🔢 Set Build Number'
+                          displayName: '🔢 Read package.json metadata'
                           name: setBuildNumberStep
                           inputs:
                               script: |
+                                  # Note: the pipeline run name (build number) is set via the top-level
+                                  # `name:` field in this YAML. ##vso[build.updatebuildnumber] is blocked
+                                  # by OneBranch's restricted command policy, so we don't override it here.
                                   try {
                                       $packageJson = Get-Content "$(Build.SourcesDirectory)/package.json" -Raw | ConvertFrom-Json
                                       $version = $packageJson.version
@@ -111,18 +119,15 @@ extends:
                                       }
 
                                       if ($version) {
-                                          $buildNumber = "vscode-cosmosdb-$version-$(Build.BuildNumber)"
-                                          Write-Host "##vso[build.updatebuildnumber]$buildNumber"
                                           Write-Host "##vso[task.setvariable variable=version;isOutput=true]$version"
                                           Write-Host "##vso[task.setvariable variable=preview;isOutput=true]$preview"
-                                          Write-Host "Build number set to: $buildNumber"
+                                          Write-Host "package.json version: $version (preview=$preview)"
+                                          Write-Host "Pipeline run name: $(Build.BuildNumber)"
                                       } else {
-                                          Write-Host "##vso[task.logissue type=warning]Version not found in package.json, keeping original build number"
-                                          Write-Host "Keeping original build number: $(Build.BuildNumber)"
+                                          Write-Host "##vso[task.logissue type=warning]Version not found in package.json"
                                       }
                                   } catch {
                                       Write-Host "##vso[task.logissue type=warning]Could not read package.json: $_"
-                                      Write-Host "Keeping original build number: $(Build.BuildNumber)"
                                   }
                               pwsh: true
                               targetType: 'inline'
@@ -137,11 +142,26 @@ extends:
                               outputfile: $(Build.SourcesDirectory)/NOTICE.html
                               outputformat: html
 
-                        - task: NodeTool@0
+                        - task: PowerShell@2
+                          displayName: '🔢 Read Node.js version from .nvmrc'
+                          inputs:
+                              script: |
+                                  $nvmrcPath = "$(Build.SourcesDirectory)/.nvmrc"
+                                  if (-not (Test-Path $nvmrcPath)) {
+                                      Write-Host "##vso[task.logissue type=error].nvmrc not found at $nvmrcPath"
+                                      Write-Host "##vso[task.complete result=Failed;]"
+                                      exit 1
+                                  }
+                                  $nodeVersion = (Get-Content $nvmrcPath -Raw).Trim().TrimStart('v')
+                                  Write-Output "##vso[task.setvariable variable=nodeVersion]$nodeVersion"
+                                  Write-Output "Node.js version from .nvmrc: $nodeVersion"
+                              pwsh: true
+                              targetType: 'inline'
+
+                        - task: UseNode@1
                           displayName: '📦 Using Node.js'
                           inputs:
-                              versionSource: fromFile
-                              versionFilePath: '$(Build.SourcesDirectory)/.nvmrc'
+                              version: '$(nodeVersion)'
 
                         - task: npmAuthenticate@0
                           displayName: '🔐 Authenticate to npm registry'

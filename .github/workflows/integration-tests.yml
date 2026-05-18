@@ -1,0 +1,100 @@
+# Integration test workflow — runs the full NoSQL query fixture suite against
+# a real Cosmos DB Emulator Docker container.
+#
+# Triggered only when files that could affect query behaviour change, keeping
+# CI cost low on unrelated commits.
+#
+# The emulator always starts with a clean data directory and is seeded fresh.
+# Caching is intentionally skipped: the seed dataset is tiny (~100-200 docs)
+# and cached Postgres data directories cause emulator startup failures due to
+# stale lock files (postmaster.pid).
+
+name: Integration Tests (Cosmos DB Emulator)
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/integration-tests.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/integration-tests.yml'
+
+jobs:
+  integration:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+
+    env:
+      COSMOS_ENDPOINT: https://localhost:8081
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build schema-analyzer
+        run: npm run build
+        working-directory: packages/schema-analyzer
+
+      - name: Build nosql-language-service
+        run: npm run build
+        working-directory: packages/nosql-language-service
+
+      # ── Start emulator ───────────────────────────────────────────────────────
+
+      - name: Start Cosmos DB Emulator
+        run: docker compose up -d
+
+      - name: Wait for emulator to be ready
+        run: |
+          echo "Waiting for Cosmos DB Emulator..."
+          for i in $(seq 1 60); do
+            # vnext-preview exposes its data plane at /; a 200/401 response means it's up
+            STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost:8081/ 2>/dev/null || true)
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
+              echo "Emulator is ready after $i attempts (HTTP $STATUS)."
+              exit 0
+            fi
+            echo "Attempt $i/60 — not ready yet (HTTP $STATUS), sleeping 5s..."
+            sleep 5
+          done
+          echo "Emulator did not become ready in time." >&2
+          docker compose logs cosmosdb-emulator || true
+          exit 1
+
+      # ── Seed ─────────────────────────────────────────────────────────────────
+
+      - name: Seed emulator
+        run: |
+          node scripts/import-seed.mjs --container products
+          node scripts/import-seed.mjs --container orders
+          node scripts/import-seed.mjs --container events
+
+      # ── Integration tests ────────────────────────────────────────────────────
+
+      - name: Run integration tests
+        run: npx vitest run --reporter=verbose src/test-fixtures/integration.test.ts
+        working-directory: packages/nosql-language-service
+
+      # ── Cleanup ──────────────────────────────────────────────────────────────
+
+      - name: Stop emulator
+        if: always()
+        run: docker compose down -v

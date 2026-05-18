@@ -11,8 +11,8 @@ import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
 import { decodeFileBytes } from '../../../utils/decodeFileBytes';
-import { type Channel } from '../../Communication/Channel/Channel';
 import { getCosmosDbBestPractices } from '../bestPractices';
+import { type Channel } from '../Channel';
 import {
     buildDependencyGraph,
     extractSchemaGroups,

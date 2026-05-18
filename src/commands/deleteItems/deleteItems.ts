@@ -15,9 +15,7 @@ import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmati
 import { extractPartitionKey } from '../../utils/document';
 import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
-export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDBItemResourceItem): Promise<void> {
-    context.telemetry.properties.experience = node.experience.api;
-
+export async function cosmosDBDeleteItem(context: IActionContext, node?: CosmosDBItemResourceItem): Promise<void> {
     if (!node) {
         node = await pickAppResource<CosmosDBItemResourceItem>(context, {
             type: [AzExtResourceType.AzureCosmosDb],
@@ -28,6 +26,8 @@ export async function cosmosDBDeleteItem(context: IActionContext, node: CosmosDB
     if (!node) {
         return undefined;
     }
+
+    context.telemetry.properties.experience = node.experience.api;
 
     const databaseId = node.model.database.id;
     const containerId = node.model.container.id;

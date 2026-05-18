@@ -55,11 +55,13 @@ import {
     WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useContext, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
+import { useTrpcClient } from '../../api/trpc/useTrpcClient';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
-import { WebviewContext } from '../../WebviewContext';
+import { MigrationChannel } from './state/MigrationChannel';
 import {
     useMigrationDispatch,
     useMigrationState,
@@ -425,6 +427,7 @@ function FileListExpander({
             <div
                 className={styles.fileExpander}
                 onClick={() => setExpanded(!expanded)}
+                // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled <div> expander; switching to <button> would break layout
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -543,9 +546,8 @@ function getPhaseIcon(state: PhaseState) {
     );
 }
 
-function MigrationAssistantInner() {
+function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const styles = useStyles();
-    const { channel } = useContext(WebviewContext);
     const state = useMigrationState();
     const dispatch = useMigrationDispatch();
 
@@ -2496,11 +2498,13 @@ function MigrationAssistantInner() {
 }
 
 export const MigrationAssistant = () => {
-    const { channel } = useContext(WebviewContext);
+    const { trpcClient } = useTrpcClient<MigrationAppRouter>();
+    const channel = useMemo(() => new MigrationChannel(trpcClient), [trpcClient]);
+    useEffect(() => () => channel.dispose(), [channel]);
 
     return (
         <WithMigrationContext channel={channel}>
-            <MigrationAssistantInner />
+            <MigrationAssistantInner channel={channel} />
         </WithMigrationContext>
     );
 };

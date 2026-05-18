@@ -27,14 +27,14 @@ export const MyHotkeys: HotkeyMapping<MyHotkeyCommand>[] = [
     key: 'f5',
     command: 'ExecuteAction',
     description: 'Execute action',
-    shortcutDisplay: { windows: 'F5', mac: 'F5' },
+    shortcutDisplay: { windows: 'F5', mac: 'F5' }
   },
   {
     key: 'mod+s',
     command: 'SaveAction',
     description: 'Save changes',
-    shortcutDisplay: { windows: 'Ctrl+S', mac: '⌘S' },
-  },
+    shortcutDisplay: { windows: 'Ctrl+S', mac: '⌘S' }
+  }
 ] as const;
 ```
 
@@ -112,7 +112,7 @@ You can conditionally enable or disable hotkey handlers:
 ```typescript
 // Disable based on component state
 useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>('editorScope', 'SaveAction', handleSave, {
-  disabled: !isDirty || isProcessing,
+  disabled: !isDirty || isProcessing
 });
 ```
 

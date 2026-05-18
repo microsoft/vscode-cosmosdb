@@ -1,0 +1,3607 @@
+[
+  {
+    "id": "prod-00000",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "DeepRoot",
+    "price": 335.19,
+    "rating": 1.7,
+    "inStock": true,
+    "tags": ["bundle", "certified"],
+    "description": null,
+    "specifications": {
+      "isbn": "978-0-596-51774-8",
+      "language": "English"
+    },
+    "createdAt": "2024-07-02T07:10:15.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00001",
+    "name": "The Art of Unix Programming",
+    "category": "Books",
+    "price": 235.91,
+    "rating": 4.3,
+    "inStock": true,
+    "tags": ["sale", "premium", "bestseller"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "language": "English",
+      "pages": "640",
+      "publisher": "Packt",
+      "isbn": "978-0-13-468599-1"
+    },
+    "createdAt": "2023-02-10T23:54:09.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00002",
+    "name": "External SSD 1TB",
+    "category": "Electronics",
+    "brand": "SkyForge",
+    "price": 0,
+    "rating": 3.6,
+    "inStock": true,
+    "tags": ["refurbished", "certified"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "batteryLife": "12 hours",
+      "weight": "1kg"
+    },
+    "createdAt": "2025-01-15T10:36:27.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00003",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "Electronics",
+    "brand": "AudioTech",
+    "price": 471.91,
+    "rating": 2.7,
+    "inStock": false,
+    "tags": ["bestseller"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "language": "English",
+      "edition": "3rd edition",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2023-11-01T16:26:55.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00004",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "Electronics",
+    "brand": "GreenLeaf",
+    "price": 411.11,
+    "rating": 1.5,
+    "inStock": false,
+    "tags": ["fast-shipping", "waterproof", "limited"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "servings": "12",
+      "origin": "Made in Italy",
+      "calories": "220 kcal"
+    },
+    "createdAt": "2025-12-24T10:37:18.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00005",
+    "name": "Granola Muesli Mix",
+    "category": "Food",
+    "brand": "GreenLeaf",
+    "price": 148.66,
+    "rating": null,
+    "inStock": true,
+    "tags": [],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "origin": "Made in USA",
+      "weight": "1kg",
+      "certification": "Non-GMO"
+    },
+    "createdAt": "2023-09-02T09:13:34.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00006",
+    "name": "Yoga Mat Non-Slip",
+    "category": "Clothing",
+    "brand": "WaveTech",
+    "price": 168.62,
+    "rating": 1.8,
+    "inStock": true,
+    "tags": ["premium", "handmade", "waterproof", "bestseller", "certified"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "origin": "Made in Italy",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2023-08-17T20:13:30.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00007",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "PureLife",
+    "price": 24.68,
+    "rating": 3.8,
+    "inStock": false,
+    "tags": ["eco", "lightweight"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "isbn": "978-1-491-95042-1",
+      "language": "English"
+    },
+    "createdAt": "2023-07-07T01:31:09.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00008",
+    "name": "The Pragmatic Programmer",
+    "category": "Books",
+    "brand": "ClearVision",
+    "price": 217.76,
+    "rating": 2.7,
+    "inStock": true,
+    "tags": ["premium", "fast-shipping"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "edition": "1st edition",
+      "language": "English",
+      "publisher": "Packt"
+    },
+    "createdAt": "2023-12-18T00:27:55.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00009",
+    "name": "The Pragmatic Programmer",
+    "category": "Books",
+    "brand": "PureLife",
+    "price": 347.79,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["sale", "limited"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "publisher": "Addison-Wesley",
+      "edition": "2nd edition",
+      "isbn": "978-0-596-51774-8"
+    },
+    "createdAt": "2025-08-08T01:19:32.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00010",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "DeepRoot",
+    "price": 225.59,
+    "rating": 1.6,
+    "inStock": true,
+    "tags": ["bluetooth", "waterproof", "limited", "clearance", "organic"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "edition": "3rd edition",
+      "pages": "640",
+      "publisher": "Apress",
+      "language": "English"
+    },
+    "createdAt": "2025-06-12T11:53:06.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00011",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "DeepRoot",
+    "price": 300.09,
+    "rating": 2.4,
+    "inStock": true,
+    "tags": ["gift", "premium", "fast-shipping", "limited", "eco"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "publisher": "O'Reilly",
+      "pages": "512"
+    },
+    "createdAt": "2025-03-06T08:51:26.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00012",
+    "name": "Coffee Grinder Burr",
+    "category": "Food",
+    "brand": "UrbanCore",
+    "price": 354.02,
+    "rating": 1.6,
+    "inStock": true,
+    "tags": ["sale"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "allergens": "Contains dairy",
+      "origin": "Made in USA",
+      "certification": "Non-GMO"
+    },
+    "createdAt": "2024-07-20T23:54:34.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00013",
+    "name": "Canvas Backpack 30L",
+    "category": "Clothing",
+    "brand": "UrbanCore",
+    "price": 213.09,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["vegan"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "careInstructions": "Machine wash cold",
+      "origin": "Made in USA",
+      "fit": "Regular"
+    },
+    "createdAt": "2025-10-29T20:21:11.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00014",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Electronics",
+    "brand": "NorthEdge",
+    "price": 251.72,
+    "rating": 1.4,
+    "inStock": false,
+    "tags": ["lightweight"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "warranty": "90 days",
+      "connectivity": "NFC",
+      "powerInput": "12V/2A",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2024-07-31T02:59:09.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00015",
+    "name": "Portable Bluetooth Speaker",
+    "category": "Electronics",
+    "brand": "AudioTech",
+    "price": 30.72,
+    "rating": null,
+    "inStock": true,
+    "tags": ["limited", "clearance", "sale", "lightweight"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "dimensions": "10x5x3 cm",
+      "weight": "2kg"
+    },
+    "createdAt": "2025-11-08T13:07:52.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00016",
+    "name": "Webcam 4K Ultra HD",
+    "category": "Electronics",
+    "brand": "DeepRoot",
+    "price": 467.73,
+    "rating": 3.7,
+    "inStock": true,
+    "tags": ["premium", "vegan", "imported", "limited", "gift"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "powerInput": "9V/3A",
+      "dimensions": "30x20x10 cm",
+      "warranty": "90 days"
+    },
+    "createdAt": "2025-08-04T19:55:08.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00017",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "ApexPro",
+    "price": 440.05,
+    "rating": 2.7,
+    "inStock": true,
+    "tags": ["handmade", "limited", "certified"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "fit": "Slim",
+      "season": "Summer"
+    },
+    "createdAt": "2024-11-21T16:31:12.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00018",
+    "name": "Instant Pot 6-Quart",
+    "category": "Food",
+    "brand": "SunRidge",
+    "price": 93.75,
+    "rating": 4.4,
+    "inStock": false,
+    "tags": ["organic", "new", "vegan"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "calories": "220 kcal",
+      "allergens": "None",
+      "origin": "Made in USA",
+      "certification": "USDA Organic"
+    },
+    "createdAt": "2023-05-13T15:52:13.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00019",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "StormPeak",
+    "price": 341.98,
+    "rating": 1.3,
+    "inStock": true,
+    "tags": ["refurbished", "eco"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "season": "All season",
+      "origin": "Made in Japan",
+      "fit": "Regular"
+    },
+    "createdAt": "2024-06-09T19:09:46.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00020",
+    "name": "Mechanical Keyboard RGB",
+    "category": "Electronics",
+    "brand": "SunRidge",
+    "price": 260,
+    "rating": 3,
+    "inStock": true,
+    "tags": ["imported"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "connectivity": "Wi-Fi 6",
+      "batteryLife": "24 hours",
+      "weight": "2kg",
+      "dimensions": "30x20x10 cm"
+    },
+    "createdAt": "2025-07-08T19:19:24.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00021",
+    "name": "Sunglasses Polarised",
+    "category": "Clothing",
+    "brand": "TechNova",
+    "price": 367.61,
+    "rating": 4.2,
+    "inStock": true,
+    "tags": ["imported", "organic"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "origin": "Made in Italy",
+      "fit": "Oversized"
+    },
+    "createdAt": "2024-06-24T09:57:13.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00022",
+    "name": "Cold Brew Coffee Concentrate",
+    "category": "Food",
+    "brand": "SwiftGear",
+    "price": 276.5,
+    "rating": 3.7,
+    "inStock": true,
+    "tags": ["bluetooth", "bestseller", "gift", "bundle"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "certification": "Non-GMO",
+      "calories": "120 kcal"
+    },
+    "createdAt": "2025-11-14T11:38:13.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00023",
+    "name": "The Pragmatic Programmer",
+    "category": "Books",
+    "brand": "TechNova",
+    "price": 163.8,
+    "rating": 3.8,
+    "inStock": false,
+    "tags": ["certified", "waterproof"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "language": "English",
+      "pages": "256",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2023-08-20T18:28:38.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00024",
+    "name": "Leather Wallet Slim",
+    "category": "Clothing",
+    "brand": "IronMesh",
+    "price": 242.77,
+    "rating": 3.7,
+    "inStock": true,
+    "tags": ["handmade", "premium", "wireless", "vegan", "imported"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "fit": "Oversized",
+      "careInstructions": "Hand wash only",
+      "material": "Merino Wool"
+    },
+    "createdAt": "2023-10-03T10:30:23.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00025",
+    "name": "JavaScript: The Good Parts",
+    "category": "Books",
+    "brand": "WaveTech",
+    "price": 33.31,
+    "rating": 4.6,
+    "inStock": false,
+    "tags": ["handmade", "new", "limited", "vegan"],
+    "description": null,
+    "specifications": {
+      "language": "English",
+      "publisher": "Apress",
+      "edition": "1st edition"
+    },
+    "createdAt": "2025-01-26T18:07:26.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00026",
+    "name": "LED Desk Lamp",
+    "category": "Electronics",
+    "brand": "SunRidge",
+    "price": 465.62,
+    "rating": 2.1,
+    "inStock": true,
+    "tags": ["organic", "sale", "bundle", "vegan", "waterproof"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "connectivity": "Wired",
+      "dimensions": "20x15x8 cm",
+      "warranty": "1 year",
+      "powerInput": "20V/5A"
+    },
+    "createdAt": "2023-03-10T03:35:50.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00027",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "WaveTech",
+    "price": 278.01,
+    "rating": 3.4,
+    "inStock": false,
+    "tags": ["clearance", "fast-shipping", "certified", "gift"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "pages": "420",
+      "publisher": "Addison-Wesley",
+      "isbn": "978-1-491-95042-1",
+      "language": "English"
+    },
+    "createdAt": "2023-12-25T18:06:07.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00028",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "LunaFlow",
+    "price": 328.2,
+    "rating": 2,
+    "inStock": true,
+    "tags": ["refurbished", "sale"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "allergens": "Contains gluten",
+      "servings": "24"
+    },
+    "createdAt": "2024-03-24T10:54:19.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00029",
+    "name": "Instant Pot 6-Quart",
+    "category": "Food",
+    "brand": "TechNova",
+    "price": 342.37,
+    "rating": 4.5,
+    "inStock": true,
+    "tags": ["certified", "waterproof", "premium"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "servings": "24",
+      "allergens": "None",
+      "origin": "Made in Japan"
+    },
+    "createdAt": "2023-03-23T15:35:41.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00030",
+    "name": "Site Reliability Engineering",
+    "category": "Books",
+    "brand": "NorthEdge",
+    "price": 298.57,
+    "rating": null,
+    "inStock": true,
+    "tags": [],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "language": "English",
+      "edition": "1st edition",
+      "publisher": "O'Reilly",
+      "isbn": "978-0-596-51774-8"
+    },
+    "createdAt": "2025-09-23T00:00:02.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00031",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "Electronics",
+    "brand": "GreenLeaf",
+    "price": 29.67,
+    "rating": 4,
+    "inStock": true,
+    "tags": ["waterproof"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "batteryLife": "12 hours",
+      "dimensions": "30x20x10 cm",
+      "warranty": "3 years"
+    },
+    "createdAt": "2025-07-20T21:01:37.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00032",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "SkyForge",
+    "price": 206.19,
+    "rating": 3.4,
+    "inStock": true,
+    "tags": ["refurbished"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "isbn": "978-0-13-468599-1",
+      "edition": "3rd edition"
+    },
+    "createdAt": "2024-01-06T08:32:28.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00033",
+    "name": "Domain-Driven Design",
+    "category": "Books",
+    "brand": "DeepRoot",
+    "price": 346.88,
+    "rating": 2.4,
+    "inStock": false,
+    "tags": ["fast-shipping", "bluetooth", "bestseller"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "language": "English",
+      "isbn": "978-1-491-95042-1",
+      "pages": "320",
+      "edition": "4th edition"
+    },
+    "createdAt": "2023-09-03T03:37:27.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00034",
+    "name": "Matcha Green Tea Powder",
+    "category": "Food",
+    "brand": "GreenLeaf",
+    "price": 195.52,
+    "rating": 1.9,
+    "inStock": true,
+    "tags": ["bundle", "premium", "vegan", "lightweight", "organic"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "certification": "Gluten-Free",
+      "allergens": "Contains gluten",
+      "calories": "350 kcal"
+    },
+    "createdAt": "2024-04-30T21:45:20.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00035",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "SkyForge",
+    "price": 330.48,
+    "rating": 3.5,
+    "inStock": true,
+    "tags": ["sale"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "publisher": "Apress",
+      "pages": "320",
+      "language": "English"
+    },
+    "createdAt": "2024-05-18T03:49:28.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00036",
+    "name": "Clean Code Handbook",
+    "category": "Books",
+    "brand": "SunRidge",
+    "price": 108.37,
+    "rating": 2.1,
+    "inStock": true,
+    "tags": ["premium", "bundle"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "pages": "768",
+      "publisher": "Addison-Wesley",
+      "edition": "2nd edition",
+      "isbn": "978-0-596-51774-8"
+    },
+    "createdAt": "2024-12-25T04:16:36.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00037",
+    "name": "Site Reliability Engineering",
+    "category": "Books",
+    "brand": "LunaFlow",
+    "price": 203.22,
+    "rating": 2.5,
+    "inStock": true,
+    "tags": ["limited", "wireless", "sale", "certified", "bestseller"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "language": "English",
+      "isbn": "978-0-13-468599-1",
+      "publisher": "Addison-Wesley"
+    },
+    "createdAt": "2025-08-26T06:56:37.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00038",
+    "name": "USB-C Hub 7-in-1",
+    "category": "Electronics",
+    "brand": "LunaFlow",
+    "price": 194.6,
+    "rating": 3.8,
+    "inStock": true,
+    "tags": ["premium", "waterproof", "lightweight"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "powerInput": "12V/2A",
+      "batteryLife": "48 hours",
+      "warranty": "3 years",
+      "weight": "500g"
+    },
+    "createdAt": "2025-12-27T19:30:06.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00039",
+    "name": "Laptop Stand Adjustable",
+    "category": "Electronics",
+    "brand": "TechNova",
+    "price": 78.12,
+    "rating": 1.2,
+    "inStock": true,
+    "tags": ["imported", "vegan"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "powerInput": "9V/3A",
+      "warranty": "90 days",
+      "batteryLife": "24 hours"
+    },
+    "createdAt": "2024-10-01T18:04:09.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00040",
+    "name": "Portable Bluetooth Speaker",
+    "category": "Electronics",
+    "brand": "StormPeak",
+    "price": 189.54,
+    "rating": 1.5,
+    "inStock": false,
+    "tags": ["imported"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "warranty": "1 year",
+      "powerInput": "20V/5A"
+    },
+    "createdAt": "2023-08-29T09:56:25.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00041",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "NorthEdge",
+    "price": 11.44,
+    "rating": 2.6,
+    "inStock": true,
+    "tags": ["organic", "lightweight"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "servings": "16",
+      "weight": "2kg",
+      "calories": "350 kcal"
+    },
+    "createdAt": "2025-08-29T15:51:38.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00042",
+    "name": "Robot Vacuum Cleaner",
+    "category": "Electronics",
+    "brand": "GreenLeaf",
+    "price": 411.56,
+    "rating": 1.8,
+    "inStock": true,
+    "tags": ["fast-shipping", "certified", "bluetooth", "bestseller", "sale"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "warranty": "90 days",
+      "connectivity": "Bluetooth 5.0",
+      "dimensions": "5x5x5 cm",
+      "powerInput": "5V/2A"
+    },
+    "createdAt": "2024-07-29T11:37:07.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00043",
+    "name": "Running Shoes Ultralight",
+    "category": "Clothing",
+    "brand": "BoldCraft",
+    "price": 450.17,
+    "rating": 5,
+    "inStock": true,
+    "tags": ["sale", "handmade"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "fit": "Regular",
+      "season": "Summer",
+      "origin": "Made in Germany",
+      "careInstructions": "Machine wash cold"
+    },
+    "createdAt": "2024-11-29T12:50:41.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00044",
+    "name": "The Art of Unix Programming",
+    "category": "Books",
+    "brand": "WaveTech",
+    "price": 295.71,
+    "rating": 1.3,
+    "inStock": false,
+    "tags": ["bundle", "lightweight", "handmade", "wireless"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "isbn": "978-0-596-51774-8",
+      "pages": "512"
+    },
+    "createdAt": "2024-10-28T16:19:08.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00045",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "NorthEdge",
+    "price": 176.68,
+    "rating": null,
+    "inStock": false,
+    "tags": ["bundle"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "isbn": "978-1-491-95042-1",
+      "edition": "1st edition",
+      "publisher": "Manning"
+    },
+    "createdAt": "2024-12-16T04:45:28.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00046",
+    "name": "Yoga Mat Non-Slip",
+    "category": "Clothing",
+    "brand": "CrispAir",
+    "price": 461.1,
+    "rating": 2.7,
+    "inStock": false,
+    "tags": ["new", "vegan", "certified", "eco", "organic"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "origin": "Made in USA",
+      "fit": "Oversized",
+      "season": "Winter"
+    },
+    "createdAt": "2024-05-18T14:45:57.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00047",
+    "name": "Mechanical Keyboard RGB",
+    "category": "Electronics",
+    "brand": "ClearVision",
+    "price": 135.62,
+    "rating": 1.8,
+    "inStock": true,
+    "tags": ["wireless", "eco", "sale", "handmade"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "warranty": "3 years",
+      "weight": "250g",
+      "batteryLife": "48 hours",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2025-03-20T23:33:57.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00048",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "ClearVision",
+    "price": 299.57,
+    "rating": 4.9,
+    "inStock": true,
+    "tags": ["waterproof", "eco", "refurbished"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "edition": "3rd edition",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2025-08-10T23:04:35.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00049",
+    "name": "Almond Butter Crunchy",
+    "category": "Food",
+    "brand": "GreenLeaf",
+    "price": 194.9,
+    "rating": 4.4,
+    "inStock": true,
+    "tags": ["bundle"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "origin": "Made in USA",
+      "weight": "150g"
+    },
+    "createdAt": "2024-02-24T11:29:51.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00050",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "price": 429.23,
+    "rating": 4.2,
+    "inStock": true,
+    "tags": ["lightweight", "bluetooth", "new", "imported", "handmade"],
+    "description": null,
+    "specifications": {
+      "servings": "8",
+      "origin": "Made in Italy",
+      "allergens": "Contains dairy"
+    },
+    "createdAt": "2024-11-17T20:45:52.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00051",
+    "name": "Deep Learning with Python",
+    "category": "Books",
+    "brand": "LunaFlow",
+    "price": 204.26,
+    "rating": 4.8,
+    "inStock": false,
+    "tags": ["certified"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "publisher": "Manning",
+      "pages": "768",
+      "isbn": "978-0-13-468599-1",
+      "language": "English"
+    },
+    "createdAt": "2024-08-08T13:02:37.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00052",
+    "name": "Mechanical Keyboard RGB",
+    "category": "Electronics",
+    "brand": "CrispAir",
+    "price": 480.29,
+    "rating": 3.3,
+    "inStock": true,
+    "tags": ["new"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "batteryLife": "48 hours",
+      "powerInput": "5V/2A"
+    },
+    "createdAt": "2023-11-30T11:36:07.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00053",
+    "name": "USB-C Hub 7-in-1",
+    "category": "Electronics",
+    "brand": "DeepRoot",
+    "price": 494.13,
+    "rating": 3.6,
+    "inStock": true,
+    "tags": ["wireless", "limited", "organic", "gift"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "weight": "250g",
+      "warranty": "90 days",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2024-11-07T18:26:39.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00054",
+    "name": "Gaming Mouse Precision",
+    "category": "Electronics",
+    "brand": "PureLife",
+    "price": 436.91,
+    "rating": 1.4,
+    "inStock": true,
+    "tags": ["eco", "sale", "vegan", "bestseller"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "batteryLife": "30 hours",
+      "dimensions": "5x5x5 cm",
+      "warranty": "Lifetime"
+    },
+    "createdAt": "2023-07-06T20:25:26.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00055",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Electronics",
+    "brand": "FrostLine",
+    "price": 262.15,
+    "rating": 1.3,
+    "inStock": true,
+    "tags": ["handmade", "waterproof"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "warranty": "90 days",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2024-06-24T12:43:44.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00056",
+    "name": "Coffee Grinder Burr",
+    "category": "Food",
+    "brand": "SunRidge",
+    "price": 427.34,
+    "rating": 2.5,
+    "inStock": true,
+    "tags": ["vegan"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "certification": "Non-GMO",
+      "origin": "Made in Italy"
+    },
+    "createdAt": "2023-09-23T16:53:49.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00057",
+    "name": "Organic Dark Chocolate 85%",
+    "category": "Food",
+    "brand": "ApexPro",
+    "price": 258.53,
+    "rating": 3.5,
+    "inStock": false,
+    "tags": ["refurbished", "handmade", "clearance", "gift"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "certification": "USDA Organic",
+      "servings": "8",
+      "allergens": "None"
+    },
+    "createdAt": "2025-03-20T10:51:06.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00058",
+    "name": "Air Purifier HEPA",
+    "category": "Electronics",
+    "brand": "ZenWear",
+    "price": 389.71,
+    "rating": 2.2,
+    "inStock": true,
+    "tags": ["wireless"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "weight": "250g",
+      "batteryLife": "24 hours",
+      "powerInput": "5V/2A",
+      "dimensions": "30x20x10 cm"
+    },
+    "createdAt": "2025-09-10T20:03:56.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00059",
+    "name": "Cast Iron Skillet 10\"",
+    "category": "Food",
+    "brand": "StormPeak",
+    "price": 348,
+    "rating": 3.9,
+    "inStock": true,
+    "tags": ["waterproof", "bluetooth"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "allergens": "Contains nuts",
+      "certification": "Gluten-Free"
+    },
+    "createdAt": "2025-11-02T21:04:10.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00060",
+    "name": "Cold Brew Coffee Concentrate",
+    "category": "Food",
+    "brand": "PureLife",
+    "price": 254.5,
+    "rating": null,
+    "inStock": true,
+    "tags": [],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "servings": "8",
+      "weight": "2kg",
+      "calories": "350 kcal",
+      "allergens": "Contains nuts"
+    },
+    "createdAt": "2024-06-28T12:14:01.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00061",
+    "name": "Leather Wallet Slim",
+    "category": "Clothing",
+    "brand": "ZenWear",
+    "price": 132.07,
+    "rating": 3.8,
+    "inStock": true,
+    "tags": ["clearance", "vegan", "new"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "material": "Nylon",
+      "fit": "Slim"
+    },
+    "createdAt": "2023-09-13T01:30:59.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00062",
+    "name": "Webcam 4K Ultra HD",
+    "category": "Electronics",
+    "brand": "NorthEdge",
+    "price": 170.54,
+    "rating": 3.1,
+    "inStock": true,
+    "tags": ["organic"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "connectivity": "Wi-Fi 6",
+      "weight": "500g"
+    },
+    "createdAt": "2025-10-04T22:47:33.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00063",
+    "name": "Dried Mango Strips",
+    "category": "Food",
+    "brand": "NorthEdge",
+    "price": 317.31,
+    "rating": 1.9,
+    "inStock": false,
+    "tags": ["gift"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "allergens": "Contains gluten",
+      "servings": "8",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-09-06T12:36:28.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00064",
+    "name": "Canvas Backpack 30L",
+    "category": "Clothing",
+    "brand": "SwiftGear",
+    "price": 248.36,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["premium", "bluetooth"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "careInstructions": "Hand wash only",
+      "season": "Summer"
+    },
+    "createdAt": "2023-04-07T14:04:07.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00065",
+    "name": "Clean Code Handbook",
+    "category": "Books",
+    "brand": "PureLife",
+    "price": 413.46,
+    "rating": 1.9,
+    "inStock": true,
+    "tags": ["imported", "vegan", "waterproof"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "publisher": "Addison-Wesley",
+      "pages": "768",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2025-05-27T05:25:48.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00066",
+    "name": "Clean Code Handbook",
+    "category": "Books",
+    "brand": "PureLife",
+    "price": 61.91,
+    "rating": 4.6,
+    "inStock": false,
+    "tags": ["vegan", "eco", "bundle"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "language": "English",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2023-01-14T15:25:25.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00067",
+    "name": "Domain-Driven Design",
+    "category": "Books",
+    "brand": "ZenWear",
+    "price": 54.2,
+    "rating": 1.2,
+    "inStock": true,
+    "tags": ["handmade", "certified"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "isbn": "978-0-13-468599-1",
+      "publisher": "Packt"
+    },
+    "createdAt": "2024-06-12T09:42:54.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00068",
+    "name": "Instant Pot 6-Quart",
+    "category": "Food",
+    "brand": "StormPeak",
+    "price": 158.77,
+    "rating": 1.7,
+    "inStock": true,
+    "tags": ["bluetooth", "imported", "vegan"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "allergens": "None",
+      "origin": "Made in USA",
+      "servings": "16",
+      "weight": "150g"
+    },
+    "createdAt": "2023-02-18T10:39:26.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00069",
+    "name": "Mechanical Keyboard RGB",
+    "category": "Electronics",
+    "brand": "UrbanCore",
+    "price": 226.12,
+    "rating": 1.4,
+    "inStock": false,
+    "tags": ["organic", "waterproof", "premium", "new", "clearance"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "connectivity": "Bluetooth 5.0",
+      "batteryLife": "12 hours"
+    },
+    "createdAt": "2025-03-08T13:41:51.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00070",
+    "name": "Granola Muesli Mix",
+    "category": "Food",
+    "brand": "ZenWear",
+    "price": 203.19,
+    "rating": 4,
+    "inStock": true,
+    "tags": ["waterproof"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "weight": "500g",
+      "servings": "24",
+      "certification": "Fair Trade"
+    },
+    "createdAt": "2024-04-05T18:14:18.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00071",
+    "name": "Yoga Mat Non-Slip",
+    "category": "Clothing",
+    "brand": "FrostLine",
+    "price": 335.36,
+    "rating": 1.7,
+    "inStock": false,
+    "tags": ["bundle", "waterproof", "bluetooth", "refurbished", "wireless"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "season": "All season",
+      "fit": "Oversized",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2024-03-12T18:23:45.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00072",
+    "name": "Merino Wool Sweater",
+    "category": "Clothing",
+    "brand": "GreenLeaf",
+    "price": 486.97,
+    "rating": 4.1,
+    "inStock": true,
+    "tags": ["wireless"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "careInstructions": "Dry clean only",
+      "material": "Merino Wool",
+      "season": "Winter",
+      "origin": "Made in Japan"
+    },
+    "createdAt": "2025-08-22T18:24:26.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00073",
+    "name": "Coffee Grinder Burr",
+    "category": "Electronics",
+    "brand": "NorthEdge",
+    "price": 256.39,
+    "rating": 4.9,
+    "inStock": false,
+    "tags": ["wireless", "organic", "bestseller"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "warranty": "90 days",
+      "powerInput": "12V/2A",
+      "batteryLife": "12 hours",
+      "connectivity": "Bluetooth 5.0"
+    },
+    "createdAt": "2024-08-12T07:22:27.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00074",
+    "name": "Blender High Performance",
+    "category": "Electronics",
+    "brand": "CrispAir",
+    "price": 267.35,
+    "rating": 2.2,
+    "inStock": true,
+    "tags": ["eco", "premium", "lightweight"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "connectivity": "Wired",
+      "warranty": "3 years",
+      "batteryLife": "30 hours",
+      "weight": "1kg"
+    },
+    "createdAt": "2025-10-23T19:44:26.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00075",
+    "name": "Winter Coat Insulated",
+    "category": "Clothing",
+    "brand": "GreenLeaf",
+    "price": 222.13,
+    "rating": null,
+    "inStock": true,
+    "tags": ["fast-shipping"],
+    "description": null,
+    "specifications": {
+      "careInstructions": "Dry clean only",
+      "fit": "Regular",
+      "material": "Nylon",
+      "season": "Spring/Fall"
+    },
+    "createdAt": "2023-02-20T22:58:07.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00076",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "GreenLeaf",
+    "price": 114.45,
+    "rating": 1.1,
+    "inStock": false,
+    "tags": ["imported", "wireless", "premium", "lightweight", "bluetooth"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "material": "100% Cotton",
+      "careInstructions": "Machine wash cold",
+      "fit": "Oversized",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-12-18T04:44:13.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00077",
+    "name": "Protein Bar Variety Pack",
+    "category": "Food",
+    "brand": "DeepRoot",
+    "price": 263.68,
+    "rating": 3.8,
+    "inStock": true,
+    "tags": ["vegan", "bestseller", "handmade", "gift", "new"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "certification": "Fair Trade",
+      "allergens": "Contains gluten"
+    },
+    "createdAt": "2023-07-05T17:49:52.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00078",
+    "name": "Yoga Mat Non-Slip",
+    "category": "Clothing",
+    "brand": "StormPeak",
+    "price": 161.45,
+    "rating": 2.2,
+    "inStock": true,
+    "tags": ["premium", "bestseller", "gift"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "material": "100% Cotton",
+      "fit": "Oversized",
+      "careInstructions": "Hand wash only"
+    },
+    "createdAt": "2025-04-25T10:13:31.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00079",
+    "name": "Deep Learning with Python",
+    "category": "Books",
+    "brand": "LunaFlow",
+    "price": 95.02,
+    "rating": 1,
+    "inStock": false,
+    "tags": ["clearance"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "pages": "320",
+      "isbn": "978-0-596-51774-8",
+      "edition": "4th edition"
+    },
+    "createdAt": "2024-03-29T08:55:41.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00080",
+    "name": "Air Purifier HEPA",
+    "category": "Electronics",
+    "brand": "ClearVision",
+    "price": 169.28,
+    "rating": 1.7,
+    "inStock": false,
+    "tags": ["sale", "certified", "lightweight", "premium", "imported"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "powerInput": "20V/5A",
+      "connectivity": "NFC",
+      "dimensions": "10x5x3 cm"
+    },
+    "createdAt": "2025-06-07T17:28:24.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00081",
+    "name": "Sparkling Water 12-pack",
+    "category": "Food",
+    "brand": "SkyForge",
+    "price": 147,
+    "rating": 1.4,
+    "inStock": false,
+    "tags": ["sale", "refurbished", "bundle", "organic", "gift"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "calories": "120 kcal",
+      "origin": "Made in USA",
+      "weight": "500g"
+    },
+    "createdAt": "2023-06-06T12:49:35.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00082",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "SwiftGear",
+    "price": 319.61,
+    "rating": 1.1,
+    "inStock": true,
+    "tags": ["sale", "imported", "eco", "premium", "lightweight"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "season": "Summer",
+      "careInstructions": "Hand wash only",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-03-26T02:17:54.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00083",
+    "name": "Domain-Driven Design",
+    "category": "Books",
+    "brand": "PureLife",
+    "price": 25.43,
+    "rating": 4.7,
+    "inStock": false,
+    "tags": ["new", "limited"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "edition": "2nd edition",
+      "pages": "256",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2025-12-21T15:49:14.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00084",
+    "name": "Site Reliability Engineering",
+    "category": "Books",
+    "brand": "IronMesh",
+    "price": 210.15,
+    "rating": 1.1,
+    "inStock": true,
+    "tags": ["bluetooth", "gift", "imported", "bundle", "bestseller"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "isbn": "978-1-491-95042-1",
+      "edition": "3rd edition",
+      "pages": "256"
+    },
+    "createdAt": "2023-08-01T08:32:44.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00085",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "BoldCraft",
+    "price": 278.97,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["eco"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "pages": "640",
+      "publisher": "O'Reilly"
+    },
+    "createdAt": "2023-07-07T19:02:13.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00086",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "ApexPro",
+    "price": 29.2,
+    "rating": 3.4,
+    "inStock": true,
+    "tags": ["bestseller", "bundle", "handmade", "wireless"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "calories": "220 kcal",
+      "servings": "8"
+    },
+    "createdAt": "2023-03-13T06:34:08.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00087",
+    "name": "Canvas Backpack 30L",
+    "category": "Clothing",
+    "brand": "SunRidge",
+    "price": 236.81,
+    "rating": 4.9,
+    "inStock": true,
+    "tags": ["vegan", "fast-shipping", "bundle", "bestseller"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "material": "Merino Wool",
+      "careInstructions": "Hand wash only",
+      "season": "Summer",
+      "fit": "Relaxed"
+    },
+    "createdAt": "2024-01-09T16:05:07.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00088",
+    "name": "Matcha Green Tea Powder",
+    "category": "Food",
+    "brand": "BoldCraft",
+    "price": 406.02,
+    "rating": 3.2,
+    "inStock": true,
+    "tags": ["premium", "gift", "bundle", "fast-shipping"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "calories": "220 kcal",
+      "servings": "16"
+    },
+    "createdAt": "2024-06-22T12:13:05.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00089",
+    "name": "Matcha Green Tea Powder",
+    "category": "Food",
+    "brand": "TechNova",
+    "price": 287.08,
+    "rating": 4.6,
+    "inStock": true,
+    "tags": ["handmade", "bundle", "gift", "lightweight"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "certification": "Fair Trade",
+      "weight": "1kg"
+    },
+    "createdAt": "2023-02-24T07:45:18.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00090",
+    "name": "Dried Mango Strips",
+    "category": "Food",
+    "brand": "NorthEdge",
+    "price": 248.78,
+    "rating": null,
+    "inStock": true,
+    "tags": [],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "weight": "150g",
+      "certification": "Gluten-Free",
+      "allergens": "None",
+      "calories": "120 kcal"
+    },
+    "createdAt": "2023-07-06T20:54:47.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00091",
+    "name": "Blender High Performance",
+    "category": "Electronics",
+    "brand": "DeepRoot",
+    "price": 125.83,
+    "rating": 1.2,
+    "inStock": true,
+    "tags": ["refurbished", "certified", "fast-shipping", "premium", "imported"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "batteryLife": "30 hours",
+      "dimensions": "20x15x8 cm",
+      "connectivity": "USB-C",
+      "warranty": "2 years"
+    },
+    "createdAt": "2024-03-26T11:46:49.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00092",
+    "name": "Robot Vacuum Cleaner",
+    "category": "Electronics",
+    "brand": "StormPeak",
+    "price": 335.24,
+    "rating": 3.7,
+    "inStock": true,
+    "tags": ["limited", "vegan", "new", "bluetooth"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "batteryLife": "12 hours",
+      "weight": "2kg"
+    },
+    "createdAt": "2024-03-11T02:33:10.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00093",
+    "name": "The Art of Unix Programming",
+    "category": "Books",
+    "brand": "UrbanCore",
+    "price": 424.7,
+    "rating": 4.5,
+    "inStock": true,
+    "tags": ["fast-shipping", "handmade", "wireless", "organic", "premium"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "language": "English",
+      "publisher": "O'Reilly",
+      "isbn": "978-0-596-51774-8",
+      "pages": "320"
+    },
+    "createdAt": "2024-04-27T03:31:09.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00094",
+    "name": "Blender High Performance",
+    "category": "Electronics",
+    "brand": "ApexPro",
+    "price": 121.46,
+    "rating": 3.3,
+    "inStock": true,
+    "tags": ["bestseller", "wireless", "premium", "imported"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "weight": "2kg",
+      "batteryLife": "24 hours",
+      "warranty": "1 year",
+      "connectivity": "Bluetooth 5.0"
+    },
+    "createdAt": "2023-11-16T19:28:49.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00095",
+    "name": "External SSD 1TB",
+    "category": "Electronics",
+    "brand": "SunRidge",
+    "price": 112.68,
+    "rating": 1.9,
+    "inStock": true,
+    "tags": ["fast-shipping", "premium"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "batteryLife": "24 hours",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2023-07-15T20:46:05.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00096",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "WaveTech",
+    "price": 316.4,
+    "rating": 2.7,
+    "inStock": false,
+    "tags": ["bundle"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "season": "Spring/Fall",
+      "origin": "Made in Germany",
+      "careInstructions": "Machine wash cold",
+      "material": "Polyester blend"
+    },
+    "createdAt": "2023-03-31T17:08:48.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00097",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "SwiftGear",
+    "price": 344.62,
+    "rating": 2.8,
+    "inStock": true,
+    "tags": ["bundle", "wireless", "handmade", "certified", "waterproof"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "weight": "150g",
+      "servings": "12",
+      "allergens": "Contains gluten"
+    },
+    "createdAt": "2023-01-25T16:19:11.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00098",
+    "name": "Designing Data-Intensive Apps",
+    "category": "Books",
+    "brand": "SwiftGear",
+    "price": 465.21,
+    "rating": 1.5,
+    "inStock": true,
+    "tags": ["eco"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "edition": "4th edition",
+      "isbn": "978-0-13-468599-1"
+    },
+    "createdAt": "2023-08-24T19:15:03.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00099",
+    "name": "The Pragmatic Programmer",
+    "category": "Books",
+    "brand": "SkyForge",
+    "price": 7.08,
+    "rating": 2,
+    "inStock": true,
+    "tags": ["clearance", "sale", "bundle", "wireless"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "pages": "640",
+      "edition": "2nd edition",
+      "publisher": "Manning"
+    },
+    "createdAt": "2025-11-19T08:20:04.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00100",
+    "name": "Cast Iron Skillet 10\"",
+    "category": "Food",
+    "price": 95.58,
+    "rating": 4.5,
+    "inStock": false,
+    "tags": ["gift", "vegan"],
+    "description": null,
+    "specifications": {
+      "calories": "350 kcal",
+      "certification": "Fair Trade"
+    },
+    "createdAt": "2024-08-11T21:54:56.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00101",
+    "name": "Waterproof Hiking Boots",
+    "category": "Food",
+    "brand": "AudioTech",
+    "price": 14.28,
+    "rating": 1.6,
+    "inStock": false,
+    "tags": ["certified", "lightweight", "bluetooth"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "calories": "350 kcal",
+      "servings": "12"
+    },
+    "createdAt": "2023-01-24T15:07:46.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00102",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "BoldCraft",
+    "price": 68.15,
+    "rating": 4.3,
+    "inStock": true,
+    "tags": ["clearance", "premium", "imported", "sale"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "isbn": "978-0-596-51774-8",
+      "publisher": "Apress"
+    },
+    "createdAt": "2024-08-30T10:20:50.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00103",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "LunaFlow",
+    "price": 297.79,
+    "rating": 4.1,
+    "inStock": true,
+    "tags": ["bundle", "wireless", "organic", "premium"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "season": "All season",
+      "material": "Nylon",
+      "fit": "Oversized",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-09-29T23:05:42.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00104",
+    "name": "Granola Muesli Mix",
+    "category": "Food",
+    "brand": "CrispAir",
+    "price": 18.85,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["sale", "certified", "limited", "organic"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "allergens": "Contains gluten",
+      "certification": "Fair Trade",
+      "calories": "180 kcal"
+    },
+    "createdAt": "2023-03-20T22:02:45.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00105",
+    "name": "Winter Coat Insulated",
+    "category": "Clothing",
+    "brand": "GreenLeaf",
+    "price": 486.42,
+    "rating": null,
+    "inStock": true,
+    "tags": ["refurbished", "certified", "new", "eco", "bundle"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "careInstructions": "Hand wash only",
+      "season": "All season",
+      "fit": "Oversized",
+      "material": "100% Cotton"
+    },
+    "createdAt": "2024-11-25T09:25:54.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00106",
+    "name": "The Art of Unix Programming",
+    "category": "Books",
+    "brand": "LunaFlow",
+    "price": 238.5,
+    "rating": 2.1,
+    "inStock": true,
+    "tags": ["vegan"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "isbn": "978-0-13-468599-1",
+      "language": "English"
+    },
+    "createdAt": "2023-06-15T07:09:07.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00107",
+    "name": "Smart Home Hub",
+    "category": "Electronics",
+    "brand": "SwiftGear",
+    "price": 76.92,
+    "rating": 1.1,
+    "inStock": true,
+    "tags": ["wireless", "refurbished"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "weight": "500g",
+      "powerInput": "9V/3A",
+      "connectivity": "Wired",
+      "batteryLife": "24 hours"
+    },
+    "createdAt": "2025-08-10T23:02:12.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00108",
+    "name": "Protein Bar Variety Pack",
+    "category": "Food",
+    "brand": "TechNova",
+    "price": 241.26,
+    "rating": 1.5,
+    "inStock": false,
+    "tags": ["eco"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "certification": "USDA Organic",
+      "servings": "24"
+    },
+    "createdAt": "2023-01-15T16:17:09.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00109",
+    "name": "Site Reliability Engineering",
+    "category": "Books",
+    "brand": "IronMesh",
+    "price": 471.66,
+    "rating": 3.2,
+    "inStock": true,
+    "tags": ["limited", "new", "wireless", "waterproof", "eco"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "edition": "1st edition",
+      "pages": "320",
+      "publisher": "Addison-Wesley"
+    },
+    "createdAt": "2024-05-11T21:05:13.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00110",
+    "name": "Cast Iron Skillet 10\"",
+    "category": "Food",
+    "brand": "DeepRoot",
+    "price": 234.37,
+    "rating": 3.5,
+    "inStock": true,
+    "tags": ["bluetooth", "wireless", "handmade"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "allergens": "None",
+      "certification": "Gluten-Free",
+      "calories": "350 kcal"
+    },
+    "createdAt": "2024-09-12T15:31:50.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00111",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "SkyForge",
+    "price": 271.55,
+    "rating": 1.8,
+    "inStock": false,
+    "tags": ["clearance", "handmade"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "weight": "1kg",
+      "allergens": "Contains nuts",
+      "servings": "24",
+      "certification": "Fair Trade"
+    },
+    "createdAt": "2024-10-31T17:10:18.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00112",
+    "name": "Winter Coat Insulated",
+    "category": "Clothing",
+    "brand": "LunaFlow",
+    "price": 428.46,
+    "rating": 3.6,
+    "inStock": true,
+    "tags": ["bluetooth", "gift", "refurbished", "fast-shipping"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "origin": "Made in Germany",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2025-05-03T05:59:15.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00113",
+    "name": "LED Desk Lamp",
+    "category": "Electronics",
+    "brand": "CrispAir",
+    "price": 156.9,
+    "rating": 1.5,
+    "inStock": true,
+    "tags": ["fast-shipping", "vegan", "premium", "limited"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "dimensions": "30x20x10 cm",
+      "powerInput": "5V/2A",
+      "warranty": "3 years",
+      "weight": "2kg"
+    },
+    "createdAt": "2024-03-28T20:19:53.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00114",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Electronics",
+    "brand": "ClearVision",
+    "price": 241.02,
+    "rating": 2,
+    "inStock": false,
+    "tags": ["new"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "weight": "1kg",
+      "connectivity": "NFC",
+      "powerInput": "12V/2A"
+    },
+    "createdAt": "2023-12-17T23:36:23.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00115",
+    "name": "Gaming Mouse Precision",
+    "category": "Electronics",
+    "brand": "PureLife",
+    "price": 418.06,
+    "rating": 3,
+    "inStock": true,
+    "tags": ["waterproof", "sale", "lightweight", "bestseller", "vegan"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "weight": "150g",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2025-08-31T00:38:47.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00116",
+    "name": "JavaScript: The Good Parts",
+    "category": "Books",
+    "brand": "TechNova",
+    "price": 147.31,
+    "rating": 4.4,
+    "inStock": false,
+    "tags": ["premium", "bundle", "refurbished"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "publisher": "Apress",
+      "edition": "4th edition",
+      "pages": "512",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2023-04-12T19:48:21.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00117",
+    "name": "Smart Home Hub",
+    "category": "Electronics",
+    "brand": "CrispAir",
+    "price": 28.31,
+    "rating": 3.4,
+    "inStock": true,
+    "tags": ["gift", "waterproof", "eco", "refurbished", "certified"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "connectivity": "USB-C",
+      "warranty": "90 days",
+      "weight": "1kg",
+      "powerInput": "5V/2A"
+    },
+    "createdAt": "2025-04-21T16:46:09.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00118",
+    "name": "Dried Mango Strips",
+    "category": "Food",
+    "brand": "LunaFlow",
+    "price": 60,
+    "rating": 1.6,
+    "inStock": true,
+    "tags": ["wireless", "vegan", "new", "clearance"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "servings": "8",
+      "weight": "150g",
+      "certification": "USDA Organic",
+      "allergens": "Contains dairy"
+    },
+    "createdAt": "2024-12-27T21:29:54.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00119",
+    "name": "Canvas Backpack 30L",
+    "category": "Clothing",
+    "brand": "ApexPro",
+    "price": 208.99,
+    "rating": 3.3,
+    "inStock": true,
+    "tags": ["bestseller", "wireless", "premium"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "fit": "Regular",
+      "season": "Summer"
+    },
+    "createdAt": "2023-11-10T09:42:27.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00120",
+    "name": "Waterproof Hiking Boots",
+    "category": "Clothing",
+    "brand": "AudioTech",
+    "price": 410.52,
+    "rating": null,
+    "inStock": true,
+    "tags": [],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "careInstructions": "Dry clean only",
+      "season": "Winter",
+      "material": "Linen",
+      "fit": "Regular"
+    },
+    "createdAt": "2025-02-01T19:55:30.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00121",
+    "name": "Granola Muesli Mix",
+    "category": "Food",
+    "brand": "DeepRoot",
+    "price": 145.58,
+    "rating": 1.7,
+    "inStock": false,
+    "tags": ["new", "premium", "certified"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "allergens": "Contains nuts",
+      "certification": "Fair Trade"
+    },
+    "createdAt": "2024-07-04T18:21:59.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00122",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "FrostLine",
+    "price": 403.63,
+    "rating": 1.3,
+    "inStock": true,
+    "tags": ["imported", "clearance", "vegan", "bestseller"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "publisher": "Manning",
+      "edition": "1st edition",
+      "pages": "256",
+      "language": "English"
+    },
+    "createdAt": "2024-03-18T02:01:52.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00123",
+    "name": "JavaScript: The Good Parts",
+    "category": "Books",
+    "brand": "WaveTech",
+    "price": 179.19,
+    "rating": 3.3,
+    "inStock": true,
+    "tags": ["bluetooth", "fast-shipping", "limited"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "publisher": "Packt",
+      "language": "English",
+      "isbn": "978-0-596-51774-8",
+      "pages": "768"
+    },
+    "createdAt": "2025-02-16T04:31:26.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00124",
+    "name": "Denim Jacket Classic",
+    "category": "Clothing",
+    "brand": "CrispAir",
+    "price": 65.31,
+    "rating": 1.9,
+    "inStock": true,
+    "tags": ["gift"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "careInstructions": "Dry clean only",
+      "origin": "Made in Italy",
+      "material": "Nylon",
+      "season": "Spring/Fall"
+    },
+    "createdAt": "2023-05-30T04:28:03.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00125",
+    "name": "External SSD 1TB",
+    "category": "Electronics",
+    "brand": "GreenLeaf",
+    "price": 93.32,
+    "rating": 1.3,
+    "inStock": true,
+    "tags": ["limited", "clearance", "bestseller", "handmade", "vegan"],
+    "description": null,
+    "specifications": {
+      "batteryLife": "48 hours",
+      "weight": "150g",
+      "dimensions": "5x5x5 cm"
+    },
+    "createdAt": "2024-01-10T07:07:00.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00126",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "Electronics",
+    "brand": "WaveTech",
+    "price": 446.6,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["new", "fast-shipping", "eco", "waterproof"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "dimensions": "20x15x8 cm",
+      "batteryLife": "30 hours",
+      "powerInput": "20V/5A"
+    },
+    "createdAt": "2025-02-18T14:18:54.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00127",
+    "name": "Coffee Grinder Burr",
+    "category": "Electronics",
+    "brand": "SkyForge",
+    "price": 453.83,
+    "rating": 4.6,
+    "inStock": false,
+    "tags": ["bluetooth", "certified"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "connectivity": "USB-C",
+      "powerInput": "5V/2A",
+      "weight": "250g"
+    },
+    "createdAt": "2023-11-15T04:13:06.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00128",
+    "name": "The Art of Unix Programming",
+    "category": "Books",
+    "brand": "ApexPro",
+    "price": 317.99,
+    "rating": 3.4,
+    "inStock": false,
+    "tags": ["imported", "sale", "handmade", "organic"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "edition": "3rd edition",
+      "language": "English",
+      "pages": "512",
+      "publisher": "Addison-Wesley"
+    },
+    "createdAt": "2024-05-26T05:40:25.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00129",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "NorthEdge",
+    "price": 199.39,
+    "rating": 3.1,
+    "inStock": true,
+    "tags": ["new", "bestseller", "limited", "certified", "eco"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "material": "Polyester blend",
+      "careInstructions": "Machine wash cold",
+      "season": "All season",
+      "fit": "Relaxed"
+    },
+    "createdAt": "2025-09-16T00:14:58.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00130",
+    "name": "Sparkling Water 12-pack",
+    "category": "Food",
+    "brand": "FrostLine",
+    "price": 31.49,
+    "rating": 1.4,
+    "inStock": true,
+    "tags": ["certified", "gift"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "allergens": "None",
+      "servings": "16",
+      "weight": "500g"
+    },
+    "createdAt": "2024-03-03T15:34:31.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00131",
+    "name": "Waterproof Hiking Boots",
+    "category": "Food",
+    "brand": "PureLife",
+    "price": 325.9,
+    "rating": 1.6,
+    "inStock": false,
+    "tags": ["handmade", "sale", "bestseller", "gift", "certified"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "servings": "4",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-04-07T04:45:00.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00132",
+    "name": "Denim Jacket Classic",
+    "category": "Clothing",
+    "brand": "WaveTech",
+    "price": 91.86,
+    "rating": 4.5,
+    "inStock": true,
+    "tags": ["clearance", "vegan"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "origin": "Made in USA",
+      "season": "All season"
+    },
+    "createdAt": "2024-11-26T12:42:44.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00133",
+    "name": "Winter Coat Insulated",
+    "category": "Clothing",
+    "brand": "StormPeak",
+    "price": 121.45,
+    "rating": 2.3,
+    "inStock": false,
+    "tags": ["clearance", "certified"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "origin": "Made in USA",
+      "material": "100% Cotton",
+      "fit": "Regular",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2023-05-13T13:54:48.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00134",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "FrostLine",
+    "price": 461.12,
+    "rating": 3.1,
+    "inStock": true,
+    "tags": ["bundle", "fast-shipping", "organic", "eco"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "careInstructions": "Machine wash cold",
+      "material": "Linen"
+    },
+    "createdAt": "2024-02-24T23:46:05.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00135",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Electronics",
+    "brand": "ZenWear",
+    "price": 485.06,
+    "rating": null,
+    "inStock": true,
+    "tags": ["sale"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "batteryLife": "48 hours",
+      "connectivity": "NFC",
+      "powerInput": "20V/5A",
+      "dimensions": "10x5x3 cm"
+    },
+    "createdAt": "2023-02-21T14:51:29.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00136",
+    "name": "Smart Home Hub",
+    "category": "Electronics",
+    "brand": "StormPeak",
+    "price": 473,
+    "rating": 4.9,
+    "inStock": true,
+    "tags": ["gift", "organic"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "dimensions": "10x5x3 cm",
+      "powerInput": "12V/2A",
+      "connectivity": "Wired"
+    },
+    "createdAt": "2024-03-06T00:14:47.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00137",
+    "name": "Robot Vacuum Cleaner",
+    "category": "Electronics",
+    "brand": "SwiftGear",
+    "price": 16.26,
+    "rating": 1.8,
+    "inStock": true,
+    "tags": ["bluetooth", "lightweight", "limited", "imported"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "weight": "1kg",
+      "dimensions": "30x20x10 cm",
+      "powerInput": "9V/3A",
+      "batteryLife": "48 hours"
+    },
+    "createdAt": "2024-11-28T10:56:34.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00138",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Electronics",
+    "brand": "BoldCraft",
+    "price": 363.82,
+    "rating": 4.7,
+    "inStock": true,
+    "tags": ["imported", "clearance", "premium"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "warranty": "2 years",
+      "batteryLife": "72 hours",
+      "powerInput": "12V/2A",
+      "dimensions": "30x20x10 cm"
+    },
+    "createdAt": "2024-10-22T09:55:41.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00139",
+    "name": "JavaScript: The Good Parts",
+    "category": "Books",
+    "brand": "ClearVision",
+    "price": 127.05,
+    "rating": 1.2,
+    "inStock": true,
+    "tags": ["fast-shipping", "waterproof"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "isbn": "978-1-491-95042-1",
+      "edition": "2nd edition",
+      "pages": "640",
+      "publisher": "Packt"
+    },
+    "createdAt": "2025-12-07T20:38:04.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00140",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "IronMesh",
+    "price": 426.1,
+    "rating": 1.8,
+    "inStock": true,
+    "tags": ["handmade", "sale", "bestseller"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "allergens": "Contains dairy",
+      "servings": "4",
+      "calories": "120 kcal"
+    },
+    "createdAt": "2024-01-12T20:25:37.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00141",
+    "name": "Cotton Crew-Neck T-Shirt",
+    "category": "Clothing",
+    "brand": "TechNova",
+    "price": 373.75,
+    "rating": 2.2,
+    "inStock": true,
+    "tags": ["limited", "vegan", "handmade"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "fit": "Slim",
+      "material": "Nylon",
+      "careInstructions": "Machine wash cold",
+      "season": "Summer"
+    },
+    "createdAt": "2025-09-07T16:01:09.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00142",
+    "name": "Domain-Driven Design",
+    "category": "Books",
+    "brand": "UrbanCore",
+    "price": 235.59,
+    "rating": 4.3,
+    "inStock": true,
+    "tags": ["bestseller", "wireless", "new", "limited", "imported"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "isbn": "978-0-596-51774-8",
+      "pages": "420",
+      "language": "English",
+      "publisher": "Manning"
+    },
+    "createdAt": "2024-07-09T10:27:48.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00143",
+    "name": "Almond Butter Crunchy",
+    "category": "Food",
+    "brand": "ApexPro",
+    "price": 174.74,
+    "rating": 4.8,
+    "inStock": false,
+    "tags": ["imported", "refurbished", "bundle", "waterproof"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "calories": "350 kcal",
+      "certification": "Non-GMO",
+      "allergens": "Contains nuts"
+    },
+    "createdAt": "2024-03-02T14:18:45.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00144",
+    "name": "Coffee Grinder Burr",
+    "category": "Electronics",
+    "brand": "SkyForge",
+    "price": 307.58,
+    "rating": 2.6,
+    "inStock": false,
+    "tags": ["lightweight", "waterproof"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "weight": "2kg",
+      "connectivity": "USB-C",
+      "batteryLife": "30 hours"
+    },
+    "createdAt": "2025-02-03T23:45:44.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00145",
+    "name": "Coffee Grinder Burr",
+    "category": "Electronics",
+    "brand": "ApexPro",
+    "price": 426.05,
+    "rating": 3.8,
+    "inStock": false,
+    "tags": ["certified", "bundle", "bluetooth", "limited"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "weight": "2kg",
+      "warranty": "Lifetime"
+    },
+    "createdAt": "2023-03-02T16:57:27.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00146",
+    "name": "Merino Wool Sweater",
+    "category": "Clothing",
+    "brand": "StormPeak",
+    "price": 403.48,
+    "rating": 1.1,
+    "inStock": true,
+    "tags": ["gift", "waterproof", "fast-shipping"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "material": "Merino Wool",
+      "origin": "Made in Germany",
+      "careInstructions": "Machine wash cold",
+      "fit": "Oversized"
+    },
+    "createdAt": "2023-07-28T05:00:41.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00147",
+    "name": "Winter Coat Insulated",
+    "category": "Clothing",
+    "brand": "TechNova",
+    "price": 92.77,
+    "rating": 3.5,
+    "inStock": true,
+    "tags": ["waterproof", "wireless", "new"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "origin": "Made in Italy",
+      "season": "Spring/Fall",
+      "material": "Merino Wool",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2025-07-25T18:18:24.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00148",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "DeepRoot",
+    "price": 102.81,
+    "rating": 3.3,
+    "inStock": false,
+    "tags": ["clearance", "gift"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "allergens": "Contains dairy",
+      "certification": "USDA Organic"
+    },
+    "createdAt": "2024-05-20T19:19:30.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00149",
+    "name": "Cold Brew Coffee Concentrate",
+    "category": "Food",
+    "brand": "SunRidge",
+    "price": 490.16,
+    "rating": 2.9,
+    "inStock": true,
+    "tags": ["eco", "refurbished", "clearance", "bundle"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "calories": "220 kcal",
+      "weight": "500g",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-09-01T20:29:04.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00150",
+    "name": "Smart Home Hub",
+    "category": "Electronics",
+    "price": 469.73,
+    "rating": null,
+    "inStock": true,
+    "tags": [],
+    "description": null,
+    "specifications": {
+      "batteryLife": "24 hours",
+      "warranty": "90 days",
+      "weight": "2kg"
+    },
+    "createdAt": "2023-05-19T21:36:52.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00151",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "GreenLeaf",
+    "price": 303.01,
+    "rating": 3.4,
+    "inStock": true,
+    "tags": ["handmade", "vegan"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "calories": "220 kcal",
+      "allergens": "Contains nuts",
+      "certification": "Fair Trade",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2024-04-06T23:05:34.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00152",
+    "name": "Deep Learning with Python",
+    "category": "Books",
+    "brand": "ClearVision",
+    "price": 204.68,
+    "rating": 2.1,
+    "inStock": false,
+    "tags": ["premium"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "pages": "320",
+      "isbn": "978-1-491-95042-1"
+    },
+    "createdAt": "2025-12-16T05:34:08.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00153",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Food",
+    "brand": "ApexPro",
+    "price": 161.37,
+    "rating": 2.6,
+    "inStock": true,
+    "tags": ["waterproof", "handmade", "sale", "wireless"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "allergens": "Contains gluten",
+      "certification": "Fair Trade"
+    },
+    "createdAt": "2024-11-23T07:56:08.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00154",
+    "name": "Waterproof Hiking Boots",
+    "category": "Clothing",
+    "brand": "PureLife",
+    "price": 235.43,
+    "rating": 1.2,
+    "inStock": true,
+    "tags": ["certified", "waterproof", "clearance", "wireless", "refurbished"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "origin": "Made in USA",
+      "season": "Winter"
+    },
+    "createdAt": "2025-05-04T02:30:18.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00155",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "SkyForge",
+    "price": 187.44,
+    "rating": 2.8,
+    "inStock": true,
+    "tags": ["imported", "sale"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "publisher": "Packt",
+      "language": "English",
+      "isbn": "978-0-596-51774-8"
+    },
+    "createdAt": "2024-04-03T15:09:25.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00156",
+    "name": "Leather Wallet Slim",
+    "category": "Clothing",
+    "brand": "ZenWear",
+    "price": 152.59,
+    "rating": 1.6,
+    "inStock": true,
+    "tags": ["bestseller"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "season": "Spring/Fall",
+      "careInstructions": "Machine wash cold",
+      "fit": "Relaxed",
+      "origin": "Made in Germany"
+    },
+    "createdAt": "2023-05-14T07:57:27.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00157",
+    "name": "Sunglasses Polarised",
+    "category": "Clothing",
+    "brand": "NorthEdge",
+    "price": 355.9,
+    "rating": 1.3,
+    "inStock": true,
+    "tags": ["new", "fast-shipping"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "origin": "Made in USA",
+      "fit": "Oversized"
+    },
+    "createdAt": "2023-09-09T07:43:03.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00158",
+    "name": "Sunglasses Polarised",
+    "category": "Clothing",
+    "brand": "FrostLine",
+    "price": 177.01,
+    "rating": 3.1,
+    "inStock": false,
+    "tags": ["eco", "bundle"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "fit": "Slim",
+      "origin": "Made in Germany",
+      "careInstructions": "Hand wash only"
+    },
+    "createdAt": "2025-11-04T15:58:32.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00159",
+    "name": "Python Crash Course",
+    "category": "Books",
+    "brand": "AudioTech",
+    "price": 359.29,
+    "rating": 2.4,
+    "inStock": true,
+    "tags": ["handmade", "bluetooth", "sale", "refurbished"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "isbn": "978-0-13-468599-1",
+      "edition": "4th edition"
+    },
+    "createdAt": "2023-11-05T18:16:08.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00160",
+    "name": "USB-C Hub 7-in-1",
+    "category": "Electronics",
+    "brand": "PureLife",
+    "price": 196.23,
+    "rating": 3.2,
+    "inStock": false,
+    "tags": ["premium", "new", "clearance", "organic"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "batteryLife": "48 hours",
+      "connectivity": "Wired",
+      "dimensions": "5x5x5 cm",
+      "powerInput": "12V/2A"
+    },
+    "createdAt": "2024-11-23T20:07:40.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00161",
+    "name": "Running Shoes Ultralight",
+    "category": "Clothing",
+    "brand": "StormPeak",
+    "price": 214.98,
+    "rating": 3.9,
+    "inStock": true,
+    "tags": ["eco", "wireless", "bundle", "bluetooth"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "fit": "Relaxed",
+      "material": "Linen",
+      "season": "Summer",
+      "origin": "Made in USA"
+    },
+    "createdAt": "2024-08-16T12:32:43.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00162",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "AudioTech",
+    "price": 239.75,
+    "rating": 4.3,
+    "inStock": true,
+    "tags": ["refurbished", "fast-shipping", "gift", "new", "waterproof"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "isbn": "978-0-13-468599-1",
+      "pages": "768"
+    },
+    "createdAt": "2023-12-27T00:45:54.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00163",
+    "name": "The Art of Unix Programming",
+    "category": "Books",
+    "brand": "WaveTech",
+    "price": 48.58,
+    "rating": 2.2,
+    "inStock": false,
+    "tags": ["bestseller", "vegan", "waterproof"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "language": "English",
+      "edition": "4th edition",
+      "publisher": "O'Reilly",
+      "pages": "512"
+    },
+    "createdAt": "2024-07-04T10:48:07.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00164",
+    "name": "Merino Wool Sweater",
+    "category": "Clothing",
+    "brand": "BoldCraft",
+    "price": 66.17,
+    "rating": 3.6,
+    "inStock": true,
+    "tags": ["vegan", "limited", "wireless"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "material": "Nylon",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2024-10-06T22:22:37.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00165",
+    "name": "Denim Jacket Classic",
+    "category": "Clothing",
+    "brand": "IronMesh",
+    "price": 199.76,
+    "rating": null,
+    "inStock": false,
+    "tags": ["bluetooth", "wireless"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "careInstructions": "Machine wash cold",
+      "origin": "Made in Japan",
+      "fit": "Relaxed",
+      "season": "All season"
+    },
+    "createdAt": "2023-11-28T07:28:07.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00166",
+    "name": "Canvas Backpack 30L",
+    "category": "Clothing",
+    "brand": "AudioTech",
+    "price": 239.39,
+    "rating": 3.7,
+    "inStock": true,
+    "tags": ["new", "waterproof", "sale", "fast-shipping"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "season": "Winter",
+      "fit": "Regular",
+      "origin": "Made in Italy",
+      "careInstructions": "Hand wash only"
+    },
+    "createdAt": "2023-08-31T17:04:48.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00167",
+    "name": "Granola Muesli Mix",
+    "category": "Food",
+    "brand": "SunRidge",
+    "price": 32.26,
+    "rating": 2.3,
+    "inStock": false,
+    "tags": ["waterproof"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "servings": "24",
+      "allergens": "Contains dairy",
+      "weight": "250g",
+      "certification": "Gluten-Free"
+    },
+    "createdAt": "2024-10-03T13:05:25.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00168",
+    "name": "Coffee Grinder Burr",
+    "category": "Food",
+    "brand": "BoldCraft",
+    "price": 154.7,
+    "rating": 3.2,
+    "inStock": true,
+    "tags": ["imported"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "origin": "Made in Italy",
+      "certification": "Fair Trade",
+      "servings": "8"
+    },
+    "createdAt": "2024-10-13T23:31:34.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00169",
+    "name": "JavaScript: The Good Parts",
+    "category": "Books",
+    "brand": "IronMesh",
+    "price": 188.94,
+    "rating": 4.6,
+    "inStock": true,
+    "tags": ["limited"],
+    "description": "Combines classic aesthetics with modern functionality, making it the ideal choice for discerning customers.",
+    "specifications": {
+      "isbn": "978-0-596-51774-8",
+      "publisher": "Apress",
+      "pages": "640"
+    },
+    "createdAt": "2023-03-24T07:26:36.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00170",
+    "name": "USB-C Hub 7-in-1",
+    "category": "Electronics",
+    "brand": "LunaFlow",
+    "price": 160.45,
+    "rating": 4.4,
+    "inStock": true,
+    "tags": ["lightweight", "wireless"],
+    "description": "Crafted from premium materials with meticulous attention to detail, this product is designed to exceed your expectations.",
+    "specifications": {
+      "batteryLife": "72 hours",
+      "weight": "2kg",
+      "dimensions": "10x5x3 cm"
+    },
+    "createdAt": "2023-02-13T19:46:25.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00171",
+    "name": "Olive Oil Extra Virgin 1L",
+    "category": "Food",
+    "brand": "SkyForge",
+    "price": 256.26,
+    "rating": 3.6,
+    "inStock": false,
+    "tags": ["handmade", "limited", "organic", "refurbished"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "certification": "USDA Organic",
+      "servings": "16",
+      "calories": "180 kcal"
+    },
+    "createdAt": "2023-07-08T07:29:59.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00172",
+    "name": "The Pragmatic Programmer",
+    "category": "Books",
+    "brand": "ZenWear",
+    "price": 455.9,
+    "rating": 3.7,
+    "inStock": true,
+    "tags": ["lightweight", "handmade", "refurbished", "organic", "fast-shipping"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "pages": "640",
+      "language": "English",
+      "isbn": "978-0-596-51774-8"
+    },
+    "createdAt": "2025-07-11T06:32:01.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00173",
+    "name": "Running Shoes Ultralight",
+    "category": "Clothing",
+    "brand": "SwiftGear",
+    "price": 171.63,
+    "rating": 3.8,
+    "inStock": true,
+    "tags": ["clearance", "limited", "imported", "wireless", "bestseller"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "season": "Spring/Fall",
+      "origin": "Made in Italy",
+      "material": "100% Cotton"
+    },
+    "createdAt": "2023-12-02T08:34:26.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00174",
+    "name": "Leather Wallet Slim",
+    "category": "Clothing",
+    "brand": "ClearVision",
+    "price": 222.6,
+    "rating": 4.7,
+    "inStock": true,
+    "tags": ["bestseller", "lightweight", "premium", "sale"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "material": "Linen",
+      "fit": "Oversized",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2025-08-12T07:40:34.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00175",
+    "name": "Winter Coat Insulated",
+    "category": "Clothing",
+    "brand": "ApexPro",
+    "price": 479.95,
+    "rating": 3.4,
+    "inStock": true,
+    "tags": ["limited", "certified", "eco"],
+    "description": null,
+    "specifications": {
+      "origin": "Made in USA",
+      "season": "Spring/Fall",
+      "material": "Linen"
+    },
+    "createdAt": "2024-11-11T05:55:16.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00176",
+    "name": "Refactoring: Improving the Design",
+    "category": "Books",
+    "brand": "TechNova",
+    "price": 73.24,
+    "rating": 3.5,
+    "inStock": true,
+    "tags": ["bluetooth", "eco", "waterproof"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "pages": "640",
+      "edition": "2nd edition",
+      "isbn": "978-0-596-51774-8",
+      "language": "English"
+    },
+    "createdAt": "2023-07-29T12:40:46.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00177",
+    "name": "Mechanical Keyboard RGB",
+    "category": "Electronics",
+    "brand": "BoldCraft",
+    "price": 274.55,
+    "rating": 2.4,
+    "inStock": false,
+    "tags": ["certified", "bundle", "waterproof", "organic"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "weight": "2kg",
+      "warranty": "90 days"
+    },
+    "createdAt": "2024-03-04T18:10:13.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00178",
+    "name": "Leather Wallet Slim",
+    "category": "Clothing",
+    "brand": "SwiftGear",
+    "price": 393.25,
+    "rating": 2.5,
+    "inStock": true,
+    "tags": ["lightweight", "fast-shipping"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "fit": "Slim",
+      "careInstructions": "Dry clean only"
+    },
+    "createdAt": "2024-11-21T11:41:46.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00179",
+    "name": "Waterproof Hiking Boots",
+    "category": "Clothing",
+    "brand": "CrispAir",
+    "price": 55.04,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["eco", "handmade", "lightweight"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "season": "Summer",
+      "fit": "Regular"
+    },
+    "createdAt": "2024-08-23T23:34:20.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00180",
+    "name": "Organic Dark Chocolate 85%",
+    "category": "Food",
+    "brand": "BoldCraft",
+    "price": 25.31,
+    "rating": null,
+    "inStock": false,
+    "tags": [],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "calories": "180 kcal",
+      "servings": "8",
+      "certification": "Non-GMO"
+    },
+    "createdAt": "2024-10-30T02:03:44.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00181",
+    "name": "Coffee Grinder Burr",
+    "category": "Food",
+    "brand": "TechNova",
+    "price": 139.72,
+    "rating": 1.4,
+    "inStock": false,
+    "tags": ["handmade", "wireless", "limited", "certified", "bundle"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "calories": "120 kcal",
+      "servings": "12"
+    },
+    "createdAt": "2025-01-21T00:42:57.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00182",
+    "name": "Wireless Noise-Cancelling Headphones",
+    "category": "Electronics",
+    "brand": "SwiftGear",
+    "price": 385.83,
+    "rating": 2.4,
+    "inStock": true,
+    "tags": ["bestseller", "wireless"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "dimensions": "5x5x5 cm",
+      "powerInput": "20V/5A"
+    },
+    "createdAt": "2023-07-02T23:46:56.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00183",
+    "name": "Webcam 4K Ultra HD",
+    "category": "Electronics",
+    "brand": "PureLife",
+    "price": 406.72,
+    "rating": 3.3,
+    "inStock": true,
+    "tags": ["imported", "gift"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "powerInput": "20V/5A",
+      "warranty": "2 years",
+      "connectivity": "Bluetooth 5.0",
+      "dimensions": "30x20x10 cm"
+    },
+    "createdAt": "2024-12-01T13:53:09.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00184",
+    "name": "Stand Mixer 5.5Qt",
+    "category": "Food",
+    "brand": "DeepRoot",
+    "price": 486.52,
+    "rating": 2.1,
+    "inStock": true,
+    "tags": ["new", "clearance", "bestseller"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "servings": "4",
+      "calories": "350 kcal",
+      "certification": "Fair Trade"
+    },
+    "createdAt": "2025-11-29T20:06:45.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00185",
+    "name": "JavaScript: The Good Parts",
+    "category": "Books",
+    "brand": "SunRidge",
+    "price": 445.06,
+    "rating": 2.3,
+    "inStock": true,
+    "tags": ["gift"],
+    "description": "Sustainable, responsible, and high-performing — this product is designed with both you and the planet in mind.",
+    "specifications": {
+      "publisher": "Packt",
+      "edition": "4th edition"
+    },
+    "createdAt": "2025-07-10T23:07:39.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00186",
+    "name": "LED Desk Lamp",
+    "category": "Electronics",
+    "brand": "PureLife",
+    "price": 191.75,
+    "rating": 3.5,
+    "inStock": true,
+    "tags": ["limited", "organic", "imported"],
+    "description": "Experience superior quality with this thoughtfully designed product, built for everyday performance and long-lasting durability.",
+    "specifications": {
+      "warranty": "Lifetime",
+      "dimensions": "20x15x8 cm",
+      "powerInput": "20V/5A"
+    },
+    "createdAt": "2025-01-06T02:08:58.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00187",
+    "name": "Waterproof Hiking Boots",
+    "category": "Clothing",
+    "brand": "UrbanCore",
+    "price": 292.82,
+    "rating": 1.4,
+    "inStock": false,
+    "tags": ["organic"],
+    "description": "With its compact design and powerful performance, this product punches well above its weight class.",
+    "specifications": {
+      "careInstructions": "Machine wash cold",
+      "season": "All season",
+      "origin": "Made in Germany",
+      "material": "Merino Wool"
+    },
+    "createdAt": "2024-06-18T03:38:07.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00188",
+    "name": "Instant Pot 6-Quart",
+    "category": "Food",
+    "brand": "UrbanCore",
+    "price": 365.34,
+    "rating": 4.3,
+    "inStock": true,
+    "tags": ["new", "gift", "certified", "bestseller"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "origin": "Made in Japan",
+      "allergens": "None",
+      "calories": "220 kcal",
+      "weight": "2kg"
+    },
+    "createdAt": "2024-09-25T23:53:08.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00189",
+    "name": "Canvas Backpack 30L",
+    "category": "Clothing",
+    "brand": "CrispAir",
+    "price": 159.81,
+    "rating": 2,
+    "inStock": true,
+    "tags": ["bundle", "wireless", "eco"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "fit": "Regular",
+      "season": "Winter",
+      "careInstructions": "Machine wash cold"
+    },
+    "createdAt": "2024-07-18T02:14:24.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00190",
+    "name": "Domain-Driven Design",
+    "category": "Books",
+    "brand": "DeepRoot",
+    "price": 446.18,
+    "rating": 1.3,
+    "inStock": true,
+    "tags": ["limited", "waterproof", "wireless"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "pages": "512",
+      "isbn": "978-0-596-51774-8",
+      "publisher": "Addison-Wesley"
+    },
+    "createdAt": "2023-07-21T03:16:59.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00191",
+    "name": "The Pragmatic Programmer",
+    "category": "Books",
+    "brand": "CrispAir",
+    "price": 115.27,
+    "rating": 2,
+    "inStock": false,
+    "tags": ["organic", "bestseller", "bundle"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "isbn": "978-1-491-95042-1",
+      "edition": "1st edition"
+    },
+    "createdAt": "2025-03-02T01:57:06.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00192",
+    "name": "Matcha Green Tea Powder",
+    "category": "Food",
+    "brand": "DeepRoot",
+    "price": 228.56,
+    "rating": 2.2,
+    "inStock": false,
+    "tags": ["eco"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "allergens": "Contains dairy",
+      "servings": "8",
+      "certification": "Gluten-Free"
+    },
+    "createdAt": "2024-01-27T00:54:44.000Z",
+    "_partitionKey": "Food"
+  },
+  {
+    "id": "prod-00193",
+    "name": "Yoga Mat Non-Slip",
+    "category": "Clothing",
+    "brand": "UrbanCore",
+    "price": 216.53,
+    "rating": 4,
+    "inStock": true,
+    "tags": ["clearance", "handmade", "waterproof"],
+    "description": "Backed by extensive research and user feedback, this product represents the pinnacle of its category with proven results.",
+    "specifications": {
+      "origin": "Made in Italy",
+      "careInstructions": "Hand wash only",
+      "material": "Nylon",
+      "season": "Winter"
+    },
+    "createdAt": "2025-05-12T04:08:56.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00194",
+    "name": "Yoga Mat Non-Slip",
+    "category": "Clothing",
+    "brand": "WaveTech",
+    "price": 223.75,
+    "rating": 1.2,
+    "inStock": false,
+    "tags": ["bluetooth", "lightweight", "refurbished", "limited"],
+    "description": "Whether at home, in the office, or on the go, this versatile product adapts seamlessly to your lifestyle needs.",
+    "specifications": {
+      "season": "All season",
+      "origin": "Made in Japan"
+    },
+    "createdAt": "2023-11-02T16:26:55.000Z",
+    "_partitionKey": "Clothing"
+  },
+  {
+    "id": "prod-00195",
+    "name": "Smart Watch Pro",
+    "category": "Electronics",
+    "brand": "WaveTech",
+    "price": 194.59,
+    "rating": null,
+    "inStock": true,
+    "tags": ["organic", "bundle", "clearance"],
+    "description": "Engineered for professionals and enthusiasts alike, this product combines cutting-edge technology with an ergonomic form factor.",
+    "specifications": {
+      "batteryLife": "24 hours",
+      "weight": "500g"
+    },
+    "createdAt": "2023-08-27T00:43:52.000Z",
+    "_partitionKey": "Electronics"
+  },
+  {
+    "id": "prod-00196",
+    "name": "Deep Learning with Python",
+    "category": "Books",
+    "brand": "ClearVision",
+    "price": 397.6,
+    "rating": 3,
+    "inStock": true,
+    "tags": ["imported"],
+    "description": "Originally developed for professional use, now available for consumers who demand nothing less than the best.",
+    "specifications": {
+      "pages": "640",
+      "isbn": "978-0-596-51774-8",
+      "language": "English"
+    },
+    "createdAt": "2025-10-03T03:45:46.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00197",
+    "name": "Designing Data-Intensive Apps",
+    "category": "Books",
+    "brand": "NorthEdge",
+    "price": 23.07,
+    "rating": 1.4,
+    "inStock": false,
+    "tags": ["new", "premium", "gift", "bestseller", "organic"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "language": "English",
+      "publisher": "O'Reilly",
+      "edition": "2nd edition",
+      "pages": "420"
+    },
+    "createdAt": "2023-02-21T21:16:52.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00198",
+    "name": "Site Reliability Engineering",
+    "category": "Books",
+    "brand": "SkyForge",
+    "price": 487.53,
+    "rating": 2.9,
+    "inStock": true,
+    "tags": ["wireless", "eco", "sale"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "publisher": "Packt",
+      "pages": "768",
+      "language": "English",
+      "edition": "2nd edition"
+    },
+    "createdAt": "2023-04-20T06:23:06.000Z",
+    "_partitionKey": "Books"
+  },
+  {
+    "id": "prod-00199",
+    "name": "Air Purifier HEPA",
+    "category": "Electronics",
+    "brand": "FrostLine",
+    "price": 77.08,
+    "rating": 2.2,
+    "inStock": false,
+    "tags": ["bestseller", "premium", "refurbished", "bundle", "bluetooth"],
+    "description": "A carefully curated selection that meets the highest standards of quality, delivering exceptional value for the price.",
+    "specifications": {
+      "warranty": "90 days",
+      "weight": "1kg"
+    },
+    "createdAt": "2024-05-05T21:23:30.000Z",
+    "_partitionKey": "Electronics"
+  }
+]

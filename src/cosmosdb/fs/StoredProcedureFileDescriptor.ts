@@ -29,13 +29,13 @@ export class StoredProcedureFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
-        const replace = await withClaimsChallengeHandling(this.model.accountInfo, async (cosmosClient) =>
-            cosmosClient
+        this.model.procedure = await withClaimsChallengeHandling(this.model.accountInfo, async (client) => {
+            const response = await client
                 .database(this.model.database.id)
                 .container(this.model.container.id)
                 .scripts.storedProcedure(this.model.procedure.id)
-                .replace({ id: this.model.procedure.id, body: content }),
-        );
-        this.model.procedure = nonNullProp(replace, 'resource');
+                .replace({ id: this.model.procedure.id, body: content });
+            return nonNullProp(response, 'resource');
+        });
     }
 }

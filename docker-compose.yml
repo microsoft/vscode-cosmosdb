@@ -2,17 +2,42 @@
 # Documentation: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
 
 services:
+  # Init container: sets correct permissions on the mounted data directory
+  cosmosdb-init:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    user: root
+    entrypoint:
+      - sh
+      - -c
+      - |
+        chown -R 1000:1000 /usr/cosmos/data
+        chown -R 1000:1000 /logs
+        find /usr/cosmos/data -name "postmaster.pid" -delete
+    volumes:
+      - ./.cosmosdb-data:/usr/cosmos/data
+      - ./.cosmosdb-logs:/logs
+
   cosmosdb-emulator:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    depends_on:
+      cosmosdb-init:
+        condition: service_completed_successfully
     ports:
-      - "8081:8081"  # Main endpoint for Cosmos DB operations
-      - "1234:1234"  # Additional service port
+      - "8081:8081" # Main endpoint for Cosmos DB operations
+      - "1234:1234" # Additional service port
     environment:
       # Available values: https, http, https-insecure
       PROTOCOL: https-insecure
       # Persistent storage path inside container
       DATA_PATH: /usr/cosmos/data
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
     volumes:
       # Mount local directory for data persistence
       - ./.cosmosdb-data:/usr/cosmos/data
-
+      # Mount local directory for logs
+      - ./.cosmosdb-logs:/logs
+    tmpfs:
+      # Always-empty in-memory mount: prevents stale PG socket lock files
+      # from surviving container restarts (docker restart keeps overlay layer).
+      # uid/gid=1000 matches the emulator process user so PG can write the socket.
+      - /socket:uid=1000,gid=1000,mode=0755

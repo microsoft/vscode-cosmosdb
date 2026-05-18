@@ -7,6 +7,7 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
+import { CHARS_PER_TOKEN, estimateTokens, MAX_FILE_TOKENS } from '../../../utils/aiUtils';
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
 import { decodeFileBytes } from '../../../utils/decodeFileBytes';
 import { loadSkillSupplementaryFile } from '../bestPractices';
@@ -262,7 +263,6 @@ export function getWorkspaceFileExclude(language?: string, frameworks?: string[]
 export const DEFAULT_SOURCE_PATTERN = '**/*.{ts,js,cs,java,py,go,rb,rs,php,kt,scala,sql}';
 
 // Re-exported from shared `utils/aiUtils` to avoid churn for existing migration callers.
-import { CHARS_PER_TOKEN, estimateTokens, MAX_FILE_TOKENS } from '../../../utils/aiUtils';
 export { CHARS_PER_TOKEN, estimateTokens, MAX_FILE_TOKENS };
 
 /**

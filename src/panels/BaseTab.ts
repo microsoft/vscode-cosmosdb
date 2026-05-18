@@ -3,25 +3,16 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
-import { type Channel } from './Communication/Channel/Channel';
-import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
-export type CommandPayload = {
-    commandName: string;
-    params: unknown[];
-};
-
 export class BaseTab {
-    protected readonly channel: Channel;
     protected readonly id: string;
     protected readonly panel: vscode.WebviewPanel;
     protected readonly start: number;
@@ -31,10 +22,9 @@ export class BaseTab {
     protected disposables: vscode.Disposable[] = [];
 
     protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
-        this.id = uuid();
+        this.id = crypto.randomUUID();
         this.start = Date.now();
         this.telemetryContext = new TelemetryContext(viewType);
-        this.channel = new VSCodeChannel(panel.webview);
 
         this.panel = panel;
         this.viewType = viewType;
@@ -43,16 +33,13 @@ export class BaseTab {
 
         this.panel.webview.html = this.getWebviewContent();
 
-        this.initController();
-
         void this.telemetryContext.reportWebviewEvent('opened', {
             panelId: this.id,
-            ...(telemetryProperties ?? {}),
+            ...telemetryProperties,
         });
     }
 
     public dispose(): void {
-        this.channel.dispose();
         this.panel.dispose();
 
         while (this.disposables.length) {
@@ -86,6 +73,31 @@ export class BaseTab {
                 .toString(true);
 
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
+        const reactPreambleUri = !isProduction && devServer ? `${DEV_SERVER_HOST}/@react-refresh` : null;
+
+        // In production, Vite extracts CSS into separate files under `assets/`.
+        // The dev server injects CSS via JS at runtime, so this is only needed
+        // for built bundles.
+        let cssLinks = '';
+        if (isProduction || !devServer) {
+            const assetsDir = path.join(ctx.extensionPath, dir, 'assets');
+            try {
+                // Sort for a stable cascade — `readdirSync` order is not
+                // guaranteed across filesystems.
+                const cssFiles = fs
+                    .readdirSync(assetsDir)
+                    .filter((f) => f.endsWith('.css'))
+                    .sort((a, b) => a.localeCompare(b));
+                cssLinks = cssFiles.map((f) => `<link rel="stylesheet" href="${uri('assets', f)}" />`).join('\n    ');
+            } catch (error) {
+                // No assets directory — older or non-Vite builds. Re-throw
+                // anything other than the missing-directory case so real
+                // filesystem failures aren't silently swallowed.
+                if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+                    throw error;
+                }
+            }
+        }
 
         const csp = (
             isProduction
@@ -114,12 +126,32 @@ export class BaseTab {
             title: this.panel.title,
             csp,
             srcUri,
+            reactPreambleUri,
             viewType: this.viewType,
             nonce,
+            cssLinks,
         });
     }
 
-    private template(params: { csp: string; viewType: string; srcUri: string; title: string; nonce: string }) {
+    private template(params: {
+        csp: string;
+        viewType: string;
+        srcUri: string;
+        reactPreambleUri: string | null;
+        title: string;
+        nonce: string;
+        cssLinks: string;
+    }) {
+        const preamble = params.reactPreambleUri
+            ? `
+    <script type="module" nonce="${params.nonce}">
+      import RefreshRuntime from "${params.reactPreambleUri}";
+      RefreshRuntime.injectIntoGlobalHook(window);
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+    </script>`
+            : '';
         return `
 <!DOCTYPE html>
 <html lang="en">
@@ -128,6 +160,7 @@ export class BaseTab {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${params.title}</title>
     <meta http-equiv="Content-Security-Policy" content="${params.csp}" />
+    ${params.cssLinks}
   </head>
 
   <body>
@@ -137,7 +170,7 @@ export class BaseTab {
           // eslint-disable-next-line no-restricted-syntax
           JSON.stringify(vscode.l10n.bundle ?? {})
       };
-    </script>
+    </script>${preamble}
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";
       render("${params.viewType}", acquireVsCodeApi());
@@ -145,51 +178,5 @@ export class BaseTab {
   </body>
 </html>
 `;
-    }
-
-    protected initController() {
-        this.channel.on<void>('command', async (payload: CommandPayload) => {
-            await this.getCommand(payload);
-        });
-    }
-
-    protected getCommand(payload: CommandPayload): Promise<void> {
-        const commandName = payload.commandName;
-        switch (commandName) {
-            case 'showInformationMessage':
-                return this.showInformationMessage(payload.params[0] as string);
-            case 'showErrorMessage':
-                return this.showErrorMessage(payload.params[0] as string);
-            case 'reportWebviewEvent':
-                return this.telemetryContext.reportWebviewEvent(
-                    payload.params[0] as string,
-                    payload.params[1] as Record<string, string>,
-                    payload.params[2] as Record<string, number>,
-                );
-            case 'reportWebviewError':
-                return this.telemetryContext.reportWebviewError(
-                    payload.params[0] as string, // message
-                    payload.params[1] as string, // stack
-                    payload.params[2] as string, // componentStack
-                );
-            case 'executeReportIssueCommand':
-                // Use an async anonymous function to convert Thenable to Promise
-                return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
-            case 'openUrl':
-                return (async () => {
-                    await vscode.env.openExternal(vscode.Uri.parse(payload.params[0] as string));
-                })();
-
-            default:
-                throw new Error(l10n.t('Unknown command: {commandName}', { commandName }));
-        }
-    }
-
-    protected async showInformationMessage(message: string) {
-        await vscode.window.showInformationMessage(message);
-    }
-
-    protected async showErrorMessage(message: string) {
-        await vscode.window.showErrorMessage(message);
     }
 }

@@ -5,9 +5,9 @@
 
 import type * as React from 'react';
 import { createContext, useContext, useEffect, useReducer, type Dispatch } from 'react';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
 import { sanitizeCosmosDBAccountName } from '../../../../utils/cosmosDBAccountName';
 import { resolveSelectedModelId, type ModelInfo } from '../../../../utils/modelUtils';
+import { type Channel } from './MigrationChannel';
 
 export type { ModelInfo };
 
@@ -703,9 +703,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                                 : discoveryComplete
                                   ? 'available'
                                   : 'locked',
-                            assessmentInstructions:
-                                ((assessment as Record<string, unknown> | undefined)
-                                    ?.assessmentInstructions as string) ?? '',
+                            assessmentInstructions: (assessment?.assessmentInstructions as string) ?? '',
                             assessmentResult: data.assessmentResult ?? null,
                             assessmentError: null,
                             schemaConversionState: schemaConversionComplete
@@ -715,8 +713,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                                   : 'locked',
                             schemaConversionResult: data.schemaConversionResult ?? null,
                             schemaConversionInstructions:
-                                ((data.project.phases.schemaConversion as Record<string, unknown> | undefined)
-                                    ?.schemaConversionInstructions as string) ?? '',
+                                (data.project.phases.schemaConversion?.schemaConversionInstructions as string) ?? '',
                             schemaConversionError: null,
                             targetType: target?.type ?? null,
                             targetEndpoint: target?.endpoint ?? '',
@@ -743,8 +740,7 @@ export function WithMigrationContext({ channel, children }: { channel: Channel; 
                             bicepGenerated: data.hasBicep,
                             isAIFeaturesEnabled: data.isAIFeaturesEnabled,
                             consentGiven: data.consentGiven,
-                            discoveryInstructions:
-                                ((discovery as Record<string, unknown>).discoveryInstructions as string) ?? '',
+                            discoveryInstructions: (discovery.discoveryInstructions as string) ?? '',
                             migrationInstructions: data.project.migrationInstructions ?? '',
                             hasCodeMigrationPlan: data.hasCodeMigrationPlan,
                             codeMigrationPlanPath: data.codeMigrationPlanPath,

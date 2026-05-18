@@ -57,7 +57,7 @@ async function openOrInstallPgSqlExtension(isInstalled: boolean): Promise<void> 
  * - Automatically handles installation of the PostgreSQL extension if not already installed
  */
 export async function openPostgresExtension(node: CosmosDBAccountUnsupportedResourceItem): Promise<void> {
-    return await callWithTelemetryAndErrorHandling('postgreSQL.openPostgresExtension', async (context) => {
+    return callWithTelemetryAndErrorHandling('postgreSQL.openPostgresExtension', async (context) => {
         if ('subscription' in node.account && node.account.subscription) {
             // Build URI with connection parameters
             const params = new URLSearchParams();

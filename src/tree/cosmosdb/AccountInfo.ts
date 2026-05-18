@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
+import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../constants';
+import { SERVERLESS_CAPABILITY_NAME, wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
 import {
     parseCosmosDBConnectionString,
     type ParsedCosmosDBConnectionString,
@@ -23,6 +24,18 @@ export interface AccountInfo {
     isEmulator: boolean;
     isServerless: boolean;
     name: string;
+    /**
+     * Azure subscription context, populated only for Azure-signed-in accounts
+     * (i.e. accounts discovered via the Azure Resources view). Required for
+     * ARM control-plane operations. Undefined for workspace-attached accounts
+     * and for the local emulator.
+     */
+    subscription?: AzureSubscription;
+    /**
+     * Resource group name for the Cosmos DB account. Populated together with
+     * {@link subscription}.
+     */
+    resourceGroup?: string;
 }
 
 function isCosmosDBAttachedAccountModel(account: unknown): account is CosmosDBAttachedAccountModel {
@@ -48,7 +61,7 @@ export async function getAccountInfo(
     } else if (isCosmosDBConnectionString(accountOrConnectionString)) {
         return getAccountInfoForConnectionString(accountOrConnectionString);
     } else {
-        return getAccountInfoForResource(accountOrConnectionString as CosmosDBAccountModel);
+        return getAccountInfoForResource(accountOrConnectionString);
     }
 }
 
@@ -117,6 +130,8 @@ async function getAccountInfoForResource(account: CosmosDBAccountModel): Promise
         isEmulator: false,
         isServerless,
         name,
+        subscription: account.subscription,
+        resourceGroup,
     };
 }
 

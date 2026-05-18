@@ -3,17 +3,17 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ItemDefinition, type JSONValue, type RequestOptions } from '@azure/cosmos';
+import { type ItemDefinition, type JSONObject, type JSONValue, type RequestOptions } from '@azure/cosmos';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { type Experience } from '../../AzureDBExperiences';
-import { CosmosDBHiddenFields } from '../../constants';
 import { type EditableFileSystemItem } from '../../DatabasesFileSystem';
 import { type CosmosDBItemModel } from '../../tree/cosmosdb/models/CosmosDBItemModel';
 import { extractPartitionKey } from '../../utils/document';
 import { promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
+import { CosmosDBHiddenFields } from '../cosmosdb-shared-constants';
 import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
 export class DocumentFileDescriptor implements EditableFileSystemItem {
@@ -42,20 +42,23 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
     }
 
     public async writeFileContent(_context: IActionContext, content: string): Promise<void> {
-        const newData: JSONValue = JSON.parse(content) as JSONValue;
+        const parsedData: JSONValue = JSON.parse(content) as JSONValue;
 
-        if (typeof newData !== 'object' || newData === null) {
+        if (typeof parsedData !== 'object' || parsedData === null || Array.isArray(parsedData)) {
             throw new Error(l10n.t('The item content is not a valid JSON object'));
         }
 
-        if (!newData['id'] || typeof newData['id'] !== 'string') {
+        const newData = parsedData as JSONObject;
+
+        if (!('id' in newData) || !newData['id'] || typeof newData['id'] !== 'string') {
             throw new Error(l10n.t('The "id" field is required to update an item'));
         }
 
+        const itemId = newData['id'];
+
         // TODO: Does it matter to keep the same fields in the document? Why user can't change them?
         for (const field of CosmosDBHiddenFields) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            newData[field] = this.model.item[field];
+            (newData as Record<string, unknown>)[field] = (this.model.item as Record<string, unknown>)[field];
         }
 
         // TODO: Does it make sense now? This check was created 4 years ago
@@ -71,7 +74,7 @@ export class DocumentFileDescriptor implements EditableFileSystemItem {
             cosmosClient
                 .database(this.model.database.id)
                 .container(this.model.container.id)
-                .item(`${newData['id']}`, partitionKeyValues)
+                .item(itemId, partitionKeyValues)
                 .replace(newData, options),
         );
 

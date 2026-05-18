@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { isJSON } from 'es-toolkit';
+import { isEmptyObject, isJSON } from 'es-toolkit';
 import type React from 'react';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
@@ -46,6 +46,10 @@ type IndexMetricsV2 = {
     };
 };
 
+const isPlainObject = (val: unknown): val is Record<string, unknown> => {
+    return typeof val === 'object' && val !== null && !Array.isArray(val) && !(val instanceof Date);
+};
+
 const isIndexV2 = (value: JSONValue): value is IndexV2 => {
     return !!(
         value &&
@@ -64,15 +68,13 @@ const isIndexMetricsV2 = (value: JSONValue): value is IndexMetricsV2 => {
         typeof value === 'object' &&
         ('UtilizedIndexes' in value || 'PotentialIndexes' in value) &&
         (value.UtilizedIndexes === undefined ||
-            (value.UtilizedIndexes &&
-                typeof value.UtilizedIndexes === 'object' &&
+            (isPlainObject(value.UtilizedIndexes) &&
                 (value.UtilizedIndexes['SingleIndexes'] === undefined ||
                     Array.isArray(value.UtilizedIndexes['SingleIndexes'])) &&
                 (value.UtilizedIndexes['CompositeIndexes'] === undefined ||
                     Array.isArray(value.UtilizedIndexes['CompositeIndexes'])))) &&
         (value.PotentialIndexes === undefined ||
-            (value.PotentialIndexes &&
-                typeof value.PotentialIndexes === 'object' &&
+            (isPlainObject(value.PotentialIndexes) &&
                 (value.PotentialIndexes['SingleIndexes'] === undefined ||
                     Array.isArray(value.PotentialIndexes['SingleIndexes'])) &&
                 (value.PotentialIndexes['CompositeIndexes'] === undefined ||
@@ -141,7 +143,11 @@ export const IndexMetricsView: React.FC<{ indexMetricsStr: string; topLabelStyle
                     {parsed.sections.map((section, index) => (
                         <TableRow
                             key={`${section.title}-${index}`}
-                            aria-label={section.title + ' ' + Object.values(section.indexes).join(' ')}
+                            aria-label={
+                                section.title +
+                                ' ' +
+                                section.indexes.map((idx) => Object.values(idx).join(' ')).join(', ')
+                            }
                             tabIndex={0}
                         >
                             <TableCell>{section.title}</TableCell>
@@ -193,7 +199,8 @@ const parseIndexMetricsV2 = (indexMetricsStr: string): IndexMetrics => {
     const sections: IndexMetricsSection[] = [];
     const json = JSON.parse(indexMetricsStr) as IndexMetricsV2;
 
-    if (!isIndexMetricsV2(json)) {
+    // Index metrics might be just {} in case indexes weren't applied
+    if (!isIndexMetricsV2(json) && !isEmptyObject(json)) {
         throw new Error('Invalid index metrics JSON format');
     }
 

@@ -16,6 +16,16 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SELECTED_MODEL_KEY } from './modelUtils';
 
+/**
+ * Master switch to control whether third-party (non-Copilot) language models are allowed.
+ * When false, all model selection is restricted to `{ vendor: 'copilot' }`.
+ * When true, all available models (including 3P) are returned.
+ */
+const allow3pModels = false;
+
+/** Selector used by all model lookups; gated by {@link allow3pModels}. */
+const modelSelector: vscode.LanguageModelChatSelector = allow3pModels ? {} : { vendor: 'copilot' };
+
 // ─── Model selection ────────────────────────────────────────────────
 
 /**
@@ -46,7 +56,7 @@ export interface GetSelectedModelOptions {
  * @throws If no Copilot models are available.
  */
 export async function getSelectedModel(options?: GetSelectedModelOptions): Promise<vscode.LanguageModelChat> {
-    const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+    const models = await vscode.lm.selectChatModels(modelSelector);
     if (models.length === 0) {
         throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
     }
@@ -82,7 +92,7 @@ export async function getAvailableModelsInfo(
     stateKey: string = SELECTED_MODEL_KEY,
 ): Promise<{ models: AvailableModelDescriptor[]; savedModelId: string | null }> {
     try {
-        const allModels = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+        const allModels = await vscode.lm.selectChatModels(modelSelector);
         const savedModelId = ext.context.globalState.get<string>(stateKey) ?? null;
 
         // Filter out the "Auto" virtual model — it doesn't support countTokens or sendRequest.

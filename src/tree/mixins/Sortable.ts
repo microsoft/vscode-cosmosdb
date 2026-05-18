@@ -30,7 +30,11 @@ export interface Sortable {
      * @param propertyName The property name to sort by.
      * @returns A new array sorted by the specified property.
      */
-    sortItems: <U extends TreeElement>(items: U[], propertyName: string, sortDirection: SortDirection) => Promise<U[]>;
+    sortItems: <U extends TreeElement>(
+        items: U[],
+        propertyName: TreeItemStringProps,
+        sortDirection: SortDirection,
+    ) => Promise<U[]>;
     /**
      * Handles the sort command, allowing the user to select a property and direction for sorting.
      * This method should be called when the user triggers a sort action.

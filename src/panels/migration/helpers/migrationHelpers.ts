@@ -14,8 +14,23 @@ import { type CosmosModel } from '../cosmosModel';
 export async function saveCosmosModel(domainOutputPath: string, cosmosModel: CosmosModel): Promise<void> {
     await vscode.workspace.fs.writeFile(
         MigrationProjectService.toUri(domainOutputPath, 'cosmos-model.json'),
-        Buffer.from(JSON.stringify(cosmosModel, null, 2), 'utf-8'),
+        Buffer.from(JSON.stringify(cosmosModel, cosmosModelJsonReplacer, 2), 'utf-8'),
     );
+}
+
+/**
+ * JSON.stringify replacer that drops boolean-flag attribute properties
+ * (`isId`, `isPartitionKey`) when they are not explicitly `true`. The LLM
+ * frequently emits `null` for these on non-key attributes; consumers only
+ * check `=== true`, so omitting them entirely keeps the saved JSON minimal
+ * and consistent with the `isId?: boolean` / `isPartitionKey?: boolean`
+ * type definitions.
+ */
+function cosmosModelJsonReplacer(key: string, value: unknown): unknown {
+    if ((key === 'isId' || key === 'isPartitionKey') && value !== true) {
+        return undefined;
+    }
+    return value;
 }
 
 export async function saveAnalysisFile(domainOutputPath: string, fileName: string, content: string): Promise<void> {

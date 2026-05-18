@@ -247,6 +247,17 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 );
             }
 
+            // summary.md is optional context for sample-data generation. If absent
+            // (older projects, manual edits) we proceed without it.
+            const summaryPath = path.join(conversionPath, 'summary.md');
+            let schemaSummary = '';
+            try {
+                const data = await vscode.workspace.fs.readFile(vscode.Uri.file(summaryPath));
+                schemaSummary = Buffer.from(data).toString('utf-8');
+            } catch {
+                // ignore — summary.md is best-effort additional context
+            }
+
             // ─── Step 2: Generate sample data via AI ────────────────
             // Sample-data generation is AI-driven and slow. If sample-data.json already
             // exists on disk we try to reuse it by comparing file modification times:
@@ -319,7 +330,12 @@ export async function runProvisioning(ctx: Phase4Context): Promise<void> {
                 const { value: generated, roundsExhausted: sampleDataRoundsExhausted } =
                     await runAgenticLoopWithJsonResult<SampleDataResult>(
                         Phase4SampleDataPrompt,
-                        { cosmosModel: JSON.stringify(model), sourceType, bestPractices: getCosmosDbBestPractices() },
+                        {
+                            cosmosModel: JSON.stringify(model),
+                            schemaSummary,
+                            sourceType,
+                            bestPractices: getCosmosDbBestPractices(),
+                        },
                         aiModel,
                         getBestPracticeTools(),
                         createToolExecutor({}, '[Provisioning]', undefined, undefined, context),

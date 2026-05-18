@@ -85,7 +85,9 @@ export class MigrationChannel implements Channel {
 
     public async postMessage(message: { type: 'event'; name: string; params: unknown[] }): Promise<void> {
         if (message.name !== 'command') {
-            throw new Error(`[MigrationChannel] Unsupported postMessage name '${message.name}'; only 'command' is allowed.`);
+            throw new Error(
+                `[MigrationChannel] Unsupported postMessage name '${message.name}'; only 'command' is allowed.`,
+            );
         }
         const wrapper = message.params[0] as { commandName: string; params: unknown[] } | undefined;
         if (!wrapper || typeof wrapper.commandName !== 'string') {

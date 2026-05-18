@@ -200,12 +200,11 @@ jobs:
 
             - name: 🧪 Unit Tests
               id: unit-tests
-              continue-on-error: true
               run: npm run vitest
 
             - name: 🧪 Integration Tests
               id: integration-tests
-              continue-on-error: true
+              if: ${{ !cancelled() }}
               run: |
                   exit_code=1
                   for i in 1 2 3; do

@@ -179,22 +179,7 @@ export function buildToolSystemMessage(tools: vscode.LanguageModelChatTool[]): s
     return lines.join('\n');
 }
 
-/**
- * Strips any LLM "thinking" preamble that appears before the first Markdown
- * heading in a response. After long agentic tool-calling sessions the model
- * sometimes emits transitional text (e.g. "Now I have a thorough understanding…")
- * before the actual document. This function detects the first line starting with
- * `#` and removes everything before it.
- *
- * Returns the original text unchanged if no Markdown heading is found.
- */
-export function stripMarkdownPreamble(text: string): string {
-    const match = text.match(/^(#+\s)/m);
-    if (!match || match.index === undefined || match.index === 0) {
-        return text;
-    }
-    return text.slice(match.index);
-}
+export { stripMarkdownPreamble } from './markdownUtils';
 
 /**
  * Renders a prompt with `@vscode/prompt-tsx`, applying a debug prompt override

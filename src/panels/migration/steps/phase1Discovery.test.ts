@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { parseCodeEvidencedTables } from './phase1Discovery';
+import { parseCodeEvidencedTables } from '../helpers/markdownUtils';
 
 describe('parseCodeEvidencedTables', () => {
     it('returns empty array for empty input', () => {

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { stripMarkdownPreamble } from './aiHelpers';
+import { stripMarkdownPreamble } from './markdownUtils';
 
 describe('stripMarkdownPreamble', () => {
     it('removes preamble text before the first heading', () => {

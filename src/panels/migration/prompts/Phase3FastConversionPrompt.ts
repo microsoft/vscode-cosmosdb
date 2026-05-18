@@ -102,44 +102,44 @@ Perform ALL of the following analyses for this domain and produce a complete Cos
   exist as standalone documents, set \`"isEmbeddedOnly": true\` on the entity. These entities
   do not need the container's partition key attribute.
 
-### Document \`id\` strategy (CRITICAL — read carefully)
+### Document \`id\` strategy (CRITICAL — migration scenario)
 
-Every standalone Cosmos DB document needs an \`id\` field. The Cosmos DB best practice
-(see \`rules/model-id-constraints.md\` in the skill) is to use **GUIDs by default** because
-they are collision-free, opaque, evenly distributed, and decoupled from mutable business
-data. Apply the following decision rule deterministically:
+Cosmos \`id\` MUST be deterministically derived from the source PK so imports
+are idempotent and every document traces back to its source row. Fresh GUIDs
+break this — do NOT use them unless rules 1 and 2 below cannot apply.
 
-1. **DEFAULT — use a GUID for \`id\`.** Emit a single \`id\` attribute on the entity with:
-   - \`"target": "id"\`, \`"type": "string"\`, \`"isId": true\`, \`"isPartitionKey": false\`
-   - \`"source": { "table": "(generated)", "column": "(uuid)", "type": "uuid" }\`
-   Then **also** keep the natural primary key as a **separate** attribute named after the
-   entity (e.g. \`customerId\`, \`productId\`, \`salesOrderId\`) sourced from the PK column,
-   with \`isId: false\`. This separate field is what cross-container references use and
-   what application code queries as the business identifier. Type it to match the source
-   column (numeric PKs stay numeric).
+Rule (every standalone entity, \`isEmbeddedOnly\` !== true):
 
-2. **EXCEPTION — natural-key \`id\`.** Use the natural PK value as \`id\` ONLY when ALL of
-   the following hold:
-   - The PK is a single column (not composite),
-   - The PK is also the chosen partition key (so a point read by \`id\` + partition key
-     is naturally efficient),
-   - The PK value is safe as a Cosmos \`id\` (string-coercible, ≤1023 bytes, alphanumeric
-     ASCII + \`-\`/\`_\`, no \`/\`, \`\\\\\`, \`?\`, \`#\`, no trailing spaces).
-   In that case, emit **ONE** attribute carrying BOTH \`"isId": true\` AND
-   \`"isPartitionKey": true\`, sourced from the PK column. Do **not** also emit a duplicate
-   \`<entity>Id\` attribute from the same column.
+1. **DEFAULT — prefixed derived id:**
+   - \`id = "{entityCamelCase}-{pk1}[-{pk2}-...]"\`
+     Customer/101 → \`"customer-101"\`;
+     SalesOrderDetail/71774,110562 → \`"salesOrderDetail-71774-110562"\`.
+   - Encode as ONE \`id\` attribute (\`"type": "string"\`, \`"isId": true\`,
+     \`source\` = first PK column) PLUS an \`idTemplate\` on the entity using
+     EXACT source column names in braces: \`"customer-{CustomerID}"\`.
+   - Sanitize composite PK string values: replace \`/\`, \`\\\\\`, \`?\`, \`#\`,
+     trailing whitespace with \`-\`.
 
-**Forbidden patterns (do NOT do this):**
+2. **EXCEPTION — native GUID/UUID PK** (\`uniqueidentifier\`, \`uuid\`):
+   Use the GUID value directly, no prefix.
+   \`idTemplate\`: \`"{rowguid}"\`. \`source.type\`: \`"uniqueidentifier"\`.
 
-- Two attributes sourced from the **same** column (e.g. \`id\` and \`productId\` both
-  sourced from \`ProductID\`). Either \`id\` is a GUID with source
-  \`(generated)/(uuid)\` and the natural key lives in a separately named field, OR a
-  single attribute carries both \`isId\` and \`isPartitionKey\`.
-- \`id\` and a duplicate of it under another name with a different \`type\`
-  (e.g. \`id: string\` + \`productId: number\`, both from \`ProductID\`).
-- Natural-key \`id\` when the partition key is a **different** field. For example,
-  Products partitioned by \`/productCategoryId\` MUST use a GUID \`id\` and keep
-  \`productId\` as a separate queryable field — \`id\` is never the natural PK in that case.
+3. **FALLBACK — generated GUID** (only when rules 1 and 2 cannot apply, e.g.
+   the source table has no PK, or its PK is unsafe as a Cosmos \`id\` and has
+   no stable string projection):
+   - Emit \`id\` with \`source: { "table": "(generated)", "column": "(uuid)", "type": "uuid" }\`.
+   - \`idTemplate\`: \`"{uuid}"\`.
+   - State the reason in the schema summary so re-imports are reviewed manually.
+
+ALSO: preserve every source PK column as a SEPARATE camelCase attribute
+(\`customerId: number\`, \`salesOrderId: number\`) sourced from the PK column
+with \`isId: false\`. These hold the verbatim natural-key value used by
+application queries and cross-container references.
+
+**Forbidden:**
+- Freshly generated GUID \`id\` when rule 1 or 2 applies
+- Omitting the natural PK column(s) as separate attributes (when a PK exists)
+- Omitting \`idTemplate\` on a standalone entity
 
 **CRITICAL — Partition Key Alignment in Multi-DocType Containers:**
 All documents in a Cosmos DB container share ONE partition key path. When placing multiple
@@ -285,13 +285,18 @@ Respond with a JSON object in EXACTLY this format (no markdown, no code fences):
             "docType": "type_discriminator",
             "sourceTable": "schema.table_name",
             "isEmbeddedOnly": false,
+            "idTemplate": "entityName-{PKColumn}",
             "attributes": [
               {
-                "target": "fieldName",
-                "source": { "table": "table_name", "column": "col_name", "type": "source_type" },
+                "target": "id",
+                "source": { "table": "table_name", "column": "PKColumn", "type": "int" },
                 "type": "string",
-                "isId": true,
-                "isPartitionKey": false
+                "isId": true
+              },
+              {
+                "target": "entityNameId",
+                "source": { "table": "table_name", "column": "PKColumn", "type": "int" },
+                "type": "number"
               }
             ],
             "relationships": [
@@ -360,7 +365,8 @@ IMPORTANT:
 - The attribute marked isPartitionKey=true MUST have the same "target" name across all standalone entities in the container
 - Partition keys are immutable — once a container is created, its partition key cannot be changed. To change the partition key, a new container must be created with the desired partition key, data migrated, and application code updated. Choose partition keys carefully as this is a breaking change.
 - Set isId=true on primary keys
-- The \`id\` attribute and any \`<entity>Id\` business-key attribute MUST NOT be sourced from the same source column. If you keep the natural primary key as a separate field, \`id\` MUST be a GUID (source: \`(generated)/(uuid)\`). If \`id\` is the natural primary key, do not also emit a duplicate \`<entity>Id\` attribute — collapse into a single attribute marked with both \`isId\` and \`isPartitionKey\`.
+- Set \`idTemplate\` on every standalone entity (isEmbeddedOnly !== true), using EXACT source column names in braces (e.g. \`"customer-{CustomerID}"\`, \`"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"\`, \`"{rowguid}"\` for native GUID PKs, or \`"{uuid}"\` only as fallback when no usable PK exists).
+- The \`id\` attribute MUST be derived from source PK columns via \`idTemplate\` (or be the value of a native GUID PK; fallback is a generated GUID). Every source PK column MUST also appear as a SEPARATE camelCase attribute typed to match the source (e.g. \`customerId: number\` alongside \`id: string\` "customer-101").
 - Include relationships with strategy and rationale
 - Do NOT include accessPatterns or crossPartitionQueries in the model JSON — include them in the summary only
 - Do NOT include partition key candidates, scores, or analysis text in the model JSON — include candidate evaluation details in the summary under "Partition Key Decisions" instead. The model JSON partitionKeys entries should contain only the final "path".

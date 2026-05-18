@@ -86,6 +86,16 @@ export interface CosmosEntity {
      * produce their own top-level documents.
      */
     isEmbeddedOnly?: boolean;
+    /**
+     * Deterministic template used by sample-data generation and (future) data
+     * import to construct each document's `id` from source PK column values.
+     * Source column names are referenced in braces, e.g. `"customer-{CustomerID}"`,
+     * `"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"`, or `"{rowguid}"`
+     * when the PK is a native GUID. Use `"{uuid}"` as a fallback when no usable
+     * PK exists (a fresh GUID is generated per document).
+     * Required at runtime for every standalone entity (`isEmbeddedOnly` !== true).
+     */
+    idTemplate?: string;
 }
 
 export interface CosmosAttribute {

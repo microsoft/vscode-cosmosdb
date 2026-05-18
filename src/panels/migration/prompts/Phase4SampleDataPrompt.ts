@@ -49,52 +49,45 @@ from a ${this.props.sourceType} relational database.
 1. **Review the Cosmos DB model** below — it defines containers, entities, attributes,
    partition keys, and relationships (with embedding/reference strategies).
 
-2. **Choose an \`id\` strategy** by inspecting the Schema Conversion Summary (summary.md)
-   and the Cosmos DB model below:
-   - **Default to GUIDs** (e.g. \`"a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"\`) for every
-     container's \`id\` field. GUIDs are the Cosmos DB best-practice default — they
-     are collision-free, opaque, evenly distributed, and decoupled from mutable
-     business data.
-   - **Only deviate from GUIDs** if the summary or model explicitly indicates a
-     stable natural key should be the document \`id\` (for example: the summary
-     calls out a business identifier as the primary key, the model maps a source
-     PK column directly onto \`id\`, or the partition-key + id pair is documented
-     as a composite natural key). In that case, use compact alphanumeric ASCII +
-     hyphens (e.g. \`"ORD-2026-0001"\`) — never raw values that may contain
-     forbidden characters.
-   - **Preserve the original business key as a separate field** on the document
-     (e.g. \`customerNumber\`, \`orderNumber\`, \`sku\`) whenever you use a GUID
-     \`id\`. This keeps the human-readable identifier queryable without coupling
-     it to the document identity.
-   - Apply the **same strategy consistently within a container**. Do not mix
-     GUID and natural-key \`id\`s in the same container.
+2. **Construct each \`id\` from the entity's \`idTemplate\` in the model.**
+   - Every standalone entity has an \`idTemplate\` (e.g. \`"customer-{CustomerID}"\`,
+     \`"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"\`). Pick realistic
+     values for the referenced source PK column(s) and substitute them into the
+     template: \`CustomerID=101\` → \`id: "customer-101"\`.
+   - When \`idTemplate\` is \`"{GuidCol}"\` (native GUID PK), generate realistic
+     GUID strings and use them directly as \`id\`.
+   - When \`idTemplate\` is \`"{uuid}"\` (generated-GUID fallback for entities
+     without a usable PK), generate a fresh GUID string as \`id\`; there is no
+     corresponding natural-key field to align.
+   - The natural-key field on the same document (e.g. \`customerId: 101\`) MUST hold
+     the SAME value you substituted into the template, with the type declared in
+     the model.
 
 3. **Generate 3-5 sample documents per entity type** in each container. Each document must:
    - Include all mapped attributes with realistic, domain-appropriate values
    - Include the \`docType\` discriminator field matching the entity's docType value
-   - Include a valid \`id\` field following the strategy chosen in step 2.
-     IDs must be strings, max 1,023 bytes, must NOT contain / or \\ characters
-     (also avoid ?, #, and trailing spaces). Use only alphanumeric ASCII characters
-     plus hyphens for best SDK and connector interoperability.
+   - Include a valid \`id\` field constructed via the rule in step 2. IDs must be
+     strings, max 1,023 bytes, must NOT contain \`/\` or \`\\\\\` (also avoid \`?\`,
+     \`#\`, trailing spaces). Use only alphanumeric ASCII + hyphens.
    - Set partition key fields to realistic values that demonstrate good distribution
    - For embedded relationships (strategy: "embed"), nest the related entity's data
      as a sub-document or array within the parent document
    - For referenced relationships (strategy: "reference"), the foreign-key field
-     must contain the referenced document's \`id\` value (whatever form it takes —
-     GUID or natural key). Do not invent a parallel readable identifier for
-     references.
+     holds the referenced document's NATURAL KEY value (e.g. \`customerId: 101\`),
+     NOT its derived \`id\`. Cross-container joins are on the natural key.
    - Use appropriate JSON types: strings for text, numbers for numeric values,
      booleans for flags, arrays for collections
 
-4. **Ensure referential consistency** — IDs used in references must match across
-   containers exactly. For every reference field (e.g. \`customerId\` on an Order),
-   there must be a document in the referenced container whose \`id\` equals that value.
+4. **Ensure referential consistency** — for every reference field (e.g. \`customerId\`
+   on an Order), there must be a document in the referenced container whose
+   natural-key field of the same name holds that exact value (and whose \`id\` is
+   the prefixed form per its \`idTemplate\`).
 
-4. **Use realistic values** — Use plausible names, addresses, dates (ISO 8601),
+5. **Use realistic values** — Use plausible names, addresses, dates (ISO 8601),
    email addresses, monetary amounts, etc. Do not use placeholder text like "string"
    or "value1".
 
-7. **Respect Cosmos DB constraints**:
+6. **Respect Cosmos DB constraints**:
    - Document \`id\`: string, max 1,023 bytes, no / or \\ chars, no ? or # chars,
      no trailing spaces. Strongly prefer alphanumeric ASCII + hyphens only.
    - The partition key + id uniquely identifies a document — ensure no duplicates
@@ -109,17 +102,18 @@ Respond with a JSON object in EXACTLY this format (no markdown, no code fences):
 {
   "sampleData": [
     {
-      "containerName": "ContainerName",
+      "containerName": "Customers",
       "items": [
-        { "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "docType": "EntityType", "partitionKeyField": "value", ... },
-        { "id": "f0e1d2c3-b4a5-4968-8778-9a0b1c2d3e4f", "docType": "EntityType", "partitionKeyField": "value", ... }
+        { "id": "customer-101", "docType": "customer", "customerId": 101, ... },
+        { "id": "customer-102", "docType": "customer", "customerId": 102, ... }
       ]
     }
   ]
 }
 
-(IDs shown as GUIDs above per the default strategy in step 2; use natural-key
-strings instead only when the schema summary indicates so.)
+(IDs are derived from each entity's \`idTemplate\` — never freshly generated GUIDs.
+The natural-key field on the same document, e.g. \`customerId: 101\`, holds the
+verbatim source PK value.)
 
 IMPORTANT:
 - Every container in the model MUST have a corresponding entry in the output

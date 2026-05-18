@@ -37,8 +37,9 @@ import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
+import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices } from '../bestPractices';
-import { type Channel } from '../Channel';
 import { type CosmosModel, type IndexingPolicy } from '../cosmosModel';
 import {
     createMkDebug,
@@ -81,7 +82,7 @@ export class HttpsPolicyRequiredError extends Error {
 export interface Phase4BaseContext {
     project: ProjectJson;
     projectService: MigrationProjectService;
-    channel: Channel;
+    channel: TypedEventSink<MigrationEvent>;
 }
 
 export interface Phase4Context extends Phase4BaseContext {
@@ -698,7 +699,7 @@ export async function testConnection(ctx: Phase4BaseContext, subscription?: Azur
 
         const target = project.phases.targetEnvironment;
 
-        await channel.postMessage({
+        channel.emit({
             type: 'event',
             name: 'connectionTestStarted',
             params: [],
@@ -708,7 +709,7 @@ export async function testConnection(ctx: Phase4BaseContext, subscription?: Azur
             target.verified = true;
             target.verifiedAt = new Date().toISOString();
             await projectService.save(project);
-            await channel.postMessage({
+            channel.emit({
                 type: 'event',
                 name: 'connectionTestResult',
                 params: [{ success: true }],
@@ -819,7 +820,7 @@ export async function populateSampleData(
 
 export async function cancelProvisioning(
     cancellation: vscode.CancellationTokenSource | undefined,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<vscode.CancellationTokenSource | undefined> {
     cancellation?.cancel();
     cancellation?.dispose();
@@ -829,7 +830,7 @@ export async function cancelProvisioning(
 
 export async function cancelAccountProvisioning(
     cancellation: vscode.CancellationTokenSource | undefined,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<vscode.CancellationTokenSource | undefined> {
     cancellation?.cancel();
     cancellation?.dispose();
@@ -1391,7 +1392,7 @@ export async function provisionAccount(
 async function detectExistingAccountConflict(
     mgmtClient: CosmosDBManagementClient,
     accountName: string,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<'cancel' | undefined | { resourceGroup: string; endpoint?: string; location?: string }> {
     const exists = (await mgmtClient.databaseAccounts.checkNameExists(accountName)).body;
     if (!exists) {
@@ -1458,7 +1459,7 @@ async function detectExistingAccountConflict(
  * always assign the missing roles manually.
  */
 async function assignRbacAfterProvisioning(
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
     accountName: string,
     resourceGroup: string,
     context: IActionContext,
@@ -1578,7 +1579,7 @@ async function assignRbacAfterProvisioning(
  * Returns true if the role was successfully assigned.
  */
 async function handleRbacError(
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
     accountName: string,
     resourceGroup: string,
     subscription: AzureSubscription,
@@ -1635,7 +1636,7 @@ async function handleRbacError(
  * Reports a connection test failure to the user with appropriate error messaging.
  */
 async function reportConnectionTestFailure(
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
     target: NonNullable<ProjectJson['phases']['targetEnvironment']>,
     error: unknown,
 ): Promise<void> {
@@ -1663,7 +1664,7 @@ async function reportConnectionTestFailure(
     }
 
     void vscode.window.showErrorMessage(l10n.t('Connection test failed: {0}', rawMessage));
-    await channel.postMessage({
+    channel.emit({
         type: 'event',
         name: 'connectionTestResult',
         params: [{ success: false, error: errorMessage, documentationUrl }],

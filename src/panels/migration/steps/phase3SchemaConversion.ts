@@ -9,8 +9,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
+import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices, getIndexPathSyntaxRule } from '../bestPractices';
-import { type Channel } from '../Channel';
 import {
     type CosmosContainer,
     type CosmosModel,
@@ -538,7 +539,7 @@ async function runFinalSummary(
 export interface Phase3Context {
     project: ProjectJson;
     projectService: MigrationProjectService;
-    channel: Channel;
+    channel: TypedEventSink<MigrationEvent>;
     cancellationToken: vscode.CancellationToken;
 }
 
@@ -1314,7 +1315,7 @@ export async function runSchemaConversion(
  */
 export async function cancelSchemaConversion(
     schemaConversionCancellation: vscode.CancellationTokenSource | undefined,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<vscode.CancellationTokenSource | undefined> {
     schemaConversionCancellation?.cancel();
     schemaConversionCancellation?.dispose();

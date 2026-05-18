@@ -6,7 +6,8 @@
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
-import { type Channel } from '../Channel';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
+import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { type CosmosModel } from '../cosmosModel';
 
 // ─── File I/O ────────────────────────────────────────────────────────
@@ -63,21 +64,25 @@ export function stripPartitionKeyCandidates(model: CosmosModel): CosmosModel {
 // ─── Progress / Events ──────────────────────────────────────────────
 
 export async function sendPhaseProgress(
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
     logTag: string,
     eventName: string,
     message: string,
 ): Promise<void> {
     ext.outputChannel.appendLog(`[${logTag}] ${message}`);
-    await channel.postMessage({
+    channel.emit({
         type: 'event',
         name: eventName,
         params: [message],
     });
 }
 
-export async function sendPhaseEvent(channel: Channel, name: string, params: unknown[] = []): Promise<void> {
-    await channel.postMessage({
+export async function sendPhaseEvent(
+    channel: TypedEventSink<MigrationEvent>,
+    name: string,
+    params: unknown[] = [],
+): Promise<void> {
+    channel.emit({
         type: 'event',
         name,
         params,

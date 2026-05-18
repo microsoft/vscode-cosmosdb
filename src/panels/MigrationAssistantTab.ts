@@ -36,7 +36,6 @@ import { MIGRATION_SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
 import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
-import { MigrationEventChannel, type Channel } from './migration/Channel';
 import { getSelectedModel, IS_PHASE4_REQUIRED, isDebugPromptsEnabled } from './migration/helpers/aiHelpers';
 import { resetCancellationToken } from './migration/helpers/migrationHelpers';
 import { setMigrationTelemetryContext } from './migration/helpers/migrationTelemetry';
@@ -91,7 +90,6 @@ export class MigrationAssistantTab extends BaseTab {
     private fileStateGeneration = 0;
 
     private readonly eventSink: TypedEventSink<MigrationEvent>;
-    private readonly channel: Channel;
 
     protected constructor(panel: vscode.WebviewPanel, workspacePath: string) {
         super(panel, MigrationAssistantTab.viewType);
@@ -103,7 +101,6 @@ export class MigrationAssistantTab extends BaseTab {
         this.panel.iconPath = getThemedIconPath('editor.svg') as { light: vscode.Uri; dark: vscode.Uri };
 
         this.eventSink = new TypedEventSink<MigrationEvent>();
-        this.channel = new MigrationEventChannel(this.eventSink);
 
         const { disposable } = setupTrpc(
             this.panel,
@@ -119,7 +116,7 @@ export class MigrationAssistantTab extends BaseTab {
         this.disposables.push(
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration('cosmosDB.experimental.migration.showTokenEstimate')) {
-                    void this.channel.postMessage({
+                    this.eventSink.emit({
                         type: 'event',
                         name: 'showTokenEstimateChanged',
                         params: [MigrationAssistantTab.getShowTokenEstimateSetting()],
@@ -247,7 +244,7 @@ export class MigrationAssistantTab extends BaseTab {
      */
     public static async notifyAIFeaturesChanged(available: boolean): Promise<void> {
         for (const instance of MigrationAssistantTab.instances.values()) {
-            await instance.channel.postMessage({
+            instance.eventSink.emit({
                 type: 'event',
                 name: 'aiFeaturesEnabledChanged',
                 params: [available],
@@ -547,7 +544,7 @@ export class MigrationAssistantTab extends BaseTab {
                 vscode.Uri.file(codeMigrationPlanPath),
             );
 
-            await this.channel.postMessage({
+            this.eventSink.emit({
                 type: 'event',
                 name: 'projectLoaded',
                 params: [
@@ -729,7 +726,7 @@ export class MigrationAssistantTab extends BaseTab {
         const codeMigrationPlanPath = path.join(this.workspacePath, MIGRATION_FOLDER, 'code-migration-plan.md');
         const hasCodeMigrationPlan = await MigrationProjectService.fileExists(vscode.Uri.file(codeMigrationPlanPath));
 
-        await this.channel.postMessage({
+        this.eventSink.emit({
             type: 'event',
             name: 'filesChanged',
             params: [
@@ -1094,7 +1091,7 @@ export class MigrationAssistantTab extends BaseTab {
         await runApplicationAnalysis({
             project: this.project,
             projectService: this.projectService,
-            channel: this.channel,
+            channel: this.eventSink,
             cancellationToken: this.analysisCancellation.token,
         });
     }
@@ -1117,7 +1114,7 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private async cancelAnalysis(): Promise<void> {
-        this.analysisCancellation = await cancelAnalysis(this.analysisCancellation, this.channel);
+        this.analysisCancellation = await cancelAnalysis(this.analysisCancellation, this.eventSink);
     }
 
     private async runDiscovery(): Promise<void> {
@@ -1126,13 +1123,13 @@ export class MigrationAssistantTab extends BaseTab {
         await runDiscoveryReport({
             project: this.project,
             projectService: this.projectService,
-            channel: this.channel,
+            channel: this.eventSink,
             cancellationToken: this.discoveryCancellation.token,
         });
     }
 
     private async cancelDiscovery(): Promise<void> {
-        this.discoveryCancellation = await cancelDiscovery(this.discoveryCancellation, this.channel);
+        this.discoveryCancellation = await cancelDiscovery(this.discoveryCancellation, this.eventSink);
     }
 
     private async runAssessment(): Promise<void> {
@@ -1141,13 +1138,13 @@ export class MigrationAssistantTab extends BaseTab {
         await runAssessment({
             project: this.project,
             projectService: this.projectService,
-            channel: this.channel,
+            channel: this.eventSink,
             cancellationToken: this.assessmentCancellation.token,
         });
     }
 
     private async cancelAssessment(): Promise<void> {
-        this.assessmentCancellation = await cancelAssessment(this.assessmentCancellation, this.channel);
+        this.assessmentCancellation = await cancelAssessment(this.assessmentCancellation, this.eventSink);
     }
 
     private async runSchemaConversion(includeUnmappedDomains?: boolean, thoroughAnalysis?: boolean): Promise<void> {
@@ -1157,7 +1154,7 @@ export class MigrationAssistantTab extends BaseTab {
             {
                 project: this.project,
                 projectService: this.projectService,
-                channel: this.channel,
+                channel: this.eventSink,
                 cancellationToken: this.schemaConversionCancellation.token,
             },
             includeUnmappedDomains,
@@ -1168,7 +1165,7 @@ export class MigrationAssistantTab extends BaseTab {
     private async cancelSchemaConversion(): Promise<void> {
         this.schemaConversionCancellation = await cancelSchemaConversion(
             this.schemaConversionCancellation,
-            this.channel,
+            this.eventSink,
         );
     }
 
@@ -1271,7 +1268,7 @@ export class MigrationAssistantTab extends BaseTab {
             };
             await this.saveProject();
 
-            await this.channel.postMessage({
+            this.eventSink.emit({
                 type: 'event',
                 name: 'accountSelected',
                 params: [
@@ -1338,7 +1335,7 @@ export class MigrationAssistantTab extends BaseTab {
                 {
                     project: this.project!,
                     projectService: this.projectService,
-                    channel: this.channel,
+                    channel: this.eventSink,
                 },
                 {
                     subscriptionId: subscription.subscriptionId,
@@ -1347,7 +1344,7 @@ export class MigrationAssistantTab extends BaseTab {
                 },
             );
 
-            await this.channel.postMessage({
+            this.eventSink.emit({
                 type: 'event',
                 name: 'resourceGroupSelected',
                 params: [
@@ -1393,7 +1390,7 @@ export class MigrationAssistantTab extends BaseTab {
                 }
             }
             locations.sort((a, b) => a.displayName.localeCompare(b.displayName));
-            await this.channel.postMessage({
+            this.eventSink.emit({
                 type: 'event',
                 name: 'locationsList',
                 params: [locations],
@@ -1420,7 +1417,7 @@ export class MigrationAssistantTab extends BaseTab {
                 {
                     project: this.project!,
                     projectService: this.projectService,
-                    channel: this.channel,
+                    channel: this.eventSink,
                 },
                 { location },
             );
@@ -1433,7 +1430,7 @@ export class MigrationAssistantTab extends BaseTab {
             {
                 project: this.project,
                 projectService: this.projectService,
-                channel: this.channel,
+                channel: this.eventSink,
             },
             this.selectedSubscription,
         );
@@ -1447,7 +1444,7 @@ export class MigrationAssistantTab extends BaseTab {
             {
                 project: this.project,
                 projectService: this.projectService,
-                channel: this.channel,
+                channel: this.eventSink,
             },
             this.provisioningCancellation,
         );
@@ -1515,7 +1512,7 @@ export class MigrationAssistantTab extends BaseTab {
             {
                 project: this.project,
                 projectService: this.projectService,
-                channel: this.channel,
+                channel: this.eventSink,
             },
             {
                 accountName,
@@ -1529,7 +1526,7 @@ export class MigrationAssistantTab extends BaseTab {
             {
                 project: this.project,
                 projectService: this.projectService,
-                channel: this.channel,
+                channel: this.eventSink,
             },
             target.resourceGroup ?? '',
             accountName,
@@ -1546,11 +1543,11 @@ export class MigrationAssistantTab extends BaseTab {
     }
 
     private cancelProvisioning(): void {
-        void cancelProvisioning(this.provisioningCancellation, this.channel);
+        void cancelProvisioning(this.provisioningCancellation, this.eventSink);
     }
 
     private cancelAccountProvisioning(): void {
-        void cancelAccountProvisioning(this.accountProvisioningCancellation, this.channel);
+        void cancelAccountProvisioning(this.accountProvisioningCancellation, this.eventSink);
         this.accountProvisioningCancellation = undefined;
     }
 
@@ -1651,7 +1648,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async getAvailableModels(): Promise<void> {
         const { models, savedModelId } = await getAvailableModelsInfo(MIGRATION_SELECTED_MODEL_KEY);
-        await this.channel.postMessage({
+        this.eventSink.emit({
             type: 'event',
             name: 'availableModels',
             params: [models, savedModelId],
@@ -1681,7 +1678,7 @@ export class MigrationAssistantTab extends BaseTab {
                 new vscode.CancellationTokenSource().token,
             );
 
-            await this.channel.postMessage({
+            this.eventSink.emit({
                 type: 'event',
                 name: 'tokenEstimate',
                 params: [
@@ -1699,7 +1696,7 @@ export class MigrationAssistantTab extends BaseTab {
             ext.outputChannel.appendLog(
                 `[Migration] estimateContextTokens error: ${error instanceof Error ? error.message : String(error)}`,
             );
-            await this.channel.postMessage({
+            this.eventSink.emit({
                 type: 'event',
                 name: 'tokenEstimate',
                 params: [null],
@@ -1762,7 +1759,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async checkGitRepository(): Promise<void> {
         const hasGit = await this.hasGitRepository();
-        await this.channel.postMessage({
+        this.eventSink.emit({
             type: 'event',
             name: 'gitStatus',
             params: [hasGit],
@@ -1774,7 +1771,7 @@ export class MigrationAssistantTab extends BaseTab {
 
     private async checkGitignore(): Promise<void> {
         const isInGitignore = await this.projectService.isInGitignore();
-        await this.channel.postMessage({
+        this.eventSink.emit({
             type: 'event',
             name: 'gitignoreStatus',
             params: [isInGitignore],

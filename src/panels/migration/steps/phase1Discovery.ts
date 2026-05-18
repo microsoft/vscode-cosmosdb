@@ -11,7 +11,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
-import { type Channel } from '../Channel';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
+import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import {
     createMkDebug,
     getSelectedModel,
@@ -494,7 +495,7 @@ export async function estimateDiscoveryTokens(
 export interface Phase1Context {
     project: ProjectJson;
     projectService: MigrationProjectService;
-    channel: Channel;
+    channel: TypedEventSink<MigrationEvent>;
     cancellationToken: vscode.CancellationToken;
 }
 
@@ -796,7 +797,7 @@ export async function runAnalyzeWithAI(
  */
 export async function cancelAnalysis(
     analysisCancellation: vscode.CancellationTokenSource | undefined,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<vscode.CancellationTokenSource | undefined> {
     analysisCancellation?.cancel();
     analysisCancellation?.dispose();
@@ -809,7 +810,7 @@ export async function cancelAnalysis(
  */
 export async function cancelDiscovery(
     discoveryCancellation: vscode.CancellationTokenSource | undefined,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<vscode.CancellationTokenSource | undefined> {
     discoveryCancellation?.cancel();
     discoveryCancellation?.dispose();

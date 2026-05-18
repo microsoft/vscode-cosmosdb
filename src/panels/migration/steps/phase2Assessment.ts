@@ -11,8 +11,9 @@ import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
 import { extractStructuralDDL } from '../../../utils/ddlExtractor';
 import { decodeFileBytes } from '../../../utils/decodeFileBytes';
+import { type TypedEventSink } from '../../../utils/TypedEventSink';
+import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import { getCosmosDbBestPractices } from '../bestPractices';
-import { type Channel } from '../Channel';
 import {
     buildDependencyGraph,
     extractSchemaGroups,
@@ -94,7 +95,7 @@ async function detectDomainMappings(
     domains: { name: string; tables: string[]; accessPatterns?: { name: string; codeReferences?: string[] }[] }[],
     language: string,
     frameworks: string[],
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
     token: vscode.CancellationToken,
     assessmentDebugDir: string,
     phaseContext?: IActionContext,
@@ -220,7 +221,7 @@ async function detectDomainMappings(
 export interface Phase2Context {
     project: ProjectJson;
     projectService: MigrationProjectService;
-    channel: Channel;
+    channel: TypedEventSink<MigrationEvent>;
     cancellationToken: vscode.CancellationToken;
 }
 
@@ -815,7 +816,7 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
  */
 export async function cancelAssessment(
     assessmentCancellation: vscode.CancellationTokenSource | undefined,
-    channel: Channel,
+    channel: TypedEventSink<MigrationEvent>,
 ): Promise<vscode.CancellationTokenSource | undefined> {
     assessmentCancellation?.cancel();
     assessmentCancellation?.dispose();

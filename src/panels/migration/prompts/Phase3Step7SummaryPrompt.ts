@@ -25,6 +25,13 @@ interface Phase3Step7SummaryPromptProps extends BasePromptElementProps {
     indexingAnalysis: string;
     outputRelativePath: string;
     schemaConversionInstructions: string;
+    /**
+     * Content of `volumetrics.md` from Phase 1 discovery, when present.
+     * Used to ground the per-domain throughput and storage estimates in the
+     * summary. When absent or empty, the summary must tag estimates as
+     * `[default assumed]` and note that volumetrics were unavailable.
+     */
+    volumetricsMd?: string;
 }
 
 /**
@@ -74,7 +81,27 @@ Create a well-structured markdown document that:
 7. **Optimization Recommendations** — Any additional recommendations for performance,
    cost reduction, or data model improvements.
 
-8. **File References** — List the output files with brief descriptions:
+8. **Throughput & Storage Recommendations** — Two tables grounded in the volumetrics
+   attached below (when present). Do NOT add an "Estimate Disclaimer" section — a fixed
+   one is appended automatically.
+
+   - **Throughput** table: \`Container | Baseline RU/s | Buffer | Recommended max RU/s | Inputs\`.
+     Inputs precedence: (1) access patterns + Step 4/5 buckets → query shape; (2) volumetrics
+     → TPS/magnitudes; (3) Workload Notes → refinements/overrides (win on conflict).
+     Costs: point read ≈1 RU/KB; point write ≈5–10 RU/KB (+1–2/indexed property); 1-partition
+     query 2.5–10+ RU; cross-partition per Step 5 bucket. Buffer = ×2, or ×3 if growth >10%
+     or notes flag spiky/seasonal; size against peak if peak/avg ratio given. Round up to
+     nearest 1000 RU/s (min 1000). Tag each row's **Inputs** with \`[access patterns]\`,
+     \`[volumetrics]\`, \`[workload notes]\`, and/or \`[default assumed]\`.
+
+   - **Storage** table: \`Container | Current rows | Avg item size (KB) | JSON inflation | Index overhead | 12-mo storage (GB) | Inputs\`.
+     Method: JSON inflation 1.2× narrow / 1.5× typical / 2.0–2.5× wide-or-arrays; fold
+     \`isEmbeddedOnly\` entities into parent size (× multiplicity); +10–20% index (default
+     +15%); +~100 B metadata; 12-mo = current × (1 + monthlyGrowth)^12 (flat if absent);
+     TTL caps replace compounding; flag P95/P99 nearing 2 MB. If volumetrics.md is missing,
+     leave numeric cells blank, tag \`[default assumed]\`, and note storage is unavailable.
+
+9. **File References** — List the output files with brief descriptions:
    - cosmos-model.json — Full data model mapping
    - partition-key.md — Partition key analysis
    - embedding-recommendation.md — Embedding strategy analysis
@@ -118,6 +145,21 @@ thinking, or commentary before the heading.`,
                 ),
                 vscpp(TextChunk, { priority: 45 }, '\n\n# Indexing Analysis\n\n'),
                 vscpp(TextChunk, { priority: 40, breakOn: /\s+/g }, this.props.indexingAnalysis || '(not available)'),
+                vscpp(
+                    TextChunk,
+                    { priority: 38 },
+                    '\n\n# Volumetrics (from discovery)\n\n' +
+                        (this.props.volumetricsMd && this.props.volumetricsMd.trim().length > 0
+                            ? 'PRIMARY source of magnitudes for the Throughput & Storage section. Workload Notes (bottom) override code-inferred values when explicit.\n\n'
+                            : 'No `volumetrics.md` was provided. Tag every estimate row `[default assumed]` and note that storage figures are unavailable.\n\n'),
+                ),
+                vscpp(
+                    TextChunk,
+                    { priority: 38, breakOnWhitespace: false },
+                    this.props.volumetricsMd && this.props.volumetricsMd.trim().length > 0
+                        ? this.props.volumetricsMd
+                        : '',
+                ),
                 vscpp(
                     TextChunk,
                     { priority: 35 },

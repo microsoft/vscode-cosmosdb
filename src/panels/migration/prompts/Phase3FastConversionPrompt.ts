@@ -22,6 +22,14 @@ interface Phase3FastConversionPromptProps extends BasePromptElementProps {
     sourceType: string;
     outputRelativePath: string;
     schemaConversionInstructions: string;
+    /**
+     * Content of `volumetrics.md` from Phase 1 discovery, when present.
+     * Grounds RU/storage estimates in real row counts, average row size,
+     * read/write TPS, monthly growth, and optional Workload Notes.
+     * When absent or empty, the model must fall back to heuristic defaults
+     * and tag throughput/storage rows as `[default assumed]`.
+     */
+    volumetricsMd?: string;
 }
 
 /**
@@ -209,16 +217,51 @@ For EACH container:
 - Always exclude "/_etag/?" from indexing.
 ## Step 7: Throughput Recommendation
 
-For EACH container, recommend an autoscale throughput setting:
+Set \`maxThroughput\` (autoscale max RU/s) per container, using layered inputs and tagging
+each number's source in the summary table's **Inputs** column with
+\`[access patterns]\`, \`[volumetrics]\`, \`[workload notes]\`, and/or \`[default assumed]\`.
 
-- Estimate read and write operations per second from the access patterns.
-- Use Cosmos DB RU cost guidelines: point read ~1 RU per 1KB item, point write ~5 RU,
-  query 2.5–10+ RU depending on complexity.
-- Calculate a baseline RU/s, then apply a 2x buffer for traffic spikes.
-- Round up to the nearest 1000 RU/s (minimum autoscale max is 1000).
-- Set "maxThroughput" on each container to the recommended autoscale maximum RU/s.
-- For low-traffic containers (lookup tables, config, etc.) use the minimum 1000 RU/s.
-- Include the throughput rationale in the summary only (not in the model JSON).
+Input precedence (lower wins on conflicts):
+1. Access patterns + Step 4/5 buckets → query *shape* (point read, query, cross-partition).
+2. Volumetrics (\`volumetrics.md\`, below) → *magnitudes* (TPS, row counts, item KB, growth).
+3. Workload Notes (free-form section at bottom of volumetrics.md) → refinements/overrides
+   (peak/avg, TTL, P95/P99, read/write mix, hot partitions). **Workload Notes win** on conflict.
+
+If volumetrics.md is empty/missing, use modest defaults (~1 KB items, low TPS) and tag
+every row \`[default assumed]\`.
+
+RU costs: point read ≈1 RU/KB; point write ≈5–10 RU/KB (+1–2 RU per indexed property over
+baseline); single-partition query 2.5–10+ RU; cross-partition query uses the Step 5 bucket
+(low 5–20, medium 20–100, high 100+) × query rate.
+
+Sizing per container: sum (per-op RU × TPS) → baseline → ×2 buffer (×3 if monthly growth
+>10% or Workload Notes flag spiky/seasonal; if peak/avg ratio given, size against peak with
+no extra buffer) → round up to nearest 1000 RU/s (min 1000; lookup/config containers = 1000).
+
+## Step 8: Storage Estimation
+
+Set \`estimatedRowCount\` (current) and \`estimatedStorageGB\` (12-month projection) per
+container. Omit both if volumetrics.md is missing — do **not** fabricate.
+
+\`rowCount\` and \`avgRowSize\` are per *source table*. Respect Step 3 decisions when rolling
+up to containers: \`isEmbeddedOnly\` entities fold into their parent's doc size (× typical
+multiplicity); split entities contribute their portion; non-embedded children live in their
+own container.
+
+Per-container formula:
+1. **JSON inflation** of avg row size: ~1.2× narrow scalar rows, ~1.5× typical, ~2.0–2.5×
+   wide / many strings / arrays. State the factor + one-line rationale per entity.
+2. **+10–20% index overhead** (default +15%; higher with many composite indexes).
+3. **+~100 B metadata** per document.
+4. **Current bytes** = Σ over standalone entities of
+   \`rowCount × (inflated_doc_size × (1 + index_overhead) + metadata_bytes)\`.
+5. **12-mo projection** = current × \`(1 + monthlyGrowth)^12\` (flat if growth absent).
+6. **TTL cap**: if Workload Notes specify retention, cap at TTL steady-state instead of
+   compounding indefinitely. State the cap.
+7. **P95/P99 flag**: if P95/P99 item size nears the 2 MB limit, flag the container; don't
+   inflate the average.
+8. \`estimatedRowCount\` = sum of standalone entity rowCounts (embedded-only excluded).
+9. \`estimatedStorageGB\` = 12-mo projection in GB (1 GB = 1024³ bytes), 2 sig figs.
 ---
 
 ## Output Format
@@ -271,7 +314,9 @@ Respond with a JSON object in EXACTLY this format (no markdown, no code fences):
           "fullTextPolicy": null,
           "fullTextIndexes": null
         },
-        "maxThroughput": 4000
+        "maxThroughput": 4000,
+        "estimatedRowCount": 1500000,
+        "estimatedStorageGB": 4.8
       }
     ],
     "accessPatterns": [],
@@ -299,7 +344,11 @@ Generate a comprehensive markdown summary that includes:
 7. **Cross-Partition Queries** — List with optimization strategies.
 8. **Indexing Policies** — Summary per container.
 9. **Optimization Recommendations** — Performance, cost, and model improvement tips.
-10. **Throughput Recommendations** — Summary table of container → recommended autoscale max RU/s with rationale for the estimate.
+10. **Throughput & Storage Recommendations** — Two tables (per Steps 7 & 8 above):
+    - Throughput: \`Container | Baseline RU/s | Buffer | Recommended max RU/s | Inputs\`.
+      Tag Inputs with \`[access patterns]\`/\`[volumetrics]\`/\`[workload notes]\`/\`[default assumed]\`.
+    - Storage: \`Container | Current rows | Avg item size (KB) | JSON inflation | Index overhead | 12-mo storage (GB) | Inputs\`.
+      Note TTL caps or P95/P99 warnings inline. Do NOT add an "Estimate Disclaimer" — appended automatically.
 
 This summary will be saved at \`${this.props.outputRelativePath}\` relative to the workspace root.
 
@@ -317,6 +366,7 @@ IMPORTANT:
 - Do NOT include partition key candidates, scores, or analysis text in the model JSON — include candidate evaluation details in the summary under "Partition Key Decisions" instead. The model JSON partitionKeys entries should contain only the final "path".
 - Include indexingPolicy on every container
 - Include maxThroughput (autoscale max RU/s) on every container
+- Include estimatedRowCount and estimatedStorageGB on every container when volumetrics.md is provided; omit both when volumetrics are absent (do not fabricate)
 - Your FINAL response must be ONLY the JSON object`,
                 ),
             ),
@@ -334,6 +384,21 @@ IMPORTANT:
                         "in any container's `indexingPolicy`.\n\n",
                 ),
                 vscpp(TextChunk, { priority: 92, breakOnWhitespace: false }, this.props.indexPathSyntaxRule),
+                vscpp(
+                    TextChunk,
+                    { priority: 85 },
+                    '\n\n# Volumetrics (from discovery)\n\n' +
+                        (this.props.volumetricsMd && this.props.volumetricsMd.trim().length > 0
+                            ? 'PRIMARY source of magnitudes for Steps 7 & 8. Workload Notes (bottom) override code-inferred values when explicit.\n\n'
+                            : 'No `volumetrics.md` was provided. Use defaults, tag estimate rows `[default assumed]`, and omit `estimatedStorageGB`/`estimatedRowCount` from container JSON.\n\n'),
+                ),
+                vscpp(
+                    TextChunk,
+                    { priority: 85, breakOnWhitespace: false },
+                    this.props.volumetricsMd && this.props.volumetricsMd.trim().length > 0
+                        ? this.props.volumetricsMd
+                        : '',
+                ),
                 vscpp(
                     TextChunk,
                     { priority: 62 },

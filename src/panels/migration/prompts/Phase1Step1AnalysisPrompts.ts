@@ -55,8 +55,15 @@ export function buildAnalyzeVolumetricsPrompt(
         '- Replace the example rows in the volumetrics.md template table with real data extracted from the source files.',
         '- Keep the existing table headers and markdown structure intact.',
         '- If a field cannot be determined from the source data, mark it with "N/A" or a reasonable estimate annotated with "(estimated)".',
-        '- Do NOT modify the "Additional Notes" section of the template.',
-        '- After filling in the table, print a short summary of any notable findings (traffic patterns, seasonal spikes, batch jobs, etc.) and ask the user whether they would like these notes added to the Additional Notes section.',
+        '- After filling in the table, inspect the source code and configuration for **information the table cannot capture** and populate the `## Workload Notes (optional)` section accordingly. In particular, look for and add a bullet when you can infer it:',
+        '  - **TTL / retention**: TTL config on tables/collections, scheduled purge/archive jobs, or comments indicating data lifetime.',
+        '  - **Document size P95 / P99**: presence of large TEXT/BLOB/JSON columns, file references, or sparse wide rows whose 95th-percentile size meaningfully exceeds the average.',
+        '  - **Hot partitions / skew**: comments, multi-tenant patterns, or table designs hinting at a small number of high-traffic keys.',
+        '  - **Peak vs. average TPS**: scheduled batch jobs, cron triggers, or business notes about peak hours / seasonal spikes.',
+        '  - **Read mix / Write mix overrides**: only add these if the production behavior described in the source clearly differs from the access patterns inferable from queries (rare — usually leave blank and let the schema-conversion prompt infer).',
+        '  - **Account-level intent**: configured replication regions, consistency level, or explicit capacity-mode choices in deployment scripts.',
+        '- Keep these as concise bullets under the existing headings; preserve any bullets the user has already filled in.',
+        '- After updating the file, print a short summary of what you added to Workload Notes and ask the user whether anything is missing or should be refined.',
     );
 
     if (discoveryInstructions) {

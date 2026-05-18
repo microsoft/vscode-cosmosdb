@@ -46,6 +46,19 @@ export interface CosmosContainer {
      * Omitted for serverless accounts.
      */
     maxThroughput?: number;
+    /**
+     * Estimated total storage in GB at a 12-month projection (current data +
+     * monthly growth rate compounded). Derived from volumetrics row counts,
+     * average item size, a JSON inflation factor, indexing overhead, and TTL
+     * caps when applicable. Treat as an estimate; production will differ.
+     */
+    estimatedStorageGB?: number;
+    /**
+     * Estimated current row count for this container (sum of contributing
+     * entities, including embedded entities folded into the parent). Derived
+     * from volumetrics.
+     */
+    estimatedRowCount?: number;
 }
 
 export interface PartitionKeyConfig {

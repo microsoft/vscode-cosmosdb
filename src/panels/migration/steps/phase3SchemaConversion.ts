@@ -124,6 +124,29 @@ function prependExhaustionBanner(markdown: string, exhausted: boolean): string {
     return `${banner}\n\n${markdown}`;
 }
 
+/**
+ * Verbatim disclaimer appended to every Phase 3 summary (per-domain and
+ * cross-domain) that contains RU and storage estimates. Kept out of the
+ * model's output to save tokens and guarantee consistent wording.
+ */
+const RU_STORAGE_ESTIMATE_DISCLAIMER =
+    '> These RU/s and storage estimates are derived from the volumetrics and workload notes collected during discovery ' +
+    '(row counts, average item size, read/write TPS, growth rate, and any optional inputs such as read/write mix, peak ratios, TTL, and P95/P99 item size). ' +
+    'They model **projected steady-state operation** and explicitly do **not** size the **initial migration data load**, ' +
+    'which has different RU and parallelism requirements that should be planned separately. ' +
+    'Actual production values can differ materially due to query selectivity, index policy tuning, hot partitions, document size variance, transient spikes, multi-region / consistency settings, and workload changes. ' +
+    'Treat these as a starting point: provision with autoscale, monitor RU consumption and storage growth in Azure Monitor / Cosmos DB Insights, and right-size after observing real traffic.';
+
+/**
+ * Appends the RU/storage estimate disclaimer to a summary markdown string.
+ * Inserts a top-level `## Estimate Disclaimer` heading so the note is easy
+ * to locate regardless of the model's chosen section structure.
+ */
+function appendEstimateDisclaimer(markdown: string): string {
+    const trimmed = markdown.replace(/\s+$/u, '');
+    return `${trimmed}\n\n## Estimate Disclaimer\n\n${RU_STORAGE_ESTIMATE_DISCLAIMER}\n`;
+}
+
 // ─── Sub-Step Runners ───────────────────────────────────────────────
 
 /**
@@ -216,6 +239,7 @@ async function runConversionSummary(
     indexingAnalysis: string,
     outputRelativePath: string,
     schemaConversionInstructions: string,
+    volumetricsMd: string | undefined,
     tools: vscode.LanguageModelChatTool[],
     executeToolCall: (toolCall: vscode.LanguageModelToolCallPart) => Promise<string>,
     token: vscode.CancellationToken,
@@ -234,6 +258,7 @@ async function runConversionSummary(
             indexingAnalysis,
             outputRelativePath,
             schemaConversionInstructions,
+            volumetricsMd,
         },
         model,
         token,
@@ -278,6 +303,7 @@ async function runFastConversion(
     sourceType: string,
     outputRelativePath: string,
     schemaConversionInstructions: string,
+    volumetricsMd: string | undefined,
     tools: vscode.LanguageModelChatTool[],
     executeToolCall: (toolCall: vscode.LanguageModelToolCallPart) => Promise<string>,
     token: vscode.CancellationToken,
@@ -293,6 +319,7 @@ async function runFastConversion(
             sourceType,
             outputRelativePath,
             schemaConversionInstructions,
+            volumetricsMd,
         },
         model,
         tools,
@@ -474,6 +501,7 @@ async function runFinalSummary(
     bestPractices: string,
     outputRelativePath: string,
     schemaConversionInstructions: string,
+    volumetricsMd: string | undefined,
     tools: vscode.LanguageModelChatTool[],
     executeToolCall: (toolCall: vscode.LanguageModelToolCallPart) => Promise<string>,
     token: vscode.CancellationToken,
@@ -490,6 +518,7 @@ async function runFinalSummary(
             bestPractices,
             outputRelativePath,
             schemaConversionInstructions,
+            volumetricsMd,
         },
         model,
         tools,
@@ -649,6 +678,22 @@ export async function runSchemaConversion(
             const indexPathSyntaxRule = getIndexPathSyntaxRule();
             const sourceType = project.phases.discovery.applicationAnalysis?.databaseType ?? 'Unknown';
             const schemaConversionInstructions = project.phases.schemaConversion?.schemaConversionInstructions ?? '';
+
+            // Load volumetrics.md (optional). When present it grounds RU and
+            // storage estimates with real row counts, item sizes, TPS, growth
+            // rates, and any optional workload notes the user added.
+            let volumetricsMd: string | undefined;
+            try {
+                const volumetricsMdPath = path.join(projectService.getVolumetricsPath(project), 'volumetrics.md');
+                const raw = await vscode.workspace.fs.readFile(vscode.Uri.file(volumetricsMdPath));
+                volumetricsMd = Buffer.from(raw).toString('utf-8');
+                ext.outputChannel.debug(`[SchemaConversion] Loaded volumetrics.md (${volumetricsMd.length} chars)`);
+            } catch {
+                ext.outputChannel.debug(
+                    `[SchemaConversion] volumetrics.md not found; RU/storage estimates will use defaults`,
+                );
+            }
+
             const completedDomains: string[] = [];
 
             // Set up best practice rule tools for agentic sub-steps
@@ -935,6 +980,7 @@ export async function runSchemaConversion(
                         idxResult.analysis,
                         summaryRelativePath,
                         schemaConversionInstructions,
+                        volumetricsMd,
                         tools,
                         executeToolCall,
                         token,
@@ -944,7 +990,10 @@ export async function runSchemaConversion(
                     await saveAnalysisFile(
                         domainOutputPath,
                         'summary.md',
-                        prependExhaustionBanner(stripMarkdownPreamble(summaryContent), domainExhausted),
+                        prependExhaustionBanner(
+                            appendEstimateDisclaimer(stripMarkdownPreamble(summaryContent)),
+                            domainExhausted,
+                        ),
                     );
                 } else {
                     // ── Fast mode: single-pass conversion ────────────────
@@ -971,6 +1020,7 @@ export async function runSchemaConversion(
                         sourceType,
                         summaryRelativePath,
                         schemaConversionInstructions,
+                        volumetricsMd,
                         tools,
                         executeToolCall,
                         token,
@@ -991,7 +1041,10 @@ export async function runSchemaConversion(
                     await saveAnalysisFile(
                         domainOutputPath,
                         'summary.md',
-                        prependExhaustionBanner(stripMarkdownPreamble(fastResult.summary), domainExhausted),
+                        prependExhaustionBanner(
+                            appendEstimateDisclaimer(stripMarkdownPreamble(fastResult.summary)),
+                            domainExhausted,
+                        ),
                     );
 
                     // Save index-policy.json (per-container indexing policies)
@@ -1095,6 +1148,7 @@ export async function runSchemaConversion(
                 bestPractices,
                 finalSummaryRelativePath,
                 schemaConversionInstructions,
+                volumetricsMd,
                 tools,
                 executeToolCall,
                 token,
@@ -1126,7 +1180,10 @@ export async function runSchemaConversion(
             await saveAnalysisFile(
                 conversionPath,
                 'summary.md',
-                prependExhaustionBanner(stripMarkdownPreamble(finalResult.analysis), finalExhausted),
+                prependExhaustionBanner(
+                    appendEstimateDisclaimer(stripMarkdownPreamble(finalResult.analysis)),
+                    finalExhausted,
+                ),
             );
 
             ext.outputChannel.appendLog(

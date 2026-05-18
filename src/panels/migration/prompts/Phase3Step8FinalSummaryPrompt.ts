@@ -23,6 +23,12 @@ interface Phase3Step8FinalSummaryPromptProps extends BasePromptElementProps {
     bestPractices: string;
     outputRelativePath: string;
     schemaConversionInstructions: string;
+    /**
+     * Content of `volumetrics.md` from Phase 1 discovery, when present.
+     * Used to ground the cross-domain capacity summary (total storage, total
+     * RU/s, serverless ceiling checks) in real discovery inputs.
+     */
+    volumetricsMd?: string;
 }
 
 /**
@@ -118,13 +124,19 @@ Write a comprehensive markdown summary covering:
    (denormalization, references, Change Feed, etc.)
 5. **Conflict Resolutions** — If any conflicts were resolved, explain each decision
 6. **Deployment Notes** — Prerequisites and considerations for provisioning:
-   - **Account throughput mode**: Decide once for the entire account whether to use
-     **Serverless** or **Provisioned (autoscale)** throughput. Consider total data volume,
-     request patterns, and workload predictability across all containers. Justify the choice.
-   - **Per-container throughput estimates**: For provisioned mode, recommend RU/s (autoscale
-     max) for each container based on expected access patterns and data volume. These values
-     MUST match the \`maxThroughput\` values set on each container in the model JSON. For
-     serverless, note expected request-unit consumption characteristics per container.
+   - **Account throughput mode**: Choose **Serverless** or **Provisioned (autoscale)** for
+     the whole account; justify against total volume, request patterns, and predictability.
+   - **Per-container throughput**: For provisioned mode the per-container \`maxThroughput\`
+     in the model JSON IS the recommendation (no need to restate elsewhere). For
+     serverless, note expected RU consumption characteristics per container.
+   - **Capacity Summary** table: \`Container | Domain | Recommended max RU/s | 12-mo storage (GB) | Inputs\`.
+     Pull \`maxThroughput\` and \`estimatedStorageGB\` directly from the merged model JSON;
+     mark missing cells \`n/a\` and tag Inputs \`[default assumed]\`. Below the table, list:
+     **Total RU/s**, **Total 12-mo storage (GB)**, **Container count**.
+   - **Serverless ceiling checks** (only if mode = Serverless): flag any container above
+     **5,000 RU/s** or **1 TB** as NOT serverless-eligible and recommend Provisioned for it
+     (or the whole account).
+   - Do NOT add an "Estimate Disclaimer" section — a fixed one is appended automatically.
    - Indexing policy highlights
 7. **Per-Domain References** — Links to each domain's detailed summary using relative paths.
    Domain summaries live in \`domains/<DomainName>/summary.md\` relative to this summary.
@@ -160,6 +172,21 @@ IMPORTANT: Your FINAL response must be ONLY the JSON object. Because you must al
                     TextChunk,
                     { priority: 60, breakOn: /\s+/g },
                     this.props.crossDomainStrategies || '(none detected)',
+                ),
+                vscpp(
+                    TextChunk,
+                    { priority: 58 },
+                    '\n\n# Volumetrics (from discovery)\n\n' +
+                        (this.props.volumetricsMd && this.props.volumetricsMd.trim().length > 0
+                            ? 'PRIMARY source of magnitudes for the Capacity Summary and serverless ceiling checks. Workload Notes (bottom) override code-inferred values when explicit.\n\n'
+                            : 'No `volumetrics.md` was provided. Mark missing numeric cells `n/a` and tag Inputs `[default assumed]`.\n\n'),
+                ),
+                vscpp(
+                    TextChunk,
+                    { priority: 58, breakOnWhitespace: false },
+                    this.props.volumetricsMd && this.props.volumetricsMd.trim().length > 0
+                        ? this.props.volumetricsMd
+                        : '',
                 ),
                 vscpp(
                     TextChunk,

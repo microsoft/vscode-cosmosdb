@@ -66,7 +66,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         );
 
         if (!session?.executionId) {
-            // User cancelled the confirmation dialog, no connection, or error
+            // User canceled the confirmation dialog, no connection, or error
             return;
         }
 
@@ -86,6 +86,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
+
     public async stopQuery(executionId: string): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.stopQuery.mutate({ executionId }));
         if (result) {
@@ -107,27 +108,21 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     public nextPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
-        void (
-            this.trpcClient.queryEditor.nextPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
-        )
+        (this.trpcClient.queryEditor.nextPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
     public prevPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
-        void (
-            this.trpcClient.queryEditor.prevPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
-        )
+        (this.trpcClient.queryEditor.prevPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
     public firstPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
-        void (
-            this.trpcClient.queryEditor.firstPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
-        )
+        (this.trpcClient.queryEditor.firstPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
@@ -216,9 +211,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         await this.safeMutate(() => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document }));
     }
     public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        for (const document of documents) {
-            await this.openDocument(mode, document);
-        }
+        await Promise.allSettled(
+            documents.map((documentId) => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId })),
+        );
     }
     public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document }));

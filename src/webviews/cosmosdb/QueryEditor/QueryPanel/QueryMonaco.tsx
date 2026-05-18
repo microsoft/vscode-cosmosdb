@@ -13,6 +13,13 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 /** Language ID matching the 'nosql' language contributed in package.json. */
 const NOSQL_LANGUAGE_ID = 'nosql';
 
+/** Static Monaco editor options — defined outside the component to avoid creating a new object on every render. */
+const MONACO_OPTIONS = {
+    accessibilitySupport: 'auto' as const,
+    accessibilityPageSize: 10,
+    fixedOverflowWidgets: true,
+};
+
 /**
  * Compute the query block text at the given cursor offset using the
  * language service's multi-query parser. Falls back to the full text
@@ -64,7 +71,7 @@ export const QueryMonaco = () => {
         };
     }, [monaco]);
 
-    const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
+    const onMount = useCallback((editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
         // Set up cursor selection event listener
         disposableRef.current = editor.onDidChangeCursorSelection((event) => {
             const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
@@ -108,7 +115,7 @@ export const QueryMonaco = () => {
                 }
             }
         });
-    };
+    }, [dispatcher]);
 
     useEffect(() => {
         // Cleanup on unmount
@@ -135,11 +142,7 @@ export const QueryMonaco = () => {
             value={state.queryValue}
             onChange={onChange}
             onMount={onMount}
-            options={{
-                accessibilitySupport: 'on',
-                accessibilityPageSize: 1,
-                fixedOverflowWidgets: true,
-            }}
+            options={MONACO_OPTIONS}
         />
     );
 };

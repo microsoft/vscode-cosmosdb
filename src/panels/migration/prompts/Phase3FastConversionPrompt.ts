@@ -38,8 +38,12 @@ interface Phase3FastConversionPromptProps extends BasePromptElementProps {
  * embedding decisions, access pattern mapping, cross-partition analysis, and
  * indexing policy design) plus summary generation into one comprehensive prompt.
  *
- * Output: JSON with { cosmosModel, summary } — the complete CosmosModel and
- * a markdown summary document.
+ * Output: a CosmosModel JSON object, then the sentinel line `===SUMMARY===`,
+ * then the markdown summary as raw text. The two-part format keeps the
+ * markdown summary out of the JSON envelope — markdown contains line breaks,
+ * quotes, and braces that would otherwise need JSON-escaping and inflate
+ * output by roughly 2× (and can push large domains past the model's output
+ * token budget, truncating the response mid-string).
  */
 export class Phase3FastConversionPrompt extends PromptElement<Phase3FastConversionPromptProps> {
     render(_state: void, _sizing: PromptSizing): PromptPiece {
@@ -184,7 +188,8 @@ For EACH relationship between entities:
 - **Cardinality**: 1:1 or 1:few → embed. 1:many or many:many → reference.
 - **Access pattern**: Read together → embed. Updated independently → reference.
 - **Size risk**: Could exceed 2MB or grow unbounded → reference.
-- Set \`strategy\` ("embed" or "reference") and \`rationale\` on each relationship.
+- Set \`strategy\` ("embed" or "reference") on each relationship in the JSON.
+- The rationale for each embed/reference decision goes in the markdown summary's **Embedding Strategy** section — NOT in the JSON.
 
 ## Step 4: Access Pattern Mapping
 
@@ -266,73 +271,78 @@ Per-container formula:
 
 ## Output Format
 
-Respond with a JSON object in EXACTLY this format (no markdown, no code fences):
+Respond with TWO parts, in this exact order:
+
+1. A JSON object representing the CosmosModel (no markdown, no code fences, no wrapper).
+2. On its own line: the sentinel \`===SUMMARY===\`.
+3. The markdown summary as raw text (no JSON escaping, no code fences around it).
+
+The JSON object MUST match EXACTLY this shape:
 {
-  "cosmosModel": {
-    "domain": "DomainName",
-    "sourceType": "${this.props.sourceType}",
-    "containers": [
-      {
-        "name": "ContainerName",
-        "partitionKeys": [
-          {
-            "path": "/partitionKeyPath"
-          }
-        ],
-        "entities": [
-          {
-            "name": "EntityName",
-            "docType": "type_discriminator",
-            "sourceTable": "schema.table_name",
-            "isEmbeddedOnly": false,
-            "idTemplate": "entityName-{PKColumn}",
-            "attributes": [
-              {
-                "target": "id",
-                "source": { "table": "table_name", "column": "PKColumn", "type": "int" },
-                "type": "string",
-                "isId": true
-              },
-              {
-                "target": "entityNameId",
-                "source": { "table": "table_name", "column": "PKColumn", "type": "int" },
-                "type": "number"
-              }
-            ],
-            "relationships": [
-              {
-                "targetEntity": "OtherEntity",
-                "sourceFK": { "table": "table_name", "column": "fk_col" },
-                "type": "one-to-many",
-                "strategy": "embed",
-                "rationale": "Read together, bounded cardinality"
-              }
-            ]
-          }
-        ],
-        "indexingPolicy": {
-          "indexingMode": "consistent",
-          "automatic": true,
-          "includedPaths": [{ "path": "/*" }],
-          "excludedPaths": [{ "path": "/\\"_etag\\"/?" }],
-          "compositeIndexes": [],
-          "fullTextPolicy": null,
-          "fullTextIndexes": null
-        },
-        "maxThroughput": 4000,
-        "estimatedRowCount": 1500000,
-        "estimatedStorageGB": 4.8
-      }
-    ],
-    "accessPatterns": [],
-    "crossPartitionQueries": []
-  },
-  "summary": "# Schema Conversion Summary: DomainName\\n\\n## Overview\\n..."
+  "domain": "DomainName",
+  "sourceType": "${this.props.sourceType}",
+  "containers": [
+    {
+      "name": "ContainerName",
+      "partitionKeys": [
+        {
+          "path": "/partitionKeyPath"
+        }
+      ],
+      "entities": [
+        {
+          "name": "EntityName",
+          "docType": "type_discriminator",
+          "sourceTable": "schema.table_name",
+          "isEmbeddedOnly": false,
+          "idTemplate": "entityName-{PKColumn}",
+          "attributes": [
+            {
+              "target": "id",
+              "source": { "table": "table_name", "column": "PKColumn", "type": "int" },
+              "type": "string",
+              "isId": true
+            },
+            {
+              "target": "entityNameId",
+              "source": { "table": "table_name", "column": "PKColumn", "type": "int" },
+              "type": "number"
+            }
+          ],
+          "relationships": [
+            {
+              "targetEntity": "OtherEntity",
+              "sourceFK": { "table": "table_name", "column": "fk_col" },
+              "type": "one-to-many",
+              "strategy": "embed"
+            }
+          ]
+        }
+      ],
+      "indexingPolicy": {
+        "indexingMode": "consistent",
+        "automatic": true,
+        "includedPaths": [{ "path": "/*" }],
+        "excludedPaths": [{ "path": "/\\"_etag\\"/?" }],
+        "compositeIndexes": [],
+        "fullTextPolicy": null,
+        "fullTextIndexes": null
+      },
+      "maxThroughput": 4000,
+      "estimatedRowCount": 1500000,
+      "estimatedStorageGB": 4.8
+    }
+  ]
 }
+===SUMMARY===
+# Schema Conversion Summary: DomainName
 
-## Summary Requirements (in the "summary" field)
+## Overview
+...
 
-Generate a comprehensive markdown summary that includes:
+## Summary Requirements (markdown after \`===SUMMARY===\`)
+
+The markdown summary that follows the sentinel MUST include:
 
 1. **Overview** — Brief domain summary and container count.
 2. **Tables to Container Mapping** — A comprehensive mapping table showing every source
@@ -367,13 +377,13 @@ IMPORTANT:
 - Set isId=true on primary keys
 - Set \`idTemplate\` on every standalone entity (isEmbeddedOnly !== true), using EXACT source column names in braces (e.g. \`"customer-{CustomerID}"\`, \`"salesOrderDetail-{SalesOrderID}-{SalesOrderDetailID}"\`, \`"{rowguid}"\` for native GUID PKs, or \`"{uuid}"\` only as fallback when no usable PK exists).
 - The \`id\` attribute MUST be derived from source PK columns via \`idTemplate\` (or be the value of a native GUID PK; fallback is a generated GUID). Every source PK column MUST also appear as a SEPARATE camelCase attribute typed to match the source (e.g. \`customerId: number\` alongside \`id: string\` "customer-101").
-- Include relationships with strategy and rationale
-- Do NOT include accessPatterns or crossPartitionQueries in the model JSON — include them in the summary only
+- Include relationships with \`targetEntity\`, \`sourceFK\`, \`type\`, and \`strategy\` only — do NOT include \`rationale\` (or any other free-form prose) on relationships in the JSON. All rationale belongs in the markdown summary.
 - Do NOT include partition key candidates, scores, or analysis text in the model JSON — include candidate evaluation details in the summary under "Partition Key Decisions" instead. The model JSON partitionKeys entries should contain only the final "path".
 - Include indexingPolicy on every container
 - Include maxThroughput (autoscale max RU/s) on every container
 - Include estimatedRowCount and estimatedStorageGB on every container when volumetrics.md is provided; omit both when volumetrics are absent (do not fabricate)
-- Your FINAL response must be ONLY the JSON object`,
+- Do NOT include \`accessPatterns\` or \`crossPartitionQueries\` keys in the JSON — those analyses go in the markdown summary after \`===SUMMARY===\`
+- Your FINAL response must be EXACTLY: the JSON object, then a line containing only \`===SUMMARY===\`, then the markdown summary. No code fences, no extra preamble, no trailing commentary.`,
                 ),
             ),
             vscpp(

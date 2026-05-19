@@ -303,14 +303,21 @@ jobs:
 
                   echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
-                  # Post (or update) a PR comment if we found a PR
+                  # Post (or update) a PR comment if we found a PR.
+                  # Fork PRs run with a read-only GITHUB_TOKEN regardless of the
+                  # workflow's declared permissions, so `gh pr comment` will fail
+                  # with "Resource not accessible by integration". Treat any
+                  # failure here as a warning so it does not fail the job.
                   if [ -n "${PR_NUMBER:-}" ]; then
-                      gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
-                          --body "$(cat "$GITHUB_STEP_SUMMARY")" \
-                          --edit-last 2>/dev/null \
+                      if gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")" \
+                              --edit-last 2>/dev/null \
                           || gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
-                              --body "$(cat "$GITHUB_STEP_SUMMARY")"
-                      echo "✅ PR #${PR_NUMBER} comment posted"
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")" 2>/dev/null; then
+                          echo "✅ PR #${PR_NUMBER} comment posted"
+                      else
+                          echo "::warning::Unable to post PR comment on #${PR_NUMBER} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+                      fi
                   fi
 
                   # Fail the job if any tests failed

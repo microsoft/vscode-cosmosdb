@@ -1105,30 +1105,26 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button appearance="secondary" size="small" onClick={handleSelectVolumetricFolder}>
                             {l10n.t('Select Folder…')}
                         </Button>
-                        <div
-                            style={{
-                                gridColumn: '2 / -1',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                            }}
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            onClick={handleOpenVolumetricsTemplate}
+                            style={{ gridColumn: '2 / span 2' }}
                         >
-                            <Button appearance="secondary" size="small" onClick={handleOpenVolumetricsTemplate}>
-                                {l10n.t('Open Volumetrics Template')}
-                            </Button>
-                            <Tooltip
-                                content={l10n.t('Update volumetrics template using AI')}
-                                relationship="label"
-                                withArrow
-                            >
-                                <Button
-                                    appearance="primary"
-                                    size="small"
-                                    icon={<SparkleRegular />}
-                                    onClick={handleAnalyzeVolumetrics}
-                                />
-                            </Tooltip>
-                        </div>
+                            {l10n.t('Open Volumetrics Template')}
+                        </Button>
+                        <Tooltip
+                            content={l10n.t('Update volumetrics template using AI')}
+                            relationship="label"
+                            withArrow
+                        >
+                            <Button
+                                appearance="primary"
+                                size="small"
+                                icon={<SparkleRegular />}
+                                onClick={handleAnalyzeVolumetrics}
+                            />
+                        </Tooltip>
 
                         {/* Access Pattern Files */}
                         <Text weight="semibold" size={200}>
@@ -1147,30 +1143,26 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button appearance="secondary" size="small" onClick={handleSelectAccessPatternFolder}>
                             {l10n.t('Select Folder…')}
                         </Button>
-                        <div
-                            style={{
-                                gridColumn: '2 / -1',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                            }}
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            onClick={handleOpenAccessPatternsTemplate}
+                            style={{ gridColumn: '2 / span 2' }}
                         >
-                            <Button appearance="secondary" size="small" onClick={handleOpenAccessPatternsTemplate}>
-                                {l10n.t('Open Access-Patterns Template')}
-                            </Button>
-                            <Tooltip
-                                content={l10n.t('Update access-patterns template using AI')}
-                                relationship="label"
-                                withArrow
-                            >
-                                <Button
-                                    appearance="primary"
-                                    size="small"
-                                    icon={<SparkleRegular />}
-                                    onClick={handleAnalyzeAccessPatterns}
-                                />
-                            </Tooltip>
-                        </div>
+                            {l10n.t('Open Access-Patterns Template')}
+                        </Button>
+                        <Tooltip
+                            content={l10n.t('Update access-patterns template using AI')}
+                            relationship="label"
+                            withArrow
+                        >
+                            <Button
+                                appearance="primary"
+                                size="small"
+                                icon={<SparkleRegular />}
+                                onClick={handleAnalyzeAccessPatterns}
+                            />
+                        </Tooltip>
                     </div>
 
                     {/* Analysis Fields */}

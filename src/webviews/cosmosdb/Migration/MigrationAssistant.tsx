@@ -116,6 +116,7 @@ const useStyles = makeStyles({
         gap: '24px',
         flexWrap: 'wrap',
         alignItems: 'flex-start',
+        containerType: 'inline-size',
     },
     analysisPanel: {
         flex: '1 1 280px',
@@ -123,13 +124,23 @@ const useStyles = makeStyles({
     },
     filePickerGrid: {
         display: 'grid',
-        gridTemplateColumns: 'max-content max-content max-content max-content',
+        // Trailing 1fr track absorbs any extra width so the spanning expander row stretches with the grid.
+        gridTemplateColumns: 'max-content max-content max-content max-content 1fr',
         gap: '6px 8px',
         alignItems: 'center',
         flex: '0 0 auto',
+        // When the analysis panel wraps below, give the grid the full container width so expanders fill the row.
+        '@container (max-width: 720px)': {
+            flex: '1 1 100%',
+        },
     },
     filePickerExpanderRow: {
         gridColumn: '1 / -1',
+        paddingLeft: '12px',
+        // `contain: inline-size` stops the (potentially long) file paths from contributing to the grid's column track widths; the row sizes to the grid instead and the paths ellipsize.
+        contain: 'inline-size',
+        minWidth: 0,
+        overflow: 'hidden',
     },
     fileList: {
         display: 'flex',
@@ -157,9 +168,11 @@ const useStyles = makeStyles({
         whiteSpace: 'nowrap',
         minWidth: 0,
         flex: '0 1 auto',
-        // Render the directory portion right-to-left so overflow ellipsis appears
-        // on the left, keeping the path tail (next to the file name) visible.
-        direction: 'rtl',
+    },
+    filePathDirTail: {
+        color: 'var(--vscode-descriptionForeground)',
+        whiteSpace: 'nowrap',
+        flex: '0 0 auto',
     },
     filePathName: {
         flex: '0 0 auto',
@@ -178,6 +191,12 @@ const useStyles = makeStyles({
     },
     fileRemoveButton: {
         minWidth: 'auto',
+    },
+    fileRemoveButtonPlaceholder: {
+        // Match the icon-only small Button footprint so protected rows stay aligned with removable rows.
+        width: '24px',
+        height: '24px',
+        flex: '0 0 auto',
     },
     fileExpander: {
         display: 'flex',
@@ -405,15 +424,39 @@ function FileListExpander({
     const renderPath = (absolutePath: string, extraClass?: string) => {
         const { dir, name } = splitPath(absolutePath);
         const cleanName = name.startsWith('/') ? name.slice(1) : name;
+        const fullRelative = dir ? `${dir}/${cleanName}` : cleanName;
+        // Split the directory so the deepest folder always stays visible next to the file name
+        // while earlier segments ellipsize at the end (effectively a middle ellipsis on the full path).
+        let dirHead = '';
+        let dirTail = '';
+        if (dir) {
+            const lastSep = dir.lastIndexOf('/');
+            if (lastSep < 0) {
+                dirTail = dir;
+            } else {
+                dirHead = dir.slice(0, lastSep);
+                dirTail = dir.slice(lastSep);
+            }
+        }
         return (
             <>
-                {dir && (
-                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={dir}>
-                        {/* LRM keeps the LTR rendering for ASCII paths inside the RTL container. */}
-                        {'\u200E' + dir}
+                {dirHead && (
+                    <span
+                        className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`}
+                        title={fullRelative}
+                    >
+                        {dirHead}
                     </span>
                 )}
-                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={cleanName}>
+                {dirTail && (
+                    <span
+                        className={`${styles.filePathDirTail}${extraClass ? ' ' + extraClass : ''}`}
+                        title={fullRelative}
+                    >
+                        {dirTail}
+                    </span>
+                )}
+                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
                     {name}
                 </span>
             </>
@@ -449,7 +492,7 @@ function FileListExpander({
                                 <Link className={styles.fileLink} onClick={() => onOpenFile(f)}>
                                     {renderPath(f)}
                                 </Link>
-                                {name !== protectedFileName && (
+                                {name !== protectedFileName ? (
                                     <Tooltip content={l10n.t('Remove file')} relationship="label" withArrow>
                                         <Button
                                             appearance="subtle"
@@ -463,6 +506,8 @@ function FileListExpander({
                                             }}
                                         />
                                     </Tooltip>
+                                ) : (
+                                    <span className={styles.fileRemoveButtonPlaceholder} aria-hidden="true" />
                                 )}
                             </div>
                         );
@@ -1125,6 +1170,17 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 onClick={handleAnalyzeDatabaseSchema}
                             />
                         </Tooltip>
+                        <div className={styles.filePickerExpanderRow}>
+                            <FileListExpander
+                                files={state.schemaFiles}
+                                excludedFiles={state.excludedSchemaFiles}
+                                workspacePath={state.workspacePath}
+                                onOpenFile={handleOpenFile}
+                                onRemoveFile={handleRemoveSchemaFile}
+                                onRestoreFile={handleRestoreSchemaFile}
+                                styles={styles}
+                            />
+                        </div>
 
                         {/* Volumetric Files */}
                         <Text weight="semibold" size={200}>
@@ -1183,6 +1239,18 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 onClick={handleAnalyzeVolumetrics}
                             />
                         </Tooltip>
+                        <div className={styles.filePickerExpanderRow}>
+                            <FileListExpander
+                                files={state.volumetricFiles}
+                                excludedFiles={state.excludedVolumetricFiles}
+                                workspacePath={state.workspacePath}
+                                onOpenFile={handleOpenFile}
+                                onRemoveFile={handleRemoveVolumetricFile}
+                                onRestoreFile={handleRestoreVolumetricFile}
+                                protectedFileName="volumetrics.md"
+                                styles={styles}
+                            />
+                        </div>
 
                         {/* Access Pattern Files */}
                         <Text weight="semibold" size={200}>
@@ -1241,6 +1309,18 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 onClick={handleAnalyzeAccessPatterns}
                             />
                         </Tooltip>
+                        <div className={styles.filePickerExpanderRow}>
+                            <FileListExpander
+                                files={state.accessPatternFiles}
+                                excludedFiles={state.excludedAccessPatternFiles}
+                                workspacePath={state.workspacePath}
+                                onOpenFile={handleOpenFile}
+                                onRemoveFile={handleRemoveAccessPatternFile}
+                                onRestoreFile={handleRestoreAccessPatternFile}
+                                protectedFileName="access-patterns.md"
+                                styles={styles}
+                            />
+                        </div>
                     </div>
 
                     {/* Analysis Fields */}
@@ -1472,59 +1552,6 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         'Generate a comprehensive discovery report using AI analysis of your schema, access patterns, and application details.',
                                     )}
                                 </Text>
-
-                                {/* Source file lists and template handling */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {/* Schema Files */}
-                                    <div>
-                                        <Text weight="semibold" size={200}>
-                                            {l10n.t('Database Schema Files')}
-                                        </Text>
-                                        <FileListExpander
-                                            files={state.schemaFiles}
-                                            excludedFiles={state.excludedSchemaFiles}
-                                            workspacePath={state.workspacePath}
-                                            onOpenFile={handleOpenFile}
-                                            onRemoveFile={handleRemoveSchemaFile}
-                                            onRestoreFile={handleRestoreSchemaFile}
-                                            styles={styles}
-                                        />
-                                    </div>
-
-                                    {/* Volumetrics */}
-                                    <div>
-                                        <Text weight="semibold" size={200}>
-                                            {l10n.t('Volumetrics')}
-                                        </Text>
-                                        <FileListExpander
-                                            files={state.volumetricFiles}
-                                            excludedFiles={state.excludedVolumetricFiles}
-                                            workspacePath={state.workspacePath}
-                                            onOpenFile={handleOpenFile}
-                                            onRemoveFile={handleRemoveVolumetricFile}
-                                            onRestoreFile={handleRestoreVolumetricFile}
-                                            protectedFileName="volumetrics.md"
-                                            styles={styles}
-                                        />
-                                    </div>
-
-                                    {/* Access Patterns */}
-                                    <div>
-                                        <Text weight="semibold" size={200}>
-                                            {l10n.t('Access Patterns')}
-                                        </Text>
-                                        <FileListExpander
-                                            files={state.accessPatternFiles}
-                                            excludedFiles={state.excludedAccessPatternFiles}
-                                            workspacePath={state.workspacePath}
-                                            onOpenFile={handleOpenFile}
-                                            onRemoveFile={handleRemoveAccessPatternFile}
-                                            onRestoreFile={handleRestoreAccessPatternFile}
-                                            protectedFileName="access-patterns.md"
-                                            styles={styles}
-                                        />
-                                    </div>
-                                </div>
 
                                 <Field
                                     label={

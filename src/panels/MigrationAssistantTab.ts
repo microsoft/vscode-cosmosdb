@@ -367,6 +367,8 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.checkGitignore();
             case 'openFile':
                 return this.openFile(params[0] as string);
+            case 'revealInExplorer':
+                return this.revealInExplorer(params[0] as string);
             case 'openGeneratedBicep':
                 return this.openGeneratedBicep();
             case 'previewMarkdown':
@@ -1677,6 +1679,16 @@ export class MigrationAssistantTab extends BaseTab {
     private async openFile(filePath: string): Promise<void> {
         const uri = vscode.Uri.file(filePath);
         await vscode.window.showTextDocument(uri, { preview: true });
+    }
+
+    private async revealInExplorer(filePath: string): Promise<void> {
+        const uri = vscode.Uri.file(filePath);
+        try {
+            await vscode.workspace.fs.stat(uri);
+        } catch {
+            await vscode.workspace.fs.createDirectory(uri);
+        }
+        await vscode.commands.executeCommand('revealInExplorer', uri);
     }
 
     private async openGeneratedBicep(): Promise<void> {

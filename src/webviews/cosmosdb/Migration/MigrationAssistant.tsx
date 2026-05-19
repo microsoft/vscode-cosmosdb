@@ -55,7 +55,7 @@ import {
     WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
@@ -69,6 +69,9 @@ import {
     type ModelInfo,
     type PhaseState,
 } from './state/MigrationContext';
+
+const tooltipParagraphStyle = { margin: '0 0 8px 0' };
+const tooltipParagraphLastStyle = { margin: 0 };
 
 const useStyles = makeStyles({
     root: {
@@ -501,7 +504,7 @@ function InfoTooltipIcon({
     ariaLabel,
     styles,
 }: {
-    content: string;
+    content: ReactNode;
     ariaLabel: string;
     styles: ReturnType<typeof useStyles>;
 }) {
@@ -860,6 +863,22 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const handleRemoveFromGitignore = useCallback(() => sendCommand('removeFromGitignore'), [sendCommand]);
 
     const handleOpenFile = useCallback((filePath: string) => sendCommand('openFile', filePath), [sendCommand]);
+    const handleRevealInExplorer = useCallback(
+        (filePath: string) => sendCommand('revealInExplorer', filePath),
+        [sendCommand],
+    );
+    const handleRevealSchemaFolder = useCallback(
+        () => handleRevealInExplorer(`${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/schema-ddl`),
+        [handleRevealInExplorer, state.workspacePath],
+    );
+    const handleRevealVolumetricsFolder = useCallback(
+        () => handleRevealInExplorer(`${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/volumetrics`),
+        [handleRevealInExplorer, state.workspacePath],
+    );
+    const handleRevealAccessPatternsFolder = useCallback(
+        () => handleRevealInExplorer(`${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/access-patterns`),
+        [handleRevealInExplorer, state.workspacePath],
+    );
     const handleRemoveSchemaFile = useCallback(
         (filePath: string) => sendCommand('removeDiscoveryFile', 'schema-ddl', filePath),
         [sendCommand],
@@ -1059,12 +1078,30 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.filePickerGrid}>
                         {/* Schema Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Database Schema Files')}{' '}
+                            {l10n.t('Database Schema Files:')}{' '}
                             <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                             <InfoTooltipIcon
-                                content={l10n.t(
-                                    'Supported: .sql, .json, .xml, .csv, .log, .out — You can also copy files manually into the schema-ddl/ folder inside .cosmosdb-migration.',
-                                )}
+                                content={
+                                    <>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Provide the source database schema as one or more DDL/structure files. Supported file types: .sql, .json, .xml, .csv, .log, .out.',
+                                            )}
+                                        </p>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
+                                            )}
+                                            <Link onClick={handleRevealSchemaFolder}>{l10n.t('schema-ddl/')}</Link>
+                                            {l10n.t(' folder inside .cosmosdb-migration.')}
+                                        </p>
+                                        <p style={tooltipParagraphLastStyle}>
+                                            {l10n.t(
+                                                "If you don't have a schema file at hand, use the AI button (sparkle icon) to reverse-engineer the schema from your workspace code: it scans entity definitions, ORM mappings, repositories, and raw SQL, then writes one consolidated .sql file per discovered domain into the schema-ddl/ folder.",
+                                            )}
+                                        </p>
+                                    </>
+                                }
                                 ariaLabel={l10n.t('Database schema files help')}
                                 styles={styles}
                             />
@@ -1090,11 +1127,31 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                         {/* Volumetric Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Volumetrics')}
+                            {l10n.t('Volumetrics:')}
                             <InfoTooltipIcon
-                                content={l10n.t(
-                                    'Query logs, AWR reports: .txt, .csv, .json, .html, .xls — You can also copy files manually into the volumetrics/ folder inside .cosmosdb-migration.',
-                                )}
+                                content={
+                                    <>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Provide quantitative data about your database: row counts, table sizes, read/write ratios, hot collections, and query frequencies. Accepted file types: .txt, .csv, .json, .html, .xls (typical sources include query logs and AWR reports).',
+                                            )}
+                                        </p>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
+                                            )}
+                                            <Link onClick={handleRevealVolumetricsFolder}>
+                                                {l10n.t('volumetrics/')}
+                                            </Link>
+                                            {l10n.t(' folder inside .cosmosdb-migration.')}
+                                        </p>
+                                        <p style={tooltipParagraphLastStyle}>
+                                            {l10n.t(
+                                                'No raw data? Open the volumetrics template and fill it in by hand, or use the AI button (sparkle icon) to populate it from your workspace code and existing schema files.',
+                                            )}
+                                        </p>
+                                    </>
+                                }
                                 ariaLabel={l10n.t('Volumetrics help')}
                                 styles={styles}
                             />
@@ -1128,11 +1185,31 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
 
                         {/* Access Pattern Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Access Patterns')}
+                            {l10n.t('Access Patterns:')}
                             <InfoTooltipIcon
-                                content={l10n.t(
-                                    'Accepts .md files describing access patterns — You can also copy files manually into the access-patterns/ folder inside .cosmosdb-migration.',
-                                )}
+                                content={
+                                    <>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Describe how the application reads and writes data: top queries, joins, filters, sort orders, and any latency or throughput requirements. Accepted file type: .md (one or more Markdown files).',
+                                            )}
+                                        </p>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
+                                            )}
+                                            <Link onClick={handleRevealAccessPatternsFolder}>
+                                                {l10n.t('access-patterns/')}
+                                            </Link>
+                                            {l10n.t(' folder inside .cosmosdb-migration.')}
+                                        </p>
+                                        <p style={tooltipParagraphLastStyle}>
+                                            {l10n.t(
+                                                'Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.',
+                                            )}
+                                        </p>
+                                    </>
+                                }
                                 ariaLabel={l10n.t('Access patterns help')}
                                 styles={styles}
                             />

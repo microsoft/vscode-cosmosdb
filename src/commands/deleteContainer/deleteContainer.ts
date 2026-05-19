@@ -7,6 +7,7 @@ import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import { API } from '../../AzureDBExperiences';
+import { armDeleteContainer, getArmAccountContext } from '../../cosmosdb/armControlPlane';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
@@ -71,13 +72,19 @@ export async function cosmosDBDeleteContainer(
 async function deleteContainer(node: CosmosDBContainerResourceItem): Promise<boolean> {
     let success = false;
     await ext.state.showDeleting(node.id, async () => {
-        await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
-            const response = await cosmosClient
-                .database(node.model.database.id)
-                .container(node.model.container.id)
-                .delete();
-            success = response.statusCode === 204;
-        });
+        const armCtx = getArmAccountContext(node.model.accountInfo);
+        if (armCtx) {
+            await armDeleteContainer(armCtx, node.model.database.id, node.model.container.id);
+            success = true;
+        } else {
+            await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
+                const response = await cosmosClient
+                    .database(node.model.database.id)
+                    .container(node.model.container.id)
+                    .delete();
+                success = response.statusCode === 204;
+            });
+        }
     });
 
     return success;

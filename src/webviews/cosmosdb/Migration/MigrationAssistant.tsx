@@ -120,7 +120,7 @@ const useStyles = makeStyles({
     },
     filePickerGrid: {
         display: 'grid',
-        gridTemplateColumns: 'max-content max-content max-content',
+        gridTemplateColumns: 'max-content max-content max-content max-content',
         gap: '6px 8px',
         alignItems: 'center',
         flex: '0 0 auto',
@@ -677,6 +677,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     );
     const handleAnalyzeVolumetrics = useCallback(() => sendCommand('analyzeVolumetrics'), [sendCommand]);
     const handleAnalyzeAccessPatterns = useCallback(() => sendCommand('analyzeAccessPatterns'), [sendCommand]);
+    const handleAnalyzeDatabaseSchema = useCallback(() => sendCommand('analyzeDatabaseSchema'), [sendCommand]);
 
     const handleAnalyze = useCallback(() => sendCommand('analyzeApplication'), [sendCommand]);
     const handleCancelAnalysis = useCallback(() => sendCommand('cancelAnalysis'), [sendCommand]);
@@ -1074,6 +1075,18 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button appearance="secondary" size="small" onClick={handleSelectSchemaFolder}>
                             {l10n.t('Select Folder…')}
                         </Button>
+                        <Tooltip
+                            content={l10n.t('Generate schema files from workspace code using AI')}
+                            relationship="label"
+                            withArrow
+                        >
+                            <Button
+                                appearance="primary"
+                                size="small"
+                                icon={<SparkleRegular />}
+                                onClick={handleAnalyzeDatabaseSchema}
+                            />
+                        </Tooltip>
 
                         {/* Volumetric Files */}
                         <Text weight="semibold" size={200}>

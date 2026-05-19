@@ -38,6 +38,7 @@ import {
 import {
     ApplicationDetailsPrompt,
     buildAnalyzeAccessPatternsPrompt,
+    buildAnalyzeDatabaseSchemaPrompt,
     buildAnalyzeVolumetricsPrompt,
     buildChatDiscoveryPrompt,
     Phase1Step2DiscoveryPrompt,
@@ -747,7 +748,55 @@ export async function runAnalyzeWithAI(
 }
 
 /**
- * Cancels an in-progress analysis operation.
+ * Opens Copilot Chat with a prompt that scans the workspace and generates
+ * consolidated DDL schema files grouped by domain. Ensures the access-patterns
+ * template exists on disk so the prompt's side task has a target to fill in.
+ */
+export async function runAnalyzeDatabaseSchema(
+    project: ProjectJson,
+    projectService: MigrationProjectService,
+): Promise<void> {
+    const workspacePath = projectService.getWorkspacePath();
+
+    // Ensure the schema folder exists so Copilot has a target to write into.
+    const schemaFolderPath = projectService.getSchemaPath(project);
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(schemaFolderPath));
+
+    // Ensure the access-patterns template file exists (template always lives at the default subfolder).
+    const accessPatternsTemplateFolder = projectService.getDefaultSubfolderPath('access-patterns');
+    const accessPatternsTemplateAbsPath = path.join(accessPatternsTemplateFolder, 'access-patterns.md');
+    const accessPatternsTemplateUri = vscode.Uri.file(accessPatternsTemplateAbsPath);
+    if (!(await MigrationProjectService.fileExists(accessPatternsTemplateUri))) {
+        await vscode.workspace.fs.createDirectory(vscode.Uri.file(accessPatternsTemplateFolder));
+        await vscode.workspace.fs.writeFile(
+            accessPatternsTemplateUri,
+            Buffer.from(getAccessPatternsTemplateContent(), 'utf-8'),
+        );
+    }
+
+    // Collect any existing schema files so the prompt can preserve them.
+    const existingSchemaAbsPaths = await projectService.listDiscoveryFiles(project, 'schema-ddl');
+    const existingSchemaRelPaths = existingSchemaAbsPaths.map((p) => path.relative(workspacePath, p));
+
+    const schemaFolderRelativePath = path.relative(workspacePath, schemaFolderPath);
+    const accessPatternsTemplateRelativePath = path.relative(workspacePath, accessPatternsTemplateAbsPath);
+
+    const prompt = buildAnalyzeDatabaseSchemaPrompt(
+        schemaFolderRelativePath,
+        existingSchemaRelPaths,
+        accessPatternsTemplateRelativePath,
+        project.phases.discovery.applicationAnalysis,
+        project.phases.discovery.discoveryInstructions,
+    );
+
+    await vscode.commands.executeCommand('workbench.action.chat.open', {
+        mode: 'agent',
+        query: prompt,
+    });
+}
+
+/**
+ * Cancels an in-progress application analysis.
  */
 export async function cancelAnalysis(
     analysisCancellation: vscode.CancellationTokenSource | undefined,

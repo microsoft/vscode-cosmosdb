@@ -44,6 +44,7 @@ import {
     cancelAnalysis,
     cancelDiscovery,
     estimateDiscoveryTokens,
+    runAnalyzeDatabaseSchema,
     runAnalyzeWithAI,
     runApplicationAnalysis,
     runDiscoveryReport,
@@ -294,6 +295,8 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.analyzeWithAI('volumetrics');
             case 'analyzeAccessPatterns':
                 return this.analyzeWithAI('access-patterns');
+            case 'analyzeDatabaseSchema':
+                return this.analyzeDatabaseSchema();
             case 'analyzeApplication':
                 return this.analyzeApplication();
             case 'updateAnalysisResult':
@@ -809,6 +812,11 @@ export class MigrationAssistantTab extends BaseTab {
     private async analyzeWithAI(subfolder: 'volumetrics' | 'access-patterns'): Promise<void> {
         if (!this.project) return;
         await runAnalyzeWithAI(subfolder, this.project, this.projectService);
+    }
+
+    private async analyzeDatabaseSchema(): Promise<void> {
+        if (!this.project) return;
+        await runAnalyzeDatabaseSchema(this.project, this.projectService);
     }
 
     private async selectFiles(subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): Promise<void> {

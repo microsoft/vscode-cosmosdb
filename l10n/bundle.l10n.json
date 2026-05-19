@@ -431,6 +431,7 @@
   "Generate query": "Generate query",
   "Generate schema": "Generate schema",
   "Generate schema based on queries": "Generate schema based on queries",
+  "Generate schema files from workspace code using AI": "Generate schema files from workspace code using AI",
   "Generated from: {0}": "Generated from: {0}",
   "Generating assessment summary…": "Generating assessment summary…",
   "Generating final deployment model…": "Generating final deployment model…",

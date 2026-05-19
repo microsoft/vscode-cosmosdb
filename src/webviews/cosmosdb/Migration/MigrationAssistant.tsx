@@ -508,8 +508,9 @@ function InfoTooltipIcon({
     ariaLabel: string;
     styles: ReturnType<typeof useStyles>;
 }) {
+    const contentSlot = useMemo(() => ({ children: content }), [content]);
     return (
-        <Tooltip content={content} relationship="description" withArrow>
+        <Tooltip content={contentSlot} relationship="description" withArrow>
             <button type="button" aria-label={ariaLabel} className={styles.infoIcon}>
                 <InfoRegular />
             </button>

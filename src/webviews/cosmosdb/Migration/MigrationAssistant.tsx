@@ -1138,7 +1138,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             {l10n.t(
                                                 'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
                                             )}
-                                            <Link onClick={handleRevealSchemaFolder}>{l10n.t('schema-ddl/')}</Link>
+                                            <Link onClick={handleRevealSchemaFolder}>schema-ddl/</Link>
                                             {l10n.t(' folder inside .cosmosdb-migration.')}
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>
@@ -1197,9 +1197,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             {l10n.t(
                                                 'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
                                             )}
-                                            <Link onClick={handleRevealVolumetricsFolder}>
-                                                {l10n.t('volumetrics/')}
-                                            </Link>
+                                            <Link onClick={handleRevealVolumetricsFolder}>volumetrics/</Link>
                                             {l10n.t(' folder inside .cosmosdb-migration.')}
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>
@@ -1267,9 +1265,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                             {l10n.t(
                                                 'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
                                             )}
-                                            <Link onClick={handleRevealAccessPatternsFolder}>
-                                                {l10n.t('access-patterns/')}
-                                            </Link>
+                                            <Link onClick={handleRevealAccessPatternsFolder}>access-patterns/</Link>
                                             {l10n.t(' folder inside .cosmosdb-migration.')}
                                         </p>
                                         <p style={tooltipParagraphLastStyle}>

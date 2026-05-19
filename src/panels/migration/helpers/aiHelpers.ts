@@ -333,12 +333,9 @@ export async function runPrompt<P extends BasePromptElementProps>(
  *
  * @throws If no JSON object is found in the response.
  */
-export async function runPromptWithJsonResult<
-    T,
-    C extends PromptElementCtor<any, unknown> = PromptElementCtor<BasePromptElementProps, unknown>,
->(
-    PromptClass: C,
-    props: C extends PromptElementCtor<infer P, unknown> ? P : never,
+export async function runPromptWithJsonResult<T>(
+    PromptClass: PromptElementCtor<any, unknown>,
+    props: BasePromptElementProps & Record<string, unknown>,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     label: string,
@@ -382,12 +379,9 @@ export async function runPromptWithJsonResult<
  *   callers can surface an "incomplete" signal.
  * @throws If no JSON object is found in the final response.
  */
-export async function runAgenticLoopWithJsonResult<
-    T,
-    C extends PromptElementCtor<any, unknown> = PromptElementCtor<BasePromptElementProps, unknown>,
->(
-    PromptClass: C,
-    props: C extends PromptElementCtor<infer P, unknown> ? P : never,
+export async function runAgenticLoopWithJsonResult<T>(
+    PromptClass: PromptElementCtor<any, unknown>,
+    props: BasePromptElementProps & Record<string, unknown>,
     model: vscode.LanguageModelChat,
     tools: vscode.LanguageModelChatTool[],
     executeToolCall: (toolCall: vscode.LanguageModelToolCallPart) => Promise<string>,

@@ -1114,13 +1114,12 @@ async function resolveMcpServer(
         );
     }
 
+    // No user-facing notifications here: resolve can be invoked by Copilot/VS Code during
+    // background tool discovery and we don't want to nag users who never asked for Cosmos DB MCP.
+    // The provider normally hides the server when prerequisites aren't met (see
+    // provideMcpServerDefinitions); these throws are a safety net for cached definitions.
     if (!isCosmosDBShellSupportEnabled()) {
-        showMcpSettingsNotification(
-            l10n.t(
-                'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
-            ),
-            'cosmosDB.shell.path',
-        );
+        ext.outputChannel.appendLine('MCP resolve: Cosmos DB Shell binary is not installed or not found; skipping.');
         throw new Error(
             'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
         );
@@ -1129,10 +1128,7 @@ async function resolveMcpServer(
     const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
 
     if (!mcpEnabled) {
-        showMcpSettingsNotification(
-            l10n.t('Cosmos DB Shell MCP is not enabled. Enable it in settings to auto-start the shell.'),
-            'cosmosDB.shell.MCP.enabled',
-        );
+        ext.outputChannel.appendLine('MCP resolve: "cosmosDB.shell.MCP.enabled" is disabled; skipping.');
         throw new Error(
             'Cosmos DB Shell MCP is not enabled. The user must enable the "cosmosDB.shell.MCP.enabled" setting and restart the MCP server.',
         );
@@ -1177,6 +1173,15 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
             vscode.lm.registerMcpServerDefinitionProvider('cosmosDbShellMcpProvider', {
                 onDidChangeMcpServerDefinitions: didChangeEmitter.event,
                 provideMcpServerDefinitions: () => {
+                    // Only publish the MCP server when it can actually be used. Otherwise Copilot
+                    // (or any MCP consumer) would call resolveMcpServerDefinition during background
+                    // tool discovery and trigger user-facing prompts even though the user never
+                    // asked for Cosmos DB MCP. The didChangeEmitter below re-fires this when the
+                    // relevant settings or shell path change.
+                    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+                    if (!mcpEnabled || !isCosmosDBShellSupportEnabled()) {
+                        return [];
+                    }
                     const mcpPort = getMcpPort();
                     return [
                         new vscode.McpHttpServerDefinition(

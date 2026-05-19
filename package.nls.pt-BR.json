@@ -34,6 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copiar instruções de LLM para a pasta de perfil do usuário",
   "cosmosdb.command.ai.remove_instruction_files": "Remover instruções de LLM da pasta de perfil do usuário",
   "cosmosdb.command.schema.delete_all": "Excluir todos os esquemas salvos",
+  "cosmosdb.command.migration.open": "New Migration…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
+  "cosmosdb.command.migration.remove": "Remove Migration…",
   "cosmosdb.configuration.batch.size": "O tamanho do lote a ser usado ao consultar recursos do Banco de Dados do Azure.",
   "cosmosdb.configuration.confirmation.style": "O comportamento a ser usado ao confirmar operações que não podem ser desfeitas, como excluir recursos.",
   "cosmosdb.configuration.confirmation.style.button": "Confirmação do Clique do Botão",
@@ -63,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Compatível somente ao executar no Azure (ou seja, uma VM), [saiba mais](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "A ID do cliente da Identidade Gerenciada a ser usada ao autenticar com o Entra ID usando uma identidade gerenciada atribuída pelo usuário.",
   "cosmosdb.configuration.manage-llm-assets": "Gerencie ativos de LLM. Permita que a extensão mantenha os arquivos relacionados ao LLM atualizados.",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Quando habilitada, a geração de esquema também considera os resultados da consulta para inferir o esquema do contêiner."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Quando habilitada, a geração de esquema também considera os resultados da consulta para inferir o esquema do contêiner.",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

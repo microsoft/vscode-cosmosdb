@@ -5,7 +5,7 @@
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { renderPrompt } from '@vscode/prompt-tsx';
+import { type BasePromptElementProps, type PromptElementCtor, renderPrompt } from '@vscode/prompt-tsx';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { SYSTEM_DEFENSE_RULES } from '../../../utils/aiDefenseRules';
@@ -202,10 +202,9 @@ export { stripMarkdownPreamble } from './markdownUtils';
  *
  * @returns The rendered (possibly overridden) messages and their token count.
  */
-export async function renderWithDebug(
-    PromptClass: any,
-
-    props: any,
+export async function renderWithDebug<P extends BasePromptElementProps>(
+    PromptClass: PromptElementCtor<P, unknown>,
+    props: P,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     debugConfig?: DebugPromptConfig,
@@ -308,10 +307,9 @@ async function runPromptFromMessages(
  *
  * @returns The complete response text.
  */
-export async function runPrompt(
-    PromptClass: any,
-
-    props: any,
+export async function runPrompt<P extends BasePromptElementProps>(
+    PromptClass: PromptElementCtor<P, unknown>,
+    props: P,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     label: string,
@@ -335,10 +333,9 @@ export async function runPrompt(
  *
  * @throws If no JSON object is found in the response.
  */
-export async function runPromptWithJsonResult<T>(
-    PromptClass: any,
-
-    props: any,
+export async function runPromptWithJsonResult<T, P extends BasePromptElementProps>(
+    PromptClass: PromptElementCtor<P, unknown>,
+    props: P,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     label: string,
@@ -382,10 +379,9 @@ export async function runPromptWithJsonResult<T>(
  *   callers can surface an "incomplete" signal.
  * @throws If no JSON object is found in the final response.
  */
-export async function runAgenticLoopWithJsonResult<T>(
-    PromptClass: any,
-
-    props: any,
+export async function runAgenticLoopWithJsonResult<T, P extends BasePromptElementProps>(
+    PromptClass: PromptElementCtor<P, unknown>,
+    props: P,
     model: vscode.LanguageModelChat,
     tools: vscode.LanguageModelChatTool[],
     executeToolCall: (toolCall: vscode.LanguageModelToolCallPart) => Promise<string>,

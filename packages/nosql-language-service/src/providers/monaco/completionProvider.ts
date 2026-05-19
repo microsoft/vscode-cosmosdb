@@ -11,7 +11,9 @@ import { mapCompletionKind, type MonacoNamespace } from './types.js';
  * Standalone completion item provider for Monaco Editor.
  */
 export class MonacoCompletionProvider implements monacoEditor.languages.CompletionItemProvider {
-    readonly triggerCharacters = ['.', ' ', ','];
+    // `;` and `\n` trigger suggestions at the start of a new query in multi-query
+    // documents, so users see `SELECT` proposed without needing Ctrl+Space.
+    readonly triggerCharacters = ['.', ' ', ',', ';', '\n'];
     private readonly monaco: MonacoNamespace;
     private readonly service: SqlLanguageService;
 

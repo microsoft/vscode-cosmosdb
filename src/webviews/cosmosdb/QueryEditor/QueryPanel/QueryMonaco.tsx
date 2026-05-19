@@ -13,6 +13,13 @@ import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEdi
 /** Language ID matching the 'nosql' language contributed in package.json. */
 const NOSQL_LANGUAGE_ID = 'nosql';
 
+/** Static Monaco editor options — defined outside the component to avoid creating a new object on every render. */
+const MONACO_OPTIONS = {
+    accessibilitySupport: 'auto' as const,
+    accessibilityPageSize: 10,
+    fixedOverflowWidgets: true,
+};
+
 /**
  * Compute the query block text at the given cursor offset using the
  * language service's multi-query parser. Falls back to the full text
@@ -64,51 +71,54 @@ export const QueryMonaco = () => {
         };
     }, [monaco]);
 
-    const onMount = (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
-        // Set up cursor selection event listener
-        disposableRef.current = editor.onDidChangeCursorSelection((event) => {
-            const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
-            dispatcher.setSelectedText(selectedContent);
-        });
+    const onMount = useCallback(
+        (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
+            // Set up cursor selection event listener
+            disposableRef.current = editor.onDidChangeCursorSelection((event) => {
+                const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
+                dispatcher.setSelectedText(selectedContent);
+            });
 
-        // Track cursor position changes to always know which query block the cursor is in.
-        // This survives focus loss so the Run button can execute the correct block.
-        cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
-            const model = editor.getModel();
-            const service = languageServiceRef.current;
-            if (model && service) {
-                const offset = model.getOffsetAt(event.position);
-                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
-                dispatcher.setCurrentQueryBlock(block);
-            }
-        });
+            // Track cursor position changes to always know which query block the cursor is in.
+            // This survives focus loss so the Run button can execute the correct block.
+            cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
+                const model = editor.getModel();
+                const service = languageServiceRef.current;
+                if (model && service) {
+                    const offset = model.getOffsetAt(event.position);
+                    const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                    dispatcher.setCurrentQueryBlock(block);
+                }
+            });
 
-        // Compute the initial query block based on the default cursor position
-        {
-            const model = editor.getModel();
-            const service = languageServiceRef.current;
-            if (model && service) {
-                const offset = model.getOffsetAt(editor.getPosition()!);
-                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
-                dispatcher.setCurrentQueryBlock(block);
-            }
-        }
-
-        // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
-        // and route them through the extension host so they open in the default browser.
-        const container = editor.getContainerDomNode();
-        container.addEventListener('click', (e) => {
-            const target = (e.target as HTMLElement).closest('a');
-            if (target) {
-                const href = target.getAttribute('href') ?? target.getAttribute('data-href');
-                if (href) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    void dispatcher.openUrl(href);
+            // Compute the initial query block based on the default cursor position
+            {
+                const model = editor.getModel();
+                const service = languageServiceRef.current;
+                if (model && service) {
+                    const offset = model.getOffsetAt(editor.getPosition()!);
+                    const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                    dispatcher.setCurrentQueryBlock(block);
                 }
             }
-        });
-    };
+
+            // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
+            // and route them through the extension host so they open in the default browser.
+            const container = editor.getContainerDomNode();
+            container.addEventListener('click', (e) => {
+                const target = (e.target as HTMLElement).closest('a');
+                if (target) {
+                    const href = target.getAttribute('href') ?? target.getAttribute('data-href');
+                    if (href) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void dispatcher.openUrl(href);
+                    }
+                }
+            });
+        },
+        [dispatcher],
+    );
 
     useEffect(() => {
         // Cleanup on unmount
@@ -135,11 +145,7 @@ export const QueryMonaco = () => {
             value={state.queryValue}
             onChange={onChange}
             onMount={onMount}
-            options={{
-                accessibilitySupport: 'on',
-                accessibilityPageSize: 1,
-                fixedOverflowWidgets: true,
-            }}
+            options={MONACO_OPTIONS}
         />
     );
 };

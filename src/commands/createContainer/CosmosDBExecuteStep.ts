@@ -3,9 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { PartitionKeyDefinitionVersion, PartitionKeyKind, type RequestOptions } from '@azure/cosmos';
+import { PartitionKeyDefinitionVersion, type RequestOptions } from '@azure/cosmos';
 import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
+import { armCreateContainer, getArmAccountContext, getPartitionKeyKind } from '../../cosmosdb/armControlPlane';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
@@ -17,6 +18,7 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
         const options: RequestOptions = {};
         const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { containerName, partitionKey, throughput, databaseId, nodeId } = context;
+        const armCtx = getArmAccountContext(context.accountInfo);
 
         if (throughput !== 0) {
             options.offerThroughput = throughput;
@@ -28,12 +30,10 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
             async () => {
                 await new Promise((resolve) => setTimeout(resolve, 250));
 
+                const partitionKeyPaths = partitionKey?.paths ?? [];
                 const partitionKeyDefinition = {
-                    paths: partitionKey?.paths ?? [],
-                    kind:
-                        (partitionKey?.kind ?? (partitionKey?.paths?.length ?? 0) > 1)
-                            ? PartitionKeyKind.MultiHash // Multi-hash partition key if there are sub-partitions
-                            : PartitionKeyKind.Hash, // Hash partition key if there is only one partition
+                    paths: partitionKeyPaths,
+                    kind: getPartitionKeyKind(partitionKey?.kind, partitionKeyPaths.length),
                     version: PartitionKeyDefinitionVersion.V2,
                 };
 
@@ -42,9 +42,13 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
                     partitionKey: partitionKeyDefinition,
                 };
 
-                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
-                    await cosmosClient.database(databaseId).containers.create(containerDefinition, options);
-                });
+                if (armCtx) {
+                    await armCreateContainer(armCtx, databaseId, containerDefinition, throughput);
+                } else {
+                    await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
+                        await cosmosClient.database(databaseId).containers.create(containerDefinition, options);
+                    });
+                }
             },
         );
     }

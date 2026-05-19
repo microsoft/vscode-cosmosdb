@@ -3,13 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID } from '../../../cosmosdb/utils/rbacUtils';
 import { type CosmosContainer, type CosmosModel, type IndexingPolicy } from '../cosmosModel';
-
-/**
- * Cosmos DB Built-in Data Contributor role definition id (data-plane RBAC).
- * Same id used by `addRbacContributorPermission()` in `src/cosmosdb/utils/rbacUtils.ts`.
- */
-const DATA_CONTRIBUTOR_ROLE_ID = '00000000-0000-0000-0000-000000000002';
 
 /** Default database name when the model does not specify one. */
 const DEFAULT_DATABASE_NAME = 'migration';
@@ -130,7 +125,7 @@ export function buildBicepTemplate(model: CosmosModel): string {
     // ─── Role Assignment ───────────────────────────────────────────
     lines.push("@description('Cosmos DB Built-in Data Contributor role definition.')");
     lines.push(
-        `var dataContributorRoleDefinitionId = resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', accountName, '${DATA_CONTRIBUTOR_ROLE_ID}')`,
+        `var dataContributorRoleDefinitionId = resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', accountName, '${COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID}')`,
     );
     lines.push('');
     lines.push(

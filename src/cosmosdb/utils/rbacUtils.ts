@@ -41,7 +41,7 @@ const COSMOS_DB_OPERATOR_ROLE_DEFINITION_ID = '230815da-be43-4aae-9cb4-875f7bd00
  * Built-in "Cosmos DB Built-in Data Contributor" data-plane role definition ID.
  * Predefined by the service; identical for every Cosmos DB account.
  */
-const COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID = '00000000-0000-0000-0000-000000000002';
+export const COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID = '00000000-0000-0000-0000-000000000002';
 
 export async function ensureRbacPermissionV2(
     fullId: string,

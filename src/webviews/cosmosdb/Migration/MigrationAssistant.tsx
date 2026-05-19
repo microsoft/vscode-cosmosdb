@@ -1109,7 +1109,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 withArrow
                             >
                                 <Button
-                                    appearance="subtle"
+                                    appearance="primary"
                                     size="small"
                                     icon={<SparkleRegular />}
                                     onClick={handleAnalyzeVolumetrics}
@@ -1151,7 +1151,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                 withArrow
                             >
                                 <Button
-                                    appearance="subtle"
+                                    appearance="primary"
                                     size="small"
                                     icon={<SparkleRegular />}
                                     onClick={handleAnalyzeAccessPatterns}

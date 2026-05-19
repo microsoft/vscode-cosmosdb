@@ -1,5 +1,17 @@
 # Change Log
 
+## 0.32.2
+
+### Fixed
+
+- Fixed an issue where native-RBAC NoSQL accounts failed control-plane operations by routing those operations through ARM. (Backport of #3016 to rel/0.32) (#3032)
+
+## 0.32.1
+
+### Fixed
+
+- Fixed an issue where the `skills` directory was missing from the webpack copy configuration. (Backport of #2954 to rel/0.32) (#2955)
+
 ## 0.32.0
 
 ### Added

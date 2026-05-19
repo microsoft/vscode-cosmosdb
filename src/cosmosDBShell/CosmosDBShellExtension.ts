@@ -70,11 +70,11 @@ export class CosmosDBShellExtension implements vscode.Disposable {
         await callWithTelemetryAndErrorHandling(
             'cosmosDB.cosmosDBShell.activate',
             (_activateContext: IActionContext) => {
-                const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
+                const shellInstalled: boolean = isCosmosDBShellInstalled();
                 vscode.commands.executeCommand(
                     'setContext',
                     'vscodeDatabases.cosmosDBShellSupportEnabled',
-                    isCosmosDBShellInstalled,
+                    shellInstalled,
                 );
 
                 // Initialize terminal context on activation
@@ -103,7 +103,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
 
                 registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosDBShell', connectCosmosDBShell);
 
-                if (isCosmosDBShellInstalled) {
+                if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
                 } else {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
@@ -405,7 +405,7 @@ async function installAndLaunchCosmosDBShell(
 
     // On a brand-new install the user's PATH may not yet include `~/.dotnet/tools`
     // in the current VS Code session. If we still can't resolve the shell, ask to reload.
-    if (!isCosmosDBShellSupportEnabled()) {
+    if (!isCosmosDBShellInstalled()) {
         const reload = l10n.t('Reload Window');
         const reloadSelection = await vscode.window.showInformationMessage(
             l10n.t(
@@ -569,7 +569,7 @@ async function promptToResolveMissingCosmosDBShell(
 }
 
 export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {
-    const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
+    const shellInstalled: boolean = isCosmosDBShellInstalled();
 
     // Telemetry: capture launch-shape signals as early as possible so they're attached even
     // when the install/credential paths bail out before a terminal is created.
@@ -577,7 +577,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     const mcpPortSetting = SettingsService.getSetting<number>('cosmosDB.shell.MCP.port');
     const mcpPort = (mcpPortSetting ?? 6128).toString();
     const shellPathSetting = SettingsService.getSetting<string>('cosmosDB.shell.path');
-    context.telemetry.properties.shellInstalled = String(isCosmosDBShellInstalled);
+    context.telemetry.properties.shellInstalled = String(shellInstalled);
     context.telemetry.properties.shellPathCustom = String(!!shellPathSetting?.trim());
     context.telemetry.properties.mcpEnabled = String(mcpEnabled);
     context.telemetry.properties.mcpPortDefault = String(mcpPortSetting === undefined || mcpPortSetting === 6128);
@@ -586,7 +586,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     context.telemetry.properties.containerScoped = String(!!node?.model.container);
     context.telemetry.properties.terminalReused = 'false';
 
-    if (!isCosmosDBShellInstalled) {
+    if (!shellInstalled) {
         await promptToResolveMissingCosmosDBShell(context, node);
         return;
     }
@@ -702,7 +702,7 @@ export async function connectCosmosDBShell(context: IActionContext, node?: NoSql
     // `cosmosDB.launchCosmosDBShell` telemetry event. Calling this here covers both the
     // reuse path below and the fall-through to `launchCosmosDBShell`.
     context.telemetry.properties.shellVersion = getDetectedCosmosDBShellVersion() ?? 'unknown';
-    context.telemetry.properties.shellInstalled = String(isCosmosDBShellSupportEnabled());
+    context.telemetry.properties.shellInstalled = String(isCosmosDBShellInstalled());
     context.telemetry.properties.shellPathCustom = String(
         !!SettingsService.getSetting<string>('cosmosDB.shell.path')?.trim(),
     );
@@ -906,7 +906,7 @@ async function getCosmosDBShellToken(
  *
  * @returns true, if CosmosDBShell is installed, false otherwise.
  */
-export function isCosmosDBShellSupportEnabled(): boolean {
+export function isCosmosDBShellInstalled(): boolean {
     return getCachedShellSupport().installed;
 }
 
@@ -920,7 +920,7 @@ export function getDetectedCosmosDBShellVersion(): string | undefined {
 }
 
 /**
- * Clears the cached result of {@link isCosmosDBShellSupportEnabled}.
+ * Clears the cached result of {@link isCosmosDBShellInstalled}.
  * Call this when the shell path configuration changes or the binary may have been installed/removed.
  */
 export function invalidateCosmosDBShellSupportCache(): void {
@@ -1116,13 +1116,12 @@ async function resolveMcpServer(
         );
     }
 
-    if (!isCosmosDBShellSupportEnabled()) {
-        showMcpSettingsNotification(
-            l10n.t(
-                'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
-            ),
-            'cosmosDB.shell.path',
-        );
+    // No user-facing notifications here: resolve can be invoked by Copilot/VS Code during
+    // background tool discovery and we don't want to nag users who never asked for Cosmos DB MCP.
+    // The provider normally hides the server when prerequisites aren't met (see
+    // provideMcpServerDefinitions); these throws are a safety net for cached definitions.
+    if (!isCosmosDBShellInstalled()) {
+        ext.outputChannel.appendLine('MCP resolve: Cosmos DB Shell binary is not installed or not found; skipping.');
         throw new Error(
             'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
         );
@@ -1131,10 +1130,7 @@ async function resolveMcpServer(
     const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
 
     if (!mcpEnabled) {
-        showMcpSettingsNotification(
-            l10n.t('Cosmos DB Shell MCP is not enabled. Enable it in settings to auto-start the shell.'),
-            'cosmosDB.shell.MCP.enabled',
-        );
+        ext.outputChannel.appendLine('MCP resolve: "cosmosDB.shell.MCP.enabled" is disabled; skipping.');
         throw new Error(
             'Cosmos DB Shell MCP is not enabled. The user must enable the "cosmosDB.shell.MCP.enabled" setting and restart the MCP server.',
         );
@@ -1179,6 +1175,15 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
             vscode.lm.registerMcpServerDefinitionProvider('cosmosDbShellMcpProvider', {
                 onDidChangeMcpServerDefinitions: didChangeEmitter.event,
                 provideMcpServerDefinitions: () => {
+                    // Only publish the MCP server when it can actually be used. Otherwise Copilot
+                    // (or any MCP consumer) would call resolveMcpServerDefinition during background
+                    // tool discovery and trigger user-facing prompts even though the user never
+                    // asked for Cosmos DB MCP. The didChangeEmitter below re-fires this when the
+                    // relevant settings or shell path change.
+                    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+                    if (!mcpEnabled || !isCosmosDBShellInstalled()) {
+                        return [];
+                    }
                     const mcpPort = getMcpPort();
                     return [
                         new vscode.McpHttpServerDefinition(
@@ -1221,7 +1226,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
 let cosmosDBShellLanguageClient: LanguageClient | undefined;
 
 export function registerCosmosDBShellLanguageServer(context: vscode.ExtensionContext) {
-    if (cosmosDBShellLanguageClient || !isCosmosDBShellSupportEnabled()) {
+    if (cosmosDBShellLanguageClient || !isCosmosDBShellInstalled()) {
         return;
     }
 

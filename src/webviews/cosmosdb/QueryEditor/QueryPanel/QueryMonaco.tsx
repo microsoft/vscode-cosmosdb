@@ -71,51 +71,54 @@ export const QueryMonaco = () => {
         };
     }, [monaco]);
 
-    const onMount = useCallback((editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
-        // Set up cursor selection event listener
-        disposableRef.current = editor.onDidChangeCursorSelection((event) => {
-            const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
-            dispatcher.setSelectedText(selectedContent);
-        });
+    const onMount = useCallback(
+        (editor: MonacoEditorType.editor.IStandaloneCodeEditor) => {
+            // Set up cursor selection event listener
+            disposableRef.current = editor.onDidChangeCursorSelection((event) => {
+                const selectedContent: string = editor.getModel()?.getValueInRange(event.selection) ?? '';
+                dispatcher.setSelectedText(selectedContent);
+            });
 
-        // Track cursor position changes to always know which query block the cursor is in.
-        // This survives focus loss so the Run button can execute the correct block.
-        cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
-            const model = editor.getModel();
-            const service = languageServiceRef.current;
-            if (model && service) {
-                const offset = model.getOffsetAt(event.position);
-                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
-                dispatcher.setCurrentQueryBlock(block);
-            }
-        });
+            // Track cursor position changes to always know which query block the cursor is in.
+            // This survives focus loss so the Run button can execute the correct block.
+            cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
+                const model = editor.getModel();
+                const service = languageServiceRef.current;
+                if (model && service) {
+                    const offset = model.getOffsetAt(event.position);
+                    const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                    dispatcher.setCurrentQueryBlock(block);
+                }
+            });
 
-        // Compute the initial query block based on the default cursor position
-        {
-            const model = editor.getModel();
-            const service = languageServiceRef.current;
-            if (model && service) {
-                const offset = model.getOffsetAt(editor.getPosition()!);
-                const block = getQueryBlockAtOffset(model.getValue(), offset, service);
-                dispatcher.setCurrentQueryBlock(block);
-            }
-        }
-
-        // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
-        // and route them through the extension host so they open in the default browser.
-        const container = editor.getContainerDomNode();
-        container.addEventListener('click', (e) => {
-            const target = (e.target as HTMLElement).closest('a');
-            if (target) {
-                const href = target.getAttribute('href') ?? target.getAttribute('data-href');
-                if (href) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    void dispatcher.openUrl(href);
+            // Compute the initial query block based on the default cursor position
+            {
+                const model = editor.getModel();
+                const service = languageServiceRef.current;
+                if (model && service) {
+                    const offset = model.getOffsetAt(editor.getPosition()!);
+                    const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                    dispatcher.setCurrentQueryBlock(block);
                 }
             }
-        });
-    }, [dispatcher]);
+
+            // Intercept link clicks inside the Monaco editor (e.g. documentation links in hover tooltips)
+            // and route them through the extension host so they open in the default browser.
+            const container = editor.getContainerDomNode();
+            container.addEventListener('click', (e) => {
+                const target = (e.target as HTMLElement).closest('a');
+                if (target) {
+                    const href = target.getAttribute('href') ?? target.getAttribute('data-href');
+                    if (href) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void dispatcher.openUrl(href);
+                    }
+                }
+            });
+        },
+        [dispatcher],
+    );
 
     useEffect(() => {
         // Cleanup on unmount

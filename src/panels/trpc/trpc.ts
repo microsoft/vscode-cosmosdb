@@ -17,7 +17,7 @@
 
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { initTRPC, type TRPCError } from '@trpc/server';
-import { type DocumentRouterContext, type QueryEditorRouterContext } from './appRouter';
+import { type DocumentRouterContext, type MigrationRouterContext, type QueryEditorRouterContext } from './appRouter';
 
 // ─── Query Editor tRPC Instance ─────────────────────────────────────────────
 // Context is QueryEditorRouterContext — all procedures get properly typed ctx.
@@ -47,6 +47,21 @@ const documentTrpcToTelemetry = documentT.middleware(async ({ path, type, next }
 export const documentProcedure = documentT.procedure.use(documentTrpcToTelemetry);
 export const documentRouter = documentT.router;
 export const documentCallerFactory = documentT.createCallerFactory;
+
+// ─── Migration Assistant tRPC Instance ──────────────────────────────────────
+// Context is MigrationRouterContext — all procedures get properly typed ctx.
+
+const migrationT = initTRPC.context<MigrationRouterContext>().create();
+
+const migrationTrpcToTelemetry = migrationT.middleware(async ({ path, type, next }) => {
+    return telemetryMiddlewareImpl(`cosmosDB.rpc.${type}.${path}`, (actionContext) => next({ ctx: { actionContext } }));
+});
+
+/** Base procedure with telemetry middleware already applied. */
+export const migrationProcedure = migrationT.procedure.use(migrationTrpcToTelemetry);
+export const migrationRouter = migrationT.router;
+export const migrationMergeRouters = migrationT.mergeRouters;
+export const migrationCallerFactory = migrationT.createCallerFactory;
 
 // ─── Shared Telemetry Implementation ────────────────────────────────────────
 

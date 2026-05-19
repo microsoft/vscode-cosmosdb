@@ -14,7 +14,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { getAvailableLanguageModels } from '../utils/copilotUtils';
+import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
@@ -754,13 +754,8 @@ export class CosmosDbOperationsService {
         },
         additionalContext?: string,
     ): Promise<string> {
-        // Get available language models
-        const models = await getAvailableLanguageModels();
-        if (models.length === 0) {
-            throw new Error(l10n.t('No language model available'));
-        }
-
-        const model = models[0];
+        // Resolve the user's preferred Copilot model (or fall back to the first available).
+        const model = await getSelectedModel();
 
         // Build user content (payload) - separated from system instructions
         let contextInfo = '';
@@ -873,17 +868,13 @@ export class CosmosDbOperationsService {
         const source = options?.source;
         const operation = options?.operation;
 
-        const models = await getAvailableLanguageModels(modelId);
-        if (models.length === 0) {
+        const model = await getSelectedModel({ modelId }).catch((err) => {
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
                 ctx.telemetry.properties.caller = 'generateQuery';
             });
-            throw new Error(l10n.t('No language model available. Please ensure you have access to Copilot.'));
-        }
-
-        // Use specified model or first available (preferred model is moved to front by getAvailableLanguageModels)
-        const model = models[0];
+            throw err;
+        });
 
         // Load query language reference for comprehensive syntax guidance
         const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
@@ -1210,8 +1201,18 @@ export class CosmosDbOperationsService {
         });
 
         if (withExplanation) {
-            // Parse JSON response
-            const result = JSON.parse(responseText) as { query: string; explanation: string; comments?: string };
+            // Extract and parse JSON payload. The model sometimes prepends narrative
+            // text before the JSON object, so use `extractJsonObject` to find the
+            // outermost valid JSON rather than calling JSON.parse on the raw text.
+            const jsonText = extractJsonObject(responseText);
+            if (!jsonText) {
+                void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
+                    ctx.errorHandling.suppressDisplay = true;
+                    ctx.telemetry.properties.reason = 'noJsonObject';
+                });
+                throw new Error(l10n.t('Invalid LLM response: could not parse JSON payload'));
+            }
+            const result = JSON.parse(jsonText) as { query: string; explanation: string; comments?: string };
             if (!result.query || typeof result.query !== 'string') {
                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
                     ctx.errorHandling.suppressDisplay = true;

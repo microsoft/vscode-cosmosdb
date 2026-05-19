@@ -25,7 +25,7 @@ import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallen
 import { ext } from '../../../extensionVariables';
 import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
-import { getAvailableLanguageModels } from '../../../utils/copilotUtils';
+import { getAvailableModelsInfo, getSelectedModel } from '../../../utils/aiUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { isSelectStar } from '../../../utils/queryAnalysis';
@@ -559,9 +559,8 @@ export const queryEditorRouterDef = queryEditorRouter({
             const token = ctx.state.generateQueryCancellation.token;
 
             try {
-                const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-                const models = await getAvailableLanguageModels(savedModelId ?? undefined);
-                if (models.length === 0) {
+                const model = await getSelectedModel().catch(() => undefined);
+                if (!model) {
                     throw new Error(l10n.t('No language models available. Please ensure you have access to Copilot.'));
                 }
 
@@ -572,8 +571,6 @@ export const queryEditorRouterDef = queryEditorRouter({
                     });
                     return { generatedQuery: false as const };
                 }
-
-                const model = models[0];
 
                 const service = CosmosDbOperationsService.getInstance();
                 const historyContext = ctx.state.connection
@@ -675,28 +672,19 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     getSelectedModelName: queryEditorProcedure.query(async () => {
         try {
-            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-            const models = await getAvailableLanguageModels(savedModelId ?? undefined);
-            const selectedModel = models.length > 0 ? models[0] : undefined;
-            return { modelName: selectedModel?.name ?? 'Copilot' };
+            const selectedModel = await getSelectedModel();
+            return { modelName: selectedModel.name };
         } catch {
             return { modelName: 'Copilot' };
         }
     }),
 
     getAvailableModels: queryEditorProcedure.query(async () => {
-        try {
-            const models = await getAvailableLanguageModels();
-            const savedModelId = ext.context.globalState.get<string>(SELECTED_MODEL_KEY);
-
-            const modelList = models
-                .filter((m) => m.name.toLowerCase() !== 'auto')
-                .map((m) => ({ id: m.id, name: m.name, family: m.family, vendor: m.vendor }));
-
-            return { models: modelList, savedModelId: savedModelId ?? null };
-        } catch {
-            return { models: [], savedModelId: null };
-        }
+        const { models, savedModelId } = await getAvailableModelsInfo();
+        return {
+            models: models.map((m) => ({ id: m.id, name: m.name, family: m.family, vendor: m.vendor })),
+            savedModelId,
+        };
     }),
 
     setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input }) => {
@@ -708,8 +696,7 @@ export const queryEditorRouterDef = queryEditorRouter({
             telCtx.telemetry.properties.modelId = input.modelId;
         });
 
-        const models = await getAvailableLanguageModels(input.modelId);
-        const selectedModel = models.length > 0 ? models[0] : undefined;
+        const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
         return { modelName: selectedModel?.name ?? 'Copilot' };
     }),
 

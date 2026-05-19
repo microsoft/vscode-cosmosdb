@@ -41,6 +41,7 @@ import {
 } from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { SchemaFileStorage } from './services/SchemaFileStorage';
 import { CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
@@ -49,6 +50,7 @@ import {
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
 import { areAIFeaturesEnabled, onCopilotAvailabilityChanged } from './utils/copilotUtils';
 import { globalUriHandler } from './vscodeUriHandler';
 
@@ -92,6 +94,7 @@ export async function activateInternal(
         ext.state = new TreeElementStateManager();
         ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
+        ext.migrationWorkspaceBranchDataProvider = new MigrationWorkspaceBranchDataProvider();
 
         ext.fileSystem = new DatabasesFileSystem();
 
@@ -109,6 +112,9 @@ export async function activateInternal(
 
         const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
         registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });
+
+        // Auto-detect migration projects in the workspace
+        void MigrationAssistantTab.promptToReopen();
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
@@ -132,6 +138,21 @@ export async function activateInternal(
         // The chat participant is always registered, but will show helpful error messages
         // if AI features are not available (Copilot not installed, not signed in, or disabled)
         CosmosDbOperationsService.initialize(context);
+
+        // Register the availability-change listener BEFORE the initial async check.
+        // This prevents a race where Copilot finishes initializing (fires
+        // onDidChangeChatModels) during the `await areAIFeaturesEnabled()` below —
+        // without the listener in place that event would be lost and
+        // `ext.isAIFeaturesEnabled` would stay `false` forever.
+        context.subscriptions.push(
+            onCopilotAvailabilityChanged((available) => {
+                ext.isAIFeaturesEnabled = available;
+                // Notify all open QueryEditorTabs about the change
+                void QueryEditorTab.notifyAIFeaturesChanged(available);
+                void MigrationAssistantTab.notifyAIFeaturesChanged(available);
+            }),
+        );
+
         ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
 
         // Always create the chat participant so users can see why it's not working
@@ -140,15 +161,6 @@ export async function activateInternal(
 
         // Register language model tools for the chat participant
         registerSampleDataTool(context);
-
-        // Listen for changes to extension availability (Copilot install/uninstall)
-        context.subscriptions.push(
-            onCopilotAvailabilityChanged((available) => {
-                ext.isAIFeaturesEnabled = available;
-                // Notify all open QueryEditorTabs about the change
-                void QueryEditorTab.notifyAIFeaturesChanged(available);
-            }),
-        );
 
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
@@ -192,6 +204,10 @@ export async function activateInternal(
             ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
                 WorkspaceResourceType.AttachedAccounts,
                 ext.cosmosDBWorkspaceBranchDataProvider,
+            );
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.Migrations,
+                ext.migrationWorkspaceBranchDataProvider,
             );
         },
     };

@@ -37,6 +37,9 @@ import { cosmosDBExecuteStoredProcedure } from './executeStoredProcedure/execute
 import { filterTreeItems } from './filterTreeItems/filterTreeItems';
 import { importDocuments } from './importDocuments/importDocuments';
 import { cosmosDBLoadMore } from './loadMore/loadMore';
+import { openExistingMigration } from './migration/openExistingMigration';
+import { openMigrationAssistant } from './migration/openMigrationAssistant';
+import { removeMigration } from './migration/removeMigration';
 import { newConnection } from './newConnection/newConnection';
 import { newEmulatorConnection } from './newEmulatorConnection/newEmulatorConnection';
 import { cosmosDBOpenItem } from './openDocument/openDocument';
@@ -81,6 +84,7 @@ export function registerCommands(): void {
 
     registerLLMAssetsCommands();
     registerChatButtonCommands();
+    registerMigrationCommands();
 }
 
 export function registerAccountCommands() {
@@ -207,4 +211,10 @@ export function registerChatButtonCommands() {
             });
         }),
     );
+}
+
+export function registerMigrationCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.open', openMigrationAssistant);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.openExisting', openExistingMigration);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.remove', removeMigration);
 }

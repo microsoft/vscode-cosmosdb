@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import {
     areAIFeaturesEnabled,
     areCopilotModelsAvailable,
-    getAvailableLanguageModels,
     isAIFeaturesDisabledBySetting,
     isCopilotChatExtensionInstalled,
 } from './copilotUtils';
@@ -104,9 +103,19 @@ describe('copilotUtils', () => {
     });
 
     describe('areAIFeaturesEnabled', () => {
-        it('returns true when setting is not disabled, Chat extension is installed, and models are available', async () => {
+        it('returns true when setting is not disabled and models are available', async () => {
             mockConfigGet.mockReturnValue(false); // AI features not disabled
             (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
+            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
+
+            await expect(areAIFeaturesEnabled()).resolves.toBe(true);
+        });
+
+        it('returns true when models are available even if Chat extension is not detectable', async () => {
+            // Copilot may be bundled with VS Code and not detectable via getExtension();
+            // model availability alone is sufficient to consider AI features enabled.
+            mockConfigGet.mockReturnValue(false);
+            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(true);
@@ -120,18 +129,10 @@ describe('copilotUtils', () => {
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });
 
-        it('returns false when Chat extension is installed but no models available', async () => {
+        it('returns false when no models are available', async () => {
             mockConfigGet.mockReturnValue(false);
             (vscode.extensions.getExtension as Mock).mockReturnValue({ id: 'GitHub.copilot-chat' });
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
-
-            await expect(areAIFeaturesEnabled()).resolves.toBe(false);
-        });
-
-        it('returns false when Chat extension is not installed', async () => {
-            mockConfigGet.mockReturnValue(false);
-            (vscode.extensions.getExtension as Mock).mockReturnValue(undefined);
-            (vscode.lm.selectChatModels as Mock).mockResolvedValue([{ id: 'model1' }]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
         });
@@ -142,55 +143,6 @@ describe('copilotUtils', () => {
             (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
 
             await expect(areAIFeaturesEnabled()).resolves.toBe(false);
-        });
-    });
-
-    describe('getAvailableLanguageModels', () => {
-        it('filters models with vendor copilot by default', async () => {
-            const mockModels = [{ id: 'model1', name: 'Model 1' }];
-            (vscode.lm.selectChatModels as Mock).mockResolvedValue(mockModels);
-
-            const result = await getAvailableLanguageModels();
-            expect(result).toEqual(mockModels);
-            expect(vscode.lm.selectChatModels).toHaveBeenCalledWith({ vendor: 'copilot' });
-        });
-
-        it('returns empty array when no models are available', async () => {
-            (vscode.lm.selectChatModels as Mock).mockResolvedValue([]);
-
-            const result = await getAvailableLanguageModels();
-            expect(result).toEqual([]);
-        });
-
-        it('moves preferred model to front when found', async () => {
-            const model1 = { id: 'model1', name: 'Model 1' };
-            const model2 = { id: 'model2', name: 'Model 2' };
-            const model3 = { id: 'model3', name: 'Model 3' };
-            (vscode.lm.selectChatModels as Mock).mockResolvedValue([model1, model2, model3]);
-
-            const result = await getAvailableLanguageModels('model3');
-            expect(result[0]).toBe(model3);
-            expect(result).toHaveLength(3);
-        });
-
-        it('keeps original order when preferred model is already first', async () => {
-            const model1 = { id: 'model1', name: 'Model 1' };
-            const model2 = { id: 'model2', name: 'Model 2' };
-            (vscode.lm.selectChatModels as Mock).mockResolvedValue([model1, model2]);
-
-            const result = await getAvailableLanguageModels('model1');
-            expect(result[0]).toBe(model1);
-            expect(result).toHaveLength(2);
-        });
-
-        it('ignores invalid preferred model and returns default order', async () => {
-            const model1 = { id: 'model1', name: 'Model 1' };
-            const model2 = { id: 'model2', name: 'Model 2' };
-            (vscode.lm.selectChatModels as Mock).mockResolvedValue([model1, model2]);
-
-            const result = await getAvailableLanguageModels('nonexistent');
-            expect(result[0]).toBe(model1);
-            expect(result).toHaveLength(2);
         });
     });
 });

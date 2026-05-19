@@ -46,7 +46,8 @@
     "onUri",
     "onLanguage:nosql",
     "onChatParticipant:cosmosdb",
-    "onLanguageModelTool:cosmosdb_sampleContainerSchema"
+    "onLanguageModelTool:cosmosdb_sampleContainerSchema",
+    "workspaceContains:.cosmosdb-migration"
   ],
   "scripts": {
     "build": "concurrently -n tsc,vitest,test -c cyan,magenta,yellow \"tsc --noEmit\" \"tsc -p tsconfig.vitest.json --noEmit\" \"tsc -p tsconfig.test.json --noEmit\"",
@@ -155,7 +156,9 @@
     "@trpc/client": "~11.17.0",
     "@trpc/server": "~11.17.0",
     "@vscode/l10n": "~0.0.18",
+    "@vscode/prompt-tsx": "^0.4.0-alpha.7",
     "allotment": "~1.20.4",
+    "denque": "^2.1.0",
     "es-toolkit": "~1.46.0",
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
@@ -499,6 +502,22 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.deleteAllSavedSchemas",
         "title": "%cosmosdb.command.schema.delete_all%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.migration.open",
+        "title": "%cosmosdb.command.migration.open%",
+        "icon": "$(add)"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.migration.openExisting",
+        "title": "%cosmosdb.command.migration.openExisting%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.migration.remove",
+        "title": "%cosmosdb.command.migration.remove%"
       }
     ],
     "submenus": [
@@ -730,12 +749,33 @@
           "command": "azureDatabases.refresh",
           "when": "view =~ /azure(ResourceGroups|Workspace|FocusView)/ && viewItem =~ /treeitem[.]document(?![a-z.\\/])/i && viewItem =~ /experience[.](core)/i",
           "group": "2@1"
+        },
+        {
+          "//": "[Migration] Remove migration",
+          "command": "cosmosDB.migration.remove",
+          "when": "view =~ /azureWorkspace/ && viewItem =~ /treeitem[.]migration(?![a-z.\\/])/i",
+          "group": "1@1"
         }
       ],
       "explorer/context": [
         {
           "command": "cosmosDB.importDocument",
           "when": "resourceLangId == json"
+        },
+        {
+          "command": "cosmosDB.migration.openExisting",
+          "when": "explorerResourceIsFolder && resourceFilename == .cosmosdb-migration",
+          "group": "navigation"
+        },
+        {
+          "command": "cosmosDB.migration.openExisting",
+          "when": "explorerResourceIsFolder && resourceDirname =~ /\\.cosmosdb-migration$/",
+          "group": "navigation"
+        },
+        {
+          "command": "cosmosDB.migration.openExisting",
+          "when": "resourceFilename == project.json && resourceDirname =~ /\\.cosmosdb-migration$/",
+          "group": "navigation"
         }
       ],
       "commandPalette": [
@@ -749,6 +789,14 @@
         },
         {
           "command": "azureDatabases.update",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.migration.openExisting",
+          "when": "never"
+        },
+        {
+          "command": "cosmosDB.migration.remove",
           "when": "never"
         }
       ]
@@ -856,6 +904,14 @@
             "type": "boolean",
             "default": false,
             "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
+          },
+          "cosmosDB.experimental.migration.showTokenEstimate": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "%cosmosdb.configuration.experimental.migration.showTokenEstimate%",
+            "tags": [
+              "experimental"
+            ]
           }
         }
       },

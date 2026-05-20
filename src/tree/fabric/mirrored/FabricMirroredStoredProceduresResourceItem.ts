@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
 import { type StoredProcedureResource } from '../../cosmosdb/models/CosmosDBTypes';
 import { type TreeElement } from '../../TreeElement';

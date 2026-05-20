@@ -66,6 +66,7 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
         databaseId: string,
         definition: ContainerDefinition,
         throughput?: number,
+        maxThroughput?: number,
     ): Promise<ContainerResource> {
         const options: RequestOptions = {};
         if (throughput && throughput !== 0) {
@@ -88,6 +89,10 @@ export class CosmosDBSdkControlPlane implements CosmosDBControlPlane {
             id: definition.id!,
             partitionKey: partitionKeyDefinition,
         };
+
+        if (maxThroughput && maxThroughput > 0) {
+            containerDefinition.maxThroughput = maxThroughput;
+        }
 
         return this.withClient(async (client) => {
             const response = await client.database(databaseId).containers.create(containerDefinition, options);

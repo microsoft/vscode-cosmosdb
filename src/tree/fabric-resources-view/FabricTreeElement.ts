@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type FabricTreeNode } from '@microsoft/vscode-fabric-api';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { isTreeElement, type TreeElement } from '../TreeElement';
 
 export interface FabricTreeElement extends vscode.TreeItem {

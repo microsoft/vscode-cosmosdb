@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { FabricTreeNode } from '@microsoft/vscode-fabric-api';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { TreeItemCollapsibleState } from 'vscode';
-import { type TreeElement } from '../../TreeElement';
 import { type FabricTreeElement } from '../../fabric-resources-view/FabricTreeElement';
 import { bindTreeElement } from '../../mixins/toTreeItem';
+import { type TreeElement } from '../../TreeElement';
 
 /**
  * This Proxy acquire the TreeElement properties and methods, and implement the FabricTreeNode interface to be used in the fabric tree view.

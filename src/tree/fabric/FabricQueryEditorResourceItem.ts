@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
 import { CosmosDBQueryEditorResourceItem } from '../cosmosdb/CosmosDBQueryEditorResourceItem';
 import { type FabricQueryEditorModel } from './models/FabricQueryEditorModel';

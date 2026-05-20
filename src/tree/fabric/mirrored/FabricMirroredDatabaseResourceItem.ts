@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ContainerResponse, type CosmosClient } from '@azure/cosmos';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
 import { type ContainerResource } from '../../cosmosdb/models/CosmosDBTypes';
 import { type TreeElement } from '../../TreeElement';

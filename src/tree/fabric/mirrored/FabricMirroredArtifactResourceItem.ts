@@ -5,7 +5,7 @@
 
 import { type CosmosClient } from '@azure/cosmos';
 import * as l10n from '@vscode/l10n';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
 import { type ArtifactConnectionInfo } from '../../../services/FabricService';
 import { type AccountInfo } from '../../cosmosdb/AccountInfo';

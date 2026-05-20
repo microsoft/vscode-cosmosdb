@@ -14,8 +14,8 @@ export async function sortTreeItems(context: IActionContext, node?: TreeElement 
     const element: TreeElement | undefined = isFabricTreeElement(node)
         ? node.element
         : isTreeElement(node)
-            ? node
-            : undefined;
+          ? node
+          : undefined;
 
     if (!element) {
         return;

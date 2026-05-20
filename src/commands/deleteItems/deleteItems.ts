@@ -9,11 +9,11 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
+import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
 import { isTreeElementWithContextValue } from '../../tree/TreeElementWithContextValue';
 import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
-import { type CosmosDBItemResourceItem } from '../../tree/cosmosdb/CosmosDBItemResourceItem';
-import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { getConfirmationAsInSettings } from '../../utils/dialogs/getConfirmation';
 import { showConfirmationAsInSettings } from '../../utils/dialogs/showConfirmation';
 import { extractPartitionKey } from '../../utils/document';
@@ -26,8 +26,8 @@ export async function cosmosDBDeleteItem(
     const element: TreeElement | undefined = isFabricTreeElement(node)
         ? node?.element
         : isTreeElement(node)
-            ? node
-            : await pickAppResource<CosmosDBItemResourceItem>(context, {
+          ? node
+          : await pickAppResource<CosmosDBItemResourceItem>(context, {
                 type: [AzExtResourceType.AzureCosmosDb],
                 expectedChildContextValue: ['treeItem.item'],
             });

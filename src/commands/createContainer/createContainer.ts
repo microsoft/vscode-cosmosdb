@@ -6,7 +6,6 @@
 import { AzureWizard, nonNullValue, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { API } from '../../AzureDBExperiences';
 import { type CosmosDBDatabaseResourceItem } from '../../tree/cosmosdb/CosmosDBDatabaseResourceItem';
 import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
@@ -49,14 +48,7 @@ export async function cosmosDBCreateContainer(
     const dbNode = element as CosmosDBDatabaseResourceItem;
 
     context.telemetry.properties.experience = dbNode.experience.api;
-
-    const isCore = dbNode.experience.api === API.Core;
-    const isFabric = dbNode.experience.api === API.FabricNative || dbNode.experience.api === API.FabricMirrored;
-    const isFabricNative = dbNode.experience.api === API.FabricNative;
-    const isServerless = dbNode.model.accountInfo.isServerless;
-    const isSupportHierarchicalPartitionKey = isCore || isFabric;
-
-    context.telemetry.properties.isServerless = isServerless?.toString();
+    context.telemetry.properties.isServerless = dbNode.model.accountInfo.isServerless?.toString();
     context.telemetry.properties.isEmulator = dbNode.model.accountInfo.isEmulator?.toString();
 
     const wizardContext: CreateContainerWizardContext = {
@@ -65,7 +57,8 @@ export async function cosmosDBCreateContainer(
         databaseId: dbNode.model.database.id,
         experience: element.experience,
         nodeId: element.id,
-        throughput: isServerless ? 0 : undefined,
+        throughput: undefined,
+        maxThroughput: undefined,
     };
 
     const wizard = new AzureWizard(wizardContext, {
@@ -73,9 +66,9 @@ export async function cosmosDBCreateContainer(
         promptSteps: [
             new CosmosDBContainerNameStep(),
             new CosmosDBPartitionKeyStep('first'),
-            isSupportHierarchicalPartitionKey ? new CosmosDBPartitionKeyStep('second') : undefined,
-            isSupportHierarchicalPartitionKey ? new CosmosDBPartitionKeyStep('third') : undefined,
-            isServerless || isFabricNative ? undefined : new CosmosDBThroughputStep(),
+            new CosmosDBPartitionKeyStep('second'),
+            new CosmosDBPartitionKeyStep('third'),
+            new CosmosDBThroughputStep(),
         ].filter((s) => !!s),
         executeSteps: [new CosmosDBExecuteStep()],
         showLoadingPrompt: true,

@@ -11,7 +11,7 @@ import {
     type IWorkspace,
 } from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
-import vscode from 'vscode';
+import * as vscode from 'vscode';
 import { type FabricArtifactType } from '../constants';
 import { parseCosmosDBConnectionString } from '../cosmosdb/cosmosDBConnectionStrings';
 import { getCosmosDBCredentials } from '../cosmosdb/CosmosDBCredential';
@@ -242,7 +242,7 @@ class FabricServiceImpl implements IFabricService {
             // FIXME: using private service
             tenantId =
                 // @ts-expect-error Using private method
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+                // oxlint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
                 ((await ext.fabricServices.apiClient.auth.getCurrentTenant())?.tenantId as string) || undefined;
         }
 
@@ -264,13 +264,13 @@ class FabricServiceImpl implements IFabricService {
         };
     }
 
-    protected async getCredentialType(artifact: CosmosDBArtifact): Promise<CosmosDbArtifactType> | never {
+    protected getCredentialType(artifact: CosmosDBArtifact): Promise<CosmosDbArtifactType> | never {
         if (!ext.fabricServices) {
             throw new Error(l10n.t('Fabric Service is not initialized'));
         }
 
         if (artifact.type === 'CosmosDBDatabase') {
-            return 'NATIVE';
+            return Promise.resolve('NATIVE');
         }
 
         // TODO: Fabric web page has internal url to figure out what type of credential it is,
@@ -278,6 +278,7 @@ class FabricServiceImpl implements IFabricService {
         if (artifact.type === 'MirroredDatabase') {
             const credentialType: string = 'OAuth2';
             // This code uses internal powerbi API endpoint what requires "user_impersonation" scope
+
             // const connectionId =
             //     ((artifact.extendedProperties ?? {}) as ExtendedProperties)?.connectionId;
             // const pathTemplate = `/v1/connections/${connectionId}`;
@@ -300,14 +301,17 @@ class FabricServiceImpl implements IFabricService {
             //     );
             // }
             //
-            // // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+            // // oxlint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
             // const credentialType = response.parsedBody?.credentialDetails?.credentialType;
 
-            return credentialType === 'Key'
-                ? 'MIRRORED_KEY'
-                : credentialType === 'OAuth2'
-                  ? 'MIRRORED_AAD'
-                  : 'MIRRORED_AAD';
+            const result =
+                credentialType === 'Key'
+                    ? 'MIRRORED_KEY'
+                    : credentialType === 'OAuth2'
+                      ? 'MIRRORED_AAD'
+                      : 'MIRRORED_AAD';
+
+            return Promise.resolve(result);
         }
 
         throw new Error(
@@ -321,7 +325,7 @@ class FabricServiceImpl implements IFabricService {
      * @param response The result of a failed API call
      */
     protected formatErrorResponse(operation: string, response: IApiClientResponse): string {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access
+        // oxlint-disable-next-line typescript/no-unsafe-assignment, typescript/no-unsafe-member-access
         const msg = response.parsedBody?.message ?? response.parsedBody?.errorCode ?? response.status;
         // Only include status in the message if it's not already the fallback
         return typeof msg === 'number' ? `${operation} (${msg})` : `${operation} (${response.status}): ${msg}`;

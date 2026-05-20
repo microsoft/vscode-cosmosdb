@@ -5,9 +5,12 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
-import { API } from '../../AzureDBExperiences';
 import * as l10n from '@vscode/l10n';
-import { isNoSqlQueryConnection, createNoSqlQueryConnection, type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import {
+    isNoSqlQueryConnection,
+    createNoSqlQueryConnection,
+    type NoSqlQueryConnection,
+} from '../../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
@@ -19,7 +22,7 @@ import { pickAppResource } from '../../utils/pickItem/pickAppResource';
 
 export async function openNoSqlQueryEditor(
     context: IActionContext,
-    nodeOrConnection?: TreeElement | FabricTreeElement | NoSqlQueryConnection, //CosmosDBContainerResourceItem | CosmosDBItemsResourceItem,
+    nodeOrConnection?: TreeElement | FabricTreeElement | NoSqlQueryConnection,
 ): Promise<void> {
     let connection: NoSqlQueryConnection;
 
@@ -30,8 +33,8 @@ export async function openNoSqlQueryEditor(
         const element: TreeElement | undefined = isFabricTreeElement(nodeOrConnection)
             ? nodeOrConnection.element
             : isTreeElement(nodeOrConnection)
-                ? nodeOrConnection
-                : await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
+              ? nodeOrConnection
+              : await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
                     type: AzExtResourceType.AzureCosmosDb,
                     expectedChildContextValue: ['treeItem.container'],
                 });
@@ -53,7 +56,7 @@ export async function openNoSqlQueryEditor(
             throw new Error(l10n.t('The selected item is not a Cosmos DB container.'));
         }
 
-        connection = createNoSqlQueryConnection(element  as CosmosDBContainerResourceItem);
+        connection = createNoSqlQueryConnection(element as CosmosDBContainerResourceItem);
     }
 
     if (!connection) {

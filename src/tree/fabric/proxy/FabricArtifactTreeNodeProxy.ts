@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ArtifactTreeNode, type FabricTreeNode } from '@microsoft/vscode-fabric-api';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { type FabricTreeElement } from '../../fabric-resources-view/FabricTreeElement';
 import { bindTreeElement } from '../../mixins/toTreeItem';
 import { type TreeElement } from '../../TreeElement';

@@ -33,6 +33,7 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
+import { type FabricArtifactType } from './constants';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import {
@@ -115,7 +116,6 @@ export async function activateInternal(
 
         context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
 
-        // Register common commands
         registerCommands();
 
         const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });

@@ -137,8 +137,8 @@ export function toTreeItem<T extends object>(toObj: T, fromTreeItem: vscode.Tree
         },
         set(target, prop, value, receiver) {
             if (treeItemPropertyKeys.has(prop as keyof vscode.TreeItem)) {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-                target[treeItemSymbol][prop as keyof vscode.TreeItem] = value as any;
+                // oxlint-disable-next-line typescript/no-unsafe-assignment
+                target[treeItemSymbol][prop as keyof vscode.TreeItem] = value;
                 return true;
             }
             return Reflect.set(target, prop, value, receiver);

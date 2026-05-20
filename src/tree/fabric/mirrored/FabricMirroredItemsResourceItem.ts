@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition } from '@azure/cosmos';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
 import { type TreeElement } from '../../TreeElement';
 import { FabricItemsResourceItem } from '../FabricItemsResourceItem';

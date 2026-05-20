@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type ArtifactTreeNode, type IArtifact, type IFabricTreeNodeProvider } from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
-import type vscode from 'vscode';
+import type * as vscode from 'vscode';
 import { FabricMirroredExperience, FabricNativeExperience } from '../../AzureDBExperiences';
 import { type FabricArtifactType } from '../../constants';
 import { nonNullProp } from '../../utils/nonNull';
@@ -36,7 +36,7 @@ export class FabricTreeNodeProvider
         const treeElement = makeFilterable(makeSortable(await this.getResourceItem(fabricArtifact)));
         const fabricNode = new FabricArtifactTreeNodeProxy(this.context, fabricArtifact, treeElement);
 
-        return await bindTreeElement(fabricNode, treeElement);
+        return bindTreeElement(fabricNode, treeElement);
     }
 
     protected get providerName(): string {

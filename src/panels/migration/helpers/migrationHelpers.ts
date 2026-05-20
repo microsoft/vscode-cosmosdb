@@ -49,10 +49,15 @@ export async function saveAnalysisFile(domainOutputPath: string, fileName: strin
 // ─── Model Cleanup ──────────────────────────────────────────────────
 
 /**
- * Returns a deep-cloned copy of the model with `candidates` and `analysis`
- * stripped from each `PartitionKeyConfig`. The saved model.json should
- * contain only the final partition key `path` — candidate evaluation
- * details belong in summary.md.
+ * Returns a deep-cloned copy of the model with prose fields stripped from
+ * the JSON so the saved model.json stays a pure structural artifact:
+ *  - `candidates` and `analysis` are removed from each `PartitionKeyConfig`.
+ *  - `rationale` and `score` are removed from each `EntityRelationship`.
+ *
+ * Free-form rationale for partition-key and embed/reference decisions
+ * belongs in summary.md, not in the model JSON. The model may still emit
+ * these fields (legacy prompts or LLM drift); this strip guarantees the
+ * saved JSON is clean regardless.
  *
  * Does NOT mutate the original model.
  */
@@ -62,6 +67,10 @@ export function stripPartitionKeyCandidates(model: CosmosModel): CosmosModel {
         containers: model.containers.map((container) => ({
             ...container,
             partitionKeys: container.partitionKeys?.map(({ path }) => ({ path })),
+            entities: container.entities.map((entity) => ({
+                ...entity,
+                relationships: entity.relationships?.map(({ rationale: _r, score: _s, ...rest }) => rest),
+            })),
         })),
     };
 }

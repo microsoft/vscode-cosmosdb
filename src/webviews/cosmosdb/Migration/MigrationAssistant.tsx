@@ -55,12 +55,14 @@ import {
     WarningRegular,
 } from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import { type MigrationAppRouter } from '../../../panels/trpc/appRouter';
 import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../../utils/cosmosDBAccountName';
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
 import { useTrpcClient } from '../../api/trpc/useTrpcClient';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
+import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
+import { ErrorBoundary } from '../../utils/ErrorBoundary';
 import { MigrationChannel } from './state/MigrationChannel';
 import {
     useMigrationDispatch,
@@ -69,6 +71,9 @@ import {
     type ModelInfo,
     type PhaseState,
 } from './state/MigrationContext';
+
+const tooltipParagraphStyle = { margin: '0 0 8px 0' };
+const tooltipParagraphLastStyle = { margin: 0 };
 
 const useStyles = makeStyles({
     root: {
@@ -113,6 +118,7 @@ const useStyles = makeStyles({
         gap: '24px',
         flexWrap: 'wrap',
         alignItems: 'flex-start',
+        containerType: 'inline-size',
     },
     analysisPanel: {
         flex: '1 1 280px',
@@ -120,13 +126,23 @@ const useStyles = makeStyles({
     },
     filePickerGrid: {
         display: 'grid',
-        gridTemplateColumns: 'max-content max-content max-content',
+        // Trailing 1fr track absorbs any extra width so the spanning expander row stretches with the grid.
+        gridTemplateColumns: 'max-content max-content max-content max-content 1fr',
         gap: '6px 8px',
         alignItems: 'center',
         flex: '0 0 auto',
+        // When the analysis panel wraps below, give the grid the full container width so expanders fill the row.
+        '@container (max-width: 720px)': {
+            flex: '1 1 100%',
+        },
     },
     filePickerExpanderRow: {
         gridColumn: '1 / -1',
+        paddingLeft: '12px',
+        // `contain: inline-size` stops the (potentially long) file paths from contributing to the grid's column track widths; the row sizes to the grid instead and the paths ellipsize.
+        contain: 'inline-size',
+        minWidth: 0,
+        overflow: 'hidden',
     },
     fileList: {
         display: 'flex',
@@ -154,9 +170,11 @@ const useStyles = makeStyles({
         whiteSpace: 'nowrap',
         minWidth: 0,
         flex: '0 1 auto',
-        // Render the directory portion right-to-left so overflow ellipsis appears
-        // on the left, keeping the path tail (next to the file name) visible.
-        direction: 'rtl',
+    },
+    filePathDirTail: {
+        color: 'var(--vscode-descriptionForeground)',
+        whiteSpace: 'nowrap',
+        flex: '0 0 auto',
     },
     filePathName: {
         flex: '0 0 auto',
@@ -175,6 +193,12 @@ const useStyles = makeStyles({
     },
     fileRemoveButton: {
         minWidth: 'auto',
+    },
+    fileRemoveButtonPlaceholder: {
+        // Match the icon-only small Button footprint so protected rows stay aligned with removable rows.
+        width: '24px',
+        height: '24px',
+        flex: '0 0 auto',
     },
     fileExpander: {
         display: 'flex',
@@ -402,15 +426,36 @@ function FileListExpander({
     const renderPath = (absolutePath: string, extraClass?: string) => {
         const { dir, name } = splitPath(absolutePath);
         const cleanName = name.startsWith('/') ? name.slice(1) : name;
+        const fullRelative = dir ? `${dir}/${cleanName}` : cleanName;
+        // Split the directory so the deepest folder always stays visible next to the file name
+        // while earlier segments ellipsize at the end (effectively a middle ellipsis on the full path).
+        let dirHead = '';
+        let dirTail = '';
+        if (dir) {
+            const lastSep = dir.lastIndexOf('/');
+            if (lastSep < 0) {
+                dirTail = dir;
+            } else {
+                dirHead = dir.slice(0, lastSep);
+                dirTail = dir.slice(lastSep);
+            }
+        }
         return (
             <>
-                {dir && (
-                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={dir}>
-                        {/* LRM keeps the LTR rendering for ASCII paths inside the RTL container. */}
-                        {'\u200E' + dir}
+                {dirHead && (
+                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
+                        {dirHead}
                     </span>
                 )}
-                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={cleanName}>
+                {dirTail && (
+                    <span
+                        className={`${styles.filePathDirTail}${extraClass ? ' ' + extraClass : ''}`}
+                        title={fullRelative}
+                    >
+                        {dirTail}
+                    </span>
+                )}
+                <span className={`${styles.filePathName}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
                     {name}
                 </span>
             </>
@@ -446,7 +491,7 @@ function FileListExpander({
                                 <Link className={styles.fileLink} onClick={() => onOpenFile(f)}>
                                     {renderPath(f)}
                                 </Link>
-                                {name !== protectedFileName && (
+                                {name !== protectedFileName ? (
                                     <Tooltip content={l10n.t('Remove file')} relationship="label" withArrow>
                                         <Button
                                             appearance="subtle"
@@ -460,6 +505,8 @@ function FileListExpander({
                                             }}
                                         />
                                     </Tooltip>
+                                ) : (
+                                    <span className={styles.fileRemoveButtonPlaceholder} aria-hidden="true" />
                                 )}
                             </div>
                         );
@@ -501,12 +548,13 @@ function InfoTooltipIcon({
     ariaLabel,
     styles,
 }: {
-    content: string;
+    content: ReactNode;
     ariaLabel: string;
     styles: ReturnType<typeof useStyles>;
 }) {
+    const contentSlot = useMemo(() => ({ children: content }), [content]);
     return (
-        <Tooltip content={content} relationship="description" withArrow>
+        <Tooltip content={contentSlot} relationship="description" withArrow>
             <button type="button" aria-label={ariaLabel} className={styles.infoIcon}>
                 <InfoRegular />
             </button>
@@ -677,6 +725,7 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     );
     const handleAnalyzeVolumetrics = useCallback(() => sendCommand('analyzeVolumetrics'), [sendCommand]);
     const handleAnalyzeAccessPatterns = useCallback(() => sendCommand('analyzeAccessPatterns'), [sendCommand]);
+    const handleAnalyzeDatabaseSchema = useCallback(() => sendCommand('analyzeDatabaseSchema'), [sendCommand]);
 
     const handleAnalyze = useCallback(() => sendCommand('analyzeApplication'), [sendCommand]);
     const handleCancelAnalysis = useCallback(() => sendCommand('cancelAnalysis'), [sendCommand]);
@@ -859,6 +908,22 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
     const handleRemoveFromGitignore = useCallback(() => sendCommand('removeFromGitignore'), [sendCommand]);
 
     const handleOpenFile = useCallback((filePath: string) => sendCommand('openFile', filePath), [sendCommand]);
+    const handleRevealInExplorer = useCallback(
+        (filePath: string) => sendCommand('revealInExplorer', filePath),
+        [sendCommand],
+    );
+    const handleRevealSchemaFolder = useCallback(
+        () => handleRevealInExplorer(`${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/schema-ddl`),
+        [handleRevealInExplorer, state.workspacePath],
+    );
+    const handleRevealVolumetricsFolder = useCallback(
+        () => handleRevealInExplorer(`${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/volumetrics`),
+        [handleRevealInExplorer, state.workspacePath],
+    );
+    const handleRevealAccessPatternsFolder = useCallback(
+        () => handleRevealInExplorer(`${state.workspacePath}/.cosmosdb-migration/phases/1-discovery/access-patterns`),
+        [handleRevealInExplorer, state.workspacePath],
+    );
     const handleRemoveSchemaFile = useCallback(
         (filePath: string) => sendCommand('removeDiscoveryFile', 'schema-ddl', filePath),
         [sendCommand],
@@ -1058,12 +1123,30 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                     <div className={styles.filePickerGrid}>
                         {/* Schema Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Database Schema Files')}{' '}
+                            {l10n.t('Database Schema Files:')}{' '}
                             <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                             <InfoTooltipIcon
-                                content={l10n.t(
-                                    'Supported: .sql, .json, .xml, .csv, .log, .out — You can also copy files manually into the schema-ddl/ folder inside .cosmosdb-migration.',
-                                )}
+                                content={
+                                    <>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Provide the source database schema as one or more DDL/structure files. Supported file types: .sql, .json, .xml, .csv, .log, .out.',
+                                            )}
+                                        </p>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
+                                            )}
+                                            <Link onClick={handleRevealSchemaFolder}>schema-ddl/</Link>
+                                            {l10n.t(' folder inside .cosmosdb-migration.')}
+                                        </p>
+                                        <p style={tooltipParagraphLastStyle}>
+                                            {l10n.t(
+                                                "If you don't have a schema file at hand, use the AI button (sparkle icon) to reverse-engineer the schema from your workspace code: it scans entity definitions, ORM mappings, repositories, and raw SQL, then writes one consolidated .sql file per discovered domain into the schema-ddl/ folder.",
+                                            )}
+                                        </p>
+                                    </>
+                                }
                                 ariaLabel={l10n.t('Database schema files help')}
                                 styles={styles}
                             />
@@ -1074,14 +1157,55 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button appearance="secondary" size="small" onClick={handleSelectSchemaFolder}>
                             {l10n.t('Select Folder…')}
                         </Button>
+                        <Tooltip
+                            content={l10n.t('Generate schema files from workspace code using AI')}
+                            relationship="label"
+                            withArrow
+                        >
+                            <Button
+                                appearance="primary"
+                                size="small"
+                                icon={<SparkleRegular />}
+                                onClick={handleAnalyzeDatabaseSchema}
+                            />
+                        </Tooltip>
+                        <div className={styles.filePickerExpanderRow}>
+                            <FileListExpander
+                                files={state.schemaFiles}
+                                excludedFiles={state.excludedSchemaFiles}
+                                workspacePath={state.workspacePath}
+                                onOpenFile={handleOpenFile}
+                                onRemoveFile={handleRemoveSchemaFile}
+                                onRestoreFile={handleRestoreSchemaFile}
+                                styles={styles}
+                            />
+                        </div>
 
                         {/* Volumetric Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Volumetrics')}
+                            {l10n.t('Volumetrics:')}
                             <InfoTooltipIcon
-                                content={l10n.t(
-                                    'Query logs, AWR reports: .txt, .csv, .json, .html, .xls — You can also copy files manually into the volumetrics/ folder inside .cosmosdb-migration.',
-                                )}
+                                content={
+                                    <>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Provide quantitative data about your database: row counts, table sizes, read/write ratios, hot collections, and query frequencies. Accepted file types: .txt, .csv, .json, .html, .xls (typical sources include query logs and AWR reports).',
+                                            )}
+                                        </p>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
+                                            )}
+                                            <Link onClick={handleRevealVolumetricsFolder}>volumetrics/</Link>
+                                            {l10n.t(' folder inside .cosmosdb-migration.')}
+                                        </p>
+                                        <p style={tooltipParagraphLastStyle}>
+                                            {l10n.t(
+                                                'No raw data? Open the volumetrics template and fill it in by hand, or use the AI button (sparkle icon) to populate it from your workspace code and existing schema files.',
+                                            )}
+                                        </p>
+                                    </>
+                                }
                                 ariaLabel={l10n.t('Volumetrics help')}
                                 styles={styles}
                             />
@@ -1092,38 +1216,64 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button appearance="secondary" size="small" onClick={handleSelectVolumetricFolder}>
                             {l10n.t('Select Folder…')}
                         </Button>
-                        <div
-                            style={{
-                                gridColumn: '2 / -1',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                            }}
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            onClick={handleOpenVolumetricsTemplate}
+                            style={{ gridColumn: '2 / span 2' }}
                         >
-                            <Button appearance="secondary" size="small" onClick={handleOpenVolumetricsTemplate}>
-                                {l10n.t('Open Volumetrics Template')}
-                            </Button>
-                            <Tooltip
-                                content={l10n.t('Update volumetrics template using AI')}
-                                relationship="label"
-                                withArrow
-                            >
-                                <Button
-                                    appearance="primary"
-                                    size="small"
-                                    icon={<SparkleRegular />}
-                                    onClick={handleAnalyzeVolumetrics}
-                                />
-                            </Tooltip>
+                            {l10n.t('Open Volumetrics Template')}
+                        </Button>
+                        <Tooltip
+                            content={l10n.t('Update volumetrics template using AI')}
+                            relationship="label"
+                            withArrow
+                        >
+                            <Button
+                                appearance="primary"
+                                size="small"
+                                icon={<SparkleRegular />}
+                                onClick={handleAnalyzeVolumetrics}
+                            />
+                        </Tooltip>
+                        <div className={styles.filePickerExpanderRow}>
+                            <FileListExpander
+                                files={state.volumetricFiles}
+                                excludedFiles={state.excludedVolumetricFiles}
+                                workspacePath={state.workspacePath}
+                                onOpenFile={handleOpenFile}
+                                onRemoveFile={handleRemoveVolumetricFile}
+                                onRestoreFile={handleRestoreVolumetricFile}
+                                protectedFileName="volumetrics.md"
+                                styles={styles}
+                            />
                         </div>
 
                         {/* Access Pattern Files */}
                         <Text weight="semibold" size={200}>
-                            {l10n.t('Access Patterns')}
+                            {l10n.t('Access Patterns:')}
                             <InfoTooltipIcon
-                                content={l10n.t(
-                                    'Accepts .md files describing access patterns — You can also copy files manually into the access-patterns/ folder inside .cosmosdb-migration.',
-                                )}
+                                content={
+                                    <>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Describe how the application reads and writes data: top queries, joins, filters, sort orders, and any latency or throughput requirements. Accepted file type: .md (one or more Markdown files).',
+                                            )}
+                                        </p>
+                                        <p style={tooltipParagraphStyle}>
+                                            {l10n.t(
+                                                'Use "Select Files…" or "Select Folder…" to add them, or copy them manually into the ',
+                                            )}
+                                            <Link onClick={handleRevealAccessPatternsFolder}>access-patterns/</Link>
+                                            {l10n.t(' folder inside .cosmosdb-migration.')}
+                                        </p>
+                                        <p style={tooltipParagraphLastStyle}>
+                                            {l10n.t(
+                                                'Not sure where to start? Open the access-patterns template and fill it in by hand, or use the AI button (sparkle icon) to derive patterns from your workspace code — repositories, query builders, and raw SQL.',
+                                            )}
+                                        </p>
+                                    </>
+                                }
                                 ariaLabel={l10n.t('Access patterns help')}
                                 styles={styles}
                             />
@@ -1134,29 +1284,37 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                         <Button appearance="secondary" size="small" onClick={handleSelectAccessPatternFolder}>
                             {l10n.t('Select Folder…')}
                         </Button>
-                        <div
-                            style={{
-                                gridColumn: '2 / -1',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                            }}
+                        <Button
+                            appearance="secondary"
+                            size="small"
+                            onClick={handleOpenAccessPatternsTemplate}
+                            style={{ gridColumn: '2 / span 2' }}
                         >
-                            <Button appearance="secondary" size="small" onClick={handleOpenAccessPatternsTemplate}>
-                                {l10n.t('Open Access-Patterns Template')}
-                            </Button>
-                            <Tooltip
-                                content={l10n.t('Update access-patterns template using AI')}
-                                relationship="label"
-                                withArrow
-                            >
-                                <Button
-                                    appearance="primary"
-                                    size="small"
-                                    icon={<SparkleRegular />}
-                                    onClick={handleAnalyzeAccessPatterns}
-                                />
-                            </Tooltip>
+                            {l10n.t('Open Access-Patterns Template')}
+                        </Button>
+                        <Tooltip
+                            content={l10n.t('Update access-patterns template using AI')}
+                            relationship="label"
+                            withArrow
+                        >
+                            <Button
+                                appearance="primary"
+                                size="small"
+                                icon={<SparkleRegular />}
+                                onClick={handleAnalyzeAccessPatterns}
+                            />
+                        </Tooltip>
+                        <div className={styles.filePickerExpanderRow}>
+                            <FileListExpander
+                                files={state.accessPatternFiles}
+                                excludedFiles={state.excludedAccessPatternFiles}
+                                workspacePath={state.workspacePath}
+                                onOpenFile={handleOpenFile}
+                                onRemoveFile={handleRemoveAccessPatternFile}
+                                onRestoreFile={handleRestoreAccessPatternFile}
+                                protectedFileName="access-patterns.md"
+                                styles={styles}
+                            />
                         </div>
                     </div>
 
@@ -1389,59 +1547,6 @@ function MigrationAssistantInner({ channel }: { channel: MigrationChannel }) {
                                         'Generate a comprehensive discovery report using AI analysis of your schema, access patterns, and application details.',
                                     )}
                                 </Text>
-
-                                {/* Source file lists and template handling */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {/* Schema Files */}
-                                    <div>
-                                        <Text weight="semibold" size={200}>
-                                            {l10n.t('Database Schema Files')}
-                                        </Text>
-                                        <FileListExpander
-                                            files={state.schemaFiles}
-                                            excludedFiles={state.excludedSchemaFiles}
-                                            workspacePath={state.workspacePath}
-                                            onOpenFile={handleOpenFile}
-                                            onRemoveFile={handleRemoveSchemaFile}
-                                            onRestoreFile={handleRestoreSchemaFile}
-                                            styles={styles}
-                                        />
-                                    </div>
-
-                                    {/* Volumetrics */}
-                                    <div>
-                                        <Text weight="semibold" size={200}>
-                                            {l10n.t('Volumetrics')}
-                                        </Text>
-                                        <FileListExpander
-                                            files={state.volumetricFiles}
-                                            excludedFiles={state.excludedVolumetricFiles}
-                                            workspacePath={state.workspacePath}
-                                            onOpenFile={handleOpenFile}
-                                            onRemoveFile={handleRemoveVolumetricFile}
-                                            onRestoreFile={handleRestoreVolumetricFile}
-                                            protectedFileName="volumetrics.md"
-                                            styles={styles}
-                                        />
-                                    </div>
-
-                                    {/* Access Patterns */}
-                                    <div>
-                                        <Text weight="semibold" size={200}>
-                                            {l10n.t('Access Patterns')}
-                                        </Text>
-                                        <FileListExpander
-                                            files={state.accessPatternFiles}
-                                            excludedFiles={state.excludedAccessPatternFiles}
-                                            workspacePath={state.workspacePath}
-                                            onOpenFile={handleOpenFile}
-                                            onRemoveFile={handleRemoveAccessPatternFile}
-                                            onRestoreFile={handleRestoreAccessPatternFile}
-                                            protectedFileName="access-patterns.md"
-                                            styles={styles}
-                                        />
-                                    </div>
-                                </div>
 
                                 <Field
                                     label={
@@ -2502,9 +2607,20 @@ export const MigrationAssistant = () => {
     const channel = useMemo(() => new MigrationChannel(trpcClient), [trpcClient]);
     useEffect(() => () => channel.dispose(), [channel]);
 
+    // Minimal provider exposing reportWebviewError + executeReportIssueCommand for ErrorBoundary.
+    // The migration UI does not use the Fluent Toaster, so dispatchToast is a no-op.
+    const provider = useMemo(() => {
+        const noopDispatchToast = (() => {
+            /* no-op */
+        }) as unknown as DispatchToastFn;
+        return new BaseContextProvider<MigrationAppRouter>(noopDispatchToast, trpcClient);
+    }, [trpcClient]);
+
     return (
         <WithMigrationContext channel={channel}>
-            <MigrationAssistantInner channel={channel} />
+            <ErrorBoundary provider={provider}>
+                <MigrationAssistantInner channel={channel} />
+            </ErrorBoundary>
         </WithMigrationContext>
     );
 };

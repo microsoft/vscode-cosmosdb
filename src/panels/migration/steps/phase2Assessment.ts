@@ -805,6 +805,10 @@ export async function runAssessment(ctx: Phase2Context): Promise<void> {
 
             enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
+            ext.outputChannel.error(`[Migration] Assessment failed: ${errorMessage}`);
+            if (error instanceof Error && error.stack) {
+                ext.outputChannel.debug(error.stack);
+            }
             await sendPhaseEvent(channel, 'assessmentError', [errorMessage]);
             throw error;
         }

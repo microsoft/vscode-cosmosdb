@@ -21,6 +21,8 @@ import {
 } from '../cosmosModel';
 import {
     createMkDebug,
+    dumpDebugResponse,
+    extractJsonObject,
     getSelectedModel,
     isDebugPromptsEnabled,
     renderWithDebug,
@@ -291,6 +293,45 @@ interface FastConversionResult {
 }
 
 /**
+ * Sentinel that separates the JSON model from the markdown summary in the
+ * fast-conversion response. See {@link Phase3FastConversionPrompt}.
+ */
+const FAST_CONVERSION_SUMMARY_SENTINEL = '===SUMMARY===';
+
+/**
+ * Splits a fast-conversion response into its CosmosModel JSON and markdown
+ * summary parts.
+ *
+ * The prompt instructs the model to emit the JSON object first, then a line
+ * containing only `===SUMMARY===`, then the markdown summary. Keeping the
+ * markdown out of the JSON envelope avoids JSON-escaping the entire summary
+ * (which roughly doubles its token cost) and prevents output truncation on
+ * large domains.
+ *
+ * Falls back to the legacy `{ cosmosModel, summary }` JSON envelope when the
+ * sentinel is missing, so prompt-override workflows from older debug dumps
+ * continue to work.
+ */
+function parseFastConversionResponse(text: string): FastConversionResult | null {
+    const sentinelIdx = text.indexOf(FAST_CONVERSION_SUMMARY_SENTINEL);
+    if (sentinelIdx >= 0) {
+        const jsonPart = text.slice(0, sentinelIdx);
+        const summaryPart = text.slice(sentinelIdx + FAST_CONVERSION_SUMMARY_SENTINEL.length).replace(/^\s+/, '');
+        const jsonString = extractJsonObject(jsonPart);
+        if (!jsonString) return null;
+        const cosmosModel = JSON.parse(jsonString) as CosmosModel;
+        return { cosmosModel, summary: summaryPart };
+    }
+
+    // Legacy envelope: `{ cosmosModel, summary }`
+    const jsonString = extractJsonObject(text);
+    if (!jsonString) return null;
+    const parsed = JSON.parse(jsonString) as Partial<FastConversionResult>;
+    if (!parsed.cosmosModel || typeof parsed.summary !== 'string') return null;
+    return { cosmosModel: parsed.cosmosModel, summary: parsed.summary };
+}
+
+/**
  * Fast single-pass schema conversion for one domain.
  * Covers container design, partition keys, embedding, access patterns,
  * cross-partition analysis, and indexing in a single LLM call.
@@ -311,7 +352,8 @@ async function runFastConversion(
     debugConfig?: DebugPromptConfig,
     onExhausted?: () => void,
 ): Promise<FastConversionResult> {
-    const { value, roundsExhausted } = await runAgenticLoopWithJsonResult<FastConversionResult>(
+    const label = `Fast Schema Conversion (${domainName})`;
+    const { messages } = await renderWithDebug(
         Phase3FastConversionPrompt,
         {
             domainSummary,
@@ -323,16 +365,47 @@ async function runFastConversion(
             volumetricsMd,
         },
         model,
+        token,
+        debugConfig,
+    );
+
+    const { text, roundsExhausted } = await runAgenticLoop(
+        model,
+        messages,
         tools,
         executeToolCall,
         MAX_SCHEMA_TOOL_ROUNDS,
         token,
-        `Fast Schema Conversion (${domainName})`,
-        l10n.t('Could not parse fast schema conversion response for domain "{name}".', { name: domainName }),
+        label,
+        undefined,
+        { temperature: 0.1 },
         debugConfig,
     );
     if (roundsExhausted) onExhausted?.();
-    return value;
+
+    const parsed = parseFastConversionResponse(text);
+    if (!parsed) {
+        const truncated = text.length > 300 ? text.slice(0, 300) + '…' : text;
+        const tail = text.length > 300 ? '…' + text.slice(-200) : '';
+        ext.outputChannel.appendLog(
+            `[${label}] Failed to parse fast-conversion response (${text.length} chars). ` +
+                `Response preview: "${truncated}"${tail ? `\nResponse tail: "${tail}"` : ''}`,
+        );
+        throw new Error(
+            l10n.t('Could not parse fast schema conversion response for domain "{name}".', { name: domainName }),
+        );
+    }
+
+    if (isDebugPromptsEnabled() && debugConfig) {
+        await dumpDebugResponse(
+            debugConfig.debugDir,
+            debugConfig.stepName,
+            JSON.stringify(parsed.cosmosModel, null, 2),
+            'json',
+        );
+    }
+
+    return parsed;
 }
 
 /**
@@ -492,6 +565,12 @@ function mergeIndexingPolicies(a: IndexingPolicy, b: IndexingPolicy): IndexingPo
 
 /**
  * Final step: Run the cross-domain summary + model reconciliation prompt.
+ *
+ * Uses the same sentinel-based output format as {@link runFastConversion}:
+ * the deployment-ready CosmosModel JSON, then a line containing only
+ * `===SUMMARY===`, then the markdown summary as raw text. Keeping the
+ * markdown out of the JSON envelope prevents output-token truncation
+ * ("Response too long") on large multi-domain models.
  */
 async function runFinalSummary(
     model: vscode.LanguageModelChat,
@@ -509,7 +588,8 @@ async function runFinalSummary(
     debugConfig?: DebugPromptConfig,
     onExhausted?: () => void,
 ): Promise<FinalSummaryResult> {
-    const { value, roundsExhausted } = await runAgenticLoopWithJsonResult<FinalSummaryResult>(
+    const label = 'Final Cross-Domain Summary';
+    const { messages } = await renderWithDebug(
         Phase3Step8FinalSummaryPrompt,
         {
             mergedModel: JSON.stringify(mergedModel),
@@ -522,16 +602,49 @@ async function runFinalSummary(
             volumetricsMd,
         },
         model,
+        token,
+        debugConfig,
+    );
+
+    const { text, roundsExhausted } = await runAgenticLoop(
+        model,
+        messages,
         tools,
         executeToolCall,
         MAX_SCHEMA_TOOL_ROUNDS,
         token,
-        'Final Cross-Domain Summary',
-        l10n.t('Could not parse final summary response.'),
+        label,
+        undefined,
+        { temperature: 0.1 },
         debugConfig,
     );
     if (roundsExhausted) onExhausted?.();
-    return value;
+
+    const parsed = parseFastConversionResponse(text);
+    if (!parsed) {
+        const truncated = text.length > 300 ? text.slice(0, 300) + '…' : text;
+        const tail = text.length > 300 ? '…' + text.slice(-200) : '';
+        ext.outputChannel.appendLog(
+            `[${label}] Failed to parse final summary response (${text.length} chars). ` +
+                `Response preview: "${truncated}"${tail ? `\nResponse tail: "${tail}"` : ''}`,
+        );
+        throw new Error(l10n.t('Could not parse final summary response.'));
+    }
+
+    if (isDebugPromptsEnabled() && debugConfig) {
+        await dumpDebugResponse(
+            debugConfig.debugDir,
+            debugConfig.stepName,
+            JSON.stringify(parsed.cosmosModel, null, 2),
+            'json',
+        );
+    }
+
+    return {
+        updatedModel: parsed.cosmosModel,
+        analysis: parsed.summary,
+        modelModified: true,
+    };
 }
 
 // ─── Main Entry Point ───────────────────────────────────────────────
@@ -1304,6 +1417,10 @@ export async function runSchemaConversion(
 
             enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
+            ext.outputChannel.error(`[Migration] Schema conversion failed: ${errorMessage}`);
+            if (error instanceof Error && error.stack) {
+                ext.outputChannel.debug(error.stack);
+            }
             await sendPhaseEvent(channel, 'schemaConversionError', [errorMessage]);
             throw error;
         }

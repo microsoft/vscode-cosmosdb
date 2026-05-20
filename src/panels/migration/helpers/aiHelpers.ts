@@ -5,7 +5,7 @@
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { renderPrompt } from '@vscode/prompt-tsx';
+import { type BasePromptElementProps, type PromptElementCtor, renderPrompt } from '@vscode/prompt-tsx';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { SYSTEM_DEFENSE_RULES } from '../../../utils/aiDefenseRules';
@@ -23,7 +23,7 @@ import {
     tryLoadPromptOverride,
 } from './debugPromptHelpers';
 
-export { createMkDebug } from './debugPromptHelpers';
+export { createMkDebug, dumpDebugResponse } from './debugPromptHelpers';
 /** Re-exported from shared `aiUtils` to avoid churn for existing callers. */
 export { extractJsonObject } from '../../../utils/aiUtils';
 
@@ -202,17 +202,14 @@ export { stripMarkdownPreamble } from './markdownUtils';
  *
  * @returns The rendered (possibly overridden) messages and their token count.
  */
-export async function renderWithDebug(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    PromptClass: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    props: any,
+export async function renderWithDebug<P extends BasePromptElementProps>(
+    PromptClass: PromptElementCtor<P, unknown>,
+    props: P,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     debugConfig?: DebugPromptConfig,
 ): Promise<{ messages: vscode.LanguageModelChatMessage[]; inputTokenCount: number }> {
     const { messages, tokenCount } = await renderPrompt(
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         PromptClass,
         props,
         { modelMaxPromptTokens: model.maxInputTokens },
@@ -310,11 +307,9 @@ async function runPromptFromMessages(
  *
  * @returns The complete response text.
  */
-export async function runPrompt(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    PromptClass: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    props: any,
+export async function runPrompt<P extends BasePromptElementProps>(
+    PromptClass: PromptElementCtor<P, unknown>,
+    props: P,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     label: string,
@@ -339,10 +334,9 @@ export async function runPrompt(
  * @throws If no JSON object is found in the response.
  */
 export async function runPromptWithJsonResult<T>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    PromptClass: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    props: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- contravariance: concrete prompt classes need this parameter type widened
+    PromptClass: PromptElementCtor<any, unknown>,
+    props: BasePromptElementProps & Record<string, unknown>,
     model: vscode.LanguageModelChat,
     token: vscode.CancellationToken,
     label: string,
@@ -387,10 +381,9 @@ export async function runPromptWithJsonResult<T>(
  * @throws If no JSON object is found in the final response.
  */
 export async function runAgenticLoopWithJsonResult<T>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    PromptClass: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    props: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- contravariance: concrete prompt classes need this parameter type widened
+    PromptClass: PromptElementCtor<any, unknown>,
+    props: BasePromptElementProps & Record<string, unknown>,
     model: vscode.LanguageModelChat,
     tools: vscode.LanguageModelChatTool[],
     executeToolCall: (toolCall: vscode.LanguageModelToolCallPart) => Promise<string>,

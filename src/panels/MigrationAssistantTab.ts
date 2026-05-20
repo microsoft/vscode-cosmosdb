@@ -44,6 +44,7 @@ import {
     cancelAnalysis,
     cancelDiscovery,
     estimateDiscoveryTokens,
+    runAnalyzeDatabaseSchema,
     runAnalyzeWithAI,
     runApplicationAnalysis,
     runDiscoveryReport,
@@ -294,6 +295,8 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.analyzeWithAI('volumetrics');
             case 'analyzeAccessPatterns':
                 return this.analyzeWithAI('access-patterns');
+            case 'analyzeDatabaseSchema':
+                return this.analyzeDatabaseSchema();
             case 'analyzeApplication':
                 return this.analyzeApplication();
             case 'updateAnalysisResult':
@@ -364,6 +367,8 @@ export class MigrationAssistantTab extends BaseTab {
                 return this.checkGitignore();
             case 'openFile':
                 return this.openFile(params[0] as string);
+            case 'revealInExplorer':
+                return this.revealInExplorer(params[0] as string);
             case 'openGeneratedBicep':
                 return this.openGeneratedBicep();
             case 'previewMarkdown':
@@ -809,6 +814,11 @@ export class MigrationAssistantTab extends BaseTab {
     private async analyzeWithAI(subfolder: 'volumetrics' | 'access-patterns'): Promise<void> {
         if (!this.project) return;
         await runAnalyzeWithAI(subfolder, this.project, this.projectService);
+    }
+
+    private async analyzeDatabaseSchema(): Promise<void> {
+        if (!this.project) return;
+        await runAnalyzeDatabaseSchema(this.project, this.projectService);
     }
 
     private async selectFiles(subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): Promise<void> {
@@ -1669,6 +1679,16 @@ export class MigrationAssistantTab extends BaseTab {
     private async openFile(filePath: string): Promise<void> {
         const uri = vscode.Uri.file(filePath);
         await vscode.window.showTextDocument(uri, { preview: true });
+    }
+
+    private async revealInExplorer(filePath: string): Promise<void> {
+        const uri = vscode.Uri.file(filePath);
+        try {
+            await vscode.workspace.fs.stat(uri);
+        } catch {
+            await vscode.workspace.fs.createDirectory(uri);
+        }
+        await vscode.commands.executeCommand('revealInExplorer', uri);
     }
 
     private async openGeneratedBicep(): Promise<void> {

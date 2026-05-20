@@ -5,7 +5,11 @@
 
 export { ApplicationDetailsPrompt } from './ApplicationDetailsPrompt';
 export { buildCodeMigrationPrompt } from './CodeMigrationPrompt';
-export { buildAnalyzeAccessPatternsPrompt, buildAnalyzeVolumetricsPrompt } from './Phase1Step1AnalysisPrompts';
+export {
+    buildAnalyzeAccessPatternsPrompt,
+    buildAnalyzeDatabaseSchemaPrompt,
+    buildAnalyzeVolumetricsPrompt,
+} from './Phase1Step1AnalysisPrompts';
 export { buildChatDiscoveryPrompt } from './Phase1Step2ChatDiscoveryPrompt';
 export { Phase1Step2DiscoveryPrompt } from './Phase1Step2DiscoveryPrompt';
 export { Phase2Step0AccessPatternExtractionPrompt } from './Phase2Step0AccessPatternExtractionPrompt';

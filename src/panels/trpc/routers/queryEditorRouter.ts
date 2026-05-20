@@ -1021,6 +1021,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 ctx.actionContext.telemetry.properties.category = input.component;
                 ctx.actionContext.telemetry.properties.isAIGenerated = String(ctx.state.isLastQueryAIGenerated);
             }
+            void vscode.window.showInformationMessage(l10n.t('Thanks for your feedback!'));
         }),
 
     confirmToolInvocationResponse: queryEditorProcedure

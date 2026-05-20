@@ -441,10 +441,7 @@ function FileListExpander({
         return (
             <>
                 {dirHead && (
-                    <span
-                        className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`}
-                        title={fullRelative}
-                    >
+                    <span className={`${styles.filePathDir}${extraClass ? ' ' + extraClass : ''}`} title={fullRelative}>
                         {dirHead}
                     </span>
                 )}

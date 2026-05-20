@@ -387,6 +387,12 @@ export class MigrationProjectService {
      * List discovery source files for a subfolder, applying the per-source
      * `includedFiles` allowlist and `excludedFiles` filter from project.json
      * (paths relative to the resolved base).
+     *
+     * NOTE: The curated template files (`volumetrics.md`, `access-patterns.md`)
+     * ARE included in the result when they live in the source folder, because
+     * downstream discovery/assessment steps extract them by name to read
+     * pre-filled values. UI callers that need to hide them should filter the
+     * template file out themselves (see {@link getTemplateFilePath}).
      */
     async listDiscoveryFiles(
         project: ProjectJson,
@@ -405,6 +411,25 @@ export class MigrationProjectService {
             filtered = filtered.filter((f) => !excluded.has(path.relative(base, f)));
         }
         return filtered;
+    }
+
+    /**
+     * Return the absolute path of the curated template file for the given
+     * discovery subfolder (`volumetrics.md` / `access-patterns.md`), or
+     * `undefined` for subfolders that have no template. The template always
+     * lives in the default subfolder path; callers can use this to suppress
+     * the template from UI file lists without affecting AI flows that need to
+     * read it.
+     */
+    getTemplateFilePath(subfolder: 'schema-ddl' | 'volumetrics' | 'access-patterns'): string | undefined {
+        const templateFileName =
+            subfolder === 'volumetrics'
+                ? 'volumetrics.md'
+                : subfolder === 'access-patterns'
+                  ? 'access-patterns.md'
+                  : undefined;
+        if (templateFileName === undefined) return undefined;
+        return path.join(this.getDefaultSubfolderPath(subfolder), templateFileName);
     }
 
     /**

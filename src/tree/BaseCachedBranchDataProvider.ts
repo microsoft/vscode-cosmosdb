@@ -48,7 +48,7 @@ import { type FabricArtifact } from './fabric/models/FabricArtifact';
  * - The cache is automatically pruned during refresh operations
  *
  * @abstract
- * @extends vscode.Disposable
+ * @augments vscode.Disposable
  * @implements {BranchDataProvider<T, TreeElement>}
  */
 export abstract class BaseCachedBranchDataProvider<T extends AzureResource | WorkspaceResource | FabricArtifact>
@@ -64,7 +64,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
      * Subclasses must return a stable string literal (e.g. the class name).
      *
      * **Important:** Do not use `this.constructor.name` — it gets mangled by
-     * webpack/Terser in production builds, producing unreadable telemetry.
+     * Rolldown/OXC minifier in production builds, producing unreadable telemetry.
      *
      * @returns A string identifier for this provider
      */
@@ -279,7 +279,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             // AFTER finding the element, update the cache:
             // 1. Clear the cache for this ID to remove any stale references
             // (drops the element and its children)
-            this.pruneCache(element.id!);
+            this.pruneCache(element.id);
 
             // 2. Re-register the node (but not its children)
             if (currentElement?.id) {
@@ -298,7 +298,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
             // NOTE: It is impossible to fall here, but we handle it just in case
             // If anything goes wrong during the lookup, still attempt the refresh with the original element
             // and clear the cache for this ID
-            console.log(`Error finding current element for refresh: ${error}`);
+            console.log(`Error finding current element for refresh: ${String(error)}`);
             this.pruneCache(element.id);
             this.onDidChangeTreeDataEmitter.fire(element);
         }
@@ -372,8 +372,8 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
                 try {
                     // Set the data provider for the element
                     element.dataProvider = this;
-                    return ext.state.wrapItemInStateHandling(element, (item: TreeElement) =>
-                        this.refresh(item),
+                    return ext.state.wrapItemInStateHandling(element, (item) =>
+                        this.refresh(item as TreeElement),
                     ) as TreeElement;
                 } catch (error) {
                     context.telemetry.properties.wrapError = parseError(error).message;

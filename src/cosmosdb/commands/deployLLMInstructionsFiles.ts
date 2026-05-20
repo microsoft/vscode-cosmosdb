@@ -68,8 +68,7 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
         console.log('deployLLMInstructionsFiles to', promptFolder);
 
         const manifest: IDeploymentManifest = {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            extensionVersion: ext.context.extension.packageJSON.version as string,
+            extensionVersion: (ext.context.extension.packageJSON as { version: string }).version,
             deploymentTimestamp: Date.now(),
             files: {},
         };
@@ -81,7 +80,7 @@ export const deployLLMInstructionsFiles = async (_: IActionContext): Promise<voi
             }
 
             // Get the path to the source folder
-            const sourceFolder = path.join(__dirname, 'resources', 'llm-assets');
+            const sourceFolder = path.join(ext.context.extensionPath, 'resources', 'llm-assets');
 
             // Check if source folder exists
             if (!fs.existsSync(sourceFolder)) {

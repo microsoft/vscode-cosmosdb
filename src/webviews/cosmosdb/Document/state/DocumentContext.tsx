@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer } from 'react';
-import { type WebviewApi } from 'vscode-webview';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import { type DocumentAppRouter } from '../../../../panels/trpc/appRouter';
+import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
+import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
-import { type WebviewState } from '../../../WebviewContext';
 import { DocumentContextProvider } from './DocumentContextProvider';
 import { defaultState, dispatch as DocumentPanelDispatch, type DocumentState } from './DocumentState';
 
@@ -23,22 +23,34 @@ export function useDocumentDispatcher() {
     return useContext(DocumentPanelDispatcherContext);
 }
 
-export const WithDocumentContext = ({
-    channel,
-    children,
-}: {
-    channel: Channel;
-    vscodeApi: WebviewApi<WebviewState>;
-    children: ReactNode;
-}) => {
+export const WithDocumentContext = ({ children }: { children: ReactNode }) => {
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(DocumentPanelDispatch, { ...defaultState });
 
-    const provider = useMemo(
-        () => new DocumentContextProvider(channel, dispatch, dispatchToast),
-        [channel, dispatchToast],
+    // Use a ref so the errorLink can forward errors to the provider once it's created.
+    const providerRef = useRef<BaseContextProvider | null>(null);
+    const onError = useMemo(
+        () => (error: Error) => {
+            void providerRef.current?.showErrorMessage(error.message);
+        },
+        [],
     );
+
+    const { trpcClient } = useTrpcClient<DocumentAppRouter>(onError);
+
+    const provider = useMemo(
+        () => new DocumentContextProvider(dispatch, dispatchToast, trpcClient),
+        [dispatchToast, trpcClient],
+    );
+
+    // Keep the ref pointing at the current provider so errorLink can forward errors.
+    useEffect(() => {
+        providerRef.current = provider;
+        return () => {
+            providerRef.current = null;
+        };
+    }, [provider]);
 
     useEffect(() => {
         return () => provider.dispose();

@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "Trigger erstellen...",
   "cosmosdb.command.trigger.delete": "Trigger entfernen...",
   "cosmosdb.command.trigger.open": "Trigger öffnen",
+  "cosmosdb.command.cosmos_db_shell.launch": "Azure Cosmos DB Shell starten",
   "cosmosdb.command.update": "Auf Cloud aktualisieren",
   "cosmosdb.command.ai.deploy_instruction_files": "Kopieren von LLM-Anweisungen in den Benutzerprofilordner",
   "cosmosdb.command.ai.remove_instruction_files": "Entfernen von LLM-Anweisungen aus dem Benutzerprofilordner",
   "cosmosdb.command.schema.delete_all": "Alle gespeicherten Schemata löschen",
+  "cosmosdb.command.migration.open": "New Migration…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
+  "cosmosdb.command.migration.remove": "Remove Migration…",
   "cosmosdb.configuration.batch.size": "Die Batchgröße, die beim Abfragen von Azure-Datenbankressourcen verwendet werden soll.",
   "cosmosdb.configuration.confirmation.style": "Das Verhalten, das beim Bestätigen von Vorgängen verwendet werden soll, die nicht rückgängig gemacht werden können, z. B. das Löschen von Ressourcen.",
   "cosmosdb.configuration.confirmation.style.button": "Bestätigung per Klicken auf Schaltfläche",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "Zeigen Sie detaillierte Vorgangszusammenfassungen mit Meldungen für Aktionen wie Datenbanklöschungen, Dokumenthinzufügungen, Löschungen oder ähnliche Ereignisse an.",
   "cosmosdb.configuration.save.prompt": "Warndialogfeld beim Hochladen eines Dokuments in die Cloud anzeigen.",
   "cosmosdb.configuration.csv.separator": "Das Trennzeichen, das beim Exportieren von Daten in eine CSV-Datei verwendet werden soll (z. B. „;“ , | oder „,“).",
+  "cosmosdb.configuration.cosmosDB.shell.path": "Vollständiger Pfad zum Ordner und zur ausführbaren Datei, um die Azure Cosmos DB Shell zu starten. Erforderlich für bestimmte Shell-Befehle. Standardmäßig wird nach „cosmosdbshell“ im Systempfad gesucht.",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "Aktivieren Sie den Azure Cosmos DB Shell Model Context Protocol Server.",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "Der für den Azure Cosmos DB Shell Model Context Protocol Server zu verwendende Port.",
   "cosmosdb.configuration.preferredAuthenticationMethod": "Wählen Sie eine bevorzugte Authentifizierungsmethode für Cosmos DB-Konten aus.",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "Automatisch",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "Wählt die beste Authentifizierungsmethode basierend auf der Kontokonfiguration aus.",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Wird nur bei Ausführung in Azure unterstützt (d. h. einem virtuellen Computer), [weitere Informationen](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Die Client-ID der verwalteten Identität, die bei der Authentifizierung mit Entra ID mithilfe einer benutzerseitig zugewiesenen verwalteten Identität verwendet werden soll.",
   "cosmosdb.configuration.manage-llm-assets": "Verwalten Sie LLM-Ressourcen. Lassen Sie zu, dass die Erweiterung LLM-bezogene Dateien aktualisiert.",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Wenn diese Option aktiviert ist, berücksichtigt die Schemagenerierung auch Abfrageergebnisse, um das Containerschema zu ermitteln."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Wenn diese Option aktiviert ist, berücksichtigt die Schemagenerierung auch Abfrageergebnisse, um das Containerschema zu ermitteln.",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

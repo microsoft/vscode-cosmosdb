@@ -28,7 +28,7 @@ export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) 
     const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
     const cosmosDBLimitations = 'https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/cosmosdb/cosmos#limitations';
 
-    const insertSampleText = useCallback((sample: string) => dispatcher.insertText(sample), [dispatcher]);
+    const insertSampleText = useCallback((sample: string) => void dispatcher.insertText(sample), [dispatcher]);
 
     return (
         <Menu>

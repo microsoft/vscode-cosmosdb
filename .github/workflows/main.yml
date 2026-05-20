@@ -2,18 +2,20 @@ name: Node PR Lint, Build and Test
 
 permissions:
     contents: read
+    pull-requests: write
 
 on:
     # Trigger when manually run
     workflow_dispatch:
 
-    # Trigger on pushes to `main` or `rel/*`
+    # Trigger on pushes to `main`, `rel/*`, or `dev/**`
     push:
         branches:
             - main
             - rel/*
+            - dev/**
 
-    # Trigger on pull requests to `main` or `rel/*`
+    # Trigger on pull requests to `main`, `rel/*`, or `dev/**`
     pull_request:
         branches:
             - main
@@ -24,16 +26,43 @@ jobs:
     Build:
         runs-on: ubuntu-latest
 
+        # A push to a branch with an open PR fires both `push` and `pull_request`
+        # events. Rather than cancelling one of them (a cancelled run reports
+        # as a failed required check on the PR's head SHA and blocks merge),
+        # we skip the `pull_request` run for same-repo PRs only when the PR
+        # head branch is also covered by this workflow's `push.branches`
+        # filters, because only those branches already get a `push` run in
+        # this repo. For PRs from forks, or same-repo PRs from other head
+        # branches such as `feature/*`, we still let `pull_request` run.
+        if: >-
+            github.event_name != 'pull_request' ||
+            github.event.pull_request.head.repo.full_name != github.repository ||
+            (github.head_ref != 'main' &&
+             !startsWith(github.head_ref, 'rel/') &&
+             !startsWith(github.head_ref, 'dev/'))
+
+        # Concurrency only dedupes runs for the SAME branch across DIFFERENT
+        # commits (e.g. rapid pushes during a rebase). The cancelled older run
+        # is on a stale SHA that is no longer the PR head, so it does not
+        # block the PR. Push and pull_request events for the same SHA are
+        # already deduped by the `if` above, so they never collide here.
+        # For `pull_request` events, scope the group by PR number and head
+        # repo so that two forks pushing branches with the same name do not
+        # cancel each other.
+        concurrency:
+            group: build-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) || github.ref_name }}
+            cancel-in-progress: true
+
         defaults:
             run:
                 working-directory: '.'
 
         steps:
             # Setup
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
 
             - name: 📦 Using Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version-file: .nvmrc
                   cache: 'npm'
@@ -76,7 +105,7 @@ jobs:
             - name: 🌍 Localize
               run: npm run l10n:check
 
-            - name: � Verify External Skills
+            - name: 🔍 Verify External Skills
               shell: bash
               run: |
                   cp -r skills/ skills-backup/
@@ -91,7 +120,7 @@ jobs:
                   rm -rf skills/
                   mv skills-backup/ skills/
 
-            - name: �🔍 Lint
+            - name: 🧹 Lint
               run: npm run lint
 
             - name: ✨ Prettier
@@ -104,6 +133,7 @@ jobs:
               run: npm run package
 
             - name: 🔍 Verify VSIX File
+              id: verify-vsix
               shell: pwsh
               run: |
                   # Find VSIX file
@@ -134,72 +164,163 @@ jobs:
 
                   Write-Output "✅ VSIX filename is correct: $vsixFileName"
 
-                  # Set output for job summary
-                  echo "VSIX_FILE=$vsixFileName" >> $env:GITHUB_ENV
-                  echo "VSIX_SIZE=$vsixFileSize" >> $env:GITHUB_ENV
-                  echo "PACKAGE_VERSION=$($packageJson.version)" >> $env:GITHUB_ENV
-                  echo "PACKAGE_PREVIEW=$($packageJson.preview)" >> $env:GITHUB_ENV
+                  # Compute a short commit SHA (7 chars) and a filesystem-safe branch slug.
+                  # Use head_ref for pull_request events, otherwise ref_name.
+                  $rawRef = if ("${{ github.event_name }}" -eq "pull_request") { "${{ github.head_ref }}" } else { "${{ github.ref_name }}" }
+                  $branchSlug = ($rawRef -replace '[^A-Za-z0-9._-]', '-').Trim('-')
+                  $shortSha = "${{ github.sha }}".Substring(0, 7)
 
-            - name: 📤 Upload Artifacts
-              uses: actions/upload-artifact@v4
+                  # Artifact name convention:
+                  # - main / rel/* : <name>-<version>-<sha7>
+                  # - everything else: <branch-slug>-<version>-<sha7>
+                  $isRelease = ($rawRef -eq 'main') -or ($rawRef -like 'rel/*')
+                  if ($isRelease) {
+                      $artifactName = "$($packageJson.name)-$($packageJson.version)-$shortSha"
+                  } else {
+                      $artifactName = "$branchSlug-$($packageJson.version)-$shortSha"
+                  }
+
+                  Write-Output "📛 Artifact name: $artifactName"
+
+                  # Expose values as step outputs for downstream steps
+                  "vsix_file=$vsixFileName" >> $env:GITHUB_OUTPUT
+                  "vsix_size=$vsixFileSize" >> $env:GITHUB_OUTPUT
+                  "package_version=$($packageJson.version)" >> $env:GITHUB_OUTPUT
+                  "package_preview=$($packageJson.preview)" >> $env:GITHUB_OUTPUT
+                  "artifact_name=$artifactName" >> $env:GITHUB_OUTPUT
+
+            - name: 📤 Upload VSIX
+              id: upload-vsix
+              uses: actions/upload-artifact@v7
               with:
-                  name: Artifacts
-                  path: |
-                      **/*.vsix
-                      **/*.tgz
-                      !**/node_modules
+                  name: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  path: ${{ steps.verify-vsix.outputs.vsix_file }}
+                  if-no-files-found: error
+                  compression-level: 0
 
             - name: 🧪 Unit Tests
               id: unit-tests
-              continue-on-error: true
-              run: npm run jesttest
+              run: npm run vitest
 
             - name: 🧪 Integration Tests
               id: integration-tests
-              continue-on-error: true
-              run: xvfb-run -a npm test
+              if: ${{ !cancelled() }}
+              run: |
+                  exit_code=1
+                  for i in 1 2 3; do
+                      xvfb-run -a npm test
+                      exit_code=$?
+                      if [ $exit_code -eq 0 ]; then break; fi
+                      echo "Attempt $i failed with exit code $exit_code"
+                      if [ $i -lt 3 ]; then sleep 15; fi
+                  done
+                  exit $exit_code
 
             - name: 📊 Generate Job Summary
               if: always()
-              shell: pwsh
+              env:
+                  PACKAGE_VERSION: ${{ steps.verify-vsix.outputs.package_version }}
+                  PACKAGE_PREVIEW: ${{ steps.verify-vsix.outputs.package_preview }}
+                  VSIX_FILE: ${{ steps.verify-vsix.outputs.vsix_file }}
+                  VSIX_SIZE: ${{ steps.verify-vsix.outputs.vsix_size }}
+                  ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
+                  ARTIFACT_URL: ${{ steps.upload-vsix.outputs.artifact-url }}
+                  GH_TOKEN: ${{ github.token }}
+                  UNIT_TEST_RESULT: ${{ steps.unit-tests.outcome }}
+                  INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
+                  SERVER_URL: ${{ github.server_url }}
+                  REPO: ${{ github.repository }}
+                  SHA: ${{ github.sha }}
+                  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  PR_TITLE: ${{ github.event.pull_request.title }}
+              shell: bash
               run: |
                   # Only generate summary if VSIX verification completed
-                  if ($env:PACKAGE_VERSION) {
-                      # Determine test results
-                      $unitTestResult = "${{ steps.unit-tests.outcome }}"
-                      $integrationTestResult = "${{ steps.integration-tests.outcome }}"
+                  if [ -z "${PACKAGE_VERSION:-}" ]; then
+                      echo "⚠️ Skipping job summary - VSIX verification did not complete"
+                      exit 0
+                  fi
 
-                      $unitTestIcon = if ($unitTestResult -eq "success") { "✅" } else { "❌" }
-                      $integrationTestIcon = if ($integrationTestResult -eq "success") { "✅" } else { "❌" }
+                  # Icons
+                  unit_icon=$( [ "$UNIT_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
+                  int_icon=$( [ "$INTEGRATION_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
 
-                      $overallStatus = if ($unitTestResult -eq "success" -and $integrationTestResult -eq "success") {
-                          "## ✅ Build Status`nAll checks completed successfully!"
-                      } else {
-                          "## ❌ Build Status`nSome checks failed. Please review the logs."
-                      }
+                  # Commit link
+                  short_sha="${SHA:0:7}"
+                  commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
 
-                      $summary = @"
+                  # Resolve PR info: prefer the pull_request event payload, otherwise
+                  # use `gh pr view` by branch name (works for push events too).
+                  if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+                      pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                          --json number,title 2>/dev/null) || true
+                      if [ -n "$pr_info" ]; then
+                          PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+                          PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
+                          echo "ℹ️ Found PR #${PR_NUMBER}: ${PR_TITLE}"
+                      else
+                          echo "ℹ️ No open PR found for branch '${BRANCH_NAME}'"
+                      fi
+                  fi
+
+                  # Source section
+                  source_section="## 🔗 Source
+                  - **Commit:** ${commit_link}"
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      source_section="${source_section}
+                  - **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
+                  fi
+
+                  # Overall status
+                  if [ "$UNIT_TEST_RESULT" = "success" ] && [ "$INTEGRATION_TEST_RESULT" = "success" ]; then
+                      overall_status="## ✅ Build Status
+                  All checks completed successfully!"
+                  else
+                      overall_status="## ❌ Build Status
+                  Some checks failed. Please review the logs."
+                  fi
+
+                  # Write summary
+                  cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
                   # 🎉 Build Summary
 
+                  ${source_section}
+
                   ## 📦 Package Information
-                  - **Version:** $env:PACKAGE_VERSION
-                  - **Preview:** $env:PACKAGE_PREVIEW
-                  - **VSIX File:** $env:VSIX_FILE
-                  - **VSIX Size:** $env:VSIX_SIZE MB
+                  - **Version:** ${PACKAGE_VERSION}
+                  - **Preview:** ${PACKAGE_PREVIEW}
+                  - **VSIX File:** ${VSIX_FILE}
+                  - **VSIX Size:** ${VSIX_SIZE} MB
+                  - **Artifact:** [${ARTIFACT_NAME}.zip](${ARTIFACT_URL})
 
                   ## 🧪 Test Results
-                  - **Unit Tests:** $unitTestIcon $unitTestResult
-                  - **Integration Tests:** $integrationTestIcon $integrationTestResult
+                  - **Unit Tests:** ${unit_icon} ${UNIT_TEST_RESULT}
+                  - **Integration Tests:** ${int_icon} ${INTEGRATION_TEST_RESULT}
 
-                  $overallStatus
-                  "@
+                  ${overall_status}
+                  SUMMARY_EOF
 
-                      $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+                  echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
-                      # Fail the job if any tests failed
-                      if ($unitTestResult -ne "success" -or $integrationTestResult -ne "success") {
-                          exit 1
-                      }
-                  } else {
-                      Write-Output "⚠️ Skipping job summary - VSIX verification did not complete"
-                  }
+                  # Post (or update) a PR comment if we found a PR.
+                  # Fork PRs run with a read-only GITHUB_TOKEN regardless of the
+                  # workflow's declared permissions, so `gh pr comment` will fail
+                  # with "Resource not accessible by integration". Treat any
+                  # failure here as a warning so it does not fail the job.
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      if gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")" \
+                              --edit-last 2>/dev/null \
+                          || gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")" 2>/dev/null; then
+                          echo "✅ PR #${PR_NUMBER} comment posted"
+                      else
+                          echo "::warning::Unable to post PR comment on #${PR_NUMBER} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+                      fi
+                  fi
+
+                  # Fail the job if any tests failed
+                  if [ "$UNIT_TEST_RESULT" != "success" ] || [ "$INTEGRATION_TEST_RESULT" != "success" ]; then
+                      exit 1
+                  fi

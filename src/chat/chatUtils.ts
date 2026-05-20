@@ -3,11 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import type * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
-import { ext } from '../extensionVariables';
 import { type QueryEditorTab } from '../panels/QueryEditorTab';
+import { logLlmTokenUsage } from '../utils/aiUtils';
 
 /**
  * Sends a chat request to the language model with proper message ordering.
@@ -39,32 +38,12 @@ export async function sendChatRequest(
     const messages = buildChatMessages(instructionMessage, userMessage, intermediateMessages);
 
     // Count tokens for all messages and log usage info
-    await callWithTelemetryAndErrorHandling('cosmosDB.ai.llmRequest', async (ctx) => {
-        ctx.errorHandling.suppressDisplay = true;
-        ctx.telemetry.properties.caller = caller ?? 'unknown';
-        ctx.telemetry.properties.modelId = model.id;
-        ctx.telemetry.properties.modelName = model.name;
-        ctx.telemetry.properties.modelFamily = model.family;
-
-        const [instructionTokens, userTokens] = await Promise.all([
-            model.countTokens(instructionMessage, token),
-            userMessage ? model.countTokens(userMessage, token) : Promise.resolve(0),
-        ]);
-        const totalTokens = instructionTokens + userTokens;
-        const maxTokens = model.maxInputTokens;
-        const ratio = maxTokens > 0 ? ((totalTokens / maxTokens) * 100).toFixed(1) : 'N/A';
-
-        ctx.telemetry.measurements.instructionTokens = instructionTokens;
-        ctx.telemetry.measurements.userTokens = userTokens;
-        ctx.telemetry.measurements.requestTokens = totalTokens;
-        ctx.telemetry.measurements.maxInputTokens = maxTokens;
-
-        ext.outputChannel.info(
-            `[Chat Request] model="${model.name}" (${model.family}), ` +
-                `instructionTokens=${instructionTokens}, userTokens=${userTokens}, ` +
-                `requestTokens=${totalTokens}, maxInputTokens=${maxTokens}, ` +
-                `usage=${ratio}%`,
-        );
+    await logLlmTokenUsage(model, {
+        caller: caller ?? 'unknown',
+        instructionMessage,
+        userMessage,
+        token,
+        logLabel: 'Chat Request',
     });
 
     return model.sendRequest(messages, options, token);

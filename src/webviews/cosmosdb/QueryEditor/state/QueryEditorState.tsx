@@ -4,11 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { DEFAULT_PAGE_SIZE, type SerializedQueryResult } from '../../../../cosmosdb/types/queryResult';
-import { isSelectStar } from '../../../../utils/convertors';
-import { type JSONSchema } from '../../../../utils/json/JSONSchema';
-
-export const DEFAULT_QUERY_VALUE = `SELECT * FROM c`;
+import { isSelectStar } from '../../../../utils/queryAnalysis';
 
 export type TableViewMode = 'Tree' | 'JSON' | 'Table';
 
@@ -29,6 +27,10 @@ export type DispatchAction =
     | {
           type: 'executionStarted';
           executionId: string;
+          startExecutionTime: number;
+      }
+    | {
+          type: 'paginationStarted';
           startExecutionTime: number;
       }
     | {
@@ -92,6 +94,14 @@ export type DispatchAction =
     | {
           type: 'setAIFeaturesEnabled';
           isAIFeaturesEnabled: boolean;
+      }
+    | {
+          type: 'setCurrentQueryBlock';
+          currentQueryBlock: string;
+      }
+    | {
+          type: 'setConfirmToolInvocationMessage';
+          message: string | null;
       };
 export type QueryEditorState = {
     dbName: string; // Database which is currently selected (Readonly, only server can change it) (Value exists on both client and server)
@@ -101,6 +111,7 @@ export type QueryEditorState = {
     queryHistory: string[];
     queryValue: string;
     querySelectedValue: string;
+    currentQueryBlock: string; // The query block text under the cursor (persisted across focus loss)
     isConnected: boolean;
     isExecuting: boolean;
     isEditMode: boolean; // Query or selected query is start select (select * from c)
@@ -126,6 +137,7 @@ export type QueryEditorState = {
 
     showGenerateInput: boolean; // Whether to show the LLM query generation input
     isAIFeaturesEnabled: boolean; // Whether AI features (AI button, etc.) are enabled (Copilot available)
+    confirmToolInvocationMessage: string | null; // Message from server asking user to confirm a tool invocation during LLM generation
 };
 
 export const defaultState: QueryEditorState = {
@@ -134,8 +146,9 @@ export const defaultState: QueryEditorState = {
     partitionKey: undefined,
     currentExecutionId: '',
     queryHistory: [],
-    queryValue: DEFAULT_QUERY_VALUE,
+    queryValue: '',
     querySelectedValue: '',
+    currentQueryBlock: '',
     isConnected: false,
     isExecuting: false,
     isEditMode: false,
@@ -161,6 +174,7 @@ export const defaultState: QueryEditorState = {
 
     showGenerateInput: false,
     isAIFeaturesEnabled: false, // Default to false, will be updated from extension when Copilot is available
+    confirmToolInvocationMessage: null,
 };
 
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
@@ -191,8 +205,15 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
                 startExecutionTime: action.startExecutionTime,
                 isEditMode: isSelectStar(state.querySelectedValue || state.queryValue || ''),
             };
+        case 'paginationStarted':
+            return {
+                ...state,
+                isExecuting: true,
+                startExecutionTime: action.startExecutionTime,
+            };
         case 'executionStopped': {
-            if (action.executionId !== state.currentExecutionId) {
+            // Allow empty executionId to match any current execution (used for error recovery)
+            if (action.executionId !== '' && action.executionId !== state.currentExecutionId) {
                 // TODO: send telemetry. It should not happen
                 return state;
             }
@@ -216,6 +237,8 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, selectedRows: action.selectedRows };
         case 'setQuerySelectedValue':
             return { ...state, querySelectedValue: action.selectedValue };
+        case 'setCurrentQueryBlock':
+            return { ...state, currentQueryBlock: action.currentQueryBlock };
         case 'setIsSurveyCandidate':
             return { ...state, isSurveyCandidate: action.isSurveyCandidate };
         case 'selectBucket':
@@ -232,5 +255,7 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
             return { ...state, containerSchema: action.containerSchema };
         case 'setAIFeaturesEnabled':
             return { ...state, isAIFeaturesEnabled: action.isAIFeaturesEnabled };
+        case 'setConfirmToolInvocationMessage':
+            return { ...state, confirmToolInvocationMessage: action.message };
     }
 }

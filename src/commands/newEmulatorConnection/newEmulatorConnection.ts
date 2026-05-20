@@ -18,7 +18,11 @@ import { PromptNosqlEmulatorConnectionStringStep } from './nosql/PromptNosqlEmul
 import { PromptEmulatorPortStep } from './PromptEmulatorPortStep';
 import { PromptEmulatorTypeStep } from './PromptEmulatorTypeStep';
 
-export async function newEmulatorConnection(context: IActionContext, node: NewCoreEmulatorConnectionItem) {
+export async function newEmulatorConnection(context: IActionContext, node?: NewCoreEmulatorConnectionItem) {
+    if (!node) {
+        return undefined;
+    }
+
     if (!isEmulatorSupported) {
         context.errorHandling.suppressReportIssue = true;
         throw new Error(l10n.t('The Azure Cosmos DB emulator is only supported on Windows, Linux and MacOS (Intel).'));

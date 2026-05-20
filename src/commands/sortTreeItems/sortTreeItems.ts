@@ -8,16 +8,21 @@ import { ext } from '../../extensionVariables';
 import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isSortable } from '../../tree/mixins/Sortable';
 import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 
-export async function sortTreeItems(_context: IActionContext, node?: TreeElement | FabricTreeElement): Promise<void> {
+export async function sortTreeItems(context: IActionContext, node?: TreeElement | FabricTreeElement): Promise<void> {
     const element: TreeElement | undefined = isFabricTreeElement(node)
         ? node.element
         : isTreeElement(node)
-          ? node
-          : undefined;
+            ? node
+            : undefined;
 
     if (!element) {
         return;
+    }
+
+    if (isTreeElementWithExperience(element)) {
+        context.telemetry.properties.experience = element.experience.api;
     }
 
     if (isSortable(element)) {

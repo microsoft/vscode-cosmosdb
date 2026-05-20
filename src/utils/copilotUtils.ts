@@ -49,18 +49,20 @@ export async function areCopilotModelsAvailable(): Promise<boolean> {
 /**
  * Checks if all requirements for AI features are met:
  * 1. AI features are not disabled by the user via the 'chat.disableAIFeatures' setting
- * 2. GitHub Copilot Chat extension is installed (required for chat participant)
- * 3. Copilot language models are available
+ * 2. Copilot language models are available
  *
- * Note: We use areCopilotModelsAvailable() as the primary check since the
- * GitHub.copilot extension is not detectable via getExtension().
+ * Note: We rely solely on areCopilotModelsAvailable() because neither the
+ * GitHub.copilot nor GitHub.copilot-chat extensions are reliably detectable via
+ * vscode.extensions.getExtension() across all VS Code distributions (e.g. when
+ * Copilot ships bundled with the editor). If `vscode.lm.selectChatModels`
+ * returns models for the `copilot` vendor, AI features are by definition usable.
  * @returns Promise<boolean> true if all requirements are met, false otherwise
  */
 export async function areAIFeaturesEnabled(): Promise<boolean> {
     if (isAIFeaturesDisabledBySetting()) {
         return false;
     }
-    return isCopilotChatExtensionInstalled() && (await areCopilotModelsAvailable());
+    return await areCopilotModelsAvailable();
 }
 
 /**
@@ -115,7 +117,8 @@ async function checkAIFeaturesWithRetry(
  * @returns Disposable to unregister the listeners
  */
 export function onCopilotAvailabilityChanged(callback: (available: boolean) => void): vscode.Disposable {
-    // Track whether the extension was previously installed to detect install vs uninstall
+    // Track whether the chat extension was previously installed to detect install vs uninstall.
+    // Note: this is best-effort — Copilot may be bundled with VS Code and not detectable here.
     let wasExtensionInstalled = isCopilotChatExtensionInstalled();
 
     const extensionListener = vscode.extensions.onDidChange(() => {
@@ -135,5 +138,11 @@ export function onCopilotAvailabilityChanged(callback: (available: boolean) => v
         }
     });
 
-    return vscode.Disposable.from(extensionListener, configListener);
+    // Listen for language model changes (e.g., Copilot models becoming available after startup).
+    // This covers the case where the panel opens before Copilot has fully initialized.
+    const modelListener = vscode.lm.onDidChangeChatModels(() => {
+        void checkAIFeaturesWithRetry(callback, true);
+    });
+
+    return vscode.Disposable.from(extensionListener, configListener, modelListener);
 }

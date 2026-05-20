@@ -5,6 +5,8 @@
 
 'use strict';
 
+import { SqlLanguageService } from '@cosmosdb/nosql-language-service';
+import { registerCosmosDbSql } from '@cosmosdb/nosql-language-service/vscode';
 import { registerAzureUtilsExtensionVariables } from '@microsoft/vscode-azext-azureutils';
 import {
     callWithTelemetryAndErrorHandling,
@@ -31,12 +33,16 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
-import { SCHEMA_STORAGE_KEY, type FabricArtifactType } from './constants';
-import { registerNoSqlVSCodeCompletionProvider } from './cosmosdb/language/NoSqlCompletionProvider';
-import { registerNoSqlVSCodeHoverProvider } from './cosmosdb/language/NoSqlHoverProvider';
+import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
+import {
+    CosmosDBShellExtension,
+    registerCosmosDBShellLanguageServer,
+    registerMcpServer,
+} from './cosmosDBShell/CosmosDBShellExtension';
 import { DatabasesFileSystem } from './DatabasesFileSystem';
 import { ext } from './extensionVariables';
+import { MigrationAssistantTab } from './panels/MigrationAssistantTab';
 import { QueryEditorTab } from './panels/QueryEditorTab';
 import { FabricService } from './services/FabricService';
 import { SchemaFileStorage } from './services/SchemaFileStorage';
@@ -47,6 +53,7 @@ import {
     WorkspaceResourceType,
 } from './tree/workspace-api/SharedWorkspaceResourceProvider';
 import { CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
+import { MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
 import { areAIFeaturesEnabled, onCopilotAvailabilityChanged } from './utils/copilotUtils';
 import { globalUriHandler } from './vscodeUriHandler';
 
@@ -95,7 +102,12 @@ export async function activateInternal(
         ext.state = new TreeElementStateManager();
         ext.cosmosDBBranchDataProvider = new CosmosDBBranchDataProvider();
         ext.cosmosDBWorkspaceBranchDataProvider = new CosmosDBWorkspaceBranchDataProvider();
+        ext.migrationWorkspaceBranchDataProvider = new MigrationWorkspaceBranchDataProvider();
         ext.fileSystem = new DatabasesFileSystem();
+
+        const cosmosDBShellSupport: CosmosDBShellExtension = new CosmosDBShellExtension();
+        context.subscriptions.push(cosmosDBShellSupport);
+        await cosmosDBShellSupport.activate();
 
         context.subscriptions.push(
             vscode.workspace.registerFileSystemProvider(DatabasesFileSystem.scheme, ext.fileSystem),
@@ -106,8 +118,11 @@ export async function activateInternal(
         // Register common commands
         registerCommands();
 
-        context.subscriptions.push(registerNoSqlVSCodeCompletionProvider());
-        context.subscriptions.push(registerNoSqlVSCodeHoverProvider());
+        const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
+        registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });
+
+        // Auto-detect migration projects in the workspace
+        void MigrationAssistantTab.promptToReopen();
 
         registerEvent(
             'cosmosDB.onDidChangeConfiguration',
@@ -131,6 +146,21 @@ export async function activateInternal(
         // The chat participant is always registered, but will show helpful error messages
         // if AI features are not available (Copilot not installed, not signed in, or disabled)
         CosmosDbOperationsService.initialize(context);
+
+        // Register the availability-change listener BEFORE the initial async check.
+        // This prevents a race where Copilot finishes initializing (fires
+        // onDidChangeChatModels) during the `await areAIFeaturesEnabled()` below —
+        // without the listener in place that event would be lost and
+        // `ext.isAIFeaturesEnabled` would stay `false` forever.
+        context.subscriptions.push(
+            onCopilotAvailabilityChanged((available) => {
+                ext.isAIFeaturesEnabled = available;
+                // Notify all open QueryEditorTabs about the change
+                void QueryEditorTab.notifyAIFeaturesChanged(available);
+                void MigrationAssistantTab.notifyAIFeaturesChanged(available);
+            }),
+        );
+
         ext.isAIFeaturesEnabled = await areAIFeaturesEnabled();
 
         // Always create the chat participant so users can see why it's not working
@@ -140,18 +170,12 @@ export async function activateInternal(
         // Register language model tools for the chat participant
         registerSampleDataTool(context);
 
-        // Listen for changes to extension availability (Copilot install/uninstall)
-        context.subscriptions.push(
-            onCopilotAvailabilityChanged((available) => {
-                ext.isAIFeaturesEnabled = available;
-                // Notify all open QueryEditorTabs about the change
-                void QueryEditorTab.notifyAIFeaturesChanged(available);
-            }),
-        );
-
         // Suppress "Report an Issue" button for all errors in favor of the command
         registerErrorHandler((c) => (c.errorHandling.suppressReportIssue = true));
         registerReportIssueCommand('azureDatabases.reportIssue');
+
+        registerMcpServer(context);
+        registerCosmosDBShellLanguageServer(context);
 
         const fabricCore = vscode.extensions.getExtension<fabric.IFabricExtensionManager>('fabric.vscode-fabric');
         if (fabricCore) {
@@ -198,7 +222,9 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
         clientExtensionId: 'ms-azuretools.vscode-cosmosdb',
 
         // Successful retrieval of Azure Resources APIs will be returned here
-        onDidReceiveAzureResourcesApis: (azureResourcesApis: (AzureResourcesExtensionApi | undefined)[]) => {
+        onDidReceiveAzureResourcesApis: (
+            azureResourcesApis: (AzureResourcesExtensionApi | AzureExtensionApi | undefined)[],
+        ) => {
             const [rgApiV2] = azureResourcesApis;
             if (!rgApiV2) {
                 throw new Error(l10n.t('Failed to find a matching Azure Resources API for version "{0}".', v2));
@@ -223,6 +249,10 @@ function registerAzureResourcesProviders(_context: vscode.ExtensionContext): api
             ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
                 WorkspaceResourceType.AttachedAccounts,
                 ext.cosmosDBWorkspaceBranchDataProvider,
+            );
+            ext.rgApiV2.resources.registerWorkspaceResourceBranchDataProvider(
+                WorkspaceResourceType.Migrations,
+                ext.migrationWorkspaceBranchDataProvider,
             );
         },
     };

@@ -3,18 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import js from '@eslint/js';
-import importPlugin from 'eslint-plugin-import';
-import jest from 'eslint-plugin-jest';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
-import licenseHeader from 'eslint-plugin-license-header';
-import mocha from 'eslint-plugin-mocha';
-import react from 'eslint-plugin-react';
-import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
-import globals from 'globals';
 import ts from 'typescript-eslint';
 
+/**
+ * Minimal ESLint config — almost all rules have been migrated to oxlint (.oxlintrc.jsonc).
+ * ESLint is kept only for `no-restricted-syntax`, which uses AST node selectors that oxlint
+ * does not support. Type-aware rules are handled by oxlint via `options.typeAware: true`.
+ */
 export default defineConfig([
     {
         ignores: [
@@ -26,37 +22,39 @@ export default defineConfig([
             'dist',
             'out',
             'node_modules',
+            'packages/*/dist',
+            'packages/*/node_modules',
             '**/__mocks__/**/*',
             '**/*.d.ts',
-            '**/jest.config.js',
+            '**/vitest.config.ts',
             '**/main.js',
+            'packages/*/vitest.config.ts',
+            'packages/*/tests/**/*.mjs',
+            'packages/*/scripts/**/*.mjs',
         ],
     },
+    // TypeScript parser — required so ESLint can parse .ts/.tsx AST correctly.
     {
-        extends: [js.configs.recommended],
-
-        plugins: {
-            import: importPlugin,
-            'license-header': licenseHeader,
-        },
-
+        files: ['**/*.ts', '**/*.tsx'],
+        plugins: { '@typescript-eslint': ts.plugin },
         languageOptions: {
-            globals: {
-                ...globals.node,
+            ecmaVersion: 2024,
+            parser: ts.parser,
+            parserOptions: {
+                ecmaFeatures: {
+                    jsx: true,
+                },
+                project: './tsconfig.eslint.json',
+                projectService: false,
+                tsconfigRootDir: import.meta.dirname,
             },
-
-            ecmaVersion: 2023,
             sourceType: 'module',
         },
-
+    },
+    // The only rule that cannot be expressed in oxlint: no-restricted-syntax uses
+    // AST node selectors to enforce the @vscode/l10n import convention.
+    {
         rules: {
-            eqeqeq: ['error', 'always'],
-            'import/consistent-type-specifier-style': ['error', 'prefer-inline'],
-            'import/no-internal-modules': ['error', { allow: ['yaml/types', 'react-data-grid/lib/styles.css'] }],
-            'no-case-declarations': 'error',
-            'no-constant-condition': 'error',
-            'no-inner-declarations': 'error',
-            'no-restricted-imports': 'error',
             'no-restricted-syntax': [
                 'error',
                 {
@@ -69,204 +67,14 @@ export default defineConfig([
                     message:
                         'Please use "import * as l10n from \'@vscode/l10n\';" and use l10n directly instead of vscode.l10n.',
                 },
-            ],
-            'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-            'no-useless-escape': 'error',
-            'license-header/header': [
-                'error',
-                [
-                    '/*---------------------------------------------------------------------------------------------',
-                    ' *  Copyright (c) Microsoft Corporation. All rights reserved.',
-                    ' *  Licensed under the MIT License. See License.txt in the project root for license information.',
-                    ' *--------------------------------------------------------------------------------------------*/',
-                ],
-            ],
-        },
-    },
-    {
-        files: ['**/*.ts'],
-
-        extends: [ts.configs.recommendedTypeChecked],
-
-        plugins: {
-            '@typescript-eslint': ts.plugin,
-        },
-
-        languageOptions: {
-            parser: ts.parser,
-            ecmaVersion: 2023,
-            sourceType: 'module',
-
-            parserOptions: {
-                projectService: true,
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-
-        rules: {
-            '@typescript-eslint/consistent-type-imports': 'error',
-            '@typescript-eslint/no-base-to-string': 'warn',
-            '@typescript-eslint/no-inferrable-types': 'off',
-            '@typescript-eslint/no-namespace': 'off',
-            '@typescript-eslint/no-restricted-types': 'error',
-            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-            '@typescript-eslint/prefer-regexp-exec': 'off',
-            '@typescript-eslint/require-await': 'warn',
-            '@typescript-eslint/restrict-template-expressions': 'off',
-            '@typescript-eslint/unbound-method': 'warn',
-        },
-    },
-    {
-        files: ['**/*.tsx'],
-
-        extends: [
-            ts.configs.recommendedTypeChecked,
-            react.configs.flat.recommended,
-            react.configs.flat['jsx-runtime'],
-            jsxA11y.flatConfigs.recommended,
-            reactHooks.configs.flat['recommended-latest'],
-        ],
-
-        plugins: {
-            '@typescript-eslint': ts.plugin,
-        },
-
-        languageOptions: {
-            parser: ts.parser,
-            ecmaVersion: 2023,
-            sourceType: 'module',
-
-            ...jsxA11y.flatConfigs.recommended.languageOptions,
-
-            globals: {
-                ...globals.browser,
-            },
-
-            parserOptions: {
-                projectService: true,
-                tsconfigRootDir: import.meta.dirname,
-                ecmaFeatures: {
-                    jsx: true,
+                {
+                    // Matches only `import vscode from 'vscode'` (ImportDefaultSpecifier),
+                    // NOT `import * as vscode from 'vscode'` (ImportNamespaceSpecifier).
+                    selector: 'ImportDeclaration[source.value="vscode"] > ImportDefaultSpecifier',
+                    message:
+                        'Use \'import * as vscode from "vscode"\' instead. Default import returns undefined in ESM.',
                 },
-            },
-        },
-
-        settings: {
-            react: {
-                version: 'detect',
-            },
-        },
-
-        rules: {
-            '@typescript-eslint/consistent-type-imports': 'error',
-            '@typescript-eslint/no-base-to-string': 'warn',
-            '@typescript-eslint/no-inferrable-types': 'off',
-            '@typescript-eslint/no-namespace': 'off',
-            '@typescript-eslint/no-restricted-types': 'error',
-            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-            '@typescript-eslint/prefer-regexp-exec': 'off',
-            '@typescript-eslint/require-await': 'warn',
-            '@typescript-eslint/restrict-template-expressions': 'off',
-            '@typescript-eslint/unbound-method': 'warn',
-        },
-    },
-    // Jest unit tests in src/
-    {
-        files: ['src/**/*.test.ts', '**/__mocks__/**/*.js'],
-
-        extends: [ts.configs.recommendedTypeChecked, jest.configs['flat/recommended']],
-
-        plugins: {
-            '@typescript-eslint': ts.plugin,
-            jest: jest,
-        },
-
-        languageOptions: {
-            globals: {
-                ...globals.node,
-                ...globals.jest,
-            },
-
-            parser: ts.parser,
-            ecmaVersion: 2023,
-            sourceType: 'module',
-
-            parserOptions: {
-                projectService: false,
-                project: './tsconfig.jest.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-
-        rules: {
-            '@typescript-eslint/no-empty-function': 'off',
-            '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/no-floating-promises': 'off',
-            '@typescript-eslint/no-misused-promises': 'off',
-            '@typescript-eslint/no-non-null-assertion': 'off',
-            '@typescript-eslint/no-unsafe-assignment': 'off',
-            '@typescript-eslint/no-unsafe-member-access': 'off',
-            '@typescript-eslint/no-unsafe-return': 'off',
-            '@typescript-eslint/no-unsafe-call': 'off',
-            '@typescript-eslint/no-unsafe-argument': 'off',
-            '@typescript-eslint/require-await': 'off',
-            '@typescript-eslint/unbound-method': 'off',
-            'no-dupe-else-if': 'off',
-            'no-empty': 'off',
-            'jest/expect-expect': 'off',
-            'jest/no-conditional-expect': 'off',
-        },
-    },
-    // Mocha integration tests in test/
-    {
-        files: ['test/**/*.ts', 'test/**/*.test.ts'],
-
-        extends: [ts.configs.recommendedTypeChecked],
-
-        plugins: {
-            '@typescript-eslint': ts.plugin,
-            mocha,
-        },
-
-        languageOptions: {
-            globals: {
-                ...globals.node,
-                ...globals.mocha,
-            },
-
-            parser: ts.parser,
-            ecmaVersion: 2023,
-            sourceType: 'module',
-
-            parserOptions: {
-                projectService: false,
-                project: './tsconfig.test.json',
-                tsconfigRootDir: import.meta.dirname,
-            },
-        },
-
-        rules: {
-            ...mocha.configs.recommended.rules,
-            '@typescript-eslint/no-empty-function': 'off',
-            '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/no-floating-promises': 'off',
-            '@typescript-eslint/no-misused-promises': 'off',
-            '@typescript-eslint/no-non-null-assertion': 'off',
-            '@typescript-eslint/no-unsafe-assignment': 'off',
-            '@typescript-eslint/no-unsafe-member-access': 'off',
-            '@typescript-eslint/no-unsafe-return': 'off',
-            '@typescript-eslint/no-unsafe-call': 'off',
-            '@typescript-eslint/no-unsafe-argument': 'off',
-            '@typescript-eslint/require-await': 'off',
-            'no-dupe-else-if': 'off',
-            'no-empty': 'off',
-            'no-restricted-imports': 'off',
-            'mocha/no-mocha-arrows': 'off',
-            'mocha/consistent-spacing-between-blocks': 'off',
-            'mocha/max-top-level-suites': 'off',
-            'mocha/handle-done-callback': 'off',
+            ],
         },
     },
 ]);

@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "建立觸發程序...",
   "cosmosdb.command.trigger.delete": "刪除觸發程序...",
   "cosmosdb.command.trigger.open": "開啟觸發程序",
+  "cosmosdb.command.cosmos_db_shell.launch": "啟動 Azure Cosmos DB Shell",
   "cosmosdb.command.update": "更新至雲端",
   "cosmosdb.command.ai.deploy_instruction_files": "將 LLM 指示複製到使用者設定檔資料夾",
   "cosmosdb.command.ai.remove_instruction_files": "從使用者設定檔資料夾移除 LLM 指示",
   "cosmosdb.command.schema.delete_all": "刪除所有已儲存的結構描述",
+  "cosmosdb.command.migration.open": "New Migration…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
+  "cosmosdb.command.migration.remove": "Remove Migration…",
   "cosmosdb.configuration.batch.size": "查詢 Azure 資料庫資源時使用的批次大小。",
   "cosmosdb.configuration.confirmation.style": "確認無法復原的作業 (例如刪除資源) 時所使用的行為。",
   "cosmosdb.configuration.confirmation.style.button": "按鈕點擊確認",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "顯示詳細的作業摘要，顯示如資料庫刪除、文件新增、刪除或類似事件的動作之訊息。",
   "cosmosdb.configuration.save.prompt": "將文件上傳至雲端時顯示警告對話方塊。",
   "cosmosdb.configuration.csv.separator": "將資料匯出至 CSV 檔案時使用的分隔符號 (例如 ';'、| 或 ',')。",
+  "cosmosdb.configuration.cosmosDB.shell.path": "用於啟動 Azure Cosmos DB Shell 的資料夾與可執行檔完整路徑。特定殼層命令需要此項目。根據預設，會在系統路徑中搜尋 'cosmosdbshell'。",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "啟用 Azure Cosmos DB Shell Model Context Protocol 伺服器。",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "Azure Cosmos DB Shell Model Context Protocol 伺服器要使用的連接埠。",
   "cosmosdb.configuration.preferredAuthenticationMethod": "選取 Cosmos DB 帳戶的偏好驗證方法。",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "自動",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "根據帳戶設定，選取最佳驗證方法",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "僅在 Azure (例如虛擬機器) 中執行時支援，[深入了解](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "使用使用者指派的受控識別驗證 Entra ID 時，所使用的受控識別的用戶端識別碼。",
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 資產。允許延伸模組持續更新 LLM 相關檔案。",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "啟用後，結構描述產生也會考慮查詢結果，以推斷容器結構描述。"
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "啟用後，結構描述產生也會考慮查詢結果，以推斷容器結構描述。",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

@@ -186,7 +186,7 @@ async function askForDocuments(context: IActionContext): Promise<vscode.Uri[]> {
     if (rootPath) {
         openDialogOptions.defaultUri = vscode.Uri.file(rootPath);
     }
-    return await context.ui.showOpenDialog(openDialogOptions);
+    return context.ui.showOpenDialog(openDialogOptions);
 }
 
 async function parseAndValidateFile(

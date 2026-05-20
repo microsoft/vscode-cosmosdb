@@ -379,10 +379,8 @@ async function surveyPromptIfCandidate(
 }
 
 /**
- * This section is only for tests
- * Currently we use swc which doesn't support "@internal" alongside with the stripInternal option.
- * So we rely on webpack to set the NODE_ENV to 'test' and return the real states for tests only.
- * Once we can switch to tsc or swc adds this option, we should remove the (process.env.NODE_ENV === 'test') checks.
+ * This section is only for tests.
+ * NODE_ENV is set to 'test' by Vite/Vitest at test time.
  */
 
 /**

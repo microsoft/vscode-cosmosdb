@@ -6,6 +6,11 @@
 import * as vscode from 'vscode';
 import { buildChatMessages } from './chatUtils';
 
+// Prevent transitive require('vscode') from @microsoft/vscode-azext-utils deps
+vi.mock('@microsoft/vscode-azext-utils', () => ({
+    callWithTelemetryAndErrorHandling: vi.fn(),
+}));
+
 // Helper to create mock LanguageModelChatMessage objects
 // The actual vscode.LanguageModelChatMessage is not available in tests,
 // so we create mock objects that match the expected interface

@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "Vytvořit aktivační událost",
   "cosmosdb.command.trigger.delete": "Odstranit aktivační událost...",
   "cosmosdb.command.trigger.open": "Otevřít aktivační událost",
+  "cosmosdb.command.cosmos_db_shell.launch": "Spustit Azure Cosmos DB Shell",
   "cosmosdb.command.update": "Aktualizovat do cloudu",
   "cosmosdb.command.ai.deploy_instruction_files": "Zkopírovat pokyny LLM do složky profilu uživatele",
   "cosmosdb.command.ai.remove_instruction_files": "Odebrat pokyny LLM ze složky profilu uživatele",
   "cosmosdb.command.schema.delete_all": "Odstranit všechna uložená schémata",
+  "cosmosdb.command.migration.open": "New Migration…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
+  "cosmosdb.command.migration.remove": "Remove Migration…",
   "cosmosdb.configuration.batch.size": "Velikost dávky, která se má použít při dotazování na prostředky Azure Database",
   "cosmosdb.configuration.confirmation.style": "Chování, které se má použít při potvrzování operací, které nelze vrátit zpět, například odstranění prostředků.",
   "cosmosdb.configuration.confirmation.style.button": "Potvrzení kliknutím na tlačítko",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "Umožňuje zobrazit podrobné souhrny operací a zobrazit zprávy pro akce, jako jsou zrušení databáze, přidání, odstranění dokumentu nebo podobné události.",
   "cosmosdb.configuration.save.prompt": "Při nahrávání dokumentu do cloudu zobrazit dialogové okno s upozorněním",
   "cosmosdb.configuration.csv.separator": "Oddělovač, který se má použít při exportu dat do souboru CSV (tj. ;, | nebo ,).",
+  "cosmosdb.configuration.cosmosDB.shell.path": "Úplná cesta ke složce a spustitelnému souboru pro spuštění rozhraní Azure Cosmos DB Shell. Vyžaduje se pro určité příkazy prostředí. Ve výchozím nastavení se v systémové cestě vyhledá cosmosdbshell.",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "Povolte Azure Cosmos DB Shell Model Context Protocol Server.",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "Port, který se má použít pro Azure Cosmos DB Shell Model Context Protocol Server",
   "cosmosdb.configuration.preferredAuthenticationMethod": "Vyberte upřednostňovanou metodu ověřování pro účty Cosmos DB.",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "Automatické",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "Vybere nejlepší metodu ověřování na základě konfigurace účtu.",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Podporováno pouze při spuštění v Azure (tj. virtuální počítač), [další informace](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ID klienta spravované identity, které se použije při ověřování s ID Entra pomocí spravované identity přiřazené uživatelem",
   "cosmosdb.configuration.manage-llm-assets": "Spravovat prostředky LLM Povolte rozšíření, aby udržovalo soubory související s LLM aktuální.",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Je-li tato možnost povolena, generování schématu zohledňuje také výsledky dotazů při odvozování schématu kontejneru."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Je-li tato možnost povolena, generování schématu zohledňuje také výsledky dotazů při odvozování schématu kontejneru.",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

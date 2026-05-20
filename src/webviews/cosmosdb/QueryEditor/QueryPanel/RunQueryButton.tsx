@@ -49,7 +49,10 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                 });
             }
 
-            return dispatcher.runQuery(state.queryValue, {
+            // Use the query block under the cursor (persisted across focus loss),
+            // falling back to the full editor text when the block is not available.
+            const queryToRun = state.currentQueryBlock || state.queryValue;
+            return dispatcher.runQuery(queryToRun, {
                 countPerPage: state.pageSize,
                 throughputBucket: state.selectedThroughputBucket,
             });
@@ -111,7 +114,7 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                 {state.queryHistory.length === 0 && <MenuItem disabled>{l10n.t('No history')}</MenuItem>}
                 {state.queryHistory.length > 0 &&
                     state.queryHistory.map((query, index) => (
-                        <MenuItem onClick={() => dispatcher.insertText(query)} key={index}>
+                        <MenuItem onClick={() => void dispatcher.insertText(query)} key={index}>
                             {truncateString(query, 50)}
                         </MenuItem>
                     ))}
@@ -120,8 +123,6 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                         <MenuDivider />
                         <MenuList>
                             <Menu
-                                key={`bucket-menu-${state.selectedThroughputBucket ?? 0}`}
-                                defaultCheckedValues={{ throughputBucket: ['0'] }}
                                 checkedValues={{
                                     throughputBucket: state.selectedThroughputBucket
                                         ? [state.selectedThroughputBucket.toString()]

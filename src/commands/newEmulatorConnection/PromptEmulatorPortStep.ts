@@ -5,7 +5,7 @@
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import { wellKnownEmulatorPassword } from '../../constants';
+import { wellKnownEmulatorPassword } from '../../cosmosdb/cosmosdb-shared-constants';
 import {
     NewEmulatorConnectionMode,
     type NewEmulatorConnectionWizardContext,

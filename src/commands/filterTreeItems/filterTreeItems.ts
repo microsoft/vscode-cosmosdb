@@ -8,13 +8,22 @@ import { ext } from '../../extensionVariables';
 import { isFabricTreeElement, type FabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
 import { isFilterable } from '../../tree/mixins/Filterable';
 import { isTreeElement, type TreeElement } from '../../tree/TreeElement';
+import { isTreeElementWithExperience } from '../../tree/TreeElementWithExperience';
 
-export async function filterTreeItems(_context: IActionContext, node?: TreeElement | FabricTreeElement): Promise<void> {
+export async function filterTreeItems(context: IActionContext, node?: TreeElement | FabricTreeElement): Promise<void> {
+    if (!node) {
+        return undefined;
+    }
+
+    if (isTreeElementWithExperience(node)) {
+        context.telemetry.properties.experience = node.experience.api;
+    }
+
     const element: TreeElement | undefined = isFabricTreeElement(node)
         ? node.element
         : isTreeElement(node)
-          ? node
-          : undefined;
+            ? node
+            : undefined;
 
     if (!element) {
         return;

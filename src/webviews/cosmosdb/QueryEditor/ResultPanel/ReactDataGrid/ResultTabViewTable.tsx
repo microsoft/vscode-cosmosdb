@@ -18,7 +18,8 @@ import {
 } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { type CosmosDBRecordIdentifier } from '../../../../../cosmosdb/types/queryResult';
-import { toStringUniversal, type TableData, type TableRecord } from '../../../../../utils/convertors';
+import { type TableData, type TableRecord } from '../../../../../utils/convertors';
+import { toStringUniversal } from '../../../../../utils/strings';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../../state/QueryEditorContext';
 import { ColumnHeaderCell } from './ColumnHeaderMenu';
 import './vscodeTheme.scss';

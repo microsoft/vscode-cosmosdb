@@ -7,10 +7,10 @@ import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
-import { CosmosDBHiddenFields } from '../../constants';
+import { CosmosDBHiddenFields } from '../../cosmosdb/cosmosdb-shared-constants';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
-import { truncateString } from '../../utils/convertors';
 import { extractPartitionKey, getDocumentId } from '../../utils/document';
+import { truncateString } from '../../utils/strings';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type TreeElement } from '../TreeElement';
 import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
@@ -66,7 +66,7 @@ export abstract class CosmosDBItemResourceItem
 
     private generateTooltip(): string {
         const doc = this.model.item ?? {};
-        const id: string = (doc.id as string | undefined) ?? (doc._id as string | undefined) ?? '<no id>';
+        const id: string = doc.id ?? (doc._id as string | undefined) ?? '<no id>';
 
         const pkPaths = this.model.container.partitionKey?.paths ?? [];
         const pkValuesRaw = this.getPartitionKeyValuesArray(this.model);

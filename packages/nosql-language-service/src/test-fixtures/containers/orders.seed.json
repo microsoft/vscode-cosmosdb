@@ -1,0 +1,5869 @@
+[
+  {
+    "id": "order-0000",
+    "customerId": "cust-001",
+    "status": "cancelled",
+    "totalAmount": 0,
+    "createdAt": "2025-10-20T19:15:47.000Z",
+    "items": [],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-001"
+  },
+  {
+    "id": "order-0001",
+    "customerId": "cust-002",
+    "status": "pending",
+    "totalAmount": 912.08,
+    "createdAt": "2025-12-23T00:18:34.000Z",
+    "items": [
+      {
+        "productId": "prod-2078",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 112.58
+      },
+      {
+        "productId": "prod-0172",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 76.15
+      },
+      {
+        "productId": "prod-1272",
+        "name": "Laptop Bag 15\"",
+        "quantity": 2,
+        "unitPrice": 191.16
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-002"
+  },
+  {
+    "id": "order-0002",
+    "customerId": "cust-001",
+    "status": "processing",
+    "totalAmount": 1494.61,
+    "createdAt": "2024-06-15T10:00:00.000Z",
+    "items": [
+      {
+        "productId": "prod-2477",
+        "name": "Wrist Rest Gel",
+        "quantity": 1,
+        "unitPrice": 9.88
+      },
+      {
+        "productId": "prod-2281",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 272.55
+      },
+      {
+        "productId": "prod-2145",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 166.77
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-001"
+  },
+  {
+    "id": "order-0003",
+    "customerId": "cust-001",
+    "status": "shipped",
+    "totalAmount": 1422.88,
+    "createdAt": "2024-06-15T10:00:00.000Z",
+    "items": [
+      {
+        "productId": "prod-0575",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 241.54
+      },
+      {
+        "productId": "prod-2657",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 285.62
+      },
+      {
+        "productId": "prod-1224",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 103.16
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL840002434"
+    },
+    "discount": null,
+    "_partitionKey": "cust-001"
+  },
+  {
+    "id": "order-0004",
+    "customerId": "cust-005",
+    "status": "delivered",
+    "totalAmount": 237.66,
+    "createdAt": "2025-11-01T11:39:16.000Z",
+    "items": [
+      {
+        "productId": "prod-2268",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 237.66
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL926370866"
+    },
+    "discount": 0,
+    "_partitionKey": "cust-005"
+  },
+  {
+    "id": "order-0005",
+    "customerId": "cust-006",
+    "status": "processing",
+    "totalAmount": 1316.91,
+    "createdAt": "2023-07-02T06:49:46.000Z",
+    "items": [
+      {
+        "productId": "prod-0571",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 86.87
+      },
+      {
+        "productId": "prod-0895",
+        "name": "Desk Organizer",
+        "quantity": 3,
+        "unitPrice": 39.96
+      },
+      {
+        "productId": "prod-1970",
+        "name": "Laptop Stand",
+        "quantity": 3,
+        "unitPrice": 89.64
+      },
+      {
+        "productId": "prod-0759",
+        "name": "Phone Case Premium",
+        "quantity": 2,
+        "unitPrice": 74.7
+      },
+      {
+        "productId": "prod-1219",
+        "name": "Phone Case Premium",
+        "quantity": 1,
+        "unitPrice": 11.12
+      },
+      {
+        "productId": "prod-1021",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 70.47
+      },
+      {
+        "productId": "prod-1378",
+        "name": "Phone Case Premium",
+        "quantity": 1,
+        "unitPrice": 20.23
+      },
+      {
+        "productId": "prod-2317",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 14.39
+      },
+      {
+        "productId": "prod-2012",
+        "name": "USB Hub",
+        "quantity": 3,
+        "unitPrice": 68.49
+      },
+      {
+        "productId": "prod-0697",
+        "name": "Cable Management Kit",
+        "quantity": 3,
+        "unitPrice": 32.39
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-006"
+  },
+  {
+    "id": "order-0006",
+    "customerId": "cust-007",
+    "status": "shipped",
+    "totalAmount": 217.67,
+    "createdAt": "2024-01-06T10:59:45.000Z",
+    "items": [
+      {
+        "productId": "prod-1985",
+        "name": "Cable Management Kit",
+        "quantity": 1,
+        "unitPrice": 217.67
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED296737431"
+    },
+    "discount": null,
+    "_partitionKey": "cust-007"
+  },
+  {
+    "id": "order-0007",
+    "customerId": "cust-008",
+    "status": "cancelled",
+    "totalAmount": 2501.73,
+    "createdAt": "2024-12-29T15:06:09.000Z",
+    "items": [
+      {
+        "productId": "prod-2722",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 264.2
+      },
+      {
+        "productId": "prod-1485",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 154.05
+      },
+      {
+        "productId": "prod-2800",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 198.27
+      },
+      {
+        "productId": "prod-1181",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 1,
+        "unitPrice": 250.96
+      },
+      {
+        "productId": "prod-1933",
+        "name": "Phone Case Premium",
+        "quantity": 3,
+        "unitPrice": 126.5
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-008"
+  },
+  {
+    "id": "order-0008",
+    "customerId": "cust-009",
+    "status": "cancelled",
+    "totalAmount": 499.67,
+    "createdAt": "2023-05-12T02:06:02.000Z",
+    "items": [
+      {
+        "productId": "prod-2220",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 51.36
+      },
+      {
+        "productId": "prod-2301",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 93.19
+      },
+      {
+        "productId": "prod-0439",
+        "name": "Webcam Cover Slider",
+        "quantity": 1,
+        "unitPrice": 252.4
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-009"
+  },
+  {
+    "id": "order-0009",
+    "customerId": "cust-010",
+    "status": "delivered",
+    "totalAmount": 1238.14,
+    "createdAt": "2023-07-25T09:01:29.000Z",
+    "items": [
+      {
+        "productId": "prod-1617",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 141.67
+      },
+      {
+        "productId": "prod-2781",
+        "name": "Laptop Bag 15\"",
+        "quantity": 4,
+        "unitPrice": 161.21
+      },
+      {
+        "productId": "prod-0867",
+        "name": "Wireless Headphones",
+        "quantity": 2,
+        "unitPrice": 13.31
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS140982988"
+    },
+    "discount": null,
+    "_partitionKey": "cust-010"
+  },
+  {
+    "id": "order-0010",
+    "customerId": "cust-011",
+    "status": "delivered",
+    "totalAmount": 277.28,
+    "createdAt": "2025-04-24T08:27:36.000Z",
+    "items": [
+      {
+        "productId": "prod-0734",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 277.28
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL362918277"
+    },
+    "discount": null,
+    "_partitionKey": "cust-011"
+  },
+  {
+    "id": "order-0011",
+    "customerId": "cust-012",
+    "status": "delivered",
+    "totalAmount": 1216.1,
+    "createdAt": "2025-05-01T14:29:05.000Z",
+    "items": [
+      {
+        "productId": "prod-1230",
+        "name": "Wrist Rest Gel",
+        "quantity": 3,
+        "unitPrice": 148.83
+      },
+      {
+        "productId": "prod-1277",
+        "name": "Mechanical Keyboard",
+        "quantity": 3,
+        "unitPrice": 186
+      },
+      {
+        "productId": "prod-0666",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 211.61
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL442771879"
+    },
+    "discount": null,
+    "_partitionKey": "cust-012"
+  },
+  {
+    "id": "order-0012",
+    "customerId": "cust-013",
+    "status": "delivered",
+    "totalAmount": 935.93,
+    "createdAt": "2023-09-18T11:17:01.000Z",
+    "items": [
+      {
+        "productId": "prod-1245",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 104.22
+      },
+      {
+        "productId": "prod-1816",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 39.63
+      },
+      {
+        "productId": "prod-1256",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 2,
+        "unitPrice": 112.92
+      },
+      {
+        "productId": "prod-0930",
+        "name": "Wrist Rest Gel",
+        "quantity": 1,
+        "unitPrice": 113.81
+      },
+      {
+        "productId": "prod-2419",
+        "name": "Laptop Stand",
+        "quantity": 3,
+        "unitPrice": 111.18
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL502990058"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-013"
+  },
+  {
+    "id": "order-0013",
+    "customerId": "cust-014",
+    "status": "delivered",
+    "totalAmount": 2388.1,
+    "createdAt": "2025-01-02T03:40:02.000Z",
+    "items": [
+      {
+        "productId": "prod-2960",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 264.91
+      },
+      {
+        "productId": "prod-1807",
+        "name": "Wireless Headphones",
+        "quantity": 2,
+        "unitPrice": 198.53
+      },
+      {
+        "productId": "prod-1620",
+        "name": "Screen Protector",
+        "quantity": 3,
+        "unitPrice": 93.04
+      },
+      {
+        "productId": "prod-2674",
+        "name": "Desk Mat XL",
+        "quantity": 2,
+        "unitPrice": 98.35
+      },
+      {
+        "productId": "prod-1549",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 2,
+        "unitPrice": 227.79
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS788873435"
+    },
+    "discount": null,
+    "_partitionKey": "cust-014"
+  },
+  {
+    "id": "order-0014",
+    "customerId": "cust-015",
+    "status": "delivered",
+    "totalAmount": 918.7,
+    "createdAt": "2025-03-15T13:43:43.000Z",
+    "items": [
+      {
+        "productId": "prod-0533",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 171.14
+      },
+      {
+        "productId": "prod-2349",
+        "name": "Desk Mat XL",
+        "quantity": 1,
+        "unitPrice": 234.14
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL818419861"
+    },
+    "discount": null,
+    "_partitionKey": "cust-015"
+  },
+  {
+    "id": "order-0015",
+    "customerId": "cust-016",
+    "status": "shipped",
+    "totalAmount": 965.89,
+    "createdAt": "2025-01-26T04:47:10.000Z",
+    "items": [
+      {
+        "productId": "prod-0438",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 148.01
+      },
+      {
+        "productId": "prod-2606",
+        "name": "Phone Case Premium",
+        "quantity": 2,
+        "unitPrice": 195.51
+      },
+      {
+        "productId": "prod-2309",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 58.77
+      },
+      {
+        "productId": "prod-1621",
+        "name": "LED Strip Lights",
+        "quantity": 1,
+        "unitPrice": 221.07
+      },
+      {
+        "productId": "prod-2977",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 7.37
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL117433402"
+    },
+    "discount": null,
+    "_partitionKey": "cust-016"
+  },
+  {
+    "id": "order-0016",
+    "customerId": "cust-017",
+    "status": "shipped",
+    "totalAmount": 287.15,
+    "createdAt": "2024-02-21T17:43:44.000Z",
+    "items": [
+      {
+        "productId": "prod-0612",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 287.15
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED750606859"
+    },
+    "discount": null,
+    "_partitionKey": "cust-017"
+  },
+  {
+    "id": "order-0017",
+    "customerId": "cust-018",
+    "status": "delivered",
+    "totalAmount": 871.71,
+    "createdAt": "2024-06-09T16:05:18.000Z",
+    "items": [
+      {
+        "productId": "prod-1090",
+        "name": "Desk Mat XL",
+        "quantity": 3,
+        "unitPrice": 290.57
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS735434199"
+    },
+    "discount": null,
+    "_partitionKey": "cust-018"
+  },
+  {
+    "id": "order-0018",
+    "customerId": "cust-019",
+    "status": "shipped",
+    "totalAmount": 1408.27,
+    "createdAt": "2025-08-10T17:25:35.000Z",
+    "items": [
+      {
+        "productId": "prod-2095",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 179.67
+      },
+      {
+        "productId": "prod-0492",
+        "name": "Gaming Mouse",
+        "quantity": 2,
+        "unitPrice": 66.45
+      },
+      {
+        "productId": "prod-0437",
+        "name": "Phone Case Premium",
+        "quantity": 2,
+        "unitPrice": 15.51
+      },
+      {
+        "productId": "prod-1122",
+        "name": "Laptop Bag 15\"",
+        "quantity": 2,
+        "unitPrice": 252.64
+      },
+      {
+        "productId": "prod-0621",
+        "name": "Mechanical Keyboard",
+        "quantity": 2,
+        "unitPrice": 100.03
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL908335553"
+    },
+    "discount": null,
+    "_partitionKey": "cust-019"
+  },
+  {
+    "id": "order-0019",
+    "customerId": "cust-020",
+    "status": "pending",
+    "totalAmount": 1458.62,
+    "createdAt": "2024-04-29T04:05:43.000Z",
+    "items": [
+      {
+        "productId": "prod-0638",
+        "name": "Power Bank 20000mAh",
+        "quantity": 1,
+        "unitPrice": 11.32
+      },
+      {
+        "productId": "prod-0755",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 284.29
+      },
+      {
+        "productId": "prod-0404",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 219.68
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-020"
+  },
+  {
+    "id": "order-0020",
+    "customerId": "cust-021",
+    "status": "cancelled",
+    "totalAmount": 1234.7,
+    "createdAt": "2025-05-26T10:29:04.000Z",
+    "items": [
+      {
+        "productId": "prod-0655",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 52.09
+      },
+      {
+        "productId": "prod-2247",
+        "name": "LED Strip Lights",
+        "quantity": 2,
+        "unitPrice": 179.11
+      },
+      {
+        "productId": "prod-2995",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 167.03
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 15,
+    "_partitionKey": "cust-021"
+  },
+  {
+    "id": "order-0021",
+    "customerId": "cust-022",
+    "status": "delivered",
+    "totalAmount": 1353.91,
+    "createdAt": "2025-01-05T22:34:53.000Z",
+    "items": [
+      {
+        "productId": "prod-1372",
+        "name": "Gaming Mouse",
+        "quantity": 3,
+        "unitPrice": 36.76
+      },
+      {
+        "productId": "prod-2861",
+        "name": "Cable Management Kit",
+        "quantity": 1,
+        "unitPrice": 291.27
+      },
+      {
+        "productId": "prod-1171",
+        "name": "Wrist Rest Gel",
+        "quantity": 4,
+        "unitPrice": 37.66
+      },
+      {
+        "productId": "prod-1879",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 200.43
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED891047862"
+    },
+    "discount": null,
+    "_partitionKey": "cust-022"
+  },
+  {
+    "id": "order-0022",
+    "customerId": "cust-023",
+    "status": "pending",
+    "totalAmount": 403.49,
+    "createdAt": "2023-11-30T03:41:45.000Z",
+    "items": [
+      {
+        "productId": "prod-0314",
+        "name": "USB Hub",
+        "quantity": 1,
+        "unitPrice": 108.45
+      },
+      {
+        "productId": "prod-1875",
+        "name": "Power Bank 20000mAh",
+        "quantity": 2,
+        "unitPrice": 147.52
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-023"
+  },
+  {
+    "id": "order-0023",
+    "customerId": "cust-024",
+    "status": "delivered",
+    "totalAmount": 1201.06,
+    "createdAt": "2024-11-13T13:33:42.000Z",
+    "items": [
+      {
+        "productId": "prod-0850",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 91.96
+      },
+      {
+        "productId": "prod-2779",
+        "name": "USB Hub",
+        "quantity": 4,
+        "unitPrice": 187.11
+      },
+      {
+        "productId": "prod-2316",
+        "name": "Webcam Cover Slider",
+        "quantity": 3,
+        "unitPrice": 17.19
+      },
+      {
+        "productId": "prod-2296",
+        "name": "Blue Light Glasses",
+        "quantity": 3,
+        "unitPrice": 11.07
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL183380744"
+    },
+    "discount": null,
+    "_partitionKey": "cust-024"
+  },
+  {
+    "id": "order-0024",
+    "customerId": "cust-025",
+    "status": "delivered",
+    "totalAmount": 1546.55,
+    "createdAt": "2023-04-01T17:02:44.000Z",
+    "items": [
+      {
+        "productId": "prod-1905",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 169.88
+      },
+      {
+        "productId": "prod-1293",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 299.59
+      },
+      {
+        "productId": "prod-0156",
+        "name": "Smart Plug",
+        "quantity": 4,
+        "unitPrice": 141.86
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED423827914"
+    },
+    "discount": 10,
+    "_partitionKey": "cust-025"
+  },
+  {
+    "id": "order-0025",
+    "customerId": "cust-026",
+    "status": "shipped",
+    "totalAmount": 824.45,
+    "createdAt": "2023-09-01T21:48:32.000Z",
+    "items": [
+      {
+        "productId": "prod-1356",
+        "name": "Webcam Cover Slider",
+        "quantity": 1,
+        "unitPrice": 78.89
+      },
+      {
+        "productId": "prod-0055",
+        "name": "Gaming Mouse",
+        "quantity": 3,
+        "unitPrice": 248.52
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL324057786"
+    },
+    "discount": null,
+    "_partitionKey": "cust-026"
+  },
+  {
+    "id": "order-0026",
+    "customerId": "cust-027",
+    "status": "pending",
+    "totalAmount": 352.86,
+    "createdAt": "2025-08-01T15:26:41.000Z",
+    "items": [
+      {
+        "productId": "prod-0035",
+        "name": "Cable Management Kit",
+        "quantity": 3,
+        "unitPrice": 22.71
+      },
+      {
+        "productId": "prod-2490",
+        "name": "Mechanical Keyboard",
+        "quantity": 3,
+        "unitPrice": 94.91
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-027"
+  },
+  {
+    "id": "order-0027",
+    "customerId": "cust-028",
+    "status": "shipped",
+    "totalAmount": 757.9,
+    "createdAt": "2025-08-22T12:02:10.000Z",
+    "items": [
+      {
+        "productId": "prod-0416",
+        "name": "Desk Mat XL",
+        "quantity": 2,
+        "unitPrice": 227.51
+      },
+      {
+        "productId": "prod-0164",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 3,
+        "unitPrice": 100.96
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED701383953"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-028"
+  },
+  {
+    "id": "order-0028",
+    "customerId": "cust-029",
+    "status": "shipped",
+    "totalAmount": 1449.87,
+    "createdAt": "2025-10-16T06:12:59.000Z",
+    "items": [
+      {
+        "productId": "prod-2543",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 201.84
+      },
+      {
+        "productId": "prod-2339",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 148.45
+      },
+      {
+        "productId": "prod-2209",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 247.03
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS983118974"
+    },
+    "discount": null,
+    "_partitionKey": "cust-029"
+  },
+  {
+    "id": "order-0029",
+    "customerId": "cust-030",
+    "status": "processing",
+    "totalAmount": 1283.01,
+    "createdAt": "2023-05-11T18:40:04.000Z",
+    "items": [
+      {
+        "productId": "prod-0390",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 241.27
+      },
+      {
+        "productId": "prod-0738",
+        "name": "Wrist Rest Gel",
+        "quantity": 3,
+        "unitPrice": 186.4
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-030"
+  },
+  {
+    "id": "order-0030",
+    "customerId": "cust-031",
+    "status": "delivered",
+    "totalAmount": 330.68,
+    "createdAt": "2023-10-25T10:18:06.000Z",
+    "items": [
+      {
+        "productId": "prod-2982",
+        "name": "Webcam Cover Slider",
+        "quantity": 2,
+        "unitPrice": 165.34
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS746352988"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-031"
+  },
+  {
+    "id": "order-0031",
+    "customerId": "cust-032",
+    "status": "shipped",
+    "totalAmount": 478.92,
+    "createdAt": "2023-01-27T19:51:29.000Z",
+    "items": [
+      {
+        "productId": "prod-1135",
+        "name": "Desk Mat XL",
+        "quantity": 3,
+        "unitPrice": 159.64
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL718629697"
+    },
+    "discount": 10,
+    "_partitionKey": "cust-032"
+  },
+  {
+    "id": "order-0032",
+    "customerId": "cust-033",
+    "status": "delivered",
+    "totalAmount": 573.98,
+    "createdAt": "2023-11-15T00:40:03.000Z",
+    "items": [
+      {
+        "productId": "prod-1964",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 286.99
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED733709727"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-033"
+  },
+  {
+    "id": "order-0033",
+    "customerId": "cust-034",
+    "status": "shipped",
+    "totalAmount": 253.55,
+    "createdAt": "2023-06-30T12:37:48.000Z",
+    "items": [
+      {
+        "productId": "prod-1810",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 1,
+        "unitPrice": 253.55
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED407451668"
+    },
+    "discount": 5,
+    "_partitionKey": "cust-034"
+  },
+  {
+    "id": "order-0034",
+    "customerId": "cust-035",
+    "status": "pending",
+    "totalAmount": 348.41,
+    "createdAt": "2023-05-28T13:13:07.000Z",
+    "items": [
+      {
+        "productId": "prod-2493",
+        "name": "Power Bank 20000mAh",
+        "quantity": 1,
+        "unitPrice": 188.71
+      },
+      {
+        "productId": "prod-1532",
+        "name": "USB Hub",
+        "quantity": 1,
+        "unitPrice": 136.39
+      },
+      {
+        "productId": "prod-0122",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 23.31
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-035"
+  },
+  {
+    "id": "order-0035",
+    "customerId": "cust-036",
+    "status": "pending",
+    "totalAmount": 1615.24,
+    "createdAt": "2023-11-26T11:14:16.000Z",
+    "items": [
+      {
+        "productId": "prod-0865",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 176.02
+      },
+      {
+        "productId": "prod-0792",
+        "name": "Desk Mat XL",
+        "quantity": 2,
+        "unitPrice": 217.04
+      },
+      {
+        "productId": "prod-2127",
+        "name": "USB Hub",
+        "quantity": 4,
+        "unitPrice": 75.18
+      },
+      {
+        "productId": "prod-2943",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 150.71
+      },
+      {
+        "productId": "prod-2806",
+        "name": "Laptop Stand",
+        "quantity": 3,
+        "unitPrice": 8.55
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-036"
+  },
+  {
+    "id": "order-0036",
+    "customerId": "cust-037",
+    "status": "pending",
+    "totalAmount": 1367.2,
+    "createdAt": "2023-08-12T08:51:41.000Z",
+    "items": [
+      {
+        "productId": "prod-2862",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 186.91
+      },
+      {
+        "productId": "prod-0567",
+        "name": "Desk Organizer",
+        "quantity": 3,
+        "unitPrice": 266.73
+      },
+      {
+        "productId": "prod-0574",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 193.04
+      },
+      {
+        "productId": "prod-2753",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 187.06
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-037"
+  },
+  {
+    "id": "order-0037",
+    "customerId": "cust-038",
+    "status": "shipped",
+    "totalAmount": 72.98,
+    "createdAt": "2023-12-12T18:49:52.000Z",
+    "items": [
+      {
+        "productId": "prod-0714",
+        "name": "Power Bank 20000mAh",
+        "quantity": 2,
+        "unitPrice": 36.49
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED310027420"
+    },
+    "discount": null,
+    "_partitionKey": "cust-038"
+  },
+  {
+    "id": "order-0038",
+    "customerId": "cust-039",
+    "status": "delivered",
+    "totalAmount": 801.08,
+    "createdAt": "2025-11-22T11:47:19.000Z",
+    "items": [
+      {
+        "productId": "prod-0002",
+        "name": "Desk Mat XL",
+        "quantity": 3,
+        "unitPrice": 223.76
+      },
+      {
+        "productId": "prod-1661",
+        "name": "Wrist Rest Gel",
+        "quantity": 2,
+        "unitPrice": 64.9
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED930904040"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-039"
+  },
+  {
+    "id": "order-0039",
+    "customerId": "cust-040",
+    "status": "cancelled",
+    "totalAmount": 2322.58,
+    "createdAt": "2024-12-21T17:43:46.000Z",
+    "items": [
+      {
+        "productId": "prod-1963",
+        "name": "Power Bank 20000mAh",
+        "quantity": 3,
+        "unitPrice": 174.44
+      },
+      {
+        "productId": "prod-0421",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 239.33
+      },
+      {
+        "productId": "prod-2375",
+        "name": "Power Bank 20000mAh",
+        "quantity": 3,
+        "unitPrice": 290.71
+      },
+      {
+        "productId": "prod-0836",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 104.57
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-040"
+  },
+  {
+    "id": "order-0040",
+    "customerId": "cust-041",
+    "status": "delivered",
+    "totalAmount": 1623.76,
+    "createdAt": "2023-08-27T18:41:44.000Z",
+    "items": [
+      {
+        "productId": "prod-2177",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 175.12
+      },
+      {
+        "productId": "prod-1200",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 172.65
+      },
+      {
+        "productId": "prod-2844",
+        "name": "Cable Management Kit",
+        "quantity": 4,
+        "unitPrice": 58.17
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS718388548"
+    },
+    "discount": 5,
+    "_partitionKey": "cust-041"
+  },
+  {
+    "id": "order-0041",
+    "customerId": "cust-042",
+    "status": "pending",
+    "totalAmount": 1685.54,
+    "createdAt": "2025-06-07T13:25:04.000Z",
+    "items": [
+      {
+        "productId": "prod-2187",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 36.64
+      },
+      {
+        "productId": "prod-0229",
+        "name": "Power Bank 20000mAh",
+        "quantity": 2,
+        "unitPrice": 175.73
+      },
+      {
+        "productId": "prod-1722",
+        "name": "Mechanical Keyboard",
+        "quantity": 2,
+        "unitPrice": 123.17
+      },
+      {
+        "productId": "prod-2420",
+        "name": "Gaming Mouse",
+        "quantity": 1,
+        "unitPrice": 296.36
+      },
+      {
+        "productId": "prod-2079",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 214.94
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-042"
+  },
+  {
+    "id": "order-0042",
+    "customerId": "cust-043",
+    "status": "pending",
+    "totalAmount": 548.04,
+    "createdAt": "2025-07-03T05:16:47.000Z",
+    "items": [
+      {
+        "productId": "prod-1222",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 137.01
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-043"
+  },
+  {
+    "id": "order-0043",
+    "customerId": "cust-044",
+    "status": "delivered",
+    "totalAmount": 278.74,
+    "createdAt": "2024-05-07T00:36:16.000Z",
+    "items": [
+      {
+        "productId": "prod-1496",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 4,
+        "unitPrice": 53.32
+      },
+      {
+        "productId": "prod-0130",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 21.82
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL583821889"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-044"
+  },
+  {
+    "id": "order-0044",
+    "customerId": "cust-045",
+    "status": "pending",
+    "totalAmount": 1568.04,
+    "createdAt": "2025-03-18T06:44:11.000Z",
+    "items": [
+      {
+        "productId": "prod-1902",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 127.1
+      },
+      {
+        "productId": "prod-0639",
+        "name": "Phone Case Premium",
+        "quantity": 2,
+        "unitPrice": 273.86
+      },
+      {
+        "productId": "prod-1869",
+        "name": "Webcam Cover Slider",
+        "quantity": 3,
+        "unitPrice": 297.74
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-045"
+  },
+  {
+    "id": "order-0045",
+    "customerId": "cust-046",
+    "status": "shipped",
+    "totalAmount": 631.56,
+    "createdAt": "2023-06-20T15:58:39.000Z",
+    "items": [
+      {
+        "productId": "prod-0134",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 129.72
+      },
+      {
+        "productId": "prod-1369",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 4,
+        "unitPrice": 38.93
+      },
+      {
+        "productId": "prod-0830",
+        "name": "USB Hub",
+        "quantity": 4,
+        "unitPrice": 21.67
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS926717804"
+    },
+    "discount": null,
+    "_partitionKey": "cust-046"
+  },
+  {
+    "id": "order-0046",
+    "customerId": "cust-047",
+    "status": "shipped",
+    "totalAmount": 1302.66,
+    "createdAt": "2023-10-25T01:18:27.000Z",
+    "items": [
+      {
+        "productId": "prod-0816",
+        "name": "Smart Plug",
+        "quantity": 2,
+        "unitPrice": 130.34
+      },
+      {
+        "productId": "prod-1045",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 94.15
+      },
+      {
+        "productId": "prod-2413",
+        "name": "Cable Management Kit",
+        "quantity": 2,
+        "unitPrice": 89.28
+      },
+      {
+        "productId": "prod-0328",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 181.68
+      },
+      {
+        "productId": "prod-2620",
+        "name": "Wrist Rest Gel",
+        "quantity": 4,
+        "unitPrice": 77.94
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL455336666"
+    },
+    "discount": null,
+    "_partitionKey": "cust-047"
+  },
+  {
+    "id": "order-0047",
+    "customerId": "cust-048",
+    "status": "pending",
+    "totalAmount": 1463.73,
+    "createdAt": "2024-05-01T21:59:31.000Z",
+    "items": [
+      {
+        "productId": "prod-2401",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 4,
+        "unitPrice": 111.95
+      },
+      {
+        "productId": "prod-0762",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 171.77
+      },
+      {
+        "productId": "prod-1755",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 102.06
+      },
+      {
+        "productId": "prod-1620",
+        "name": "Mechanical Keyboard",
+        "quantity": 2,
+        "unitPrice": 145.13
+      },
+      {
+        "productId": "prod-2272",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 112.96
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-048"
+  },
+  {
+    "id": "order-0048",
+    "customerId": "cust-049",
+    "status": "shipped",
+    "totalAmount": 1171.69,
+    "createdAt": "2025-10-23T13:01:38.000Z",
+    "items": [
+      {
+        "productId": "prod-1010",
+        "name": "Mechanical Keyboard",
+        "quantity": 3,
+        "unitPrice": 16.85
+      },
+      {
+        "productId": "prod-0784",
+        "name": "Phone Case Premium",
+        "quantity": 1,
+        "unitPrice": 82.23
+      },
+      {
+        "productId": "prod-2830",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 277.16
+      },
+      {
+        "productId": "prod-0282",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 176.22
+      },
+      {
+        "productId": "prod-1477",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 56.87
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL204912858"
+    },
+    "discount": null,
+    "_partitionKey": "cust-049"
+  },
+  {
+    "id": "order-0049",
+    "customerId": "cust-050",
+    "status": "shipped",
+    "totalAmount": 889.16,
+    "createdAt": "2024-02-06T22:10:50.000Z",
+    "items": [
+      {
+        "productId": "prod-1918",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 4,
+        "unitPrice": 222.29
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL946382451"
+    },
+    "discount": null,
+    "_partitionKey": "cust-050"
+  },
+  {
+    "id": "order-0050",
+    "customerId": "cust-051",
+    "status": "pending",
+    "totalAmount": 85.24,
+    "createdAt": "2023-03-13T15:13:46.000Z",
+    "items": [
+      {
+        "productId": "prod-1683",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 21.31
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-051"
+  },
+  {
+    "id": "order-0051",
+    "customerId": "cust-052",
+    "status": "pending",
+    "totalAmount": 553.01,
+    "createdAt": "2023-09-25T11:38:48.000Z",
+    "items": [
+      {
+        "productId": "prod-2700",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 132.45
+      },
+      {
+        "productId": "prod-2697",
+        "name": "Wireless Headphones",
+        "quantity": 1,
+        "unitPrice": 23.21
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-052"
+  },
+  {
+    "id": "order-0052",
+    "customerId": "cust-053",
+    "status": "pending",
+    "totalAmount": 943.43,
+    "createdAt": "2024-02-17T19:06:22.000Z",
+    "items": [
+      {
+        "productId": "prod-1139",
+        "name": "Desk Mat XL",
+        "quantity": 2,
+        "unitPrice": 284.49
+      },
+      {
+        "productId": "prod-0540",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 78.17
+      },
+      {
+        "productId": "prod-1655",
+        "name": "Desk Organizer",
+        "quantity": 2,
+        "unitPrice": 73.66
+      },
+      {
+        "productId": "prod-1675",
+        "name": "Mechanical Keyboard",
+        "quantity": 4,
+        "unitPrice": 37.24
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-053"
+  },
+  {
+    "id": "order-0053",
+    "customerId": "cust-054",
+    "status": "delivered",
+    "totalAmount": 1592.08,
+    "createdAt": "2025-12-04T20:05:14.000Z",
+    "items": [
+      {
+        "productId": "prod-2022",
+        "name": "Desk Organizer",
+        "quantity": 4,
+        "unitPrice": 226.71
+      },
+      {
+        "productId": "prod-2488",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 4,
+        "unitPrice": 171.31
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED905838866"
+    },
+    "discount": null,
+    "_partitionKey": "cust-054"
+  },
+  {
+    "id": "order-0054",
+    "customerId": "cust-055",
+    "status": "pending",
+    "totalAmount": 1480.12,
+    "createdAt": "2024-03-20T16:33:18.000Z",
+    "items": [
+      {
+        "productId": "prod-0865",
+        "name": "Phone Case Premium",
+        "quantity": 2,
+        "unitPrice": 92.15
+      },
+      {
+        "productId": "prod-1562",
+        "name": "Desk Organizer",
+        "quantity": 2,
+        "unitPrice": 278.01
+      },
+      {
+        "productId": "prod-1500",
+        "name": "USB Hub",
+        "quantity": 4,
+        "unitPrice": 184.95
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-055"
+  },
+  {
+    "id": "order-0055",
+    "customerId": "cust-056",
+    "status": "shipped",
+    "totalAmount": 142.09,
+    "createdAt": "2025-04-27T04:52:58.000Z",
+    "items": [
+      {
+        "productId": "prod-2416",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 1,
+        "unitPrice": 129.7
+      },
+      {
+        "productId": "prod-0352",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 12.39
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS120003831"
+    },
+    "discount": null,
+    "_partitionKey": "cust-056"
+  },
+  {
+    "id": "order-0056",
+    "customerId": "cust-057",
+    "status": "pending",
+    "totalAmount": 232.94,
+    "createdAt": "2025-05-21T07:47:45.000Z",
+    "items": [
+      {
+        "productId": "prod-2197",
+        "name": "Wireless Headphones",
+        "quantity": 1,
+        "unitPrice": 232.94
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-057"
+  },
+  {
+    "id": "order-0057",
+    "customerId": "cust-058",
+    "status": "cancelled",
+    "totalAmount": 607.37,
+    "createdAt": "2023-08-06T19:21:26.000Z",
+    "items": [
+      {
+        "productId": "prod-1277",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 143.11
+      },
+      {
+        "productId": "prod-0034",
+        "name": "Wireless Headphones",
+        "quantity": 1,
+        "unitPrice": 34.93
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-058"
+  },
+  {
+    "id": "order-0058",
+    "customerId": "cust-059",
+    "status": "cancelled",
+    "totalAmount": 1190.96,
+    "createdAt": "2025-08-17T07:56:42.000Z",
+    "items": [
+      {
+        "productId": "prod-0238",
+        "name": "Wrist Rest Gel",
+        "quantity": 2,
+        "unitPrice": 161.54
+      },
+      {
+        "productId": "prod-2451",
+        "name": "Wrist Rest Gel",
+        "quantity": 1,
+        "unitPrice": 179.93
+      },
+      {
+        "productId": "prod-1786",
+        "name": "Desk Mat XL",
+        "quantity": 1,
+        "unitPrice": 45.91
+      },
+      {
+        "productId": "prod-0709",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 160.51
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-059"
+  },
+  {
+    "id": "order-0059",
+    "customerId": "cust-060",
+    "status": "pending",
+    "totalAmount": 1369.57,
+    "createdAt": "2024-03-31T13:26:18.000Z",
+    "items": [
+      {
+        "productId": "prod-2651",
+        "name": "Blue Light Glasses",
+        "quantity": 3,
+        "unitPrice": 69.27
+      },
+      {
+        "productId": "prod-0666",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 258.91
+      },
+      {
+        "productId": "prod-1953",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 63.06
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-060"
+  },
+  {
+    "id": "order-0060",
+    "customerId": "cust-061",
+    "status": "pending",
+    "totalAmount": 260.2,
+    "createdAt": "2025-08-28T05:18:23.000Z",
+    "items": [
+      {
+        "productId": "prod-1322",
+        "name": "Desk Mat XL",
+        "quantity": 2,
+        "unitPrice": 130.1
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-061"
+  },
+  {
+    "id": "order-0061",
+    "customerId": "cust-062",
+    "status": "shipped",
+    "totalAmount": 1633.01,
+    "createdAt": "2025-06-15T18:46:07.000Z",
+    "items": [
+      {
+        "productId": "prod-1462",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 3,
+        "unitPrice": 28.25
+      },
+      {
+        "productId": "prod-1932",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 99
+      },
+      {
+        "productId": "prod-1379",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 236.92
+      },
+      {
+        "productId": "prod-0292",
+        "name": "Cable Management Kit",
+        "quantity": 1,
+        "unitPrice": 177.3
+      },
+      {
+        "productId": "prod-0863",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 63.14
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL319637481"
+    },
+    "discount": 5,
+    "_partitionKey": "cust-062"
+  },
+  {
+    "id": "order-0062",
+    "customerId": "cust-063",
+    "status": "delivered",
+    "totalAmount": 1280.18,
+    "createdAt": "2024-10-24T02:47:46.000Z",
+    "items": [
+      {
+        "productId": "prod-0826",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 85.87
+      },
+      {
+        "productId": "prod-1737",
+        "name": "Desk Mat XL",
+        "quantity": 1,
+        "unitPrice": 66.61
+      },
+      {
+        "productId": "prod-0265",
+        "name": "Webcam Cover Slider",
+        "quantity": 2,
+        "unitPrice": 142.94
+      },
+      {
+        "productId": "prod-1624",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 294.89
+      },
+      {
+        "productId": "prod-1248",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 144.66
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED488997271"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-063"
+  },
+  {
+    "id": "order-0063",
+    "customerId": "cust-064",
+    "status": "delivered",
+    "totalAmount": 1835.22,
+    "createdAt": "2025-01-20T20:20:52.000Z",
+    "items": [
+      {
+        "productId": "prod-2416",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 219.01
+      },
+      {
+        "productId": "prod-1141",
+        "name": "Desk Organizer",
+        "quantity": 4,
+        "unitPrice": 113.13
+      },
+      {
+        "productId": "prod-1265",
+        "name": "Desk Mat XL",
+        "quantity": 2,
+        "unitPrice": 251.12
+      },
+      {
+        "productId": "prod-1176",
+        "name": "USB Hub",
+        "quantity": 1,
+        "unitPrice": 223.43
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL759836279"
+    },
+    "discount": null,
+    "_partitionKey": "cust-064"
+  },
+  {
+    "id": "order-0064",
+    "customerId": "cust-065",
+    "status": "delivered",
+    "totalAmount": 921.84,
+    "createdAt": "2025-11-28T12:33:16.000Z",
+    "items": [
+      {
+        "productId": "prod-2194",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 25.64
+      },
+      {
+        "productId": "prod-1107",
+        "name": "Power Bank 20000mAh",
+        "quantity": 3,
+        "unitPrice": 105.2
+      },
+      {
+        "productId": "prod-1612",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 125.92
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS364008715"
+    },
+    "discount": null,
+    "_partitionKey": "cust-065"
+  },
+  {
+    "id": "order-0065",
+    "customerId": "cust-066",
+    "status": "delivered",
+    "totalAmount": 664.2,
+    "createdAt": "2023-03-05T02:20:50.000Z",
+    "items": [
+      {
+        "productId": "prod-2767",
+        "name": "Screen Protector",
+        "quantity": 3,
+        "unitPrice": 221.4
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL947868086"
+    },
+    "discount": null,
+    "_partitionKey": "cust-066"
+  },
+  {
+    "id": "order-0066",
+    "customerId": "cust-067",
+    "status": "delivered",
+    "totalAmount": 2813.76,
+    "createdAt": "2025-04-02T02:57:20.000Z",
+    "items": [
+      {
+        "productId": "prod-1614",
+        "name": "Mechanical Keyboard",
+        "quantity": 4,
+        "unitPrice": 175.31
+      },
+      {
+        "productId": "prod-2769",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 266.4
+      },
+      {
+        "productId": "prod-0185",
+        "name": "Blue Light Glasses",
+        "quantity": 2,
+        "unitPrice": 157.02
+      },
+      {
+        "productId": "prod-0918",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 181.26
+      },
+      {
+        "productId": "prod-0389",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 270.32
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED154399549"
+    },
+    "discount": null,
+    "_partitionKey": "cust-067"
+  },
+  {
+    "id": "order-0067",
+    "customerId": "cust-068",
+    "status": "processing",
+    "totalAmount": 1146.06,
+    "createdAt": "2023-07-24T12:00:50.000Z",
+    "items": [
+      {
+        "productId": "prod-2835",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 24.16
+      },
+      {
+        "productId": "prod-1238",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 142.24
+      },
+      {
+        "productId": "prod-1232",
+        "name": "Wireless Headphones",
+        "quantity": 3,
+        "unitPrice": 254.98
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 10,
+    "_partitionKey": "cust-068"
+  },
+  {
+    "id": "order-0068",
+    "customerId": "cust-069",
+    "status": "shipped",
+    "totalAmount": 398.16,
+    "createdAt": "2024-08-30T18:28:24.000Z",
+    "items": [
+      {
+        "productId": "prod-2054",
+        "name": "Webcam Cover Slider",
+        "quantity": 2,
+        "unitPrice": 199.08
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL434239233"
+    },
+    "discount": null,
+    "_partitionKey": "cust-069"
+  },
+  {
+    "id": "order-0069",
+    "customerId": "cust-070",
+    "status": "delivered",
+    "totalAmount": 1578.13,
+    "createdAt": "2025-01-23T02:01:44.000Z",
+    "items": [
+      {
+        "productId": "prod-1484",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 29.35
+      },
+      {
+        "productId": "prod-2202",
+        "name": "LED Strip Lights",
+        "quantity": 3,
+        "unitPrice": 181.71
+      },
+      {
+        "productId": "prod-1226",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 228.9
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL989273159"
+    },
+    "discount": 10,
+    "_partitionKey": "cust-070"
+  },
+  {
+    "id": "order-0070",
+    "customerId": "cust-071",
+    "status": "processing",
+    "totalAmount": 890.1,
+    "createdAt": "2024-09-26T04:02:09.000Z",
+    "items": [
+      {
+        "productId": "prod-2237",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 296.7
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-071"
+  },
+  {
+    "id": "order-0071",
+    "customerId": "cust-072",
+    "status": "cancelled",
+    "totalAmount": 1747.9,
+    "createdAt": "2024-07-15T19:51:33.000Z",
+    "items": [
+      {
+        "productId": "prod-0025",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 124.18
+      },
+      {
+        "productId": "prod-0023",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 124.95
+      },
+      {
+        "productId": "prod-0422",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 167.22
+      },
+      {
+        "productId": "prod-2887",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 49.19
+      },
+      {
+        "productId": "prod-1326",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 234.02
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-072"
+  },
+  {
+    "id": "order-0072",
+    "customerId": "cust-073",
+    "status": "pending",
+    "totalAmount": 271.51,
+    "createdAt": "2024-04-05T19:35:30.000Z",
+    "items": [
+      {
+        "productId": "prod-1560",
+        "name": "Wrist Rest Gel",
+        "quantity": 1,
+        "unitPrice": 271.51
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-073"
+  },
+  {
+    "id": "order-0073",
+    "customerId": "cust-074",
+    "status": "delivered",
+    "totalAmount": 476.62,
+    "createdAt": "2024-11-30T03:19:37.000Z",
+    "items": [
+      {
+        "productId": "prod-1526",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 85.49
+      },
+      {
+        "productId": "prod-0254",
+        "name": "Cable Management Kit",
+        "quantity": 1,
+        "unitPrice": 34.29
+      },
+      {
+        "productId": "prod-1152",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 4,
+        "unitPrice": 50.69
+      },
+      {
+        "productId": "prod-2823",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 51.36
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED426559592"
+    },
+    "discount": null,
+    "_partitionKey": "cust-074"
+  },
+  {
+    "id": "order-0074",
+    "customerId": "cust-075",
+    "status": "delivered",
+    "totalAmount": 2653.61,
+    "createdAt": "2023-03-27T13:00:10.000Z",
+    "items": [
+      {
+        "productId": "prod-1430",
+        "name": "Screen Protector",
+        "quantity": 1,
+        "unitPrice": 274.64
+      },
+      {
+        "productId": "prod-1958",
+        "name": "USB Hub",
+        "quantity": 3,
+        "unitPrice": 299.12
+      },
+      {
+        "productId": "prod-1464",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 292.77
+      },
+      {
+        "productId": "prod-0653",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 295.36
+      },
+      {
+        "productId": "prod-2086",
+        "name": "Wrist Rest Gel",
+        "quantity": 1,
+        "unitPrice": 9.99
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED451663753"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-075"
+  },
+  {
+    "id": "order-0075",
+    "customerId": "cust-076",
+    "status": "delivered",
+    "totalAmount": 232.84,
+    "createdAt": "2025-10-30T06:17:57.000Z",
+    "items": [
+      {
+        "productId": "prod-2442",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 58.21
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED328860615"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-076"
+  },
+  {
+    "id": "order-0076",
+    "customerId": "cust-077",
+    "status": "pending",
+    "totalAmount": 1386.92,
+    "createdAt": "2024-08-30T11:33:23.000Z",
+    "items": [
+      {
+        "productId": "prod-2108",
+        "name": "Blue Light Glasses",
+        "quantity": 3,
+        "unitPrice": 285.16
+      },
+      {
+        "productId": "prod-0319",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 265.72
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-077"
+  },
+  {
+    "id": "order-0077",
+    "customerId": "cust-078",
+    "status": "pending",
+    "totalAmount": 837.89,
+    "createdAt": "2025-07-04T07:04:05.000Z",
+    "items": [
+      {
+        "productId": "prod-0874",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 280.56
+      },
+      {
+        "productId": "prod-0961",
+        "name": "Webcam Cover Slider",
+        "quantity": 1,
+        "unitPrice": 276.77
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-078"
+  },
+  {
+    "id": "order-0078",
+    "customerId": "cust-079",
+    "status": "delivered",
+    "totalAmount": 999.26,
+    "createdAt": "2024-11-01T11:36:04.000Z",
+    "items": [
+      {
+        "productId": "prod-2152",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 40.91
+      },
+      {
+        "productId": "prod-1033",
+        "name": "Wrist Rest Gel",
+        "quantity": 3,
+        "unitPrice": 23.96
+      },
+      {
+        "productId": "prod-2941",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 295.32
+      },
+      {
+        "productId": "prod-2052",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 82.4
+      },
+      {
+        "productId": "prod-1796",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 69.41
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED588850367"
+    },
+    "discount": null,
+    "_partitionKey": "cust-079"
+  },
+  {
+    "id": "order-0079",
+    "customerId": "cust-080",
+    "status": "shipped",
+    "totalAmount": 1072.94,
+    "createdAt": "2024-09-15T17:53:41.000Z",
+    "items": [
+      {
+        "productId": "prod-2326",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 70.78
+      },
+      {
+        "productId": "prod-2230",
+        "name": "Laptop Bag 15\"",
+        "quantity": 4,
+        "unitPrice": 250.54
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL217327547"
+    },
+    "discount": null,
+    "_partitionKey": "cust-080"
+  },
+  {
+    "id": "order-0080",
+    "customerId": "cust-081",
+    "status": "shipped",
+    "totalAmount": 13.3,
+    "createdAt": "2025-12-25T20:55:16.000Z",
+    "items": [
+      {
+        "productId": "prod-0248",
+        "name": "Gaming Mouse",
+        "quantity": 2,
+        "unitPrice": 6.65
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED301896929"
+    },
+    "discount": null,
+    "_partitionKey": "cust-081"
+  },
+  {
+    "id": "order-0081",
+    "customerId": "cust-082",
+    "status": "processing",
+    "totalAmount": 2508.24,
+    "createdAt": "2024-05-18T18:30:39.000Z",
+    "items": [
+      {
+        "productId": "prod-2182",
+        "name": "USB Hub",
+        "quantity": 1,
+        "unitPrice": 237.49
+      },
+      {
+        "productId": "prod-2729",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 8.59
+      },
+      {
+        "productId": "prod-0926",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 218.82
+      },
+      {
+        "productId": "prod-1292",
+        "name": "Cable Management Kit",
+        "quantity": 2,
+        "unitPrice": 226.44
+      },
+      {
+        "productId": "prod-1168",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 233.5
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-082"
+  },
+  {
+    "id": "order-0082",
+    "customerId": "cust-083",
+    "status": "cancelled",
+    "totalAmount": 1533.75,
+    "createdAt": "2023-03-12T09:45:27.000Z",
+    "items": [
+      {
+        "productId": "prod-0797",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 3,
+        "unitPrice": 268.5
+      },
+      {
+        "productId": "prod-1698",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 205.97
+      },
+      {
+        "productId": "prod-1714",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 28.25
+      },
+      {
+        "productId": "prod-1531",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 203.31
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-083"
+  },
+  {
+    "id": "order-0083",
+    "customerId": "cust-084",
+    "status": "cancelled",
+    "totalAmount": 54.96,
+    "createdAt": "2025-03-16T04:14:08.000Z",
+    "items": [
+      {
+        "productId": "prod-0267",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 18.32
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 15,
+    "_partitionKey": "cust-084"
+  },
+  {
+    "id": "order-0084",
+    "customerId": "cust-085",
+    "status": "shipped",
+    "totalAmount": 1160.21,
+    "createdAt": "2025-05-02T02:40:13.000Z",
+    "items": [
+      {
+        "productId": "prod-0476",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 222.03
+      },
+      {
+        "productId": "prod-2574",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 95.01
+      },
+      {
+        "productId": "prod-1569",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 177.08
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED479660042"
+    },
+    "discount": null,
+    "_partitionKey": "cust-085"
+  },
+  {
+    "id": "order-0085",
+    "customerId": "cust-086",
+    "status": "processing",
+    "totalAmount": 1563.04,
+    "createdAt": "2024-12-09T19:57:20.000Z",
+    "items": [
+      {
+        "productId": "prod-0763",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 50.41
+      },
+      {
+        "productId": "prod-2069",
+        "name": "Gaming Mouse",
+        "quantity": 2,
+        "unitPrice": 149
+      },
+      {
+        "productId": "prod-0411",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 265.85
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-086"
+  },
+  {
+    "id": "order-0086",
+    "customerId": "cust-087",
+    "status": "delivered",
+    "totalAmount": 1094.4,
+    "createdAt": "2025-01-25T16:09:49.000Z",
+    "items": [
+      {
+        "productId": "prod-0005",
+        "name": "Phone Case Premium",
+        "quantity": 3,
+        "unitPrice": 74.21
+      },
+      {
+        "productId": "prod-0849",
+        "name": "Laptop Bag 15\"",
+        "quantity": 4,
+        "unitPrice": 190.26
+      },
+      {
+        "productId": "prod-0385",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 110.73
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL354969007"
+    },
+    "discount": null,
+    "_partitionKey": "cust-087"
+  },
+  {
+    "id": "order-0087",
+    "customerId": "cust-088",
+    "status": "processing",
+    "totalAmount": 376.79,
+    "createdAt": "2024-05-09T23:07:20.000Z",
+    "items": [
+      {
+        "productId": "prod-1277",
+        "name": "LED Strip Lights",
+        "quantity": 2,
+        "unitPrice": 67.62
+      },
+      {
+        "productId": "prod-0519",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 241.55
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-088"
+  },
+  {
+    "id": "order-0088",
+    "customerId": "cust-089",
+    "status": "delivered",
+    "totalAmount": 2541.51,
+    "createdAt": "2024-01-31T03:39:21.000Z",
+    "items": [
+      {
+        "productId": "prod-2091",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 212.53
+      },
+      {
+        "productId": "prod-1921",
+        "name": "Power Bank 20000mAh",
+        "quantity": 4,
+        "unitPrice": 253.41
+      },
+      {
+        "productId": "prod-1979",
+        "name": "Phone Case Premium",
+        "quantity": 1,
+        "unitPrice": 73.07
+      },
+      {
+        "productId": "prod-2522",
+        "name": "Smart Plug",
+        "quantity": 4,
+        "unitPrice": 151.17
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS368799508"
+    },
+    "discount": null,
+    "_partitionKey": "cust-089"
+  },
+  {
+    "id": "order-0089",
+    "customerId": "cust-090",
+    "status": "delivered",
+    "totalAmount": 1659.04,
+    "createdAt": "2024-04-17T20:48:37.000Z",
+    "items": [
+      {
+        "productId": "prod-1790",
+        "name": "Gaming Mouse",
+        "quantity": 3,
+        "unitPrice": 249.93
+      },
+      {
+        "productId": "prod-2953",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 31.56
+      },
+      {
+        "productId": "prod-2581",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 1,
+        "unitPrice": 290.67
+      },
+      {
+        "productId": "prod-1372",
+        "name": "Mechanical Keyboard",
+        "quantity": 2,
+        "unitPrice": 293.51
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS989378338"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-090"
+  },
+  {
+    "id": "order-0090",
+    "customerId": "cust-091",
+    "status": "delivered",
+    "totalAmount": 1077.2,
+    "createdAt": "2023-03-05T10:22:40.000Z",
+    "items": [
+      {
+        "productId": "prod-0643",
+        "name": "Power Bank 20000mAh",
+        "quantity": 4,
+        "unitPrice": 269.3
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL857506580"
+    },
+    "discount": null,
+    "_partitionKey": "cust-091"
+  },
+  {
+    "id": "order-0091",
+    "customerId": "cust-092",
+    "status": "delivered",
+    "totalAmount": 1151.13,
+    "createdAt": "2023-11-19T20:34:49.000Z",
+    "items": [
+      {
+        "productId": "prod-0212",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 266.91
+      },
+      {
+        "productId": "prod-0307",
+        "name": "Mechanical Keyboard",
+        "quantity": 3,
+        "unitPrice": 27.83
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL882279160"
+    },
+    "discount": null,
+    "_partitionKey": "cust-092"
+  },
+  {
+    "id": "order-0092",
+    "customerId": "cust-093",
+    "status": "delivered",
+    "totalAmount": 1738.54,
+    "createdAt": "2023-06-10T05:22:53.000Z",
+    "items": [
+      {
+        "productId": "prod-0993",
+        "name": "Wrist Rest Gel",
+        "quantity": 4,
+        "unitPrice": 175.25
+      },
+      {
+        "productId": "prod-0350",
+        "name": "Smart Plug",
+        "quantity": 2,
+        "unitPrice": 19.71
+      },
+      {
+        "productId": "prod-1832",
+        "name": "Power Bank 20000mAh",
+        "quantity": 4,
+        "unitPrice": 133.07
+      },
+      {
+        "productId": "prod-1239",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 2,
+        "unitPrice": 232.92
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS241447454"
+    },
+    "discount": null,
+    "_partitionKey": "cust-093"
+  },
+  {
+    "id": "order-0093",
+    "customerId": "cust-094",
+    "status": "shipped",
+    "totalAmount": 191.89,
+    "createdAt": "2024-10-10T18:53:39.000Z",
+    "items": [
+      {
+        "productId": "prod-1411",
+        "name": "Wireless Headphones",
+        "quantity": 1,
+        "unitPrice": 52.29
+      },
+      {
+        "productId": "prod-2182",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 139.6
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL602739676"
+    },
+    "discount": 10,
+    "_partitionKey": "cust-094"
+  },
+  {
+    "id": "order-0094",
+    "customerId": "cust-095",
+    "status": "shipped",
+    "totalAmount": 1802.06,
+    "createdAt": "2024-01-05T11:35:43.000Z",
+    "items": [
+      {
+        "productId": "prod-0477",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 230.92
+      },
+      {
+        "productId": "prod-2639",
+        "name": "Laptop Bag 15\"",
+        "quantity": 4,
+        "unitPrice": 19.84
+      },
+      {
+        "productId": "prod-2601",
+        "name": "Screen Protector",
+        "quantity": 1,
+        "unitPrice": 53.3
+      },
+      {
+        "productId": "prod-0509",
+        "name": "Smart Plug",
+        "quantity": 4,
+        "unitPrice": 43.64
+      },
+      {
+        "productId": "prod-2502",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 285.58
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL930422676"
+    },
+    "discount": null,
+    "_partitionKey": "cust-095"
+  },
+  {
+    "id": "order-0095",
+    "customerId": "cust-096",
+    "status": "delivered",
+    "totalAmount": 491.26,
+    "createdAt": "2024-12-12T13:46:34.000Z",
+    "items": [
+      {
+        "productId": "prod-1852",
+        "name": "LED Strip Lights",
+        "quantity": 1,
+        "unitPrice": 110.79
+      },
+      {
+        "productId": "prod-1499",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 262.66
+      },
+      {
+        "productId": "prod-1198",
+        "name": "Wrist Rest Gel",
+        "quantity": 3,
+        "unitPrice": 39.27
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS342944836"
+    },
+    "discount": null,
+    "_partitionKey": "cust-096"
+  },
+  {
+    "id": "order-0096",
+    "customerId": "cust-097",
+    "status": "pending",
+    "totalAmount": 883.67,
+    "createdAt": "2023-10-10T19:43:17.000Z",
+    "items": [
+      {
+        "productId": "prod-0636",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 107.57
+      },
+      {
+        "productId": "prod-2099",
+        "name": "Wrist Rest Gel",
+        "quantity": 3,
+        "unitPrice": 36.9
+      },
+      {
+        "productId": "prod-0920",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 225.13
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-097"
+  },
+  {
+    "id": "order-0097",
+    "customerId": "cust-098",
+    "status": "delivered",
+    "totalAmount": 996.79,
+    "createdAt": "2024-01-20T15:49:31.000Z",
+    "items": [
+      {
+        "productId": "prod-1472",
+        "name": "Blue Light Glasses",
+        "quantity": 2,
+        "unitPrice": 176.51
+      },
+      {
+        "productId": "prod-1207",
+        "name": "Power Bank 20000mAh",
+        "quantity": 1,
+        "unitPrice": 89.66
+      },
+      {
+        "productId": "prod-0241",
+        "name": "Mechanical Keyboard",
+        "quantity": 4,
+        "unitPrice": 76.73
+      },
+      {
+        "productId": "prod-0339",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 247.19
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED494682042"
+    },
+    "discount": null,
+    "_partitionKey": "cust-098"
+  },
+  {
+    "id": "order-0098",
+    "customerId": "cust-099",
+    "status": "shipped",
+    "totalAmount": 1145.8,
+    "createdAt": "2025-02-02T08:21:42.000Z",
+    "items": [
+      {
+        "productId": "prod-0401",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 181.91
+      },
+      {
+        "productId": "prod-1422",
+        "name": "Desk Organizer",
+        "quantity": 2,
+        "unitPrice": 209.08
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL633766500"
+    },
+    "discount": null,
+    "_partitionKey": "cust-099"
+  },
+  {
+    "id": "order-0099",
+    "customerId": "cust-100",
+    "status": "shipped",
+    "totalAmount": 229.84,
+    "createdAt": "2024-04-15T19:11:09.000Z",
+    "items": [
+      {
+        "productId": "prod-2025",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 229.84
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS853247067"
+    },
+    "discount": null,
+    "_partitionKey": "cust-100"
+  },
+  {
+    "id": "order-0100",
+    "customerId": "cust-101",
+    "status": "processing",
+    "totalAmount": 1230.56,
+    "createdAt": "2023-05-09T06:46:12.000Z",
+    "items": [
+      {
+        "productId": "prod-2117",
+        "name": "Wireless Headphones",
+        "quantity": 3,
+        "unitPrice": 209.73
+      },
+      {
+        "productId": "prod-2409",
+        "name": "Webcam Cover Slider",
+        "quantity": 2,
+        "unitPrice": 175.61
+      },
+      {
+        "productId": "prod-1069",
+        "name": "LED Strip Lights",
+        "quantity": 1,
+        "unitPrice": 250.15
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-101"
+  },
+  {
+    "id": "order-0101",
+    "customerId": "cust-102",
+    "status": "delivered",
+    "totalAmount": 352.75,
+    "createdAt": "2025-12-04T22:33:21.000Z",
+    "items": [
+      {
+        "productId": "prod-1028",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 230.75
+      },
+      {
+        "productId": "prod-2500",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 122
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED285176885"
+    },
+    "discount": null,
+    "_partitionKey": "cust-102"
+  },
+  {
+    "id": "order-0102",
+    "customerId": "cust-103",
+    "status": "delivered",
+    "totalAmount": 2048.25,
+    "createdAt": "2025-11-09T14:22:25.000Z",
+    "items": [
+      {
+        "productId": "prod-0185",
+        "name": "Monitor Arm Single",
+        "quantity": 3,
+        "unitPrice": 255.64
+      },
+      {
+        "productId": "prod-1745",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 85.51
+      },
+      {
+        "productId": "prod-0675",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 167.67
+      },
+      {
+        "productId": "prod-2790",
+        "name": "Mechanical Keyboard",
+        "quantity": 3,
+        "unitPrice": 89.81
+      },
+      {
+        "productId": "prod-2072",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 189.68
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL406749545"
+    },
+    "discount": null,
+    "_partitionKey": "cust-103"
+  },
+  {
+    "id": "order-0103",
+    "customerId": "cust-104",
+    "status": "pending",
+    "totalAmount": 87.95,
+    "createdAt": "2024-07-25T19:02:09.000Z",
+    "items": [
+      {
+        "productId": "prod-0113",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 87.95
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-104"
+  },
+  {
+    "id": "order-0104",
+    "customerId": "cust-105",
+    "status": "shipped",
+    "totalAmount": 2268.59,
+    "createdAt": "2023-05-14T20:53:59.000Z",
+    "items": [
+      {
+        "productId": "prod-0553",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 253.15
+      },
+      {
+        "productId": "prod-2954",
+        "name": "Mechanical Keyboard",
+        "quantity": 3,
+        "unitPrice": 286.23
+      },
+      {
+        "productId": "prod-2962",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 215.26
+      },
+      {
+        "productId": "prod-2766",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 295.71
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS737815694"
+    },
+    "discount": null,
+    "_partitionKey": "cust-105"
+  },
+  {
+    "id": "order-0105",
+    "customerId": "cust-106",
+    "status": "pending",
+    "totalAmount": 800.22,
+    "createdAt": "2024-06-11T23:07:30.000Z",
+    "items": [
+      {
+        "productId": "prod-0651",
+        "name": "Webcam Cover Slider",
+        "quantity": 1,
+        "unitPrice": 279.78
+      },
+      {
+        "productId": "prod-2456",
+        "name": "Mechanical Keyboard",
+        "quantity": 2,
+        "unitPrice": 260.22
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-106"
+  },
+  {
+    "id": "order-0106",
+    "customerId": "cust-107",
+    "status": "pending",
+    "totalAmount": 1104.46,
+    "createdAt": "2024-04-25T18:18:01.000Z",
+    "items": [
+      {
+        "productId": "prod-0783",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 112.6
+      },
+      {
+        "productId": "prod-0360",
+        "name": "Blue Light Glasses",
+        "quantity": 3,
+        "unitPrice": 107.12
+      },
+      {
+        "productId": "prod-2474",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 172.95
+      },
+      {
+        "productId": "prod-1715",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 81.15
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-107"
+  },
+  {
+    "id": "order-0107",
+    "customerId": "cust-108",
+    "status": "shipped",
+    "totalAmount": 2253.94,
+    "createdAt": "2025-10-22T20:44:10.000Z",
+    "items": [
+      {
+        "productId": "prod-0071",
+        "name": "Smart Plug",
+        "quantity": 4,
+        "unitPrice": 123.67
+      },
+      {
+        "productId": "prod-0721",
+        "name": "Laptop Bag 15\"",
+        "quantity": 2,
+        "unitPrice": 97.15
+      },
+      {
+        "productId": "prod-0578",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 285.5
+      },
+      {
+        "productId": "prod-1551",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 268.1
+      },
+      {
+        "productId": "prod-2344",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 207.06
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED793392465"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-108"
+  },
+  {
+    "id": "order-0108",
+    "customerId": "cust-109",
+    "status": "shipped",
+    "totalAmount": 1616.79,
+    "createdAt": "2025-08-05T12:19:51.000Z",
+    "items": [
+      {
+        "productId": "prod-0966",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 181.1
+      },
+      {
+        "productId": "prod-2601",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 117.27
+      },
+      {
+        "productId": "prod-0515",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 2,
+        "unitPrice": 187.94
+      },
+      {
+        "productId": "prod-1489",
+        "name": "Smart Plug",
+        "quantity": 2,
+        "unitPrice": 164.99
+      },
+      {
+        "productId": "prod-1523",
+        "name": "Screen Protector",
+        "quantity": 4,
+        "unitPrice": 153.14
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL539415627"
+    },
+    "discount": null,
+    "_partitionKey": "cust-109"
+  },
+  {
+    "id": "order-0109",
+    "customerId": "cust-110",
+    "status": "shipped",
+    "totalAmount": 1859.18,
+    "createdAt": "2023-12-29T01:32:20.000Z",
+    "items": [
+      {
+        "productId": "prod-2265",
+        "name": "Cable Management Kit",
+        "quantity": 1,
+        "unitPrice": 69.72
+      },
+      {
+        "productId": "prod-1284",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 190.9
+      },
+      {
+        "productId": "prod-1879",
+        "name": "Desk Mat XL",
+        "quantity": 1,
+        "unitPrice": 211.02
+      },
+      {
+        "productId": "prod-2120",
+        "name": "Cable Management Kit",
+        "quantity": 2,
+        "unitPrice": 199.04
+      },
+      {
+        "productId": "prod-2109",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 104.19
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED289276791"
+    },
+    "discount": null,
+    "_partitionKey": "cust-110"
+  },
+  {
+    "id": "order-0110",
+    "customerId": "cust-111",
+    "status": "delivered",
+    "totalAmount": 735.04,
+    "createdAt": "2023-03-05T21:25:24.000Z",
+    "items": [
+      {
+        "productId": "prod-1930",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 168.98
+      },
+      {
+        "productId": "prod-0586",
+        "name": "Wireless Headphones",
+        "quantity": 3,
+        "unitPrice": 132.36
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS606613498"
+    },
+    "discount": null,
+    "_partitionKey": "cust-111"
+  },
+  {
+    "id": "order-0111",
+    "customerId": "cust-112",
+    "status": "shipped",
+    "totalAmount": 1346.08,
+    "createdAt": "2023-06-30T19:56:08.000Z",
+    "items": [
+      {
+        "productId": "prod-0810",
+        "name": "Cable Management Kit",
+        "quantity": 3,
+        "unitPrice": 25.2
+      },
+      {
+        "productId": "prod-1319",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 65.24
+      },
+      {
+        "productId": "prod-2880",
+        "name": "Cable Management Kit",
+        "quantity": 4,
+        "unitPrice": 266.03
+      },
+      {
+        "productId": "prod-2800",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 4,
+        "unitPrice": 35.28
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS392106293"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-112"
+  },
+  {
+    "id": "order-0112",
+    "customerId": "cust-113",
+    "status": "processing",
+    "totalAmount": 1431.27,
+    "createdAt": "2024-11-07T19:22:54.000Z",
+    "items": [
+      {
+        "productId": "prod-1285",
+        "name": "Smart Plug",
+        "quantity": 2,
+        "unitPrice": 101.36
+      },
+      {
+        "productId": "prod-0220",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 205
+      },
+      {
+        "productId": "prod-2944",
+        "name": "Laptop Stand",
+        "quantity": 3,
+        "unitPrice": 9.01
+      },
+      {
+        "productId": "prod-2761",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 4,
+        "unitPrice": 43.4
+      },
+      {
+        "productId": "prod-0781",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 51.98
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-113"
+  },
+  {
+    "id": "order-0113",
+    "customerId": "cust-114",
+    "status": "shipped",
+    "totalAmount": 3406.87,
+    "createdAt": "2024-10-11T00:05:06.000Z",
+    "items": [
+      {
+        "productId": "prod-0231",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 4,
+        "unitPrice": 241.05
+      },
+      {
+        "productId": "prod-2854",
+        "name": "Laptop Bag 15\"",
+        "quantity": 3,
+        "unitPrice": 51.95
+      },
+      {
+        "productId": "prod-2420",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 162.22
+      },
+      {
+        "productId": "prod-1301",
+        "name": "Power Bank 20000mAh",
+        "quantity": 4,
+        "unitPrice": 288.71
+      },
+      {
+        "productId": "prod-2230",
+        "name": "LED Strip Lights",
+        "quantity": 2,
+        "unitPrice": 241.55
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL544953431"
+    },
+    "discount": null,
+    "_partitionKey": "cust-114"
+  },
+  {
+    "id": "order-0114",
+    "customerId": "cust-115",
+    "status": "delivered",
+    "totalAmount": 967.76,
+    "createdAt": "2023-12-05T18:48:16.000Z",
+    "items": [
+      {
+        "productId": "prod-1153",
+        "name": "Cable Management Kit",
+        "quantity": 3,
+        "unitPrice": 203.36
+      },
+      {
+        "productId": "prod-0671",
+        "name": "LED Strip Lights",
+        "quantity": 4,
+        "unitPrice": 89.42
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED127559292"
+    },
+    "discount": null,
+    "_partitionKey": "cust-115"
+  },
+  {
+    "id": "order-0115",
+    "customerId": "cust-116",
+    "status": "pending",
+    "totalAmount": 367.9,
+    "createdAt": "2023-07-27T12:33:18.000Z",
+    "items": [
+      {
+        "productId": "prod-0279",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 183.95
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-116"
+  },
+  {
+    "id": "order-0116",
+    "customerId": "cust-117",
+    "status": "cancelled",
+    "totalAmount": 951.38,
+    "createdAt": "2023-07-21T05:47:46.000Z",
+    "items": [
+      {
+        "productId": "prod-1582",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 250.31
+      },
+      {
+        "productId": "prod-2239",
+        "name": "Blue Light Glasses",
+        "quantity": 2,
+        "unitPrice": 99.17
+      },
+      {
+        "productId": "prod-1383",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 61.73
+      },
+      {
+        "productId": "prod-0620",
+        "name": "LED Strip Lights",
+        "quantity": 1,
+        "unitPrice": 67.23
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 10,
+    "_partitionKey": "cust-117"
+  },
+  {
+    "id": "order-0117",
+    "customerId": "cust-118",
+    "status": "delivered",
+    "totalAmount": 142.64,
+    "createdAt": "2023-10-14T07:02:16.000Z",
+    "items": [
+      {
+        "productId": "prod-2092",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 35.66
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS130016494"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-118"
+  },
+  {
+    "id": "order-0118",
+    "customerId": "cust-119",
+    "status": "pending",
+    "totalAmount": 765.74,
+    "createdAt": "2024-01-09T16:06:58.000Z",
+    "items": [
+      {
+        "productId": "prod-0542",
+        "name": "Blue Light Glasses",
+        "quantity": 3,
+        "unitPrice": 12.14
+      },
+      {
+        "productId": "prod-1832",
+        "name": "Laptop Stand",
+        "quantity": 3,
+        "unitPrice": 119.06
+      },
+      {
+        "productId": "prod-2054",
+        "name": "Webcam Cover Slider",
+        "quantity": 2,
+        "unitPrice": 43.84
+      },
+      {
+        "productId": "prod-1330",
+        "name": "Cable Management Kit",
+        "quantity": 3,
+        "unitPrice": 94.82
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-119"
+  },
+  {
+    "id": "order-0119",
+    "customerId": "cust-120",
+    "status": "shipped",
+    "totalAmount": 576.73,
+    "createdAt": "2023-06-19T06:09:27.000Z",
+    "items": [
+      {
+        "productId": "prod-0206",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 2,
+        "unitPrice": 43.37
+      },
+      {
+        "productId": "prod-2798",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 100.87
+      },
+      {
+        "productId": "prod-1034",
+        "name": "Webcam Cover Slider",
+        "quantity": 1,
+        "unitPrice": 59.66
+      },
+      {
+        "productId": "prod-0381",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 31.93
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS892992444"
+    },
+    "discount": null,
+    "_partitionKey": "cust-120"
+  },
+  {
+    "id": "order-0120",
+    "customerId": "cust-121",
+    "status": "delivered",
+    "totalAmount": 1555.18,
+    "createdAt": "2024-02-24T06:03:26.000Z",
+    "items": [
+      {
+        "productId": "prod-2697",
+        "name": "Wrist Rest Gel",
+        "quantity": 3,
+        "unitPrice": 272.81
+      },
+      {
+        "productId": "prod-1737",
+        "name": "Gaming Mouse",
+        "quantity": 1,
+        "unitPrice": 250.3
+      },
+      {
+        "productId": "prod-1818",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 74.74
+      },
+      {
+        "productId": "prod-1355",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 192.36
+      },
+      {
+        "productId": "prod-0276",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 1,
+        "unitPrice": 219.35
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL354452158"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-121"
+  },
+  {
+    "id": "order-0121",
+    "customerId": "cust-122",
+    "status": "processing",
+    "totalAmount": 1795.86,
+    "createdAt": "2024-10-10T03:49:07.000Z",
+    "items": [
+      {
+        "productId": "prod-1392",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 62.87
+      },
+      {
+        "productId": "prod-0894",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 185.28
+      },
+      {
+        "productId": "prod-2116",
+        "name": "Desk Organizer",
+        "quantity": 2,
+        "unitPrice": 272.02
+      },
+      {
+        "productId": "prod-1277",
+        "name": "LED Strip Lights",
+        "quantity": 2,
+        "unitPrice": 192.48
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-122"
+  },
+  {
+    "id": "order-0122",
+    "customerId": "cust-123",
+    "status": "shipped",
+    "totalAmount": 789.45,
+    "createdAt": "2024-01-01T18:25:05.000Z",
+    "items": [
+      {
+        "productId": "prod-0296",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 151.5
+      },
+      {
+        "productId": "prod-0834",
+        "name": "Screen Protector",
+        "quantity": 3,
+        "unitPrice": 61.15
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED113921043"
+    },
+    "discount": null,
+    "_partitionKey": "cust-123"
+  },
+  {
+    "id": "order-0123",
+    "customerId": "cust-124",
+    "status": "delivered",
+    "totalAmount": 364.74,
+    "createdAt": "2025-08-26T18:05:40.000Z",
+    "items": [
+      {
+        "productId": "prod-0040",
+        "name": "Cable Management Kit",
+        "quantity": 2,
+        "unitPrice": 182.37
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED558439240"
+    },
+    "discount": null,
+    "_partitionKey": "cust-124"
+  },
+  {
+    "id": "order-0124",
+    "customerId": "cust-125",
+    "status": "cancelled",
+    "totalAmount": 1661.33,
+    "createdAt": "2023-11-08T20:44:58.000Z",
+    "items": [
+      {
+        "productId": "prod-0264",
+        "name": "LED Strip Lights",
+        "quantity": 3,
+        "unitPrice": 282.15
+      },
+      {
+        "productId": "prod-0105",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 203.72
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "London",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "EC1A 1BB"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-125"
+  },
+  {
+    "id": "order-0125",
+    "customerId": "cust-126",
+    "status": "processing",
+    "totalAmount": 2031.32,
+    "createdAt": "2025-08-21T02:16:25.000Z",
+    "items": [
+      {
+        "productId": "prod-2335",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 3,
+        "unitPrice": 179.65
+      },
+      {
+        "productId": "prod-0792",
+        "name": "Wrist Rest Gel",
+        "quantity": 2,
+        "unitPrice": 100.82
+      },
+      {
+        "productId": "prod-0915",
+        "name": "Cable Management Kit",
+        "quantity": 4,
+        "unitPrice": 102.34
+      },
+      {
+        "productId": "prod-2101",
+        "name": "USB Hub",
+        "quantity": 3,
+        "unitPrice": 293.79
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-126"
+  },
+  {
+    "id": "order-0126",
+    "customerId": "cust-127",
+    "status": "processing",
+    "totalAmount": 1506.93,
+    "createdAt": "2023-01-13T05:04:33.000Z",
+    "items": [
+      {
+        "productId": "prod-2365",
+        "name": "Laptop Bag 15\"",
+        "quantity": 2,
+        "unitPrice": 69.49
+      },
+      {
+        "productId": "prod-0597",
+        "name": "Monitor Arm Single",
+        "quantity": 1,
+        "unitPrice": 205.1
+      },
+      {
+        "productId": "prod-0729",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 252.75
+      },
+      {
+        "productId": "prod-0847",
+        "name": "Wrist Rest Gel",
+        "quantity": 1,
+        "unitPrice": 151.85
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 5,
+    "_partitionKey": "cust-127"
+  },
+  {
+    "id": "order-0127",
+    "customerId": "cust-128",
+    "status": "processing",
+    "totalAmount": 1818.93,
+    "createdAt": "2024-07-26T22:58:32.000Z",
+    "items": [
+      {
+        "productId": "prod-0885",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 202.35
+      },
+      {
+        "productId": "prod-1989",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 236.3
+      },
+      {
+        "productId": "prod-1630",
+        "name": "Power Bank 20000mAh",
+        "quantity": 4,
+        "unitPrice": 114.66
+      },
+      {
+        "productId": "prod-1811",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 84.83
+      },
+      {
+        "productId": "prod-1122",
+        "name": "Power Bank 20000mAh",
+        "quantity": 4,
+        "unitPrice": 99.54
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-128"
+  },
+  {
+    "id": "order-0128",
+    "customerId": "cust-129",
+    "status": "shipped",
+    "totalAmount": 258.52,
+    "createdAt": "2024-12-22T05:20:53.000Z",
+    "items": [
+      {
+        "productId": "prod-1312",
+        "name": "Power Bank 20000mAh",
+        "quantity": 2,
+        "unitPrice": 129.26
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL417739787"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-129"
+  },
+  {
+    "id": "order-0129",
+    "customerId": "cust-130",
+    "status": "delivered",
+    "totalAmount": 1160.36,
+    "createdAt": "2025-09-12T11:51:22.000Z",
+    "items": [
+      {
+        "productId": "prod-2907",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 290.09
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS276907660"
+    },
+    "discount": null,
+    "_partitionKey": "cust-130"
+  },
+  {
+    "id": "order-0130",
+    "customerId": "cust-131",
+    "status": "shipped",
+    "totalAmount": 1850.08,
+    "createdAt": "2024-08-07T11:21:28.000Z",
+    "items": [
+      {
+        "productId": "prod-0183",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 100.69
+      },
+      {
+        "productId": "prod-2282",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 209.65
+      },
+      {
+        "productId": "prod-0972",
+        "name": "Desk Mat XL",
+        "quantity": 3,
+        "unitPrice": 269.32
+      },
+      {
+        "productId": "prod-1450",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 10.41
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL986000243"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-131"
+  },
+  {
+    "id": "order-0131",
+    "customerId": "cust-132",
+    "status": "shipped",
+    "totalAmount": 1738.48,
+    "createdAt": "2025-02-15T07:05:17.000Z",
+    "items": [
+      {
+        "productId": "prod-1322",
+        "name": "Desk Organizer",
+        "quantity": 4,
+        "unitPrice": 195.6
+      },
+      {
+        "productId": "prod-2520",
+        "name": "Gaming Mouse",
+        "quantity": 2,
+        "unitPrice": 48.97
+      },
+      {
+        "productId": "prod-0103",
+        "name": "Laptop Bag 15\"",
+        "quantity": 2,
+        "unitPrice": 103
+      },
+      {
+        "productId": "prod-2973",
+        "name": "Smart Plug",
+        "quantity": 2,
+        "unitPrice": 133.6
+      },
+      {
+        "productId": "prod-0212",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 192.47
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL712957790"
+    },
+    "discount": 15,
+    "_partitionKey": "cust-132"
+  },
+  {
+    "id": "order-0132",
+    "customerId": "cust-133",
+    "status": "delivered",
+    "totalAmount": 675.92,
+    "createdAt": "2024-12-13T18:18:49.000Z",
+    "items": [
+      {
+        "productId": "prod-0896",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 51.74
+      },
+      {
+        "productId": "prod-0517",
+        "name": "Screen Protector",
+        "quantity": 1,
+        "unitPrice": 245.7
+      },
+      {
+        "productId": "prod-1649",
+        "name": "Desk Organizer",
+        "quantity": 4,
+        "unitPrice": 94.62
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Toronto",
+        "state": "ON",
+        "country": "CA",
+        "zip": "M5H 2N2"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL198896814"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-133"
+  },
+  {
+    "id": "order-0133",
+    "customerId": "cust-134",
+    "status": "delivered",
+    "totalAmount": 1184.2,
+    "createdAt": "2024-01-12T16:55:14.000Z",
+    "items": [
+      {
+        "productId": "prod-0531",
+        "name": "Laptop Bag 15\"",
+        "quantity": 1,
+        "unitPrice": 218.76
+      },
+      {
+        "productId": "prod-1387",
+        "name": "Smart Plug",
+        "quantity": 1,
+        "unitPrice": 155.35
+      },
+      {
+        "productId": "prod-1706",
+        "name": "Laptop Bag 15\"",
+        "quantity": 2,
+        "unitPrice": 170.64
+      },
+      {
+        "productId": "prod-2162",
+        "name": "Desk Mat XL",
+        "quantity": 1,
+        "unitPrice": 216.72
+      },
+      {
+        "productId": "prod-1280",
+        "name": "Wireless Headphones",
+        "quantity": 3,
+        "unitPrice": 84.03
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS812363360"
+    },
+    "discount": null,
+    "_partitionKey": "cust-134"
+  },
+  {
+    "id": "order-0134",
+    "customerId": "cust-135",
+    "status": "shipped",
+    "totalAmount": 2632.01,
+    "createdAt": "2025-04-07T03:28:16.000Z",
+    "items": [
+      {
+        "productId": "prod-1212",
+        "name": "Smart Plug",
+        "quantity": 4,
+        "unitPrice": 276.5
+      },
+      {
+        "productId": "prod-1926",
+        "name": "Desk Mat XL",
+        "quantity": 3,
+        "unitPrice": 127.91
+      },
+      {
+        "productId": "prod-2333",
+        "name": "Laptop Bag 15\"",
+        "quantity": 4,
+        "unitPrice": 267.86
+      },
+      {
+        "productId": "prod-2539",
+        "name": "Desk Organizer",
+        "quantity": 1,
+        "unitPrice": 70.84
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL441110882"
+    },
+    "discount": 20,
+    "_partitionKey": "cust-135"
+  },
+  {
+    "id": "order-0135",
+    "customerId": "cust-136",
+    "status": "processing",
+    "totalAmount": 1385.89,
+    "createdAt": "2024-03-17T17:47:02.000Z",
+    "items": [
+      {
+        "productId": "prod-2976",
+        "name": "USB Hub",
+        "quantity": 1,
+        "unitPrice": 6.23
+      },
+      {
+        "productId": "prod-1518",
+        "name": "Smart Plug",
+        "quantity": 4,
+        "unitPrice": 80.37
+      },
+      {
+        "productId": "prod-0633",
+        "name": "Phone Case Premium",
+        "quantity": 1,
+        "unitPrice": 106.07
+      },
+      {
+        "productId": "prod-1088",
+        "name": "Cable Management Kit",
+        "quantity": 4,
+        "unitPrice": 188.04
+      },
+      {
+        "productId": "prod-1178",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 3,
+        "unitPrice": 66.65
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 10,
+    "_partitionKey": "cust-136"
+  },
+  {
+    "id": "order-0136",
+    "customerId": "cust-137",
+    "status": "delivered",
+    "totalAmount": 1414.31,
+    "createdAt": "2024-02-16T09:27:52.000Z",
+    "items": [
+      {
+        "productId": "prod-2333",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 225.08
+      },
+      {
+        "productId": "prod-0664",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 1,
+        "unitPrice": 12.67
+      },
+      {
+        "productId": "prod-0384",
+        "name": "Wireless Headphones",
+        "quantity": 3,
+        "unitPrice": 81.96
+      },
+      {
+        "productId": "prod-2883",
+        "name": "Mechanical Keyboard",
+        "quantity": 1,
+        "unitPrice": 255.44
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Vancouver",
+        "state": "BC",
+        "country": "CA",
+        "zip": "V6B 1A1"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED289769660"
+    },
+    "discount": null,
+    "_partitionKey": "cust-137"
+  },
+  {
+    "id": "order-0137",
+    "customerId": "cust-138",
+    "status": "processing",
+    "totalAmount": 1267.32,
+    "createdAt": "2025-11-21T07:20:23.000Z",
+    "items": [
+      {
+        "productId": "prod-2953",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 4,
+        "unitPrice": 159.01
+      },
+      {
+        "productId": "prod-0798",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 235.65
+      },
+      {
+        "productId": "prod-0641",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 79.99
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Berlin",
+        "state": "BE",
+        "country": "DE",
+        "zip": "10115"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 15,
+    "_partitionKey": "cust-138"
+  },
+  {
+    "id": "order-0138",
+    "customerId": "cust-139",
+    "status": "delivered",
+    "totalAmount": 1321.51,
+    "createdAt": "2023-09-14T09:15:09.000Z",
+    "items": [
+      {
+        "productId": "prod-1409",
+        "name": "Laptop Stand",
+        "quantity": 1,
+        "unitPrice": 130.63
+      },
+      {
+        "productId": "prod-1378",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 21.6
+      },
+      {
+        "productId": "prod-1098",
+        "name": "USB Hub",
+        "quantity": 4,
+        "unitPrice": 286.92
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "US",
+        "zip": "60601"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED704555110"
+    },
+    "discount": null,
+    "_partitionKey": "cust-139"
+  },
+  {
+    "id": "order-0139",
+    "customerId": "cust-140",
+    "status": "delivered",
+    "totalAmount": 239.13,
+    "createdAt": "2023-11-22T01:37:32.000Z",
+    "items": [
+      {
+        "productId": "prod-2252",
+        "name": "Wireless Headphones",
+        "quantity": 3,
+        "unitPrice": 37.33
+      },
+      {
+        "productId": "prod-1810",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 14.17
+      },
+      {
+        "productId": "prod-0978",
+        "name": "Screen Protector",
+        "quantity": 1,
+        "unitPrice": 98.8
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "FedEx",
+      "trackingNumber": "FED731720036"
+    },
+    "discount": 5,
+    "_partitionKey": "cust-140"
+  },
+  {
+    "id": "order-0140",
+    "customerId": "cust-141",
+    "status": "pending",
+    "totalAmount": 2228.89,
+    "createdAt": "2025-02-16T04:03:29.000Z",
+    "items": [
+      {
+        "productId": "prod-0211",
+        "name": "USB Hub",
+        "quantity": 1,
+        "unitPrice": 97.39
+      },
+      {
+        "productId": "prod-0123",
+        "name": "Screen Protector",
+        "quantity": 2,
+        "unitPrice": 275.06
+      },
+      {
+        "productId": "prod-1910",
+        "name": "Phone Case Premium",
+        "quantity": 3,
+        "unitPrice": 63.31
+      },
+      {
+        "productId": "prod-1345",
+        "name": "Monitor Arm Single",
+        "quantity": 3,
+        "unitPrice": 286.89
+      },
+      {
+        "productId": "prod-0088",
+        "name": "Microfibre Cleaning Cloth",
+        "quantity": 2,
+        "unitPrice": 265.39
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-141"
+  },
+  {
+    "id": "order-0141",
+    "customerId": "cust-142",
+    "status": "pending",
+    "totalAmount": 565.23,
+    "createdAt": "2023-11-26T16:37:10.000Z",
+    "items": [
+      {
+        "productId": "prod-1639",
+        "name": "Desk Mat XL",
+        "quantity": 3,
+        "unitPrice": 188.41
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-142"
+  },
+  {
+    "id": "order-0142",
+    "customerId": "cust-143",
+    "status": "shipped",
+    "totalAmount": 608.72,
+    "createdAt": "2024-09-05T07:26:23.000Z",
+    "items": [
+      {
+        "productId": "prod-1166",
+        "name": "Desk Organizer",
+        "quantity": 2,
+        "unitPrice": 254.47
+      },
+      {
+        "productId": "prod-1800",
+        "name": "Wrist Rest Gel",
+        "quantity": 2,
+        "unitPrice": 49.89
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Manchester",
+        "state": "ENG",
+        "country": "UK",
+        "zip": "M1 1AE"
+      },
+      "carrier": "UPS",
+      "trackingNumber": "UPS578886184"
+    },
+    "discount": null,
+    "_partitionKey": "cust-143"
+  },
+  {
+    "id": "order-0143",
+    "customerId": "cust-144",
+    "status": "cancelled",
+    "totalAmount": 982.73,
+    "createdAt": "2023-08-29T13:24:01.000Z",
+    "items": [
+      {
+        "productId": "prod-1015",
+        "name": "Laptop Stand",
+        "quantity": 2,
+        "unitPrice": 130.27
+      },
+      {
+        "productId": "prod-2037",
+        "name": "Desk Organizer",
+        "quantity": 2,
+        "unitPrice": 75.45
+      },
+      {
+        "productId": "prod-1525",
+        "name": "Ergonomic Chair Cushion",
+        "quantity": 2,
+        "unitPrice": 64
+      },
+      {
+        "productId": "prod-0298",
+        "name": "Webcam Cover Slider",
+        "quantity": 1,
+        "unitPrice": 278.86
+      },
+      {
+        "productId": "prod-2505",
+        "name": "Smart Plug",
+        "quantity": 3,
+        "unitPrice": 54.81
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-144"
+  },
+  {
+    "id": "order-0144",
+    "customerId": "cust-145",
+    "status": "shipped",
+    "totalAmount": 911.83,
+    "createdAt": "2023-03-16T19:11:24.000Z",
+    "items": [
+      {
+        "productId": "prod-2345",
+        "name": "Monitor Arm Single",
+        "quantity": 2,
+        "unitPrice": 179.57
+      },
+      {
+        "productId": "prod-1395",
+        "name": "Phone Case Premium",
+        "quantity": 3,
+        "unitPrice": 184.23
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "US",
+        "zip": "90001"
+      },
+      "carrier": "DHL",
+      "trackingNumber": "DHL713770538"
+    },
+    "discount": null,
+    "_partitionKey": "cust-145"
+  },
+  {
+    "id": "order-0145",
+    "customerId": "cust-146",
+    "status": "cancelled",
+    "totalAmount": 978.92,
+    "createdAt": "2025-01-15T12:57:24.000Z",
+    "items": [
+      {
+        "productId": "prod-1512",
+        "name": "Blue Light Glasses",
+        "quantity": 4,
+        "unitPrice": 244.73
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "New York",
+        "state": "NY",
+        "country": "US",
+        "zip": "10001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": 20,
+    "_partitionKey": "cust-146"
+  },
+  {
+    "id": "order-0146",
+    "customerId": "cust-147",
+    "status": "pending",
+    "totalAmount": 2658.33,
+    "createdAt": "2025-12-29T03:21:41.000Z",
+    "items": [
+      {
+        "productId": "prod-2609",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 163.16
+      },
+      {
+        "productId": "prod-1851",
+        "name": "Wireless Headphones",
+        "quantity": 4,
+        "unitPrice": 180.47
+      },
+      {
+        "productId": "prod-0157",
+        "name": "Screen Protector",
+        "quantity": 1,
+        "unitPrice": 132.89
+      },
+      {
+        "productId": "prod-0702",
+        "name": "Wrist Rest Gel",
+        "quantity": 4,
+        "unitPrice": 287.73
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-147"
+  },
+  {
+    "id": "order-0147",
+    "customerId": "cust-148",
+    "status": "processing",
+    "totalAmount": 1186.64,
+    "createdAt": "2024-10-21T05:42:49.000Z",
+    "items": [
+      {
+        "productId": "prod-1271",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 242.77
+      },
+      {
+        "productId": "prod-2783",
+        "name": "Phone Case Premium",
+        "quantity": 3,
+        "unitPrice": 41.04
+      },
+      {
+        "productId": "prod-1503",
+        "name": "Phone Case Premium",
+        "quantity": 4,
+        "unitPrice": 23.11
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-148"
+  },
+  {
+    "id": "order-0148",
+    "customerId": "cust-149",
+    "status": "pending",
+    "totalAmount": 1995.24,
+    "createdAt": "2024-03-06T19:38:08.000Z",
+    "items": [
+      {
+        "productId": "prod-2712",
+        "name": "USB Hub",
+        "quantity": 2,
+        "unitPrice": 170.02
+      },
+      {
+        "productId": "prod-2834",
+        "name": "Gaming Mouse",
+        "quantity": 4,
+        "unitPrice": 276.2
+      },
+      {
+        "productId": "prod-2712",
+        "name": "Desk Mat XL",
+        "quantity": 4,
+        "unitPrice": 137.6
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "US",
+        "zip": "77001"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-149"
+  },
+  {
+    "id": "order-0149",
+    "customerId": "cust-150",
+    "status": "pending",
+    "totalAmount": 2720.57,
+    "createdAt": "2024-01-03T16:17:01.000Z",
+    "items": [
+      {
+        "productId": "prod-2588",
+        "name": "Webcam Cover Slider",
+        "quantity": 4,
+        "unitPrice": 20.02
+      },
+      {
+        "productId": "prod-1570",
+        "name": "Blue Light Glasses",
+        "quantity": 1,
+        "unitPrice": 58.51
+      },
+      {
+        "productId": "prod-0315",
+        "name": "Monitor Arm Single",
+        "quantity": 4,
+        "unitPrice": 256.36
+      },
+      {
+        "productId": "prod-0309",
+        "name": "Smart Plug",
+        "quantity": 2,
+        "unitPrice": 236.07
+      },
+      {
+        "productId": "prod-0500",
+        "name": "Laptop Stand",
+        "quantity": 4,
+        "unitPrice": 271.1
+      }
+    ],
+    "shipping": {
+      "address": {
+        "city": "Munich",
+        "state": "BY",
+        "country": "DE",
+        "zip": "80331"
+      },
+      "carrier": null,
+      "trackingNumber": null
+    },
+    "discount": null,
+    "_partitionKey": "cust-150"
+  }
+]

@@ -1,0 +1,2491 @@
+[
+  {
+    "id": "evt-00000",
+    "type": "signup",
+    "userId": "u-1",
+    "sessionId": "b6412036-ea97-7a03-221f-8bf90903ed1f",
+    "timestamp": "2025-01-03T14:30:00.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00001",
+    "type": "click",
+    "userId": "u-1",
+    "sessionId": "030a3e58-9116-15e4-6fa7-ddd7fad99d73",
+    "timestamp": "2025-01-03T14:30:00.000Z",
+    "durationMs": 22059,
+    "properties": {
+      "page": "/cart"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00002",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "32cc52bd-8de4-76d6-eb49-a462b5c36cc1",
+    "timestamp": "2025-01-04T04:48:55.000Z",
+    "properties": {
+      "page": "/cart",
+      "referrer": "https://ref1.example.com"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00003",
+    "type": "purchase",
+    "userId": "u-9",
+    "sessionId": "7e0436b3-7661-3c9b-020b-61d51172b360",
+    "timestamp": "2025-01-06T18:58:23.000Z",
+    "durationMs": 0,
+    "properties": {
+      "productId": "prod-1484",
+      "amount": 367.76
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00004",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "765d5b1b-56e3-d9eb-c8ad-4fe667cabb96",
+    "timestamp": "2025-01-03T10:46:48.000Z",
+    "durationMs": 6604,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-0843"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00005",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "f7c46850-1522-183d-e174-7bb230db43a2",
+    "timestamp": "2025-01-04T04:13:14.000Z",
+    "durationMs": 11066,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00006",
+    "type": "purchase",
+    "userId": "u-5",
+    "sessionId": "b7c72938-a3ce-8f87-da89-d1d71ed93189",
+    "timestamp": "2025-01-04T02:24:47.000Z",
+    "durationMs": 15485,
+    "properties": {
+      "productId": "prod-2796",
+      "amount": 289.47
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00007",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "1a67222f-7f11-22d6-97fa-cb762a3291d6",
+    "timestamp": "2025-01-01T15:52:30.000Z",
+    "durationMs": 8414,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00008",
+    "type": "view",
+    "userId": "u-3",
+    "sessionId": "487a0834-d91d-a999-54f4-1bf7c8359fa7",
+    "timestamp": "2025-01-01T18:22:15.000Z",
+    "durationMs": 12453,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-0975"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00009",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "f87d6c8b-b85e-5615-12e7-d1eb945d75d6",
+    "timestamp": "2025-01-05T19:19:20.000Z",
+    "durationMs": 21554,
+    "properties": {
+      "page": "/checkout"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00010",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "453a4c8a-90fc-7191-7d6e-e6baf90baa9a",
+    "timestamp": "2025-01-02T23:07:50.000Z",
+    "durationMs": 15325,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-1195"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00011",
+    "type": "purchase",
+    "userId": "u-5",
+    "sessionId": "a099d102-9a4a-2f56-8449-e0420e11fc5a",
+    "timestamp": "2025-01-06T15:05:57.000Z",
+    "durationMs": 10364,
+    "properties": {
+      "productId": "prod-0010",
+      "amount": 277.85
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00012",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "639a50d5-2cff-d83a-bf08-f68d8b10e1b9",
+    "timestamp": "2025-01-04T03:40:18.000Z",
+    "durationMs": 7523,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00013",
+    "type": "click",
+    "userId": "u-1",
+    "sessionId": "ac83668d-da54-2831-cc90-b460ee06488f",
+    "timestamp": "2025-01-02T12:16:31.000Z",
+    "durationMs": 22406,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00014",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "beb97c9c-c19e-edf6-9cef-701a505fa3f9",
+    "timestamp": "2025-01-05T18:01:53.000Z",
+    "durationMs": 7071,
+    "properties": {
+      "page": "/account",
+      "referrer": "https://ref1.example.com",
+      "productId": "prod-0129"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00015",
+    "type": "purchase",
+    "userId": "u-10",
+    "sessionId": "c078e8f8-c711-e579-5c2f-e6f8fcccaac3",
+    "timestamp": "2025-01-01T19:50:00.000Z",
+    "durationMs": 11474,
+    "properties": {
+      "productId": "prod-0729",
+      "amount": 127.13
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00016",
+    "type": "view",
+    "userId": "u-5",
+    "sessionId": "ba8a007d-d9ba-998b-9dbc-0d1715742448",
+    "timestamp": "2025-01-04T04:41:21.000Z",
+    "durationMs": 3264,
+    "properties": {
+      "page": "/account",
+      "productId": "prod-1332"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00017",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "7e16e52b-7566-12f2-afcb-2657e51bafb6",
+    "timestamp": "2025-01-07T13:36:12.000Z",
+    "durationMs": 28328,
+    "properties": {
+      "page": "/checkout"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00018",
+    "type": "view",
+    "userId": "u-5",
+    "sessionId": "2755a910-90b4-6924-4dfa-8cff9783b7bd",
+    "timestamp": "2025-01-02T13:13:44.000Z",
+    "durationMs": 15393,
+    "properties": {
+      "page": "/account",
+      "referrer": "https://ref5.example.com",
+      "productId": "prod-0532"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00019",
+    "type": "view",
+    "userId": "u-2",
+    "sessionId": "c331e1ec-1a21-6dca-c864-6ef81d9216bc",
+    "timestamp": "2025-01-01T10:28:20.000Z",
+    "durationMs": 27151,
+    "properties": {
+      "page": "/products",
+      "productId": "prod-2684"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00020",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "3e7b4112-bb20-be08-6b5c-5665448ae894",
+    "timestamp": "2025-01-05T07:59:10.000Z",
+    "durationMs": 27930,
+    "properties": {
+      "page": "/about",
+      "productId": "prod-1420"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00021",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "7e6fff51-58ed-b58b-3192-6ad1fefa638b",
+    "timestamp": "2025-01-04T10:43:24.000Z",
+    "durationMs": 13534,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-0867"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00022",
+    "type": "purchase",
+    "userId": "u-8",
+    "sessionId": "50d29834-42c2-8076-b3e2-327f36961f52",
+    "timestamp": "2025-01-04T19:37:40.000Z",
+    "durationMs": 25499,
+    "properties": {
+      "productId": "prod-1993",
+      "amount": 203.03
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00023",
+    "type": "click",
+    "userId": "u-4",
+    "sessionId": "b3bc0215-01f9-0eec-e4e7-8bc6d93b58d6",
+    "timestamp": "2025-01-07T05:02:47.000Z",
+    "durationMs": 2594,
+    "properties": {
+      "page": "/home",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00024",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "a099e806-28f5-db42-ad0e-25bf7954fa09",
+    "timestamp": "2025-01-07T12:35:57.000Z",
+    "durationMs": 26215,
+    "properties": {
+      "page": "/search"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00025",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "9664a244-ce71-78e4-1f24-5301a5443d57",
+    "timestamp": "2025-01-04T03:00:57.000Z",
+    "durationMs": 19476,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00026",
+    "type": "signup",
+    "userId": "u-9",
+    "sessionId": "602fedf9-4c9c-99b7-83b9-b360af19f3bc",
+    "timestamp": "2025-01-02T15:30:36.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00027",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "422f6eea-b0f7-9a5f-d4ca-fa92ee996f6a",
+    "timestamp": "2025-01-07T19:20:10.000Z",
+    "durationMs": 2266,
+    "properties": {
+      "page": "/wishlist",
+      "referrer": "https://ref1.example.com"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00028",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "d68ba18c-ce8c-2c0f-741d-1f06885f8820",
+    "timestamp": "2025-01-01T14:15:50.000Z",
+    "durationMs": 10329,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00029",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "1fcf762c-3793-826e-8b55-efe6beec3e97",
+    "timestamp": "2025-01-03T14:05:12.000Z",
+    "durationMs": 18368,
+    "properties": {
+      "page": "/cart",
+      "productId": "prod-1074"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00030",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "f18203fb-0399-5dce-93eb-30ede2c04211",
+    "timestamp": "2025-01-03T13:43:33.000Z",
+    "durationMs": 7138,
+    "properties": {
+      "page": "/checkout",
+      "referrer": "https://ref5.example.com"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00031",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "6602abad-0e6e-7610-69fc-58dba9c8e8cd",
+    "timestamp": "2025-01-02T15:14:54.000Z",
+    "durationMs": 20693,
+    "properties": {
+      "page": "/about",
+      "productId": "prod-0698"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00032",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "d4099317-0a79-10c7-a8cc-ee0bb64e6380",
+    "timestamp": "2025-01-07T12:45:41.000Z",
+    "durationMs": 18259,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-2463"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00033",
+    "type": "click",
+    "userId": "u-1",
+    "sessionId": "9c64dd70-a30d-494e-c624-9d53671fcdbc",
+    "timestamp": "2025-01-04T03:30:06.000Z",
+    "durationMs": 18371,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00034",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "d50c0ae2-62f9-f157-9217-20017c0c809d",
+    "timestamp": "2025-01-04T05:41:55.000Z",
+    "durationMs": 5669,
+    "properties": {
+      "page": "/products",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00035",
+    "type": "purchase",
+    "userId": "u-2",
+    "sessionId": "ddfcbf52-303a-9314-5715-362078223eb8",
+    "timestamp": "2025-01-03T02:52:33.000Z",
+    "durationMs": 18264,
+    "properties": {
+      "productId": "prod-0753",
+      "amount": 421.64
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00036",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "f668487d-9fc4-26e6-6a1c-7742fae17ba3",
+    "timestamp": "2025-01-03T17:21:59.000Z",
+    "durationMs": 25758,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00037",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "81fdf00b-cc92-e680-d967-8e24f3e3a545",
+    "timestamp": "2025-01-04T16:05:34.000Z",
+    "durationMs": 10442,
+    "properties": {
+      "page": "/checkout"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00038",
+    "type": "signup",
+    "userId": "u-3",
+    "sessionId": "7e55f970-ecf0-7a8d-16b3-6ce2705cdb3d",
+    "timestamp": "2025-01-05T04:03:45.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00039",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "fafd17ca-b92f-8e3c-a0d7-5c7f7db12f45",
+    "timestamp": "2025-01-03T19:44:46.000Z",
+    "durationMs": 10878,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-0921"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00040",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "5a61c1e6-6a96-4d4e-60eb-2269adb1cc1e",
+    "timestamp": "2025-01-06T20:23:27.000Z",
+    "durationMs": 22817,
+    "properties": {
+      "page": "/about"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00041",
+    "type": "signup",
+    "userId": "u-2",
+    "sessionId": "c2130005-c017-6284-2b21-ca33956625bc",
+    "timestamp": "2025-01-01T15:20:41.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00042",
+    "type": "click",
+    "userId": "u-1",
+    "sessionId": "78178e4d-e204-408b-7d4d-ef9287b808f0",
+    "timestamp": "2025-01-07T16:53:29.000Z",
+    "durationMs": 10018,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00043",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "5730db07-e292-6acf-f653-337dde461547",
+    "timestamp": "2025-01-02T02:47:17.000Z",
+    "durationMs": 24972,
+    "properties": {
+      "page": "/search",
+      "productId": "prod-2682"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00044",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "4096be18-8c34-a74e-005a-fba04c9fd16c",
+    "timestamp": "2025-01-02T20:20:58.000Z",
+    "durationMs": 25237,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00045",
+    "type": "signup",
+    "userId": "u-3",
+    "sessionId": "fe622df7-d4df-ac25-b90d-344be8c85902",
+    "timestamp": "2025-01-05T22:40:52.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00046",
+    "type": "view",
+    "userId": "u-10",
+    "sessionId": "8a653b8e-71cd-9db0-6dbd-1e6299a4bf8c",
+    "timestamp": "2025-01-02T13:41:52.000Z",
+    "durationMs": 5985,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref1.example.com",
+      "productId": "prod-0029"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00047",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "9184b685-e116-4bb8-8f31-0cc7fe3ce8c9",
+    "timestamp": "2025-01-04T12:23:13.000Z",
+    "durationMs": 13014,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00048",
+    "type": "error",
+    "userId": "u-2",
+    "sessionId": "15be19ff-a8ed-779e-6aec-8895cf03cfc2",
+    "timestamp": "2025-01-04T07:48:13.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_LIMIT",
+      "errorMessage": "Error occurred: ERR_LIMIT"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00049",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "34227f23-2ea8-ecfd-bcba-a9b8f05c0029",
+    "timestamp": "2025-01-04T21:16:30.000Z",
+    "durationMs": 11675,
+    "properties": {
+      "page": "/home",
+      "referrer": "https://ref4.example.com"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00050",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "52a44328-c961-30b4-978e-c44e87172644",
+    "timestamp": "2025-01-01T11:08:52.000Z",
+    "durationMs": 1469,
+    "properties": {
+      "page": "/account"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00051",
+    "type": "error",
+    "userId": "u-5",
+    "sessionId": "cdce07da-e23b-0dd3-b83d-37019977b02b",
+    "timestamp": "2025-01-01T12:52:32.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_TIMEOUT",
+      "errorMessage": "Error occurred: ERR_TIMEOUT"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00052",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "125240b4-182b-5237-86ff-578ccee2f066",
+    "timestamp": "2025-01-06T15:18:12.000Z",
+    "durationMs": 8963,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-2652"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00053",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "82deb774-71d0-8beb-e9e2-31e963ad0e13",
+    "timestamp": "2025-01-05T16:50:44.000Z",
+    "durationMs": 27545,
+    "properties": {
+      "page": "/checkout"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00054",
+    "type": "view",
+    "userId": "u-3",
+    "sessionId": "d2e88c34-b712-247e-dead-3dbb7ada0b87",
+    "timestamp": "2025-01-03T19:26:46.000Z",
+    "durationMs": 22935,
+    "properties": {
+      "page": "/account",
+      "referrer": "https://ref4.example.com",
+      "productId": "prod-1845"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00055",
+    "type": "view",
+    "userId": "u-3",
+    "sessionId": "7cd70cc5-6543-38fb-8151-13317b641c70",
+    "timestamp": "2025-01-04T13:01:30.000Z",
+    "durationMs": 1780,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-2366"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00056",
+    "type": "purchase",
+    "userId": "u-9",
+    "sessionId": "abcc4241-0ab7-0c87-d61e-74da9bec8bfd",
+    "timestamp": "2025-01-02T01:51:51.000Z",
+    "durationMs": 12217,
+    "properties": {
+      "productId": "prod-1175",
+      "amount": 405.93
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00057",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "fe94628d-bb68-ed2e-a7d1-029779982bd4",
+    "timestamp": "2025-01-02T05:19:36.000Z",
+    "durationMs": 15030,
+    "properties": {
+      "page": "/checkout",
+      "referrer": "https://ref1.example.com"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00058",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "fad4ba2b-bf6a-1b63-946d-16cb15ee36bc",
+    "timestamp": "2025-01-02T12:55:54.000Z",
+    "durationMs": 16484,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00059",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "7d1adfe4-562f-f430-32b6-b047e5b2e090",
+    "timestamp": "2025-01-04T20:16:53.000Z",
+    "durationMs": 7388,
+    "properties": {
+      "page": "/cart",
+      "productId": "prod-0165"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00060",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "929e6770-9f1c-b699-5c74-7ccacd505293",
+    "timestamp": "2025-01-01T11:47:17.000Z",
+    "durationMs": 13273,
+    "properties": {
+      "page": "/home",
+      "referrer": "https://ref4.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00061",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "8fefe2d2-e676-66fa-aba0-da331e7afa92",
+    "timestamp": "2025-01-06T14:08:56.000Z",
+    "durationMs": 17877,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref4.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00062",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "4797667c-dbde-c42f-6ff0-6d3727afd51b",
+    "timestamp": "2025-01-01T13:26:44.000Z",
+    "durationMs": 15964,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00063",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "598e2a39-6d85-e4a6-3606-2780abca0445",
+    "timestamp": "2025-01-04T22:46:36.000Z",
+    "durationMs": 29007,
+    "properties": {
+      "page": "/home",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00064",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "81250b61-7324-6376-a96f-899cec574085",
+    "timestamp": "2025-01-07T21:54:44.000Z",
+    "durationMs": 5939,
+    "properties": {
+      "productId": "prod-0188",
+      "amount": 304.07
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00065",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "70347046-ff89-8313-d418-e98bbaf70e7c",
+    "timestamp": "2025-01-03T07:09:10.000Z",
+    "durationMs": 6345,
+    "properties": {
+      "page": "/home",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00066",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "27ebef16-a35e-86cc-fc85-ea2721cbd21f",
+    "timestamp": "2025-01-05T15:31:59.000Z",
+    "durationMs": 10095,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref5.example.com",
+      "productId": "prod-0226"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00067",
+    "type": "error",
+    "userId": "u-6",
+    "sessionId": "6cc4b389-c1b3-aa34-c8e5-be735cdecc5f",
+    "timestamp": "2025-01-06T00:52:27.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_TIMEOUT",
+      "errorMessage": "Error occurred: ERR_TIMEOUT"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00068",
+    "type": "purchase",
+    "userId": "u-3",
+    "sessionId": "1a87bb21-ded7-10ff-897e-a3c202922830",
+    "timestamp": "2025-01-07T22:48:18.000Z",
+    "durationMs": 10661,
+    "properties": {
+      "productId": "prod-2857",
+      "amount": 364.7
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00069",
+    "type": "purchase",
+    "userId": "u-1",
+    "sessionId": "f9df4638-14b1-bcef-b206-950a3b47329d",
+    "timestamp": "2025-01-02T12:24:31.000Z",
+    "durationMs": 14310,
+    "properties": {
+      "productId": "prod-0866",
+      "amount": 70.93
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00070",
+    "type": "purchase",
+    "userId": "u-4",
+    "sessionId": "484ff7f7-e6c3-00db-10d1-4670bd28f4df",
+    "timestamp": "2025-01-01T06:35:38.000Z",
+    "durationMs": 25564,
+    "properties": {
+      "productId": "prod-2348",
+      "amount": 279.7
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00071",
+    "type": "signup",
+    "userId": "u-6",
+    "sessionId": "fd72c42d-6f27-a22e-f2ee-aed2bff1c5a2",
+    "timestamp": "2025-01-06T04:52:39.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00072",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "668e69df-b71f-74ba-927a-8e5bfd15041c",
+    "timestamp": "2025-01-01T04:02:43.000Z",
+    "durationMs": 23880,
+    "properties": {
+      "productId": "prod-0215",
+      "amount": 438.2
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00073",
+    "type": "view",
+    "userId": "u-9",
+    "sessionId": "1c8cf8f2-84aa-99d1-60f7-32c890f30bbf",
+    "timestamp": "2025-01-01T20:35:29.000Z",
+    "durationMs": 8313,
+    "properties": {
+      "page": "/deals",
+      "referrer": "https://ref2.example.com",
+      "productId": "prod-2310"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00074",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "64e37c79-2cac-8230-a072-550645293775",
+    "timestamp": "2025-01-02T12:35:36.000Z",
+    "durationMs": 23228,
+    "properties": {
+      "page": "/wishlist"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00075",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "7179aaa8-b7a6-ff94-41da-febc68f54f71",
+    "timestamp": "2025-01-06T10:25:02.000Z",
+    "durationMs": 20808,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00076",
+    "type": "signup",
+    "userId": "u-10",
+    "sessionId": "2aa96af3-8225-f7b9-83e5-d606d00673b5",
+    "timestamp": "2025-01-03T19:07:56.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00077",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "a5effd53-37e1-085a-d469-65e660863556",
+    "timestamp": "2025-01-06T14:12:21.000Z",
+    "durationMs": 17959,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00078",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "86e9fe3c-29b9-a561-91da-04543d77c9fd",
+    "timestamp": "2025-01-04T08:44:17.000Z",
+    "durationMs": 25282,
+    "properties": {
+      "page": "/checkout",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00079",
+    "type": "signup",
+    "userId": "u-8",
+    "sessionId": "080cf00f-594c-6b43-494b-43679feeb00f",
+    "timestamp": "2025-01-03T04:09:25.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00080",
+    "type": "view",
+    "userId": "u-10",
+    "sessionId": "23d4f3e9-20b9-78f1-59eb-5f706aee8298",
+    "timestamp": "2025-01-01T23:11:26.000Z",
+    "durationMs": 981,
+    "properties": {
+      "page": "/deals",
+      "productId": "prod-0227"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00081",
+    "type": "click",
+    "userId": "u-4",
+    "sessionId": "81b272a4-c558-2996-81e0-d4cb711409ff",
+    "timestamp": "2025-01-03T23:31:52.000Z",
+    "durationMs": 8882,
+    "properties": {
+      "page": "/checkout"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00082",
+    "type": "signup",
+    "userId": "u-6",
+    "sessionId": "494a4c69-307f-18b4-dc70-2475b00d0773",
+    "timestamp": "2025-01-07T02:11:30.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00083",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "ceea56e4-2f2c-ddc3-1045-86a7253f9674",
+    "timestamp": "2025-01-02T05:03:09.000Z",
+    "durationMs": 6282,
+    "properties": {
+      "page": "/products",
+      "referrer": "https://ref5.example.com",
+      "productId": "prod-2459"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00084",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "034a252f-40cc-a417-48f9-74cb3ac81571",
+    "timestamp": "2025-01-04T14:08:11.000Z",
+    "durationMs": 17034,
+    "properties": {
+      "page": "/deals",
+      "referrer": "https://ref5.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00085",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "3cebe2d4-5639-67ed-b0b0-04d2b2d1676e",
+    "timestamp": "2025-01-05T02:07:20.000Z",
+    "durationMs": 26326,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00086",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "6387e26d-e7c7-ac74-3309-d64203cad765",
+    "timestamp": "2025-01-07T05:57:27.000Z",
+    "durationMs": 6171,
+    "properties": {
+      "page": "/account",
+      "referrer": "https://ref4.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00087",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "abf50f01-bcf8-28e6-e1c6-69e2099de2ac",
+    "timestamp": "2025-01-07T14:29:20.000Z",
+    "durationMs": 2478,
+    "properties": {
+      "productId": "prod-2683",
+      "amount": 488.45
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00088",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "bba6fd91-fe17-a224-9dcf-8444f1c16dd7",
+    "timestamp": "2025-01-01T23:24:36.000Z",
+    "durationMs": 10228,
+    "properties": {
+      "page": "/wishlist"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00089",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "07c1d91b-b4d9-3998-773d-e66899ba62d3",
+    "timestamp": "2025-01-07T02:57:58.000Z",
+    "durationMs": 20766,
+    "properties": {
+      "page": "/deals",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00090",
+    "type": "signup",
+    "userId": "u-1",
+    "sessionId": "353be0e1-ceda-26e2-93b5-0d4486f23712",
+    "timestamp": "2025-01-02T13:25:28.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00091",
+    "type": "purchase",
+    "userId": "u-5",
+    "sessionId": "d0ef280e-0ae1-4f01-3754-f10422b34c9e",
+    "timestamp": "2025-01-03T07:45:56.000Z",
+    "durationMs": 11970,
+    "properties": {
+      "productId": "prod-0046",
+      "amount": 15.67
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00092",
+    "type": "signup",
+    "userId": "u-5",
+    "sessionId": "758ecf9a-7662-e365-1b46-357e4df875a4",
+    "timestamp": "2025-01-07T15:32:22.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00093",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "f720c792-5d72-6670-6567-fee2eb4ebae3",
+    "timestamp": "2025-01-02T06:52:55.000Z",
+    "durationMs": 4580,
+    "properties": {
+      "page": "/checkout",
+      "productId": "prod-1612"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00094",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "19694bec-379f-d89f-dc1b-9d060f9ef416",
+    "timestamp": "2025-01-02T06:58:56.000Z",
+    "durationMs": 9089,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00095",
+    "type": "purchase",
+    "userId": "u-7",
+    "sessionId": "39ccb35a-fba4-8072-09fe-b7b144805885",
+    "timestamp": "2025-01-05T04:00:01.000Z",
+    "durationMs": 25334,
+    "properties": {
+      "productId": "prod-1118",
+      "amount": 126.51
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00096",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "9b6bda4d-a689-f646-42e2-6eff6d30d289",
+    "timestamp": "2025-01-02T11:51:53.000Z",
+    "durationMs": 24040,
+    "properties": {
+      "productId": "prod-0491",
+      "amount": 12.68
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00097",
+    "type": "signup",
+    "userId": "u-1",
+    "sessionId": "b7dffc63-d06c-8ce6-4519-08e0c3593db6",
+    "timestamp": "2025-01-06T15:19:45.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00098",
+    "type": "click",
+    "userId": "u-1",
+    "sessionId": "7501ed68-9dbb-9e00-e434-2e224cef6341",
+    "timestamp": "2025-01-02T03:41:06.000Z",
+    "durationMs": 648,
+    "properties": {
+      "page": "/cart",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00099",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "c8871404-e4c0-8cb3-83e1-f71e5e177f58",
+    "timestamp": "2025-01-01T23:32:27.000Z",
+    "durationMs": 20898,
+    "properties": {
+      "page": "/blog",
+      "referrer": "https://ref4.example.com"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00100",
+    "type": "view",
+    "userId": "u-10",
+    "sessionId": "3109e4ff-2324-89af-90d5-5db84779364d",
+    "timestamp": "2025-01-03T13:38:45.000Z",
+    "durationMs": 27269,
+    "properties": {
+      "page": "/cart",
+      "referrer": "https://ref4.example.com",
+      "productId": "prod-0466"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00101",
+    "type": "purchase",
+    "userId": "u-7",
+    "sessionId": "4f79c3e0-f030-a16c-9133-6c9c9071367d",
+    "timestamp": "2025-01-03T11:27:50.000Z",
+    "durationMs": 28842,
+    "properties": {
+      "productId": "prod-1669",
+      "amount": 374.77
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00102",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "d1abf48a-be88-a7d7-22ad-7e81ead639e2",
+    "timestamp": "2025-01-03T20:24:55.000Z",
+    "durationMs": 6378,
+    "properties": {
+      "page": "/cart",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00103",
+    "type": "view",
+    "userId": "u-3",
+    "sessionId": "ebc1db9c-f7be-d724-3cf0-b1359de82911",
+    "timestamp": "2025-01-05T15:23:32.000Z",
+    "durationMs": 23291,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref1.example.com",
+      "productId": "prod-2785"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00104",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "6b54c181-52c9-7c09-f79d-efdb55750aeb",
+    "timestamp": "2025-01-01T16:40:46.000Z",
+    "durationMs": 25576,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-1186"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00105",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "6cf1036b-248b-25ff-ac5a-749f2df2ff91",
+    "timestamp": "2025-01-06T22:42:25.000Z",
+    "durationMs": 153,
+    "properties": {
+      "page": "/account",
+      "referrer": "https://ref3.example.com",
+      "productId": "prod-1386"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00106",
+    "type": "error",
+    "userId": "u-10",
+    "sessionId": "dcbef95b-adde-4e95-7338-9adb1f6a6712",
+    "timestamp": "2025-01-02T00:46:30.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_LIMIT",
+      "errorMessage": "Error occurred: ERR_LIMIT"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00107",
+    "type": "purchase",
+    "userId": "u-3",
+    "sessionId": "202bdbea-cecc-76f5-1c26-ef92bfa8fd8a",
+    "timestamp": "2025-01-06T10:45:46.000Z",
+    "durationMs": 17055,
+    "properties": {
+      "productId": "prod-0023",
+      "amount": 271.86
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00108",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "c4d750c8-cd8c-7054-cdb3-0d965a197993",
+    "timestamp": "2025-01-02T10:35:51.000Z",
+    "durationMs": 13229,
+    "properties": {
+      "productId": "prod-0308",
+      "amount": 356.54
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00109",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "622b852f-9f38-cc64-fd5b-ebb68048c981",
+    "timestamp": "2025-01-04T08:56:46.000Z",
+    "durationMs": 13386,
+    "properties": {
+      "page": "/products",
+      "referrer": "https://ref4.example.com",
+      "productId": "prod-1551"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00110",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "5434486c-9983-ed3a-07cb-4679a079fc86",
+    "timestamp": "2025-01-04T00:13:28.000Z",
+    "durationMs": 7998,
+    "properties": {
+      "page": "/products",
+      "referrer": "https://ref5.example.com",
+      "productId": "prod-2634"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00111",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "22083957-c146-e3d6-e6a0-8af37c7f2cea",
+    "timestamp": "2025-01-06T20:18:35.000Z",
+    "durationMs": 20563,
+    "properties": {
+      "page": "/search"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00112",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "a2c720c8-1907-3ed8-c46b-66064eb02782",
+    "timestamp": "2025-01-04T20:20:45.000Z",
+    "durationMs": 25776,
+    "properties": {
+      "page": "/blog"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00113",
+    "type": "signup",
+    "userId": "u-5",
+    "sessionId": "b9650d7e-c177-8e44-2cab-2c27db444943",
+    "timestamp": "2025-01-01T17:55:33.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00114",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "b8d808ae-1f4f-3321-c425-bb6abefb5b6a",
+    "timestamp": "2025-01-02T09:37:54.000Z",
+    "durationMs": 20151,
+    "properties": {
+      "page": "/products",
+      "productId": "prod-0333"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00115",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "a8d308ef-f324-455b-9b52-cac3b65c6b9c",
+    "timestamp": "2025-01-04T05:25:29.000Z",
+    "durationMs": 11236,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref1.example.com",
+      "productId": "prod-2537"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00116",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "ce450ae8-c77a-3c9a-a15e-7b69dc4cc1a9",
+    "timestamp": "2025-01-06T09:14:24.000Z",
+    "durationMs": 27622,
+    "properties": {
+      "page": "/wishlist",
+      "referrer": "https://ref4.example.com"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00117",
+    "type": "error",
+    "userId": "u-7",
+    "sessionId": "fae88d42-b730-0f1a-6a5e-c77ce777de0b",
+    "timestamp": "2025-01-07T19:34:13.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_AUTH",
+      "errorMessage": "Error occurred: ERR_AUTH"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00118",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "d64cc32b-5a89-8570-3c51-18a37ea21dd3",
+    "timestamp": "2025-01-02T23:26:35.000Z",
+    "durationMs": 16085,
+    "properties": {
+      "page": "/cart",
+      "productId": "prod-2393"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00119",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "e8bb60e1-b355-0a34-85c2-7c9d1c586920",
+    "timestamp": "2025-01-06T07:47:04.000Z",
+    "durationMs": 3392,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00120",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "776e7ec0-1809-79a9-887b-87c52ec88f17",
+    "timestamp": "2025-01-05T18:10:10.000Z",
+    "durationMs": 1644,
+    "properties": {
+      "page": "/search"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00121",
+    "type": "purchase",
+    "userId": "u-8",
+    "sessionId": "9b5f41d7-857c-dd45-4745-bde34053626f",
+    "timestamp": "2025-01-02T08:34:18.000Z",
+    "durationMs": 29939,
+    "properties": {
+      "productId": "prod-2312",
+      "amount": 171.71
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00122",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "195df68b-1bad-b248-0191-1438daefdeac",
+    "timestamp": "2025-01-07T04:01:38.000Z",
+    "durationMs": 7194,
+    "properties": {
+      "productId": "prod-2092",
+      "amount": 81.3
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00123",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "4472dacb-4585-5b7b-bf90-4e28164f83f6",
+    "timestamp": "2025-01-04T16:09:48.000Z",
+    "durationMs": 17058,
+    "properties": {
+      "page": "/blog"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00124",
+    "type": "signup",
+    "userId": "u-6",
+    "sessionId": "680e3738-9411-22e3-8e07-055e6355f47d",
+    "timestamp": "2025-01-04T20:15:39.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00125",
+    "type": "signup",
+    "userId": "u-5",
+    "sessionId": "ee942303-e3ac-3d2d-f957-1fe03306d78b",
+    "timestamp": "2025-01-07T09:39:59.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00126",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "fe2ecd7e-4bed-aaf7-0f58-30727fdb22f5",
+    "timestamp": "2025-01-01T16:23:55.000Z",
+    "durationMs": 4186,
+    "properties": {
+      "page": "/cart"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00127",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "869d48f8-2b80-0088-dcf9-94553cc9cfd9",
+    "timestamp": "2025-01-07T01:23:04.000Z",
+    "durationMs": 13515,
+    "properties": {
+      "page": "/deals",
+      "productId": "prod-2640"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00128",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "9bb96c44-b660-13ae-1cbe-efc7fd094930",
+    "timestamp": "2025-01-01T20:05:23.000Z",
+    "durationMs": 20556,
+    "properties": {
+      "page": "/search"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00129",
+    "type": "signup",
+    "userId": "u-6",
+    "sessionId": "3a22f10c-fd4a-f915-a163-7281cee37369",
+    "timestamp": "2025-01-05T18:57:42.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00130",
+    "type": "click",
+    "userId": "u-4",
+    "sessionId": "a1709be0-1eb6-d9ca-35ba-db4d8c46e0da",
+    "timestamp": "2025-01-05T14:07:23.000Z",
+    "durationMs": 126,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00131",
+    "type": "signup",
+    "userId": "u-2",
+    "sessionId": "78349cfd-9d61-26db-b439-8bf25cc4f45f",
+    "timestamp": "2025-01-06T08:58:59.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00132",
+    "type": "error",
+    "userId": "u-5",
+    "sessionId": "d40f9cdc-fb9d-22a8-f95c-9e52505d8713",
+    "timestamp": "2025-01-03T09:46:34.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_TIMEOUT",
+      "errorMessage": "Error occurred: ERR_TIMEOUT"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00133",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "f44b9f3b-73bb-96bf-772b-88dcbd679afe",
+    "timestamp": "2025-01-06T12:00:33.000Z",
+    "durationMs": 13004,
+    "properties": {
+      "page": "/products",
+      "productId": "prod-0086"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00134",
+    "type": "signup",
+    "userId": "u-8",
+    "sessionId": "21beb533-6800-8993-c5f4-2e2396a6a696",
+    "timestamp": "2025-01-05T05:39:53.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00135",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "b900d093-82cb-a124-7cd6-8057cfb3f26e",
+    "timestamp": "2025-01-04T00:11:53.000Z",
+    "durationMs": 10907,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref2.example.com",
+      "productId": "prod-1893"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00136",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "790f61f1-5bb6-b26f-7751-362a28933f77",
+    "timestamp": "2025-01-04T13:31:20.000Z",
+    "durationMs": 10658,
+    "properties": {
+      "page": "/blog",
+      "referrer": "https://ref1.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00137",
+    "type": "signup",
+    "userId": "u-2",
+    "sessionId": "fbd0fa4d-da54-3165-a464-9327d129236d",
+    "timestamp": "2025-01-05T11:44:48.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00138",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "c659db67-c92f-c690-477a-99b6e09705e8",
+    "timestamp": "2025-01-06T03:10:34.000Z",
+    "durationMs": 22776,
+    "properties": {
+      "page": "/search",
+      "referrer": "https://ref5.example.com"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00139",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "dea3cf0c-3f0c-b98a-23ac-f6a2fbd73cb2",
+    "timestamp": "2025-01-06T04:14:39.000Z",
+    "durationMs": 3357,
+    "properties": {
+      "page": "/blog"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00140",
+    "type": "purchase",
+    "userId": "u-2",
+    "sessionId": "e766ec0b-fac3-443e-346d-5fcdbccf4ef0",
+    "timestamp": "2025-01-01T07:17:31.000Z",
+    "durationMs": 11818,
+    "properties": {
+      "productId": "prod-0909",
+      "amount": 386.2
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00141",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "7021eafb-d895-971d-2948-d90e17aeb952",
+    "timestamp": "2025-01-03T08:29:45.000Z",
+    "durationMs": 9729,
+    "properties": {
+      "page": "/deals",
+      "productId": "prod-1089"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00142",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "efe815a9-32f6-11c8-1bc8-244d7a9ac293",
+    "timestamp": "2025-01-06T17:45:23.000Z",
+    "durationMs": 9852,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00143",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "561de0cb-e088-2561-8508-4cf0afb5e3c1",
+    "timestamp": "2025-01-05T21:44:37.000Z",
+    "durationMs": 25871,
+    "properties": {
+      "page": "/deals",
+      "referrer": "https://ref5.example.com",
+      "productId": "prod-1141"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00144",
+    "type": "error",
+    "userId": "u-7",
+    "sessionId": "0879e5e6-3247-0f8e-89c2-2c3373fbd651",
+    "timestamp": "2025-01-06T23:58:13.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_TIMEOUT",
+      "errorMessage": "Error occurred: ERR_TIMEOUT"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00145",
+    "type": "view",
+    "userId": "u-10",
+    "sessionId": "642d3e7f-db52-a720-e172-debb182df4ab",
+    "timestamp": "2025-01-07T14:22:05.000Z",
+    "durationMs": 4871,
+    "properties": {
+      "page": "/home",
+      "productId": "prod-0483"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00146",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "86dcf72a-7a5d-27b6-2819-5155f04cb5d6",
+    "timestamp": "2025-01-04T16:28:21.000Z",
+    "durationMs": 6514,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref2.example.com",
+      "productId": "prod-0584"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00147",
+    "type": "error",
+    "userId": "u-8",
+    "sessionId": "e986921d-27de-1c49-cb2f-e3fba609963e",
+    "timestamp": "2025-01-01T16:48:49.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_AUTH",
+      "errorMessage": "Error occurred: ERR_AUTH"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00148",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "bb835cbe-d5e3-e83f-1653-3bd40b6b5400",
+    "timestamp": "2025-01-03T13:52:57.000Z",
+    "durationMs": 9653,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref1.example.com"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00149",
+    "type": "signup",
+    "userId": "u-7",
+    "sessionId": "dff52308-8f44-4da9-68c1-ba817f0675e3",
+    "timestamp": "2025-01-04T06:28:41.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00150",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "acbd82de-081e-9f88-26ab-098cc0cef9b0",
+    "timestamp": "2025-01-06T03:55:18.000Z",
+    "durationMs": 23917,
+    "properties": {
+      "page": "/deals",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00151",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "89eaa456-fb26-ede8-5861-172e0b1a8e6a",
+    "timestamp": "2025-01-06T05:59:44.000Z",
+    "durationMs": 13911,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-1338"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00152",
+    "type": "purchase",
+    "userId": "u-4",
+    "sessionId": "6a36b33f-d81d-9ded-c035-0abf17284fcc",
+    "timestamp": "2025-01-06T10:44:02.000Z",
+    "durationMs": 28334,
+    "properties": {
+      "productId": "prod-2310",
+      "amount": 229.02
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00153",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "200e718f-23c5-b11f-8cb4-0b79c91262f5",
+    "timestamp": "2025-01-01T11:28:40.000Z",
+    "durationMs": 4167,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00154",
+    "type": "view",
+    "userId": "u-9",
+    "sessionId": "f2864551-c797-8461-5c42-ff3be126fbd9",
+    "timestamp": "2025-01-01T08:25:02.000Z",
+    "durationMs": 21356,
+    "properties": {
+      "page": "/blog",
+      "referrer": "https://ref2.example.com",
+      "productId": "prod-1460"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00155",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "102aee61-85a6-5dc8-1ea7-500cb1982b16",
+    "timestamp": "2025-01-05T21:21:46.000Z",
+    "durationMs": 7701,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00156",
+    "type": "signup",
+    "userId": "u-7",
+    "sessionId": "f487d7fe-0810-31b3-f652-ba49d3e633b8",
+    "timestamp": "2025-01-06T13:31:56.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00157",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "09f68339-9bc9-cd20-cdc5-7e31adbb4336",
+    "timestamp": "2025-01-01T18:54:41.000Z",
+    "durationMs": 9753,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00158",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "3984ef24-9146-c5a2-a49b-410d8030e837",
+    "timestamp": "2025-01-05T12:05:13.000Z",
+    "durationMs": 17882,
+    "properties": {
+      "page": "/checkout"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00159",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "3efe58fc-a1eb-6012-3bec-11503396e954",
+    "timestamp": "2025-01-01T05:54:22.000Z",
+    "durationMs": 2613,
+    "properties": {
+      "page": "/cart",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00160",
+    "type": "click",
+    "userId": "u-8",
+    "sessionId": "9371c062-1189-6e97-5245-59e4836d040b",
+    "timestamp": "2025-01-03T17:54:59.000Z",
+    "durationMs": 23157,
+    "properties": {
+      "page": "/account",
+      "referrer": "https://ref2.example.com"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00161",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "5faaf85f-3eba-9818-37ed-a939ea76ca6b",
+    "timestamp": "2025-01-03T09:57:46.000Z",
+    "durationMs": 11220,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00162",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "6cf3c8e7-6fdb-9a3a-7675-5b6fe00de5d7",
+    "timestamp": "2025-01-05T20:48:05.000Z",
+    "durationMs": 28483,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00163",
+    "type": "click",
+    "userId": "u-4",
+    "sessionId": "a0a4f4f6-94be-85ba-cbde-3831d7634102",
+    "timestamp": "2025-01-01T03:29:30.000Z",
+    "durationMs": 11459,
+    "properties": {
+      "page": "/about"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00164",
+    "type": "view",
+    "userId": "u-2",
+    "sessionId": "d090dffd-6913-67fb-6eba-2a6fc082358a",
+    "timestamp": "2025-01-07T22:18:40.000Z",
+    "durationMs": 12220,
+    "properties": {
+      "page": "/products",
+      "productId": "prod-2441"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00165",
+    "type": "view",
+    "userId": "u-7",
+    "sessionId": "ba77a7b2-a335-ca47-82ab-11e61c9b74a7",
+    "timestamp": "2025-01-02T12:50:32.000Z",
+    "durationMs": 6036,
+    "properties": {
+      "page": "/deals",
+      "productId": "prod-0089"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00166",
+    "type": "view",
+    "userId": "u-4",
+    "sessionId": "74ace785-d80e-0073-3765-50078e89a775",
+    "timestamp": "2025-01-04T18:16:49.000Z",
+    "durationMs": 8834,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-0349"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00167",
+    "type": "signup",
+    "userId": "u-5",
+    "sessionId": "208c84d6-5e81-199a-2a73-f04e73d3e51e",
+    "timestamp": "2025-01-01T09:48:56.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00168",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "e7713197-1bf8-ed31-f5f7-b28c09999796",
+    "timestamp": "2025-01-01T23:06:27.000Z",
+    "durationMs": 25052,
+    "properties": {
+      "page": "/about",
+      "referrer": "https://ref3.example.com"
+    },
+    "_partitionKey": "u-10"
+  },
+  {
+    "id": "evt-00169",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "9c99f158-427d-e392-870c-4a8de1165082",
+    "timestamp": "2025-01-02T07:37:40.000Z",
+    "durationMs": 21214,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00170",
+    "type": "signup",
+    "userId": "u-2",
+    "sessionId": "2cf0ab7d-d0aa-2add-c000-8dc5c40942dd",
+    "timestamp": "2025-01-03T01:21:30.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00171",
+    "type": "click",
+    "userId": "u-3",
+    "sessionId": "8b595919-85b4-c18a-7dfa-8e2897a62c40",
+    "timestamp": "2025-01-04T16:55:46.000Z",
+    "durationMs": 17802,
+    "properties": {
+      "page": "/blog"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00172",
+    "type": "error",
+    "userId": "u-4",
+    "sessionId": "f28bb7c4-2248-e8ba-2c7e-2288bf3798ca",
+    "timestamp": "2025-01-05T07:56:55.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_TIMEOUT",
+      "errorMessage": "Error occurred: ERR_TIMEOUT"
+    },
+    "_partitionKey": "u-4"
+  },
+  {
+    "id": "evt-00173",
+    "type": "signup",
+    "userId": "u-9",
+    "sessionId": "1329fcb8-7776-94f1-1209-68f60e2edde2",
+    "timestamp": "2025-01-02T18:33:32.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00174",
+    "type": "click",
+    "userId": "u-9",
+    "sessionId": "66ee6b3c-05f5-4810-5d18-f185d8bcad9b",
+    "timestamp": "2025-01-04T01:36:51.000Z",
+    "durationMs": 15966,
+    "properties": {
+      "page": "/home"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00175",
+    "type": "click",
+    "userId": "u-6",
+    "sessionId": "e71d4df0-eecf-481d-a39e-bc82907b20ff",
+    "timestamp": "2025-01-07T04:23:05.000Z",
+    "durationMs": 5516,
+    "properties": {
+      "page": "/about"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00176",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "bbded9ef-f79b-efa7-a0bb-0d167cf8f3b7",
+    "timestamp": "2025-01-03T00:51:41.000Z",
+    "durationMs": 15291,
+    "properties": {
+      "productId": "prod-0133",
+      "amount": 156.26
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00177",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "5ffbf6fc-b6b4-9d39-fbeb-d43087c1322f",
+    "timestamp": "2025-01-01T12:44:05.000Z",
+    "durationMs": 21965,
+    "properties": {
+      "page": "/products"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00178",
+    "type": "purchase",
+    "userId": "u-1",
+    "sessionId": "9d2806b1-bd17-7208-d1cf-ee1b3ce527d8",
+    "timestamp": "2025-01-07T04:50:05.000Z",
+    "durationMs": 18025,
+    "properties": {
+      "productId": "prod-0811",
+      "amount": 207.21
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00179",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "fb8a9b85-5af0-202a-faa7-1ef753ac3d75",
+    "timestamp": "2025-01-07T22:39:37.000Z",
+    "durationMs": 29053,
+    "properties": {
+      "page": "/blog",
+      "referrer": "https://ref1.example.com"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00180",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "be3ccdc1-0241-a96c-31d4-c694c3380e11",
+    "timestamp": "2025-01-01T06:16:27.000Z",
+    "durationMs": 5483,
+    "properties": {
+      "page": "/blog",
+      "productId": "prod-0727"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00181",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "708253a3-50f7-089d-95e9-7f48bb2509e3",
+    "timestamp": "2025-01-01T06:21:14.000Z",
+    "durationMs": 22280,
+    "properties": {
+      "page": "/home",
+      "productId": "prod-1133"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00182",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "00b3f1d6-9eba-1081-16cf-83e0a4da048f",
+    "timestamp": "2025-01-04T02:51:25.000Z",
+    "durationMs": 11514,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-0890"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00183",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "b14357cf-0e66-5cac-695e-fcbf9cac49d1",
+    "timestamp": "2025-01-01T15:29:30.000Z",
+    "durationMs": 467,
+    "properties": {
+      "page": "/search"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00184",
+    "type": "view",
+    "userId": "u-9",
+    "sessionId": "3515dda0-0349-b5da-513f-4ecd473b4bd2",
+    "timestamp": "2025-01-02T13:31:37.000Z",
+    "durationMs": 3581,
+    "properties": {
+      "page": "/products",
+      "productId": "prod-2539"
+    },
+    "_partitionKey": "u-9"
+  },
+  {
+    "id": "evt-00185",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "cfe7fc47-abf1-4320-3331-44404a0deb45",
+    "timestamp": "2025-01-06T17:43:08.000Z",
+    "durationMs": 29162,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-2846"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00186",
+    "type": "signup",
+    "userId": "u-1",
+    "sessionId": "41a18f1c-7295-17ac-3411-80e0de400c75",
+    "timestamp": "2025-01-04T18:48:34.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00187",
+    "type": "purchase",
+    "userId": "u-6",
+    "sessionId": "ef0e19bb-6dee-fe15-c500-249024905983",
+    "timestamp": "2025-01-07T22:23:20.000Z",
+    "durationMs": 13137,
+    "properties": {
+      "productId": "prod-2173",
+      "amount": 16.36
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00188",
+    "type": "view",
+    "userId": "u-5",
+    "sessionId": "7652c649-3564-1ee1-16fd-1db20e648a8f",
+    "timestamp": "2025-01-01T10:20:43.000Z",
+    "durationMs": 23260,
+    "properties": {
+      "page": "/home",
+      "productId": "prod-0498"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00189",
+    "type": "error",
+    "userId": "u-1",
+    "sessionId": "263840cc-fabb-eb10-358f-8aa3af83c572",
+    "timestamp": "2025-01-01T01:57:39.000Z",
+    "durationMs": null,
+    "properties": {
+      "errorCode": "ERR_500",
+      "errorMessage": "Error occurred: ERR_500"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00190",
+    "type": "view",
+    "userId": "u-6",
+    "sessionId": "71b53e32-7a86-c5db-4923-1827d23e01e7",
+    "timestamp": "2025-01-02T08:25:25.000Z",
+    "durationMs": 28173,
+    "properties": {
+      "page": "/search",
+      "productId": "prod-1288"
+    },
+    "_partitionKey": "u-6"
+  },
+  {
+    "id": "evt-00191",
+    "type": "click",
+    "userId": "u-7",
+    "sessionId": "f224c02d-6a1f-a463-a08b-2405cb9b8c53",
+    "timestamp": "2025-01-06T14:29:31.000Z",
+    "durationMs": 4069,
+    "properties": {
+      "page": "/cart"
+    },
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00192",
+    "type": "purchase",
+    "userId": "u-1",
+    "sessionId": "1f13d045-d476-fc72-3659-462ec761fe35",
+    "timestamp": "2025-01-05T00:43:27.000Z",
+    "durationMs": 7948,
+    "properties": {
+      "productId": "prod-0830",
+      "amount": 134.58
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00193",
+    "type": "click",
+    "userId": "u-2",
+    "sessionId": "4d25d058-1247-7238-d3f9-9e03eedb59d0",
+    "timestamp": "2025-01-06T08:22:09.000Z",
+    "durationMs": 19663,
+    "properties": {
+      "page": "/home",
+      "referrer": "https://ref5.example.com"
+    },
+    "_partitionKey": "u-2"
+  },
+  {
+    "id": "evt-00194",
+    "type": "view",
+    "userId": "u-3",
+    "sessionId": "9e0c2094-2cb5-259f-d81e-eacc1f137b90",
+    "timestamp": "2025-01-02T15:50:21.000Z",
+    "durationMs": 27487,
+    "properties": {
+      "page": "/search",
+      "productId": "prod-0752"
+    },
+    "_partitionKey": "u-3"
+  },
+  {
+    "id": "evt-00195",
+    "type": "click",
+    "userId": "u-5",
+    "sessionId": "d057e64c-6fda-6ffd-87c9-702a98ea3bc8",
+    "timestamp": "2025-01-05T03:54:21.000Z",
+    "durationMs": 1753,
+    "properties": {
+      "page": "/wishlist"
+    },
+    "_partitionKey": "u-5"
+  },
+  {
+    "id": "evt-00196",
+    "type": "signup",
+    "userId": "u-7",
+    "sessionId": "4a2460ea-bcb7-aaad-362e-3497bc84d17b",
+    "timestamp": "2025-01-02T12:28:21.000Z",
+    "durationMs": null,
+    "properties": {},
+    "_partitionKey": "u-7"
+  },
+  {
+    "id": "evt-00197",
+    "type": "view",
+    "userId": "u-1",
+    "sessionId": "e5344d3b-31a9-60b8-91f8-d216fb9755ae",
+    "timestamp": "2025-01-04T14:23:02.000Z",
+    "durationMs": 7178,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-0072"
+    },
+    "_partitionKey": "u-1"
+  },
+  {
+    "id": "evt-00198",
+    "type": "view",
+    "userId": "u-8",
+    "sessionId": "46d75e9a-4954-dd11-10c9-8e3d7f892ff0",
+    "timestamp": "2025-01-07T01:37:04.000Z",
+    "durationMs": 19404,
+    "properties": {
+      "page": "/wishlist",
+      "productId": "prod-2498"
+    },
+    "_partitionKey": "u-8"
+  },
+  {
+    "id": "evt-00199",
+    "type": "click",
+    "userId": "u-10",
+    "sessionId": "dc007741-118a-43be-fc93-a77bc1a2fb04",
+    "timestamp": "2025-01-04T02:31:23.000Z",
+    "durationMs": 11677,
+    "properties": {
+      "page": "/deals"
+    },
+    "_partitionKey": "u-10"
+  }
+]

@@ -13,7 +13,7 @@ import {
     useQueryEditorStateDispatch,
 } from '../state/QueryEditorContext';
 
-export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTMLButtonElement>) => {
+export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonElement>) => {
     const state = useQueryEditorState();
     const dispatch = useQueryEditorStateDispatch();
     const dispatcher = useQueryEditorDispatcher();
@@ -33,7 +33,8 @@ export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTML
     };
 
     const handleExplainClick = () => {
-        void dispatcher.openCopilotExplainQuery();
+        const query = state.querySelectedValue || state.queryValue;
+        void dispatcher.openCopilotExplainQuery(query);
     };
 
     // Generate query icon
@@ -58,7 +59,11 @@ export const AIButton = ({ ref, type = 'button' }: ToolbarOverflowItemProps<HTML
                     <MenuItem icon={generateIcon} onClick={handleGenerateClick}>
                         {l10n.t('Generate query')}
                     </MenuItem>
-                    <MenuItem icon={<ChatSparkle20Regular />} onClick={handleExplainClick}>
+                    <MenuItem
+                        icon={<ChatSparkle20Regular />}
+                        onClick={handleExplainClick}
+                        disabled={!(state.querySelectedValue || state.queryValue).trim()}
+                    >
                         {l10n.t('Explain query')}
                     </MenuItem>
                 </MenuList>

@@ -3,25 +3,15 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
-import { type Channel } from './Communication/Channel/Channel';
-import { VSCodeChannel } from './Communication/Channel/VSCodeChannel';
 
 const DEV_SERVER_HOST = 'http://localhost:18080';
 
-export type CommandPayload = {
-    commandName: string;
-    params: unknown[];
-};
-
 export class BaseTab {
-    protected readonly channel: Channel;
     protected readonly id: string;
     protected readonly panel: vscode.WebviewPanel;
     protected readonly start: number;
@@ -31,10 +21,9 @@ export class BaseTab {
     protected disposables: vscode.Disposable[] = [];
 
     protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
-        this.id = uuid();
+        this.id = crypto.randomUUID();
         this.start = Date.now();
         this.telemetryContext = new TelemetryContext(viewType);
-        this.channel = new VSCodeChannel(panel.webview);
 
         this.panel = panel;
         this.viewType = viewType;
@@ -43,16 +32,13 @@ export class BaseTab {
 
         this.panel.webview.html = this.getWebviewContent();
 
-        this.initController();
-
         void this.telemetryContext.reportWebviewEvent('opened', {
             panelId: this.id,
-            ...(telemetryProperties ?? {}),
+            ...telemetryProperties,
         });
     }
 
     public dispose(): void {
-        this.channel.dispose();
         this.panel.dispose();
 
         while (this.disposables.length) {
@@ -94,7 +80,7 @@ export class BaseTab {
                       `default-src ${cspSource};`,
                       `script-src ${cspSource} 'nonce-${nonce}';`,
                       `style-src ${cspSource} 'unsafe-inline';`,
-                      `font-src ${cspSource};`,
+                      `font-src ${cspSource} data:;`,
                       `worker-src ${cspSource} blob:;`,
                       `img-src ${cspSource} data:;`,
                   ]
@@ -104,7 +90,7 @@ export class BaseTab {
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
                       `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}' 'unsafe-eval';`,
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
+                      `font-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
                       `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]
@@ -145,51 +131,5 @@ export class BaseTab {
   </body>
 </html>
 `;
-    }
-
-    protected initController() {
-        this.channel.on<void>('command', async (payload: CommandPayload) => {
-            await this.getCommand(payload);
-        });
-    }
-
-    protected getCommand(payload: CommandPayload): Promise<void> {
-        const commandName = payload.commandName;
-        switch (commandName) {
-            case 'showInformationMessage':
-                return this.showInformationMessage(payload.params[0] as string);
-            case 'showErrorMessage':
-                return this.showErrorMessage(payload.params[0] as string);
-            case 'reportWebviewEvent':
-                return this.telemetryContext.reportWebviewEvent(
-                    payload.params[0] as string,
-                    payload.params[1] as Record<string, string>,
-                    payload.params[2] as Record<string, number>,
-                );
-            case 'reportWebviewError':
-                return this.telemetryContext.reportWebviewError(
-                    payload.params[0] as string, // message
-                    payload.params[1] as string, // stack
-                    payload.params[2] as string, // componentStack
-                );
-            case 'executeReportIssueCommand':
-                // Use an async anonymous function to convert Thenable to Promise
-                return (async () => await vscode.commands.executeCommand('azureDatabases.reportIssue'))();
-            case 'openUrl':
-                return (async () => {
-                    await vscode.env.openExternal(vscode.Uri.parse(payload.params[0] as string));
-                })();
-
-            default:
-                throw new Error(l10n.t('Unknown command: {commandName}', { commandName }));
-        }
-    }
-
-    protected async showInformationMessage(message: string) {
-        await vscode.window.showInformationMessage(message);
-    }
-
-    protected async showErrorMessage(message: string) {
-        await vscode.window.showErrorMessage(message);
     }
 }

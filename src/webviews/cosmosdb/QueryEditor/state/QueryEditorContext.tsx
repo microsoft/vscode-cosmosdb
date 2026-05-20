@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
-import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import { type WebviewApi } from 'vscode-webview';
-import { type Channel } from '../../../../panels/Communication/Channel/Channel';
+import { type ReactNode, createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import { type QueryEditorAppRouter } from '../../../../panels/trpc/appRouter';
+import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
+import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
-import { type WebviewState } from '../../../WebviewContext';
 import { QueryEditorContextProvider } from './QueryEditorContextProvider';
 import {
     type DispatchAction,
@@ -38,22 +38,34 @@ export function useQueryEditorStateDispatch(): React.Dispatch<DispatchAction> {
     return dispatch ?? fallback;
 }
 
-export const WithQueryEditorContext = ({
-    channel,
-    children,
-}: {
-    channel: Channel;
-    vscodeApi: WebviewApi<WebviewState>;
-    children: ReactNode;
-}) => {
+export const WithQueryEditorContext = ({ children }: { children: ReactNode }) => {
     const toasterId = useId('toaster');
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(QueryEditorDispatch, { ...defaultState });
 
-    const provider = useMemo(
-        () => new QueryEditorContextProvider(channel, dispatch, dispatchToast),
-        [channel, dispatchToast],
+    // Use a ref so the errorLink can forward errors to the provider once it's created.
+    const providerRef = useRef<BaseContextProvider | null>(null);
+    const onError = useMemo(
+        () => (error: Error) => {
+            void providerRef.current?.showErrorMessage(error.message);
+        },
+        [],
     );
+
+    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>(onError);
+
+    const provider = useMemo(
+        () => new QueryEditorContextProvider(dispatch, dispatchToast, trpcClient),
+        [dispatchToast, trpcClient],
+    );
+
+    // Keep the ref pointing at the current provider so errorLink can forward errors.
+    useEffect(() => {
+        providerRef.current = provider;
+        return () => {
+            providerRef.current = null;
+        };
+    }, [provider]);
 
     useEffect(() => {
         return () => provider.dispose();

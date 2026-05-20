@@ -9,11 +9,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { areAIFeaturesEnabled } from '../utils/copilotUtils';
-import { safeCodeBlock, safeErrorDisplay, safeJsonDisplay, safeMarkdownText } from '../utils/sanitization';
+import {
+    safeCodeBlock,
+    safeErrorDisplay,
+    safeJsonDisplay,
+    safeMarkdownText,
+    stripCodeFences,
+} from '../utils/sanitization';
+import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
-import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import {
     CHAT_PARTICIPANT_SYSTEM_PROMPT,
     INTENT_EXTRACTION_PROMPT,
@@ -208,7 +215,12 @@ export class CosmosDbChatParticipant {
                 return null;
             }
 
-            const parsed = JSON.parse(jsonText.trim()) as {
+            // Extract JSON object defensively — the model may wrap the payload in
+            // prose or markdown fences despite the system prompt. Fall back to the
+            // raw trimmed text if no object is found so the JSON.parse error path
+            // retains the original diagnostic behaviour.
+            const jsonPayload = extractJsonObject(jsonText) ?? jsonText.trim();
+            const parsed = JSON.parse(jsonPayload) as {
                 operation: string;
                 parameters: Record<string, unknown>;
             };
@@ -256,8 +268,9 @@ export class CosmosDbChatParticipant {
                 jsonText += fragment;
             }
 
-            // Parse the JSON response
-            const parameters = JSON.parse(jsonText.trim()) as Record<string, unknown>;
+            // Parse the JSON response, tolerating any leading/trailing prose.
+            const jsonPayload = extractJsonObject(jsonText) ?? jsonText.trim();
+            const parameters = JSON.parse(jsonPayload) as Record<string, unknown>;
             return parameters && typeof parameters === 'object' ? parameters : {};
         } catch (error) {
             if (ctx) {
@@ -283,16 +296,10 @@ export class CosmosDbChatParticipant {
 
         switch (operation) {
             case 'editQuery': {
-                // Pass the full user prompt for LLM processing
+                // Pass the full user prompt for LLM processing.
+                // The query to edit always comes from the active editor, not from inline text.
                 parameters.userPrompt = originalPrompt;
-
-                // Extract current query from prompt if explicitly provided (and not already from code block)
-                if (!parameters.currentQuery) {
-                    const queryMatch = originalPrompt.match(/(?:query|select)\s*:?\s*(.+)/i);
-                    if (queryMatch) {
-                        parameters.currentQuery = queryMatch[1].trim();
-                    }
-                }
+                delete parameters.currentQuery;
                 break;
             }
             case 'explainQuery': {
@@ -325,8 +332,7 @@ export class CosmosDbChatParticipant {
         if (extReq.model) {
             return extReq.model;
         }
-        const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-        return models.length > 0 ? models[0] : null;
+        return await getSelectedModel().catch(() => null);
     }
 
     /**
@@ -409,7 +415,7 @@ export class CosmosDbChatParticipant {
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
-        stream.markdown(`🎯 **Detected Intent:** ${safeMarkdownText(intent.operation)}\n\n`);
+        stream.markdown(l10n.t('🎯 **Detected Intent:** {0}', safeMarkdownText(intent.operation)) + '\n\n');
 
         if (intent.operation === 'help') {
             return this.handleHelpCommand(stream);
@@ -417,20 +423,23 @@ export class CosmosDbChatParticipant {
 
         try {
             // Map intent operation to actual operation
-            let operationName = intent.operation;
+            const operationName = intent.operation;
             let parameters = intent.parameters;
 
             // Resolve any attached references (files, selections, etc.)
             const chatReferencesContext = await this.resolveChatReferences(request);
 
-            // Handle special cases
-            if (intent.operation === 'editQuery' && request.prompt.trim()) {
-                operationName = 'editQuery';
-                parameters = {
-                    currentQuery: intent.parameters.currentQuery || '',
-                    userPrompt: request.prompt, // Pass the full user prompt for LLM processing
-                    explanation: 'Query optimization based on AI analysis',
-                };
+            // For editQuery, ensure the full user prompt is passed for LLM processing.
+            // The query to edit always comes from the active editor, not inline text.
+            if (operationName === 'editQuery') {
+                if (request.prompt.trim()) {
+                    parameters.userPrompt = request.prompt;
+                }
+                parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
+            } else if (operationName === 'explainQuery') {
+                // Prefer inline query (e.g. from the AI button code block), fall back to editor
+                const inlineQuery = stripCodeFences((parameters.currentQuery as string | undefined) ?? '').trim();
+                parameters.currentQuery = inlineQuery || CosmosDbOperationsService.getInstance().getActiveEditorQuery();
             }
 
             // Forward resolved chat references as additional context
@@ -471,7 +480,7 @@ export class CosmosDbChatParticipant {
                 metadata: { command: 'cosmosdb', operation: intent.operation, method: 'intent' },
             };
         } catch (error) {
-            stream.markdown(safeErrorDisplay(error as Error | string, '❌ Intent-based operation failed:'));
+            stream.markdown(safeErrorDisplay(error as Error | string, l10n.t('❌ Intent-based operation failed:')));
             return { metadata: { command: 'cosmosdb', result: 'error' } };
         }
     }
@@ -487,7 +496,7 @@ export class CosmosDbChatParticipant {
     ): Promise<vscode.ChatResult> {
         const operationsService = CosmosDbOperationsService.getInstance();
 
-        stream.markdown(`🔧 **Executing Command:** ${safeMarkdownText(request.command || '')}\n\n`);
+        stream.markdown(l10n.t('🔧 **Executing Command:** {0}', safeMarkdownText(request.command || '')) + '\n\n');
 
         // Try to get language model for parameter extraction
         let languageModel: vscode.LanguageModelChat | null = null;
@@ -495,10 +504,7 @@ export class CosmosDbChatParticipant {
         if (extendedReq.model) {
             languageModel = extendedReq.model;
         } else {
-            const models = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-            if (models.length > 0) {
-                languageModel = models[0];
-            }
+            languageModel = await getSelectedModel().catch(() => null);
         }
 
         try {
@@ -527,7 +533,9 @@ export class CosmosDbChatParticipant {
             if (languageModel && request.prompt.trim()) {
                 try {
                     parameters = await this.extractParametersWithLLM(operationName, request.prompt, languageModel, ctx);
-                    stream.markdown(`🧠 **LLM Extracted Parameters:** ${safeJsonDisplay(parameters)}\n\n`);
+                    stream.markdown(
+                        l10n.t('🧠 **LLM Extracted Parameters:** {0}', safeJsonDisplay(parameters)) + '\n\n',
+                    );
                 } catch (error) {
                     console.warn('LLM parameter extraction failed, using basic extraction:', error);
                 }
@@ -555,6 +563,23 @@ export class CosmosDbChatParticipant {
             // Ensure userPrompt is always populated from the original request
             if (!parameters.userPrompt && request.prompt.trim()) {
                 parameters.userPrompt = request.prompt;
+            }
+
+            // Resolve the query once before passing to executeOperation.
+            if (operationName === 'editQuery') {
+                // The query to edit always comes from the active editor, not inline text.
+                parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
+            } else if (operationName === 'explainQuery') {
+                // For explainQuery, two scenarios:
+                if (request.prompt.trim()) {
+                    // 1) User specifies a query in the prompt (e.g. "@cosmosdb /explainQuery SELECT * FROM c") - use this prompt as query
+                    parameters.currentQuery = stripCodeFences(request.prompt).trim();
+                    parameters.userPrompt = undefined;
+                } else {
+                    // 2) User just says "@cosmosdb /explainQuery" while having an active query editor - use the active editor query
+                    parameters.currentQuery = CosmosDbOperationsService.getInstance().getActiveEditorQuery();
+                    parameters.userPrompt = undefined;
+                }
             }
 
             // Resolve any attached references (files, selections, etc.)
@@ -595,7 +620,7 @@ export class CosmosDbChatParticipant {
 
             return { metadata: { command: 'cosmosdb', operation: request.command } };
         } catch (error) {
-            stream.markdown(safeErrorDisplay(error as Error | string, '❌ Command failed:'));
+            stream.markdown(safeErrorDisplay(error as Error | string, l10n.t('❌ Command failed:')));
             return { metadata: { command: 'cosmosdb', result: 'error' } };
         }
     }
@@ -605,9 +630,9 @@ export class CosmosDbChatParticipant {
      */
     private handleEditQueryResult(result: EditQueryResult, stream: vscode.ChatResponseStream): void {
         // Show query context - sanitize database and container IDs
-        let queryContext = `**Query Context:**\n`;
-        queryContext += `- **Database:** ${safeMarkdownText(result.queryContext.databaseId)}\n`;
-        queryContext += `- **Container:** ${safeMarkdownText(result.queryContext.containerId)}\n`;
+        let queryContext = l10n.t('**Query Context:**') + '\n';
+        queryContext += l10n.t('- **Database:** {0}', safeMarkdownText(result.queryContext.databaseId)) + '\n';
+        queryContext += l10n.t('- **Container:** {0}', safeMarkdownText(result.queryContext.containerId)) + '\n';
         if (result.queryContext.documentCount !== undefined) {
             queryContext +=
                 l10n.t('- **Last Results:** {0} documents returned', result.queryContext.documentCount) + '\n';
@@ -622,15 +647,15 @@ export class CosmosDbChatParticipant {
 
         // Show current query only if present (not for generateQuery)
         if (result.currentQuery) {
-            stream.markdown(`**Current Query:**\n${safeCodeBlock(result.currentQuery, 'sql')}\n\n`);
+            stream.markdown(l10n.t('**Current Query:**') + `\n${safeCodeBlock(result.currentQuery, 'sql')}\n\n`);
         }
 
         // Show suggested query - use safeCodeBlock to prevent SQL injection in markdown
-        stream.markdown(`**Suggested Query:**\n${safeCodeBlock(result.suggestedQuery, 'sql')}\n\n`);
+        stream.markdown(l10n.t('**Suggested Query:**') + `\n${safeCodeBlock(result.suggestedQuery, 'sql')}\n\n`);
 
         // Show explanation - sanitize LLM-generated explanation
         if (result.explanation) {
-            stream.markdown(`**Explanation:** ${safeMarkdownText(result.explanation)}\n\n`);
+            stream.markdown(l10n.t('**Explanation:** {0}', safeMarkdownText(result.explanation)) + '\n\n');
         }
 
         // Store the result in the pending map and pass only the lightweight ID
@@ -759,6 +784,11 @@ You can also use natural language:
                 const hasConnection = activeQueryEditors.length > 0;
 
                 if (!hasConnection) {
+                    // Allow /explainQuery with an inline query to proceed without a connection
+                    if (request.command === 'explainQuery' && request.prompt.trim()) {
+                        return await this.handleStructuredCommand(request, stream, token, ctx);
+                    }
+
                     // For natural language requests, check if this is a general question
                     // that doesn't need a connection
                     if (!request.command) {
@@ -774,6 +804,15 @@ You can also use natural language:
                                 resolvedCommand = 'help';
                                 resolvedMethod = 'intent';
                                 return await this.handleHelpCommand(stream);
+                            }
+                            // Allow intent-based explainQuery with an inline query
+                            if (
+                                llmIntent.operation === 'explainQuery' &&
+                                (llmIntent.parameters.currentQuery as string | undefined)?.trim()
+                            ) {
+                                resolvedCommand = llmIntent.operation;
+                                resolvedMethod = 'intent';
+                                return await this.handleIntentBasedRequest(request, llmIntent, stream, token);
                             }
                         }
                     }
@@ -810,9 +849,11 @@ You can also use natural language:
                 if (llmIntent && llmIntent.operation !== 'generalQuestion') {
                     resolvedCommand = llmIntent.operation;
                     resolvedMethod = 'intent';
-                    stream.markdown(`🧠 **LLM Detected Intent:** ${safeMarkdownText(llmIntent.operation)}\n`);
+                    stream.markdown(
+                        l10n.t('🧠 **LLM Detected Intent:** {0}', safeMarkdownText(llmIntent.operation)) + '\n',
+                    );
                     if (Object.keys(llmIntent.parameters).length > 0) {
-                        stream.markdown(`**Parameters:** ${safeJsonDisplay(llmIntent.parameters)}\n\n`);
+                        stream.markdown(l10n.t('**Parameters:** {0}', safeJsonDisplay(llmIntent.parameters)) + '\n\n');
                     } else {
                         stream.markdown('\n');
                     }

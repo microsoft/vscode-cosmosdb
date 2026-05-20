@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "トリガーの作成…",
   "cosmosdb.command.trigger.delete": "トリガーの削除…",
   "cosmosdb.command.trigger.open": "トリガーを開く",
+  "cosmosdb.command.cosmos_db_shell.launch": "Azure Cosmos DB Shell を起動する",
   "cosmosdb.command.update": "クラウドへの更新",
   "cosmosdb.command.ai.deploy_instruction_files": "LLM の指示をユーザー プロファイル フォルダーにコピーする",
   "cosmosdb.command.ai.remove_instruction_files": "LLM の指示をユーザー プロファイル フォルダーから削除する",
   "cosmosdb.command.schema.delete_all": "保存したスキーマをすべて削除する",
+  "cosmosdb.command.migration.open": "New Migration…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
+  "cosmosdb.command.migration.remove": "Remove Migration…",
   "cosmosdb.configuration.batch.size": "Azure Database リソースのクエリを実行するときに使用するバッチ サイズ。",
   "cosmosdb.configuration.confirmation.style": "リソースの削除など、元に戻すことができない操作を確認するときに使用する動作。",
   "cosmosdb.configuration.confirmation.style.button": "ボタン クリックの確認",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "詳細な操作の概要を表示し、データベースの削除、ドキュメントの追加や削除などのアクションに関するメッセージを表示します。",
   "cosmosdb.configuration.save.prompt": "ドキュメントをクラウドにアップロードするときに警告ダイアログを表示します。",
   "cosmosdb.configuration.csv.separator": "CSV ファイルにデータをエクスポートするときに使用する区切り文字 (`;`、|、`,`) です。",
+  "cosmosdb.configuration.cosmosDB.shell.path": "Azure Cosmos DB Shell を開始するためのフォルダーと実行可能ファイルへの完全なパス。特定のシェル コマンドに必要です。既定では、システム パスで 'cosmosdbshell' が検索されます",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "Azure Cosmos DB Shell モデル コンテキスト プロトコル サーバーを有効にします。",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "Azure Cosmos DB Shell モデル コンテキスト プロトコル サーバーに使用するポート。",
   "cosmosdb.configuration.preferredAuthenticationMethod": "Cosmos DB アカウントの優先認証方法を選択します。",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "自動",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "アカウント構成に基づいて最適な認証方法を選択する",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Azure (VM) で実行している場合にのみサポートされます。[詳細情報](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ユーザー割り当てマネージド ID を使用して Entra ID で認証するときに使用するマネージド ID のクライアント ID。",
   "cosmosdb.configuration.manage-llm-assets": "LLM 資産を管理します。拡張機能が LLM 関連ファイルを最新の状態に保つことを許可します。",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "有効にすると、スキーマの生成では、コンテナー スキーマを推論するためのクエリ結果も考慮されます。"
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "有効にすると、スキーマの生成では、コンテナー スキーマを推論するためのクエリ結果も考慮されます。",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

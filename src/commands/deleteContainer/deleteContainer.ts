@@ -6,7 +6,7 @@
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
+import { getControlPlane } from '../../cosmosdb/controlPlane';
 import { ext } from '../../extensionVariables';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type FabricTreeElement, isFabricTreeElement } from '../../tree/fabric-resources-view/FabricTreeElement';
@@ -62,11 +62,8 @@ export async function cosmosDBDeleteContainer(
     }
 
     try {
-        const success = await deleteContainer(containerElement);
-
-        if (success) {
-            showConfirmationAsInSettings(successMessage);
-        }
+        await deleteContainer(containerElement);
+        showConfirmationAsInSettings(successMessage);
     } finally {
         const lastSlashIndex = containerElement.id.lastIndexOf('/');
         let parentId = containerElement.id;
@@ -77,17 +74,9 @@ export async function cosmosDBDeleteContainer(
     }
 }
 
-async function deleteContainer(node: CosmosDBContainerResourceItem): Promise<boolean> {
-    let success = false;
+async function deleteContainer(node: CosmosDBContainerResourceItem): Promise<void> {
     await ext.state.showDeleting(node.id, async () => {
-        await withClaimsChallengeHandling(node.model.accountInfo, async (cosmosClient) => {
-            const response = await cosmosClient
-                .database(node.model.database.id)
-                .container(node.model.container.id)
-                .delete();
-            success = response.statusCode === 204;
-        });
+        const controlPlane = getControlPlane(node.model.accountInfo);
+        await controlPlane.deleteContainer(node.model.database.id, node.model.container.id);
     });
-
-    return success;
 }

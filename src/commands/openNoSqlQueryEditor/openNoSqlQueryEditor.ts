@@ -5,8 +5,9 @@
 
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
+import { API } from '../../AzureDBExperiences';
 import * as l10n from '@vscode/l10n';
-import { isNoSqlQueryConnection, type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
+import { isNoSqlQueryConnection, createNoSqlQueryConnection, type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { QueryEditorTab } from '../../panels/QueryEditorTab';
 import { type CosmosDBContainerResourceItem } from '../../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemsResourceItem } from '../../tree/cosmosdb/CosmosDBItemsResourceItem';
@@ -29,8 +30,8 @@ export async function openNoSqlQueryEditor(
         const element: TreeElement | undefined = isFabricTreeElement(nodeOrConnection)
             ? nodeOrConnection.element
             : isTreeElement(nodeOrConnection)
-              ? nodeOrConnection
-              : await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
+                ? nodeOrConnection
+                : await pickAppResource<CosmosDBContainerResourceItem | CosmosDBItemsResourceItem>(context, {
                     type: AzExtResourceType.AzureCosmosDb,
                     expectedChildContextValue: ['treeItem.container'],
                 });
@@ -52,15 +53,7 @@ export async function openNoSqlQueryEditor(
             throw new Error(l10n.t('The selected item is not a Cosmos DB container.'));
         }
 
-        const containerNode = element as CosmosDBContainerResourceItem;
-
-        connection = {
-            databaseId: containerNode.model.database.id,
-            containerId: containerNode.model.container.id,
-            endpoint: containerNode.model.accountInfo.endpoint,
-            credentials: containerNode.model.accountInfo.credentials,
-            isEmulator: containerNode.model.accountInfo.isEmulator,
-        };
+        connection = createNoSqlQueryConnection(element  as CosmosDBContainerResourceItem);
     }
 
     if (!connection) {

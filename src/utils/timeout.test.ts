@@ -73,7 +73,7 @@ describe('timeout Tests', () => {
                     });
                 });
             } catch (err) {
-                error = err;
+                error = err as Error;
             }
 
             expect(executed).toBe(false);
@@ -84,7 +84,7 @@ describe('timeout Tests', () => {
     describe('valueOnTimeout', () => {
         it('executed', async () => {
             const value = await valueOnTimeout(1000, 123, async () => {
-                return await new Promise<number>((resolve, _reject) => {
+                return new Promise<number>((resolve, _reject) => {
                     setTimeout(() => {
                         resolve(-123);
                     }, 1);
@@ -96,7 +96,7 @@ describe('timeout Tests', () => {
 
         it('timed out', async () => {
             const value = await valueOnTimeout(1, 123, async () => {
-                return await new Promise<number>((resolve, _reject) => {
+                return new Promise<number>((resolve, _reject) => {
                     setTimeout(() => {
                         resolve(-123);
                     }, 1000);
@@ -109,7 +109,7 @@ describe('timeout Tests', () => {
         it('reject', async () => {
             await expect(
                 valueOnTimeout(1000, 123, async () => {
-                    return await new Promise<number>((_resolve, reject) => {
+                    return new Promise<number>((_resolve, reject) => {
                         setTimeout(() => {
                             reject(new Error('rejected'));
                         }, 1);

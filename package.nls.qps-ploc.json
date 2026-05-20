@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "[HAwmF][นั้Çrëætë Trïggër…Ấğ倪İЂҰนั้ढूँ]",
   "cosmosdb.command.trigger.delete": "[gw5ur][นั้Ðëlëtë Trïggër…Ấğ倪İЂҰนั้ढूँ]",
   "cosmosdb.command.trigger.open": "[haIQf][นั้Øpëñ TrïggërẤğ倪İЂนั้ढूँ]",
+  "cosmosdb.command.cosmos_db_shell.launch": "[OEVK7][นั้£æµñçh Æzµrë Çøsmøs Ðß §hëllẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.command.update": "[Dlu7d][นั้Üpðætë tø ÇløµðẤğ倪İЂҰนั้ढूँ]",
   "cosmosdb.command.ai.deploy_instruction_files": "[whonw][นั้Çøpÿ ££M ïñstrµçtïøñs tø µsër prøfïlë følðërẤğ倪İЂҰक्र्तिृまẤğ倪İนั้ढूँ]",
   "cosmosdb.command.ai.remove_instruction_files": "[lsSjs][นั้Rëmøvë ££M ïñstrµçtïøñs frøm µsër prøfïlë følðërẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
   "cosmosdb.command.schema.delete_all": "[aTAhZ][นั้Ðëlëtë Æll §ævëð §çhëmæsẤğ倪İЂҰक्र्นั้ढूँ]",
+  "cosmosdb.command.migration.open": "[jIpYB][นั้Ñëw Mïgrætïøñ…Ấğ倪İЂҰนั้ढूँ]",
+  "cosmosdb.command.migration.openExisting": "[U9MeZ][นั้Çøsmøs Ðß Mïgrætïøñ…Ấğ倪İЂҰक्นั้ढूँ]",
+  "cosmosdb.command.migration.remove": "[iKn7G][นั้Rëmøvë Mïgrætïøñ…Ấğ倪İЂҰक्นั้ढूँ]",
   "cosmosdb.configuration.batch.size": "[d5qGs][นั้Thë þætçh sïzë tø þë µsëð whëñ qµërÿïñg Æzµrë Ðætæþæsë rësøµrçës.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.configuration.confirmation.style": "[in7OW][นั้Thë þëhævïør tø µsë whëñ çøñfïrmïñg øpërætïøñs thæt çæññøt þë µñðøñë, sµçh æs ðëlëtïñg rësøµrçës.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.configuration.confirmation.style.button": "[YzYgm][นั้ßµttøñ Çlïçk ÇøñfïrmætïøñẤğ倪İЂҰक्र्นั้ढूँ]",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "[Edry0][นั้§høw ðëtæïlëð øpërætïøñ sµmmærïës, ðïsplæÿïñg mëssægës før æçtïøñs sµçh æs ðætæþæsë ðrøps, ðøçµmëñt æððïtïøñs, ðëlëtïøñs, ør sïmïlær ëvëñts.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまนั้ढूँ]",
   "cosmosdb.configuration.save.prompt": "[9FUqG][นั้§høw wærñïñg ðïæløg whëñ µpløæðïñg æ ðøçµmëñt tø thë çløµð.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्นั้ढूँ]",
   "cosmosdb.configuration.csv.separator": "[0du45][นั้Thë sëpærætør tø µsë whëñ ëxpørtïñg ðætæ tø æ Ç§V fïlë (ï.ë. `;`, | ør `,`).Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğนั้ढूँ]",
+  "cosmosdb.configuration.cosmosDB.shell.path": "[zEutH][นั้Fµll pæth tø thë følðër æñð ëxëçµtæþlë før stærtïñg thë Æzµrë Çøsmøs Ðß shëll. Rëqµïrëð før çërtæïñ shëll çømmæñðs. ßÿ ðëfæµlt, thë sÿstëm pæth ïs sëærçhëð før 'çøsmøsðþshëll'Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまนั้ढूँ]",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "[YO80k][นั้Ëñæþlë thë Æzµrë Çøsmøs Ðß shëll Møðël Çøñtëxt Prøtøçøl §ërvër.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "[X26pb][นั้Thë pørt tø µsë før thë Æzµrë Çøsmøs Ðß §hëll Møðël Çøñtëxt Prøtøçøl §ërvër.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğนั้ढूँ]",
   "cosmosdb.configuration.preferredAuthenticationMethod": "[KFiqu][นั้§ëlëçt æ prëfërrëð æµthëñtïçætïøñ mëthøð før Çøsmøs Ðß æççøµñts.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृนั้ढूँ]",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "[DaAFR][นั้ÆµtømætïçẤğ倪İนั้ढूँ]",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "[GI5D5][นั้§ëlëçts thë þëst æµthëñtïçætïøñ mëthøð þæsëð øñ thë æççøµñt çøñfïgµrætïøñẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "[tYOFo][นั้Øñlÿ sµppørtëð whëñ rµññïñg ïñ Æzµrë (ï.ë. æ VM), [lëærñ mørë](https://lëærñ.mïçrøsøft.çøm/ëñ-µs/æzµrë/çøsmøs-ðþ/høw-tø-sëtµp-mæñægëð-ïðëñtïtÿ)Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "[nCYPi][นั้Thë Çlïëñt ÏÐ øf thë Mæñægëð Ïðëñtïtÿ tø µsë whëñ æµthëñtïçætïñg wïth Ëñtræ ÏÐ µsïñg æ Üsër-æssïgñëð Mæñægëð Ïðëñtïtÿ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂนั้ढूँ]",
   "cosmosdb.configuration.manage-llm-assets": "[L0464][นั้Mæñægë ££M æssëts. Ælløw thë ëxtëñsïøñ tø këëp ££M-rëlætëð fïlës µpðætëð.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "[Jrwq0][นั้Whëñ ëñæþlëð, sçhëmæ gëñërætïøñ ælsø çøñsïðërs qµërÿ rësµlts tø ïñfër thë çøñtæïñër sçhëmæ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्นั้ढूँ]"
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "[Jrwq0][นั้Whëñ ëñæþlëð, sçhëmæ gëñërætïøñ ælsø çøñsïðërs qµërÿ rësµlts tø ïñfër thë çøñtæïñër sçhëmæ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्นั้ढूँ]",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "[GNC8J][นั้(Ëxpërïmëñtæl) §høw tøkëñ µsægë ëstïmætës ïñ thë Mïgrætïøñ Æssïstæñt ÜÏ.Ấğ倪İЂҰक्र्तिृまẤğ倪İЂҰक्र्तिृまẤนั้ढूँ]"
 }

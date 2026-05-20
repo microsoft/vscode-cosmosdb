@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "트리거 만들기…",
   "cosmosdb.command.trigger.delete": "트리거 삭제…",
   "cosmosdb.command.trigger.open": "트리거 열기",
+  "cosmosdb.command.cosmos_db_shell.launch": "Azure Cosmos DB Shell 시작",
   "cosmosdb.command.update": "클라우드로 업데이트",
   "cosmosdb.command.ai.deploy_instruction_files": "LLM 지침을 사용자 프로필 폴더에 복사",
   "cosmosdb.command.ai.remove_instruction_files": "사용자 프로필 폴더에서 LLM 지침 제거",
   "cosmosdb.command.schema.delete_all": "저장된 모든 스키마 삭제",
+  "cosmosdb.command.migration.open": "New Migration…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
+  "cosmosdb.command.migration.remove": "Remove Migration…",
   "cosmosdb.configuration.batch.size": "Azure Database 리소스를 쿼리할 때 사용할 일괄 처리 크기입니다.",
   "cosmosdb.configuration.confirmation.style": "리소스 삭제와 같이 실행 취소할 수 없는 작업을 확인할 때 사용할 동작입니다.",
   "cosmosdb.configuration.confirmation.style.button": "단추 클릭 확인",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "데이터베이스 삭제, 문서 추가, 삭제 또는 유사한 이벤트와 같은 작업에 대한 메시지를 표시하는 자세한 작업 요약을 표시합니다.",
   "cosmosdb.configuration.save.prompt": "클라우드에 문서를 업로드할 때 경고 대화 상자를 표시합니다.",
   "cosmosdb.configuration.csv.separator": "CSV 파일(예: ';', | 또는 ',')로 데이터를 내보낼 때 사용할 구분 기호입니다.",
+  "cosmosdb.configuration.cosmosDB.shell.path": "Azure Cosmos DB Shell을 시작할 폴더와 실행 파일의 전체 경로입니다. 일부 셸 명령에 필요합니다. 기본적으로 시스템 경로는 'cosmosdbshell'을 검색합니다.",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "Azure Cosmos DB Shell 모델 컨텍스트 프로토콜 서버를 사용하도록 설정합니다.",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "Azure Cosmos DB Shell 모델 컨텍스트 프로토콜 서버에 사용할 포트입니다.",
   "cosmosdb.configuration.preferredAuthenticationMethod": "Cosmos DB 계정에 대한 기본 인증 방법을 선택합니다.",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "자동",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "계정 구성에 따라 최상의 인증 방법 선택",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "Azure에서 실행하는 경우에만 지원됩니다(예: VM). [자세한 정보](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "사용자가 할당한 관리 ID를 사용하여 Entra ID로 인증할 때 사용할 관리 ID의 클라이언트 ID입니다.",
   "cosmosdb.configuration.manage-llm-assets": "LLM 자산을 관리합니다. 확장에서 LLM 관련 파일을 업데이트된 상태로 유지하도록 허용합니다.",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "이 기능을 활성화하면 스키마 생성에서 쿼리 결과도 고려하여 컨테이너 스키마를 유추합니다."
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "이 기능을 활성화하면 스키마 생성에서 쿼리 결과도 고려하여 컨테이너 스키마를 유추합니다.",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
 }

@@ -107,6 +107,7 @@ Reference these guidelines when:
 
 ### 5. Indexing Strategies (MEDIUM-HIGH)
 
+- [index-path-syntax](rules/index-path-syntax.md) - Use correct indexing path syntax (`/?` for scalars, `/[]` for arrays, `/*` terminal-only)
 - [index-exclude-unused](rules/index-exclude-unused.md) - Exclude paths never queried
 - [index-composite](rules/index-composite.md) - Use composite indexes for ORDER BY
 - [index-composite-direction](rules/index-composite-direction.md) - Match composite index directions to ORDER BY

@@ -26,8 +26,8 @@ export async function cosmosDBDeleteItem(
     const element: TreeElement | undefined = isFabricTreeElement(node)
         ? node?.element
         : isTreeElement(node)
-          ? node
-          : await pickAppResource<CosmosDBItemResourceItem>(context, {
+            ? node
+            : await pickAppResource<CosmosDBItemResourceItem>(context, {
                 type: [AzExtResourceType.AzureCosmosDb],
                 expectedChildContextValue: ['treeItem.item'],
             });

@@ -95,7 +95,9 @@ export const DocumentPanel = () => {
     const inProgress = state.isSaving || state.isRefreshing;
 
     const onChange = useCallback(
-        (newValue: string) => {
+        (newValue: string | undefined) => {
+            if (newValue === undefined) return;
+
             dispatcher.setCurrentDocumentContent(newValue);
 
             const errors = validateDocument(newValue, state.partitionKey);

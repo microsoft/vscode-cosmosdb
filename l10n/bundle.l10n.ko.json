@@ -858,6 +858,7 @@
   "Take Survey": "설문 조사 참여",
   "Target Environment": "Target Environment",
   "Test Connection": "Test Connection",
+  "Thanks for your feedback!": "Thanks for your feedback!",
   "The \"_etag\" field is required to update an item": "항목을 업데이트하려면 \"_etag\" 필드가 필요합니다.",
   "The \"{databaseId}\" database has been deleted.": "\"{databaseId}\" 데이터베이스가 삭제되었습니다.",
   "The \"{name}\" database has been created.": "\"{name}\" 데이터베이스를 만들었습니다.",

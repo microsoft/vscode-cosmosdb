@@ -858,6 +858,7 @@
   "Take Survey": "アンケートに回答する",
   "Target Environment": "Target Environment",
   "Test Connection": "Test Connection",
+  "Thanks for your feedback!": "Thanks for your feedback!",
   "The \"_etag\" field is required to update an item": "項目を更新するには、\"_etag\" フィールドが必要です",
   "The \"{databaseId}\" database has been deleted.": "\"{databaseId}\" データベースが削除されました。",
   "The \"{name}\" database has been created.": "\"{name}\" データベースが作成されました。",

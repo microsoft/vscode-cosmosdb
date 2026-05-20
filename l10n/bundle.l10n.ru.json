@@ -858,6 +858,7 @@
   "Take Survey": "Пройти опрос",
   "Target Environment": "Target Environment",
   "Test Connection": "Test Connection",
+  "Thanks for your feedback!": "Thanks for your feedback!",
   "The \"_etag\" field is required to update an item": "Для обновления элемента требуется задать значение в поле \"_etag\"",
   "The \"{databaseId}\" database has been deleted.": "База данных \"{databaseId}\" удалена.",
   "The \"{name}\" database has been created.": "База данных \"{name}\" создана.",

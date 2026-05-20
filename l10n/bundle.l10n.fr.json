@@ -858,6 +858,7 @@
   "Take Survey": "Répondre au sondage",
   "Target Environment": "Target Environment",
   "Test Connection": "Test Connection",
+  "Thanks for your feedback!": "Thanks for your feedback!",
   "The \"_etag\" field is required to update an item": "Le champ « _etag » est obligatoire pour mettre à jour un élément",
   "The \"{databaseId}\" database has been deleted.": "La base de données « {databaseId} » a été supprimée.",
   "The \"{name}\" database has been created.": "La base de données « {name} » a été créée.",

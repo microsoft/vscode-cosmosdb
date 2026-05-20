@@ -858,6 +858,7 @@
   "Take Survey": "填寫問卷",
   "Target Environment": "Target Environment",
   "Test Connection": "Test Connection",
+  "Thanks for your feedback!": "Thanks for your feedback!",
   "The \"_etag\" field is required to update an item": "需要 \"_etag\" 欄位才能更新項目",
   "The \"{databaseId}\" database has been deleted.": "已刪除 “{databaseId}” 資料庫。",
   "The \"{name}\" database has been created.": "已建立 “{name}” 資料庫。",

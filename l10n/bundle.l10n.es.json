@@ -858,6 +858,7 @@
   "Take Survey": "Realizar encuesta",
   "Target Environment": "Target Environment",
   "Test Connection": "Test Connection",
+  "Thanks for your feedback!": "Thanks for your feedback!",
   "The \"_etag\" field is required to update an item": "El campo \"_etag\" es necesario para actualizar un elemento",
   "The \"{databaseId}\" database has been deleted.": "Se ha eliminado la base de datos \"{databaseId}\".",
   "The \"{name}\" database has been created.": "Se ha creado la base de datos \"{name}\".",

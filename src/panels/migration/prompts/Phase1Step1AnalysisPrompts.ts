@@ -192,3 +192,99 @@ export function buildAnalyzeAccessPatternsPrompt(
 
     return lines.join('\n');
 }
+
+/**
+ * Builds a Copilot Chat prompt that instructs the AI to scan the workspace
+ * for database entities and generate consolidated DDL schema files grouped
+ * by domain. Optionally fills in the access-patterns template as a side task
+ * when it is still empty (template-only) so the schema and patterns stay in sync.
+ *
+ * @param schemaFolderRelativePath - Workspace-relative path to the schema-ddl folder where output files should be written.
+ * @param existingSchemaFiles - Workspace-relative paths to existing schema files already in the folder (empty array if none).
+ * @param accessPatternsTemplatePath - Workspace-relative path to the access-patterns.md template file (always provided; created beforehand if missing).
+ * @param projectContext - Optional language/framework/database hints to help the AI narrow its searches.
+ * @param discoveryInstructions - Optional custom discovery instructions for the AI.
+ */
+export function buildAnalyzeDatabaseSchemaPrompt(
+    schemaFolderRelativePath: string,
+    existingSchemaFiles: string[],
+    accessPatternsTemplatePath: string,
+    projectContext?: AnalysisProjectContext,
+    discoveryInstructions?: string,
+): string {
+    const lines: string[] = [
+        `Analyze the application source code in this workspace to reverse-engineer the database schema, then write one consolidated DDL file per domain into the folder \`${schemaFolderRelativePath}\`.`,
+    ];
+
+    if (existingSchemaFiles.length > 0) {
+        lines.push(
+            '',
+            'The following schema files already exist in the target folder — treat them as ground truth and extend rather than replace:',
+            existingSchemaFiles.map((f) => `#file:${f}`).join('\n'),
+            '',
+            'Before writing anything, propose options to the user and ask which to take:',
+            '  1. Extend the existing files in place (add missing tables, leave existing ones untouched).',
+            `  2. Write the new files into a \`${schemaFolderRelativePath}/generated/\` subfolder so nothing is overwritten.`,
+            '  3. Abort and let the user clean up manually.',
+            '  4. Anything else — let the user describe how they would like to proceed in their own words, and follow their instructions.',
+            'Do not write any schema files until the user has chosen an option.',
+        );
+    } else {
+        lines.push(
+            '',
+            `The target folder \`${schemaFolderRelativePath}\` is currently empty — write the generated files directly into it.`,
+        );
+    }
+
+    // Inject project context when available so the AI can narrow its searches
+    if (projectContext) {
+        const { language, frameworks, databaseType, databaseAccess } = projectContext;
+        const hasContext = language || (frameworks && frameworks.length > 0) || databaseType || databaseAccess;
+        if (hasContext) {
+            lines.push('', 'Project context (if a field says "Unknown", infer it from the codebase):');
+            lines.push(`- Language: ${language || 'Unknown'}`);
+            if (frameworks && frameworks.length > 0) {
+                lines.push(`- Frameworks: ${frameworks.join(', ')}`);
+            }
+            lines.push(`- Source database: ${databaseType || 'Unknown'}`);
+            if (databaseAccess) {
+                lines.push(`- Database access: ${databaseAccess}`);
+            }
+            lines.push(
+                '',
+                "Use this information to narrow your file searches (e.g., filter by the project's file extension and search for framework-specific entity/ORM patterns).",
+            );
+        }
+    }
+
+    lines.push(
+        '',
+        'Task 1 — Generate the database schema files',
+        '',
+        '- Scan the workspace for database entity definitions, ORM mappings (e.g., EF Core, Hibernate/JPA, SQLAlchemy, Sequelize, TypeORM, ActiveRecord), repository or data-access-layer classes, raw SQL queries, stored procedures, triggers, and migration scripts.',
+        '- Identify all tables/entities, their columns (with types), primary keys, foreign keys, unique constraints, indexes, and notable check/default constraints.',
+        '- Group the discovered entities into bounded-context **domains** based on the code organization (folders, namespaces, modules, package names) and on relationship clusters (entities that reference each other via foreign keys). Examples of likely domain names: `Orders`, `Inventory`, `Identity`, `Billing`, `Catalog`. Prefer the naming used in the source code when obvious.',
+        `- For each domain, emit **one consolidated SQL file** at \`${schemaFolderRelativePath}/{Domain}.sql\` containing the \`CREATE TABLE\` statements for every table in that domain, followed by index and constraint statements. Use the dialect of the source database when known (e.g., T-SQL for SQL Server, PL/pgSQL for PostgreSQL); otherwise use ANSI SQL.`,
+        '- Above each `CREATE TABLE` statement, add a short SQL comment block with: (a) a one-line description of the entity, and (b) a relative markdown link to the source file with a line-number anchor where the entity is defined (e.g., `-- Source: [Order.cs](../../src/Domain/Orders/Order.cs#L12)`). Compute link paths relative to the generated SQL file so they resolve when opened.',
+        '- If an entity is referenced in code but its full shape cannot be determined, still emit a `CREATE TABLE` for it with the best-effort columns you can infer and add a SQL comment `-- TODO: verify columns/types — inferred from usage`.',
+        '- Do NOT emit data (`INSERT`) statements. Schema only.',
+        '- After writing the files, print a short summary listing each domain, the number of tables in it, and any tables you flagged as needing verification.',
+        '',
+        'Task 2 — Update the access-patterns template (only when it is still empty)',
+        '',
+        `- Inspect the access-patterns template at #file:${accessPatternsTemplatePath}.`,
+        '- If the template already contains user-filled rows (i.e., the example rows have been replaced or new rows added), leave it untouched and skip this task.',
+        '- Otherwise, populate it with the read/write access patterns you discovered while scanning the workspace for Task 1, following the same conventions used by the standalone access-patterns analysis:',
+        '  - Pattern IDs: `R###` for reads, `W###` for writes. Unique combination of ID and Pattern Name per row.',
+        '  - Every table emitted in Task 1 MUST appear in at least one access pattern. When no code reference exists, infer typical CRUD patterns from FKs/indexes and mark them with `(schema-inferred)` in the Notes column.',
+        '  - For patterns discovered in code, include evidence in Notes: a `<br>` followed by a relative markdown link to the source file with a `#L{line}` anchor and, where possible, the function name.',
+        '  - Estimate Frequency (TPS) and Latency Requirement based on the nature of the operation; mark guesses with `(estimated)`.',
+        '- Keep the existing markdown structure (Read Patterns / Write Patterns sections) intact.',
+    );
+
+    if (discoveryInstructions) {
+        lines.push('', 'Custom discovery instructions:', discoveryInstructions);
+    }
+
+    return lines.join('\n');
+}

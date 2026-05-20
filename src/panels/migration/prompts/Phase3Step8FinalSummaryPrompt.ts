@@ -35,11 +35,12 @@ interface Phase3Step8FinalSummaryPromptProps extends BasePromptElementProps {
  * Final step of Phase 3: Cross-Domain Merge & Deployment Model.
  * Takes the programmatically merged model from all domains, resolves conflicts
  * (e.g. duplicate container names with differing partition keys), and produces
- * a deployment-ready model.json plus a cross-domain summary.
+ * a deployment-ready model along with a comprehensive cross-domain summary.
  *
- * TODO Step 2:
-TODO: allow collapsing domains, needs actual code references
-TEST: advise it to treat everything as one single domain
+ * Output: the full deployment-ready CosmosModel JSON object, then the sentinel
+ * line `===SUMMARY===`, then the markdown summary as raw text. Keeping the
+ * markdown out of the JSON envelope avoids JSON-escaping it (which roughly
+ * doubles its token cost) and prevents output-token truncation on large models.
  */
 export class Phase3Step8FinalSummaryPrompt extends PromptElement<Phase3Step8FinalSummaryPromptProps> {
     render(_state: void, _sizing: PromptSizing): PromptPiece {
@@ -100,6 +101,7 @@ The model must:
 - Contain ALL containers across all domains with conflicts resolved
 - Preserve all partition key configurations, indexing policies, entities, and relationships
 - Do NOT include partition key candidates, scores, or analysis text in the model JSON — each partitionKeys entry should contain only the final "path"
+- Do NOT include \`rationale\` (or any other free-form prose) on relationships in the JSON. All rationale belongs in the markdown summary.
 - Preserve the \`isEmbeddedOnly\` flag on entities that are fully embedded within another entity
 - Use domain: "all" to indicate this is the unified model
 - Be structurally valid and ready to be consumed by a provisioning script
@@ -146,16 +148,19 @@ Use ONLY relative links — never absolute paths.
 
 ## Output Format
 
-Respond with a JSON object in EXACTLY this format (no markdown, no code fences).
+Respond with TWO parts, in this exact order:
 
-{
-  "analysis": "## Cross-Domain Schema Conversion Summary\\n\\n...",
-  "updatedModel": { <full deployment-ready CosmosModel JSON with databaseName and capacityMode> },
-  "modelModified": true
-}
+1. The full deployment-ready CosmosModel JSON object (no markdown, no code fences, no wrapper).
+   This is the same shape as a per-domain \`cosmos-model.json\`, extended with the top-level
+   \`databaseName\` and \`capacityMode\` fields. Use \`domain: "all"\` to indicate this is the
+   unified model.
+2. On its own line: the sentinel \`===SUMMARY===\`.
+3. The markdown cross-domain summary as raw text (no JSON escaping, no code fences around it).
 
-IMPORTANT: Your FINAL response must be ONLY the JSON object. Because you must always set
-\`databaseName\`, the model is always modified — always include the full model.`,
+IMPORTANT: Your FINAL response must be EXACTLY: the JSON object, then a line containing only
+\`===SUMMARY===\`, then the markdown summary. No code fences, no extra preamble, no trailing
+commentary. Always include the full updated model JSON (since \`databaseName\` and
+\`capacityMode\` are always set).`,
                 ),
             ),
             vscpp(

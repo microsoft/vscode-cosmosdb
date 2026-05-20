@@ -9,36 +9,39 @@ import * as path from 'path';
  * Builds a Copilot Chat prompt that instructs the AI to read the selected
  * volumetric data files and fill in the volumetrics.md template.
  *
- * @param sourceRefs - A folder path (string) or individual file paths (string[]), workspace-relative.
+ * @param sourceRefs - A folder path (string), individual file paths (string[]), or undefined if no source files.
+ *   When undefined, the AI is instructed to estimate values from the schema and workspace configuration.
  * @param templateRelativePath - Workspace-relative path to the template file.
  * @param schemaFileRefs - A folder path (string) or individual file paths (string[]), workspace-relative.
  * @param discoveryInstructions - Optional custom discovery instructions for the AI.
  */
 export function buildAnalyzeVolumetricsPrompt(
-    sourceRefs: string | string[],
+    sourceRefs: string | string[] | undefined,
     templateRelativePath: string,
     schemaFileRefs: string | string[],
     discoveryInstructions?: string,
 ): string {
-    const isFolder = typeof sourceRefs === 'string';
-    const sourceRefStr = isFolder ? `#file:${sourceRefs}` : sourceRefs.map((f) => `#file:${f}`).join('\n');
-
     const isSchemaFolder = typeof schemaFileRefs === 'string';
     const schemaRefStr = isSchemaFolder
         ? `#file:${schemaFileRefs}`
         : schemaFileRefs.map((f) => `#file:${f}`).join('\n');
 
     const lines: string[] = [
-        `Analyze the following volumetric data files and use the results to fill in the template at #file:${templateRelativePath}.`,
-        '',
-        'Source files to analyze:',
-        sourceRefStr,
+        sourceRefs !== undefined
+            ? `Analyze the following volumetric data files and use the results to fill in the template at #file:${templateRelativePath}.`
+            : `Estimate volumetric data from the schema and workspace configuration, and fill in the template at #file:${templateRelativePath}.`,
     ];
 
-    if (isFolder && path.dirname(templateRelativePath) === sourceRefs) {
-        lines.push(
-            `- The template file (${path.basename(templateRelativePath)}) is inside the source folder — do NOT treat it as source data.`,
-        );
+    if (sourceRefs !== undefined) {
+        const isFolder = typeof sourceRefs === 'string';
+        const sourceRefStr = isFolder ? `#file:${sourceRefs}` : sourceRefs.map((f) => `#file:${f}`).join('\n');
+        lines.push('', 'Source files to analyze:', sourceRefStr);
+
+        if (isFolder && path.dirname(templateRelativePath) === sourceRefs) {
+            lines.push(
+                `- The template file (${path.basename(templateRelativePath)}) is inside the source folder — do NOT treat it as source data.`,
+            );
+        }
     }
 
     lines.push(
@@ -51,7 +54,9 @@ export function buildAnalyzeVolumetricsPrompt(
     lines.push(
         '',
         'Instructions:',
-        '- Read each source file and extract volumetric data (table names, row counts, row sizes, read/write TPS, growth rates).',
+        sourceRefs !== undefined
+            ? '- Read each source file and extract volumetric data (table names, row counts, row sizes, read/write TPS, growth rates).'
+            : '- No volumetric source files were provided. Infer table names, row counts, row sizes, read/write TPS, and growth rates from the schema files, deployment scripts, configuration files, and application code. Mark every inferred value with "(estimated)".',
         '- Replace the example rows in the volumetrics.md template table with real data extracted from the source files.',
         '- Keep the existing table headers and markdown structure intact.',
         '- If a field cannot be determined from the source data, mark it with "N/A" or a reasonable estimate annotated with "(estimated)".',

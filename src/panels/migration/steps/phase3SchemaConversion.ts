@@ -1417,6 +1417,10 @@ export async function runSchemaConversion(
 
             enrichErrorContext(context, error);
             const errorMessage = error instanceof Error ? error.message : String(error);
+            ext.outputChannel.error(`[Migration] Schema conversion failed: ${errorMessage}`);
+            if (error instanceof Error && error.stack) {
+                ext.outputChannel.debug(error.stack);
+            }
             await sendPhaseEvent(channel, 'schemaConversionError', [errorMessage]);
             throw error;
         }

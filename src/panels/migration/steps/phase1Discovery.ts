@@ -708,12 +708,13 @@ export async function runAnalyzeWithAI(
     const nonTemplateFiles =
         sourceFolderPath === templateFolderPath ? allFiles.filter((f) => !f.endsWith(`/${fileName}`)) : allFiles;
 
-    // Volumetrics requires source data files; access patterns can scan the workspace without them
+    // Both volumetrics and access patterns can proceed without explicit source files —
+    // the AI will fall back to schema + workspace inference. Surface a non-blocking warning
+    // for volumetrics so the user knows the analysis will be estimated.
     if (subfolder === 'volumetrics' && nonTemplateFiles.length === 0) {
-        void vscode.window.showInformationMessage(
-            l10n.t('No source files found to analyze. Select files first, then try again.'),
+        void vscode.window.showWarningMessage(
+            l10n.t('No volumetric source files selected. AI will estimate from schema and workspace configuration.'),
         );
-        return;
     }
 
     const templateRelativePath = path.relative(workspacePath, templateAbsPath);
@@ -727,7 +728,7 @@ export async function runAnalyzeWithAI(
     const prompt =
         subfolder === 'volumetrics'
             ? buildAnalyzeVolumetricsPrompt(
-                  sourceFolderRelativePath,
+                  nonTemplateFiles.length > 0 ? sourceFolderRelativePath : undefined,
                   templateRelativePath,
                   schemaFileRefs,
                   discoveryInstructions,

@@ -61,6 +61,8 @@ import { sanitizeCosmosDBAccountName, validateCosmosDBAccountName } from '../../
 import { formatTokenCount, partitionModelsByCapability } from '../../../utils/modelUtils';
 import { useTrpcClient } from '../../api/trpc/useTrpcClient';
 import { CosmosDBIcon } from '../../icons/CosmosDBIcon';
+import { BaseContextProvider, type DispatchToastFn } from '../../utils/context/BaseContextProvider';
+import { ErrorBoundary } from '../../utils/ErrorBoundary';
 import { MigrationChannel } from './state/MigrationChannel';
 import {
     useMigrationDispatch,
@@ -2605,9 +2607,20 @@ export const MigrationAssistant = () => {
     const channel = useMemo(() => new MigrationChannel(trpcClient), [trpcClient]);
     useEffect(() => () => channel.dispose(), [channel]);
 
+    // Minimal provider exposing reportWebviewError + executeReportIssueCommand for ErrorBoundary.
+    // The migration UI does not use the Fluent Toaster, so dispatchToast is a no-op.
+    const provider = useMemo(() => {
+        const noopDispatchToast = (() => {
+            /* no-op */
+        }) as unknown as DispatchToastFn;
+        return new BaseContextProvider<MigrationAppRouter>(noopDispatchToast, trpcClient);
+    }, [trpcClient]);
+
     return (
         <WithMigrationContext channel={channel}>
-            <MigrationAssistantInner channel={channel} />
+            <ErrorBoundary provider={provider}>
+                <MigrationAssistantInner channel={channel} />
+            </ErrorBoundary>
         </WithMigrationContext>
     );
 };

@@ -51,7 +51,7 @@ body:
     id: extension-version
     attributes:
       label: Extension Version
-      description: "The version of the Azure Databases extension (find it in VS Code: Extensions panel → Azure Databases)."
+      description: "The version of the Azure Cosmos DB extension (find it in VS Code: Extensions panel → Azure Cosmos DB)."
       placeholder: "e.g., 0.20.0"
     validations:
       required: true

@@ -323,6 +323,7 @@ export const GenerateQueryInput = () => {
         }
 
         setIsLoading(true);
+        setFeedbackGiven(null);
         try {
             // Get the current query content from the state
             const currentQuery = state.queryValue;

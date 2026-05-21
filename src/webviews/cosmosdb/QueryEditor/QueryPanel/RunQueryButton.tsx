@@ -98,18 +98,25 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
 
     // Capabilities depend on the live connection: emulator vs cloud and whether
     // the Cosmos DB account has priority-based execution enabled at the ARM
-    // resource level. Fetched once per connection from the extension host.
+    // resource level. Also delivers the persisted Priority Level so the picker
+    // can be seeded with the user's last choice. Fetched once per connection
+    // from the extension host.
     const [capabilities, setCapabilities] = useState<{
         isEmulator: boolean;
         isPriorityLevelEnabled: boolean;
-        defaultPriorityLevel?: PriorityLevel;
+        currentPriorityLevel: PriorityLevel;
     }>({
         isEmulator: false,
         isPriorityLevelEnabled: false,
+        currentPriorityLevel: 'Low' as PriorityLevel,
     });
     useEffect(() => {
         if (!state.isConnected) {
-            setCapabilities({ isEmulator: false, isPriorityLevelEnabled: false });
+            setCapabilities({
+                isEmulator: false,
+                isPriorityLevelEnabled: false,
+                currentPriorityLevel: 'Low' as PriorityLevel,
+            });
             return;
         }
         let cancelled = false;
@@ -123,16 +130,15 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
         };
     }, [dispatcher, state.isConnected]);
 
-    // Per PRD, seed the picker with a sensible default the first time the
-    // feature becomes available for this connection. Prefer the account's
-    // advertised default (`databaseAccount.defaultPriorityLevel`) and fall back
-    // to "Low". A user's explicit choice is never overwritten because we only
-    // seed when `state.priorityLevel === undefined`.
+    // Seed the picker from the persisted value the first time the feature
+    // becomes available for this panel. We only seed when `state.priorityLevel`
+    // is undefined so a user's mid-session choice is never overwritten by a
+    // stale fetch (e.g. capabilities resolves AFTER the user already picked).
     useEffect(() => {
         if (capabilities.isPriorityLevelEnabled && state.priorityLevel === undefined) {
-            dispatcher.setPriorityLevel(capabilities.defaultPriorityLevel ?? ('Low' as PriorityLevel));
+            dispatcher.setPriorityLevel(capabilities.currentPriorityLevel);
         }
-    }, [capabilities.isPriorityLevelEnabled, capabilities.defaultPriorityLevel, state.priorityLevel, dispatcher]);
+    }, [capabilities.isPriorityLevelEnabled, capabilities.currentPriorityLevel, state.priorityLevel, dispatcher]);
 
     const runQuery = useCallback(
         async (event?: KeyboardEvent) => {
@@ -231,6 +237,8 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
 
     // Narrow here so TypeScript tracks the type inside JSX
     const throughputBuckets = state.throughputBuckets;
+    const hasThroughputBuckets = throughputBuckets !== null && throughputBuckets !== undefined;
+    const hasConfigSubmenu = hasThroughputBuckets || capabilities.isPriorityLevelEnabled;
 
     return (
         <Menu>
@@ -261,68 +269,69 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
             <MenuPopover>
                 {state.queryHistory.length === 0 && <MenuItem disabled>{l10n.t('No history')}</MenuItem>}
                 {state.queryHistory.length > 0 && historyItems}
-                {throughputBuckets !== null && throughputBuckets !== undefined && (
-                    <>
-                        <MenuDivider />
-                        <MenuList>
-                            <Menu
-                                checkedValues={throughputCheckedValues}
-                                onCheckedValueChange={onThroughputCheckedValueChange}
-                            >
-                                <MenuTrigger>
-                                    <MenuItem hasSubmenu disabled={capabilities.isEmulator}>
-                                        {l10n.t('Throughput Bucket')}
-                                    </MenuItem>
-                                </MenuTrigger>
-                                <MenuPopover>
-                                    <MenuList>
-                                        {throughputBuckets.length === 0 && (
-                                            <MenuItem disabled>{l10n.t('No buckets')}</MenuItem>
-                                        )}
-                                        {throughputBuckets.length > 0 && (
-                                            <MenuItemRadio key="throughputBucket-0" name="throughputBucket" value="0">
-                                                {l10n.t('No bucket')}
-                                            </MenuItemRadio>
-                                        )}
-                                        {throughputBuckets.length > 0 &&
-                                            throughputBuckets.map((isActive, index) => (
-                                                <MenuItemRadio
-                                                    key={`throughputBucket-${index + 1}`}
-                                                    name="throughputBucket"
-                                                    value={(index + 1).toString()}
-                                                    disabled={!isActive}
-                                                >
-                                                    {l10n.t('Bucket {0}', index + 1)}
-                                                </MenuItemRadio>
-                                            ))}
-                                    </MenuList>
-                                </MenuPopover>
-                            </Menu>
-                        </MenuList>
-                    </>
-                )}
-                {capabilities.isPriorityLevelEnabled && (
-                    <>
-                        <MenuDivider />
-                        <MenuList>
-                            <Menu checkedValues={priorityCheckedValues} onCheckedValueChange={onPriorityLevelChange}>
-                                <MenuTrigger>
-                                    <MenuItem hasSubmenu disabled={capabilities.isEmulator}>
-                                        {l10n.t('Priority Level')}
-                                    </MenuItem>
-                                </MenuTrigger>
-                                <MenuPopover>
-                                    <MenuList>
-                                        {PRIORITY_LEVELS.map(({ value, label }) => (
-                                            <MenuItemRadio key={value} name="priorityLevel" value={value}>
-                                                {label}
+                {/*
+                 * Single divider separates the query-history list from the
+                 * configuration submenus (Throughput Bucket and/or Priority
+                 * Level). Shown when at least one of those submenus is
+                 * available — never doubled when both are.
+                 */}
+                {hasConfigSubmenu && <MenuDivider />}
+                {hasThroughputBuckets && (
+                    <MenuList>
+                        <Menu
+                            checkedValues={throughputCheckedValues}
+                            onCheckedValueChange={onThroughputCheckedValueChange}
+                        >
+                            <MenuTrigger>
+                                <MenuItem hasSubmenu disabled={capabilities.isEmulator}>
+                                    {l10n.t('Throughput Bucket')}
+                                </MenuItem>
+                            </MenuTrigger>
+                            <MenuPopover>
+                                <MenuList>
+                                    {throughputBuckets.length === 0 && (
+                                        <MenuItem disabled>{l10n.t('No buckets')}</MenuItem>
+                                    )}
+                                    {throughputBuckets.length > 0 && (
+                                        <MenuItemRadio key="throughputBucket-0" name="throughputBucket" value="0">
+                                            {l10n.t('No bucket')}
+                                        </MenuItemRadio>
+                                    )}
+                                    {throughputBuckets.length > 0 &&
+                                        throughputBuckets.map((isActive, index) => (
+                                            <MenuItemRadio
+                                                key={`throughputBucket-${index + 1}`}
+                                                name="throughputBucket"
+                                                value={(index + 1).toString()}
+                                                disabled={!isActive}
+                                            >
+                                                {l10n.t('Bucket {0}', index + 1)}
                                             </MenuItemRadio>
                                         ))}
-                                    </MenuList>
-                                </MenuPopover>
-                            </Menu>
-                        </MenuList>
-                    </>
+                                </MenuList>
+                            </MenuPopover>
+                        </Menu>
+                    </MenuList>
+                )}
+                {capabilities.isPriorityLevelEnabled && (
+                    <MenuList>
+                        <Menu checkedValues={priorityCheckedValues} onCheckedValueChange={onPriorityLevelChange}>
+                            <MenuTrigger>
+                                <MenuItem hasSubmenu disabled={capabilities.isEmulator}>
+                                    {l10n.t('Priority Level')}
+                                </MenuItem>
+                            </MenuTrigger>
+                            <MenuPopover>
+                                <MenuList>
+                                    {PRIORITY_LEVELS.map(({ value, label }) => (
+                                        <MenuItemRadio key={value} name="priorityLevel" value={value}>
+                                            {label}
+                                        </MenuItemRadio>
+                                    ))}
+                                </MenuList>
+                            </MenuPopover>
+                        </Menu>
+                    </MenuList>
                 )}
             </MenuPopover>
         </Menu>

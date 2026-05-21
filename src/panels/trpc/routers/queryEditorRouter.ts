@@ -50,9 +50,27 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
+// Persists the user-selected Priority Level across panel reopens. Single key
+// scope (per-extension, not per-account / per-container) to mirror cosmos-explorer
+// which stores one LocalStorage entry for all connections.
+const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
+const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
 const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
 const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
 const SCHEMA_GENERATION_PAGE_SIZE = 1000;
+
+/**
+ * Read the persisted Priority Level from extension global state, validating it
+ * against the known enum values. Falls back to `Low` (per PRD F3/F4) for unset
+ * or corrupted entries.
+ */
+function readPersistedPriorityLevel(): PriorityLevel {
+    const stored = ext.context.globalState.get<string>(PRIORITY_LEVEL_KEY);
+    if (stored === 'High' || stored === 'Low') {
+        return stored as PriorityLevel;
+    }
+    return DEFAULT_PRIORITY_LEVEL;
+}
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -1044,24 +1062,31 @@ export const queryEditorRouterDef = queryEditorRouter({
      *   for Azure-signed-in accounts (where `azureMetadata` is populated);
      *   workspace-attached / connection-string accounts cannot read ARM and so
      *   never expose the UI.
-     * - `defaultPriorityLevel`: the account-level default priority advertised by
-     *   ARM (`High` | `Low`), if any. Used to seed the picker so the UI matches
-     *   the server-side default behavior out of the box.
+     * - `currentPriorityLevel`: the priority level persisted in extension global
+     *   state, falling back to `Low` for first use or invalid entries (PRD F3/F4).
+     *   The UI uses this to seed the picker on panel open so the user's last
+     *   choice survives reloads (PRD F2 / F10).
      */
     getCapabilities: queryEditorProcedure.mutation(({ ctx }) => {
         const databaseAccount = ctx.state.connection?.azureMetadata?.databaseAccount;
 
-        // ARM returns `defaultPriorityLevel` typed as `string` (DefaultPriorityLevel
-        // alias) but the documented service values are "High" | "Low", matching the
-        // @azure/cosmos `PriorityLevel` enum exactly. Safe to narrow.
-        const defaultPriorityLevel = databaseAccount?.defaultPriorityLevel as PriorityLevel | undefined;
-
         return {
             isEmulator: ctx.state.connection?.isEmulator ?? false,
             isPriorityLevelEnabled: databaseAccount?.enablePriorityBasedExecution ?? false,
-            defaultPriorityLevel,
+            currentPriorityLevel: readPersistedPriorityLevel(),
         };
     }),
+
+    /**
+     * Persists the user-selected Priority Level so it survives panel reopens
+     * and Cosmos DB extension restarts. Mirrors cosmos-explorer's LocalStorage
+     * model: one global value shared across all accounts / containers.
+     */
+    setPriorityLevel: queryEditorProcedure
+        .input(z.object({ priorityLevel: z.enum(['High', 'Low']) }))
+        .mutation(async ({ input }) => {
+            await ext.context.globalState.update(PRIORITY_LEVEL_KEY, input.priorityLevel);
+        }),
 });
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

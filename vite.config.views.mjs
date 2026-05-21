@@ -87,8 +87,24 @@ export default ({ mode }) => {
                 },
             },
         },
+        /**
+         * Explicitly list large shared deps so Rolldown emits a separate
+         * pre-bundle entry for each instead of merging everything into one giant
+         * shared chunk that V8 has to parse on the main thread before render.
+         * With separate files V8 can background-parse them in parallel.
+         */
+        optimizeDeps: {
+            include: [
+                '@griffel/core',
+                '@griffel/react',
+                'stylis',
+                'rtl-css-js',
+                '@emotion/hash',
+                '@fluentui/react-components',
+                '@fluentui/react-icons',
+            ],
+        },
         resolve: {
-            extensions: ['.js', '.jsx', '.ts', '.tsx'],
             mainFields: ['browser', 'module', 'main'],
             conditions: ['browser', 'import', 'default'],
             alias: {
@@ -172,6 +188,21 @@ export default ({ mode }) => {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
                 'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+            },
+            /**
+             * Pre-transform all webview source files when the dev-server starts so
+             * that the first panel open doesn't pay the cold-transform cost for every
+             * module in the graph.
+             *
+             * Without this, Vite transforms each of the ~230 source files on-demand
+             * (disk read + esbuild transform per request), adding ~1.5 s to the first
+             * panel open via sequential HTTP waterfall.  After warmup those files are
+             * served from Vite's in-memory module cache with near-zero latency.
+             *
+             * `clientFiles` accepts fast-glob patterns relative to the project root.
+             */
+            warmup: {
+                clientFiles: ['src/webviews/**/*.{ts,tsx,scss}', 'packages/*/src/**/*.{ts,tsx}'],
             },
         },
     };

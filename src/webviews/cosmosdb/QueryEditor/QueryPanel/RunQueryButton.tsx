@@ -96,24 +96,43 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
     const dispatcher = useQueryEditorDispatcher();
     const isDisabled = !state.isConnected || state.isExecuting;
 
-    // Emulator connections don't support throughput buckets or request priority.
-    // Disable those menu options when we're connected to an emulator.
-    const [isEmulator, setIsEmulator] = useState(false);
+    // Capabilities depend on the live connection: emulator vs cloud and whether
+    // the Cosmos DB account has priority-based execution enabled at the ARM
+    // resource level. Fetched once per connection from the extension host.
+    const [capabilities, setCapabilities] = useState<{
+        isEmulator: boolean;
+        isPriorityLevelEnabled: boolean;
+        defaultPriorityLevel?: PriorityLevel;
+    }>({
+        isEmulator: false,
+        isPriorityLevelEnabled: false,
+    });
     useEffect(() => {
         if (!state.isConnected) {
-            setIsEmulator(false);
+            setCapabilities({ isEmulator: false, isPriorityLevelEnabled: false });
             return;
         }
         let cancelled = false;
-        void dispatcher.isEmulator().then((value) => {
+        void dispatcher.getCapabilities().then((caps) => {
             if (!cancelled) {
-                setIsEmulator(value);
+                setCapabilities(caps);
             }
         });
         return () => {
             cancelled = true;
         };
     }, [dispatcher, state.isConnected]);
+
+    // Per PRD, seed the picker with a sensible default the first time the
+    // feature becomes available for this connection. Prefer the account's
+    // advertised default (`databaseAccount.defaultPriorityLevel`) and fall back
+    // to "Low". A user's explicit choice is never overwritten because we only
+    // seed when `state.priorityLevel === undefined`.
+    useEffect(() => {
+        if (capabilities.isPriorityLevelEnabled && state.priorityLevel === undefined) {
+            dispatcher.setPriorityLevel(capabilities.defaultPriorityLevel ?? ('Low' as PriorityLevel));
+        }
+    }, [capabilities.isPriorityLevelEnabled, capabilities.defaultPriorityLevel, state.priorityLevel, dispatcher]);
 
     const runQuery = useCallback(
         async (event?: KeyboardEvent) => {
@@ -122,10 +141,18 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                 event.preventDefault();
             }
 
+            // Only forward a Priority Level when the feature is enabled AND we're
+            // not on the emulator (where the header is meaningless). Sending
+            // `undefined` lets the SDK fall back to its server-side default
+            // (treated as High by the service).
+            const effectivePriority =
+                capabilities.isPriorityLevelEnabled && !capabilities.isEmulator ? state.priorityLevel : undefined;
+
             if (state.querySelectedValue) {
                 return dispatcher.runQuery(state.querySelectedValue, {
                     countPerPage: state.pageSize,
                     throughputBucket: state.selectedThroughputBucket,
+                    priority: effectivePriority,
                 });
             }
 
@@ -135,9 +162,10 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
             return dispatcher.runQuery(queryToRun, {
                 countPerPage: state.pageSize,
                 throughputBucket: state.selectedThroughputBucket,
+                priority: effectivePriority,
             });
         },
-        [dispatcher, state],
+        [dispatcher, state, capabilities.isPriorityLevelEnabled, capabilities.isEmulator],
     );
 
     const onRunQueryClick = useCallback(() => void runQuery(), [runQuery]);
@@ -242,7 +270,7 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                                 onCheckedValueChange={onThroughputCheckedValueChange}
                             >
                                 <MenuTrigger>
-                                    <MenuItem hasSubmenu disabled={isEmulator}>
+                                    <MenuItem hasSubmenu disabled={capabilities.isEmulator}>
                                         {l10n.t('Throughput Bucket')}
                                     </MenuItem>
                                 </MenuTrigger>
@@ -273,25 +301,29 @@ export const RunQueryButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
                         </MenuList>
                     </>
                 )}
-                <MenuDivider />
-                <MenuList>
-                    <Menu checkedValues={priorityCheckedValues} onCheckedValueChange={onPriorityLevelChange}>
-                        <MenuTrigger>
-                            <MenuItem hasSubmenu disabled={isEmulator}>
-                                {l10n.t('Priority Level')}
-                            </MenuItem>
-                        </MenuTrigger>
-                        <MenuPopover>
-                            <MenuList>
-                                {PRIORITY_LEVELS.map(({ value, label }) => (
-                                    <MenuItemRadio key={value} name="priorityLevel" value={value}>
-                                        {label}
-                                    </MenuItemRadio>
-                                ))}
-                            </MenuList>
-                        </MenuPopover>
-                    </Menu>
-                </MenuList>
+                {capabilities.isPriorityLevelEnabled && (
+                    <>
+                        <MenuDivider />
+                        <MenuList>
+                            <Menu checkedValues={priorityCheckedValues} onCheckedValueChange={onPriorityLevelChange}>
+                                <MenuTrigger>
+                                    <MenuItem hasSubmenu disabled={capabilities.isEmulator}>
+                                        {l10n.t('Priority Level')}
+                                    </MenuItem>
+                                </MenuTrigger>
+                                <MenuPopover>
+                                    <MenuList>
+                                        {PRIORITY_LEVELS.map(({ value, label }) => (
+                                            <MenuItemRadio key={value} name="priorityLevel" value={value}>
+                                                {label}
+                                            </MenuItemRadio>
+                                        ))}
+                                    </MenuList>
+                                </MenuPopover>
+                            </Menu>
+                        </MenuList>
+                    </>
+                )}
             </MenuPopover>
         </Menu>
     );

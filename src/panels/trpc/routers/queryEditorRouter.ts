@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import {
     getSchemaFromDocument,
@@ -1032,8 +1032,35 @@ export const queryEditorRouterDef = queryEditorRouter({
             ctx.state.pendingConfirmResolve = undefined;
         }),
 
-    isEmulator: queryEditorProcedure.mutation(({ ctx }) => {
-        return ctx.state.connection?.isEmulator ?? false;
+    /**
+     * Returns query-editor capabilities that depend on the current connection.
+     * Used by the webview to decide whether to show / enable connection-specific
+     * UI such as Priority Level and Throughput Bucket controls.
+     *
+     * - `isEmulator`: true when the current connection points at the local emulator.
+     *   Priority and Throughput options are meaningless against the emulator.
+     * - `isPriorityLevelEnabled`: true when the Cosmos DB account has
+     *   `enablePriorityBasedExecution` set on the ARM resource. Only available
+     *   for Azure-signed-in accounts (where `azureMetadata` is populated);
+     *   workspace-attached / connection-string accounts cannot read ARM and so
+     *   never expose the UI.
+     * - `defaultPriorityLevel`: the account-level default priority advertised by
+     *   ARM (`High` | `Low`), if any. Used to seed the picker so the UI matches
+     *   the server-side default behavior out of the box.
+     */
+    getCapabilities: queryEditorProcedure.mutation(({ ctx }) => {
+        const databaseAccount = ctx.state.connection?.azureMetadata?.databaseAccount;
+
+        // ARM returns `defaultPriorityLevel` typed as `string` (DefaultPriorityLevel
+        // alias) but the documented service values are "High" | "Low", matching the
+        // @azure/cosmos `PriorityLevel` enum exactly. Safe to narrow.
+        const defaultPriorityLevel = databaseAccount?.defaultPriorityLevel as PriorityLevel | undefined;
+
+        return {
+            isEmulator: ctx.state.connection?.isEmulator ?? false,
+            isPriorityLevelEnabled: databaseAccount?.enablePriorityBasedExecution ?? false,
+            defaultPriorityLevel,
+        };
     }),
 });
 

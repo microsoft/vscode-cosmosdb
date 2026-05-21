@@ -192,8 +192,24 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             });
         }
     }
-    public async isEmulator(): Promise<boolean> {
-        return this.trpcClient.queryEditor.isEmulator.mutate();
+
+    /**
+     * Fetches connection-dependent capabilities used by the UI to decide which
+     * run-options menus to expose.
+     *
+     * Returns `{ isEmulator, isPriorityLevelEnabled, defaultPriorityLevel }`:
+     * - `isEmulator` is true when the connection points at the local emulator.
+     * - `isPriorityLevelEnabled` reflects whether the Cosmos DB account has
+     *   priority-based execution enabled at the ARM resource level.
+     * - `defaultPriorityLevel` is the account's advertised default priority, if
+     *   any. The UI seeds its picker with this value (falling back to `Low`).
+     */
+    public async getCapabilities(): Promise<{
+        isEmulator: boolean;
+        isPriorityLevelEnabled: boolean;
+        defaultPriorityLevel?: PriorityLevel;
+    }> {
+        return this.trpcClient.queryEditor.getCapabilities.mutate();
     }
 
     public setPageSize(pageSize: number) {

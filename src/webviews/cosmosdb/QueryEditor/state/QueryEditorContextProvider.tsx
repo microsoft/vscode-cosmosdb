@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type TRPCClient } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
@@ -192,6 +192,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             });
         }
     }
+    public async isEmulator(): Promise<boolean> {
+        return this.trpcClient.queryEditor.isEmulator.mutate();
+    }
 
     public setPageSize(pageSize: number) {
         void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
@@ -290,6 +293,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
     public selectBucket(throughputBucket?: number): void {
         this.dispatch({ type: 'selectBucket', throughputBucket });
+    }
+
+    public setPriorityLevel(priorityLevel: PriorityLevel): void {
+        this.dispatch({ type: 'setPriorityLevel', priorityLevel });
     }
 
     public async openCopilotExplainQuery(query?: string): Promise<void> {

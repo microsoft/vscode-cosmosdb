@@ -98,8 +98,8 @@
   "devDependencies": {
     "@types/json-schema": "~7.0.15",
     "@types/mocha": "~10.0.10",
-    "@types/node": "~22.19.13",
-    "@types/react": "~19.2.7",
+    "@types/node": "~25.9.1",
+    "@types/react": "~19.2.15",
     "@types/react-dom": "~19.2.3",
     "@types/semver": "~7.7.1",
     "@types/vscode": "~1.109.0",
@@ -112,30 +112,29 @@
     "concurrently": "~9.2.1",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
-    "eslint": "~10.3.0",
+    "eslint": "~10.4.0",
     "eslint-plugin-license-header": "~0.9.0",
-    "eslint-plugin-mocha": "~11.2.0",
-    "glob": "~12.0.0",
+    "eslint-plugin-mocha": "~11.3.0",
+    "glob": "~13.0.6",
     "globals": "~17.6.0",
     "jest-mock-vscode": "~4.12.0",
     "mocha": "~11.7.4",
     "mocha-junit-reporter": "~2.2.1",
     "mocha-multi-reporters": "~1.5.1",
-    "oxfmt": "~0.47.0",
-    "oxlint": "~1.62.0",
-    "oxlint-tsgolint": "~0.22.1",
+    "oxfmt": "~0.51.0",
+    "oxlint": "~1.66.0",
+    "oxlint-tsgolint": "~0.23.0",
     "react": "~19.2.1",
     "react-dom": "~19.2.1",
     "react-refresh": "~0.18.0",
     "rimraf": "~6.1.0",
     "sass": "~1.99.0",
-    "ts-node": "~10.9.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "~8.59.0",
     "vite": "~8.0.10",
     "vite-bundle-analyzer": "~1.3.7",
     "vite-plugin-static-copy": "~4.1.0",
-    "vitest": "~4.1.5"
+    "vitest": "~4.1.7"
   },
   "dependencies": {
     "@azure/arm-cosmosdb": "~16.4.0",
@@ -146,7 +145,6 @@
     "@azure/identity": "~4.13.0",
     "@fluentui/react-components": "~9.73.0",
     "@fluentui/react-icons": "~2.0.313",
-    "@microsoft/applicationinsights-common": "~3.4.1",
     "@microsoft/vscode-azext-azureauth": "~5.1.1",
     "@microsoft/vscode-azext-azureutils": "~4.1.1",
     "@microsoft/vscode-azext-utils": "~4.0.1",
@@ -158,30 +156,23 @@
     "@vscode/l10n": "~0.0.18",
     "@vscode/prompt-tsx": "^0.4.0-alpha.7",
     "allotment": "~1.20.4",
-    "denque": "^2.1.0",
     "es-toolkit": "~1.46.0",
     "monaco-editor": "~0.52.2",
     "react-data-grid": "~7.0.0-beta.59",
     "react-hotkeys-hook": "5.1.0",
-    "semver": "~7.7.3",
-    "uuid": "~14.0.0",
+    "semver": "~7.8.0",
     "vscode-languageclient": "~9.0.1",
-    "vscode-uri": "~3.1.0",
     "zod": "~4.4.3"
   },
   "overrides": {
     "@prantlf/jsonlint": {
       "ajv": "~8.18.0"
     },
-    "glob": "~12.0.0",
-    "keyborg": "2.6.0",
+    "glob": "~13.0.6",
     "mocha": {
-      "diff": "~8.0.3"
-    },
-    "serialize-javascript": "~7.0.4",
-    "test-exclude": "~7.0.1",
-    "@microsoft/applicationinsights-web-basic": "~3.3.11",
-    "uuid": "~14.0.0"
+      "diff": "~8.0.3",
+      "serialize-javascript": "~7.0.4"
+    }
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

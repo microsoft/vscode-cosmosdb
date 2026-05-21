@@ -199,8 +199,9 @@ export class QuerySession {
                     throw new Error(l10n.t('Cannot fetch previous page if current page is the first page'));
                 }
 
-                return this.executeFetch(context, async () => {
+                return this.executeFetch(context, () => {
                     this.currentIteration--;
+                    return Promise.resolve();
                 });
             },
         );
@@ -223,8 +224,9 @@ export class QuerySession {
                     throw new Error(l10n.t('Session is not running! Please run the session first'));
                 }
 
-                return this.executeFetch(context, async () => {
+                return this.executeFetch(context, () => {
                     this.currentIteration = 1;
+                    return Promise.resolve();
                 });
             },
         );
@@ -261,7 +263,7 @@ export class QuerySession {
             // Record query execution to in-memory history for AI context
             if (serializedResult) {
                 CosmosDbOperationsService.getInstance().recordQueryExecution(
-                    this.connection.accountId,
+                    this.connection?.azureMetadata?.accountId,
                     this.databaseId,
                     this.containerId,
                     serializedResult,

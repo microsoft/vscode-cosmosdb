@@ -192,7 +192,7 @@ export class QueryEditorTab extends BaseTab {
     /**
      * Broadcasts AI features availability change to all open QueryEditorTabs
      */
-    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+    public static notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): void {
         for (const tab of QueryEditorTab.openTabs) {
             tab.eventSink.emit({ type: 'aiFeaturesEnabledChanged', isEnabled: isAIFeaturesEnabled });
         }
@@ -205,7 +205,7 @@ export class QueryEditorTab extends BaseTab {
         this.eventSink.emit({ type: 'queryTextPushed', query });
     }
 
-    public async refreshSurveyFeedbackVisibility(): Promise<void> {
+    public refreshSurveyFeedbackVisibility(): void {
         this.eventSink.emit({
             type: 'isSurveyCandidateChanged',
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),

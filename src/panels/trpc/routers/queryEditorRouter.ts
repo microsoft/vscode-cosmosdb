@@ -82,6 +82,7 @@ export const queryEditorRouterDef = queryEditorRouter({
      */
     init: queryEditorProcedure.mutation(async ({ ctx }) => {
         console.debug(`[QueryEditor] init invoked. hasConnection=${!!ctx.state.connection}`);
+
         if (ctx.actionContext) {
             ctx.actionContext.telemetry.suppressIfSuccessful = true;
         }
@@ -540,7 +541,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     updateSelectedText: queryEditorProcedure
         .input(z.object({ selectedQuery: z.string() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.selectedQuery = input.selectedQuery || undefined;
         }),
 
@@ -575,7 +576,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 const service = CosmosDbOperationsService.getInstance();
                 const historyContext = ctx.state.connection
                     ? service.getQueryHistoryForContainer(
-                          ctx.state.connection.accountId,
+                          ctx.state.connection?.azureMetadata?.accountId,
                           ctx.state.connection.databaseId,
                           ctx.state.connection.containerId,
                       )
@@ -653,7 +654,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     closeGenerateInput: queryEditorProcedure
         .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
@@ -1026,10 +1027,14 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     confirmToolInvocationResponse: queryEditorProcedure
         .input(z.object({ confirmed: z.boolean() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.pendingConfirmResolve?.(input.confirmed);
             ctx.state.pendingConfirmResolve = undefined;
         }),
+
+    isEmulator: queryEditorProcedure.mutation(({ ctx }) => {
+        return ctx.state.connection?.isEmulator ?? false;
+    }),
 });
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

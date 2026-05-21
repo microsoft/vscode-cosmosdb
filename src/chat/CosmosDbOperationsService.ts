@@ -331,7 +331,11 @@ export class CosmosDbOperationsService {
         }
 
         // Use the in-memory store instead of iterating through sessions
-        return this.getQueryHistoryForContainer(connection.accountId, connection.databaseId, connection.containerId);
+        return this.getQueryHistoryForContainer(
+            connection?.azureMetadata?.accountId,
+            connection.databaseId,
+            connection.containerId,
+        );
     }
 
     /**
@@ -1103,7 +1107,7 @@ export class CosmosDbOperationsService {
                         // Cache the sampled schema in query history so subsequent
                         // LLM calls won't need to re-sample.
                         this.recordSampledSchema(
-                            connection.accountId,
+                            connection?.azureMetadata?.accountId,
                             connection.databaseId,
                             connection.containerId,
                             result.sampleQuery,

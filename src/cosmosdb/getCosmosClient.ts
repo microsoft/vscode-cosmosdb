@@ -110,7 +110,7 @@ export function getCosmosClient(
 
                             case AuthenticationMethod.entraId: {
                                 const { wwwAuthenticate } = options || {};
-                                return getAccessTokenForVSCode(
+                                return await getAccessTokenForVSCode(
                                     wwwAuthenticate
                                         ? { scopes: normalizedAuthScopes, wwwAuthenticate }
                                         : normalizedAuthScopes,

@@ -30,8 +30,12 @@ export { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
  * the connection-string import flow to capture that context.
  */
 export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane {
-    if (!accountInfo.isEmulator && accountInfo.subscription && accountInfo.resourceGroup) {
-        return new ArmCosmosDBControlPlane(accountInfo.subscription, accountInfo.resourceGroup, accountInfo.name);
+    if (!accountInfo.isEmulator && accountInfo?.azureMetadata) {
+        return new ArmCosmosDBControlPlane(
+            accountInfo.azureMetadata.subscription,
+            accountInfo.azureMetadata.resourceGroup,
+            accountInfo.azureMetadata.accountName,
+        );
     }
     return new CosmosDBSdkControlPlane(accountInfo);
 }
@@ -44,8 +48,12 @@ export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane 
  * account.
  */
 export function getControlPlaneForConnection(connection: NoSqlQueryConnection): CosmosDBControlPlane {
-    if (!connection.isEmulator && connection.subscription && connection.resourceGroup && connection.accountName) {
-        return new ArmCosmosDBControlPlane(connection.subscription, connection.resourceGroup, connection.accountName);
+    if (!connection.isEmulator && connection?.azureMetadata) {
+        return new ArmCosmosDBControlPlane(
+            connection.azureMetadata.subscription,
+            connection.azureMetadata.resourceGroup,
+            connection.azureMetadata.accountName,
+        );
     }
     return new CosmosDBSdkControlPlane(connection);
 }

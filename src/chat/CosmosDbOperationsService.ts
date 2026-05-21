@@ -14,6 +14,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { getSchemaIdForConnection, SchemaFileStorage } from '../services/SchemaFileStorage';
 import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
@@ -21,7 +22,7 @@ import { buildQueryOneShotMessages } from './queryOneShotExamples';
 import {
     SAMPLE_DATA_CONFIRMATION_MESSAGE,
     SAMPLE_DATA_TOOL_NAME,
-    sampleContainerSchema,
+    sampleAndPersistContainerSchema,
     type SampleSchemaResult,
 } from './sampleDataTool';
 import {
@@ -879,6 +880,23 @@ export class CosmosDbOperationsService {
         // Load query language reference for comprehensive syntax guidance
         const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
 
+        // If there is a schema already saved in SchemaFileStorage (from the toolbar
+        // or a previous sampling run), include it in the initial context so the LLM
+        // can use it without needing to call the sampling tool.
+        let cachedSchema: string | undefined;
+        const connection = this.getActiveConnection();
+        if (connection) {
+            try {
+                const schemaId = getSchemaIdForConnection(connection);
+                const stored = await SchemaFileStorage.getInstance().readSchema(schemaId);
+                if (stored) {
+                    cachedSchema = stored;
+                }
+            } catch {
+                // Best-effort — proceed without cached schema.
+            }
+        }
+
         // Build user content (payload) - separated from system instructions
         const userPayload: QueryGenerationPayload = {
             userPrompt,
@@ -886,6 +904,7 @@ export class CosmosDbOperationsService {
             historyContext,
             languageReference: queryLanguageRef || undefined,
             additionalContext,
+            cachedSchema,
         };
         const userContent = buildQueryGenerationUserContent(userPayload);
 
@@ -1055,7 +1074,7 @@ export class CosmosDbOperationsService {
                         const schemaSamplingStart = Date.now();
                         let result: SampleSchemaResult;
                         try {
-                            result = await sampleContainerSchema(connection);
+                            result = await sampleAndPersistContainerSchema(connection);
                         } catch (error) {
                             const errMsg = parseError(error).message;
                             ext.outputChannel.error(

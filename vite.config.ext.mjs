@@ -70,6 +70,22 @@ export default ({ mode }) => {
             mainFields: ['module', 'main'],
             extensions: ['.ts', '.js'],
             alias: {
+                // Force tslib to its ESM build. Legacy Azure SDKs
+                // (`@azure/arm-cosmosdb`, `@azure/arm-postgresql`,
+                // `@azure/arm-postgresql-flexible`, …) compile to CJS with
+                // `importHelpers: true` and pull in tslib. tslib's CJS entry
+                // (`tslib.js`) attaches helpers directly onto `module.exports`
+                // AND sets `module.exports.__esModule = true`. Rolldown's
+                // `__toESM` interop helper sees `__esModule === true` and
+                // therefore does NOT install a `.default` property on the
+                // wrapped namespace — but the emitted destructure still reads
+                // `.default`, producing the runtime crash:
+                //   "Cannot destructure property '__extends' of
+                //    '__toESM(...).default' as it is undefined."
+                // Aliasing tslib to its ESM build sidesteps the broken
+                // CJS-interop path entirely; the helpers come through as
+                // plain named ESM exports.
+                tslib: path.resolve(__dirname, 'node_modules/tslib/tslib.es6.mjs'),
                 '@cosmosdb/nosql-language-service/vscode': path.resolve(
                     __dirname,
                     'packages/nosql-language-service/src/providers/vscode/index.ts',

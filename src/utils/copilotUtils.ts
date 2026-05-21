@@ -62,7 +62,7 @@ export async function areAIFeaturesEnabled(): Promise<boolean> {
     if (isAIFeaturesDisabledBySetting()) {
         return false;
     }
-    return  areCopilotModelsAvailable();
+    return areCopilotModelsAvailable();
 }
 
 /**

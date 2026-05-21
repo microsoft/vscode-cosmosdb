@@ -1160,7 +1160,7 @@ export async function provisionAccount(
 ): Promise<string | undefined> {
     const { project, projectService, channel } = ctx;
 
-    return  callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.accountProvisioning', async (context) => {
+    return callWithTelemetryAndErrorHandling('cosmosDB.migration.phase4.accountProvisioning', async (context) => {
         if (!project || !projectService) return undefined;
         setMigrationTelemetryContext(context, project, 'provisioning');
         context.errorHandling.suppressDisplay = true;

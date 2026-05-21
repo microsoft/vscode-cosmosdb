@@ -56,7 +56,6 @@ export class MigrationChannel implements Channel {
                 if (!set) return;
                 for (const handler of set) {
                     try {
-                         
                         (handler as (...a: unknown[]) => void)(...event.params);
                     } catch (e) {
                         console.error(`[MigrationChannel] handler for '${event.name}' threw:`, e);

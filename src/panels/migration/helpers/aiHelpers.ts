@@ -334,7 +334,7 @@ export async function runPrompt<P extends BasePromptElementProps>(
  * @throws If no JSON object is found in the response.
  */
 export async function runPromptWithJsonResult<T>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- contravariance: concrete prompt classes need this parameter type widened
+     
     PromptClass: PromptElementCtor<any, unknown>,
     props: BasePromptElementProps & Record<string, unknown>,
     model: vscode.LanguageModelChat,
@@ -381,7 +381,7 @@ export async function runPromptWithJsonResult<T>(
  * @throws If no JSON object is found in the final response.
  */
 export async function runAgenticLoopWithJsonResult<T>(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- contravariance: concrete prompt classes need this parameter type widened
+     
     PromptClass: PromptElementCtor<any, unknown>,
     props: BasePromptElementProps & Record<string, unknown>,
     model: vscode.LanguageModelChat,

@@ -332,7 +332,7 @@ export class CosmosDbChatParticipant {
         if (extReq.model) {
             return extReq.model;
         }
-        return await getSelectedModel().catch(() => null);
+        return  getSelectedModel().catch(() => null);
     }
 
     /**

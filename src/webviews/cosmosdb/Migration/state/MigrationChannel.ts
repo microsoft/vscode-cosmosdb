@@ -56,7 +56,7 @@ export class MigrationChannel implements Channel {
                 if (!set) return;
                 for (const handler of set) {
                     try {
-                        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+                         
                         (handler as (...a: unknown[]) => void)(...event.params);
                     } catch (e) {
                         console.error(`[MigrationChannel] handler for '${event.name}' threw:`, e);

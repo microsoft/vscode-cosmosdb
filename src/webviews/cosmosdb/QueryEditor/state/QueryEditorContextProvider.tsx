@@ -324,9 +324,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.dispatch({ type: 'updateHistory', queryHistory: result.queryHistory });
             }
 
-            if (result.throughputBuckets) {
-                this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: result.throughputBuckets });
-            }
+            // Always dispatch — the server may explicitly return `undefined` to indicate
+            // throughput buckets are unsupported (e.g. when connected to the Cosmos DB
+            // Emulator). Without this, the default state ([true × 5]) would keep showing.
+            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: result.throughputBuckets });
 
             if (result.initialQuery) {
                 void this.insertText(result.initialQuery);

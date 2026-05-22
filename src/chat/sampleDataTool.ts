@@ -137,7 +137,11 @@ function getActiveTab(): QueryEditorTab | undefined {
 export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConnection): Promise<SampleSchemaResult> {
     const result = await sampleContainerSchema(connection);
 
-    if (result.documentCount > 0) {
+    const isSchemaBasedOnQueries = vscode.workspace
+        .getConfiguration('cosmosDB.queryEditor')
+        .get<boolean>('generateSchemaBasedOnQueries', false);
+
+    if (result.documentCount > 0 && isSchemaBasedOnQueries) {
         try {
             const schemaId = getSchemaIdForConnection(connection);
             const containerLabel = `${connection.databaseId}/${connection.containerId}`;

@@ -294,6 +294,7 @@ const gradientSteps = [
     { dash: 2, opacity: 1.0 },
 ];
 
+// Pure CSS solution yielded rotating highlight with non-constant speed so we use this svg method.
 const ProgressBorder = ({ width, height }: { width: number; height: number }) => (
     <svg
         style={{
@@ -649,7 +650,7 @@ export const GenerateQueryInput = () => {
                                     selectedOptions={selectedModelId ? [selectedModelId] : []}
                                     disabled={isLoading}
                                     freeform={false}
-                                    positioning={{ autoSize: false, matchTargetSize: false }}
+                                    positioning={{ autoSize: false }}
                                     listbox={{
                                         style: {
                                             maxHeight: '280px',

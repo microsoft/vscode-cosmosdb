@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Dropdown, Option, ProgressBar, makeStyles, type OptionOnSelectData } from '@fluentui/react-components';
+import { Button, Dropdown, Option, makeStyles, mergeClasses, type OptionOnSelectData } from '@fluentui/react-components';
 import {
     CheckmarkFilled,
     Dismiss12Regular,
@@ -35,14 +35,26 @@ const useStyles = makeStyles({
         flexDirection: 'column',
         backgroundColor: 'var(--vscode-input-background)',
         borderRadius: '6px',
-        padding: '8px 12px 4px 12px',
         border: '1px solid var(--vscode-input-border, var(--vscode-contrastBorder, transparent))',
         margin: '8px 8px',
         boxSizing: 'border-box',
-        gap: '6px',
         minHeight: '0',
         flexShrink: 0,
         position: 'relative',
+    },
+    containerFocused: {
+        borderTopColor: 'var(--vscode-focusBorder)',
+        borderRightColor: 'var(--vscode-focusBorder)',
+        borderBottomColor: 'var(--vscode-focusBorder)',
+        borderLeftColor: 'var(--vscode-focusBorder)',
+    },
+    innerContent: {
+        position: 'relative',
+        zIndex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        padding: '8px 8px 6px',
     },
     inputArea: {
         display: 'flex',
@@ -138,14 +150,11 @@ const useStyles = makeStyles({
         },
     },
     button: {
-        padding: '2px 6px',
-        minWidth: 'auto',
+        padding: '0px',
+        width: '24px',
+        height: '24px',
         flexShrink: 0,
-        marginRight: '-10px',
-    },
-    progressBar: {
-        width: '100%',
-        marginTop: '0px',
+        borderRadius: '6px',
     },
     closeButton: {
         position: 'absolute',
@@ -201,6 +210,51 @@ const useStyles = makeStyles({
     },
 });
 
+const gradientSteps = [
+    { dash: 18, opacity: 0.06 },
+    { dash: 16, opacity: 0.08 },
+    { dash: 14, opacity: 0.12 },
+    { dash: 12, opacity: 0.18 },
+    { dash: 10, opacity: 0.25 },
+    { dash: 8, opacity: 0.35 },
+    { dash: 6, opacity: 0.5 },
+    { dash: 4, opacity: 0.7 },
+    { dash: 2, opacity: 1.0 },
+];
+
+const ProgressBorder = ({ width, height }: { width: number; height: number }) => (
+    <svg
+        style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width,
+            height,
+            pointerEvents: 'none',
+            zIndex: 2,
+        }}
+    >
+        {gradientSteps.map(({ dash, opacity }, i) => (
+            <rect
+                key={i}
+                x={1}
+                y={1}
+                width={width - 2}
+                height={height - 2}
+                rx={6}
+                ry={6}
+                fill="none"
+                stroke="var(--vscode-focusBorder, #007fd4)"
+                strokeWidth={1.5}
+                pathLength={100}
+                strokeDasharray={`${dash} ${100 - dash}`}
+                opacity={opacity}
+                style={{ animation: 'dash-spin 3s linear infinite' }}
+            />
+        ))}
+    </svg>
+);
+
 export const GenerateQueryInput = () => {
     const styles = useStyles();
     const { trpcClient } = useTrpcClient<QueryEditorAppRouter>();
@@ -214,6 +268,9 @@ export const GenerateQueryInput = () => {
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
     const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
     const [hadGenerated, setHadGenerated] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
 
     // confirmToolInvocation message is pushed from the extension via the shared event subscription
     const confirmMessage = state.confirmToolInvocationMessage;
@@ -284,6 +341,46 @@ export const GenerateQueryInput = () => {
             textareaRef.current.focus();
         }
     }, [state.showGenerateInput]);
+
+    // Clear focus highlight when loading starts (textarea gets disabled)
+    useEffect(() => {
+        if (isLoading) {
+            setIsFocused(false);
+        }
+    }, [isLoading]);
+
+    // Inject CSS @keyframes for the rotating border animation
+    useEffect(() => {
+        const styleId = 'generate-query-dash-spin';
+        let style = document.getElementById(styleId) as HTMLStyleElement | null;
+        if (!style) {
+            style = document.createElement('style');
+            style.id = styleId;
+            document.head.appendChild(style);
+        }
+        style.textContent = [
+            '@keyframes dash-spin {',
+            '  to { stroke-dashoffset: -100; }',
+            '}',
+        ].join('\n');
+    }, []);
+
+    // Measure container size for SVG border overlay
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el || !isLoading) {
+            setContainerSize(null);
+            return;
+        }
+        const update = () => {
+            const rect = el.getBoundingClientRect();
+            setContainerSize({ width: rect.width, height: rect.height });
+        };
+        update();
+        const observer = new ResizeObserver(() => update());
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [isLoading]);
 
     // Handle model selection change
     const handleModelChange = useCallback(
@@ -405,7 +502,17 @@ export const GenerateQueryInput = () => {
     };
 
     return (
-        <div className={styles.container}>
+        <div
+            ref={containerRef}
+            className={mergeClasses(
+                styles.container,
+                isFocused && styles.containerFocused,
+            )}
+        >
+            {isLoading && containerSize && (
+                <ProgressBorder width={containerSize.width} height={containerSize.height} />
+            )}
+            <div className={styles.innerContent}>
             <Button
                 className={styles.closeButton}
                 icon={<Dismiss12Regular />}
@@ -429,16 +536,13 @@ export const GenerateQueryInput = () => {
                     // Reset history navigation when user types
                     promptHistory.resetNavigation();
                 }}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
                 rows={1}
                 style={{ height: `${Math.max(1, lineCount) * 17}px` }}
             />
-            {isLoading ? (
-                <ProgressBar className={styles.progressBar} aria-label={l10n.t('Generating query')} />
-            ) : (
-                <div style={{ height: '2px' }} />
-            )}
             <div className={styles.screenReaderOnly} aria-live="polite" aria-atomic="true">
                 {isLoading ? l10n.t('Generating query...') : ''}
             </div>
@@ -550,6 +654,7 @@ export const GenerateQueryInput = () => {
                     />
                 </div>
             )}
+            </div>
         </div>
     );
 };

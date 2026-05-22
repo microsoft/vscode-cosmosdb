@@ -34,9 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "LLM 지침을 사용자 프로필 폴더에 복사",
   "cosmosdb.command.ai.remove_instruction_files": "사용자 프로필 폴더에서 LLM 지침 제거",
   "cosmosdb.command.schema.delete_all": "저장된 모든 스키마 삭제",
-  "cosmosdb.command.migration.open": "New Migration…",
-  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
-  "cosmosdb.command.migration.remove": "Remove Migration…",
+  "cosmosdb.command.migration.open": "새 마이그레이션…",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB 마이그레이션…",
+  "cosmosdb.command.migration.remove": "마이그레이션 제거…",
   "cosmosdb.configuration.batch.size": "Azure Database 리소스를 쿼리할 때 사용할 일괄 처리 크기입니다.",
   "cosmosdb.configuration.confirmation.style": "리소스 삭제와 같이 실행 취소할 수 없는 작업을 확인할 때 사용할 동작입니다.",
   "cosmosdb.configuration.confirmation.style.button": "단추 클릭 확인",
@@ -67,5 +67,5 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "사용자가 할당한 관리 ID를 사용하여 Entra ID로 인증할 때 사용할 관리 ID의 클라이언트 ID입니다.",
   "cosmosdb.configuration.manage-llm-assets": "LLM 자산을 관리합니다. 확장에서 LLM 관련 파일을 업데이트된 상태로 유지하도록 허용합니다.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "이 기능을 활성화하면 스키마 생성에서 쿼리 결과도 고려하여 컨테이너 스키마를 유추합니다.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(실험적) Migration Assistant UI에 토큰 사용량 예상값을 표시합니다."
 }

@@ -23,7 +23,7 @@ import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosm
 import { QuerySession } from '../../../cosmosdb/session/QuerySession';
 import { withClaimsChallengeHandling } from '../../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../../extensionVariables';
-import { getSchemaIdForConnection, SchemaFileStorage } from '../../../services/SchemaFileStorage';
+import { SchemaFileStorage } from '../../../services/SchemaFileStorage';
 import { StorageNames, StorageService, type StorageItem } from '../../../services/StorageService';
 import { getAvailableModelsInfo, getSelectedModel } from '../../../utils/aiUtils';
 import { queryMetricsToCsv, queryResultToCsv } from '../../../utils/csvConverter';
@@ -781,7 +781,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
                 context.telemetry.properties.limit = effectiveLimit.toString();
 
-                const schemaId = getSchemaIdForConnection(ctx.state.connection);
+                const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
                 const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
                 const limitLabel = input.limit
                     ? l10n.t('TOP {0}', effectiveLimit)
@@ -960,7 +960,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection'));
             }
 
-            const schemaId = getSchemaIdForConnection(ctx.state.connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
             const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
             const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -983,7 +983,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection'));
             }
 
-            const schemaId = getSchemaIdForConnection(ctx.state.connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
             const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
             const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -1143,7 +1143,7 @@ async function mergeQueryResultsIntoSchema(
         return;
     }
 
-    const schemaId = getSchemaIdForConnection(connection);
+    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
     const containerLabel = `${connection.databaseId}/${connection.containerId}`;
     const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -1193,7 +1193,7 @@ async function mergeQueryResultsIntoSchema(
  * Read the stored schema for a connection, or return null if none exists.
  */
 async function readSchemaForConnection(connection: NoSqlQueryConnection): Promise<JSONSchema | null> {
-    const schemaId = getSchemaIdForConnection(connection);
+    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
     const schemaStorage = SchemaFileStorage.getInstance();
     const schemaJson = await schemaStorage.readSchema(schemaId);
     return schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;

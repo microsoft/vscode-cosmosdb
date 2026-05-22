@@ -14,7 +14,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { getSchemaIdForConnection, SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
@@ -887,7 +887,7 @@ export class CosmosDbOperationsService {
         const connection = this.getActiveConnection();
         if (connection) {
             try {
-                const schemaId = getSchemaIdForConnection(connection);
+                const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
                 const stored = await SchemaFileStorage.getInstance().readSchema(schemaId);
                 if (stored) {
                     cachedSchema = stored;

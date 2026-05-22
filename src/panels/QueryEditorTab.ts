@@ -10,7 +10,7 @@ import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
-import { getSchemaIdForConnection, SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
 import { TypedEventSink } from '../utils/TypedEventSink';
 import { BaseTab } from './BaseTab';
@@ -137,7 +137,7 @@ export class QueryEditorTab extends BaseTab {
             return;
         }
 
-        const schemaId = getSchemaIdForConnection(this.state.connection);
+        const schemaId = SchemaFileStorage.getSchemaIdForConnection(this.state.connection);
         const schemaStorage = SchemaFileStorage.getInstance();
         const schemaJson = await schemaStorage.readSchema(schemaId);
 

@@ -16,7 +16,7 @@ import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { getSchemaIdForConnection, SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -143,7 +143,7 @@ export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConn
 
     if (result.documentCount > 0 && isSchemaBasedOnQueries) {
         try {
-            const schemaId = getSchemaIdForConnection(connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
             const containerLabel = `${connection.databaseId}/${connection.containerId}`;
             await SchemaFileStorage.getInstance().saveSchema(
                 schemaId,

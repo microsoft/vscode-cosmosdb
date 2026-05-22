@@ -34,9 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Kopieren von LLM-Anweisungen in den Benutzerprofilordner",
   "cosmosdb.command.ai.remove_instruction_files": "Entfernen von LLM-Anweisungen aus dem Benutzerprofilordner",
   "cosmosdb.command.schema.delete_all": "Alle gespeicherten Schemata löschen",
-  "cosmosdb.command.migration.open": "New Migration…",
-  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
-  "cosmosdb.command.migration.remove": "Remove Migration…",
+  "cosmosdb.command.migration.open": "Neue Migration...",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB-Migration...",
+  "cosmosdb.command.migration.remove": "Migration entfernen…",
   "cosmosdb.configuration.batch.size": "Die Batchgröße, die beim Abfragen von Azure-Datenbankressourcen verwendet werden soll.",
   "cosmosdb.configuration.confirmation.style": "Das Verhalten, das beim Bestätigen von Vorgängen verwendet werden soll, die nicht rückgängig gemacht werden können, z. B. das Löschen von Ressourcen.",
   "cosmosdb.configuration.confirmation.style.button": "Bestätigung per Klicken auf Schaltfläche",
@@ -67,5 +67,5 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Die Client-ID der verwalteten Identität, die bei der Authentifizierung mit Entra ID mithilfe einer benutzerseitig zugewiesenen verwalteten Identität verwendet werden soll.",
   "cosmosdb.configuration.manage-llm-assets": "Verwalten Sie LLM-Ressourcen. Lassen Sie zu, dass die Erweiterung LLM-bezogene Dateien aktualisiert.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Wenn diese Option aktiviert ist, berücksichtigt die Schemagenerierung auch Abfrageergebnisse, um das Containerschema zu ermitteln.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentell) Schätzungen zur Tokennutzung in der Benutzeroberfläche des Migration Assistant anzeigen."
 }

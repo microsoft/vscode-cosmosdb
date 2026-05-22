@@ -34,9 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Копировать инструкции LLM в папку профиля пользователя",
   "cosmosdb.command.ai.remove_instruction_files": "Удалить инструкции LLM из папки профиля пользователя",
   "cosmosdb.command.schema.delete_all": "Удалить все сохраненные схемы",
-  "cosmosdb.command.migration.open": "New Migration…",
-  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
-  "cosmosdb.command.migration.remove": "Remove Migration…",
+  "cosmosdb.command.migration.open": "Новая миграция...",
+  "cosmosdb.command.migration.openExisting": "Миграция Cosmos DB...",
+  "cosmosdb.command.migration.remove": "Удалить миграцию…",
   "cosmosdb.configuration.batch.size": "Размер пакета, который будет использоваться при запросе ресурсов базы данных Azure.",
   "cosmosdb.configuration.confirmation.style": "Поведение при подтверждении необратимых операций, таких как удаление ресурсов.",
   "cosmosdb.configuration.confirmation.style.button": "Подтверждение нажатия кнопки",
@@ -67,5 +67,5 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Идентификатор клиента управляемого удостоверения, используемого для проверки подлинности в Entra ID с помощью управляемого удостоверения, назначаемого пользователем.",
   "cosmosdb.configuration.manage-llm-assets": "Управление ресурсами LLM. Разрешить расширению автоматически обновлять файлы, связанные с LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Если включить эту функцию, при генерировании схемы контейнера для вывода схемы также учитываются результаты запроса.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Экспериментальная функция) Показывать оценки использования токенов в пользовательском интерфейсе помощника по миграции."
 }

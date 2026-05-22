@@ -292,8 +292,12 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
-    public async openCopilotExplainQuery(query?: string): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate({ query }));
+    public async openChatParticipantExplainQuery(query?: string): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantExplainQuery.mutate({ query }));
+    }
+
+    public async openChatParticipantHelp(): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantHelp.mutate());
     }
 
     public async closeGenerateInput(): Promise<void> {

@@ -194,7 +194,7 @@ describe('MonacoCompletionProvider', () => {
 
     it('has trigger characters defined', () => {
         const provider = new MonacoCompletionProvider(monaco, service);
-        expect(provider.triggerCharacters).toEqual(['.', ' ', ',', ';', '\n']);
+        expect(provider.triggerCharacters).toEqual(['.', ' ', ',', '\n']);
     });
 
     it('returns completions for a partial query', () => {

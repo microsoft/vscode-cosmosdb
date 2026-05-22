@@ -3,7 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Combobox, Option, makeStyles, mergeClasses, type OptionOnSelectData } from '@fluentui/react-components';
+import {
+    Button,
+    Combobox,
+    Option,
+    makeStyles,
+    mergeClasses,
+    type OptionOnSelectData,
+} from '@fluentui/react-components';
 import {
     CheckmarkFilled,
     Dismiss12Regular,
@@ -383,11 +390,7 @@ export const GenerateQueryInput = () => {
             style.id = styleId;
             document.head.appendChild(style);
         }
-        style.textContent = [
-            '@keyframes dash-spin {',
-            '  to { stroke-dashoffset: -100; }',
-            '}',
-        ].join('\n');
+        style.textContent = ['@keyframes dash-spin {', '  to { stroke-dashoffset: -100; }', '}'].join('\n');
     }, []);
 
     // Measure container size for SVG border overlay
@@ -527,166 +530,158 @@ export const GenerateQueryInput = () => {
     };
 
     return (
-        <div
-            ref={containerRef}
-            className={mergeClasses(
-                styles.container,
-                isFocused && styles.containerFocused,
-            )}
-        >
-            {isLoading && containerSize && (
-                <ProgressBorder width={containerSize.width} height={containerSize.height} />
-            )}
+        <div ref={containerRef} className={mergeClasses(styles.container, isFocused && styles.containerFocused)}>
+            {isLoading && containerSize && <ProgressBorder width={containerSize.width} height={containerSize.height} />}
             <div className={styles.innerContent}>
-            <Button
-                className={styles.closeButton}
-                icon={<Dismiss12Regular />}
-                onClick={handleClose}
-                title={l10n.t('Close')}
-                aria-label={l10n.t('Close')}
-                appearance="transparent"
-                size="small"
-            />
-            <textarea
-                ref={textareaRef}
-                className={styles.textarea}
-                aria-label={l10n.t('Describe your query in natural language')}
-                placeholder={l10n.t('Describe your query in natural language')}
-                value={input}
-                onChange={(e) => {
-                    const newValue = e.currentTarget.value;
-                    setInput(newValue);
-                    const lines = calculateLineCount(newValue, textareaRef.current);
-                    setLineCount(lines);
-                    // Reset history navigation when user types
-                    promptHistory.resetNavigation();
-                }}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-                rows={1}
-                style={{ height: `${Math.max(1, lineCount) * 17}px` }}
-            />
-            <div className={styles.screenReaderOnly} aria-live="polite" aria-atomic="true">
-                {isLoading ? l10n.t('Generating query...') : ''}
-            </div>
-            {confirmMessage ? (
-                <div className={styles.confirmBanner} role="alertdialog" aria-describedby="confirm-msg">
-                    <span id="confirm-msg" className={styles.confirmMessage}>
-                        {confirmMessage}
-                    </span>
-                    <div className={styles.confirmButtons}>
-                        <Button
-                            className={styles.confirmButton}
-                            icon={<CheckmarkFilled />}
-                            appearance="primary"
-                            size="small"
-                            onClick={() => handleConfirmResponse(true)}
-                            aria-describedby="confirm-msg"
-                        >
-                            {l10n.t('Allow')}
-                        </Button>
-                        <Button
-                            className={styles.confirmButton}
-                            icon={<DismissFilled />}
-                            appearance="subtle"
-                            size="small"
-                            onClick={() => handleConfirmResponse(false)}
-                            aria-describedby="confirm-msg"
-                        >
-                            {l10n.t('Deny')}
-                        </Button>
-                    </div>
+                <Button
+                    className={styles.closeButton}
+                    icon={<Dismiss12Regular />}
+                    onClick={handleClose}
+                    title={l10n.t('Close')}
+                    aria-label={l10n.t('Close')}
+                    appearance="transparent"
+                    size="small"
+                />
+                <textarea
+                    ref={textareaRef}
+                    className={styles.textarea}
+                    aria-label={l10n.t('Describe your query in natural language')}
+                    placeholder={l10n.t('Describe your query in natural language')}
+                    value={input}
+                    onChange={(e) => {
+                        const newValue = e.currentTarget.value;
+                        setInput(newValue);
+                        const lines = calculateLineCount(newValue, textareaRef.current);
+                        setLineCount(lines);
+                        // Reset history navigation when user types
+                        promptHistory.resetNavigation();
+                    }}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isLoading}
+                    rows={1}
+                    style={{ height: `${Math.max(1, lineCount) * 17}px` }}
+                />
+                <div className={styles.screenReaderOnly} aria-live="polite" aria-atomic="true">
+                    {isLoading ? l10n.t('Generating query...') : ''}
                 </div>
-            ) : null}
-            {!confirmMessage && (
-                <div className={styles.footer}>
-                    <div className={styles.modelSection}>
-                        {availableModels.length > 1 ? (
-                            <Combobox
-                                className={styles.modelDropdown}
-                                onOptionSelect={(_event, data) => handleModelChange(data)}
+                {confirmMessage ? (
+                    <div className={styles.confirmBanner} role="alertdialog" aria-describedby="confirm-msg">
+                        <span id="confirm-msg" className={styles.confirmMessage}>
+                            {confirmMessage}
+                        </span>
+                        <div className={styles.confirmButtons}>
+                            <Button
+                                className={styles.confirmButton}
+                                icon={<CheckmarkFilled />}
+                                appearance="primary"
                                 size="small"
-                                appearance="filled-lighter"
-                                value={modelDisplayName}
-                                selectedOptions={selectedModelId ? [selectedModelId] : []}
-                                disabled={isLoading}
-                                freeform={false}
-                                positioning={{ autoSize: false, matchTargetSize: false }}
-                                listbox={{
-                                    style: {
-                                        maxHeight: '280px',
-                                        overflowY: 'auto',
-                                    },
-                                }}
+                                onClick={() => handleConfirmResponse(true)}
+                                aria-describedby="confirm-msg"
                             >
-                                {availableModels.map((model) => (
-                                    <Option
-                                        key={model.id}
-                                        value={model.id}
-                                        style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
-                                    >
-                                        {model.name}
-                                    </Option>
-                                ))}
-                            </Combobox>
-                        ) : (
-                            <div className={styles.modelLabel}>{modelDisplayName}</div>
-                        )}
-                        {state.isSurveyCandidate && (
-                            <div
-                                className={styles.feedbackButtons}
-                                role="group"
-                                aria-label={l10n.t('Rate this response')}
+                                {l10n.t('Allow')}
+                            </Button>
+                            <Button
+                                className={styles.confirmButton}
+                                icon={<DismissFilled />}
+                                appearance="subtle"
+                                size="small"
+                                onClick={() => handleConfirmResponse(false)}
+                                aria-describedby="confirm-msg"
                             >
-                                <Button
-                                    className={styles.feedbackButton}
-                                    icon={
-                                        feedbackGiven === 'up' ? (
-                                            <ThumbLikeFilled fontSize={16} />
-                                        ) : (
-                                            <ThumbLikeRegular fontSize={16} />
-                                        )
-                                    }
-                                    onClick={() => handleFeedback('up')}
-                                    title={l10n.t('Like this response')}
-                                    aria-label={l10n.t('Like this response')}
-                                    appearance="transparent"
-                                    size="small"
-                                    disabled={feedbackGiven !== null}
-                                />
-                                <Button
-                                    className={styles.feedbackButton}
-                                    icon={
-                                        feedbackGiven === 'down' ? (
-                                            <ThumbDislikeFilled fontSize={16} />
-                                        ) : (
-                                            <ThumbDislikeRegular fontSize={16} />
-                                        )
-                                    }
-                                    onClick={() => handleFeedback('down')}
-                                    title={l10n.t('Dislike this response')}
-                                    aria-label={l10n.t('Dislike this response')}
-                                    appearance="transparent"
-                                    size="small"
-                                    disabled={feedbackGiven !== null}
-                                />
-                            </div>
-                        )}
+                                {l10n.t('Deny')}
+                            </Button>
+                        </div>
                     </div>
-                    <Button
-                        className={styles.button}
-                        icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
-                        onClick={isLoading ? handleCancel : () => void handleSend()}
-                        disabled={!isLoading && !input.trim()}
-                        title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                        aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
-                        appearance={isLoading ? 'transparent' : 'primary'}
-                        size="small"
-                    />
-                </div>
-            )}
+                ) : null}
+                {!confirmMessage && (
+                    <div className={styles.footer}>
+                        <div className={styles.modelSection}>
+                            {availableModels.length > 1 ? (
+                                <Combobox
+                                    className={styles.modelDropdown}
+                                    onOptionSelect={(_event, data) => handleModelChange(data)}
+                                    size="small"
+                                    appearance="filled-lighter"
+                                    value={modelDisplayName}
+                                    selectedOptions={selectedModelId ? [selectedModelId] : []}
+                                    disabled={isLoading}
+                                    freeform={false}
+                                    positioning={{ autoSize: false, matchTargetSize: false }}
+                                    listbox={{
+                                        style: {
+                                            maxHeight: '280px',
+                                            overflowY: 'auto',
+                                        },
+                                    }}
+                                >
+                                    {availableModels.map((model) => (
+                                        <Option
+                                            key={model.id}
+                                            value={model.id}
+                                            style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
+                                        >
+                                            {model.name}
+                                        </Option>
+                                    ))}
+                                </Combobox>
+                            ) : (
+                                <div className={styles.modelLabel}>{modelDisplayName}</div>
+                            )}
+                            {state.isSurveyCandidate && (
+                                <div
+                                    className={styles.feedbackButtons}
+                                    role="group"
+                                    aria-label={l10n.t('Rate this response')}
+                                >
+                                    <Button
+                                        className={styles.feedbackButton}
+                                        icon={
+                                            feedbackGiven === 'up' ? (
+                                                <ThumbLikeFilled fontSize={16} />
+                                            ) : (
+                                                <ThumbLikeRegular fontSize={16} />
+                                            )
+                                        }
+                                        onClick={() => handleFeedback('up')}
+                                        title={l10n.t('Like this response')}
+                                        aria-label={l10n.t('Like this response')}
+                                        appearance="transparent"
+                                        size="small"
+                                        disabled={feedbackGiven !== null}
+                                    />
+                                    <Button
+                                        className={styles.feedbackButton}
+                                        icon={
+                                            feedbackGiven === 'down' ? (
+                                                <ThumbDislikeFilled fontSize={16} />
+                                            ) : (
+                                                <ThumbDislikeRegular fontSize={16} />
+                                            )
+                                        }
+                                        onClick={() => handleFeedback('down')}
+                                        title={l10n.t('Dislike this response')}
+                                        aria-label={l10n.t('Dislike this response')}
+                                        appearance="transparent"
+                                        size="small"
+                                        disabled={feedbackGiven !== null}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <Button
+                            className={styles.button}
+                            icon={isLoading ? <RecordStopFilled /> : <SendFilled />}
+                            onClick={isLoading ? handleCancel : () => void handleSend()}
+                            disabled={!isLoading && !input.trim()}
+                            title={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                            aria-label={isLoading ? l10n.t('Cancel generation') : l10n.t('Generate query')}
+                            appearance={isLoading ? 'transparent' : 'primary'}
+                            size="small"
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

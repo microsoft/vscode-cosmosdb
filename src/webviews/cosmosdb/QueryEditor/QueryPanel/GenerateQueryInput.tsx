@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Button, Dropdown, Option, makeStyles, mergeClasses, type OptionOnSelectData } from '@fluentui/react-components';
+import { Button, Combobox, Option, makeStyles, mergeClasses, type OptionOnSelectData } from '@fluentui/react-components';
 import {
     CheckmarkFilled,
     Dismiss12Regular,
@@ -117,6 +117,28 @@ const useStyles = makeStyles({
         minWidth: 'auto',
         backgroundColor: 'transparent',
         border: 'none',
+        overflow: 'visible',
+        '&:focus-within': {
+            outline: '1px solid var(--vscode-focusBorder)',
+            outlineOffset: '0px',
+            borderRadius: '3px',
+        },
+        '& input': {
+            backgroundColor: 'transparent',
+            border: 'none',
+            padding: '0px 4px',
+            minHeight: 'auto',
+            fontSize: '11px',
+            color: 'var(--vscode-descriptionForeground)',
+            cursor: 'pointer',
+            '&:hover': {
+                backgroundColor: 'transparent',
+                color: 'var(--vscode-foreground)',
+            },
+            '&:focus': {
+                outline: 'none',
+            },
+        },
         '& button': {
             backgroundColor: 'transparent',
             border: 'none',
@@ -155,6 +177,9 @@ const useStyles = makeStyles({
         height: '24px',
         flexShrink: 0,
         borderRadius: '6px',
+        '&:disabled': {
+            backgroundColor: 'transparent',
+        },
     },
     closeButton: {
         position: 'absolute',
@@ -579,7 +604,7 @@ export const GenerateQueryInput = () => {
                 <div className={styles.footer}>
                     <div className={styles.modelSection}>
                         {availableModels.length > 1 ? (
-                            <Dropdown
+                            <Combobox
                                 className={styles.modelDropdown}
                                 onOptionSelect={(_event, data) => handleModelChange(data)}
                                 size="small"
@@ -587,6 +612,14 @@ export const GenerateQueryInput = () => {
                                 value={modelDisplayName}
                                 selectedOptions={selectedModelId ? [selectedModelId] : []}
                                 disabled={isLoading}
+                                freeform={false}
+                                positioning={{ autoSize: false, matchTargetSize: false }}
+                                listbox={{
+                                    style: {
+                                        maxHeight: '280px',
+                                        overflowY: 'auto',
+                                    },
+                                }}
                             >
                                 {availableModels.map((model) => (
                                     <Option
@@ -597,7 +630,7 @@ export const GenerateQueryInput = () => {
                                         {model.name}
                                     </Option>
                                 ))}
-                            </Dropdown>
+                            </Combobox>
                         ) : (
                             <div className={styles.modelLabel}>{modelDisplayName}</div>
                         )}

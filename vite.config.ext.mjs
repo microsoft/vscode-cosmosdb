@@ -8,9 +8,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { analyzer } from 'vite-bundle-analyzer';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { bundleReport } from './plugins/vite-plugin-bundle-report.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/** Opt-in HTML bundle report. @see [docs/webview-build.md#plugin-bundle-report](./docs/webview-build.md#plugin-bundle-report) */
+const analyze = !!process.env.BUNDLE_ANALYZE;
 
 /** Node built-ins that must stay external (available natively in Node.js runtime) */
 const NODE_EXTERNALS = new Set([...builtinModules, ...builtinModules.map((m) => `node:${m}`)]);
@@ -62,6 +66,89 @@ export default ({ mode }) => {
                     // CJS interop: bundled CJS packages may call require() at runtime.
                     // Since the output is ESM, require is not defined — inject it via createRequire.
                     banner: `import { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
+                    /**
+                     * Explicit chunk strategy for the extension bundle.
+                     *
+                     * Unlike the webview build there is no browser HTTP cache
+                     * or parallel-loading benefit here — the extension is a
+                     * single ESM entry loaded by Node.js. The only real goal
+                     * is **bundle-report readability**: without this, Rolldown
+                     * names every shared vendor chunk after an arbitrary
+                     * source file (e.g. `src-XXX.mjs`, `Index-XXX.mjs`,
+                     * `esm-XXX.mjs`) so the report tells you nothing about
+                     * what's actually in each file.
+                     *
+                     * **Important constraint — do NOT name chunks for code
+                     * that is shared between the static graph and a dynamic
+                     * import boundary.** Specifically, `@azure/arm-postgresql*`
+                     * SDKs are lazy-loaded from `src/utils/azureClients.ts`,
+                     * and their `@azure/core-*` runtime deps are shared with
+                     * the eagerly-loaded `@azure/cosmos`, `@azure/identity`,
+                     * and `@azure/arm-cosmosdb`. If we force-group the lazy
+                     * SDKs into a named chunk, Rolldown folds the shared
+                     * core code into them, which then becomes a static
+                     * dependency of `main.mjs` and defeats the
+                     * `await import()` lazy boundary.
+                     *
+                     * So we only name **pure-static** vendor groups here and
+                     * let Rolldown's default splitting handle the lazy
+                     * PostgreSQL ARM SDKs (with cryptic-but-correct
+                     * `src-XXX.mjs` names).
+                     *
+                     * @see [docs/webview-build.md#manual-chunks](./docs/webview-build.md#manual-chunks)
+                     */
+                    manualChunks(id) {
+                        // tslib (aliased above to its ESM build) — tiny,
+                        // used by every legacy Azure SDK.
+                        if (id.includes('node_modules/tslib/') || id.endsWith('tslib.es6.mjs')) {
+                            return 'tslib';
+                        }
+
+                        // @azure/cosmos — data-plane SDK. Statically
+                        // imported and used everywhere. Largest single
+                        // static dep.
+                        if (id.includes('node_modules/@azure/cosmos/')) {
+                            return 'azure-cosmos';
+                        }
+
+                        // @azure/arm-cosmosdb — control-plane SDK. Used by
+                        // RBAC, offers, account metadata and migration
+                        // flows, i.e. effectively always; eagerly imported
+                        // from `src/utils/azureClients.ts`. Safe to name
+                        // because there is no longer a lazy boundary that
+                        // shares core deps with it.
+                        if (id.includes('node_modules/@azure/arm-cosmosdb/')) {
+                            return 'azure-arm-cosmosdb';
+                        }
+
+                        // @azure/identity + MSAL — auth stack. Statically
+                        // imported by extension activation.
+                        if (id.includes('node_modules/@azure/identity/') || id.includes('node_modules/@azure/msal-')) {
+                            return 'azure-identity';
+                        }
+
+                        // @microsoft/vscode-azext-* — VS Code Azure Extension
+                        // shared utilities. Always loaded at activation.
+                        if (id.includes('node_modules/@microsoft/vscode-azext-')) {
+                            return 'vscode-azext';
+                        }
+
+                        // NB: deliberately no rule for `@azure/arm-postgresql*`
+                        // or `@azure/core-*`. PostgreSQL ARM SDKs are still
+                        // dynamically imported (`await import()` in
+                        // `azureClients.ts`) and share core deps with the
+                        // eagerly-loaded chunks above; forcing a name here
+                        // breaks the lazy boundary (see header).
+
+                        // App code and remaining node_modules
+                        // (@trpc/*, @vscode/prompt-tsx, vscode-languageclient,
+                        // zod, es-toolkit, semver, @prantlf/jsonlint, ajv,
+                        // @azure/arm-postgresql*, @azure/core-*, …): let
+                        // Rolldown decide. The auto-named chunks that show
+                        // up are the PostgreSQL ARM lazy chunks and their
+                        // shared Azure core deps.
+                        return undefined;
+                    },
                 },
             },
         },
@@ -154,7 +241,9 @@ export default ({ mode }) => {
                     { src: '.vscodeignore', dest: '.' },
                 ],
             }),
+            !isDev && !analyze && bundleReport({ outFile: 'bundle-analysis/extension-report-vite.json' }),
             !isDev &&
+                analyze &&
                 analyzer({
                     analyzerMode: 'static',
                     fileName: path.resolve(__dirname, 'bundle-analysis/extension-report-vite'),

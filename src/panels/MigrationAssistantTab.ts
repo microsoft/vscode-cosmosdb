@@ -31,6 +31,7 @@ import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccou
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { MigrationWorkspaceItem } from '../tree/workspace-view/migration/MigrationWorkspaceItem';
 import { getAvailableModelsInfo } from '../utils/aiUtils';
+import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { sanitizeCosmosDBAccountName } from '../utils/cosmosDBAccountName';
 import { MIGRATION_SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
@@ -1379,7 +1380,6 @@ export class MigrationAssistantTab extends BaseTab {
         const subscription = this.selectedSubscription;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.listLocations', async (context) => {
             setMigrationTelemetryContext(context, this.project);
-            const { createCosmosDBManagementClient } = await import('../utils/azureClients');
             const mgmtClient = await createCosmosDBManagementClient(context, subscription);
             // The Cosmos DB regions API returns the region's display label on `name`
             // (e.g. `East US`) and the canonical short name only as the last segment

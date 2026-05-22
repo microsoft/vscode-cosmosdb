@@ -7,6 +7,7 @@ import {
     Button,
     Combobox,
     Option,
+    createCustomFocusIndicatorStyle,
     makeStyles,
     mergeClasses,
     type OptionOnSelectData,
@@ -119,6 +120,19 @@ const useStyles = makeStyles({
         '&:hover': {
             color: 'var(--vscode-foreground)',
         },
+        ':focus-visible': {
+            outlineStyle: 'none',
+        },
+        ...(createCustomFocusIndicatorStyle(
+            {
+                outline: '1px solid var(--vscode-focusBorder)',
+                outlineOffset: '0px',
+                boxShadow: 'none',
+                borderColor: 'transparent',
+                borderRadius: '3px',
+            },
+            { customizeSelector: (s) => `${s}${s}` },
+        ) as Record<string, unknown>),
     },
     modelDropdown: {
         minWidth: 'auto',
@@ -187,6 +201,19 @@ const useStyles = makeStyles({
         '&:disabled': {
             backgroundColor: 'transparent',
         },
+        ':focus-visible': {
+            outlineStyle: 'none',
+        },
+        ...(createCustomFocusIndicatorStyle(
+            {
+                outline: '1px solid var(--vscode-focusBorder)',
+                outlineOffset: '1px',
+                boxShadow: 'none !important' as never,
+                borderColor: 'transparent',
+                borderRadius: '6px',
+            },
+            { customizeSelector: (s) => `${s}${s}${s}` },
+        ) as Record<string, unknown>),
     },
     closeButton: {
         position: 'absolute',
@@ -204,6 +231,19 @@ const useStyles = makeStyles({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        ':focus-visible': {
+            outlineStyle: 'none',
+        },
+        ...(createCustomFocusIndicatorStyle(
+            {
+                outline: '1px solid var(--vscode-focusBorder)',
+                outlineOffset: '0px',
+                boxShadow: 'none',
+                borderColor: 'transparent',
+                borderRadius: '3px',
+            },
+            { customizeSelector: (s) => `${s}${s}` },
+        ) as Record<string, unknown>),
     },
     confirmBanner: {
         display: 'flex',

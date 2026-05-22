@@ -819,7 +819,9 @@ You can also use natural language:
 
                     stream.markdown(l10n.t('⚠️ **No Cosmos DB connection found.**') + '\n\n');
                     stream.markdown(
-                        l10n.t('Please connect to a Cosmos DB container to use the chat assistant.') + '\n\n',
+                        l10n.t(
+                            'To use the chat assistant, open a Query Editor on a container, either from the tree view or by clicking Open Query Editor below.',
+                        ) + '\n\n',
                     );
 
                     // Add a button to open the query editor which will prompt for connection

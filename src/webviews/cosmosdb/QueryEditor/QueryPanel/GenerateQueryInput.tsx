@@ -601,6 +601,7 @@ export const GenerateQueryInput = () => {
                             {availableModels.length > 1 ? (
                                 <Combobox
                                     className={styles.modelDropdown}
+                                    style={{ width: `${modelDisplayName.length * 0.8}ch` }}
                                     onOptionSelect={(_event, data) => handleModelChange(data)}
                                     size="small"
                                     appearance="filled-lighter"

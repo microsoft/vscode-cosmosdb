@@ -517,6 +517,24 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
                 mkDebug('step1-analysis'),
             );
 
+            // The prompt instructs the model to emit JSON `null` for any field it
+            // cannot confidently fill (insufficient evidence, not applicable, or
+            // genuinely empty). Downstream code and the `AnalysisResult` type expect
+            // `string | undefined` (and `string[] | undefined` for `frameworks`),
+            // so normalize `null` → `undefined` at this boundary.
+            for (const key of [
+                'projectName',
+                'projectType',
+                'language',
+                'frameworks',
+                'databaseType',
+                'databaseAccess',
+            ] as const) {
+                if (analysis[key] === null) {
+                    (analysis as Record<string, unknown>)[key] = undefined;
+                }
+            }
+
             ext.outputChannel.debug(
                 `[Discovery] Application analysis completed in ${Date.now() - analysisStartTime}ms: ` +
                     `language=${analysis.language ?? 'unknown'}, ` +

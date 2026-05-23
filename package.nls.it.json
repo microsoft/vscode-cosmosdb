@@ -34,9 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Copia istruzioni LLM nella cartella del profilo utente",
   "cosmosdb.command.ai.remove_instruction_files": "Rimuovi istruzioni LLM dalla cartella del profilo utente",
   "cosmosdb.command.schema.delete_all": "Elimina tutti gli schemi salvati",
-  "cosmosdb.command.migration.open": "New Migration…",
-  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
-  "cosmosdb.command.migration.remove": "Remove Migration…",
+  "cosmosdb.command.migration.open": "Nuova migrazione…",
+  "cosmosdb.command.migration.openExisting": "Migrazione di Cosmos DB…",
+  "cosmosdb.command.migration.remove": "Rimuovi migrazione…",
   "cosmosdb.configuration.batch.size": "Dimensioni del batch da usare per l'esecuzione di query sulle risorse del database di Azure.",
   "cosmosdb.configuration.confirmation.style": "Comportamento da usare quando si confermano operazioni che non possono essere annullate, ad esempio l'eliminazione di risorse.",
   "cosmosdb.configuration.confirmation.style.button": "Conferma clic pulsante",
@@ -67,5 +67,5 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ID client dell'identità gestita da usare quando si esegue l'autenticazione con Entra ID usando un'identità gestita assegnata dall'utente.",
   "cosmosdb.configuration.manage-llm-assets": "Gestire gli asset LLM. Consentire l'estensione per mantenere aggiornati i file correlati a LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Se abilitata, la generazione dello schema considera anche i risultati delle query per dedurre lo schema del contenitore.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Sperimentale) Mostrare le stime di utilizzo dei token nell'interfaccia utente di Migration Assistant."
 }

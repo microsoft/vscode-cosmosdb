@@ -49,9 +49,15 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        // Update history
+        // Validate and clean the query — may show confirmation dialogs for ambiguous
+        // or syntactically invalid queries. Returns undefined when user cancels.
+        const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
+        if (!prepared?.cleanQuery) return;
+        const cleanQuery = prepared.cleanQuery;
+
+        // Update history with the clean query
         const historyResult = await this.safeMutate(() =>
-            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query }),
+            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery }),
         );
         if (historyResult?.queryHistory) {
             this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
@@ -60,7 +66,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         // Step 1: Create the session — this returns the executionId immediately
         const session = await this.safeMutate(() =>
             this.trpcClient.queryEditor.createQuerySession.mutate({
-                query,
+                query: cleanQuery,
                 options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
             }),
         );

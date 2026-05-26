@@ -692,32 +692,37 @@ export const queryEditorRouterDef = queryEditorRouter({
     }),
 
     setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input }) => {
-        await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
-
-        // Fire-and-forget: separate telemetry event for model selection
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', (telCtx) => {
+        return await callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
             telCtx.errorHandling.suppressDisplay = true;
             telCtx.telemetry.properties.modelId = input.modelId;
-        });
 
-        const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
-        return { modelName: selectedModel?.name ?? 'Copilot' };
+            await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
+
+            const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
+            return { modelName: selectedModel?.name ?? 'Copilot' };
+        });
     }),
 
-    openCopilotExplainQuery: queryEditorProcedure
+    openChatParticipantExplainQuery: queryEditorProcedure
         .input(z.object({ query: z.string().optional() }).optional())
         .mutation(async ({ input }) => {
-            // Fire-and-forget: separate telemetry event
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
+            await callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', async (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
-            });
 
-            const query = input?.query?.trim();
-            const chatQuery = query
-                ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
-                : '@cosmosdb /explainQuery';
-            await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
+                const query = input?.query?.trim();
+                const chatQuery = query
+                    ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
+                    : '@cosmosdb /explainQuery';
+                await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
+            });
         }),
+
+    openChatParticipantHelp: queryEditorProcedure.mutation(async () => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.ai.helpFromButton', async (telCtx) => {
+            telCtx.errorHandling.suppressDisplay = true;
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@cosmosdb /help' });
+        });
+    }),
 
     saveCSV: queryEditorProcedure
         .input(

@@ -707,36 +707,26 @@ export class CosmosDbOperationsService {
             additionalContext,
         );
 
-        // Build context header for better user understanding
+        // Build context section
         let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
         if (connection) {
             queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
             queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
         }
         if (resultContext.documentCount !== undefined) {
-            queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
+            queryContext += l10n.t('**Last Results:** {0} documents returned', resultContext.documentCount) + '\n';
             if (resultContext.requestCharge) {
-                queryContext += l10n.t(', {0} RUs consumed', resultContext.requestCharge.toFixed(2));
-            }
-            queryContext += '\n';
-
-            // Include simplified schema for user reference
-            if (resultContext.schema) {
-                queryContext +=
-                    l10n.t(
-                        '**Inferred Schema:** {0}',
-                        JSON.stringify(this.simplifySchemaForLLM(resultContext.schema)),
-                    ) + '\n';
+                queryContext += l10n.t('**Request Charge:** {0} RUs', resultContext.requestCharge.toFixed(2)) + '\n';
             }
         }
-        queryContext += `\n`;
+        queryContext += '\n';
 
         return (
             `${queryContext}` +
             l10n.t('**Query:**') +
             `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
-            l10n.t('**Explanation:**') +
-            `\n${explanation}`
+            `${explanation}` +
+            '\n\n'
         );
     }
 

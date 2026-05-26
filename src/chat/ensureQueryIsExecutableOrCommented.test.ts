@@ -69,10 +69,10 @@ describe('ensureQueryIsExecutableOrCommented', () => {
     it('should comment out a multi-line non-query response', () => {
         const input = 'I cannot generate this query.\nPlease try again.';
         const result = ensureQueryIsExecutableOrCommented(input);
-        for (const line of result.split('\n')) {
-            if (line.trim()) {
-                expect(line.trim().startsWith('--')).toBe(true);
-            }
+        const nonEmptyLines = result.split('\n').filter((line) => line.trim());
+        expect(nonEmptyLines.length).toBeGreaterThan(0);
+        for (const line of nonEmptyLines) {
+            expect(line.trim().startsWith('--')).toBe(true);
         }
     });
 

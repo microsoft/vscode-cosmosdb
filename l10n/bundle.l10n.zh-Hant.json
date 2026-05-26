@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[產生查詢] 工具結果: (非結構描述工具)",
   "[Generate Query] Tool result: (schema)": "[產生查詢] 工具結果: (結構描述)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[產生查詢] 工具結果: 具有 {0} 個頂層欄位 {1} 的結構描述",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[取樣結構描述工具] 無法取樣資料: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[取樣結構描述工具] 沒有有效的 Cosmos DB 連線。",
   "[Sample Schema Tool] Operation cancelled by user.": "[取樣結構描述工具] 使用者已取消作業。",

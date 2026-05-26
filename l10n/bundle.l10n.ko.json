@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[쿼리 생성] 도구 결과: (비스키마 도구)",
   "[Generate Query] Tool result: (schema)": "[쿼리 생성] 도구 결과: (스키마)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[쿼리 생성] 도구 결과: 최상위 필드가 {0}개인 스키마{1}",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[샘플 시카미 도구] 데이터 샘플링 실패: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[샘플 스키마 도구] 활성 Cosmos DB 연결이 없습니다.",
   "[Sample Schema Tool] Operation cancelled by user.": "[샘플 스키마 도구] 사용자가 작업을 취소했습니다.",

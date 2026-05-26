@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[الهاتف[Generate Query] Tool result: (non-schema tool)עִבְרִית عليكעִבְרִית!]",
   "[Generate Query] Tool result: (schema)": "[الهاتف[Generate Query] Tool result: (schema)עִבְרִית عليكעִבְ!]",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[الهاتف[Generate Query] Tool result: schema with {0} top-level fields{1}עִבְרִית عليكעִבְרִית عليكעִ!]",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[الهاتف[Sample Schema Tool] Failed to persist schema: {0}עִבְרִית عليكעִבְרִית !]",
   "[Sample Schema Tool] Failed to sample data: {0}": "[الهاتف[Sample Schema Tool] Failed to sample data: {0}עִבְרִית عليكעִבְרִית!]",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[الهاتف[Sample Schema Tool] No active Cosmos DB connection.עִבְרִית عليكעִבְרִית ع!]",
   "[Sample Schema Tool] Operation cancelled by user.": "[الهاتف[Sample Schema Tool] Operation cancelled by user.עִבְרִית عليكעִבְרִית !]",

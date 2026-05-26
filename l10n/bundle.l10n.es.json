@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[Generar consulta] Resultado de la herramienta: (herramienta que no es de esquema)",
   "[Generate Query] Tool result: (schema)": "[Generar consulta] Resultado de la herramienta: (esquema)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[Generar consulta] Resultado de la herramienta: esquema con {0} campos de nivel superior{1}",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[Herramienta esquema de ejemplo] No se pudieron muestrear los datos: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[Herramienta esquema de ejemplo] No hay ninguna conexión de Cosmos DB activa.",
   "[Sample Schema Tool] Operation cancelled by user.": "[Herramienta esquema de ejemplo] Operación cancelada por el usuario.",

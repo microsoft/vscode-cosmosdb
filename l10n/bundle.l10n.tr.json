@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[Sorgu Oluştur] Araç sonucu: (şema dışı araç)",
   "[Generate Query] Tool result: (schema)": "[Sorgu Oluştur] Araç sonucu: (şema)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[Sorgu Oluştur] Araç sonucu: {0} üst düzey alana sahip şema{1}",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[Örnek Şema Aracı] Veriler örneklenemedi: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[Örnek Şema Aracı] Etkin bir Cosmos DB bağlantısı yok.",
   "[Sample Schema Tool] Operation cancelled by user.": "[Örnek Şema Aracı] İşlem kullanıcı tarafından iptal edildi.",

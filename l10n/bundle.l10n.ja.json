@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[クエリの生成] ツールの結果: (非スキーマ ツール)",
   "[Generate Query] Tool result: (schema)": "[クエリの生成] ツールの結果: (スキーマ)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[クエリの生成] ツールの結果: {0} トップレベル フィールドを含むスキーマ{1}",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[サンプル スキーマ ツール] データをサンプリングできませんでした: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[サンプル スキーマ ツール] アクティブな Cosmos DB 接続がありません。",
   "[Sample Schema Tool] Operation cancelled by user.": "[サンプル スキーマ ツール] 操作がユーザーによって取り消されました。",

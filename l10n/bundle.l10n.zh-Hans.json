@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[生成查询] 工具结果: (非架构工具)",
   "[Generate Query] Tool result: (schema)": "[生成查询] 工具结果: (架构)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[生成查询] 工具结果: 具有 {0} 个顶级字段 {1} 的架构",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[示例架构工具] 未能采样数据: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[示例架构工具] 没有活动的 Cosmos DB 连接。",
   "[Sample Schema Tool] Operation cancelled by user.": "[示例架构工具] 用户已取消操作。",

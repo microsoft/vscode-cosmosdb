@@ -25,6 +25,7 @@
   "[Generate Query] Tool result: (non-schema tool)": "[Vygenerovat dotaz] Výsledek nástroje: (nástroj bez schématu)",
   "[Generate Query] Tool result: (schema)": "[Vygenerovat dotaz] Výsledek nástroje: (schéma)",
   "[Generate Query] Tool result: schema with {0} top-level fields{1}": "[Vygenerovat dotaz] Výsledek nástroje: schéma s(e) {0} poli nejvyšší úrovně{1}",
+  "[Sample Schema Tool] Failed to persist schema: {0}": "[Sample Schema Tool] Failed to persist schema: {0}",
   "[Sample Schema Tool] Failed to sample data: {0}": "[Ukázkový nástroj schématu] Vzorkování dat se nezdařilo: {0}",
   "[Sample Schema Tool] No active Cosmos DB connection.": "[Ukázkový nástroj schématu] Žádné aktivní připojení Cosmos DB.",
   "[Sample Schema Tool] Operation cancelled by user.": "[Ukázkový nástroj schématu] Operace byla zrušena uživatelem.",

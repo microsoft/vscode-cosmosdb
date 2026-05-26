@@ -67,6 +67,17 @@ export interface QueryHistoryContext {
     executions: QueryExecutionEntry[];
 }
 
+/**
+ * Error thrown when the LLM explicitly refuses to generate a query
+ * (e.g. the request is not query-related, or asks for unsupported operations).
+ */
+export class QueryGenerationRefusedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'QueryGenerationRefusedError';
+    }
+}
+
 export interface EditQueryResult {
     type: 'editQuery';
     currentQuery?: string;
@@ -637,24 +648,32 @@ export class CosmosDbOperationsService {
         additionalContext?: string,
         source?: string,
         operation?: string,
-    ): Promise<EditQueryResult> {
+    ): Promise<EditQueryResult | string> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
-        const llmSuggestion = await this.generateQueryWithLLM(
-            userPrompt,
-            sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
-            {
-                historyContext,
-                withExplanation: true,
-                onProgress,
-                onConfirm,
-                additionalContext,
-                source,
-                operation,
-            },
-        );
+        let llmSuggestion: { query: string; explanation: string };
+        try {
+            llmSuggestion = await this.generateQueryWithLLM(
+                userPrompt,
+                sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
+                {
+                    historyContext,
+                    withExplanation: true,
+                    onProgress,
+                    onConfirm,
+                    additionalContext,
+                    source,
+                    operation,
+                },
+            );
+        } catch (error) {
+            if (error instanceof QueryGenerationRefusedError) {
+                return l10n.t('❌ Could not generate query: {0}', error.message);
+            }
+            throw error;
+        }
         const suggestion = llmSuggestion.query;
         const llmExplanation = llmSuggestion.explanation;
 
@@ -1221,7 +1240,18 @@ export class CosmosDbOperationsService {
                 });
                 throw new Error(l10n.t('Invalid LLM response: could not parse JSON payload'));
             }
-            const result = JSON.parse(jsonText) as { query: string; explanation: string; comments?: string };
+            const result = JSON.parse(jsonText) as {
+                query: string;
+                explanation: string;
+                comments?: string;
+                error?: string;
+            };
+
+            // If the LLM explicitly signaled an error, throw immediately
+            if (result.error) {
+                throw new QueryGenerationRefusedError(result.error);
+            }
+
             if (!result.query || typeof result.query !== 'string') {
                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
                     ctx.errorHandling.suppressDisplay = true;
@@ -1241,10 +1271,38 @@ export class CosmosDbOperationsService {
             };
         }
 
+        // Plain text path: check if the LLM signaled an error
+        const cleanedResponse = this.cleanupQueryResponse(responseText);
+        if (cleanedResponse.startsWith('ERROR:')) {
+            throw new QueryGenerationRefusedError(cleanedResponse.slice('ERROR:'.length).trim());
+        }
+
         const schemaSamplingComment = schemaSamplingExecuted
             ? `-- ${l10n.t('Schema sampling tool was executed. Cost: {0} RUs', schemaSamplingRUs.toFixed(2))}\n`
             : '';
-        return schemaSamplingComment + this.ensureQueryIsExecutableOrCommented(this.cleanupQueryResponse(responseText));
+        return schemaSamplingComment + this.ensureQueryIsExecutableOrCommented(cleanedResponse);
+    }
+
+    /**
+     * Checks whether the given text looks like an executable Cosmos DB NoSQL query.
+     * Returns true if at least one non-comment line starts with a known SQL keyword (SELECT, WITH).
+     * Returns false for empty strings, fully commented text, plain text, or "N/A"-style responses.
+     */
+    private static isExecutableQuery(query: string): boolean {
+        const trimmed = query.trim();
+        if (!trimmed) {
+            return false;
+        }
+
+        const nonCommentLines = trimmed
+            .split('\n')
+            .filter((line) => line.trim() !== '' && !line.trim().startsWith('--'));
+        if (nonCommentLines.length === 0) {
+            return false;
+        }
+
+        const sqlKeywords = /^\s*(SELECT|WITH)\b/i;
+        return nonCommentLines.some((line) => sqlKeywords.test(line));
     }
 
     /**
@@ -1253,24 +1311,12 @@ export class CosmosDbOperationsService {
      * it is converted to a SQL comment so it cannot cause execution errors.
      */
     private ensureQueryIsExecutableOrCommented(query: string): string {
-        const trimmed = query.trim();
-
-        // Already empty or already fully commented — leave as-is
-        if (!trimmed || trimmed.split('\n').every((line) => line.trim() === '' || line.trim().startsWith('--'))) {
-            return query;
-        }
-
-        // Check if any non-comment line starts with a known SQL keyword (case-insensitive)
-        const sqlKeywords = /^\s*(SELECT|WITH)\b/i;
-        const nonCommentLines = trimmed.split('\n').filter((line) => !line.trim().startsWith('--'));
-        const looksLikeQuery = nonCommentLines.some((line) => sqlKeywords.test(line));
-
-        if (looksLikeQuery) {
+        if (!query.trim() || CosmosDbOperationsService.isExecutableQuery(query)) {
             return query;
         }
 
         // Not a valid query — comment it out
-        return commentOutQuery(trimmed);
+        return commentOutQuery(query.trim());
     }
 
     /**

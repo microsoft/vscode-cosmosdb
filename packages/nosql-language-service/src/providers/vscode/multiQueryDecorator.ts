@@ -10,21 +10,26 @@ import { LANGUAGE_ID } from '../shared.js';
 import { type TimerId, type VSCodeNamespace } from './types.js';
 
 export class VSCodeMultiQueryDecorator implements Disposable {
+    private readonly vscode: VSCodeNamespace;
     private readonly service: SqlLanguageService;
     private readonly languageId: string;
     private readonly delay: number;
+    private readonly highlightActiveBlock: boolean;
     private readonly disposables: Disposable[] = [];
     private readonly separatorDecorationType: vscodeApi.TextEditorDecorationType;
+    private readonly activeBlockDecorationType: vscodeApi.TextEditorDecorationType;
     private timer: TimerId | undefined;
 
     constructor(
         vscode: VSCodeNamespace,
         service: SqlLanguageService,
-        options: { languageId?: string; decorationDelay?: number } = {},
+        options: { languageId?: string; decorationDelay?: number; highlightActiveBlock?: boolean } = {},
     ) {
+        this.vscode = vscode;
         this.service = service;
         this.languageId = options.languageId ?? LANGUAGE_ID;
         this.delay = options.decorationDelay ?? 300;
+        this.highlightActiveBlock = options.highlightActiveBlock ?? true;
 
         this.separatorDecorationType = vscode.window.createTextEditorDecorationType({
             isWholeLine: true,
@@ -38,9 +43,26 @@ export class VSCodeMultiQueryDecorator implements Disposable {
             },
         });
 
+        this.activeBlockDecorationType = vscode.window.createTextEditorDecorationType({
+            // `before` pseudo-element with a fixed `width` reserves a stable
+            // 3px slot before each line's text. The bar color is set
+            // per-instance (see `updateActiveBlockDecoration`) so non-active
+            // lines keep the reserved space without painting a visible bar —
+            // text never shifts when the active block moves.
+            before: {
+                contentText: '\u00A0',
+                color: 'transparent',
+                width: '3px',
+                margin: '0 4px 0 0',
+            },
+        });
+
         const updateIfMatches = (editor: vscodeApi.TextEditor | undefined) => {
             if (editor && editor.document.languageId === this.languageId) {
                 this.updateDecorations(editor);
+                if (this.highlightActiveBlock) {
+                    this.updateActiveBlockDecoration(editor);
+                }
             }
         };
 
@@ -62,6 +84,16 @@ export class VSCodeMultiQueryDecorator implements Disposable {
                 this.scheduleUpdate(editor);
             }),
         );
+
+        if (this.highlightActiveBlock) {
+            this.disposables.push(
+                vscode.window.onDidChangeTextEditorSelection((event) => {
+                    const editor = event.textEditor;
+                    if (editor.document.languageId !== this.languageId) return;
+                    this.updateActiveBlockDecoration(editor);
+                }),
+            );
+        }
 
         updateIfMatches(vscode.window.activeTextEditor);
     }
@@ -85,12 +117,66 @@ export class VSCodeMultiQueryDecorator implements Disposable {
         editor.setDecorations(this.separatorDecorationType, ranges);
     }
 
+    private updateActiveBlockDecoration(editor: vscodeApi.TextEditor): void {
+        const text = editor.document.getText();
+        const doc = this.service.parseDocument(text);
+
+        // Single-query documents stay untouched — no reserved gutter slot.
+        const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
+        if (nonEmpty.length <= 1) {
+            editor.setDecorations(this.activeBlockDecorationType, []);
+            return;
+        }
+
+        // Resolve the active block's line range, if any.
+        let activeStartLine = -1;
+        let activeEndLine = -1;
+        const cursorOffset = editor.document.offsetAt(editor.selection.active);
+        const region = this.service.getActiveRegion(text, cursorOffset);
+        if (region && region.text.trim().length > 0) {
+            // Trim whitespace: a region's startOffset sits right after the
+            // previous `;`, so without trimming the bar would extend back onto
+            // the previous query's line.
+            const regionText = region.text;
+            let leading = 0;
+            while (leading < regionText.length && /\s/.test(regionText[leading])) leading++;
+            let trailing = regionText.length;
+            while (trailing > leading && /\s/.test(regionText[trailing - 1])) trailing--;
+            const contentStart = region.startOffset + leading;
+            const contentEnd = region.startOffset + trailing;
+            if (contentEnd > contentStart) {
+                activeStartLine = editor.document.positionAt(contentStart).line;
+                activeEndLine = editor.document.positionAt(contentEnd - 1).line;
+            }
+        }
+
+        // Decorate every line to keep the reserved slot stable; only active
+        // lines override `backgroundColor` to paint the visible bar.
+        const activeColor = 'var(--vscode-focusBorder, #007fd4)';
+        const totalLines = editor.document.lineCount;
+        const decorations: vscodeApi.DecorationOptions[] = [];
+        for (let line = 0; line < totalLines; line++) {
+            const range = new this.vscode.Range(line, 0, line, 0);
+            if (line >= activeStartLine && line <= activeEndLine) {
+                decorations.push({
+                    range,
+                    renderOptions: { before: { backgroundColor: activeColor } },
+                });
+            } else {
+                decorations.push({ range });
+            }
+        }
+
+        editor.setDecorations(this.activeBlockDecorationType, decorations);
+    }
+
     dispose(): void {
         if (this.timer) {
             clearTimeout(this.timer);
             this.timer = undefined;
         }
         this.separatorDecorationType.dispose();
+        this.activeBlockDecorationType.dispose();
         for (const d of this.disposables) d.dispose();
         this.disposables.length = 0;
     }

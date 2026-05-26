@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
+import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 
@@ -35,6 +36,21 @@ export class SchemaFileStorage {
             SchemaFileStorage.instance = new SchemaFileStorage();
         }
         return SchemaFileStorage.instance;
+    }
+
+    /**
+     * Computes the schemaId for a Cosmos DB container.
+     * Stable hash of `endpoint/databaseId/containerId` so the same container always
+     * maps to the same id regardless of which code path (toolbar, NL2Query, etc.)
+     * saves or reads the schema.
+     */
+    public static getSchemaIdForConnection(connection: {
+        endpoint: string;
+        databaseId: string;
+        containerId: string;
+    }): string {
+        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
+        return crypto.createHash('sha256').update(raw).digest('hex');
     }
 
     /**

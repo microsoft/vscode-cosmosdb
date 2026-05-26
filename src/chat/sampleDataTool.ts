@@ -3,8 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import { getSchemaFromDocument, type NoSQLDocument, updateSchemaWithDocument } from '@cosmosdb/schema-analyzer/json';
+import {
+    getSchemaFromDocument,
+    simplifySchema,
+    updateSchemaWithDocument,
+    type NoSQLDocument,
+} from '@cosmosdb/schema-analyzer/json';
 import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -12,6 +16,7 @@ import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -67,6 +72,8 @@ export interface SampleSchemaResult {
 
 /**
  * Executes the sample query against the given connection and returns the inferred schema.
+ * Returns the simplified JSONSchema (matching the format used by the toolbar's
+ * "Generate schema" feature) so that both code paths can share `SchemaFileStorage`.
  */
 export async function sampleContainerSchema(connection: NoSqlQueryConnection): Promise<SampleSchemaResult> {
     const client = getCosmosClient(connection);
@@ -98,75 +105,66 @@ export async function sampleContainerSchema(connection: NoSqlQueryConnection): P
         updateSchemaWithDocument(schema, doc as NoSQLDocument);
     }
 
+    simplifySchema(schema);
+
     return {
         databaseId: connection.databaseId,
         containerId: connection.containerId,
         sampleQuery: SAMPLE_QUERY,
         documentCount: documents.length,
-        schema: simplifySchemaForTool(schema),
+        schema: schema as Record<string, unknown>,
         requestCharge: response.requestCharge,
     };
 }
 
 /**
- * Simplifies the schema for LLM context by extracting only essential type information.
- * Produces a compact representation: { propertyName: "type" | { nested } | ["type"] }
+ * Gets the active query editor tab, if available.
  */
-function simplifySchemaForTool(schema: JSONSchema): Record<string, unknown> {
-    const simplified: Record<string, unknown> = {};
-
-    if (!schema.properties || typeof schema.properties !== 'object') {
-        return simplified;
-    }
-
-    for (const [key, value] of Object.entries(schema.properties as Record<string, JSONSchema>)) {
-        const anyOfEntries = value.anyOf as JSONSchema[] | undefined;
-
-        if (anyOfEntries && anyOfEntries.length > 0) {
-            // Check if any entry is an object type with nested properties
-            const objectEntry = anyOfEntries.find((entry) => entry.type === 'object' && entry.properties);
-            if (objectEntry) {
-                simplified[key] = simplifySchemaForTool(objectEntry);
-                continue;
-            }
-
-            // Check if any entry is an array type
-            const arrayEntry = anyOfEntries.find((entry) => entry.type === 'array');
-            if (arrayEntry && arrayEntry.items) {
-                const itemsSchema = arrayEntry.items as JSONSchema;
-                const itemAnyOf = itemsSchema.anyOf as JSONSchema[] | undefined;
-                if (itemAnyOf && itemAnyOf.length > 0) {
-                    const itemObjectEntry = itemAnyOf.find((e) => e.type === 'object' && e.properties);
-                    if (itemObjectEntry) {
-                        simplified[key] = [simplifySchemaForTool(itemObjectEntry)];
-                    } else {
-                        simplified[key] = [itemAnyOf.map((e) => e.type).join('|')];
-                    }
-                } else {
-                    simplified[key] = ['unknown'];
-                }
-                continue;
-            }
-
-            // Simple type(s)
-            const types = anyOfEntries.map((entry) => entry.type).filter(Boolean);
-            simplified[key] = types.length === 1 ? types[0] : types.join('|');
-        }
-    }
-
-    return simplified;
-}
-
-/**
- * Gets the active connection from the query editor, if available.
- */
-function getActiveConnection(): NoSqlQueryConnection | undefined {
+function getActiveTab(): QueryEditorTab | undefined {
     const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
     if (activeQueryEditors.length === 0) {
         return undefined;
     }
-    const activeEditor = getActiveQueryEditor(activeQueryEditors);
-    return getConnectionFromQueryTab(activeEditor);
+    return getActiveQueryEditor(activeQueryEditors);
+}
+
+/**
+ * Samples the container schema and persists it to SchemaFileStorage.
+ * Also refreshes Monaco autocomplete in the active editor if available.
+ * This is the shared core logic used by both the registered tool and
+ * direct callers (e.g. CosmosDbOperationsService).
+ */
+export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConnection): Promise<SampleSchemaResult> {
+    const result = await sampleContainerSchema(connection);
+
+    const isSchemaBasedOnQueries = vscode.workspace
+        .getConfiguration('cosmosDB.queryEditor')
+        .get<boolean>('generateSchemaBasedOnQueries', false);
+
+    if (result.documentCount > 0 && isSchemaBasedOnQueries) {
+        try {
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
+            const containerLabel = `${connection.databaseId}/${connection.containerId}`;
+            await SchemaFileStorage.getInstance().saveSchema(
+                schemaId,
+                containerLabel,
+                JSON.stringify(result.schema),
+                new Date().toISOString(),
+                result.documentCount.toString(),
+            );
+            // Refresh Monaco autocomplete in the active editor.
+            const tab = getActiveTab();
+            if (tab) {
+                await tab.sendSchemaToWebview();
+            }
+        } catch (saveError) {
+            ext.outputChannel.warn(
+                l10n.t('[Sample Schema Tool] Failed to persist schema: {0}', parseError(saveError).message),
+            );
+        }
+    }
+
+    return result;
 }
 
 /**
@@ -191,7 +189,8 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
             token: vscode.CancellationToken,
         ): Promise<vscode.LanguageModelToolResult> {
-            const connection = getActiveConnection();
+            const tab = getActiveTab();
+            const connection = tab ? getConnectionFromQueryTab(tab) : undefined;
             if (!connection) {
                 ext.outputChannel.warn(l10n.t('[Sample Schema Tool] No active Cosmos DB connection.'));
                 return new vscode.LanguageModelToolResult([
@@ -211,7 +210,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
             }
 
             try {
-                const result = await sampleContainerSchema(connection);
+                const result = await sampleAndPersistContainerSchema(connection);
                 ext.outputChannel.info(
                     l10n.t(
                         '[Sample Schema Tool] Sampled {0} documents from {1}/{2}, cost: {3} RUs',
@@ -221,6 +220,7 @@ export function registerSampleDataTool(context: vscode.ExtensionContext): void {
                         (result.requestCharge ?? 0).toFixed(2),
                     ),
                 );
+
                 return new vscode.LanguageModelToolResult([
                     new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2)),
                 ]);

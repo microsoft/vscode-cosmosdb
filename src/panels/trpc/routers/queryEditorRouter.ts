@@ -781,7 +781,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
                 context.telemetry.properties.limit = effectiveLimit.toString();
 
-                const schemaId = getSchemaStorageId(ctx.state.connection);
+                const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
                 const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
                 const limitLabel = input.limit
                     ? l10n.t('TOP {0}', effectiveLimit)
@@ -960,7 +960,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection'));
             }
 
-            const schemaId = getSchemaStorageId(ctx.state.connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
             const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
             const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -983,7 +983,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection'));
             }
 
-            const schemaId = getSchemaStorageId(ctx.state.connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
             const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
             const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -1143,7 +1143,7 @@ async function mergeQueryResultsIntoSchema(
         return;
     }
 
-    const schemaId = getSchemaStorageId(connection);
+    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
     const containerLabel = `${connection.databaseId}/${connection.containerId}`;
     const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -1190,18 +1190,10 @@ async function mergeQueryResultsIntoSchema(
 }
 
 /**
- * Get the schema storage ID for a given connection.
- */
-function getSchemaStorageId(connection: NoSqlQueryConnection): string {
-    const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
-    return crypto.createHash('sha256').update(raw).digest('hex');
-}
-
-/**
  * Read the stored schema for a connection, or return null if none exists.
  */
 async function readSchemaForConnection(connection: NoSqlQueryConnection): Promise<JSONSchema | null> {
-    const schemaId = getSchemaStorageId(connection);
+    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
     const schemaStorage = SchemaFileStorage.getInstance();
     const schemaJson = await schemaStorage.readSchema(schemaId);
     return schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;

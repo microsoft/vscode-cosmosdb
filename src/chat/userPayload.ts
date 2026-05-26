@@ -89,6 +89,8 @@ export interface QueryGenerationPayload {
     readonly languageReference?: string;
     /** Additional context from chat references (files, selections, etc.) */
     readonly additionalContext?: string;
+    /** Pre-cached container schema from SchemaFileStorage (already JSON-stringified). */
+    readonly cachedSchema?: string;
 }
 
 /**
@@ -215,6 +217,10 @@ export function buildQueryGenerationUserContent(payload: QueryGenerationPayload)
     }
 
     const formattedHistory = payload.historyContext ? formatQueryHistoryContext(payload.historyContext) : '';
+
+    if (payload.cachedSchema) {
+        content += `## Saved Container Schema\n${wrapUserContent(payload.cachedSchema, 'context')}\n\n`;
+    }
 
     if (formattedHistory) {
         content += wrapUserContent(formattedHistory, 'context');

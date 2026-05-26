@@ -13,7 +13,7 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
     public priority: number = 100;
 
     public async execute(context: CreateContainerWizardContext): Promise<void> {
-        const { containerName, partitionKey, throughput, databaseId, nodeId } = context;
+        const { containerName, partitionKey, throughput, maxThroughput, databaseId, nodeId } = context;
 
         return ext.state.showCreatingChild(
             nodeId,
@@ -28,6 +28,7 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateContainerW
                         partitionKey,
                     },
                     throughput,
+                    maxThroughput,
                 );
             },
         );

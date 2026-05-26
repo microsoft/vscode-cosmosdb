@@ -230,3 +230,29 @@ export function commentOutQuery(query: string): string {
         })
         .join('\n');
 }
+
+/**
+ * Ensures that the LLM response is either a valid executable query or fully commented out.
+ * If the response is not a recognizable NoSQL query (e.g. "N/A" or plain text),
+ * it is converted to a SQL comment so it cannot cause execution errors.
+ */
+export function ensureQueryIsExecutableOrCommented(query: string): string {
+    const trimmed = query.trim();
+
+    // Already empty or already fully commented — leave as-is
+    if (!trimmed || trimmed.split('\n').every((line) => line.trim() === '' || line.trim().startsWith('--'))) {
+        return query;
+    }
+
+    // Check if any non-comment line starts with a known SQL keyword (case-insensitive)
+    const sqlKeywords = /^\s*(SELECT|WITH)\b/i;
+    const nonCommentLines = trimmed.split('\n').filter((line) => !line.trim().startsWith('--'));
+    const looksLikeQuery = nonCommentLines.some((line) => sqlKeywords.test(line));
+
+    if (looksLikeQuery) {
+        return query;
+    }
+
+    // Not a valid query — comment it out
+    return commentOutQuery(trimmed);
+}

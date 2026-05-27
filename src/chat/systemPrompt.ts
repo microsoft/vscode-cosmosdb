@@ -263,5 +263,7 @@ export const JSON_RESPONSE_FORMAT_WITH_EXPLANATION = `
   "comments": "-- optional SQL comments to prepend to the query, e.g. -- This query finds active users"
 }
 
+If you cannot generate a valid Cosmos DB NoSQL query, the "query" field MUST be a SQL comment (each line prefixed with "-- ") explaining why the query cannot be generated. Never put non-query text or "N/A" in the "query" field.
+
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;

@@ -659,6 +659,7 @@
   "Please contact the account owner to get the required permissions.": "Contattare il proprietario dell'account per ottenere le autorizzazioni necessarie.",
   "Please enter the word \"{expectedConfirmationWord}\" to confirm the operation.": "Immettere la parola \"{expectedConfirmationWord}\" per confermare l'operazione.",
   "Please provide a description of the query you want to generate.": "Fornire una descrizione della query da generare.",
+  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".",
   "Please try again. If the error persists, please": "Riprovare. Se l'errore persiste,",
   "Please use the dedicated PostgreSQL extension instead.": "Usare invece l'estensione PostgreSQL dedicata.",
   "Populate Sample Data": "Popola dati di esempio",

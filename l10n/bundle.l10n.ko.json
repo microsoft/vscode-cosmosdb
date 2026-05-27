@@ -659,6 +659,7 @@
   "Please contact the account owner to get the required permissions.": "필요한 권한을 얻으려면 계정 소유자에게 문의하세요.",
   "Please enter the word \"{expectedConfirmationWord}\" to confirm the operation.": "작업을 확인하려면 \"{expectedConfirmationWord}\"라는 단어를 입력하세요.",
   "Please provide a description of the query you want to generate.": "생성할 쿼리에 대한 설명을 제공하세요.",
+  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".",
   "Please try again. If the error persists, please": "다시 시도해 주세요. 이 오류가 지속되면",
   "Please use the dedicated PostgreSQL extension instead.": "대신 전용 PostgreSQL 확장을 사용하세요.",
   "Populate Sample Data": "샘플 데이터 채우기",

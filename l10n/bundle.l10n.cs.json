@@ -659,6 +659,7 @@
   "Please contact the account owner to get the required permissions.": "Pokud chcete získat požadovaná oprávnění, obraťte se na vlastníka účtu.",
   "Please enter the word \"{expectedConfirmationWord}\" to confirm the operation.": "Operaci potvrďte zadáním slova „{expectedConfirmationWord}“.",
   "Please provide a description of the query you want to generate.": "Zadejte prosím popis dotazu, který chcete vygenerovat.",
+  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".",
   "Please try again. If the error persists, please": "Zkuste to znovu. Pokud chyba přetrvává,",
   "Please use the dedicated PostgreSQL extension instead.": "Místo toho použijte vyhrazené rozšíření PostgreSQL.",
   "Populate Sample Data": "Naplnit ukázková data",

@@ -659,6 +659,7 @@
   "Please contact the account owner to get the required permissions.": "請連絡帳戶擁有者以取得所需的權限。",
   "Please enter the word \"{expectedConfirmationWord}\" to confirm the operation.": "請輸入 \"{expectedConfirmationWord}\" 字組以確認作業。",
   "Please provide a description of the query you want to generate.": "請提供您想產生的查詢描述。",
+  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".",
   "Please try again. If the error persists, please": "請再試一次。如果此錯誤持續發生，請",
   "Please use the dedicated PostgreSQL extension instead.": "請改為使用專用的 PostgreSQL 延伸模組。",
   "Populate Sample Data": "填入範例資料",

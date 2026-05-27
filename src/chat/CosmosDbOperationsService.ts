@@ -581,13 +581,30 @@ export class CosmosDbOperationsService {
                     );
                 }
                 case 'generateQuery': {
-                    const {
-                        activeEditor: genEditor,
-                        connection: genConnection,
-                        currentResult: genResult,
-                        query: genCurrentQuery,
-                        hasResults: genHasResults,
-                    } = this.getActiveQueryEditorContext();
+                    if (!parameters.userPrompt || !(parameters.userPrompt as string).trim()) {
+                        return l10n.t(
+                            'Please provide a description of the query you want to generate. For example: "@cosmosdb /generateQuery find all active users".',
+                        );
+                    }
+
+                    let genEditor: QueryEditorTab;
+                    let genConnection: NoSqlQueryConnection;
+                    let genResult: ReturnType<QueryEditorTab['getCurrentQueryResults']>;
+                    let genCurrentQuery: string | undefined;
+                    let genHasResults: boolean;
+                    try {
+                        ({
+                            activeEditor: genEditor,
+                            connection: genConnection,
+                            currentResult: genResult,
+                            query: genCurrentQuery,
+                            hasResults: genHasResults,
+                        } = this.getActiveQueryEditorContext());
+                    } catch {
+                        return l10n.t(
+                            'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+                        );
+                    }
                     const genHistoryContext = this.getQueryHistoryContext(genEditor);
 
                     return this.handleEditQuery(

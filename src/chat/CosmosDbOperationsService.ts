@@ -14,7 +14,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaService } from '../services/SchemaService';
 import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
@@ -880,9 +880,11 @@ export class CosmosDbOperationsService {
         // Load query language reference for comprehensive syntax guidance
         const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
 
-        // If there is a schema already saved in SchemaFileStorage (from the toolbar
-        // or a previous sampling run), include it in the initial context so the LLM
-        // can use it without needing to call the sampling tool.
+        // If there is a schema already saved (from the toolbar or a previous
+        // sampling run), include it in the initial context so the LLM can
+        // use it without needing to call the sampling tool. The schema is
+        // routed through `SchemaService.getSimplifiedSchema` so the prompt
+        // payload stays bounded regardless of the raw container size.
         let cachedSchema: string | undefined;
         const connection = options?.connection ?? this.getActiveConnection();
 
@@ -898,10 +900,9 @@ export class CosmosDbOperationsService {
                 : undefined);
         if (connection) {
             try {
-                const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
-                const stored = await SchemaFileStorage.getInstance().readSchema(schemaId);
-                if (stored) {
-                    cachedSchema = stored;
+                const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
+                if (simplified) {
+                    cachedSchema = JSON.stringify(simplified.schema);
                 }
             } catch {
                 // Best-effort — proceed without cached schema.

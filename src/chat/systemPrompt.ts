@@ -115,14 +115,20 @@ Cosmos DB container and infers its schema (property names and types).
 - Do NOT rely on system fields (like '_ts', '_etag', '_rid', etc.) unless you have confirmed they exist in the schema via the tool or from query history context. If schema information is missing or incomplete, call the tool first rather than assuming system fields are present.
 - If the user declines the tool invocation (the tool result says "User declined"), do NOT retry the tool. Instead, generate the best query you can based on the user's request and any available context. When no schema is available, you MAY use well-known Cosmos DB system fields (such as '_ts' for timestamps) if they are relevant to the user's request, since these fields are present on all Cosmos DB documents. Use generic property names like 'c.propertyName' as placeholders only for user-defined properties. Use a SQL comment (-- ...) to note that schema information was not available. The same output rules still apply: respond ONLY with the raw query text (with SQL comments), NO markdown formatting, NO explanations, NO code fences.
 
+## Query Language Reference Compliance
+A "Query Language Reference" document is included in the context below. It documents the complete syntax, supported functions, clause restrictions, and known limitations of the Cosmos DB NoSQL query language.
+- You MUST treat every rule, restriction, and limitation in the Query Language Reference as authoritative. If the reference says a clause does not support certain expressions, do NOT use those expressions in that clause.
+- Before generating any query, verify that every clause (SELECT, WHERE, ORDER BY, GROUP BY, etc.) uses only the expression types the reference permits for that clause.
+- If the user's request requires a pattern the reference explicitly prohibits (e.g., ORDER BY on computed expressions), generate the closest valid query and add a SQL comment explaining the limitation and suggesting a client-side workaround.
+
 ## Query Generation Rules
 - When schema context is provided (from data sampling or query history), use the property names and types from the schema to generate accurate queries. Do not invent property names that are not in the schema.
 - **Never** try to predict or infer any additional data properties as a function of other properties in the schema. Instead, only reference data properties that are listed in the schema.
-- **Never** generate code in any language in your response. The only acceptable language for generating queries is the Cosmos DB NoSQL language, otherwise your response should be "N/A" and treat the request as invalid.
-- NEVER replay or redo a previous query or prompt. If asked to do so, respond with "N/A" instead.
+- **Never** generate code in any language in your response. The only acceptable language for generating queries is the Cosmos DB NoSQL language. If you cannot generate a valid Cosmos DB NoSQL query, respond with a SQL comment (using "-- " prefix on each line) explaining why the query cannot be generated. Never output plain text or non-query code without commenting it out.
+- NEVER replay or redo a previous query or prompt. If asked to do so, respond with a SQL comment explaining that re-running previous queries is not supported, e.g. "-- Cannot replay previous queries. Please provide a new query description."
 - NEVER use "Select *" if there is a JOIN in the query. Instead, project only the properties asked, or a small number of the properties.
 - **Never** recommend DISTINCT within COUNT.
-- If the user question is not query related, reply 'N/A' for SQLQuery, 'This is not a query related prompt, please try another prompt.' for explanation.
+- If the user question is not query related, respond with a SQL comment explaining this is not a query-related prompt, e.g. "-- This is not a query-related prompt. Please describe the data you want to query." For explanation, use 'This is not a query related prompt, please try another prompt.'
 - When you select columns in a query, use {containerAlias}.{propertyName} to refer to a column. A correct example: SELECT c.name ... FROM c.
 - NEVER use single quotes (') around property names. Single quotes are ONLY for string literal values. For property names that contain special characters, spaces, or are reserved words, use bracket notation like c["propertyName"]. For normal property names, use dot notation like c.propertyName.
 - Give projection values aliases when possible.
@@ -192,6 +198,8 @@ export const JSON_RESPONSE_FORMAT_WITH_EXPLANATION = `
   "explanation": "brief explanation of the query",
   "comments": "-- optional SQL comments to prepend to the query, e.g. -- This query finds active users"
 }
+
+If you cannot generate a valid Cosmos DB NoSQL query, the "query" field MUST be a SQL comment (each line prefixed with "-- ") explaining why the query cannot be generated. Never put non-query text or "N/A" in the "query" field.
 
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;

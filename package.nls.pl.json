@@ -34,9 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Kopiuj instrukcje modelu LLM do folderu profilu użytkownika",
   "cosmosdb.command.ai.remove_instruction_files": "Usuń instrukcje modelu LLM z folderu profilu użytkownika",
   "cosmosdb.command.schema.delete_all": "Usuń wszystkie zapisane schematy",
-  "cosmosdb.command.migration.open": "New Migration…",
-  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
-  "cosmosdb.command.migration.remove": "Remove Migration…",
+  "cosmosdb.command.migration.open": "Nowa migracja...",
+  "cosmosdb.command.migration.openExisting": "Migracja usługi Cosmos DB...",
+  "cosmosdb.command.migration.remove": "Usuń migrację...",
   "cosmosdb.configuration.batch.size": "Rozmiar partii, który ma być używany podczas wykonywania zapytań dotyczących zasobów bazy danych platformy Azure.",
   "cosmosdb.configuration.confirmation.style": "Zachowanie stosowane przy potwierdzaniu operacji, których nie można cofnąć, np. usuwania zasobów.",
   "cosmosdb.configuration.confirmation.style.button": "Potwierdzenie kliknięcia przycisku",
@@ -67,5 +67,5 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "Identyfikator klienta tożsamości zarządzanej, który należy wykorzystać podczas uwierzytelniania w usłudze Entra ID przy użyciu tożsamości zarządzanej przypisanej przez użytkownika.",
   "cosmosdb.configuration.manage-llm-assets": "Zarządzaj zasobami modelu LLM. Zezwalaj rozszerzeniu na aktualizowanie plików związanych z modelem LLM.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Po włączeniu generowanie schematu uwzględnia również wyniki zapytania w celu wywnioskowania schematu kontenera.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Eksperymentalne) Pokaż szacowane użycie tokenu w interfejsie użytkownika narzędzia Migration Assistant."
 }

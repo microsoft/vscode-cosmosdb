@@ -79,7 +79,11 @@
     "l10n:auto": "cross-env AZURE_TRANSLATOR_KEY= cross-env AZURE_TRANSLATOR_REGION= npx @vscode/l10n-dev generate-azure --outDir ./l10n ./l10n/bundle.l10n.json ./package.nls.json",
     "l10n:export": "npx @vscode/l10n-dev generate-xlf ./l10n/bundle.l10n.json --outFile vscode-cosmosdb.xlf",
     "l10n:import": "npx @vscode/l10n-dev import-xlf ./translations.xlf",
-    "fetch-skill": "node scripts/fetch-skill.mjs"
+    "fetch-skill": "node scripts/fetch-skill.mjs",
+    "pre-commit": "npm run build && npm run prettier-fix && npm run lint-fix && npm run l10n && npm run vitest",
+    "docker-up": "docker compose up -d",
+    "docker-down": "docker compose down",
+    "docker-restart": "npm run docker-down && npm run docker-up"
   },
   "externalSkills": {
     "cosmosdb-best-practices": {

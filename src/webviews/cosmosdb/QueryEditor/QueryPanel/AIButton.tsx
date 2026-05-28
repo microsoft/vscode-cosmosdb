@@ -3,8 +3,21 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { Menu, MenuButton, MenuItem, MenuList, MenuPopover, MenuTrigger } from '@fluentui/react-components';
-import { ChatSparkle20Regular, PenSparkle20Regular, Sparkle20Regular } from '@fluentui/react-icons';
+import {
+    Menu,
+    MenuButton,
+    MenuDivider,
+    MenuItem,
+    MenuList,
+    MenuPopover,
+    MenuTrigger,
+} from '@fluentui/react-components';
+import {
+    ChatSparkle20Regular,
+    PenSparkle20Regular,
+    QuestionCircle20Regular,
+    Sparkle20Regular,
+} from '@fluentui/react-icons';
 import * as l10n from '@vscode/l10n';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
 import {
@@ -34,7 +47,11 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
 
     const handleExplainClick = () => {
         const query = state.querySelectedValue || state.queryValue;
-        void dispatcher.openCopilotExplainQuery(query);
+        void dispatcher.openChatParticipantExplainQuery(query);
+    };
+
+    const handleHelpClick = () => {
+        void dispatcher.openChatParticipantHelp();
     };
 
     // Generate query icon
@@ -65,6 +82,10 @@ export const AIButton = ({ ref, type }: ToolbarOverflowItemProps<HTMLButtonEleme
                         disabled={!(state.querySelectedValue || state.queryValue).trim()}
                     >
                         {l10n.t('Explain query')}
+                    </MenuItem>
+                    <MenuDivider />
+                    <MenuItem icon={<QuestionCircle20Regular />} onClick={handleHelpClick}>
+                        {l10n.t('Help')}
                     </MenuItem>
                 </MenuList>
             </MenuPopover>

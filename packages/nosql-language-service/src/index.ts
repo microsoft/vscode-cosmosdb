@@ -48,7 +48,7 @@ export { FUNCTION_SIGNATURES, getFunctionMeta } from './services/functionSignatu
 export type { FunctionMeta } from './services/functionSignatures.js';
 export { parseMultiQueryDocument } from './services/MultiQueryDocument.js';
 export type { MultiQueryDocument, QueryRegion } from './services/MultiQueryDocument.js';
-export { SqlLanguageService } from './services/SqlLanguageService.js';
+export { SqlLanguageService, stripComments } from './services/SqlLanguageService.js';
 export type {
     Diagnostic,
     DiagnosticSeverity,

@@ -29,7 +29,7 @@ vi.mock('../extensionVariables', () => ({
 }));
 
 describe('shellCommand.quoteArg', () => {
-    it('returns the value unchanged when no whitespace or quotes are present', () => {
+    it('returns the value unchanged when no whitespace, quotes, or backslashes are present', () => {
         expect(quoteArg('foo')).toBe('foo');
         expect(quoteArg('connect')).toBe('connect');
     });
@@ -49,6 +49,19 @@ describe('shellCommand.quoteArg', () => {
 
     it('does not strip leading or trailing whitespace', () => {
         expect(quoteArg(' foo ')).toBe('" foo "');
+    });
+
+    it('wraps and escapes embedded backslashes', () => {
+        // Without backslash escaping, `foo\"bar` would round-trip to `"foo\"bar"`, where
+        // the `\"` is parsed by the shell as an escaped quote and the actual `"` then
+        // terminates the argument early. Backslashes must be escaped before quotes.
+        expect(quoteArg('foo\\bar')).toBe('"foo\\\\bar"');
+        expect(quoteArg('foo\\"bar')).toBe('"foo\\\\\\"bar"');
+    });
+
+    it('wraps and escapes Windows-style paths containing backslashes', () => {
+        expect(quoteArg('C:\\Users\\test')).toBe('"C:\\\\Users\\\\test"');
+        expect(quoteArg('C:\\path with space\\file.txt')).toBe('"C:\\\\path with space\\\\file.txt"');
     });
 });
 

@@ -15,11 +15,17 @@ import * as net from 'net';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
+import {
+    COMMAND_LAUNCH_COSMOS_DB_SHELL,
+    COSMOS_DB_SHELL_TERMINAL_NAME,
+    DEFAULT_MCP_PORT,
+    MCP_SERVER_NAME,
+    SETTING_MCP_ENABLED,
+    SETTING_MCP_PORT,
+    SETTING_SHELL_PATH,
+} from './constants';
 import { CosmosDBShellMcpHost, getCosmosDBShellMcpEndpoint } from './cosmosDBShellMcpEndpoint';
-import { COSMOS_DB_SHELL_TERMINAL_NAME } from './shellCommand';
 import { invalidateCosmosDBShellSupportCache, isCosmosDBShellInstalled } from './shellSupportCache';
-
-const McpServerName = 'Azure Cosmos DB Shell';
 
 function isPortReachable(port: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -109,7 +115,7 @@ async function resolveMcpServer(
     mcpPort: string,
     token: vscode.CancellationToken,
 ): Promise<vscode.McpServerDefinition> {
-    if (server.label !== McpServerName) {
+    if (server.label !== MCP_SERVER_NAME) {
         return server;
     }
 
@@ -122,10 +128,10 @@ async function resolveMcpServer(
         }
         showMcpSettingsNotification(
             l10n.t('Port {0} is in use by another process. Configure a different MCP port in settings.', mcpPort),
-            'cosmosDB.shell.MCP.port',
+            SETTING_MCP_PORT,
         );
         throw new Error(
-            `Port ${mcpPort} is in use by another process that is not the Cosmos DB Shell MCP server. Configure a different port via the "cosmosDB.shell.MCP.port" setting.`,
+            `Port ${mcpPort} is in use by another process that is not the Cosmos DB Shell MCP server. Configure a different port via the "${SETTING_MCP_PORT}" setting.`,
         );
     }
 
@@ -136,16 +142,16 @@ async function resolveMcpServer(
     if (!isCosmosDBShellInstalled()) {
         ext.outputChannel.appendLine('MCP resolve: Cosmos DB Shell binary is not installed or not found; skipping.');
         throw new Error(
-            'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
+            `Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "${SETTING_SHELL_PATH}" setting.`,
         );
     }
 
-    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+    const mcpEnabled = SettingsService.getSetting<boolean>(SETTING_MCP_ENABLED) ?? false;
 
     if (!mcpEnabled) {
-        ext.outputChannel.appendLine('MCP resolve: "cosmosDB.shell.MCP.enabled" is disabled; skipping.');
+        ext.outputChannel.appendLine(`MCP resolve: "${SETTING_MCP_ENABLED}" is disabled; skipping.`);
         throw new Error(
-            'Cosmos DB Shell MCP is not enabled. The user must enable the "cosmosDB.shell.MCP.enabled" setting and restart the MCP server.',
+            `Cosmos DB Shell MCP is not enabled. The user must enable the "${SETTING_MCP_ENABLED}" setting and restart the MCP server.`,
         );
     }
 
@@ -163,7 +169,7 @@ async function resolveMcpServer(
     }
 
     ext.outputChannel.appendLine('MCP resolve: launching Cosmos DB Shell with --mcp');
-    await vscode.commands.executeCommand('cosmosDB.launchCosmosDBShell');
+    await vscode.commands.executeCommand(COMMAND_LAUNCH_COSMOS_DB_SHELL);
 
     const ready = await waitForPort(mcpPort, 10, 1000, token);
     if (!ready) {
@@ -184,7 +190,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
         const didChangeEmitter = new vscode.EventEmitter<void>();
 
         const getMcpPort = (): string =>
-            (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();
+            (SettingsService.getSetting<number>(SETTING_MCP_PORT) ?? DEFAULT_MCP_PORT).toString();
 
         context.subscriptions.push(
             vscode.lm.registerMcpServerDefinitionProvider('cosmosDbShellMcpProvider', {
@@ -195,14 +201,14 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
                     // tool discovery and trigger user-facing prompts even though the user never
                     // asked for Cosmos DB MCP. The didChangeEmitter below re-fires this when the
                     // relevant settings or shell path change.
-                    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+                    const mcpEnabled = SettingsService.getSetting<boolean>(SETTING_MCP_ENABLED) ?? false;
                     if (!mcpEnabled || !isCosmosDBShellInstalled()) {
                         return [];
                     }
                     const mcpPort = getMcpPort();
                     return [
                         new vscode.McpHttpServerDefinition(
-                            McpServerName,
+                            MCP_SERVER_NAME,
                             vscode.Uri.parse(getCosmosDBShellMcpEndpoint(mcpPort)),
                             {
                                 API_VERSION: '1.0.0',
@@ -219,13 +225,13 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
 
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration((event) => {
-                if (event.affectsConfiguration('cosmosDB.shell.path')) {
+                if (event.affectsConfiguration(SETTING_SHELL_PATH)) {
                     invalidateCosmosDBShellSupportCache();
                 }
                 if (
-                    event.affectsConfiguration('cosmosDB.shell.MCP.port') ||
-                    event.affectsConfiguration('cosmosDB.shell.MCP.enabled') ||
-                    event.affectsConfiguration('cosmosDB.shell.path')
+                    event.affectsConfiguration(SETTING_MCP_PORT) ||
+                    event.affectsConfiguration(SETTING_MCP_ENABLED) ||
+                    event.affectsConfiguration(SETTING_SHELL_PATH)
                 ) {
                     didChangeEmitter.fire();
                 }

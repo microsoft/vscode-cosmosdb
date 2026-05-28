@@ -20,6 +20,14 @@ import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
 import { type NoSqlContainerResourceItem } from '../tree/nosql/NoSqlContainerResourceItem';
+import {
+    COMMAND_LAUNCH_COSMOS_DB_SHELL,
+    COSMOS_DB_SHELL_TERMINAL_NAME,
+    DEFAULT_MCP_PORT,
+    SETTING_MCP_ENABLED,
+    SETTING_MCP_PORT,
+    SETTING_SHELL_PATH,
+} from './constants';
 import { promptToResolveMissingCosmosDBShell } from './install/installPrompts';
 import {
     getCosmosDBShellCredential,
@@ -28,7 +36,7 @@ import {
     getManagedIdentityCredential,
     getNodeAuthKind,
 } from './nodeCredentials';
-import { COSMOS_DB_SHELL_TERMINAL_NAME, getCosmosDBShellCommand, watchForEarlyExit } from './shellCommand';
+import { getCosmosDBShellCommand, watchForEarlyExit } from './shellCommand';
 import { getDetectedCosmosDBShellVersion, isCosmosDBShellInstalled } from './shellSupportCache';
 import {
     buildInteractiveConnectCommand,
@@ -45,8 +53,6 @@ export {
     invalidateCosmosDBShellSupportCache,
     isCosmosDBShellInstalled,
 } from './shellSupportCache';
-
-const DEFAULT_MCP_PORT = 6128;
 
 export class CosmosDBShellExtension implements vscode.Disposable {
     private terminalChangeListeners: vscode.Disposable[] = [];
@@ -78,7 +84,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                 // Watch for terminal open events
                 const openListener = vscode.window.onDidOpenTerminal((terminal) => {
                     // Check if it's a Cosmos DB Shell terminal
-                    if (terminal.name === COSMOS_DB_SHELL_TERMINAL_NAME) {
+                    if (terminal.creationOptions.name === COSMOS_DB_SHELL_TERMINAL_NAME) {
                         this.updateCosmosDBShellTerminalContext();
                     }
                 });
@@ -86,7 +92,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                 // Watch for terminal close events
                 const closeListener = vscode.window.onDidCloseTerminal((terminal) => {
                     // Check if it was a Cosmos DB Shell terminal
-                    if (terminal.name === COSMOS_DB_SHELL_TERMINAL_NAME) {
+                    if (terminal.creationOptions.name === COSMOS_DB_SHELL_TERMINAL_NAME) {
                         this.updateCosmosDBShellTerminalContext();
                         // Remove tracked launch state for this terminal
                         terminalStates.delete(terminal);
@@ -96,7 +102,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
                 // Store listeners for disposal
                 this.terminalChangeListeners.push(openListener, closeListener);
 
-                registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosDBShell', connectCosmosDBShell);
+                registerCommandWithTreeNodeUnwrapping(COMMAND_LAUNCH_COSMOS_DB_SHELL, connectCosmosDBShell);
 
                 if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
@@ -109,7 +115,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
 
     private updateCosmosDBShellTerminalContext(): void {
         const hasCosmosDBShellTerminal = vscode.window.terminals.some(
-            (terminal) => terminal.name === COSMOS_DB_SHELL_TERMINAL_NAME,
+            (terminal) => terminal.creationOptions.name === COSMOS_DB_SHELL_TERMINAL_NAME,
         );
         void vscode.commands.executeCommand(
             'setContext',
@@ -127,10 +133,10 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
 
     // Telemetry: capture launch-shape signals as early as possible so they're attached even
     // when the install/credential paths bail out before a terminal is created.
-    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
-    const mcpPortSetting = SettingsService.getSetting<number>('cosmosDB.shell.MCP.port');
+    const mcpEnabled = SettingsService.getSetting<boolean>(SETTING_MCP_ENABLED) ?? false;
+    const mcpPortSetting = SettingsService.getSetting<number>(SETTING_MCP_PORT);
     const mcpPort = (mcpPortSetting ?? DEFAULT_MCP_PORT).toString();
-    const shellPathSetting = SettingsService.getSetting<string>('cosmosDB.shell.path');
+    const shellPathSetting = SettingsService.getSetting<string>(SETTING_SHELL_PATH);
     context.telemetry.properties.shellInstalled = String(shellInstalled);
     context.telemetry.properties.shellPathCustom = String(!!shellPathSetting?.trim());
     context.telemetry.properties.mcpEnabled = String(mcpEnabled);
@@ -262,12 +268,10 @@ export async function connectCosmosDBShell(context: IActionContext, node?: NoSql
     context.telemetry.properties.shellVersion = getDetectedCosmosDBShellVersion() ?? 'unknown';
     context.telemetry.properties.shellInstalled = String(isCosmosDBShellInstalled());
     context.telemetry.properties.shellPathCustom = String(
-        !!SettingsService.getSetting<string>('cosmosDB.shell.path')?.trim(),
+        !!SettingsService.getSetting<string>(SETTING_SHELL_PATH)?.trim(),
     );
-    context.telemetry.properties.mcpEnabled = String(
-        SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false,
-    );
-    const mcpPortSetting = SettingsService.getSetting<number>('cosmosDB.shell.MCP.port');
+    context.telemetry.properties.mcpEnabled = String(SettingsService.getSetting<boolean>(SETTING_MCP_ENABLED) ?? false);
+    const mcpPortSetting = SettingsService.getSetting<number>(SETTING_MCP_PORT);
     context.telemetry.properties.mcpPortDefault = String(
         mcpPortSetting === undefined || mcpPortSetting === DEFAULT_MCP_PORT,
     );

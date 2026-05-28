@@ -11,10 +11,8 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { SettingsService } from '../services/SettingsService';
+import { SETTING_SHELL_PATH } from './constants';
 import { resolveCosmosDBShellCommand } from './cosmosDBShellCommandResolver';
-
-/** Display name used for every Cosmos DB Shell terminal created by this extension. */
-export const COSMOS_DB_SHELL_TERMINAL_NAME = 'Cosmos DB Shell';
 
 /**
  * Resolves the user-configured Cosmos DB Shell command (or the default `cosmosdbshell`)
@@ -22,7 +20,7 @@ export const COSMOS_DB_SHELL_TERMINAL_NAME = 'Cosmos DB Shell';
  * {@link resolveCosmosDBShellCommand}.
  */
 export function getCosmosDBShellCommand(): string {
-    const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
+    const shellPath: string | undefined = SettingsService.getSetting<string>(SETTING_SHELL_PATH);
     return resolveCosmosDBShellCommand(shellPath);
 }
 
@@ -32,7 +30,7 @@ export function getCosmosDBShellCommand(): string {
  * when surfacing the install/repair prompt.
  */
 export function isCosmosDBShellPathFound(): boolean {
-    const shellPath: string | undefined = SettingsService.getSetting<string>('cosmosDB.shell.path');
+    const shellPath: string | undefined = SettingsService.getSetting<string>(SETTING_SHELL_PATH);
     if (!shellPath?.trim()) {
         return false;
     }

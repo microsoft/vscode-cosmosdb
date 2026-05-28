@@ -19,6 +19,7 @@ import * as child from 'child_process';
 import * as vscode from 'vscode';
 import { ext } from '../../extensionVariables';
 import { type NoSqlContainerResourceItem } from '../../tree/nosql/NoSqlContainerResourceItem';
+import { SETTING_SHELL_PATH } from '../constants';
 import { isCosmosDBShellPathFound } from '../shellCommand';
 import { isCosmosDBShellInstalled } from '../shellSupportCache';
 import { MIN_DOTNET_SDK_VERSION, hasRequiredDotNetSdk, tryInstallDotNetSdkViaExtension } from './dotNetSdk';
@@ -149,7 +150,7 @@ async function promptToInstallCosmosDBShell(
     reportInstallPromptOutcome('installShell', outcome);
 
     if (selection === settings) {
-        void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
+        void vscode.commands.executeCommand('workbench.action.openSettings', SETTING_SHELL_PATH);
         return;
     }
     if (selection !== install) {
@@ -270,7 +271,7 @@ async function promptToInstallDotNetSdk(
     } else if (selection === downloadDotNet) {
         void vscode.env.openExternal(vscode.Uri.parse('https://dot.net/download'));
     } else if (selection === settings) {
-        void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
+        void vscode.commands.executeCommand('workbench.action.openSettings', SETTING_SHELL_PATH);
     }
 }
 
@@ -294,7 +295,7 @@ export async function promptToResolveMissingCosmosDBShell(
         );
         reportInstallPromptOutcome('pathMisconfigured', selection === settings ? 'settings' : 'cancelled');
         if (selection === settings) {
-            void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
+            void vscode.commands.executeCommand('workbench.action.openSettings', SETTING_SHELL_PATH);
         }
         return;
     }

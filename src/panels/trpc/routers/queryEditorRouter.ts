@@ -638,20 +638,13 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
 
                 const service = CosmosDbOperationsService.getInstance();
-                const historyContext = ctx.state.connection
-                    ? service.getQueryHistoryForContainer(
-                          ctx.state.connection.accountId,
-                          ctx.state.connection.databaseId,
-                          ctx.state.connection.containerId,
-                      )
-                    : undefined;
 
                 const generatedQuery = await service.generateQueryWithLLM(input.prompt, input.currentQuery, {
                     modelId: model.id,
-                    historyContext,
                     cancellationToken: token,
                     source: 'queryEditor',
                     operation: 'generateQuery',
+                    connection: ctx.state.connection,
                     onConfirm: async (message: string) => {
                         ctx.eventSink.emit({ type: 'confirmToolInvocation', message });
                         return new Promise<boolean>((resolve) => {

@@ -765,7 +765,7 @@ export const queryEditorRouterDef = queryEditorRouter({
     }),
 
     setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input }) => {
-        return await callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
+        return callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
             telCtx.errorHandling.suppressDisplay = true;
             telCtx.telemetry.properties.modelId = input.modelId;
 

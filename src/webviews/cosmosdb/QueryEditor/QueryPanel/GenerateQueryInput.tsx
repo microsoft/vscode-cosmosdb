@@ -674,6 +674,7 @@ export const GenerateQueryInput = () => {
                             {state.isSurveyCandidate && (
                                 <div
                                     className={styles.feedbackButtons}
+                                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
                                     role="group"
                                     aria-label={l10n.t('Rate this response')}
                                 >

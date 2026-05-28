@@ -890,7 +890,11 @@ export class CosmosDbOperationsService {
         const historyContext =
             options?.historyContext ??
             (connection
-                ? this.getQueryHistoryForContainer(connection.accountId, connection.databaseId, connection.containerId)
+                ? this.getQueryHistoryForContainer(
+                      connection.azureMetadata?.accountId,
+                      connection.databaseId,
+                      connection.containerId,
+                  )
                 : undefined);
         if (connection) {
             try {

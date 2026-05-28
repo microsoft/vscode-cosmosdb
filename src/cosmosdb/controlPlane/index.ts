@@ -32,9 +32,9 @@ export { type CosmosDBControlPlane, type ThroughputResource } from './CosmosDBCo
 export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane {
     const meta = accountInfo.azureMetadata;
     // ARM requires a fully-known Azure context. Workspace-attached and emulator
-    // accounts (no subscription/resource group) fall back to the SDK.
-    if (!accountInfo.isEmulator && meta?.subscription && meta?.resourceGroup) {
-        return new ArmCosmosDBControlPlane(meta.subscription, meta.resourceGroup, meta.accountName ?? accountInfo.name);
+    // accounts (no Azure metadata) fall back to the SDK.
+    if (!accountInfo.isEmulator && meta) {
+        return new ArmCosmosDBControlPlane(meta);
     }
     return new CosmosDBSdkControlPlane(accountInfo);
 }
@@ -42,16 +42,13 @@ export function getControlPlane(accountInfo: AccountInfo): CosmosDBControlPlane 
 /**
  * Returns the appropriate control-plane implementation for a query-editor
  * connection. Mirrors {@link getControlPlane} but takes a
- * {@link NoSqlQueryConnection}, which carries an optional Azure subscription
- * and resource group when the connection originated from an Azure-signed-in
- * account.
+ * {@link NoSqlQueryConnection}, which carries the optional Azure metadata
+ * when the connection originated from an Azure-signed-in account.
  */
 export function getControlPlaneForConnection(connection: NoSqlQueryConnection): CosmosDBControlPlane {
     const meta = connection.azureMetadata;
-    // For connections all three fields must be present — a connection without an
-    // accountName cannot be addressed via ARM, so fall back to the SDK.
-    if (!connection.isEmulator && meta?.subscription && meta?.resourceGroup && meta?.accountName) {
-        return new ArmCosmosDBControlPlane(meta.subscription, meta.resourceGroup, meta.accountName);
+    if (!connection.isEmulator && meta) {
+        return new ArmCosmosDBControlPlane(meta);
     }
     return new CosmosDBSdkControlPlane(connection);
 }

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { parse, parseMultiQueryDocument, stripComments } from '@cosmosdb/nosql-language-service';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import {
     getSchemaFromDocument,
@@ -527,6 +528,66 @@ export const queryEditorRouterDef = queryEditorRouter({
             return result;
         }),
 
+    /**
+     * Validates and cleans a query before execution.
+     *
+     * Performs two checks in order:
+     * 1. **Ambiguity** — if the text contains multiple non-empty query regions
+     *    (separated by `;`), the user is warned and can cancel or run anyway.
+     * 2. **Syntax errors** — if the normalized query has parse errors, the user
+     *    is shown a summary and can cancel or run anyway.
+     *
+     * Returns `{ cleanQuery }` on success, or `undefined` when the user cancels.
+     * The returned `cleanQuery` is trimmed and has its trailing semicolon removed,
+     * ready for `createQuerySession` and `updateQueryHistory`.
+     */
+    prepareQuery: queryEditorProcedure
+        .input(z.object({ query: z.string() }))
+        .output(z.object({ cleanQuery: z.string() }).optional())
+        .mutation(async ({ input }) => {
+            // Strip comments, normalize whitespace, then remove trailing semicolon
+            const cleanQuery = stripComments(input.query).replace(/;\s*$/, '');
+
+            if (!cleanQuery) return undefined;
+
+            // Check 1: ambiguous multi-query text
+            const doc = parseMultiQueryDocument(cleanQuery);
+            const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
+            if (nonEmpty.length > 1) {
+                const runItem: vscode.MessageItem = { title: l10n.t('Run anyway') };
+                const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+                const choice = await vscode.window.showWarningMessage(
+                    l10n.t('The query text contains multiple statements separated by semicolons.') +
+                        ' ' +
+                        l10n.t('Running all of them at once may produce ambiguous results.'),
+                    { modal: true },
+                    runItem,
+                    cancelItem,
+                );
+                if (choice !== runItem) return undefined;
+            }
+
+            // Check 2: syntax errors
+            const { errors } = parse(cleanQuery);
+            if (errors.length > 0) {
+                const summary = errors
+                    .slice(0, 3)
+                    .map((e) => e.message)
+                    .join('\n');
+                const runItem: vscode.MessageItem = { title: l10n.t('Run anyway') };
+                const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+                const choice = await vscode.window.showWarningMessage(
+                    l10n.t('The query has syntax errors:') + '\n' + summary,
+                    { modal: true },
+                    runItem,
+                    cancelItem,
+                );
+                if (choice !== runItem) return undefined;
+            }
+
+            return { cleanQuery };
+        }),
+
     updateQueryHistory: queryEditorProcedure
         .input(z.object({ query: z.string().optional() }))
         .mutation(async ({ input, ctx }) => {
@@ -577,20 +638,13 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
 
                 const service = CosmosDbOperationsService.getInstance();
-                const historyContext = ctx.state.connection
-                    ? service.getQueryHistoryForContainer(
-                          ctx.state.connection.accountId,
-                          ctx.state.connection.databaseId,
-                          ctx.state.connection.containerId,
-                      )
-                    : undefined;
 
                 const generatedQuery = await service.generateQueryWithLLM(input.prompt, input.currentQuery, {
                     modelId: model.id,
-                    historyContext,
                     cancellationToken: token,
                     source: 'queryEditor',
                     operation: 'generateQuery',
+                    connection: ctx.state.connection,
                     onConfirm: async (message: string) => {
                         ctx.eventSink.emit({ type: 'confirmToolInvocation', message });
                         return new Promise<boolean>((resolve) => {

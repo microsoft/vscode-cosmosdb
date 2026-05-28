@@ -81,6 +81,7 @@ function createVSCodeMock() {
         window: {
             createTextEditorDecorationType: vi.fn(() => ({ dispose: vi.fn() })),
             onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
+            onDidChangeTextEditorSelection: vi.fn(() => ({ dispose: vi.fn() })),
             activeTextEditor: undefined,
         },
         CompletionItem: class {

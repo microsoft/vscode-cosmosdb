@@ -33,7 +33,7 @@ export interface QueryOneShotExample {
 
 /**
  * One-shot examples that demonstrate query patterns NOT already covered
- * by the NoSQL query language reference (azurecosmosdb-nosql-query-language.md).
+ * by the query generation rules (QUERY_GENERATION_RULES in systemPrompt.ts).
  *
  * These provide unique value by showing complex/combined patterns.
  */
@@ -71,8 +71,8 @@ const UNIQUE_EXAMPLES: QueryOneShotExample[] = [
 ];
 
 /**
- * One-shot examples that ARE already covered by the NoSQL query language reference
- * (azurecosmosdb-nosql-query-language.md). These patterns are documented in the
+ * One-shot examples that ARE already covered by the query generation rules
+ * (QUERY_GENERATION_RULES in systemPrompt.ts). These patterns are documented in the
  * instructions with syntax, rules, and inline examples.
  *
  * Kept for now as reinforcement; consider removing if token budget is tight.

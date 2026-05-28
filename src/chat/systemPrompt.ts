@@ -90,10 +90,8 @@ Only return valid JSON, no other text.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
 
 /**
- * Strict, terse, AI ready generation rules of Cosmos DB query language
- *
- * These rules are more appropriate for AI generation and strict parsing
- * than the official documentation, which is more verbose (see `resources/azurecosmosdb-nosql-query-language.md`).
+ * Strict, terse, AI-ready generation rules of Cosmos DB query language.
+ * This is the single source of truth for NoSQL query syntax rules used by LLM prompts.
  */
 export const QUERY_GENERATION_RULES = `
 ## Query Generation Rules
@@ -117,11 +115,12 @@ export const QUERY_GENERATION_RULES = `
 - String concatenation operator is \`||\` (e.g. \`c.first || " " || c.last\`).
 - Coalesce operator is \`??\` (right-associative): \`c.discount ?? 0\`.
 - Ternary operator is \`cond ? a : b\` (right-associative; can be chained).
+- Arithmetic operators: \`+\`, \`-\`, \`*\`, \`/\`, \`%\`.
 - Bitwise operators are supported: \`&\`, \`|\`, \`^\`, \`~\`, \`<<\`, \`>>\`.
 
 ### SELECT clause
-- \`SELECT *\` returns the full document. NEVER use \`SELECT *\` when the query contains a JOIN — project specific properties instead.
-- \`SELECT VALUE expr\` unwraps the result to a scalar/array stream (no wrapping object). Use it for scalar projections and aggregates.
+- \`SELECT *\` returns the full document. \`SELECT *\` is only valid when the FROM clause declares exactly one alias. NEVER use \`SELECT *\` when the query contains a JOIN — project specific properties instead.
+- \`SELECT VALUE expr\` unwraps the result to a scalar/array stream (no wrapping object). Use it for scalar projections and aggregates. Do NOT use \`AS\` aliases with \`SELECT VALUE\` — \`SELECT VALUE c.name\` is valid but \`SELECT VALUE c.name AS n\` is NOT.
 - \`SELECT DISTINCT ...\` removes duplicate result rows. If the user wants all unique values of a property, use \`SELECT DISTINCT VALUE c.propertyName FROM c\`, NOT \`SELECT DISTINCT c.propertyName\`.
 - \`SELECT TOP n ...\` limits the number of returned rows. \`n\` must be an integer literal or \`@parameter\` — never a float, never a property reference.
 - Combine: \`SELECT DISTINCT TOP 3 c.category FROM c\` is valid.
@@ -138,7 +137,7 @@ export const QUERY_GENERATION_RULES = `
 
 ### WHERE clause
 - Comparison operators: \`=\`, \`!=\`, \`<\`, \`<=\`, \`>\`, \`>=\`. Logical operators: \`AND\`, \`OR\`, \`NOT\`.
-- For inclusive range filtering use \`BETWEEN low AND high\` (instead of \`>=\` + \`<=\`). \`NOT BETWEEN\` is supported.
+- For inclusive range filtering use \`BETWEEN low AND high\` (instead of \`>=\` + \`<=\`). Prefer \`BETWEEN\` because the operand is guaranteed to be evaluated only once. \`NOT BETWEEN\` is supported.
 - **BETWEEN + AND ambiguity:** when combining a \`BETWEEN\` clause with logical \`AND\`, ALWAYS wrap the BETWEEN in parentheses, otherwise the parser consumes the trailing \`AND\` as the BETWEEN separator. Correct: \`WHERE (c.price BETWEEN 10 AND 100) AND c.category = "Books"\`.
 - \`IN (v1, v2, ...)\` and \`NOT IN (...)\` for set membership. The list cannot be empty.
 - \`LIKE\` / \`NOT LIKE\` use SQL wildcards: \`%\` (any sequence of characters) and \`_\` (a single character).
@@ -150,12 +149,13 @@ export const QUERY_GENERATION_RULES = `
 - \`GROUP BY\` groups by one or more expressions: \`GROUP BY c.category, c.inStock\`.
 - Cosmos DB NoSQL does NOT support \`HAVING\`.
 - Aggregates: \`COUNT\`, \`SUM\`, \`AVG\`, \`MIN\`, \`MAX\`, \`CountIf\`, \`MakeList\`, \`MakeSet\`.
-- For counting all rows without GROUP BY, use \`SELECT VALUE COUNT(1) FROM c\` (scalar). Do NOT alias with \`AS\` and do NOT use \`COUNT(*)\` (invalid). With GROUP BY, \`COUNT(1) AS cnt\` is valid: \`SELECT c.category, COUNT(1) AS cnt FROM c GROUP BY c.category\`.
+- For counting all rows without GROUP BY, use \`SELECT VALUE COUNT(1) FROM c\` (scalar). Do NOT alias with \`AS\`, do NOT use \`COUNT(*)\` (invalid), and do NOT use \`COUNT(c)\`. With GROUP BY, \`COUNT(1) AS cnt\` is valid: \`SELECT c.category, COUNT(1) AS cnt FROM c GROUP BY c.category\`.
 - Do NOT use \`DISTINCT\` inside \`COUNT\` (\`COUNT(DISTINCT ...)\` is not supported).
 
 ### ORDER BY
 - Syntax: \`ORDER BY expr [ASC|DESC] [, expr2 [ASC|DESC] ...]\`. Default direction is \`ASC\`.
-- Multi-key sort is supported: \`ORDER BY c.category ASC, c.price DESC\`.
+- ORDER BY expressions must map to a direct document path (e.g. \`c.propertyName\`). Do NOT use ORDER BY on computed columns, aliases from subqueries, or aggregate results. Do NOT use ORDER BY with subqueries in the FROM clause — the outer query cannot sort by subquery aliases.
+- Multi-key sort is supported: \`ORDER BY c.category ASC, c.price DESC\`. However, multi-property or mixed-direction ORDER BY requires a composite index in the container's indexing policy. Without one the query will fail. Prefer single-property ORDER BY when possible; add a SQL comment noting the composite index requirement when multi-property ORDER BY is necessary.
 - For nested properties use full path: \`ORDER BY c.shipping.address.city ASC\`.
 - Aliases defined in \`SELECT\` cannot be referenced in \`ORDER BY\` — repeat the underlying expression instead.
 - For full-text / vector / hybrid relevance ordering use \`ORDER BY RANK <scoreFunction>(...)\`. The operand of \`RANK\` MUST be a function call: \`FullTextScore(c.body, "term")\`, \`VectorDistance(c.embedding, @query)\`, or \`RRF(FullTextScore(...), VectorDistance(...), ...)\` for hybrid search.
@@ -170,7 +170,7 @@ export const QUERY_GENERATION_RULES = `
 
 - **Aggregate:** \`COUNT\`, \`SUM\`, \`AVG\`, \`MIN\`, \`MAX\`, \`CountIf\`, \`MakeList\`, \`MakeSet\`.
 - **String:** \`Contains\`, \`StartsWith\`, \`EndsWith\`, \`StringEquals\`, \`ContainsAllCI\`, \`ContainsAllCS\`, \`ContainsAnyCI\`, \`ContainsAnyCS\`, \`Concat\`, \`Length\`, \`Lower\`, \`Upper\`, \`Substring\`, \`Left\`, \`Right\`, \`Trim\`, \`LTrim\`, \`RTrim\`, \`Replace\`, \`Replicate\`, \`Reverse\`, \`IndexOf\`, \`LastIndexOf\`, \`SubstringBefore\`, \`SubstringAfter\`, \`LastSubstringBefore\`, \`LastSubstringAfter\`, \`StringJoin\`, \`StringSplit\`, \`RegexMatch\`, \`RegexExtract\`, \`RegexExtractAll\`, \`ToString\`.
-- **Array:** \`ARRAY_LENGTH\`, \`ARRAY_CONTAINS\`, \`ARRAY_CONTAINS_ALL\`, \`ARRAY_CONTAINS_ANY\`, \`ARRAY_SLICE\`, \`ARRAY_CONCAT\`, \`ARRAY_SUM\`, \`ARRAY_AVG\`, \`ARRAY_MIN\`, \`ARRAY_MAX\`, \`ARRAY_MEDIAN\`. Use \`ARRAY_LENGTH\` (not \`COUNT\`) for array size.
+- **Array:** \`ARRAY_LENGTH\`, \`ARRAY_CONTAINS(arr, value [, partial])\`, \`ARRAY_CONTAINS_ALL\`, \`ARRAY_CONTAINS_ANY\`, \`ARRAY_SLICE\`, \`ARRAY_CONCAT\`, \`ARRAY_SUM\`, \`ARRAY_AVG\`, \`ARRAY_MIN\`, \`ARRAY_MAX\`, \`ARRAY_MEDIAN\`. Use \`ARRAY_LENGTH\` (not \`COUNT\`) for array size.
 - **Set:** \`SetUnion\`, \`SetIntersect\`, \`SetDifference\`, \`SetEqual\`.
 - **Math:** \`Abs\`, \`Ceiling\`, \`Floor\`, \`Round\`, \`Trunc\`, \`Sign\`, \`Sqrt\`, \`Square\`, \`Power\`, \`Exp\`, \`Log\`, \`Log10\`, \`Pi\`, \`Rand\`, \`Sin\`, \`Cos\`, \`Tan\`, \`Asin\`, \`Acos\`, \`Atan\`, \`Atn2\`, \`Cot\`, \`Degrees\`, \`Radians\`, \`NumberBin\`.
 - **Integer math (exact int semantics):** \`IntAdd\`, \`IntSub\`, \`IntMul\`, \`IntDiv\`, \`IntMod\`, \`IntBitAnd\`, \`IntBitOr\`, \`IntBitXor\`, \`IntBitNot\`, \`IntBitLeftShift\`, \`IntBitRightShift\`.

@@ -24,9 +24,12 @@ export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) 
     const dispatcher = useQueryEditorDispatcher();
     const { ref, type } = props;
     const samples = ['SELECT * FROM c', 'SELECT * FROM c ORDER BY c.id', 'SELECT * FROM c OFFSET 0 LIMIT 10'];
-    const noSqlQuickReferenceUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/query/';
-    const noSqlLearningCenterUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/';
-    const cosmosDBLimitations = 'https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/cosmosdb/cosmos#limitations';
+    const cosmosDBAgentKitUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/gen-ai/agent-kit';
+    const cosmosDBMcpToolkitUrl =
+        'https://learn.microsoft.com/en-us/azure/cosmos-db/gen-ai/model-context-protocol-toolkit';
+    const cosmosDBShellUrl = 'https://learn.microsoft.com/en-us/azure/cosmos-db/shell/overview';
+    const cosmosDBVsCodeExtensionUrl = 'https://review.microsoft.com/en-us/azure/cosmos-db/vscode-extension/overview';
+    const cosmosDBGalleryUrl = 'https://azurecosmosdb.github.io/gallery/';
 
     const insertSampleText = useCallback((sample: string) => void dispatcher.insertText(sample), [dispatcher]);
 
@@ -68,9 +71,13 @@ export const LearnButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) 
                             ))}
                         </MenuPopover>
                     </Menu>
-                    <MenuItemLink href={noSqlQuickReferenceUrl}>{l10n.t('NoSQL quick reference')}</MenuItemLink>
-                    <MenuItemLink href={noSqlLearningCenterUrl}>{l10n.t('Learning center')}</MenuItemLink>
-                    <MenuItemLink href={cosmosDBLimitations}>{l10n.t('Cosmos DB SDK limitations')}</MenuItemLink>
+                    <MenuItemLink href={cosmosDBAgentKitUrl}>{l10n.t('Azure Cosmos DB Agent Kit')}</MenuItemLink>
+                    <MenuItemLink href={cosmosDBMcpToolkitUrl}>{l10n.t('Azure Cosmos DB MCP Toolkit')}</MenuItemLink>
+                    <MenuItemLink href={cosmosDBShellUrl}>{l10n.t('Azure Cosmos DB Shell')}</MenuItemLink>
+                    <MenuItemLink href={cosmosDBVsCodeExtensionUrl}>
+                        {l10n.t('Azure Cosmos DB VS Code extension')}
+                    </MenuItemLink>
+                    <MenuItemLink href={cosmosDBGalleryUrl}>{l10n.t('Azure Cosmos DB Gallery')}</MenuItemLink>
                 </MenuList>
             </MenuPopover>
         </Menu>

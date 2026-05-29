@@ -452,7 +452,7 @@
   "Go to output": "Перейти к выходным данным",
   "Go to previous page": "Вернуться к предыдущей странице",
   "Handler for command {command} in scope {scope} is not registered.": "Обработчик команды {command} в области {scope} не зарегистрирован.",
-  "Help": "Help",
+  "Help": "Справка",
   "Homebrew is not installed. For more installation options, visit: {0}": "Homebrew не установлен. Чтобы узнать больше о способах установки, посетите {0}",
   "Hotkey sequences are not supported in this context": "Последовательности горячих клавиш не поддерживаются в этом контексте",
   "How your application connects to the database. Examples: Entity Framework, JDBC, Raw SQL queries": "Как приложение подключается к базе данных. Примеры: Entity Framework, JDBC, необработанные SQL-запросы",

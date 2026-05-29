@@ -452,7 +452,7 @@
   "Go to output": "출력으로 이동",
   "Go to previous page": "이전 페이지로 이동",
   "Handler for command {command} in scope {scope} is not registered.": "{scope} 범위의 {command} 명령에 대한 처리기가 등록되지 않았습니다.",
-  "Help": "Help",
+  "Help": "도움말",
   "Homebrew is not installed. For more installation options, visit: {0}": "Homebrew가 설치되어 있지 않습니다. 추가 설치 옵션을 보려면 다음을 참조하세요. {0}",
   "Hotkey sequences are not supported in this context": "이 컨텍스트에서는 바로 가기 키 시퀀스가 지원되지 않습니다.",
   "How your application connects to the database. Examples: Entity Framework, JDBC, Raw SQL queries": "애플리케이션이 데이터베이스에 연결하는 방법입니다. 예: Entity Framework, JDBC, 원시 SQL 쿼리",

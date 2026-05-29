@@ -452,7 +452,7 @@
   "Go to output": "Přejít na výstup",
   "Go to previous page": "Přejít na předchozí stránku",
   "Handler for command {command} in scope {scope} is not registered.": "Obslužná rutina pro příkaz {command} v oboru {scope} není zaregistrovaná.",
-  "Help": "Help",
+  "Help": "Nápověda",
   "Homebrew is not installed. For more installation options, visit: {0}": "Program Homebrew není nainstalovaný. Další možnosti instalace najdete tady: {0}",
   "Hotkey sequences are not supported in this context": "Sekvence klávesových zkratek nejsou v tomto kontextu podporovány.",
   "How your application connects to the database. Examples: Entity Framework, JDBC, Raw SQL queries": "Jak se vaše aplikace připojuje k databázi. Příklady: Entity Framework, JDBC, nezpracované dotazy SQL",

@@ -452,7 +452,7 @@
   "Go to output": "Passa all'output",
   "Go to previous page": "Pagina precedente",
   "Handler for command {command} in scope {scope} is not registered.": "Il gestore per il comando {command} nell'ambito {scope} non è registrato.",
-  "Help": "Help",
+  "Help": "Guida",
   "Homebrew is not installed. For more installation options, visit: {0}": "Homebrew non è installato. Per altre opzioni di installazione, visitare: {0}",
   "Hotkey sequences are not supported in this context": "Le sequenze di tasti di scelta rapida non sono supportate in questo contesto",
   "How your application connects to the database. Examples: Entity Framework, JDBC, Raw SQL queries": "Come l'applicazione si connette al database. Esempi: Entity Framework, JDBC, query SQL non elaborate",

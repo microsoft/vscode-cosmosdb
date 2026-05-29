@@ -152,6 +152,9 @@ const useStyles = makeStyles({
             fontSize: '11px',
             color: 'var(--vscode-descriptionForeground)',
             cursor: 'pointer',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
             '&:hover': {
                 backgroundColor: 'transparent',
                 color: 'var(--vscode-foreground)',
@@ -282,6 +285,8 @@ const useStyles = makeStyles({
     },
 });
 
+const MAX_MODEL_NAME_WIDTH_CH = 65;
+
 const gradientSteps = [
     { dash: 18, opacity: 0.06 },
     { dash: 16, opacity: 0.08 },
@@ -358,6 +363,10 @@ export const GenerateQueryInput = () => {
     // Get display name for currently selected model
     const selectedModel = availableModels.find((m) => m.id === selectedModelId) ?? availableModels[0];
     const modelDisplayName = selectedModel?.name ?? 'Copilot';
+    const longestModelNameLength = Math.min(
+        MAX_MODEL_NAME_WIDTH_CH,
+        availableModels.reduce((max, m) => Math.max(max, m.name.length), modelDisplayName.length),
+    );
 
     // Calculate line count based on text content and textarea width
     const calculateLineCount = (text: string, textarea: HTMLTextAreaElement | null) => {
@@ -642,7 +651,7 @@ export const GenerateQueryInput = () => {
                             {availableModels.length > 1 ? (
                                 <Combobox
                                     className={styles.modelDropdown}
-                                    style={{ width: `${modelDisplayName.length * 0.8}ch` }}
+                                    style={{ width: `${longestModelNameLength * 0.8}ch` }}
                                     onOptionSelect={(_event, data) => handleModelChange(data)}
                                     size="small"
                                     appearance="filled-lighter"
@@ -662,9 +671,25 @@ export const GenerateQueryInput = () => {
                                         <Option
                                             key={model.id}
                                             value={model.id}
-                                            style={{ fontSize: '11px', padding: '4px 8px', minHeight: '20px' }}
+                                            text={model.name}
+                                            style={{
+                                                fontSize: '11px',
+                                                padding: '4px 8px',
+                                                minHeight: '20px',
+                                            }}
                                         >
-                                            {model.name}
+                                            <span
+                                                style={{
+                                                    display: 'block',
+                                                    maxWidth: `${MAX_MODEL_NAME_WIDTH_CH}ch`,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                                title={model.name}
+                                            >
+                                                {model.name}
+                                            </span>
                                         </Option>
                                     ))}
                                 </Combobox>

@@ -661,7 +661,7 @@
   "Please contact the account owner to get the required permissions.": "必要なアクセス許可を取得するには、アカウント所有者にお問い合わせください。",
   "Please enter the word \"{expectedConfirmationWord}\" to confirm the operation.": "操作を確認するには、単語 \"{expectedConfirmationWord}\" を入力してください。",
   "Please provide a description of the query you want to generate.": "生成するクエリの説明を入力してください。",
-  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".",
+  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "生成するクエリの説明を入力してください。例: \"@cosmosdb /generateQuery すべてのアクティブ ユーザーを検索してください\"。",
   "Please try again. If the error persists, please": "もう一度お試しください。エラーが引き続き発生する場合は、",
   "Please use the dedicated PostgreSQL extension instead.": "代わりに、専用の PostgreSQL 拡張機能を使用してください。",
   "Populate Sample Data": "サンプル データの入力",

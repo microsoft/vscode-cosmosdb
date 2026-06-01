@@ -369,7 +369,7 @@ export function createToolExecutor(
                         await callWithTelemetryAndErrorHandling('cosmosDB.migration.ddlExtractor.extract', (ctx) => {
                             ctx.errorHandling.suppressDisplay = true;
                             ctx.errorHandling.rethrow = false;
-                            reportDdlExtractorStats(ctx, stats, baseName, decoded.encoding, phaseContext);
+                            reportDdlExtractorStats(ctx, stats, decoded.encoding, phaseContext);
                         });
                         return extracted || rawText;
                     }

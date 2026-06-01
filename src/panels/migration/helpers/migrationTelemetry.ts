@@ -142,10 +142,33 @@ export function enrichErrorContext(context: IActionContext, error: unknown): voi
         context.telemetry.properties.aiErrorCode = error.code;
         context.errorHandling.issueProperties.errorCategory = 'ai';
         context.errorHandling.issueProperties.aiErrorCode = error.code;
-        if (error.code === 'Unknown' && error.cause) {
-            // Only in telemetry — not in issueProperties to avoid leaking model internals
+        if (error.code === 'Unknown' && error.cause !== undefined && error.cause !== null) {
             const cause = error.cause;
-            context.telemetry.properties.aiErrorCause = cause instanceof Error ? cause.message : JSON.stringify(cause);
+
+            // Bounded: constructor name for Errors, typeof for everything else.
+            // Both come from the JS runtime, not from user/model input.
+            context.telemetry.properties.aiErrorCauseType =
+                cause instanceof Error ? cause.constructor.name : typeof cause;
+
+            // Bounded: a short alphanumeric code if the cause exposes one.
+            // The regex enforces the allowlist — anything else is dropped.
+            const rawCode =
+                (cause as { code?: unknown }).code ??
+                (cause as { name?: unknown }).name ??
+                (cause as { status?: unknown }).status;
+            if (typeof rawCode === 'string' || typeof rawCode === 'number') {
+                const code = String(rawCode);
+                if (/^[A-Za-z0-9_.-]{1,64}$/.test(code)) {
+                    context.telemetry.properties.aiErrorCauseCode = code;
+                }
+            }
+
+            // Raw message: issue body only, never telemetry. The Report Issue
+            // flow is user-consented and applies `valuesToMask` to redact
+            // anything the action already marked sensitive.
+            if (cause instanceof Error && cause.message) {
+                context.errorHandling.issueProperties.aiErrorCauseMessage = cause.message;
+            }
         }
     } else {
         context.telemetry.properties.errorCategory = 'infrastructure';

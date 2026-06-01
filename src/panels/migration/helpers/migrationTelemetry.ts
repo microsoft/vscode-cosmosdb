@@ -48,10 +48,24 @@ export function setMigrationTelemetryContext(
         context.telemetry.properties.sourceDbType = dbType;
     }
 
-    // Mask only tenantId — other Azure org info is safe to send as plain text
-    const tenantId = project.phases.targetEnvironment?.tenantId;
-    if (tenantId) {
-        context.valuesToMask.push(tenantId);
+    // OII identifiers are emitted as-is under their predefined property names
+    // (`subscriptionId`, `tenantId`, `accountName`), but they should still be
+    // redacted from any error messages emitted alongside the event.
+    const targetEnv = project.phases.targetEnvironment;
+    if (targetEnv?.tenantId) {
+        context.valuesToMask.push(targetEnv.tenantId);
+    }
+    if (targetEnv?.subscriptionId) {
+        context.valuesToMask.push(targetEnv.subscriptionId);
+    }
+    const targetAccountName =
+        targetEnv?.accountName ||
+        (targetEnv?.endpoint ? extractAccountNameFromEndpoint(targetEnv.endpoint) : undefined);
+    if (targetAccountName) {
+        context.valuesToMask.push(targetAccountName);
+    }
+    if (targetEnv?.resourceGroup) {
+        context.valuesToMask.push(targetEnv.resourceGroup);
     }
 
     // Stamp issueProperties so Report Issue always includes basic migration context

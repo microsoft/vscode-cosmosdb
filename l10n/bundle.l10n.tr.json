@@ -661,7 +661,7 @@
   "Please contact the account owner to get the required permissions.": "Gerekli izinleri almak için lütfen hesap sahibine başvurun.",
   "Please enter the word \"{expectedConfirmationWord}\" to confirm the operation.": "İşlemi onaylamak için lütfen \"{expectedConfirmationWord}\" sözcüğünü girin.",
   "Please provide a description of the query you want to generate.": "Lütfen oluşturmak istediğiniz sorgunun açıklamasını sağlayın.",
-  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".",
+  "Please provide a description of the query you want to generate. For example: \"@cosmosdb /generateQuery find all active users\".": "Lütfen oluşturmak istediğiniz sorgunun açıklamasını sağlayın. Örneğin: “@cosmosdb /generateQuery tüm aktif kullanıcıları bul”.",
   "Please try again. If the error persists, please": "Lütfen yeniden deneyin. Hata devam ederse lütfen",
   "Please use the dedicated PostgreSQL extension instead.": "Lütfen bunun yerine ayrılmış PostgreSQL uzantısını kullanın.",
   "Populate Sample Data": "Örnek Verileri Doldur",

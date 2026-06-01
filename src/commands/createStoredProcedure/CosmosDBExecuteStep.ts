@@ -12,6 +12,7 @@ import { nonNullProp } from '../../utils/nonNull';
 import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateStoredProcedureWizardContext> {
+    public id = 'cosmosDB.createStoredProcedure.executeStep';
     public priority: number = 100;
 
     public async execute(context: CreateStoredProcedureWizardContext): Promise<void> {

@@ -35,6 +35,15 @@ export type QueryResultKind = 'unknown' | 'object' | 'primitive';
  * from arithmetic expressions like `SELECT c.price * c.qty FROM c`.
  */
 export const isSelectStar = (query: string): boolean => {
+    // Fast-path: a `SELECT *` query must literally contain both a `*` and the
+    // word `SELECT` (case-insensitive). If either is missing we can skip the
+    // expensive parse entirely. This is a one-way heuristic — it only rules
+    // out impossible cases; ambiguous strings still fall through to the parser.
+    // TODO: consider memoizing the parsed result by query string if profiling
+    // shows repeat calls with the same input becoming hot.
+    if (!query.includes('*')) return false;
+    if (!/select/i.test(query)) return false;
+
     const { ast } = parse(query);
     return ast?.query?.select?.spec?.kind === 'SelectStarSpec';
 };

@@ -171,17 +171,14 @@ export function enrichErrorContext(context: IActionContext, error: unknown): voi
  * event) and accumulates phase-level rollups on the optional phase context for
  * dashboards/alerts that prefer one record per phase.
  *
- * No file contents or full paths are emitted — only the basename and structural
- * counts.
+ * No file contents, paths, or names are emitted — only structural counts.
  */
 export function reportDdlExtractorStats(
     callContext: IActionContext,
     stats: ExtractionStats,
-    fileBaseName: string,
     encoding: FileEncoding,
     phaseContext?: IActionContext,
 ): void {
-    callContext.telemetry.properties.fileBaseName = fileBaseName;
     callContext.telemetry.properties.encoding = encoding;
 
     const m = callContext.telemetry.measurements;

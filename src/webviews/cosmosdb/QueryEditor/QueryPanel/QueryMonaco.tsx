@@ -39,6 +39,7 @@ export const QueryMonaco = () => {
     const cursorDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
     const languageServiceDisposableRef = useRef<MonacoEditorType.IDisposable | null>(null);
     const languageServiceRef = useRef<SqlLanguageService | null>(null);
+    const cursorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // Keep a ref to the latest schema so the language service always reads fresh data
     const schemaRef = useRef(state.containerSchema);
@@ -81,14 +82,19 @@ export const QueryMonaco = () => {
 
             // Track cursor position changes to always know which query block the cursor is in.
             // This survives focus loss so the Run button can execute the correct block.
+            // Debounced to avoid re-parsing the document on every cursor move.
             cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
-                const model = editor.getModel();
-                const service = languageServiceRef.current;
-                if (model && service) {
-                    const offset = model.getOffsetAt(event.position);
-                    const block = getQueryBlockAtOffset(model.getValue(), offset, service);
-                    dispatcher.setCurrentQueryBlock(block);
-                }
+                if (cursorTimerRef.current) clearTimeout(cursorTimerRef.current);
+                cursorTimerRef.current = setTimeout(() => {
+                    cursorTimerRef.current = undefined;
+                    const model = editor.getModel();
+                    const service = languageServiceRef.current;
+                    if (model && service) {
+                        const offset = model.getOffsetAt(event.position);
+                        const block = getQueryBlockAtOffset(model.getValue(), offset, service);
+                        dispatcher.setCurrentQueryBlock(block);
+                    }
+                }, 50);
             });
 
             // Compute the initial query block based on the default cursor position
@@ -125,13 +131,14 @@ export const QueryMonaco = () => {
         return () => {
             disposableRef.current?.dispose();
             cursorDisposableRef.current?.dispose();
+            if (cursorTimerRef.current) clearTimeout(cursorTimerRef.current);
         };
     }, []);
 
     const onChange = useCallback(
         (newValue: string | undefined) => {
             if (newValue !== undefined && newValue !== state.queryValue) {
-                void dispatcher.insertText(newValue);
+                dispatcher.insertText(newValue);
             }
         },
         [dispatcher, state],

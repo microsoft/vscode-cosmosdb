@@ -87,6 +87,7 @@ export class MonacoMultiQueryDecorator implements Disposable {
     private editor: monacoEditor.editor.IStandaloneCodeEditor | null = null;
     private viewZoneIds: string[] = [];
     private readonly highlightActiveBlock: boolean;
+    private activeBlockTimer: ReturnType<typeof setTimeout> | undefined;
 
     constructor(
         monaco: MonacoNamespace,
@@ -157,7 +158,11 @@ export class MonacoMultiQueryDecorator implements Disposable {
                         const m = codeEditor.getModel();
                         if (!m) return;
                         const offset = m.getOffsetAt(e.position);
-                        this.updateActiveBlockDecoration(m, offset);
+                        if (this.activeBlockTimer) clearTimeout(this.activeBlockTimer);
+                        this.activeBlockTimer = setTimeout(() => {
+                            this.activeBlockTimer = undefined;
+                            this.updateActiveBlockDecoration(m, offset);
+                        }, 50);
                     }),
                 );
                 // Apply initial highlight at current cursor position
@@ -208,7 +213,8 @@ export class MonacoMultiQueryDecorator implements Disposable {
             return;
         }
 
-        const region = this.service.getActiveRegion(text, cursorOffset);
+        // Reuse the already-parsed document instead of parsing again
+        const region = doc.regionAtOffset(cursorOffset);
         if (!region || region.text.trim().length === 0) {
             this.activeBlockDecorations.clear();
             return;
@@ -307,6 +313,10 @@ export class MonacoMultiQueryDecorator implements Disposable {
     }
 
     dispose(): void {
+        if (this.activeBlockTimer) {
+            clearTimeout(this.activeBlockTimer);
+            this.activeBlockTimer = undefined;
+        }
         this.decorations?.clear();
         this.decorations = null;
         this.activeBlockDecorations?.clear();

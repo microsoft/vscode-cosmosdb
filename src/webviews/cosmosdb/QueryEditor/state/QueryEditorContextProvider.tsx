@@ -39,6 +39,8 @@ type QueryExecutionResponse = {
 
 export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorAppRouter> {
     private eventSubscription?: { unsubscribe: () => void };
+    private insertTextTimer: ReturnType<typeof setTimeout> | undefined;
+    private selectedTextTimer: ReturnType<typeof setTimeout> | undefined;
 
     constructor(
         private readonly dispatch: (action: DispatchAction) => void,
@@ -136,7 +138,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     public async openFile(): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.openFile.mutate());
         if (result?.query) {
-            await this.insertText(result.query);
+            this.insertText(result.query);
         }
     }
     public async copyToClipboard(text: string): Promise<void> {
@@ -148,13 +150,23 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     public async duplicateTab(text: string): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.duplicateTab.mutate({ text }));
     }
-    public async insertText(query: string): Promise<void> {
+    public insertText(query: string): void {
         this.dispatch({ type: 'insertText', queryValue: query ?? '' });
-        await this.safeMutate(() => this.trpcClient.queryEditor.updateQueryText.mutate({ query }));
+        // Debounce the tRPC call to avoid flooding the extension host on every keystroke
+        if (this.insertTextTimer) clearTimeout(this.insertTextTimer);
+        this.insertTextTimer = setTimeout(() => {
+            this.insertTextTimer = undefined;
+            void this.safeMutate(() => this.trpcClient.queryEditor.updateQueryText.mutate({ query }));
+        }, 300);
     }
     public setSelectedText(query: string): void {
         this.dispatch({ type: 'setQuerySelectedValue', selectedValue: query });
-        void this.safeMutate(() => this.trpcClient.queryEditor.updateSelectedText.mutate({ selectedQuery: query }));
+        // Debounce the tRPC call to avoid flooding the extension host on every selection change
+        if (this.selectedTextTimer) clearTimeout(this.selectedTextTimer);
+        this.selectedTextTimer = setTimeout(() => {
+            this.selectedTextTimer = undefined;
+            void this.safeMutate(() => this.trpcClient.queryEditor.updateSelectedText.mutate({ selectedQuery: query }));
+        }, 300);
     }
     public setCurrentQueryBlock(queryBlock: string): void {
         this.dispatch({ type: 'setCurrentQueryBlock', currentQueryBlock: queryBlock });

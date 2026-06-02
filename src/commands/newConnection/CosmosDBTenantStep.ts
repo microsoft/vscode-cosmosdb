@@ -15,6 +15,8 @@ import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
  * used for Entra ID authentication against the Cosmos DB account.
  */
 export class CosmosDBTenantStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
+    public id = 'cosmosDB.newConnection.tenantStep';
+
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
         const subscriptionProvider = new VSCodeAzureSubscriptionProvider();
 

@@ -11,6 +11,7 @@ import { ext } from '../../extensionVariables';
 import { type CreateContainerWizardContext } from './CreateContainerWizardContext';
 
 export class CosmosDBContainerNameStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+    public id = 'cosmosDB.createContainer.nameStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {

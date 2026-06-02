@@ -10,6 +10,7 @@ import { ext } from '../../extensionVariables';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 
 export class CosmosDBTriggerNameStep extends AzureWizardPromptStep<CreateTriggerWizardContext> {
+    public id = 'cosmosDB.createTrigger.nameStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateTriggerWizardContext): Promise<void> {

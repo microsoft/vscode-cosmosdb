@@ -17,7 +17,7 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { CosmosDbOperationsService } from '../../../chat';
+import { CosmosDbOperationsService, QueryGenerationRefusedError } from '../../../chat';
 import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
@@ -680,6 +680,13 @@ export const queryEditorRouterDef = queryEditorRouter({
                     prompt: input.prompt,
                 };
             } catch (error) {
+                if (error instanceof QueryGenerationRefusedError) {
+                    return {
+                        generatedQuery: false as const,
+                        errorMessage: error.message,
+                    };
+                }
+
                 if (token.isCancellationRequested) {
                     void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
                         telCtx.errorHandling.suppressDisplay = true;

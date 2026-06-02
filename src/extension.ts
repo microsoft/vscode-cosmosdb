@@ -133,9 +133,7 @@ export async function activateInternal(
                 }
 
                 if (event.affectsConfiguration('telemetry.feedback.enabled')) {
-                    await Promise.all(
-                        Array.from(QueryEditorTab.openTabs).map((tab) => tab.refreshSurveyFeedbackVisibility()),
-                    );
+                    Array.from(QueryEditorTab.openTabs).forEach((tab) => tab.refreshSurveyFeedbackVisibility());
                 }
             },
         );
@@ -154,7 +152,7 @@ export async function activateInternal(
             onCopilotAvailabilityChanged((available) => {
                 ext.isAIFeaturesEnabled = available;
                 // Notify all open QueryEditorTabs about the change
-                void QueryEditorTab.notifyAIFeaturesChanged(available);
+                QueryEditorTab.notifyAIFeaturesChanged(available);
                 void MigrationAssistantTab.notifyAIFeaturesChanged(available);
             }),
         );

@@ -10,6 +10,7 @@ import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
 
 export class CosmosDBDatabaseNameStep extends AzureWizardPromptStep<CreateDatabaseWizardContext> {
+    public id = 'cosmosDB.createDatabase.nameStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateDatabaseWizardContext): Promise<void> {

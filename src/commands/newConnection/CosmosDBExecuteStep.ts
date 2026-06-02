@@ -13,6 +13,7 @@ import { WorkspaceResourceType } from '../../tree/workspace-api/SharedWorkspaceR
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<NewConnectionWizardContext> {
+    public id = 'cosmosDB.newConnection.executeStep';
     public priority: number = 100;
 
     public async execute(context: NewConnectionWizardContext): Promise<void> {

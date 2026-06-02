@@ -10,6 +10,7 @@ import { ext } from '../../extensionVariables';
 import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
 
 export class CosmosDBStoredProcedureNameStep extends AzureWizardPromptStep<CreateStoredProcedureWizardContext> {
+    public id = 'cosmosDB.createStoredProcedure.nameStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateStoredProcedureWizardContext): Promise<void> {

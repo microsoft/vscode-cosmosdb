@@ -14,6 +14,8 @@ import {
 } from './NewEmulatorConnectionWizardContext';
 
 export class PromptEmulatorTypeStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
+    public id = 'cosmosDB.emulator.typeStep';
+
     constructor() {
         super();
     }

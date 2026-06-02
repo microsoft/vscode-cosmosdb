@@ -12,6 +12,7 @@ import {
 } from './NewEmulatorConnectionWizardContext';
 
 export class PromptEmulatorPortStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
+    public id = 'cosmosDB.emulator.portStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {

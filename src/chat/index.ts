@@ -6,6 +6,7 @@
 export { CosmosDbChatParticipant, type PendingEditQueryResult } from './cosmosDbChatParticipant';
 export {
     CosmosDbOperationsService,
+    QueryGenerationRefusedError,
     type QueryExecutionEntry,
     type QueryHistoryContext,
 } from './CosmosDbOperationsService';
@@ -18,4 +19,4 @@ export * from './systemPrompt';
 export * from './userPayload';
 
 // Language model tools
-export { SAMPLE_DATA_TOOL_NAME, registerSampleDataTool } from './sampleDataTool';
+export { registerSampleDataTool, SAMPLE_DATA_TOOL_NAME } from './sampleDataTool';

@@ -8,6 +8,7 @@ import { getTriggerOperation } from '../../cosmosdb/fs/TriggerFileDescriptor';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 
 export class CosmosDBTriggerOperationStep extends AzureWizardPromptStep<CreateTriggerWizardContext> {
+    public id = 'cosmosDB.createTrigger.operationStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateTriggerWizardContext): Promise<void> {

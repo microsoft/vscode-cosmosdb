@@ -18,6 +18,15 @@ const MONACO_OPTIONS = {
     accessibilitySupport: 'auto' as const,
     accessibilityPageSize: 10,
     fixedOverflowWidgets: true,
+    suggest: {
+        // Only auto-highlight the first item when the suggest widget is
+        // opened by *typing* (quick suggestions). When opened by a trigger
+        // character — most notably `\n` in our completion provider — leave
+        // the list unfocused so a second Enter inserts a newline instead of
+        // accidentally committing the first item (e.g. `AND`). Same for
+        // explicit Ctrl+Space: user must arrow/click to pick.
+        selectionMode: 'whenQuickSuggestion' as const,
+    },
 };
 
 /**

@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { parse, parseMultiQueryDocument, stripComments } from '@cosmosdb/nosql-language-service';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import {
@@ -51,9 +51,27 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
+// Persists the user-selected Priority Level across panel reopens. Single key
+// scope (per-extension, not per-account / per-container) to mirror cosmos-explorer
+// which stores one LocalStorage entry for all connections.
+const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
+const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
 const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
 const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
 const SCHEMA_GENERATION_PAGE_SIZE = 1000;
+
+/**
+ * Read the persisted Priority Level from extension global state, validating it
+ * against the known enum values. Falls back to `Low` (per PRD F3/F4) for unset
+ * or corrupted entries.
+ */
+function readPersistedPriorityLevel(): PriorityLevel {
+    const stored = ext.context.globalState.get<string>(PRIORITY_LEVEL_KEY);
+    if (stored === 'High' || stored === 'Low') {
+        return stored as PriorityLevel;
+    }
+    return DEFAULT_PRIORITY_LEVEL;
+}
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -83,6 +101,7 @@ export const queryEditorRouterDef = queryEditorRouter({
      */
     init: queryEditorProcedure.mutation(async ({ ctx }) => {
         console.debug(`[QueryEditor] init invoked. hasConnection=${!!ctx.state.connection}`);
+
         if (ctx.actionContext) {
             ctx.actionContext.telemetry.suppressIfSuccessful = true;
         }
@@ -605,7 +624,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     updateSelectedText: queryEditorProcedure
         .input(z.object({ selectedQuery: z.string() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.selectedQuery = input.selectedQuery || undefined;
         }),
 
@@ -718,7 +737,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     closeGenerateInput: queryEditorProcedure
         .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
@@ -753,7 +772,7 @@ export const queryEditorRouterDef = queryEditorRouter({
     }),
 
     setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input }) => {
-        return await callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
+        return callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
             telCtx.errorHandling.suppressDisplay = true;
             telCtx.telemetry.properties.modelId = input.modelId;
 
@@ -1096,9 +1115,47 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     confirmToolInvocationResponse: queryEditorProcedure
         .input(z.object({ confirmed: z.boolean() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.pendingConfirmResolve?.(input.confirmed);
             ctx.state.pendingConfirmResolve = undefined;
+        }),
+
+    /**
+     * Returns query-editor capabilities that depend on the current connection.
+     * Used by the webview to decide whether to show / enable connection-specific
+     * UI such as Priority Level and Throughput Bucket controls.
+     *
+     * - `isEmulator`: true when the current connection points at the local emulator.
+     *   Priority and Throughput options are meaningless against the emulator.
+     * - `isPriorityLevelEnabled`: true when the Cosmos DB account has
+     *   `enablePriorityBasedExecution` set on the ARM resource. Only available
+     *   for Azure-signed-in accounts (where `azureMetadata` is populated);
+     *   workspace-attached / connection-string accounts cannot read ARM and so
+     *   never expose the UI.
+     * - `currentPriorityLevel`: the priority level persisted in extension global
+     *   state, falling back to `Low` for first use or invalid entries (PRD F3/F4).
+     *   The UI uses this to seed the picker on panel open so the user's last
+     *   choice survives reloads (PRD F2 / F10).
+     */
+    getCapabilities: queryEditorProcedure.mutation(({ ctx }) => {
+        const databaseAccount = ctx.state.connection?.azureMetadata?.databaseAccount;
+
+        return {
+            isEmulator: ctx.state.connection?.isEmulator ?? false,
+            isPriorityLevelEnabled: databaseAccount?.enablePriorityBasedExecution ?? false,
+            currentPriorityLevel: readPersistedPriorityLevel(),
+        };
+    }),
+
+    /**
+     * Persists the user-selected Priority Level so it survives panel reopens
+     * and Cosmos DB extension restarts. Mirrors cosmos-explorer's LocalStorage
+     * model: one global value shared across all accounts / containers.
+     */
+    setPriorityLevel: queryEditorProcedure
+        .input(z.object({ priorityLevel: z.enum(['High', 'Low']) }))
+        .mutation(async ({ input }) => {
+            await ext.context.globalState.update(PRIORITY_LEVEL_KEY, input.priorityLevel);
         }),
 });
 

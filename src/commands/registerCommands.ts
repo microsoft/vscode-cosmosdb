@@ -166,12 +166,14 @@ export function registerChatButtonCommands() {
 
                 // Find the active query editor tab and update its query
                 const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-                const activeTab = activeQueryEditors.find(
-                    (tab) =>
-                        tab.getConnection()?.endpoint === connection.endpoint &&
-                        tab.getConnection()?.databaseId === connection.databaseId &&
-                        tab.getConnection()?.containerId === connection.containerId,
-                );
+                const activeTab = activeQueryEditors.find((tab) => {
+                    const tabConnection = tab.getConnection();
+                    return (
+                        tabConnection?.endpoint === connection.endpoint &&
+                        tabConnection?.databaseId === connection.databaseId &&
+                        tabConnection?.containerId === connection.containerId
+                    );
+                });
 
                 if (activeTab && 'updateQuery' in activeTab) {
                     // Update the query in the existing webview

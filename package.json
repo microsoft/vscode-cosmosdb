@@ -906,7 +906,7 @@
           },
           "cosmosDB.queryEditor.generateSchemaBasedOnQueries": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
           },
           "cosmosDB.experimental.migration.showTokenEstimate": {

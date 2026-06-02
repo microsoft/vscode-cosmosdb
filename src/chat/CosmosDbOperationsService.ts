@@ -7,8 +7,6 @@ import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
@@ -88,8 +86,6 @@ const MAX_QUERY_HISTORY_PER_CONTAINER = 20;
 
 export class CosmosDbOperationsService {
     private static instance: CosmosDbOperationsService;
-    private static extensionPath: string | undefined;
-    private static queryLanguageReference: string | undefined;
 
     /**
      * In-memory storage for query execution history, keyed by "accountId/databaseId/containerId".
@@ -108,47 +104,11 @@ export class CosmosDbOperationsService {
         return `${accountId ?? 'unknown'}/${databaseId}/${containerId}`;
     }
 
-    /**
-     * Initialize the service with the extension context.
-     * This must be called once during extension activation to enable loading of asset files.
-     */
-    public static initialize(context: vscode.ExtensionContext): void {
-        CosmosDbOperationsService.extensionPath = context.extensionPath;
-    }
-
     public static getInstance(): CosmosDbOperationsService {
         if (!CosmosDbOperationsService.instance) {
             CosmosDbOperationsService.instance = new CosmosDbOperationsService();
         }
         return CosmosDbOperationsService.instance;
-    }
-
-    /**
-     * Loads and caches the NoSQL query language reference for LLM context.
-     * The reference is loaded once and cached for subsequent calls.
-     */
-    private static getQueryLanguageReference(): string {
-        if (CosmosDbOperationsService.queryLanguageReference) {
-            return CosmosDbOperationsService.queryLanguageReference;
-        }
-
-        if (!CosmosDbOperationsService.extensionPath) {
-            console.warn('Extension path not initialized. Query language reference will not be available.');
-            return '';
-        }
-
-        try {
-            const referencePath = path.join(
-                CosmosDbOperationsService.extensionPath,
-                'resources',
-                'azurecosmosdb-nosql-query-language.md',
-            );
-            CosmosDbOperationsService.queryLanguageReference = fs.readFileSync(referencePath, 'utf-8');
-            return CosmosDbOperationsService.queryLanguageReference;
-        } catch (error) {
-            console.warn('Failed to load query language reference:', error);
-            return '';
-        }
     }
 
     /**
@@ -873,9 +833,6 @@ export class CosmosDbOperationsService {
             throw err;
         });
 
-        // Load query language reference for comprehensive syntax guidance
-        const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
-
         // If there is a schema already saved in SchemaFileStorage (from the toolbar
         // or a previous sampling run), include it in the initial context so the LLM
         // can use it without needing to call the sampling tool.
@@ -905,7 +862,6 @@ export class CosmosDbOperationsService {
             userPrompt,
             currentQuery: currentQuery || undefined,
             historyContext,
-            languageReference: queryLanguageRef || undefined,
             additionalContext,
             cachedSchema,
         };

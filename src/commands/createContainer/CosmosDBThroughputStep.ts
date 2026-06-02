@@ -12,6 +12,7 @@ const maxThroughput: number = 100000;
 const throughputStepSize = 100;
 
 export class CosmosDBThroughputStep extends AzureWizardPromptStep<CreateContainerWizardContext> {
+    public id = 'cosmosDB.createContainer.throughputStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateContainerWizardContext): Promise<void> {

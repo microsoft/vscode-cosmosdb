@@ -1,0 +1,91 @@
+{
+  "products": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string" },
+      "name": { "type": "string" },
+      "category": { "type": "string", "enum": ["Books", "Electronics", "Sports", "Home", "Clothing"] },
+      "brand": { "type": "string" },
+      "price": { "type": "number" },
+      "rating": { "type": "number" },
+      "inStock": { "type": "boolean" },
+      "tags": { "type": "array", "items": { "type": "string" } },
+      "description": { "type": ["string", "null"] },
+      "specifications": {
+        "type": "object",
+        "properties": {
+          "isbn": { "type": "string" },
+          "language": { "type": "string" },
+          "pages": { "type": "string" },
+          "publisher": { "type": "string" },
+          "edition": { "type": "string" },
+          "batteryLife": { "type": "string" },
+          "weight": { "type": "string" }
+        }
+      },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "_partitionKey": { "type": "string" }
+    }
+  },
+  "orders": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string" },
+      "customerId": { "type": "string" },
+      "status": { "type": "string", "enum": ["cancelled", "pending", "processing", "shipped", "delivered"] },
+      "totalAmount": { "type": "number" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "productId": { "type": "string" },
+            "name": { "type": "string" },
+            "quantity": { "type": "number" },
+            "unitPrice": { "type": "number" }
+          }
+        }
+      },
+      "shipping": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "object",
+            "properties": {
+              "city": { "type": "string" },
+              "state": { "type": "string" },
+              "country": { "type": "string" },
+              "zip": { "type": "string" }
+            }
+          },
+          "carrier": { "type": ["string", "null"] },
+          "trackingNumber": { "type": ["string", "null"] }
+        }
+      },
+      "discount": { "type": ["number", "null"] },
+      "_partitionKey": { "type": "string" }
+    }
+  },
+  "events": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string" },
+      "type": { "type": "string", "enum": ["signup", "click", "purchase", "pageview", "logout"] },
+      "userId": { "type": "string" },
+      "sessionId": { "type": "string" },
+      "timestamp": { "type": "string", "format": "date-time" },
+      "durationMs": { "type": ["number", "null"] },
+      "properties": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "string" },
+          "referrer": { "type": "string" },
+          "productId": { "type": "string" },
+          "amount": { "type": "number" }
+        }
+      },
+      "_partitionKey": { "type": "string" }
+    }
+  }
+}

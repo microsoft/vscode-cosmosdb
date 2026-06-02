@@ -112,6 +112,7 @@ export async function activateInternal(
 
         // Register dev-only quality test command when in debug mode
         if (context.extensionMode === vscode.ExtensionMode.Development) {
+            void vscode.commands.executeCommand('setContext', 'cosmosDB.devMode', true);
             const { registerNl2QueryQualityTestCommand } = await import('./commands/nl2queryQualityTest');
             registerNl2QueryQualityTestCommand(context);
         }

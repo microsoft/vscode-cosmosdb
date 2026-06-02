@@ -798,6 +798,10 @@
         {
           "command": "cosmosDB.migration.remove",
           "when": "never"
+        },
+        {
+          "command": "cosmosDB.dev.runNl2QueryQualityTest",
+          "when": "cosmosDB.devMode"
         }
       ]
     },

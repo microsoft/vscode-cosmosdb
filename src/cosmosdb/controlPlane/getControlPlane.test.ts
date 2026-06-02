@@ -50,8 +50,10 @@ describe('getControlPlane', () => {
     it('returns ARM control plane for Azure-signed-in account with subscription and resource group', () => {
         const plane = getControlPlane(
             makeAccountInfo({
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    subscription: fakeSubscription,
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeArmControlPlane);
@@ -64,8 +66,10 @@ describe('getControlPlane', () => {
         const plane = getControlPlane(
             makeAccountInfo({
                 isEmulator: true,
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    subscription: fakeSubscription,
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
@@ -79,7 +83,9 @@ describe('getControlPlane', () => {
     it('returns SDK control plane when subscription is set but resource group is missing', () => {
         const plane = getControlPlane(
             makeAccountInfo({
-                subscription: fakeSubscription,
+                azureMetadata: {
+                    subscription: fakeSubscription,
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
@@ -88,7 +94,9 @@ describe('getControlPlane', () => {
     it('returns SDK control plane when resource group is set but subscription is missing', () => {
         const plane = getControlPlane(
             makeAccountInfo({
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
@@ -110,9 +118,11 @@ describe('getControlPlaneForConnection', () => {
     it('returns ARM control plane when connection carries subscription, resource group and account name', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
-                accountName: 'test-account',
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    accountName: 'test-account',
+                    subscription: fakeSubscription,
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeArmControlPlane);
@@ -125,9 +135,11 @@ describe('getControlPlaneForConnection', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
                 isEmulator: true,
-                accountName: 'test-account',
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    accountName: 'test-account',
+                    subscription: fakeSubscription,
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
@@ -141,8 +153,10 @@ describe('getControlPlaneForConnection', () => {
     it('returns SDK control plane when account name is missing', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
-                subscription: fakeSubscription,
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    subscription: fakeSubscription,
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
@@ -151,8 +165,10 @@ describe('getControlPlaneForConnection', () => {
     it('returns SDK control plane when subscription is missing', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
-                accountName: 'test-account',
-                resourceGroup: 'rg-test',
+                azureMetadata: {
+                    accountName: 'test-account',
+                    resourceGroup: 'rg-test',
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);
@@ -161,8 +177,10 @@ describe('getControlPlaneForConnection', () => {
     it('returns SDK control plane when resource group is missing', () => {
         const plane = getControlPlaneForConnection(
             makeConnection({
-                accountName: 'test-account',
-                subscription: fakeSubscription,
+                azureMetadata: {
+                    accountName: 'test-account',
+                    subscription: fakeSubscription,
+                } as unknown as AccountInfo['azureMetadata'],
             }),
         );
         expect(plane).toBeInstanceOf(FakeSdkControlPlane);

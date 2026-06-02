@@ -26,6 +26,13 @@ export function registerCosmosDbSql(
     const disposables: Disposable[] = [];
 
     if (options.completions !== false) {
+        // Trigger characters mirror the Monaco completion provider's set:
+        // `.` (member access), ` ` (after keyword), `,` (next column/arg),
+        // and `\n` (start of a new query in multi-query documents — users
+        // see `SELECT` proposed without needing Ctrl+Space).
+        // `;` is intentionally NOT a trigger: re-opening the suggest widget
+        // while still finishing the current statement is distracting; the
+        // widget will open on the subsequent newline anyway.
         disposables.push(
             vscode.languages.registerCompletionItemProvider(
                 selector,
@@ -33,6 +40,7 @@ export function registerCosmosDbSql(
                 '.',
                 ' ',
                 ',',
+                '\n',
             ),
         );
     }

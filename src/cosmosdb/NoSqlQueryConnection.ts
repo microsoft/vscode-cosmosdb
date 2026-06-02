@@ -4,33 +4,20 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
-import { AzExtResourceType, type AzureSubscription } from '@microsoft/vscode-azureresources-api';
+import { AzExtResourceType } from '@microsoft/vscode-azureresources-api';
 import { type CosmosDBContainerResourceItem } from '../tree/cosmosdb/CosmosDBContainerResourceItem';
 import { type CosmosDBItemResourceItem } from '../tree/cosmosdb/CosmosDBItemResourceItem';
 import { type CosmosDBItemsResourceItem } from '../tree/cosmosdb/CosmosDBItemsResourceItem';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
+import { type AzureResourceMetadata } from './AzureResourceMetadata';
 import { type CosmosDBCredential } from './CosmosDBCredential';
 
 export type NoSqlQueryConnection = {
-    accountId?: string; // Optional, used to identify the node in the tree
     /**
-     * Cosmos DB account name. Populated from the source account when the
-     * connection is created from a tree node; required by ARM control-plane
-     * operations.
+     * Azure metadata, populated only for Azure-signed-in accounts (i.e. accounts discovered via the Azure Resources view).
+     * Required for ARM control-plane operations. Undefined for workspace-attached accounts and for the local emulator.
      */
-    accountName?: string;
-    /**
-     * Azure subscription context. Populated only for Azure-signed-in accounts;
-     * undefined for the local emulator and workspace-attached connection-string
-     * accounts. Required (together with {@link resourceGroup} and
-     * {@link accountName}) for ARM control-plane operations.
-     */
-    subscription?: AzureSubscription;
-    /**
-     * Resource group name for the Cosmos DB account. Populated together with
-     * {@link subscription}.
-     */
-    resourceGroup?: string;
+    azureMetadata?: AzureResourceMetadata;
     databaseId: string;
     containerId: string;
     endpoint: string;
@@ -63,10 +50,7 @@ export function createNoSqlQueryConnection(
     const containerId = node.model.container.id;
 
     return {
-        accountId: accountInfo.id,
-        accountName: accountInfo.name,
-        subscription: accountInfo.subscription,
-        resourceGroup: accountInfo.resourceGroup,
+        azureMetadata: accountInfo.azureMetadata,
         databaseId: databaseId,
         containerId: containerId,
         endpoint: accountInfo.endpoint,

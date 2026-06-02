@@ -5,7 +5,7 @@
 
 import { createContextValue } from '@microsoft/vscode-azext-utils';
 import { type ResourceBase } from '@microsoft/vscode-azureresources-api';
-import { v4 as uuid } from 'uuid';
+import crypto from 'crypto';
 import * as vscode from 'vscode';
 import { type Experience } from '../../../AzureDBExperiences';
 import { type TreeElement } from '../../TreeElement';
@@ -22,7 +22,7 @@ export abstract class CosmosDBAccountResourceItemBase
         public readonly account: ResourceBase,
         public readonly experience: Experience,
     ) {
-        this.id = account.id ?? uuid();
+        this.id = account.id ?? crypto.randomUUID();
         this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
     }
 

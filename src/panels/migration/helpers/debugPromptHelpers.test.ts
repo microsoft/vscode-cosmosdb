@@ -3,7 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import path from 'path';
 import { type Mock } from 'vitest';
+
 vi.mock('vscode', () => {
     class LanguageModelTextPart {
         value: string;
@@ -74,11 +76,13 @@ describe('dumpDebugPrompt', () => {
 
         expect(vscode.workspace.fs.writeFile).toHaveBeenCalledTimes(2);
         expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
-            { fsPath: '/tmp/debug-prompts/step1-analysis.prompt.md' },
+            // Windows has another separator
+            { fsPath: path.normalize('/tmp/debug-prompts/step1-analysis.prompt.md') },
             Buffer.from('prompt body', 'utf-8'),
         );
         expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
-            { fsPath: '/tmp/debug-prompts/step1-analysis.messages.md' },
+            // Windows has another separator
+            { fsPath: path.normalize('/tmp/debug-prompts/step1-analysis.messages.md') },
             Buffer.from('<!-- MSG:Assistant -->\n\nassistant body', 'utf-8'),
         );
         expect(ext.outputChannel.appendLog).toHaveBeenCalledWith(
@@ -96,7 +100,8 @@ describe('dumpDebugPrompt', () => {
 
         expect(vscode.workspace.fs.writeFile).toHaveBeenCalledTimes(1);
         expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
-            { fsPath: '/tmp/debug-prompts/step1-analysis.messages.md' },
+            // Windows has another separator
+            { fsPath: path.normalize('/tmp/debug-prompts/step1-analysis.messages.md') },
             Buffer.from('<!-- MSG:Assistant -->\n\nassistant body', 'utf-8'),
         );
         expect(ext.outputChannel.appendLog).toHaveBeenCalledWith(

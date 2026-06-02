@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBManagementClient, type DatabaseAccountGetResults } from '@azure/arm-cosmosdb';
+import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { RestError } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, parseError, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
@@ -11,6 +11,7 @@ import { CosmosDBTimeouts } from '../constants';
 import { ext } from '../extensionVariables';
 import { rejectOnTimeout } from '../utils/timeout';
 import { AuthenticationMethod, getPreferredAuthenticationMethod } from './AuthenticationMethod';
+import { type AzureResourceMetadata } from './AzureResourceMetadata';
 import { getCosmosClient } from './getCosmosClient';
 import { getManagedIdentityAuth } from './utils/managedIdentityUtils';
 
@@ -45,33 +46,38 @@ export function getCosmosDBEntraIdCredential(credentials: CosmosDBCredential[]):
 
 // Common credential retrieval function with source-specific parameters
 export async function getCosmosDBCredentials(params: {
-    //context: IActionContext;
+    // Basic account information, required for all credential types
     accountName: string;
     documentEndpoint: string;
     isEmulator: boolean;
 
     // ARM-specific parameters
-    armClient?: CosmosDBManagementClient;
-    resourceGroup?: string;
-    databaseAccount?: DatabaseAccountGetResults;
+    arm?: AzureResourceMetadata;
 
     // Connection string params
     masterKey?: string;
     tenantId?: string;
 }): Promise<CosmosDBCredential[]> {
     const result = await callWithTelemetryAndErrorHandling('getCredentials', async (context: IActionContext) => {
-        const { accountName, documentEndpoint, isEmulator, resourceGroup, tenantId, masterKey } = params;
+        const { accountName, arm, documentEndpoint, isEmulator, tenantId, masterKey } = params;
+
+        context.telemetry.properties.attachedAccount = 'false';
+
+        // Mask PII
         context.valuesToMask.push(accountName, documentEndpoint);
-        if (resourceGroup) {
-            context.valuesToMask.push(resourceGroup);
+
+        if (arm?.resourceGroup) {
+            context.valuesToMask.push(arm.resourceGroup);
         }
+
         if (tenantId) {
             context.valuesToMask.push(tenantId);
         }
+
         if (masterKey) {
             context.valuesToMask.push(masterKey);
         }
-        context.telemetry.properties.attachedAccount = 'false';
+
         const preferredAuthenticationMethod = getPreferredAuthenticationMethod();
 
         // Skip key retrieval if not preferred or not auto
@@ -94,16 +100,19 @@ export async function getCosmosDBCredentials(params: {
             }
 
             // Try to get key credential from ARM if possible
-            if (params.armClient && params.resourceGroup && params.databaseAccount) {
-                const localAuthDisabled = params.databaseAccount.disableLocalAuth ?? false;
+            const armClient = await arm?.getClient();
+            if (arm && armClient) {
+                const localAuthDisabled = arm.databaseAccount.disableLocalAuth ?? false;
+
                 keyCred = await getKeyCredentialWithARM(
                     context,
                     accountName,
-                    params.resourceGroup,
-                    params.armClient,
+                    arm.resourceGroup,
+                    armClient,
                     localAuthDisabled,
                 );
             }
+
             // Otherwise try with masterKey if provided
             else if (params.masterKey) {
                 keyCred = await getKeyCredentialWithoutARM(

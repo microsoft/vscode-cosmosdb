@@ -1,5 +1,39 @@
 # Change Log
 
+## 0.35.0 (Preview)
+
+### Added
+
+- Added **Natural Language to Query (NL2Query)**, allowing users to generate NoSQL queries from plain-language prompts directly in the Query Editor. The feature uses the active container's sampled schema for grounding, supports follow-up refinements, and lets users send feedback on generated queries. (#2859)
+- Added **Monaco autocompletion** for the Cosmos DB NoSQL query language, providing context-aware suggestions for keywords, built-in functions, and identifiers based on the connected container's schema. (#2968)
+- Added a shared **schema sampling** capability with persistence and caching of sampled container schemas. Sampling is gated by a unified consent prompt and the persisted schema is consumed by NL2Query (for prompt grounding), Monaco autocompletion (for context-aware suggestions), the Query Editor (for result schema inference), and the Migration Assistant. (#2994, #2859, #3059)
+- Added the **Migration Assistant** for AI-assisted migration from relational databases (RDBMS) to Azure Cosmos DB. Guides users through discovery of source schemas, access pattern analysis, volumetric estimation, application-details capture, and schema/DDL conversion to a Cosmos DB target model. (#2991)
+- Added integration with the **Azure Cosmos DB Shell**, a lightweight bash-like CLI for interacting with Cosmos DB accounts (separately installable as a .NET global tool from [Azure/CosmosDBShell](https://github.com/Azure/CosmosDBShell)). When the Shell is installed, the extension can launch it directly against a connected account from the tree view. The Shell supports Entra ID, connection string, and Azure CLI authentication; navigation of the account → database → container → item hierarchy with `ls`, `cd`, and `pwd`; data and management operations (`query`, `mkdb`, `mkcon`, `mkitem`, `replace`, `patch`, `rm`); pipelines and scripting with variables, loops, and functions; and an optional MCP server mode for AI-powered automation from GitHub Copilot and other MCP clients. (#2536)
+- Added a **multi-query active block gutter bar** in the Query Editor that highlights the currently selected/executing query block when the editor contains multiple statements separated by semicolons, making it clear which query will run. (#3071)
+
+### Fixed
+
+- Fixed the Throughput Bucket menu being shown when connected to the Cosmos DB Emulator. (#3058)
+- Fixed dropdown UX in the Query Editor without swallowing telemetry. (#3036)
+- Fixed button and container styles to use VS Code theme variables for better theme compatibility. (#3035)
+- Fixed handling of absent index metrics when a query returns zero results. (#3034)
+- Refactored the Cosmos DB control-plane RBAC implementation. (#3016)
+
+### Changed
+
+- Updated learning resources links in the `LearnButton` component. (#3080)
+- Migrated webview–extension communication to **tRPC** and prepared the codebase for TypeScript 6. (#2982)
+- Migrated the build system from **webpack to Vite** (ESM-based) and made Vite the default; migrated tests from **Jest to Vitest**. (#2997, #2999)
+- Migrated linting from **ESLint to oxlint** and tightened the lint configuration. (#2986, #2996)
+- Replaced the `ext` namespace with an `ExtensionService` class. (#2995)
+- Updated `azext` libraries and GitHub Actions workflows for **Node.js 24** compatibility. (#3082, #2989)
+- Refactored the NoSQL AST query layer and added a SELECT query fixture suite with Cosmos DB Emulator integration tests. (#3005, #3011)
+- Enforced a stable provider name for Cosmos DB data provider telemetry and standardized the telemetry duration field. (#2972, #2976)
+- Reduced l10n key size and added validation checks for localization dictionary keys. (#2977, #2980)
+- Improved PR triggers, build summaries, and pipeline reliability. (#3001, #3030, #3046, #3003, #3004)
+- Updated localization.
+- Updated several dependencies to address vulnerabilities.
+
 ## 0.33.2 (Preview)
 
 ### Changed

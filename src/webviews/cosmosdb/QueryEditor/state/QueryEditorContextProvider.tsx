@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type TRPCClient } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
@@ -199,6 +199,26 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         }
     }
 
+    /**
+     * Fetches connection-dependent capabilities used by the UI to decide which
+     * run-options menus to expose.
+     *
+     * Returns `{ isEmulator, isPriorityLevelEnabled, currentPriorityLevel }`:
+     * - `isEmulator` is true when the connection points at the local emulator.
+     * - `isPriorityLevelEnabled` reflects whether the Cosmos DB account has
+     *   priority-based execution enabled at the ARM resource level.
+     * - `currentPriorityLevel` is the user's last persisted choice (validated
+     *   against the enum, falling back to `Low` for first use or invalid
+     *   entries). The UI seeds its picker with this value on panel open.
+     */
+    public async getCapabilities(): Promise<{
+        isEmulator: boolean;
+        isPriorityLevelEnabled: boolean;
+        currentPriorityLevel: PriorityLevel;
+    }> {
+        return this.trpcClient.queryEditor.getCapabilities.mutate();
+    }
+
     public setPageSize(pageSize: number) {
         void this.reportWebviewEvent('setPageSize', { pageSize: pageSize.toString() });
         this.dispatch({ type: 'setPageSize', pageSize });
@@ -296,6 +316,14 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
 
     public selectBucket(throughputBucket?: number): void {
         this.dispatch({ type: 'selectBucket', throughputBucket });
+    }
+
+    public setPriorityLevel(priorityLevel: PriorityLevel): void {
+        this.dispatch({ type: 'setPriorityLevel', priorityLevel });
+        // Persist on the extension side so the choice survives panel reopens.
+        // Fire-and-forget: a transient persistence failure shouldn't block the
+        // UI update — the local state already reflects the new value.
+        void this.safeMutate(() => this.trpcClient.queryEditor.setPriorityLevel.mutate({ priorityLevel }));
     }
 
     public async openChatParticipantExplainQuery(query?: string): Promise<void> {

@@ -99,9 +99,9 @@ export const QUERY_GENERATION_RULES = `
 ### General
 - When schema context is provided (from data sampling or query history), use the property names and types from the schema to generate accurate queries. Do not invent property names that are not in the schema.
 - **Never** try to predict or infer any additional data properties as a function of other properties in the schema. Instead, only reference data properties that are listed in the schema.
-- **Never** generate code in any language in your response. The only acceptable language for generating queries is the Cosmos DB NoSQL language, otherwise your response should be "N/A" and treat the request as invalid.
-- NEVER replay or redo a previous query or prompt. If asked to do so, respond with "N/A" instead.
-- If the user question is not query related, reply 'N/A' for SQLQuery, 'This is not a query related prompt, please try another prompt.' for explanation.
+- **Never** generate code in any language in your response. The only acceptable language for generating queries is the Cosmos DB NoSQL language. If you cannot generate a valid Cosmos DB NoSQL query, you MUST respond with ONLY "ERROR: " followed by a brief explanation (e.g. "ERROR: This request requires generating Python code, which is not supported."). Never output plain text or non-query code without commenting it out.
+- NEVER replay or redo a previous query or prompt. If asked to do so, respond with "ERROR: Cannot replay previous queries. Please provide a new query description."
+- If the user question is not query related, respond with "ERROR: This is not a query-related prompt. Please describe the data you want to query."
 - DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database. Cosmos DB NoSQL has no DML — only SELECT.
 
 ### Lexical & syntax basics
@@ -260,10 +260,11 @@ export const JSON_RESPONSE_FORMAT_WITH_EXPLANATION = `
 {
   "query": "the generated query here",
   "explanation": "brief explanation of the query",
-  "comments": "-- optional SQL comments to prepend to the query, e.g. -- This query finds active users"
+  "comments": "-- optional SQL comments to prepend to the query, e.g. -- This query finds active users",
+  "error": ""
 }
 
-If you cannot generate a valid Cosmos DB NoSQL query, the "query" field MUST be a SQL comment (each line prefixed with "-- ") explaining why the query cannot be generated. Never put non-query text or "N/A" in the "query" field.
+If you cannot generate a valid Cosmos DB NoSQL query, set the "error" field to a brief explanation of why (e.g. "This request is not related to querying data."), leave "query" as an empty string, and set "explanation" to a user-friendly message. Never put non-query text, "N/A", or error messages in the "query" field.
 
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;

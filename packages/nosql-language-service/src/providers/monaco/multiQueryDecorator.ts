@@ -94,7 +94,6 @@ export class MonacoMultiQueryDecorator implements Disposable {
         options: {
             languageId?: string;
             decorationDelay?: number;
-            separatorSpacing?: number;
             highlightActiveBlock?: boolean;
         } = {},
     ) {

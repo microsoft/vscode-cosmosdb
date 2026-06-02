@@ -11,6 +11,7 @@ import { ext } from '../../extensionVariables';
 import { type CreateDatabaseWizardContext } from './CreateDatabaseWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateDatabaseWizardContext> {
+    public id = 'cosmosDB.createDatabase.executeStep';
     public priority: number = 100;
 
     public async execute(context: CreateDatabaseWizardContext): Promise<void> {

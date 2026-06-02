@@ -9,6 +9,8 @@ import { parseCosmosDBConnectionString } from '../../cosmosdb/cosmosDBConnection
 import { type NewConnectionWizardContext } from './NewConnectionWizardContext';
 
 export class CosmosDBConnectionStringStep extends AzureWizardPromptStep<NewConnectionWizardContext> {
+    public id = 'cosmosDB.newConnection.connectionStringStep';
+
     public async prompt(context: NewConnectionWizardContext): Promise<void> {
         context.connectionString = (
             await context.ui.showInputBox({

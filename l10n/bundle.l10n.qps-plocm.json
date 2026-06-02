@@ -61,6 +61,7 @@
   "✅ Update Query": "[الهاتف✅ Update Queryעִבְרִית!]",
   "❌ An error occurred while processing your request. Please try again.": "[الهاتف❌ An error occurred while processing your request. Please try again.עִבְרִית عليكעִבְרִית عليكעִבְ!]",
   "❌ Command failed:": "[الهاتف❌ Command failed:עִבְרִית !]",
+  "❌ Could not generate query: {0}": "[الهاتف❌ Could not generate query: {0}עִבְרִית عليكעִ!]",
   "❌ Error executing {0}": "[الهاتف❌ Error executing {0}עִבְרִית ع!]",
   "❌ Intent-based operation failed:": "[الهاتف❌ Intent-based operation failed:עִבְרִית عليكעִ!]",
   "❌ Language model error: {0}": "[الهاتف❌ Language model error: {0}עִבְרִית عليك!]",

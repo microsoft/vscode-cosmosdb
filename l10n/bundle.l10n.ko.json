@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ 쿼리 업데이트",
   "❌ An error occurred while processing your request. Please try again.": "❌ 요청을 처리하는 동안 오류가 발생했습니다. 다시 시도하세요.",
   "❌ Command failed:": "❌ 명령 실패:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ {0} 실행 중 오류 발생",
   "❌ Intent-based operation failed:": "❌ 의도 기반 작업 실패:",
   "❌ Language model error: {0}": "❌ 언어 모델 오류: {0}",

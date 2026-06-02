@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ Aktualisierungsabfrage",
   "❌ An error occurred while processing your request. Please try again.": "❌ Fehler beim Verarbeiten Ihrer Anfrage. Versuchen Sie es erneut.",
   "❌ Command failed:": "❌ Fehler beim Ausführen des Befehls:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ Fehler beim Ausführen von {0}.",
   "❌ Intent-based operation failed:": "❌ Fehler beim absichtsbasierten Vorgang:",
   "❌ Language model error: {0}": "❌ Sprachmodellfehler: {0}",

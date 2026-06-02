@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ 更新クエリ",
   "❌ An error occurred while processing your request. Please try again.": "❌ 要求の処理中にエラーが発生しました。もう一度お試しください。",
   "❌ Command failed:": "❌ コマンドが失敗しました:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ {0} の実行にエラーが発生しました",
   "❌ Intent-based operation failed:": "❌ 意図ベースの操作に失敗しました:",
   "❌ Language model error: {0}": "❌ 言語モデル エラー: {0}",

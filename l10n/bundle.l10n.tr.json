@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ Sorguyu Güncelleştir",
   "❌ An error occurred while processing your request. Please try again.": "❌ İsteğiniz işlenirken bir hata oluştu. Lütfen yeniden deneyin.",
   "❌ Command failed:": "❌ Komut başarısız oldu:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ {0} yürütülürken hata oluştu",
   "❌ Intent-based operation failed:": "❌ Amaç tabanlı işlem başarısız oldu:",
   "❌ Language model error: {0}": "❌ Dil modeli hatası: {0}",

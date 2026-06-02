@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ Actualizar consulta",
   "❌ An error occurred while processing your request. Please try again.": "❌ Se ha producido un error al procesar la solicitud. Vuelva a intentarlo.",
   "❌ Command failed:": "❌ Error del comando:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ Error al ejecutar {0}",
   "❌ Intent-based operation failed:": "❌ Error en la operación basada en intenciones:",
   "❌ Language model error: {0}": "❌ Error del modelo de lenguaje: {0}",

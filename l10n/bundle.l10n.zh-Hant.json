@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ 更新查詢",
   "❌ An error occurred while processing your request. Please try again.": "❌ 處理您的要求時發生錯誤。請再試一次。",
   "❌ Command failed:": "❌ 命令失敗:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ 執行 {0} 時發生錯誤",
   "❌ Intent-based operation failed:": "❌ 意圖型作業失敗:",
   "❌ Language model error: {0}": "❌ 語言模型錯誤: {0}",

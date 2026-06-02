@@ -61,6 +61,7 @@
   "✅ Update Query": "✅ Aktualizační dotaz",
   "❌ An error occurred while processing your request. Please try again.": "❌ Při zpracování vaší žádosti došlo k chybě. Zkuste to prosím znovu.",
   "❌ Command failed:": "❌ Chyba příkazu:",
+  "❌ Could not generate query: {0}": "❌ Could not generate query: {0}",
   "❌ Error executing {0}": "❌ Chyba při provádění {0}",
   "❌ Intent-based operation failed:": "❌ Operace založená na záměru neproběhla úspěšně:",
   "❌ Language model error: {0}": "❌ Chyba jazykového modelu: {0}",

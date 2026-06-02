@@ -67,6 +67,17 @@ export interface QueryHistoryContext {
     executions: QueryExecutionEntry[];
 }
 
+/**
+ * Error thrown when the LLM explicitly refuses to generate a query
+ * (e.g. the request is not query-related, or asks for unsupported operations).
+ */
+export class QueryGenerationRefusedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'QueryGenerationRefusedError';
+    }
+}
+
 export interface EditQueryResult {
     type: 'editQuery';
     currentQuery?: string;
@@ -647,24 +658,31 @@ export class CosmosDbOperationsService {
         additionalContext?: string,
         source?: string,
         operation?: string,
-    ): Promise<EditQueryResult> {
+    ): Promise<EditQueryResult | string> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
-        const llmSuggestion = await this.generateQueryWithLLM(
-            userPrompt,
-            sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
-            {
-                withExplanation: true,
-                onProgress,
-                onConfirm,
-                additionalContext,
-                source,
-                operation,
-                connection,
-            },
-        );
+        let llmSuggestion: { query: string; explanation: string };
+        try {
+            llmSuggestion = await this.generateQueryWithLLM(
+                userPrompt,
+                sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
+                {
+                    withExplanation: true,
+                    onProgress,
+                    onConfirm,
+                    additionalContext,
+                    source,
+                    operation,
+                },
+            );
+        } catch (error) {
+            if (error instanceof QueryGenerationRefusedError) {
+                return l10n.t('❌ Could not generate query: {0}', error.message);
+            }
+            throw error;
+        }
         const suggestion = llmSuggestion.query;
         const llmExplanation = llmSuggestion.explanation;
 
@@ -1234,7 +1252,18 @@ export class CosmosDbOperationsService {
                 });
                 throw new Error(l10n.t('Invalid LLM response: could not parse JSON payload'));
             }
-            const result = JSON.parse(jsonText) as { query: string; explanation: string; comments?: string };
+            const result = JSON.parse(jsonText) as {
+                query: string;
+                explanation: string;
+                comments?: string;
+                error?: string;
+            };
+
+            // If the LLM explicitly signaled an error, throw immediately
+            if (result.error) {
+                throw new QueryGenerationRefusedError(result.error);
+            }
+
             if (!result.query || typeof result.query !== 'string') {
                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
                     ctx.errorHandling.suppressDisplay = true;
@@ -1254,10 +1283,16 @@ export class CosmosDbOperationsService {
             };
         }
 
+        // Plain text path: check if the LLM signaled an error
+        const cleanedResponse = this.cleanupQueryResponse(responseText);
+        if (cleanedResponse.startsWith('ERROR:')) {
+            throw new QueryGenerationRefusedError(cleanedResponse.slice('ERROR:'.length).trim());
+        }
+
         const schemaSamplingComment = schemaSamplingExecuted
             ? `-- ${l10n.t('Schema sampling tool was executed. Cost: {0} RUs', schemaSamplingRUs.toFixed(2))}\n`
             : '';
-        return schemaSamplingComment + this.cleanupQueryResponse(responseText);
+        return schemaSamplingComment + cleanedResponse;
     }
 
     /**

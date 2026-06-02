@@ -6,6 +6,8 @@
 import {
     Button,
     Combobox,
+    MessageBar,
+    MessageBarBody,
     Option,
     createCustomFocusIndicatorStyle,
     makeStyles,
@@ -347,6 +349,7 @@ export const GenerateQueryInput = () => {
     const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
     const [hadGenerated, setHadGenerated] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -482,6 +485,7 @@ export const GenerateQueryInput = () => {
         const hadEnteredPrompt = !!input.trim();
         setConfirmMessage(null);
         setFeedbackGiven(null);
+        setErrorMessage(null);
         setInput('');
         setLineCount(1);
         void trpcClient.queryEditor.closeGenerateInput.mutate({
@@ -499,6 +503,7 @@ export const GenerateQueryInput = () => {
 
         setIsLoading(true);
         setFeedbackGiven(null);
+        setErrorMessage(null);
         try {
             // Get the current query content from the state
             const currentQuery = state.queryValue;
@@ -512,6 +517,12 @@ export const GenerateQueryInput = () => {
 
             setIsLoading(false);
             setConfirmMessage(null);
+
+            // Check if the LLM could not produce a valid query
+            if (result && 'errorMessage' in result && typeof result.errorMessage === 'string') {
+                setErrorMessage(result.errorMessage);
+                return;
+            }
 
             if (result && typeof result.generatedQuery === 'string') {
                 setHadGenerated(true);
@@ -645,6 +656,11 @@ export const GenerateQueryInput = () => {
                         </div>
                     </div>
                 ) : null}
+                {errorMessage && (
+                    <MessageBar intent="error">
+                        <MessageBarBody>{errorMessage}</MessageBarBody>
+                    </MessageBar>
+                )}
                 {!confirmMessage && (
                     <div className={styles.footer}>
                         <div className={styles.modelSection}>

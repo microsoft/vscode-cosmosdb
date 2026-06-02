@@ -522,6 +522,11 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.migration.remove",
         "title": "%cosmosdb.command.migration.remove%"
+      },
+      {
+        "category": "CosmosDB Dev",
+        "command": "cosmosDB.dev.runNl2QueryQualityTest",
+        "title": "Run NL2Query Quality Tests"
       }
     ],
     "submenus": [

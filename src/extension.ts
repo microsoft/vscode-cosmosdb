@@ -110,6 +110,12 @@ export async function activateInternal(
 
         registerCommands();
 
+        // Register dev-only quality test command when in debug mode
+        if (context.extensionMode === vscode.ExtensionMode.Development) {
+            const { registerNl2QueryQualityTestCommand } = await import('./commands/nl2queryQualityTest');
+            registerNl2QueryQualityTestCommand(context);
+        }
+
         const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
         registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });
 

@@ -37,7 +37,7 @@ export const WithDocumentContext = ({ children }: { children: ReactNode }) => {
         [],
     );
 
-    const { trpcClient } = useTrpcClient<DocumentAppRouter>(onError);
+    const { trpcClient } = useTrpcClient<DocumentAppRouter>({ onError });
 
     const provider = useMemo(
         () => new DocumentContextProvider(dispatch, dispatchToast, trpcClient),

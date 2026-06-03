@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createTRPCClient, loggerLink } from '@trpc/client';
+import { createTRPCClient, loggerLink, type TRPCClient as TRPCClientV11 } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
 import { useCallback, useContext, useMemo } from 'react';
 import { WebviewContext } from '../../WebviewContext';
@@ -11,33 +11,61 @@ import { errorLink, type ErrorHandler } from './errorLink';
 import { vscodeLink, type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from './vscodeLink';
 
 /**
- * Custom React hook that provides a tRPC client for communication between the webview and VSCode extension.
+ * Convenience alias for the tRPC client instance returned by
+ * {@link useTrpcClient}. Useful when you need to thread the client
+ * down through props or store it in a ref:
  *
- * @typeParam TRouter - The per-webview app router type (e.g. QueryEditorAppRouter, DocumentAppRouter).
- * @returns An object containing the tRPC client (`trpcClient`)
+ * ```ts
+ * const clientRef = useRef<TrpcClient<QueryEditorAppRouter> | null>(null);
+ * ```
+ *
+ * Aliases tRPC v11's `TRPCClient<TRouter>` (formerly `CreateTRPCClient`,
+ * deprecated in v11 and slated for removal in v12).
+ */
+export type TrpcClient<TRouter extends AnyRouter> = TRPCClientV11<TRouter>;
+
+/**
+ * Options accepted by {@link useTrpcClient}.
+ *
+ * Options are passed as an object (rather than positional parameters)
+ * so new fields can be added without breaking existing call sites. All
+ * fields are optional — a bare `useTrpcClient<TRouter>()` call returns
+ * a client with only the default link stack (`loggerLink` + `vscodeLink`).
+ */
+export interface UseTrpcClientOptions {
+    /**
+     * Invoked when a query or mutation surfaces an error through the
+     * link pipeline. Subscriptions deliver their errors through the
+     * caller's `subscribe({ onError })` callback and are intentionally
+     * not forwarded here (see `errorLink.ts`).
+     *
+     * Note: changing this handler between renders rebuilds the
+     * underlying tRPC client. Wrap in `useCallback` at the call site to
+     * keep the client stable.
+     */
+    onError?: ErrorHandler;
+}
+
+/**
+ * Custom React hook that provides a tRPC client for communication
+ * between the webview and the VSCode extension host.
+ *
+ * @typeParam TRouter - The per-webview app router type (e.g.
+ *                     `QueryEditorAppRouter`, `DocumentAppRouter`).
+ * @param options    - See {@link UseTrpcClientOptions}.
+ * @returns An object containing the tRPC client as `trpcClient`.
  *
  * @example
- * // In your component:
- * import { useTrpcClient } from 'useTrpcClient';
+ * // No error handler — fire-and-forget calls only:
+ * const { trpcClient } = useTrpcClient<MyRouter>();
  *
- * export const MyComponent = () => {
- *   const { trpcClient } = useTrpcClient();
- *
- *   // Use the tRPC client to make queries and mutations
- *   useEffect(() => {
- *     trpcClient.myProcedure.query().then((result) => {
- *       console.log('Procedure result:', result);
- *     });
- *   }, [trpcClient]);
- *
- *   return (
- *     <>
- *       { / * Your component's JSX * /}
- *     </>
- *   );
- * };
+ * @example
+ * // With an error handler that surfaces toasts:
+ * const onError = useCallback((err) => toaster.error(err.message), [toaster]);
+ * const { trpcClient } = useTrpcClient<MyRouter>({ onError });
  */
-export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler) {
+export function useTrpcClient<TRouter extends AnyRouter>(options: UseTrpcClientOptions = {}) {
+    const { onError } = options;
     const { vscodeApi } = useContext(WebviewContext);
 
     /**
@@ -82,7 +110,7 @@ export function useTrpcClient<TRouter extends AnyRouter>(onError?: ErrorHandler)
     }, []);
 
     // Use useMemo to avoid recreating the client on every render
-    const trpcClient = useMemo(
+    const trpcClient = useMemo<TrpcClient<TRouter>>(
         () =>
             createTRPCClient<TRouter>({
                 links: [

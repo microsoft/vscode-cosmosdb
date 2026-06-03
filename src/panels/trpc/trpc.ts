@@ -6,109 +6,104 @@
 /**
  * tRPC instance configuration.
  *
- * Each webview type (Query Editor, Document) gets its own tRPC instance with a
- * properly typed context. This eliminates the need for middleware-based context
- * casting (`next({ ctx: ctx as T })`) and avoids the shallow-copy problem that
- * such middleware introduces.
+ * Each webview type (Query Editor, Document, Migration Assistant) gets
+ * its own tRPC instance with a properly typed context. This eliminates
+ * the need for middleware-based context casting (`next({ ctx: ctx as T })`)
+ * and avoids the shallow-copy problem that such middleware introduces.
+ *
+ * All three instances share the same observability stack, wired
+ * directly per-instance below:
+ *
+ *  1. **Logging middleware** — `loggingMiddlewareBody` + the cosmosdb-
+ *     specific `outputChannelProcedureLogger` (writes to
+ *     `ext.outputChannel`). Generic, no telemetry-backend dependency.
+ *  2. **Telemetry middleware** — `telemetryMiddlewareBody` + the
+ *     cosmosdb-specific `azextTelemetryRunner` (uses
+ *     `callWithTelemetryAndErrorHandling` from
+ *     `@microsoft/vscode-azext-utils`). Wraps every procedure in an
+ *     `IActionContext` and surfaces it on `ctx.actionContext` /
+ *     `ctx.telemetry`.
+ *
+ * The middleware **factories** live under `./middleware/`. They are
+ * framework-level and dependency-free, so they could be lifted into a
+ * shared package without dragging cosmosdb-specific code along — see
+ * `plans/webview-vs-documentdb-package.md`.
+ *
+ * Procedures access:
+ *  - `ctx.actionContext` — full `IActionContext`, populated by the
+ *    azext telemetry runner. Use for `errorHandling.suppressDisplay`,
+ *    `telemetry.suppressIfSuccessful`, etc.
+ *  - `ctx.telemetry` — `properties`/`measurements` for fire-and-forget
+ *    metadata attachments (same object as `ctx.actionContext.telemetry`).
  *
  * @see https://trpc.io/docs/v11/router
  * @see https://trpc.io/docs/v11/procedures
  */
 
-import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
-import { initTRPC, type TRPCError } from '@trpc/server';
+import { initTRPC } from '@trpc/server';
 import { type DocumentRouterContext, type MigrationRouterContext, type QueryEditorRouterContext } from './appRouter';
+import { azextTelemetryRunner } from './middleware/azextTelemetryRunner';
+import { loggingMiddlewareBody } from './middleware/loggingMiddleware';
+import { outputChannelProcedureLogger } from './middleware/outputChannelLogger';
+import { telemetryMiddlewareBody } from './middleware/telemetryMiddleware';
+import { type ProcedureInvocation } from './middleware/types';
+
+// ─── Shared observability wiring ────────────────────────────────────────────
+
+/** Project-wide telemetry event id format: `cosmosDB.rpc.${type}.${path}`. */
+function buildCosmosDbEventId({ type, path }: ProcedureInvocation): string {
+    return `cosmosDB.rpc.${type}.${path}`;
+}
+
+// The two middleware bodies are *ctx-agnostic* — they're plain async
+// functions whose only contract with tRPC is structural (`path`, `type`,
+// `next`). Each tRPC instance wraps them with its own `t.middleware(...)`
+// so the bound types stay precise per webview.
+//
+// We deliberately inline the `.use(...)` chain at each instance instead of
+// hiding it behind a generic helper: tRPC's `ProcedureBuilder` is a
+// deep-generic type whose inference collapses to `any` the moment a
+// helper widens its return type, which in turn would erase the typed
+// router shape downstream (e.g. `trpcClient.foo.query` would lose
+// `input`/`output` typing). Three near-identical lines per instance is
+// the price of that precision.
+
+const sharedLoggingBody = loggingMiddlewareBody(outputChannelProcedureLogger);
+const sharedTelemetryBody = telemetryMiddlewareBody(azextTelemetryRunner, {
+    buildEventId: buildCosmosDbEventId,
+});
 
 // ─── Query Editor tRPC Instance ─────────────────────────────────────────────
-// Context is QueryEditorRouterContext — all procedures get properly typed ctx.
 
 const queryEditorT = initTRPC.context<QueryEditorRouterContext>().create();
 
-const queryEditorTrpcToTelemetry = queryEditorT.middleware(async ({ path, type, next }) => {
-    return telemetryMiddlewareImpl(`cosmosDB.rpc.${type}.${path}`, (actionContext) => next({ ctx: { actionContext } }));
-});
-
-/** Base procedure with telemetry middleware already applied. */
-export const queryEditorProcedure = queryEditorT.procedure.use(queryEditorTrpcToTelemetry);
+/** Base procedure with logging + telemetry middleware already applied. */
+export const queryEditorProcedure = queryEditorT.procedure
+    .use(queryEditorT.middleware(sharedLoggingBody))
+    .use(queryEditorT.middleware(sharedTelemetryBody));
 export const queryEditorRouter = queryEditorT.router;
 export const queryEditorMergeRouters = queryEditorT.mergeRouters;
 export const queryEditorCallerFactory = queryEditorT.createCallerFactory;
 
 // ─── Document tRPC Instance ─────────────────────────────────────────────────
-// Context is DocumentRouterContext — all procedures get properly typed ctx.
 
 const documentT = initTRPC.context<DocumentRouterContext>().create();
 
-const documentTrpcToTelemetry = documentT.middleware(async ({ path, type, next }) => {
-    return telemetryMiddlewareImpl(`cosmosDB.rpc.${type}.${path}`, (actionContext) => next({ ctx: { actionContext } }));
-});
-
-/** Base procedure with telemetry middleware already applied. */
-export const documentProcedure = documentT.procedure.use(documentTrpcToTelemetry);
+/** Base procedure with logging + telemetry middleware already applied. */
+export const documentProcedure = documentT.procedure
+    .use(documentT.middleware(sharedLoggingBody))
+    .use(documentT.middleware(sharedTelemetryBody));
 export const documentRouter = documentT.router;
 export const documentCallerFactory = documentT.createCallerFactory;
 
 // ─── Migration Assistant tRPC Instance ──────────────────────────────────────
-// Context is MigrationRouterContext — all procedures get properly typed ctx.
 
 const migrationT = initTRPC.context<MigrationRouterContext>().create();
 
-const migrationTrpcToTelemetry = migrationT.middleware(async ({ path, type, next }) => {
-    return telemetryMiddlewareImpl(`cosmosDB.rpc.${type}.${path}`, (actionContext) => next({ ctx: { actionContext } }));
-});
-
-/** Base procedure with telemetry middleware already applied. */
-export const migrationProcedure = migrationT.procedure.use(migrationTrpcToTelemetry);
+/** Base procedure with logging + telemetry middleware already applied. */
+export const migrationProcedure = migrationT.procedure
+    .use(migrationT.middleware(sharedLoggingBody))
+    .use(migrationT.middleware(sharedTelemetryBody));
 export const migrationRouter = migrationT.router;
 export const migrationMergeRouters = migrationT.mergeRouters;
 export const migrationCallerFactory = migrationT.createCallerFactory;
-
-// ─── Shared Telemetry Implementation ────────────────────────────────────────
-
-/**
- * Type guard for tRPC middleware error results.
- * Avoids importing internal types from `@trpc/server/unstable-core-do-not-import`.
- */
-function isMiddlewareError(result: { ok: boolean }): result is { ok: false; error: TRPCError } {
-    return !result.ok;
-}
-
-/**
- * Shared telemetry middleware logic. Wraps procedure execution in
- * `callWithTelemetryAndErrorHandling` and logs errors without displaying them.
- *
- * Each tRPC instance creates its own middleware using this helper because
- * `t.middleware()` is bound to the instance's context type.
- *
- * The function is generic over the exact result type returned by `next()`,
- * so the branded `MiddlewareResult` flows through without needing to
- * import internal tRPC types.
- */
-async function telemetryMiddlewareImpl<TResult extends { ok: boolean }>(
-    telemetryId: string,
-    next: (actionContext: IActionContext) => Promise<TResult>,
-): Promise<TResult> {
-    const result = await callWithTelemetryAndErrorHandling(telemetryId, async (actionContext) => {
-        actionContext.errorHandling.suppressDisplay = true;
-
-        const result = await next(actionContext);
-
-        if (isMiddlewareError(result)) {
-            actionContext.telemetry.properties.result = 'Failed';
-            actionContext.telemetry.properties.error = result.error.name;
-            actionContext.telemetry.properties.errorMessage = result.error.message;
-            actionContext.telemetry.properties.errorStack = result.error.stack ?? '';
-            if (result.error.cause) {
-                actionContext.telemetry.properties.errorCause = JSON.stringify(result.error.cause, null, 0);
-            }
-        }
-
-        return result;
-    });
-
-    if (!result) {
-        throw new Error(`No result returned from tRPC telemetry wrapper for ${telemetryId}`);
-    }
-
-    return result;
-}

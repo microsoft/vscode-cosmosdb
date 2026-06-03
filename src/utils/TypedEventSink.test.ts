@@ -178,4 +178,85 @@ describe('TypedEventSink', () => {
 
         expect(results).toEqual([{ type: 'start', id: 'abc' }, { type: 'data', payload: 42 }, { type: 'end' }]);
     });
+
+    it('close() should be idempotent', () => {
+        const sink = new TypedEventSink<NumEvent>();
+        sink.close();
+        expect(sink.isClosed).toBe(true);
+
+        // Calling close() again must not throw and must keep state consistent.
+        sink.close();
+        expect(sink.isClosed).toBe(true);
+    });
+
+    describe('iterator.return()', () => {
+        it('releases a consumer parked on next() with no buffered events', async () => {
+            const sink = new TypedEventSink<NumEvent>();
+            const iterator = sink[Symbol.asyncIterator]();
+
+            // Park the consumer on next() — no events buffered, sink not closed.
+            const pendingNext = iterator.next();
+
+            // Drive return() externally (like setupTrpc does on subscription.stop).
+            const returnResult = await iterator.return!({ value: undefined as unknown as NumEvent, done: true });
+
+            expect(returnResult.done).toBe(true);
+
+            // The previously parked next() should now resolve with { done: true }.
+            const settled = await pendingNext;
+            expect(settled.done).toBe(true);
+            expect(sink.isClosed).toBe(true);
+        });
+
+        it('completes a for-await loop that calls break early', async () => {
+            const sink = new TypedEventSink<NumEvent>();
+
+            sink.emit({ type: 'num', value: 10 });
+            sink.emit({ type: 'num', value: 20 });
+
+            const received: NumEvent[] = [];
+            for await (const event of sink) {
+                received.push(event);
+                // `break` calls iterator.return() under the iterator protocol;
+                // this single-iteration loop is intentional.
+                break;
+            }
+
+            expect(received).toEqual([{ type: 'num', value: 10 }]);
+            expect(sink.isClosed).toBe(true);
+
+            // Subsequent emit() calls are dropped, exactly like after close().
+            sink.emit({ type: 'num', value: 99 });
+            expect(sink.isClosed).toBe(true);
+        });
+
+        it('drops buffered events on return() so they cannot leak to a later consumer', async () => {
+            const sink = new TypedEventSink<NumEvent>();
+
+            sink.emit({ type: 'num', value: 10 });
+            sink.emit({ type: 'num', value: 20 });
+
+            const iterator = sink[Symbol.asyncIterator]();
+            await iterator.return!({ value: undefined as unknown as NumEvent, done: true });
+
+            // A second consumer is allowed after return() — single-consumer guard is released.
+            const second: NumEvent[] = [];
+            for await (const event of sink) {
+                second.push(event);
+            }
+            expect(second).toEqual([]);
+        });
+
+        it('is idempotent (return() after return())', async () => {
+            const sink = new TypedEventSink<NumEvent>();
+            const iterator = sink[Symbol.asyncIterator]();
+
+            const r1 = await iterator.return!({ value: undefined as unknown as NumEvent, done: true });
+            const r2 = await iterator.return!({ value: undefined as unknown as NumEvent, done: true });
+
+            expect(r1.done).toBe(true);
+            expect(r2.done).toBe(true);
+            expect(sink.isClosed).toBe(true);
+        });
+    });
 });

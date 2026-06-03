@@ -22,6 +22,7 @@ import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
 import { type TypedEventSink } from '../../utils/TypedEventSink';
+import { type BaseRouterContext } from './baseRouterContext';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
 import { migrationRouterDef } from './routers/migrationRouter';
@@ -43,16 +44,35 @@ import {
 
 // ─── Context Types ──────────────────────────────────────────────────────────
 
-export type BaseRouterContext = {
+/**
+ * Cosmosdb-specific extension of the framework-level
+ * {@link BaseRouterContext}. Carries everything our procedures expect
+ * beyond what the transport layer provides:
+ *
+ *  - `webviewName` — the panel/webview identifier. Used by common procedures
+ *    in {@link buildCommonRouter} to build telemetry event ids
+ *    (`cosmosDB.NoSQL.webview.event.${webviewName}.${eventName}`).
+ *
+ *  - `actionContext` — the full `IActionContext` from
+ *    `@microsoft/vscode-azext-utils`, populated by `telemetryMiddlewareImpl`
+ *    in `trpc.ts`. Use this when you need azext-utils features beyond
+ *    plain telemetry — for example, `actionContext.errorHandling
+ *    .suppressDisplay`, `.telemetry.suppressIfSuccessful`, or to thread
+ *    the context into another `callWithTelemetryAndErrorHandling`-aware
+ *    helper. For just setting telemetry `properties`/`measurements`, you
+ *    can also read the inherited base-level `ctx.telemetry` once a
+ *    middleware populates it.
+ *
+ * `IActionContext.telemetry` structurally satisfies the base
+ * {@link import('./baseRouterContext').TelemetryContext} shape, but we
+ * intentionally do not alias the field — keeping `actionContext` as a
+ * separate, richer field makes the dependency on azext-utils explicit
+ * at the read site.
+ */
+export interface CosmosDBRouterContext extends BaseRouterContext {
     webviewName: string;
-    signal?: AbortSignal;
-    /**
-     * Telemetry action context injected by the telemetry middleware.
-     * Available in all procedures — use it to set custom telemetry properties
-     * instead of wrapping handlers in `callWithTelemetryAndErrorHandling`.
-     */
     actionContext?: IActionContext;
-};
+}
 
 export type QueryEditorMutableState = {
     connection?: NoSqlQueryConnection;
@@ -65,7 +85,7 @@ export type QueryEditorMutableState = {
     pendingConfirmResolve?: (confirmed: boolean) => void;
 };
 
-export type QueryEditorRouterContext = BaseRouterContext & {
+export type QueryEditorRouterContext = CosmosDBRouterContext & {
     sessions: Map<string, QuerySession>;
     telemetryContext: TelemetryContext;
     panel: vscode.WebviewPanel;
@@ -80,7 +100,7 @@ export type DocumentMutableState = {
     partitionKeyDefinition?: PartitionKeyDefinition;
 };
 
-export type DocumentRouterContext = BaseRouterContext & {
+export type DocumentRouterContext = CosmosDBRouterContext & {
     connection: NoSqlQueryConnection;
     telemetryContext: TelemetryContext;
     panel: vscode.WebviewPanel;
@@ -96,7 +116,7 @@ export type DocumentRouterContext = BaseRouterContext & {
  */
 export type MigrationCommandDispatcher = (commandName: string, params: unknown[]) => Promise<unknown>;
 
-export type MigrationRouterContext = BaseRouterContext & {
+export type MigrationRouterContext = CosmosDBRouterContext & {
     telemetryContext: TelemetryContext;
     panel: vscode.WebviewPanel;
     eventSink: TypedEventSink<MigrationEvent>;
@@ -110,8 +130,9 @@ export type MigrationRouterContext = BaseRouterContext & {
  * This is called once per tRPC instance so the procedures share the
  * instance's context type (QueryEditorRouterContext or DocumentRouterContext).
  *
- * Common procedures only access `ctx.webviewName` which is on BaseRouterContext,
- * so they work with any context that extends it.
+ * Common procedures only access `ctx.webviewName`, which lives on
+ * {@link CosmosDBRouterContext}, so they work with any context that
+ * extends it.
  *
  * Telemetry middleware is already baked into each procedure, so individual
  * `.use(trpcToTelemetry)` calls are not needed here.
@@ -138,7 +159,7 @@ function buildCommonRouter(procedure: any, routerFn: any) {
                         properties?: Record<string, string>;
                         measurements?: Record<string, number>;
                     };
-                    ctx: BaseRouterContext;
+                    ctx: CosmosDBRouterContext;
                 }) => {
                     void callWithTelemetryAndErrorHandling<void>(
                         `cosmosDB.NoSQL.webview.event.${ctx.webviewName}.${input.eventName}`,
@@ -172,7 +193,7 @@ function buildCommonRouter(procedure: any, routerFn: any) {
                         componentStack?: string;
                         properties?: Record<string, string>;
                     };
-                    ctx: BaseRouterContext;
+                    ctx: CosmosDBRouterContext;
                 }) => {
                     void callWithTelemetryAndErrorHandling<void>(
                         `cosmosDB.NoSQL.webview.error.${ctx.webviewName}`,

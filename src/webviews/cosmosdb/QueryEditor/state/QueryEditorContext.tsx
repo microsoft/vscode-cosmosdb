@@ -52,7 +52,7 @@ export const WithQueryEditorContext = ({ children }: { children: ReactNode }) =>
         [],
     );
 
-    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>(onError);
+    const { trpcClient } = useTrpcClient<QueryEditorAppRouter>({ onError });
 
     const provider = useMemo(
         () => new QueryEditorContextProvider(dispatch, dispatchToast, trpcClient),

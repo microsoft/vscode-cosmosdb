@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.34.0
+
+No changes since the last preview version.
+
 ## 0.33.3 (Preview)
 
 ### Added

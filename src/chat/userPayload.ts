@@ -86,7 +86,6 @@ export interface QueryGenerationPayload {
     readonly userPrompt: string;
     readonly currentQuery?: string;
     readonly historyContext?: QueryHistoryContext;
-    readonly languageReference?: string;
     /** Additional context from chat references (files, selections, etc.) */
     readonly additionalContext?: string;
     /** Pre-cached container schema from SchemaFileStorage (already JSON-stringified). */
@@ -211,10 +210,6 @@ function simplifySchema(schema: JSONSchema | undefined): Record<string, unknown>
  */
 export function buildQueryGenerationUserContent(payload: QueryGenerationPayload): string {
     let content = '';
-
-    if (payload.languageReference) {
-        content += `## Query Language Reference\n${payload.languageReference}\n\n`;
-    }
 
     const formattedHistory = payload.historyContext ? formatQueryHistoryContext(payload.historyContext) : '';
 

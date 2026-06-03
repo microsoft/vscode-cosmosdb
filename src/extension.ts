@@ -30,7 +30,7 @@ import {
 } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
+import { CosmosDbChatParticipant, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
@@ -135,7 +135,6 @@ export async function activateInternal(
         // Initialize the CosmosDB chat participant
         // The chat participant is always registered, but will show helpful error messages
         // if AI features are not available (Copilot not installed, not signed in, or disabled)
-        CosmosDbOperationsService.initialize(context);
 
         // Register the availability-change listener BEFORE the initial async check.
         // This prevents a race where Copilot finishes initializing (fires

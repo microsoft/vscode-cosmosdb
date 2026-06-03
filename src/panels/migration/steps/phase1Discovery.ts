@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { renderPrompt } from '@vscode/prompt-tsx';
@@ -11,7 +12,6 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService, type ProjectJson } from '../../../services/MigrationProjectService';
-import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { type MigrationEvent } from '../../trpc/routers/migrationEventsRouter';
 import {
     createMkDebug,

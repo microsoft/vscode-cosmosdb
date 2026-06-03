@@ -16,15 +16,6 @@ export type DiscriminatedEvent = { type: string };
 export type EventOfType<T extends DiscriminatedEvent, K extends T['type']> = Extract<T, { type: K }>;
 
 /**
- * Write-only interface for emitting events into a TypedEventSink.
- * Used by session factories that need to emit a subset of events
- * into sinks with different full event unions (e.g., DocumentEvent or QueryEditorEvent).
- */
-export interface UntypedEventEmitter {
-    emit(event: { type: string; [key: string]: unknown }): void;
-}
-
-/**
  * A typed async-iterable event emitter that bridges imperative `emit()` calls
  * into the async generator consumed by tRPC subscriptions.
  *

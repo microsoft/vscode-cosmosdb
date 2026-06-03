@@ -6,10 +6,8 @@
 /**
  * Framework-level types shared by middleware factories under this folder.
  *
- * Intentionally framework-only: no cosmosdb-specific concerns, no
- * `@microsoft/vscode-azext-utils` import. Mirrors the shape we would
- * expose from a future `@microsoft/vscode-ext-react-webview`-like
- * package — see `plans/webview-vs-documentdb-package.md`.
+ * Intentionally framework-only: no application-specific concerns and no
+ * dependency on any concrete telemetry / logging library.
  */
 
 /** The three tRPC procedure flavors. */

@@ -155,8 +155,6 @@
     "@microsoft/vscode-azureresources-api": "~3.1.0",
     "@monaco-editor/react": "~4.7.0",
     "@prantlf/jsonlint": "~17.0.0",
-    "@trpc/client": "~11.17.0",
-    "@trpc/server": "~11.17.0",
     "@vscode/l10n": "~0.0.18",
     "@vscode/prompt-tsx": "^0.4.0-alpha.7",
     "allotment": "~1.20.4",

@@ -17,8 +17,8 @@ export type WebviewContextValue = {
  * React context that exposes the per-webview `vscodeApi` handle
  * (returned by `acquireVsCodeApi()` in the webview bootstrap) to any
  * descendant component. Consumers use `useContext(WebviewContext)` —
- * typically via the {@link import('./api/trpc/useTrpcClient').useTrpcClient}
- * hook, which reads it under the hood.
+ * typically via the {@link useTrpcClient} hook, which reads it under
+ * the hood.
  *
  * The default value is `{} as WebviewContextValue` — components must
  * be rendered inside a {@link WithWebviewContext} (or another provider
@@ -38,13 +38,10 @@ export const WebviewContext = createContext<WebviewContextValue>({} as WebviewCo
  *
  * createRoot(document.getElementById('root')!).render(
  *     <WithWebviewContext vscodeApi={vscodeApi}>
- *         <QueryEditor />
+ *         <App />
  *     </WithWebviewContext>,
  * );
  * ```
- *
- * Mirrors the helper of the same name in the documentdb sister package
- * so future extraction is a one-line import rename.
  */
 export const WithWebviewContext = ({
     vscodeApi,

@@ -15,16 +15,15 @@
  *  - The runner decides **how to record** the event and **what to enrich
  *    the procedure ctx with** for the rest of the pipeline.
  *
- * This keeps the framework dependency-free; the concrete adapter for
- * `@microsoft/vscode-azext-utils` lives in `azextTelemetryRunner.ts`
- * and is the only place that imports azext-utils.
+ * This keeps the framework dependency-free — every concrete telemetry
+ * backend (Application Insights, OpenTelemetry, plain `console`, …) is
+ * a {@link TelemetryRunner} adapter living in the consumer.
  *
  * # Why a middleware (and not a `loggerLink`)?
  *
  * Telemetry needs access to the server-side `ctx` (and the ability to
- * mutate it, e.g. to surface an `actionContext` to procedures). Links
- * only see transport-level data. See `plans/webview-vs-documentdb-package.md`
- * section 2.3.
+ * mutate it, e.g. to surface a backend-specific scope object to
+ * procedures). Links only see transport-level data.
  *
  * # Why a body factory?
  *
@@ -32,9 +31,9 @@
  * a plain function lets the same factory plug into any tRPC instance:
  *
  * ```ts
- * const telemetryMW = queryEditorT.middleware(
- *     telemetryMiddlewareBody(azextTelemetryRunner, {
- *         buildEventId: ({ type, path }) => `cosmosDB.rpc.${type}.${path}`,
+ * const telemetryMW = appT.middleware(
+ *     telemetryMiddlewareBody(myRunner, {
+ *         buildEventId: ({ type, path }) => `myApp.rpc.${type}.${path}`,
  *     }),
  * );
  * ```
@@ -47,7 +46,7 @@ import { type MiddlewareResultLike, type ProcedureInvocation } from './types';
  *
  * The runner is invoked once per call. Implementations should:
  *
- *  1. Open whatever telemetry scope they need (an `IActionContext`, an
+ *  1. Open whatever telemetry scope they need (an action context, an
  *     OpenTelemetry span, a plain `console.time`, …).
  *  2. Call `invoke(enrichment)` with whatever fields they want to push
  *     into the procedure's `ctx`. The framework merges those into the
@@ -59,9 +58,8 @@ import { type MiddlewareResultLike, type ProcedureInvocation } from './types';
  *
  * `TEnrichment` is the precise shape the runner contributes to ctx —
  * typically a record with one or two well-known keys (e.g.
- * `{ actionContext, telemetry }`). Procedures that need those fields
- * declare them on their concrete context type (see
- * `appRouter.CosmosDBRouterContext`).
+ * `{ scope, telemetry }`). Procedures that need those fields declare
+ * them on their concrete context type.
  */
 export interface TelemetryRunner<TEnrichment extends object> {
     run<TResult extends MiddlewareResultLike>(
@@ -75,7 +73,7 @@ export interface TelemetryMiddlewareOptions {
     /**
      * Build the telemetry event id from the invocation. Defaults to
      * `"${type}.${path}"`. Override to add a namespace prefix
-     * (`cosmosDB.rpc.…`) or to apply per-call sampling rules.
+     * (`myApp.rpc.…`) or to apply per-call sampling rules.
      */
     buildEventId?: (invocation: ProcedureInvocation) => string;
 }
@@ -85,8 +83,7 @@ export interface TelemetryMiddlewareOptions {
  *
  * Pass the returned function to `t.middleware(...)`. The runner's
  * `TEnrichment` type must be assignable to the tRPC instance's context
- * type — usually achieved by extending the per-app context interface
- * (see `CosmosDBRouterContext`).
+ * type — usually achieved by extending the per-app context interface.
  */
 export function telemetryMiddlewareBody<TEnrichment extends object>(
     runner: TelemetryRunner<TEnrichment>,

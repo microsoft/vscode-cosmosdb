@@ -40,13 +40,15 @@
  * @see https://trpc.io/docs/v11/procedures
  */
 
-import { initTRPC } from '@trpc/server';
+import {
+    initTRPC,
+    loggingMiddlewareBody,
+    type ProcedureInvocation,
+    telemetryMiddlewareBody,
+} from '@cosmosdb/webview-rpc/server';
 import { type DocumentRouterContext, type MigrationRouterContext, type QueryEditorRouterContext } from './appRouter';
 import { azextTelemetryRunner } from './middleware/azextTelemetryRunner';
-import { loggingMiddlewareBody } from './middleware/loggingMiddleware';
 import { outputChannelProcedureLogger } from './middleware/outputChannelLogger';
-import { telemetryMiddlewareBody } from './middleware/telemetryMiddleware';
-import { type ProcedureInvocation } from './middleware/types';
 
 // ─── Shared observability wiring ────────────────────────────────────────────
 

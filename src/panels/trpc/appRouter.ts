@@ -12,6 +12,8 @@
  */
 
 import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
+import { type BaseRouterContext } from '@cosmosdb/webview-rpc/server';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { z } from 'zod';
@@ -21,8 +23,6 @@ import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult'
 import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
-import { type TypedEventSink } from '../../utils/TypedEventSink';
-import { type BaseRouterContext } from './baseRouterContext';
 import { documentRouterDef } from './routers/documentRouter';
 import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
 import { migrationRouterDef } from './routers/migrationRouter';

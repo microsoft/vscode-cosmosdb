@@ -6,9 +6,9 @@
 import { TRPCClientError, type Operation, type TRPCLink } from '@trpc/client';
 import { type AnyRouter } from '@trpc/server';
 import { observable } from '@trpc/server/observable'; // Their example uses a reference from /server/ and so do we: https://trpc.io/docs/client/links#example
-import { type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../../../panels/trpc/vscodeProtocol';
+import { type VsCodeLinkRequestMessage, type VsCodeLinkResponseMessage } from '../shared/vscodeProtocol';
 
-export type { VsCodeLinkRequestMessage, VsCodeLinkResponseMessage } from '../../../panels/trpc/vscodeProtocol';
+export type { VsCodeLinkRequestMessage, VsCodeLinkResponseMessage } from '../shared/vscodeProtocol';
 
 interface VSCodeLinkOptions {
     //   Function to send a message to the server / extension

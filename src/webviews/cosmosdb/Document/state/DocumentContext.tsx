@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { useTrpcClient } from '@cosmosdb/webview-rpc/react';
 import { Toaster, useId, useToastController } from '@fluentui/react-components';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { type DocumentAppRouter } from '../../../../panels/trpc/appRouter';
-import { useTrpcClient } from '../../../api/trpc/useTrpcClient';
 import { type BaseContextProvider } from '../../../utils/context/BaseContextProvider';
 import { ErrorBoundary } from '../../../utils/ErrorBoundary';
 import { DocumentContextProvider } from './DocumentContextProvider';
@@ -28,29 +28,34 @@ export const WithDocumentContext = ({ children }: { children: ReactNode }) => {
     const { dispatchToast } = useToastController(toasterId);
     const [state, dispatch] = useReducer(DocumentPanelDispatch, { ...defaultState });
 
-    // Use a ref so the errorLink can forward errors to the provider once it's created.
+    // Use a ref so the central error subscriber can forward errors to the
+    // provider once it's created (the provider is built below from
+    // `trpcClient`, so it does not exist yet on the first render).
     const providerRef = useRef<BaseContextProvider | null>(null);
-    const onError = useMemo(
-        () => (error: Error) => {
-            void providerRef.current?.showErrorMessage(error.message);
-        },
-        [],
-    );
 
-    const { trpcClient } = useTrpcClient<DocumentAppRouter>({ onError });
+    const { trpcClient, events } = useTrpcClient<DocumentAppRouter>();
 
     const provider = useMemo(
         () => new DocumentContextProvider(dispatch, dispatchToast, trpcClient),
         [dispatchToast, trpcClient],
     );
 
-    // Keep the ref pointing at the current provider so errorLink can forward errors.
+    // Keep the ref pointing at the current provider so the onError
+    // subscriber below can forward errors to it.
     useEffect(() => {
         providerRef.current = provider;
         return () => {
             providerRef.current = null;
         };
     }, [provider]);
+
+    // Subscribe to the shared event channel exactly once — `events` is
+    // identity-stable across renders by `useTrpcClient`'s WeakMap cache.
+    useEffect(() => {
+        return events.onError((error) => {
+            void providerRef.current?.showErrorMessage(error.message);
+        });
+    }, [events]);
 
     useEffect(() => {
         return () => provider.dispose();

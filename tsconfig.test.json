@@ -13,5 +13,13 @@
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx"
   ],
-  "exclude": ["node_modules", ".vscode-test", "out", "dist", "src/**/*.test.ts", "**/__mocks__"]
+  "exclude": [
+    "node_modules",
+    ".vscode-test",
+    "out",
+    "dist",
+    "src/**/*.test.ts",
+    "packages/**/*.test.ts",
+    "**/__mocks__"
+  ]
 }

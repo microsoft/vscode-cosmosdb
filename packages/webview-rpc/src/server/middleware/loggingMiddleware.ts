@@ -15,18 +15,16 @@
  *
  * `loggerLink()` from `@trpc/client` only sees what the client sends and
  * receives — it has no access to the server-side `ctx` and cannot honour
- * per-call opt-outs the way a middleware can. See
- * `plans/webview-vs-documentdb-package.md` section 2.3 for the
- * architecture decision.
+ * per-call opt-outs the way a middleware can.
  *
  * # Why a body factory (not bound to a specific tRPC instance)?
  *
  * `t.middleware(fn)` is bound to the instance's context type, but the
  * logger doesn't care about ctx. By returning a plain function we make
- * the body reusable across all three (and any future) tRPC instances:
+ * the body reusable across every tRPC instance the consumer creates:
  *
  * ```ts
- * const mw = queryEditorT.middleware(loggingMiddlewareBody(consoleProcedureLogger));
+ * const mw = appT.middleware(loggingMiddlewareBody(consoleProcedureLogger));
  * ```
  */
 

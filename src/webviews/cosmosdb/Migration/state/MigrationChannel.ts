@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type TRPCClient } from '@trpc/client';
+import { type TrpcClient } from '@cosmosdb/webview-rpc/react';
 import { type MigrationAppRouter } from '../../../../panels/trpc/appRouter';
 
 /**
@@ -37,7 +37,7 @@ export class MigrationChannel implements Channel {
     private readonly handlers = new Map<string, Set<ChannelEventHandler>>();
     private subscription: { unsubscribe(): void } | undefined;
 
-    constructor(private readonly trpcClient: TRPCClient<MigrationAppRouter>) {
+    constructor(private readonly trpcClient: TrpcClient<MigrationAppRouter>) {
         // oxlint-disable-next-line typescript/no-unsafe-call, typescript/no-unsafe-member-access -- generic tRPC client typings
         this.subscription = (
             trpcClient as unknown as {

@@ -3,10 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import * as vscode from 'vscode';
 import { ext } from '../../../extensionVariables';
 import { MigrationProjectService } from '../../../services/MigrationProjectService';
-import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import {
     type MigrationEvent,
     type MigrationEventName,

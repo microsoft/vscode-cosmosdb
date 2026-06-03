@@ -6,8 +6,8 @@
 import { getTRPCErrorFromUnknown, type AnyRouter } from '@trpc/server';
 import * as l10n from '@vscode/l10n';
 import type * as vscode from 'vscode';
+import { type VsCodeLinkRequestMessage } from '../shared/vscodeProtocol';
 import { type BaseRouterContext } from './baseRouterContext';
-import { type VsCodeLinkRequestMessage } from './vscodeProtocol';
 
 /**
  * Converts an unknown error into a tRPC-compatible error response.
@@ -58,7 +58,7 @@ function safePostMessage(panel: vscode.WebviewPanel, message: unknown): boolean 
  * both) to a single live `AsyncIterator`.
  *
  * Calling `[Symbol.asyncIterator]()` once is required for iterables like
- * {@link import('../../utils/TypedEventSink').TypedEventSink} which
+ * {@link import('../shared/TypedEventSink').TypedEventSink} which
  * enforce single-consumer semantics; direct iterators are returned as-is.
  */
 function toAsyncIterator(value: unknown): AsyncIterator<unknown> {

@@ -76,8 +76,11 @@ export async function cosmosDBViewContainerOffer(context: IActionContext, node?:
         // armReadContainerThroughput already falls back to the database offer
         // when the container has no dedicated throughput, so use containerId
         // as the file label only when we got a container-scoped result.
+        // The ARM resource `id` is a full path that includes `/containers/<id>/`
+        // for container-scoped throughput; the `name` field is typically just
+        // "default" and cannot be used to distinguish the two.
         const label =
-            offer?.name && offer.name.includes('/containers/') ? `offer of ${containerId}` : `offer of ${databaseId}`;
+            offer?.id && offer.id.includes('/containers/') ? `offer of ${containerId}` : `offer of ${databaseId}`;
         // Coalesce to null so JSON.stringify always returns a string; an offer
         // can legitimately be absent (e.g., serverless accounts).
         await vscodeUtil.showNewFile(JSON.stringify(offer?.resource ?? null, undefined, 2), label, '.json');

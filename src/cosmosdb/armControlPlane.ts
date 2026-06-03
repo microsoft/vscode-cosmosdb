@@ -16,7 +16,7 @@ import { type AccountInfo } from '../tree/cosmosdb/AccountInfo';
 import { createCosmosDBManagementClient } from '../utils/azureClients';
 
 /**
- * Minimal ARM-based control-plane shim for issue #2990 (rel/0.32 backport).
+ * Minimal ARM-based control-plane shim for issue #2990 (rel/0.34 backport).
  *
  * Accounts configured with strict native data-plane RBAC reject control-plane
  * operations issued via the data-plane `CosmosClient`. For Azure-signed-in

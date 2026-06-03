@@ -78,7 +78,8 @@ Cherry-picks onto older release branches often produce code that compiles on the
 ### Phase F — Push & open the PR
 
 1. `git push -u origin <branch>` — **never** `--force` or `--force-with-lease`.
-2. `gh pr create --base <target> --head <branch> --title "Backport #<n>: <original-title>" --body <body>` where `<body>` contains:
+2. `gh pr create --base <target> --head <branch> --title "[<target>] <original-title>" --body <body>` where `<body>` contains:
+   - The PR title **must** start with the target branch in square brackets, e.g. `[rel/0.34] Fix tree refresh race`. Use the exact target branch name (including any `rel/` prefix) and keep the rest of the title identical to the original PR title (or first commit subject for non-PR sources).
    - `Backport of #<n>` (or `Backport of <branch>` / SHA list for non-PR sources).
    - The original PR description (when applicable).
    - A **Conflicts resolved** section listing each file + a one-line description, when applicable.
@@ -117,7 +118,7 @@ When this skill runs inside the GitHub Copilot cloud agent (e.g. invoked by `@co
 - **Branch naming**: use `copilot/backport-<id>-to-<target-slug>` instead of `backport/...`. The cloud agent can only push branches starting with `copilot/`.
 - **Skip Phase A.3 stash logic** — the cloud agent runs in a fresh ephemeral checkout; there is no user working tree to preserve.
 - **Skip Phase E (local validation)** — the cloud agent's GitHub Actions environment runs CI as the validation gate; do not run `npm install` / build / lint to save time and avoid burning Actions minutes.
-- **Skip Phase F's `gh pr create`.** The cloud agent platform opens the PR for the task automatically. Use `gh pr edit` to set the base branch, title, body, and (when needed) `gh pr ready --undo` to mark it draft.
+- **Skip Phase F's `gh pr create`.** The cloud agent platform opens the PR for the task automatically. Use `gh pr edit` to set the base branch, title, and body. The title **must** be prefixed with the target branch in square brackets — e.g. `[rel/0.34] <original-title>`. When conflicts remain unresolved, mark the PR as draft (the platform may open it ready by default; use `gh pr ready --undo` if available, otherwise note the WIP state explicitly in the PR body).
 - **Conflict policy** is stricter: still auto-resolve only trivial cases. For ambiguous conflicts, do **not** invent a resolution — commit the conflict markers as-is on the `copilot/...` branch (`git commit --no-verify -m "WIP: backport conflicts in <files>"`), list each unresolved file in the PR body, and mark the PR as **draft**.
 - **Skip Phase G's stash restore and original-branch checkout** — there's nothing local to restore.
 

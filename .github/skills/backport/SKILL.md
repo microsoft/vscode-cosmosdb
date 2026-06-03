@@ -5,7 +5,7 @@ description: Backport changes (current branch, a PR, a branch, or specific commi
 
 # Backport Skill
 
-Create a backport pull request that applies changes from a source (current branch, a PR, another branch, or specific commits) onto a target branch — interactively, from the local workspace. The target is typically a release branch (e.g. `rel/0.32`), but any existing branch other than `main` is allowed.
+Create a backport pull request that applies changes from a source (current branch, a PR, another branch, or specific commits) onto a target branch — interactively, from the local workspace. The target is typically a release branch (e.g. `rel/0.32`), but any existing branch is allowed except the source's own base branch (a backport onto the same base is a no-op).
 
 ## Inputs to resolve
 
@@ -71,7 +71,7 @@ Show the resolved list (count + short log) to the user and confirm before contin
 Cherry-picks onto older release branches often produce code that compiles on the source's base but breaks on the target (different deps, removed APIs, stricter lint config). Catch this before pushing:
 
 1. Ask the user whether to run validation. Default: **yes**. Offer to skip for speed.
-2. If yes, run the repo's standard checks per [.github/copilot-instructions.md](../../copilot-instructions.md): `npm install` first (the working tree was switched from the original branch to `origin/<target>` and possibly mutated by the cherry-pick, so `node_modules` is almost certainly stale), then `npm run build`, `npm run lint`, and `npm run prettier-fix`.
+2. If yes, run the repo's standard checks following [.github/copilot-instructions.md](../../copilot-instructions.md). Because the working tree was switched from the original branch to `origin/<target>` and may have been mutated by the cherry-pick, `node_modules` is almost certainly stale — always start with `npm install`. Then run, in this order: `npm run build`, `npm run l10n` (only when user-facing strings were touched by the cherry-pick), `npm run prettier-fix`, `npm run lint`.
 3. On failure: surface the errors and stop. Treat fixes as a new round of conflict resolution — only modify what's needed; never silently pile on unrelated changes. Once green, continue.
 4. If the user opts to skip, note this in the PR body so reviewers know CI is the first validation gate.
 

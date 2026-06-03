@@ -37,7 +37,10 @@ Execute these phases in order. Stop and report on any error.
 
 ### Phase B — Resolve the commit list
 
-- **PR source**: `gh pr view <num> --json number,title,body,headRefName,mergeCommit,commits,state`. Prefer the squash-merge commit if the PR was squash-merged; otherwise use the listed commits in order.
+- **PR source**: `gh pr view <num> --json number,title,body,headRefName,baseRefName,mergeCommit,commits,state`. If the command fails (non-zero exit, PR not found, or insufficient permissions), abort with a clear error message showing the PR number and the `gh` error output. Then branch on `state`:
+  - `MERGED`: prefer the squash-merge commit if the PR was squash-merged; otherwise use the listed commits in order.
+  - `OPEN`: warn that backporting an unmerged PR may include incomplete or intermediate work, and confirm with the user before proceeding. Use the listed commits in order.
+  - `CLOSED` (not merged): abort — there are no merge commits to cherry-pick.
 - **Branch source**: `git log --reverse --format=%H origin/<target>..<branch>`.
 - **SHA(s) / range**: use as given (validate with `git cat-file -e <sha>`).
 
@@ -58,8 +61,15 @@ Show the resolved list (count + short log) to the user and confirm before contin
 
 **Conflict policy (relaxed but safe):**
 
+> **Cloud-agent override:** when running inside the GitHub Copilot cloud agent (see "Running as the GitHub cloud agent" below), use the stricter policy: auto-resolve only trivial cases per step 2; for anything ambiguous, **do not** invent a resolution — commit the conflict markers as a `WIP:` commit and mark the PR as draft. Skip steps 3 and 4 (no interactive prompts, no squash-and-retry).
+
 1. On conflict, run `git status` and `git diff` to inspect.
-2. **Auto-resolve only trivial cases**: import-order, formatting-only, additive non-overlapping hunks, or pure deletions on one side. After resolving, verify with `git diff --check` and `! grep -R '<<<<<<<' -- .` before staging.
+2. **Auto-resolve only trivial cases**:
+   - *Import-order*: only the order of `import` / `require` statements differs; identifiers are identical.
+   - *Formatting-only*: whitespace, trailing comma, or semicolon changes where no identifiers, literals, or control flow differ between sides.
+   - *Additive non-overlapping hunks*: one side adds lines while the other side is unchanged in that region.
+   - *Pure deletions on one side*: one side deletes a block, the other leaves it untouched, and the deleted block is not referenced by code added on either side.
+   After resolving, verify with `git diff --check` and `! grep -R '<<<<<<<' -- .` before staging.
 3. **For anything ambiguous** (semantic overlap, both branches modified the same hunk meaningfully, version/lockfile bumps, generated files): stop and present the conflicting files and hunks to the user. Offer:
    - *Resolve manually & continue* — wait for the user, then `git add` + `git cherry-pick --continue`.
    - *Abort* — `git cherry-pick --abort`, delete the backport branch, restore (Phase G).
@@ -71,13 +81,23 @@ Show the resolved list (count + short log) to the user and confirm before contin
 Cherry-picks onto older release branches often produce code that compiles on the source's base but breaks on the target (different deps, removed APIs, stricter lint config). Catch this before pushing:
 
 1. Ask the user whether to run validation. Default: **yes**. Offer to skip for speed.
-2. If yes, run the repo's standard checks following [.github/copilot-instructions.md](../../copilot-instructions.md). Because the working tree was switched from the original branch to `origin/<target>` and may have been mutated by the cherry-pick, `node_modules` is almost certainly stale — always start with `npm install`. Then run, in this order: `npm run build`, `npm run l10n` (only when user-facing strings were touched by the cherry-pick), `npm run prettier-fix`, `npm run lint`.
-3. On failure: surface the errors and stop. Treat fixes as a new round of conflict resolution — only modify what's needed; never silently pile on unrelated changes. Once green, continue.
-4. If the user opts to skip, note this in the PR body so reviewers know CI is the first validation gate.
+2. If yes, run the repo's standard checks following [.github/copilot-instructions.md](../../copilot-instructions.md). Because the working tree was switched from the original branch to `origin/<target>` and may have been mutated by the cherry-pick, `node_modules` is almost certainly stale — always start with `npm install`. Then run, in this order: `npm run build`, `npm run l10n`, `npm run prettier-fix`, `npm run lint`. Always run `npm run l10n` regardless of whether the cherry-pick obviously touches user-facing strings: dependency bumps can alter embedded error messages, and the target release branch may carry pre-existing l10n drift that the CI `l10n:check` will fail on. If the bundle changes, commit the regenerated bundle as a separate `chore: regenerate l10n bundle` commit on the backport branch before the Phase F push.
+3. **Pull translations from the source's base branch** — only when the user opted into validation in step 1, the cherry-pick changed `l10n/bundle.l10n.json` (English bundle), **and** the source PR is merged. After the original PR merged, a localization bot typically commits translated strings to the source's base (e.g. `main`) — those translations apply equally to the backport and should not be re-translated by hand. **Pull only the affected keys**, never wholesale-replace language files: the source base may have other strings the target branch must not gain. Procedure:
+   - Determine the set of changed keys in the English bundle on the backport branch versus the target. Compare keys (top-level JSON object keys) between `git show origin/<target>:l10n/bundle.l10n.json` and the current `l10n/bundle.l10n.json`. Record:
+     - **Added keys** — present in current, absent in target.
+     - **Modified keys** — present in both but with different values (rare, but possible if the English text changed).
+     - Removed keys are irrelevant for translation pulling (already gone from the English bundle, will be dropped from language files by `npm run l10n`).
+   - Do the same comparison for `package.nls.json` (its translations live in `package.nls.<lang>.json`).
+   - For each language file (`l10n/bundle.l10n.<lang>.json` and `package.nls.<lang>.json`, every `<lang>` present in the repo), read the source-base version with `git show origin/<source-base>:<file>`, then for each added/modified key copy that key's translated value into the local language file. Leave all other keys in the local file untouched. **Preserve the existing line endings and key order** of the local file: translation pipelines often write CRLF and use a non-obvious collation order, and re-sorting or re-serializing produces a massive cosmetic diff that reviewers will reject. Insert each new key adjacent to the nearest preceding key (in source-base order) that already exists locally; serialize with `JSON.stringify(obj, null, 2)`, then convert `\n` back to `\r\n` if the local file used CRLF. If the source-base version is missing a key (translation bot hasn't run yet), skip it — `npm run l10n` will leave the English fallback.
+   - Re-run `npm run l10n` to refresh the English bundle (the language files are not modified by this script in current builds; it only normalizes `l10n/bundle.l10n.json`).
+   - Stage only the language files that actually changed (`git add l10n/bundle.l10n.*.json package.nls.*.json`) and commit as `chore: pull updated translations from <source-base>`. Do **not** stage `l10n/bundle.l10n.json` or `package.nls.json` here — those belong to the earlier `chore: regenerate l10n bundle` commit.
+   - If the source PR is **not** merged (open backport), skip this step — translations don't exist yet.
+4. On failure: surface the errors and stop. Treat fixes as a new round of conflict resolution — only modify what's needed; never silently pile on unrelated changes. Once green, continue.
+5. If the user opts to skip, note this in the PR body so reviewers know CI is the first validation gate.
 
 ### Phase F — Push & open the PR
 
-1. `git push -u origin <branch>` — **never** `--force` or `--force-with-lease`.
+1. `git push -u origin <branch>` — **never** `--force` or `--force-with-lease`. If the push fails, surface the full `git` error. If it is a permission or branch-protection error (e.g. protected-branch hook, missing write access), advise the user to check repository settings; do not retry with force flags. Proceed to Phase G failure cleanup.
 2. `gh pr create --base <target> --head <branch> --title "[<target>] <original-title>" --body <body>` where `<body>` contains:
    - The PR title **must** start with the target branch in square brackets, e.g. `[rel/0.34] Fix tree refresh race`. Use the exact target branch name (including any `rel/` prefix) and keep the rest of the title identical to the original PR title (or first commit subject for non-PR sources).
    - `Backport of #<n>` (or `Backport of <branch>` / SHA list for non-PR sources).
@@ -92,7 +112,7 @@ Cherry-picks onto older release branches often produce code that compiles on the
 
 ## Constraints
 
-- Refuse the source's own base branch as the target (a backport onto the same base is a no-op). Any other existing branch on `origin` is allowed, including `main`.
+- Refuse the source's own base branch as the target (a backport onto the same base is a no-op). Any other existing branch on `origin` is allowed. `main` is allowed **only when** it is not the source's base; if the source already targets `main`, refuse `main` per the rule above.
 - Never use `--force` / `--force-with-lease`.
 - Preserve original commit messages during cherry-pick.
 - Do not modify files outside what is required for conflict resolution or to fix validation failures introduced by the cherry-pick.
@@ -117,9 +137,9 @@ When this skill runs inside the GitHub Copilot cloud agent (e.g. invoked by `@co
 - **No interactive prompts.** You cannot pause to ask the user. Resolve everything from the request body and repository state up front; if a required input is missing or ambiguous (target branch, source PR), stop and report rather than guess.
 - **Branch naming**: use `copilot/backport-<id>-to-<target-slug>` instead of `backport/...`. The cloud agent can only push branches starting with `copilot/`.
 - **Skip Phase A.3 stash logic** — the cloud agent runs in a fresh ephemeral checkout; there is no user working tree to preserve.
+- **Apply the Phase D cloud-agent override** described above (commit conflict markers as `WIP:` and mark the PR draft instead of asking, aborting, or squash-and-retry).
 - **Skip Phase E (local validation)** — the cloud agent's GitHub Actions environment runs CI as the validation gate; do not run `npm install` / build / lint to save time and avoid burning Actions minutes.
 - **Skip Phase F's `gh pr create`.** The cloud agent platform opens the PR for the task automatically. Use `gh pr edit` to set the base branch, title, and body. The title **must** be prefixed with the target branch in square brackets — e.g. `[rel/0.34] <original-title>`. When conflicts remain unresolved, mark the PR as draft (the platform may open it ready by default; use `gh pr ready --undo` if available, otherwise note the WIP state explicitly in the PR body).
-- **Conflict policy** is stricter: still auto-resolve only trivial cases. For ambiguous conflicts, do **not** invent a resolution — commit the conflict markers as-is on the `copilot/...` branch (`git commit --no-verify -m "WIP: backport conflicts in <files>"`), list each unresolved file in the PR body, and mark the PR as **draft**.
 - **Skip Phase G's stash restore and original-branch checkout** — there's nothing local to restore.
 
 All other constraints (no `--force`, refuse the source's own base, preserve commit messages, never silently overwrite existing branches) apply unchanged.

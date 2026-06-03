@@ -40,7 +40,7 @@ Execute these phases in order. Stop and report on any error.
 - **PR source**: `gh pr view <num> --json number,title,body,headRefName,baseRefName,mergeCommit,commits,state`. If the command fails (non-zero exit, PR not found, or insufficient permissions), abort with a clear error message showing the PR number and the `gh` error output. Then branch on `state`:
   - `MERGED`: prefer the squash-merge commit if the PR was squash-merged; otherwise use the listed commits in order.
   - `OPEN`: warn that backporting an unmerged PR may include incomplete or intermediate work, and confirm with the user before proceeding. Use the listed commits in order.
-  - `CLOSED` (not merged): abort — there are no merge commits to cherry-pick.
+  - `CLOSED` (not merged): legitimate but unusual. Warn the user that the PR was closed without merging (the work may have been abandoned, superseded, or rewritten elsewhere) and confirm before proceeding. Use the listed commits in order, or offer squash-and-reapply if the user prefers a single commit.
 - **Branch source**: `git log --reverse --format=%H origin/<target>..<branch>`.
 - **SHA(s) / range**: use as given (validate with `git cat-file -e <sha>`).
 
@@ -91,7 +91,7 @@ Cherry-picks onto older release branches often produce code that compiles on the
    - For each language file (`l10n/bundle.l10n.<lang>.json` and `package.nls.<lang>.json`, every `<lang>` present in the repo), read the source-base version with `git show origin/<source-base>:<file>`, then for each added/modified key copy that key's translated value into the local language file. Leave all other keys in the local file untouched. **Preserve the existing line endings and key order** of the local file: translation pipelines often write CRLF and use a non-obvious collation order, and re-sorting or re-serializing produces a massive cosmetic diff that reviewers will reject. Insert each new key adjacent to the nearest preceding key (in source-base order) that already exists locally; serialize with `JSON.stringify(obj, null, 2)`, then convert `\n` back to `\r\n` if the local file used CRLF. If the source-base version is missing a key (translation bot hasn't run yet), skip it — `npm run l10n` will leave the English fallback.
    - Re-run `npm run l10n` to refresh the English bundle (the language files are not modified by this script in current builds; it only normalizes `l10n/bundle.l10n.json`).
    - Stage only the language files that actually changed (`git add l10n/bundle.l10n.*.json package.nls.*.json`) and commit as `chore: pull updated translations from <source-base>`. Do **not** stage `l10n/bundle.l10n.json` or `package.nls.json` here — those belong to the earlier `chore: regenerate l10n bundle` commit.
-   - If the source PR is **not** merged (open backport), skip this step — translations don't exist yet.
+   - If the source PR is **not** merged (open or closed without merging), skip this step — translations don't exist yet.
 4. On failure: surface the errors and stop. Treat fixes as a new round of conflict resolution — only modify what's needed; never silently pile on unrelated changes. Once green, continue.
 5. If the user opts to skip, note this in the PR body so reviewers know CI is the first validation gate.
 

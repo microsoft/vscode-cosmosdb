@@ -94,7 +94,7 @@ context.valuesToMask.push(userProvidedName); // database/container/resource name
 - If a value has multiple equivalent forms a user might see (e.g. a partition key with and without a leading `/`), push **all** forms: `context.valuesToMask.push(partitionKey, partitionKey.slice(1));`
 - Wizard `prompt`/`validateInput` steps that capture user input should push the captured value before the step returns. See `CosmosDBContainerNameStep`, `CosmosDBConnectionStringStep`, `CosmosDBPartitionKeyStep` for the pattern.
 - Branch data providers and tree item factories should mask resource ids/names at construction time (see `CosmosDBBranchDataProvider`, `AccountInfo`).
-- For values shared across many actions (account-wide secrets), funnel them through `Telemetry.addValuesToMask(...)` in `src/Telemetry.ts` so they are applied to every subsequent `IActionContext`.
+- For values that should be masked across all events emitted by a single webview, register them once on that webview's `TelemetryContext` via `addMaskedValue(value)` (see `src/Telemetry.ts`); the mask list is then applied automatically to every `reportWebviewEvent` / `reportWebviewError` call from that webview.
 
 ## Properties vs. Measurements
 

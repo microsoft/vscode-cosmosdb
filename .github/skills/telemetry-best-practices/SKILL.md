@@ -28,6 +28,8 @@ The following must **never** appear in `telemetry.properties` or `telemetry.meas
 - Email addresses, user names, machine names, IP addresses.
 - Any string derived from the above (reversible hashes, prefixes, etc.).
 
+**Not PII** (always allowed): the AI model identifiers `modelId`, `modelFamily`, `modelVendor` (vendor-published values from `vscode.LanguageModelChat`), bounded enums you control, durations, counts, and ratios.
+
 ### Allowed exceptions: OII identifiers under predefined property names
 
 A small set of Azure identifiers are **OII** (Organization Identifiable Information), not PII, and may be emitted **as-is** — but **only** under the predefined property names listed below. The telemetry pipeline (and `@microsoft/vscode-azext-utils`) recognizes these names and handles them accordingly (subscription scoping, sanitization of the resource path, organization-tier classification, etc.).
@@ -78,10 +80,15 @@ Rules:
 Use it as a **safety net** for sensitive values that your code touches and might end up in a thrown error or log line you don't fully control:
 
 ```ts
+// Extension host: push directly to the action context
 context.valuesToMask.push(connectionString);
 context.valuesToMask.push(masterKey, endpoint, databaseId, containerId);
 context.valuesToMask.push(account.subscription.subscriptionId);
 context.valuesToMask.push(userProvidedName); // database/container/resource names entered in a wizard
+
+// Webview-bridged events: register on the per-webview TelemetryContext instead
+telemetryContext.addMaskedValue(connectionString);
+telemetryContext.addMaskedValue([endpoint, databaseId, containerId]);
 ```
 
 ### Rules
@@ -107,7 +114,7 @@ context.valuesToMask.push(userProvidedName); // database/container/resource name
 
 ## Naming Conventions
 
-- Event names: `cosmosDB.<area>.<action>` (camelCase segments). Keep them **static** — no interpolated user data.
+- Event names: `cosmosDB.<area>[.<subarea>].<action>` (two to four `camelCase` segments). Keep them **static** — no interpolated user data. Examples currently in use: `cosmosDB.nosql.queryEditor.executeQuery`, `cosmosDB.migration.ddlExtractor.extract`. Match an existing prefix if you are adding to an existing area instead of inventing a new top-level name.
 - Property/measurement keys: `camelCase`, stable across versions. Renaming a key breaks dashboards and queries; prefer adding a new key over renaming.
 - Reuse the same key name across events when the meaning is identical (e.g. `sessionId`, `durationMs`, `errorCategory`).
 
@@ -116,14 +123,14 @@ context.valuesToMask.push(userProvidedName); // database/container/resource name
 ### 1. Best-effort sub-events: suppress display + don't rethrow
 
 ```ts
-await callWithTelemetryAndErrorHandling('cosmosDB.<area>.<action>', (ctx) => {
+await callWithTelemetryAndErrorHandling('cosmosDB.<area>.<action>', async (ctx) => {
     ctx.errorHandling.suppressDisplay = true;
     ctx.errorHandling.rethrow = false;
-    // ... record measurements/properties ...
+    // ... record measurements/properties (sync or async) ...
 });
 ```
 
-Use this for fire-and-forget instrumentation that must never affect the user-visible flow.
+The callback may be sync or async; keep it `async` whenever the work inside is async. Use this for fire-and-forget instrumentation that must never affect the user-visible flow.
 
 ### 2. Rollups via a second `IActionContext`
 
@@ -131,13 +138,14 @@ When per-call events would be too chatty, accumulate counters on a longer-lived 
 
 ### 3. Centralize cross-cutting enrichment
 
-When the same set of properties (session id, mode, source type, etc.) appears at many call sites, put it in a single helper (e.g. `enrichWith<Area>Context(ctx, ...)`) and call that at the top of every event. Extend the helper instead of duplicating assignments.
+When the same set of properties (session id, mode, source type, etc.) appears at many call sites, put it in a single helper (`enrichWithMigrationContext`, `enrichWithQueryEditorContext`, …; `<Area>` is a placeholder for the actual feature name) and call that at the top of every event. Extend the helper instead of duplicating assignments.
 
 ### 4. Errors
 
-- Set `properties.errorCategory` to a bounded enum (e.g. `'ai' | 'infrastructure' | 'validation'`). Do not put raw `error.message` into properties.
-- Use `ctx.errorHandling.issueProperties` for fields that should appear in the GitHub issue body but **not** in telemetry — they are scoped differently.
+- Set `properties.errorCategory` to a bounded enum. Reuse values already used in the codebase (`'ai'`, `'infrastructure'` in `migrationTelemetry.ts`) before introducing new ones.
+- Do not put raw `error.message` into properties — it will likely contain user values.
 - Prefer error **codes** over messages. If a message must be retained, ensure it cannot contain user values (paths, names, queries).
+- `ctx.errorHandling.issueProperties` is the data appended to the body of the GitHub issue created when the user clicks **Report an Issue**. It is **not** a sanctioned PII channel — the same PII rules apply. Use it for diagnostic context (model id, error category, sanitized codes) that helps maintainers debug a reported issue.
 
 ## Review Checklist
 

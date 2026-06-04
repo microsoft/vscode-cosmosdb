@@ -39,15 +39,38 @@ export const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
 const SCHEMA_GENERATION_PAGE_SIZE = 1000;
 
 /** Defaults for {@link SimplifiedSchemaOptions}. */
-const DEFAULT_SIMPLIFIED_TARGET_BYTES = 500 * 1024;
-const DEFAULT_SIMPLIFIED_MAX_DEPTH = 3;
-const DEFAULT_SIMPLIFIED_KEEP_TOP_N = 2;
-const DEFAULT_POPULARITY_KEY = 'x-occurrence';
+// 50 KB ≈ 12-15 K tokens with a typical JSON-friendly tokenizer — comfortably
+// below the per-request budget any current model gives us, and small enough
+// that the schema is rarely the dominant cost in the prompt. Tuned down from
+// 500 KB (~100 K tokens) which was burning context for no real recall gain.
+export const DEFAULT_SIMPLIFIED_TARGET_BYTES = 50 * 1024;
+export const DEFAULT_SIMPLIFIED_MAX_DEPTH = 3;
+export const DEFAULT_SIMPLIFIED_KEEP_TOP_N = 2;
+/**
+ * Floor applied to the adaptive root trim (depth 0).
+ *
+ * The simplifier never reduces the schema root below this many entries,
+ * even if doing so means a slight budget overflow.  When there is headroom
+ * the simplifier binary-searches *upwards* from this floor and keeps as
+ * many additional root entries as the byte budget allows — i.e. this
+ * number is a guarantee, not a cap.
+ *
+ * Reason: real-world Cosmos containers routinely have 10-30 "universally
+ * occurring" top-level fields (id, partition key, common metadata, …) plus
+ * a long tail of rare polymorphic additions.  Reducing the root to just
+ * `keepTopN` = 2 turns the simplified schema into `{ id, _partitionKey }`,
+ * which is useless to an LLM trying to suggest queries against the
+ * container.  By contrast, deeper levels can stay aggressive: nested
+ * objects rarely host a long tail worth surfacing once the parent name is
+ * already in scope.
+ */
+export const DEFAULT_SIMPLIFIED_ROOT_KEEP_TOP_N = 50;
+export const DEFAULT_POPULARITY_KEY = 'x-occurrence';
 
 /**
  * `x-*` extensions that are stripped from schemas before they are handed to
  * the language model: they are dense statistics that the LLM cannot use
- * meaningfully and they consume the majority of bytes in deep schemas.
+ * meaningfully, and they consume the majority of bytes in deep schemas.
  *
  * `x-occurrence`, `x-typeOccurrence`, `x-dataType` and `x-bsonType` are kept
  * because the popularity cut depends on them and because the schema format
@@ -135,6 +158,22 @@ export interface SimplifiedSchemaOptions {
     maxDepth?: number;
     /** Number of most popular children to keep at each level when doing the popularity cut. */
     keepTopN?: number;
+    /**
+     * **Floor** for the number of root entries kept by the adaptive root
+     * trim.  Even when keeping this many entries already exceeds
+     * {@link targetSizeBytes}, the simplifier still keeps them — this
+     * guarantees the AI always sees at least N stable top-level fields
+     * (id, partition key, common metadata, …) regardless of the byte
+     * budget.
+     *
+     * When there is headroom in the budget the simplifier binary-searches
+     * upwards and keeps as many additional (less popular) root entries as
+     * the budget allows.  The actual final count is therefore
+     * `≥ rootKeepTopN` and only goes higher.
+     *
+     * Defaults to {@link DEFAULT_SIMPLIFIED_ROOT_KEEP_TOP_N}.
+     */
+    rootKeepTopN?: number;
     /** Name of the `x-*` field used to rank popularity. */
     popularityKey?: string;
 }
@@ -420,7 +459,7 @@ export class SchemaService {
      * Merges `documents` into the saved schema for `connection`. Used by
      *
      * - the query editor when "generate schema based on queries" is on,
-     * - the document editor after a successful create,
+     * - the document editor after a successful creation,
      * - the AI sampling tool.
      *
      * When `options.updateFromQueriesEnabled` is `true`, the running document
@@ -527,6 +566,7 @@ export class SchemaService {
             targetSizeBytes: rawOptions?.targetSizeBytes ?? DEFAULT_SIMPLIFIED_TARGET_BYTES,
             maxDepth: rawOptions?.maxDepth ?? DEFAULT_SIMPLIFIED_MAX_DEPTH,
             keepTopN: rawOptions?.keepTopN ?? DEFAULT_SIMPLIFIED_KEEP_TOP_N,
+            rootKeepTopN: rawOptions?.rootKeepTopN ?? DEFAULT_SIMPLIFIED_ROOT_KEEP_TOP_N,
             popularityKey: rawOptions?.popularityKey ?? DEFAULT_POPULARITY_KEY,
         };
 
@@ -782,6 +822,7 @@ export class SchemaService {
                 targetSizeBytes: SCHEMA_SIZE_LIMIT_BYTES,
                 maxDepth: DEFAULT_SIMPLIFIED_MAX_DEPTH,
                 keepTopN: DEFAULT_SIMPLIFIED_KEEP_TOP_N,
+                rootKeepTopN: DEFAULT_SIMPLIFIED_ROOT_KEEP_TOP_N,
                 popularityKey: DEFAULT_POPULARITY_KEY,
             });
             workingSchema = simplified.schema;
@@ -1015,11 +1056,32 @@ export function aggressivelySimplify(
 
     if (popularityKeyHit) {
         const maxDepth = computeMaxDepth(clone);
+        // Sweep deepest-first so each pass cuts the most localized noise first
+        // and only escalates to wider cuts (closer to the root) when the
+        // budget still isn't met.  Depth 0 is special: rather than apply a
+        // fixed keepTopN there, we binary-search for the *largest* slice of
+        // root entries that still fits the byte budget (see
+        // `trimRootByPopularityAdaptive`).  This is what makes the simplified
+        // schema actually approach the budget for wide-flat inputs instead
+        // of being slashed far below it — `aggressivelySimplify` used to
+        // either over-cut (output « budget) or be a near no-op (output »
+        // budget) depending on the input shape.
         for (let depth = maxDepth; depth >= 1; depth--) {
             mutated = trimAtDepth(clone, depth, options.keepTopN, options.popularityKey) || mutated;
             if (jsonByteSize(clone) <= options.targetSizeBytes) {
                 return { schema: clone, popularityKeyHit, wasSimplified: true };
             }
+        }
+
+        // Depth 0: adaptive root trim. `rootKeepTopN` is a *floor* — we never
+        // cut the root below it, even if doing so means a slight budget
+        // overflow.  This preserves the user-facing contract that the AI
+        // always sees at least N stable top-level fields.
+        mutated =
+            trimRootByPopularityAdaptive(clone, options.rootKeepTopN, options.targetSizeBytes, options.popularityKey) ||
+            mutated;
+        if (jsonByteSize(clone) <= options.targetSizeBytes) {
+            return { schema: clone, popularityKeyHit, wasSimplified: true };
         }
     }
 
@@ -1183,6 +1245,77 @@ function trimChildrenByPopularity(node: JSONSchema, keepTopN: number, popularity
         }
     }
     return mutated;
+}
+
+/**
+ * Trims the root `properties` bag by popularity, sizing the cut to the byte
+ * budget.
+ *
+ * Unlike {@link trimChildrenByPopularity} (which takes a fixed `keepTopN`),
+ * this performs a binary search over `k` ∈ `[minKeep, total]` and picks the
+ * largest `k` whose schema serialisation still fits `targetSizeBytes`.
+ *
+ * Why only at the root?  Most schema bytes live in the root property bag
+ * (especially for wide-flat schemas).  Adaptively choosing the cut here is
+ * what lets the simplified schema actually approach the budget instead of
+ * over-shooting or under-shooting it.  Deeper levels keep a fixed
+ * `keepTopN` because they tend to be small and uniform — adaptive search
+ * there would be expensive noise.
+ *
+ * `minKeep` is a hard floor.  When even keeping `minKeep` entries exceeds
+ * the budget we still keep `minKeep` (slight overflow accepted) so that the
+ * AI is never reduced to `{ id, partitionKey }`.
+ */
+function trimRootByPopularityAdaptive(
+    schema: JSONSchema,
+    minKeep: number,
+    targetSizeBytes: number,
+    popularityKey: string,
+): boolean {
+    if (!schema.properties) return false;
+
+    const entries = Object.entries(schema.properties)
+        .map(([name, child]) => ({
+            name,
+            child,
+            popularity:
+                child && typeof child === 'object' ? Number((child as Record<string, unknown>)[popularityKey] ?? 0) : 0,
+        }))
+        .sort((a, b) => b.popularity - a.popularity);
+
+    const total = entries.length;
+    if (total <= minKeep) {
+        // Already at or below the floor — nothing to trim.
+        return false;
+    }
+
+    const applyTop = (k: number): void => {
+        const newProps: NonNullable<JSONSchema['properties']> = {};
+        for (let i = 0; i < k; i++) {
+            const e = entries[i];
+            newProps[e.name] = e.child;
+        }
+        schema.properties = newProps;
+    };
+
+    // Binary search the largest k in [minKeep, total] that fits the budget.
+    let lo = minKeep;
+    let hi = total;
+    let best = minKeep;
+
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        applyTop(mid);
+        if (jsonByteSize(schema) <= targetSizeBytes) {
+            best = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+
+    applyTop(best);
+    return total > best;
 }
 
 function pruneBeyondDepth(schema: JSONSchema, maxDepth: number): boolean {

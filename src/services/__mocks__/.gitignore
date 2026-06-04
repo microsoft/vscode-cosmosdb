@@ -1,0 +1,12 @@
+# Raw schemas dumped by SchemaService.test.ts for developer-eye inspection.
+#
+# These files are *inputs* to the `aggressivelySimplify` snapshot tests: each
+# `raw-<preset>.json` is the byte-for-byte schema produced by the analyzer
+# from the deterministic generator (seed = 42) before simplification kicks in.
+#
+# They're regenerated on every `vitest` run, can be tens of MB for the larger
+# presets, and aren't required to reproduce test results (the seed gives us
+# determinism).  Keep them local — the corresponding `simplified-*.json`
+# snapshots one level up are the committed source of truth.
+raw/
+

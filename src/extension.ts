@@ -214,8 +214,6 @@ export async function activateInternal(
 
     console.log(`Registering APIs: ${exportedApi.apiVersion}, Azure Resources API ${clientApi.apiVersion}`);
 
-    vscode.commands.executeCommand('cosmosDB.ai.deployInstructionFiles');
-
     return createApiProvider([clientApi]);
 }
 

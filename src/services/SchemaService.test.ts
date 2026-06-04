@@ -102,8 +102,20 @@ vi.mock('./SchemaFileStorage', async () => {
 });
 
 // Imported after mocks so the service binds to the fakes above.
-const { SchemaService, aggressivelySimplify, SCHEMA_SIZE_LIMIT_BYTES, DEFAULT_SIMPLIFIED_TARGET_BYTES } =
-    await import('./SchemaService');
+const {
+    SchemaService,
+    aggressivelySimplify,
+    composeMetadata,
+    SCHEMA_SIZE_LIMIT_BYTES,
+    DEFAULT_SIMPLIFIED_TARGET_BYTES,
+} = await import('./SchemaService');
+
+// Re-import the telemetry stub as a typed handle so the cascade-delete tests
+// can assert on what was emitted without re-mocking the module.
+const { callWithTelemetryAndErrorHandling: telemetryStub } =
+    (await import('@microsoft/vscode-azext-utils')) as unknown as {
+        callWithTelemetryAndErrorHandling: ReturnType<typeof vi.fn>;
+    };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -135,6 +147,7 @@ beforeEach(() => {
     outputChannel.appendLog.mockClear();
     outputChannel.warn.mockClear();
     outputChannel.info.mockClear();
+    telemetryStub.mockClear();
 
     vi.spyOn(vscode.workspace, 'getConfiguration').mockReturnValue({
         get: vi.fn(() => false),
@@ -409,6 +422,107 @@ describe('SchemaService.deleteSchemasForContainer / Database', () => {
 
         await expect(service.deleteSchemasForContainer(connection.endpoint, 'db', 'c1')).resolves.toBeUndefined();
         expect(outputChannel.warn).toHaveBeenCalled();
+    });
+
+    // ── Telemetry regression ────────────────────────────────────────────
+    // The earlier implementation fired one telemetry event per *match*
+    // inside the delete loop and derived `scope` from `matches.length` —
+    // i.e. a container delete that happened to find 2 stray legacy
+    // entries would be reported as `'database'`. These tests pin both
+    // properties.
+
+    describe('cascadeDelete telemetry', () => {
+        function captureTelemetryEvents() {
+            const events: {
+                event: string;
+                properties: Record<string, string>;
+                measurements: Record<string, number>;
+            }[] = [];
+            // Synchronous capture — the production cascade callback only
+            // mutates ctx.telemetry.* (no awaited work), so reading the
+            // properties immediately after invocation is safe and avoids
+            // the `no-misused-promises` lint rule that fires on async
+            // mock implementations.
+            telemetryStub.mockImplementation((event: string, callback: (ctx: unknown) => unknown) => {
+                const ctx = {
+                    telemetry: { properties: {} as Record<string, string>, measurements: {} as Record<string, number> },
+                    errorHandling: { suppressDisplay: false, rethrow: false },
+                };
+                const result = callback(ctx);
+                events.push({
+                    event,
+                    properties: { ...ctx.telemetry.properties },
+                    measurements: { ...ctx.telemetry.measurements },
+                });
+                return result;
+            });
+            return events;
+        }
+
+        it('fires exactly once per database cascade with scope="database" and deletedCount=N', async () => {
+            seed('c1');
+            seed('c2');
+            seed('c3');
+            const events = captureTelemetryEvents();
+
+            await new SchemaService().deleteSchemasForDatabase(connection.endpoint, 'db');
+
+            const cascadeEvents = events.filter((e) => e.event === 'cosmosDB.nosql.schema.cascadeDelete');
+            expect(cascadeEvents).toHaveLength(1);
+            expect(cascadeEvents[0].properties.scope).toBe('database');
+            expect(cascadeEvents[0].measurements.deletedCount).toBe(3);
+            expect(cascadeEvents[0].measurements.errorCount).toBe(0);
+        });
+
+        it('fires exactly once per container cascade with scope="container" even when multiple stray entries match', async () => {
+            // Seed two legacy entries for the same container (e.g. a re-create)
+            // — `findSchemasForContainer` returns both, but the *caller's*
+            // intent is still a single container delete.
+            seed('c1');
+            const dup: SchemaMetadata = {
+                id: 'db-c1-legacy',
+                name: 'db/c1',
+                generatedAt: '2024-01-01T00:00:00.000Z',
+                documentCount: '1',
+                endpoint: connection.endpoint,
+                databaseId: 'db',
+                containerId: 'c1',
+            };
+            fakeStorage.metadata.set(dup.id, dup);
+            fakeStorage.schemas.set(dup.id, '{}');
+
+            const events = captureTelemetryEvents();
+
+            await new SchemaService().deleteSchemasForContainer(connection.endpoint, 'db', 'c1');
+
+            const cascadeEvents = events.filter((e) => e.event === 'cosmosDB.nosql.schema.cascadeDelete');
+            expect(cascadeEvents).toHaveLength(1);
+            expect(cascadeEvents[0].properties.scope).toBe('container');
+            expect(cascadeEvents[0].measurements.deletedCount).toBe(2);
+        });
+
+        it('records errorCount when individual deletes fail without aborting the cascade', async () => {
+            seed('c1');
+            seed('c2');
+            fakeStorage.deleteSchema.mockRejectedValueOnce(new Error('transient'));
+            const events = captureTelemetryEvents();
+
+            await new SchemaService().deleteSchemasForDatabase(connection.endpoint, 'db');
+
+            const cascadeEvents = events.filter((e) => e.event === 'cosmosDB.nosql.schema.cascadeDelete');
+            expect(cascadeEvents).toHaveLength(1);
+            expect(cascadeEvents[0].measurements.deletedCount).toBe(1);
+            expect(cascadeEvents[0].measurements.errorCount).toBe(1);
+        });
+
+        it('does not fire when no matches exist', async () => {
+            const events = captureTelemetryEvents();
+
+            await new SchemaService().deleteSchemasForContainer(connection.endpoint, 'db', 'missing');
+
+            const cascadeEvents = events.filter((e) => e.event === 'cosmosDB.nosql.schema.cascadeDelete');
+            expect(cascadeEvents).toHaveLength(0);
+        });
     });
 });
 
@@ -1003,4 +1117,217 @@ describe('aggressivelySimplify on generated schemas with new generator knobs', (
         const fixturePath = path.resolve(__dirname, '__mocks__/simplified-polymorphic.json');
         await expect(JSON.stringify(simplified, null, 2) + '\n').toMatchFileSnapshot(fixturePath);
     });
+});
+
+// ─── composeMetadata — frozen-count semantics ──────────────────────────────
+//
+// Regression coverage for the bug where an incremental write arriving with
+// `updateFromQueriesEnabled === false` *after* the count had already been
+// frozen by a query-driven write would silently unfreeze and re-add the new
+// documents to the frozen sample size.
+
+describe('composeMetadata — frozen-count semantics', () => {
+    const baseArgs = {
+        schemaId: 'sid',
+        containerLabel: 'db/c',
+        connection,
+        wasSimplifiedOnSave: false,
+    };
+
+    it('fresh generation resets everything regardless of previous state', () => {
+        const previous: SchemaMetadata = {
+            id: 'sid',
+            name: 'db/c',
+            generatedAt: '2025-01-01T00:00:00.000Z',
+            documentCount: '500',
+            initialDocumentCount: '500',
+            updatedFromQueries: true,
+        };
+
+        const meta = composeMetadata({
+            ...baseArgs,
+            sampleSize: 1000,
+            isFreshGeneration: true,
+            previousMetadata: previous,
+            updateFromQueriesEnabled: false,
+        });
+
+        expect(meta.documentCount).toBe('1000');
+        expect(meta.initialDocumentCount).toBe('1000');
+        expect(meta.updatedFromQueries).toBe(false);
+    });
+
+    it('query-driven incremental write freezes the count at previousDocCount', () => {
+        const previous: SchemaMetadata = {
+            id: 'sid',
+            name: 'db/c',
+            generatedAt: '2025-01-01T00:00:00.000Z',
+            documentCount: '500',
+            initialDocumentCount: '500',
+            updatedFromQueries: false,
+        };
+
+        const meta = composeMetadata({
+            ...baseArgs,
+            sampleSize: 510, // 500 previous + 10 new
+            isFreshGeneration: false,
+            previousMetadata: previous,
+            updateFromQueriesEnabled: true,
+        });
+
+        expect(meta.documentCount).toBe('500');
+        expect(meta.initialDocumentCount).toBe('500');
+        expect(meta.updatedFromQueries).toBe(true);
+    });
+
+    it('non-query write while the count is still trustworthy keeps running it', () => {
+        const previous: SchemaMetadata = {
+            id: 'sid',
+            name: 'db/c',
+            generatedAt: '2025-01-01T00:00:00.000Z',
+            documentCount: '500',
+            initialDocumentCount: '500',
+            updatedFromQueries: false,
+        };
+
+        const meta = composeMetadata({
+            ...baseArgs,
+            sampleSize: 510,
+            isFreshGeneration: false,
+            previousMetadata: previous,
+            updateFromQueriesEnabled: false,
+        });
+
+        expect(meta.documentCount).toBe('510');
+        expect(meta.initialDocumentCount).toBe('500');
+        expect(meta.updatedFromQueries).toBe(false);
+    });
+
+    // Regression: previously this fell through to the non-query branch and
+    // produced documentCount = '510' with updatedFromQueries = true — a
+    // mix-and-match of frozen and post-freeze counts that mismatched the
+    // intent of the frozen state.
+    it('non-query write after the count has been frozen keeps it frozen (regression)', () => {
+        const previous: SchemaMetadata = {
+            id: 'sid',
+            name: 'db/c',
+            generatedAt: '2025-01-01T00:00:00.000Z',
+            documentCount: '500',
+            initialDocumentCount: '500',
+            updatedFromQueries: true,
+        };
+
+        const meta = composeMetadata({
+            ...baseArgs,
+            sampleSize: 510,
+            isFreshGeneration: false,
+            previousMetadata: previous,
+            updateFromQueriesEnabled: false,
+        });
+
+        expect(meta.documentCount).toBe('500');
+        expect(meta.initialDocumentCount).toBe('500');
+        expect(meta.updatedFromQueries).toBe(true);
+    });
+
+    it('query-driven write after the count is already frozen is idempotent', () => {
+        const previous: SchemaMetadata = {
+            id: 'sid',
+            name: 'db/c',
+            generatedAt: '2025-01-01T00:00:00.000Z',
+            documentCount: '500',
+            initialDocumentCount: '500',
+            updatedFromQueries: true,
+        };
+
+        const meta = composeMetadata({
+            ...baseArgs,
+            sampleSize: 510,
+            isFreshGeneration: false,
+            previousMetadata: previous,
+            updateFromQueriesEnabled: true,
+        });
+
+        expect(meta.documentCount).toBe('500');
+        expect(meta.updatedFromQueries).toBe(true);
+    });
+});
+
+// ─── persistWithSizeGuard — over-limit messaging ───────────────────────────
+//
+// Regression coverage for the bug where a schema that came back from
+// `aggressivelySimplify` still over `SCHEMA_SIZE_LIMIT_BYTES` was persisted
+// with the cheerful "automatically simplified" notification, masking the
+// fact that the budget was missed.
+//
+// The clean-case integration test below exercises the happy path
+// end-to-end (over-limit raw input → simplifier brings it under the limit
+// → cheerful message).  The honesty-of-wording branch ("still over limit"
+// after simplification) is unreachable through any realistic data shape at
+// the production `rootKeepTopN = 50` / `SCHEMA_SIZE_LIMIT_BYTES = 5 MB`
+// combination, so it is left as a defensive code path rather than tested
+// through synthetic data.  Manual eyeball review of the persist function is
+// the safety net for that one.
+
+describe('SchemaService.mergeDocumentsIntoSchema — over-limit messaging', () => {
+    /** Build a wide raw schema that definitely trips the 5 MB size guard. */
+    function buildOversizedDocuments(): Record<string, unknown>[] {
+        const { documents } = generateLargeSchemaDocuments({ ...LARGE_SCHEMA_PRESETS.medium });
+        return documents;
+    }
+
+    it(
+        'shows the "automatically simplified" notification and saves a payload under the limit',
+        { timeout: 60_000 },
+        async () => {
+            const service = new SchemaService();
+            const showInfo = vi
+                .spyOn(vscode.window, 'showInformationMessage')
+                .mockResolvedValue(undefined as unknown as vscode.MessageItem);
+            showInfo.mockClear();
+
+            await service.mergeDocumentsIntoSchema(connection, buildOversizedDocuments(), {
+                source: 'manualGenerate',
+                suppressNotification: false,
+            });
+
+            expect(showInfo).toHaveBeenCalledTimes(1);
+            const messageShown = String(showInfo.mock.calls[0][0]);
+            expect(messageShown.includes('automatically simplified before saving')).toBe(true);
+            // Honesty: the message implies "fits under the limit now" — verify it.
+            const savedJson = fakeStorage.saveSchema.mock.calls.at(-1)?.[1];
+            expect(savedJson).toBeDefined();
+            const savedBytes = Buffer.byteLength(savedJson!, 'utf8');
+            expect(savedBytes).toBeLessThanOrEqual(SCHEMA_SIZE_LIMIT_BYTES);
+
+            // outputChannel.warn must record the pre-simplification size — it's
+            // the only durable diagnostic when a user later complains the schema
+            // looks pruned.
+            const warnMessages = outputChannel.warn.mock.calls.map((c) => String(c[0]));
+            expect(warnMessages.some((m) => m.includes('auto-simplifying before save'))).toBe(true);
+        },
+    );
+
+    it(
+        'honours suppressNotification — no popup is shown even when simplification kicks in',
+        { timeout: 60_000 },
+        async () => {
+            const service = new SchemaService();
+            const showInfo = vi
+                .spyOn(vscode.window, 'showInformationMessage')
+                .mockResolvedValue(undefined as unknown as vscode.MessageItem);
+            showInfo.mockClear();
+
+            await service.mergeDocumentsIntoSchema(connection, buildOversizedDocuments(), {
+                source: 'manualGenerate',
+                suppressNotification: true,
+            });
+
+            expect(showInfo).not.toHaveBeenCalled();
+            // The warn log still fires unconditionally so the diagnostic trace
+            // is preserved even when notifications are suppressed.
+            const warnMessages = outputChannel.warn.mock.calls.map((c) => String(c[0]));
+            expect(warnMessages.some((m) => m.includes('auto-simplifying before save'))).toBe(true);
+        },
+    );
 });

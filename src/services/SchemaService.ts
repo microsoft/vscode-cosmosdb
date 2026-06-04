@@ -670,7 +670,7 @@ export class SchemaService {
     public async deleteSchemasForContainer(endpoint: string, databaseId: string, containerId: string): Promise<void> {
         try {
             const matches = this.storage.findSchemasForContainer(endpoint, databaseId, containerId);
-            await this.deleteByMatches(matches, `${databaseId}/${containerId}`);
+            await this.deleteByMatches(matches, `${databaseId}/${containerId}`, 'container');
         } catch (error) {
             ext.outputChannel.warn(
                 l10n.t('Failed to delete cached schema for the removed container: {0}', String(error)),
@@ -685,7 +685,7 @@ export class SchemaService {
     public async deleteSchemasForDatabase(endpoint: string, databaseId: string): Promise<void> {
         try {
             const matches = this.storage.findSchemasForDatabase(endpoint, databaseId);
-            await this.deleteByMatches(matches, databaseId);
+            await this.deleteByMatches(matches, databaseId, 'database');
         } catch (error) {
             ext.outputChannel.warn(
                 l10n.t('Failed to delete cached schemas for the removed database: {0}', String(error)),
@@ -693,14 +693,31 @@ export class SchemaService {
         }
     }
 
-    private async deleteByMatches(matches: SchemaMetadata[], label: string): Promise<void> {
+    /**
+     * `scope` reflects the *caller's* intent (`'container'` for a container
+     * delete, `'database'` for a database delete) — it is **not** derived
+     * from `matches.length`. A container cascade with stray legacy entries
+     * must still be reported as `'container'`, and a database cascade with
+     * a single match must still be reported as `'database'`. Telemetry is
+     * emitted **once per call**, not once per match, with `deletedCount`
+     * and `errorCount` measurements.
+     */
+    private async deleteByMatches(
+        matches: SchemaMetadata[],
+        label: string,
+        scope: 'container' | 'database',
+    ): Promise<void> {
         if (matches.length === 0) {
             return;
         }
 
+        let deletedCount = 0;
+        let errorCount = 0;
+
         for (const match of matches) {
             try {
                 await this.storage.deleteSchema(match.id);
+                deletedCount++;
                 ext.outputChannel.appendLog(
                     l10n.t('[Schema] Cascaded delete: removed schema "{0}" for {1}', match.name, label),
                 );
@@ -715,6 +732,7 @@ export class SchemaService {
                     });
                 }
             } catch (error) {
+                errorCount++;
                 ext.outputChannel.warn(
                     l10n.t(
                         '[Schema] Cascaded delete failed for "{0}" ({1}): {2}',
@@ -724,11 +742,15 @@ export class SchemaService {
                     ),
                 );
             }
-
-            void callWithTelemetryAndErrorHandling('cosmosDB.nosql.schema.cascadeDelete', (ctx) => {
-                ctx.telemetry.properties.scope = matches.length > 1 ? 'database' : 'container';
-            });
         }
+
+        void callWithTelemetryAndErrorHandling('cosmosDB.nosql.schema.cascadeDelete', (ctx) => {
+            ctx.errorHandling.suppressDisplay = true;
+            ctx.errorHandling.rethrow = false;
+            ctx.telemetry.properties.scope = scope;
+            ctx.telemetry.measurements.deletedCount = deletedCount;
+            ctx.telemetry.measurements.errorCount = errorCount;
+        });
     }
 
     // ── Notification / confirmation helpers ─────────────────────────────
@@ -808,13 +830,14 @@ export class SchemaService {
         let wasSimplifiedOnSave = false;
 
         if (workingJsonBytes > SCHEMA_SIZE_LIMIT_BYTES) {
-            const sizeMB = (workingJsonBytes / (1024 * 1024)).toFixed(1);
+            const originalSizeMB = (workingJsonBytes / (1024 * 1024)).toFixed(1);
+            const limitMB = (SCHEMA_SIZE_LIMIT_BYTES / (1024 * 1024)).toFixed(0);
             ext.outputChannel.warn(
                 l10n.t(
                     '[Schema] Generated schema for {0} is {1} MB (over {2} MB limit); auto-simplifying before save.',
                     containerLabel,
-                    sizeMB,
-                    (SCHEMA_SIZE_LIMIT_BYTES / (1024 * 1024)).toFixed(0),
+                    originalSizeMB,
+                    limitMB,
                 ),
             );
 
@@ -830,14 +853,41 @@ export class SchemaService {
             workingJsonBytes = Buffer.byteLength(workingJson, 'utf8');
             wasSimplifiedOnSave = true;
 
-            if (!options.suppressNotification) {
-                void vscode.window.showInformationMessage(
+            // The simplifier honours `rootKeepTopN` as a *floor*, so a wide,
+            // shallow schema whose top-N retained children alone exceed the
+            // limit can come back still over budget. Persist it anyway —
+            // losing data is worse than overshooting — but be honest about
+            // what actually happened in both the log and the user-facing
+            // message.
+            const stillOverLimit = workingJsonBytes > SCHEMA_SIZE_LIMIT_BYTES;
+            const simplifiedSizeMB = (workingJsonBytes / (1024 * 1024)).toFixed(1);
+
+            if (stillOverLimit) {
+                ext.outputChannel.warn(
                     l10n.t(
-                        'The generated schema was larger than {0} MB. It has been automatically simplified before saving for {1}.',
-                        (SCHEMA_SIZE_LIMIT_BYTES / (1024 * 1024)).toFixed(0),
+                        '[Schema] Simplification reduced {0} from {1} MB to {2} MB, but it is still over the {3} MB limit. Saving anyway.',
                         containerLabel,
+                        originalSizeMB,
+                        simplifiedSizeMB,
+                        limitMB,
                     ),
                 );
+            }
+
+            if (!options.suppressNotification) {
+                const message = stillOverLimit
+                    ? l10n.t(
+                          'The generated schema for {0} is {1} MB even after simplification (limit: {2} MB). Saving it anyway — consider narrowing the data shape if AI suggestions feel imprecise.',
+                          containerLabel,
+                          simplifiedSizeMB,
+                          limitMB,
+                      )
+                    : l10n.t(
+                          'The generated schema was larger than {0} MB. It has been automatically simplified before saving for {1}.',
+                          limitMB,
+                          containerLabel,
+                      );
+                void vscode.window.showInformationMessage(message);
             }
         }
 
@@ -890,7 +940,12 @@ export class SchemaService {
 
 // ─── Metadata composition ──────────────────────────────────────────────────
 
-function composeMetadata(args: {
+/**
+ * Exported for unit testing — kept module-level (not a method on
+ * {@link SchemaService}) because the calculation is pure and easier to cover
+ * directly than through the full `mergeDocumentsIntoSchema` pipeline.
+ */
+export function composeMetadata(args: {
     schemaId: string;
     containerLabel: string;
     connection: NoSqlQueryConnection;
@@ -924,16 +979,27 @@ function composeMetadata(args: {
         documentCount = sampleSize.toString();
         initialDocumentCount = sampleSize.toString();
         updatedFromQueries = false;
+    } else if (previousUpdatedFromQueries) {
+        // Once the count has been frozen by a query-driven update it stays
+        // frozen on every subsequent incremental write — *regardless* of
+        // whether `updateFromQueriesEnabled` is currently on or off. Adding
+        // post-freeze documents to a frozen pre-freeze sample size produces
+        // a value that is neither a true "documents inspected" nor a true
+        // running count.
+        documentCount = previousDocCount.toString();
+        initialDocumentCount = previousInitial ?? previousDocCount.toString();
+        updatedFromQueries = true;
     } else if (updateFromQueriesEnabled) {
-        // Query-driven incremental write: stop counting from the first such call.
+        // First query-driven incremental write: freeze the count from now on.
         documentCount = previousDocCount.toString();
         initialDocumentCount = previousInitial ?? previousDocCount.toString();
         updatedFromQueries = true;
     } else {
-        // Non-query incremental write (e.g. when the setting is off) — keep running count.
+        // Non-query incremental write while the count is still trustworthy —
+        // keep running it.
         documentCount = sampleSize.toString();
         initialDocumentCount = previousInitial ?? previousDocCount.toString();
-        updatedFromQueries = previousUpdatedFromQueries;
+        updatedFromQueries = false;
     }
 
     return {

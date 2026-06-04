@@ -146,8 +146,12 @@ function formatEta(totalSeconds: number): string {
     if (totalSeconds < 60) {
         return `${totalSeconds}s`;
     }
-    const mins = Math.floor(totalSeconds / 60);
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
+    if (hrs > 0) {
+        return secs > 0 ? `${hrs}h ${mins}m ${secs}s` : mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+    }
     return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
@@ -272,6 +276,7 @@ function formatReport(
     schemaFile: string,
     description: string,
     testCases: TestCase[],
+    totalDurationMs?: number,
 ): string {
     const results = allRuns.flat(); // all results across iterations
     const numIterations = allRuns.length;
@@ -335,7 +340,11 @@ function formatReport(
     md += `**Schema file:** ${schemaFile}\n`;
     md += `**Iterations:** ${numIterations}\n`;
     md += `**Total cases:** ${results.length} (${testCases.length} cases × ${numIterations} run${numIterations > 1 ? 's' : ''})\n`;
-    md += `**Errors:** ${results.filter((r) => r.error).length}\n\n`;
+    md += `**Errors:** ${results.filter((r) => r.error).length}\n`;
+    if (totalDurationMs !== undefined) {
+        md += `**Total duration:** ${totalDurationMs}ms (${formatEta(Math.round(totalDurationMs / 1000))})\n`;
+    }
+    md += `\n`;
 
     // Performance statistics
     const durationsSorted = results.map((r) => r.durationMs).sort((a, b) => a - b);
@@ -353,7 +362,8 @@ function formatReport(
     md += `## Performance Statistics\n\n`;
     md += `| Metric | Avg | P50 | P90 | P95 | Total |\n`;
     md += `|--------|-----|-----|-----|-----|-------|\n`;
-    md += `| Duration (ms) | ${Math.round(avg(durationsSorted))} | ${percentile(durationsSorted, 50)} | ${percentile(durationsSorted, 90)} | ${percentile(durationsSorted, 95)} | ${sum(durationsSorted)} |\n`;
+    const totalDurationSumMs = sum(durationsSorted);
+    md += `| Duration (ms) | ${Math.round(avg(durationsSorted))} | ${percentile(durationsSorted, 50)} | ${percentile(durationsSorted, 90)} | ${percentile(durationsSorted, 95)} | ${totalDurationSumMs} (${formatEta(Math.round(totalDurationSumMs / 1000))}) |\n`;
     md += `| Input tokens | ${Math.round(avg(inputTokensSorted))} | ${percentile(inputTokensSorted, 50)} | ${percentile(inputTokensSorted, 90)} | ${percentile(inputTokensSorted, 95)} | ${sum(inputTokensSorted)} |\n`;
     md += `| Output tokens | ${Math.round(avg(outputTokensSorted))} | ${percentile(outputTokensSorted, 50)} | ${percentile(outputTokensSorted, 90)} | ${percentile(outputTokensSorted, 95)} | ${sum(outputTokensSorted)} |\n`;
     md += `| Total tokens | ${Math.round(avg(totalTokensSorted))} | ${percentile(totalTokensSorted, 50)} | ${percentile(totalTokensSorted, 90)} | ${percentile(totalTokensSorted, 95)} | ${sum(totalTokensSorted)} |\n`;
@@ -508,9 +518,9 @@ async function runSingleIteration(
     token: vscode.CancellationToken,
     langRef: string | undefined,
     increment: number,
+    overallStartTime: number,
 ): Promise<TestResult[]> {
     const { testModel, gradingModel, allCases, schemas } = config;
-    const iterLabel = config.iterations > 1 ? `[Run ${iterIndex + 1}/${config.iterations}] ` : '';
 
     log(`\n=== Iteration ${iterIndex + 1} of ${config.iterations} ===`);
 
@@ -538,12 +548,27 @@ async function runSingleIteration(
         const caseIndex = allCases.indexOf(testCase) + 1;
         const remaining = allCases.length - caseIndex + 1;
         const avgMs = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
-        const etaSec = Math.round((remaining * avgMs) / 1000);
-        const etaLabel = durations.length > 0 ? ` · ~${formatEta(etaSec)} remaining` : '';
+        const elapsedSec = Math.round((Date.now() - overallStartTime) / 1000);
+        const iterEtaSec = Math.round((remaining * avgMs) / 1000);
+        const remainingIters = config.iterations - iterIndex - 1;
+        const totalEtaSec = Math.round(((remaining + remainingIters * allCases.length) * avgMs) / 1000);
+
+        const iterLeft = durations.length > 0 ? ` (~${formatEta(iterEtaSec)} left)` : '';
+        const totalCasesDone = iterIndex * allCases.length + caseIndex;
+        const totalCasesAll = config.iterations * allCases.length;
+        const modelLabel = testModel.name;
+        let progressMsg: string;
+        if (config.iterations > 1) {
+            const totalLeft = durations.length > 0 ? ` (~${formatEta(totalEtaSec)} left)` : '';
+            progressMsg = `${modelLabel} · [Run ${caseIndex}/${allCases.length}${iterLeft}] [${totalCasesDone}/${totalCasesAll}${totalLeft}] · elapsed: ${formatEta(elapsedSec)}`;
+        } else {
+            progressMsg = `${modelLabel} · [${caseIndex}/${allCases.length}${iterLeft}] · elapsed: ${formatEta(elapsedSec)}`;
+        }
+
         log(`\n--- Case ${caseIndex}/${allCases.length}: ${testCase.id} [${testCase.category}] ---`);
         log(`Prompt: ${testCase.prompt}`);
         progress.report({
-            message: `${iterLabel}[${caseIndex}/${allCases.length}] ${testCase.id}${etaLabel}`,
+            message: progressMsg,
             increment,
         });
 
@@ -694,7 +719,8 @@ async function runSingleIteration(
     // Batch grading — single LLM request for all results
     const gradedCases = pendingResults.filter((_, i) => i < allCases.length);
     log(`\n=== Grading ${gradedCases.length} results in one batch... ===`);
-    progress.report({ message: `${iterLabel}Grading ${gradedCases.length} results...`, increment });
+    const gradingLabel = config.iterations > 1 ? `[Run ${iterIndex + 1}/${config.iterations}] ` : '';
+    progress.report({ message: `${gradingLabel}Grading ${gradedCases.length} results...`, increment });
 
     const grades = await gradeAllResults(gradingModel, allCases.slice(0, gradedCases.length), gradedCases);
 
@@ -742,14 +768,16 @@ async function runNl2QueryQualityTests(
     const totalSteps = iterations * (allCases.length + 1);
     const increment = 100 / totalSteps;
 
+    const overallStartTime = Date.now();
     const allRuns: TestResult[][] = [];
     for (let i = 0; i < iterations; i++) {
         if (token.isCancellationRequested) {
             break;
         }
-        const results = await runSingleIteration(config, i, progress, token, langRef, increment);
+        const results = await runSingleIteration(config, i, progress, token, langRef, increment, overallStartTime);
         allRuns.push(results);
     }
+    const totalDurationMs = Date.now() - overallStartTime;
 
     if (allRuns.length === 0) {
         log('All iterations cancelled.');
@@ -761,7 +789,16 @@ async function runNl2QueryQualityTests(
     const gradingModelLabel = `${gradingModel.name} (${gradingModel.family})`;
     fs.writeFileSync(
         reportPath,
-        formatReport(allRuns, testModelLabel, gradingModelLabel, testCasesFile, schemaFile, description, allCases),
+        formatReport(
+            allRuns,
+            testModelLabel,
+            gradingModelLabel,
+            testCasesFile,
+            schemaFile,
+            description,
+            allCases,
+            totalDurationMs,
+        ),
         'utf-8',
     );
 

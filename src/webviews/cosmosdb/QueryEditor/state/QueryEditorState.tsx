@@ -187,10 +187,12 @@ export const defaultState: QueryEditorState = {
 export function dispatch(state: QueryEditorState, action: DispatchAction): QueryEditorState {
     switch (action.type) {
         case 'insertText':
+            // `isEditMode` describes the query that produced `currentQueryResult` and is
+            // refreshed in `executionStarted` / `updateQueryResult`. Typing in the editor
+            // doesn't change the already-executed query, so we don't re-parse here.
             return {
                 ...state,
                 queryValue: action.queryValue,
-                isEditMode: isSelectStar(state.currentQueryResult?.query || action.queryValue || ''),
             };
         case 'databaseConnected':
             return {
@@ -231,12 +233,14 @@ export function dispatch(state: QueryEditorState, action: DispatchAction): Query
         case 'setPageSize':
             return { ...state, pageSize: action.pageSize };
         case 'updateQueryResult':
+            // `isEditMode` describes the query that produced `currentQueryResult` and is
+            // refreshed in `executionStarted` / `updateQueryResult`. Typing in the editor
+            // doesn't change the already-executed query, so we don't re-parse here.
             return {
                 ...state,
                 currentQueryResult: action.result,
                 pageNumber: action.currentPage,
                 pageSize: action.result.metadata.countPerPage || DEFAULT_PAGE_SIZE,
-                isEditMode: isSelectStar(action.result?.query || state.queryValue || ''),
             };
         case 'setTableViewMode':
             return { ...state, tableViewMode: action.mode };

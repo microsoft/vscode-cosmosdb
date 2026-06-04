@@ -301,6 +301,7 @@ function formatReport(
         const catResults = results.filter((r) => r.category === cat);
         const graded = catResults.filter((r) => r.grade >= 0);
         const avg = graded.length > 0 ? graded.reduce((s, r) => s + r.grade, 0) / graded.length : 0;
+        const count0 = graded.filter((r) => r.grade === 0).length;
         const count1 = graded.filter((r) => r.grade === 1).length;
         const count2 = graded.filter((r) => r.grade === 2).length;
         const count3 = graded.filter((r) => r.grade === 3).length;
@@ -311,6 +312,7 @@ function formatReport(
             count: catResults.length,
             graded: graded.length,
             avg,
+            count0,
             count1,
             count2,
             count3,
@@ -320,6 +322,7 @@ function formatReport(
     });
     const allGraded = results.filter((r) => r.grade >= 0);
     const totalAvg = allGraded.length > 0 ? allGraded.reduce((s, r) => s + r.grade, 0) / allGraded.length : 0;
+    const totalCount0 = allGraded.filter((r) => r.grade === 0).length;
     const totalCount1 = allGraded.filter((r) => r.grade === 1).length;
     const totalCount2 = allGraded.filter((r) => r.grade === 2).length;
     const totalCount3 = allGraded.filter((r) => r.grade === 3).length;
@@ -371,12 +374,12 @@ function formatReport(
 
     // Score overview
     md += `## Score Overview\n\n`;
-    md += `| Category | Cases | Avg Score | Rating | 🔴 1 | 🔴 2 | 🟠 3 | % < 4 |\n`;
-    md += `|----------|-------|-----------|--------|------|------|------|-------|\n`;
+    md += `| Category | Cases | Avg Score | Rating | ⚫ 0 | 🔴 1 | 🔴 2 | 🟠 3 | % < 4 |\n`;
+    md += `|----------|-------|-----------|--------|------|------|------|------|-------|\n`;
     for (const s of categoryStats) {
-        md += `| ${s.category} | ${s.count} | ${s.avg.toFixed(2)} / 5 | ${gradeEmoji(s.avg)} | ${s.count1} | ${s.count2} | ${s.count3} | ${s.pctBelow4.toFixed(1)}% |\n`;
+        md += `| ${s.category} | ${s.count} | ${s.avg.toFixed(2)} / 5 | ${gradeEmoji(s.avg)} | ${s.count0} | ${s.count1} | ${s.count2} | ${s.count3} | ${s.pctBelow4.toFixed(1)}% |\n`;
     }
-    md += `| **TOTAL** | **${results.length}** | **${totalAvg.toFixed(2)} / 5** | ${gradeEmoji(totalAvg)} | **${totalCount1}** | **${totalCount2}** | **${totalCount3}** | **${totalPctBelow4.toFixed(1)}%** |\n`;
+    md += `| **TOTAL** | **${results.length}** | **${totalAvg.toFixed(2)} / 5** | ${gradeEmoji(totalAvg)} | **${totalCount0}** | **${totalCount1}** | **${totalCount2}** | **${totalCount3}** | **${totalPctBelow4.toFixed(1)}%** |\n`;
     md += `\n`;
 
     md += `## Grading Scale\n\n`;

@@ -972,7 +972,7 @@ describe('aggressivelySimplify on generated schemas with new generator knobs', (
      * bag.  Matches the convention used by `computeMaxDepth` in
      * `SchemaService.ts`: root = 0, root entry = 1, root entry's object value = 2.
      */
-    function maxObjectDepth(node: JSONSchema | undefined, depth = 0): number {
+    function maxObjectDepth(node: JSONSchema, depth = 0): number {
         if (!node || typeof node !== 'object') return depth - 1;
         let max = depth;
         if (node.properties) {
@@ -1002,7 +1002,7 @@ describe('aggressivelySimplify on generated schemas with new generator knobs', (
      * the analyzer) unwraps the trivial single-type case, so any node still
      * holding an `anyOf` truly represents drifted types across documents.
      */
-    function countPolymorphicEntries(node: JSONSchema | undefined): number {
+    function countPolymorphicEntries(node: JSONSchema): number {
         if (!node || typeof node !== 'object') return 0;
         let count = 0;
         if (Array.isArray(node.anyOf) && node.anyOf.length > 1) {

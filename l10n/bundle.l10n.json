@@ -201,8 +201,11 @@
   "Failed to delete document {id} with status code {statusCode}. Error: {error}": "Failed to delete document {id} with status code {statusCode}. Error: {error}",
   "Failed to delete item \"{0}\".": "Failed to delete item \"{0}\".",
   "Failed to delete secrets for item \"{0}\".": "Failed to delete secrets for item \"{0}\".",
+<<<<<<< HEAD
   "Failed to deploy LLM instruction files: {0}": "Failed to deploy LLM instruction files: {0}",
   "Failed to execute command {command}: {error}": "Failed to execute command {command}: {error}",
+=======
+>>>>>>> 0e6d6257 (refactor: remove LLM instructions deployment logic and related assets)
   "Failed to extract the account endpoint from the selected node.": "Failed to extract the account endpoint from the selected node.",
   "Failed to extract the connection string from the selected account.": "Failed to extract the connection string from the selected account.",
   "Failed to find a matching Azure Resources API for version \"{0}\".": "Failed to find a matching Azure Resources API for version \"{0}\".",
@@ -342,7 +345,12 @@
   "No documents were deleted.": "No documents were deleted.",
   "No history": "No history",
   "No index metrics available": "No index metrics available",
+<<<<<<< HEAD
   "No LLM instructions (.md) files found to copy": "No LLM instructions (.md) files found to copy",
+=======
+  "No language models available. Please ensure you have access to Copilot.": "No language models available. Please ensure you have access to Copilot.",
+  "No location selected. Please pick a location before provisioning.": "No location selected. Please pick a location before provisioning.",
+>>>>>>> 0e6d6257 (refactor: remove LLM instructions deployment logic and related assets)
   "No matching resources found.": "No matching resources found.",
   "No properties available for filtering.": "No properties available for filtering.",
   "No properties available for sorting.": "No properties available for sorting.",
@@ -468,7 +476,6 @@
   "Skip for now": "Skip for now",
   "Some items could not be displayed": "Some items could not be displayed",
   "Sorted by:": "Sorted by:",
-  "Source folder not found: {0}": "Source folder not found: {0}",
   "Specified character lengths should be 1 character or greater.": "Specified character lengths should be 1 character or greater.",
   "Stats": "Stats",
   "Stats table": "Stats table",
@@ -478,7 +485,6 @@
   "Stored Procedures": "Stored Procedures",
   "subscription": "subscription",
   "Subscription: {id}": "Subscription: {id}",
-  "Successfully copied {0} LLM instructions (.md) files": "Successfully copied {0} LLM instructions (.md) files",
   "Successfully created resource group \"{0}\".": "Successfully created resource group \"{0}\".",
   "Successfully created role assignment \"{0}\" for the {1} resource \"{2}\".": "Successfully created role assignment \"{0}\" for the {1} resource \"{2}\".",
   "Successfully created storage account \"{0}\" with sku \"{1}\".": "Successfully created storage account \"{0}\" with sku \"{1}\".",
@@ -573,7 +579,12 @@
   "Unknown command: {commandName}": "Unknown command: {commandName}",
   "Unknown error": "Unknown error",
   "Unknown Error": "Unknown Error",
+<<<<<<< HEAD
   "Unknown error occurred": "Unknown error occurred",
+=======
+  "Unknown migration command: {name}": "Unknown migration command: {name}",
+  "Unknown operation: {0}": "Unknown operation: {0}",
+>>>>>>> 0e6d6257 (refactor: remove LLM instructions deployment logic and related assets)
   "Unsupported Account": "Unsupported Account",
   "Unsupported account type": "Unsupported account type",
   "Unsupported credential type: {type}": "Unsupported credential type: {type}",

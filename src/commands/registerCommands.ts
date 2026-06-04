@@ -10,10 +10,6 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import type vscode from 'vscode';
 import { doubleClickDebounceDelay } from '../constants';
-import {
-    deployLLMInstructionsFiles,
-    removeLLMInstructionsFiles,
-} from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { ext } from '../extensionVariables';
 import { copyConnectionString } from './copyConnectionString/copyConnectionString';
 import { cosmosDBCreateContainer } from './createContainer/createContainer';
@@ -74,7 +70,12 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 
+<<<<<<< HEAD
     registerLLMAssetsCommands();
+=======
+    registerChatButtonCommands();
+    registerMigrationCommands();
+>>>>>>> 0e6d6257 (refactor: remove LLM instructions deployment logic and related assets)
 }
 
 export function registerAccountCommands() {
@@ -124,7 +125,89 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
 }
 
+<<<<<<< HEAD
 export function registerLLMAssetsCommands() {
     registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
     registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
+=======
+export function registerChatButtonCommands() {
+    // Command to apply the suggested query (update current editor)
+    // Note: Chat buttons pass arguments directly, so we use vscode.commands.registerCommand
+    // to avoid the IActionContext injection from registerCommand.
+    // The button argument is a lightweight result ID that maps into
+    // CosmosDbChatParticipant.pendingResults to avoid serializing large
+    // objects (connection credentials, query text) into the chat response.
+    ext.context.subscriptions.push(
+        vscode.commands.registerCommand('cosmosDB.applyQuerySuggestion', (resultId: number) => {
+            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.applyQuery', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+
+                console.log('[CosmosDB Chat] applyQuerySuggestion called', { resultId });
+
+                const pending = CosmosDbChatParticipant.pendingResults.get(resultId);
+                if (!pending) {
+                    void vscode.window.showErrorMessage(
+                        l10n.t('The suggested query has expired. Please generate a new suggestion.'),
+                    );
+                    return;
+                }
+
+                const { connection, suggestedQuery } = pending;
+
+                // Find the active query editor tab and update its query
+                const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
+                const activeTab = activeQueryEditors.find((tab) => {
+                    const tabConnection = tab.getConnection();
+                    return (
+                        tabConnection?.endpoint === connection.endpoint &&
+                        tabConnection?.databaseId === connection.databaseId &&
+                        tabConnection?.containerId === connection.containerId
+                    );
+                });
+
+                if (activeTab && 'updateQuery' in activeTab) {
+                    // Update the query in the existing webview
+                    activeTab.updateQuery(suggestedQuery);
+                    void vscode.window.showInformationMessage(l10n.t('✅ Query updated successfully!'));
+                } else {
+                    // Fallback: create a new tab if no matching tab is found
+                    QueryEditorTab.render(connection, vscode.ViewColumn.Active, false, suggestedQuery);
+                    void vscode.window.showInformationMessage(l10n.t('✅ Query opened in new tab!'));
+                }
+            });
+        }),
+    );
+
+    // Command to open query side-by-side
+    ext.context.subscriptions.push(
+        vscode.commands.registerCommand('cosmosDB.openQuerySideBySide', (resultId: number) => {
+            void callWithTelemetryAndErrorHandling('cosmosDB.chatParticipant.openSideBySide', (ctx) => {
+                ctx.errorHandling.suppressDisplay = true;
+
+                console.log('[CosmosDB Chat] openQuerySideBySide called', { resultId });
+
+                const pending = CosmosDbChatParticipant.pendingResults.get(resultId);
+                if (!pending) {
+                    void vscode.window.showErrorMessage(
+                        l10n.t('The suggested query has expired. Please generate a new suggestion.'),
+                    );
+                    return;
+                }
+
+                const { connection, suggestedQuery } = pending;
+
+                QueryEditorTab.render(connection, vscode.ViewColumn.Two, false, suggestedQuery);
+                void vscode.window.showInformationMessage(
+                    l10n.t('🔍 Suggested query opened side-by-side for comparison.'),
+                );
+            });
+        }),
+    );
+}
+
+export function registerMigrationCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.open', openMigrationAssistant);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.openExisting', openExistingMigration);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.remove', removeMigration);
+>>>>>>> 0e6d6257 (refactor: remove LLM instructions deployment logic and related assets)
 }

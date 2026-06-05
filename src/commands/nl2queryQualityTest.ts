@@ -76,18 +76,6 @@ async function pickJsonFile(title: string): Promise<vscode.Uri | undefined> {
     return uris?.[0];
 }
 
-function getQueryLanguageReference(): string | undefined {
-    // Try extension path first, then parent (dist/ → repo root)
-    const extPath = ext.context.extensionPath;
-    for (const base of [extPath, path.dirname(extPath)]) {
-        const refPath = path.join(base, 'resources', 'azurecosmosdb-nosql-query-language.md');
-        if (fs.existsSync(refPath)) {
-            return fs.readFileSync(refPath, 'utf-8');
-        }
-    }
-    return undefined;
-}
-
 // ─── LLM helpers ─────────────────────────────────────────────────────────────
 
 async function pickModel(purpose: string): Promise<vscode.LanguageModelChat | undefined> {
@@ -519,7 +507,6 @@ async function runSingleIteration(
     iterIndex: number,
     progress: vscode.Progress<{ message?: string; increment?: number }>,
     token: vscode.CancellationToken,
-    langRef: string | undefined,
     increment: number,
     overallStartTime: number,
 ): Promise<TestResult[]> {
@@ -603,7 +590,6 @@ async function runSingleIteration(
             const payload: QueryGenerationPayload = {
                 userPrompt: testCase.prompt,
                 currentQuery: testCase.currentQuery || undefined,
-                languageReference: langRef,
                 cachedSchema,
                 historyContext,
             };
@@ -761,10 +747,6 @@ async function runNl2QueryQualityTests(
     log(`Iterations: ${iterations}`);
     log(`Schema containers: ${Object.keys(config.schemas).join(', ')}`);
 
-    log('Loading query language reference...');
-    const langRef = getQueryLanguageReference();
-    log(langRef ? `Language reference loaded (${langRef.length} chars)` : 'No language reference found');
-
     progress.report({ message: `Test: ${testModel.name} | Grade: ${gradingModel.name}` });
 
     // Each iteration: run all cases + grade = (cases + 1) steps
@@ -777,7 +759,7 @@ async function runNl2QueryQualityTests(
         if (token.isCancellationRequested) {
             break;
         }
-        const results = await runSingleIteration(config, i, progress, token, langRef, increment, overallStartTime);
+        const results = await runSingleIteration(config, i, progress, token, increment, overallStartTime);
         allRuns.push(results);
     }
     const totalDurationMs = Date.now() - overallStartTime;

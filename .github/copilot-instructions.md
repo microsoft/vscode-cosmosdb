@@ -24,6 +24,11 @@
 - Apply the skill for ARIA labeling, tooltip accessibility, keyboard/focus behavior, status announcements, and dialog focus management.
 - Keep all user-facing accessibility messages localizable and follow the Localization rules above.
 
+## Telemetry Skill Routing
+
+- When adding, modifying, or reviewing telemetry — any `callWithTelemetryAndErrorHandling` call, any `context.telemetry.properties`/`measurements` assignment, any helper that mutates an `IActionContext` to record stats, or any new telemetry event name — use the `telemetry-best-practices` skill.
+- Apply the skill specifically to verify that no PII/EUII (file names, paths, resource names, IDs, queries, free-form user input, raw error messages) is emitted, and that properties vs. measurements, naming, and error categorization follow the repo conventions.
+
 ## Validation Before Finishing
 
 Before finishing work, agents **must** run the following steps in order:

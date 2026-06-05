@@ -1106,7 +1106,7 @@ export const queryEditorRouterDef = queryEditorRouter({
         .input(z.object({ feedbackValue: z.enum(['up', 'down']), component: z.string() }))
         .mutation(({ input, ctx }) => {
             if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.feedback = input.feedbackValue;
+                ctx.actionContext.telemetry.properties.feedbackDirection = input.feedbackValue;
                 ctx.actionContext.telemetry.properties.category = input.component;
                 ctx.actionContext.telemetry.properties.isAIGenerated = String(ctx.state.isLastQueryAIGenerated);
             }

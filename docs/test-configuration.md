@@ -1,272 +1,196 @@
 # Test Configuration Documentation
 
-This project uses **two separate test frameworks** for different testing purposes:
+This project uses **a single test framework — Vitest** — for both unit and integration tests.
 
 ## 📋 Test Structure Overview
 
 ```
 vscode-cosmosdb/
 ├── src/                          # Source code
-│   └── **/*.test.ts              # Jest unit tests (15 files) ✅
+│   └── **/*.test.ts              # Vitest unit tests (run in Node, vscode is mocked)
+├── packages/*/src/
+│   └── **/*.test.ts              # Vitest unit tests for workspace packages
 ├── test/                         # Integration tests
-│   └── **/*.test.ts              # Mocha integration tests (4 files) ✅
-├── tsconfig.json                 # Main TypeScript config (src only)
-├── tsconfig.jest.json            # Jest unit tests config
-└── tsconfig.test.json            # Mocha integration tests config
+│   ├── index.ts                  # Custom @vitest/runner entry executed inside VS Code
+│   └── **/*.test.ts              # Vitest integration tests (real vscode API)
+├── scripts/
+│   └── run-integration-tests.mjs # Downloads VS Code + launches the integration host
+├── tsconfig.json                 # Main TS config (src only)
+├── tsconfig.vitest.json          # Type-check unit tests
+└── tsconfig.test.json            # Compile integration tests (ESM)
 ```
 
 ---
 
-## 🎯 Why Two Test Frameworks?
+## 🎯 Why a Single Framework (Vitest)?
 
-### Jest Tests (`src/**/*.test.ts`)
+We used to have Mocha for integration tests because `@vscode/test-cli` is mocha-only.
+That meant two runners and two different APIs (`suite/test/assert.ok` vs `describe/it/expect`).
 
-- **Purpose**: Fast, isolated unit tests
-- **Location**: Colocated with source code
-- **Features**:
-  - Built-in mocking (`jest.mock()`)
-  - Snapshot testing
-  - Coverage reports
-  - Fast execution
-- **Examples**: `survey.scoring.test.ts`, `toSlickGridTree.test.ts`
+Instead, we drive `@vitest/runner.startTests()` directly from a small entry script in
+`test/index.ts` that runs inside the VS Code Extension Host. The result:
 
-### Mocha Tests (`test/**/*.test.ts`)
+- **One framework** — `vitest` everywhere.
+- **One API** — `import { describe, it, expect, beforeAll } from 'vitest';`
+- **Same speed** for unit tests — they don't pay the Electron launch cost.
+- **Real `vscode` module** for integration tests — they run inside Electron.
 
-- **Purpose**: Integration/E2E tests with VS Code extension host
-- **Location**: Separate `test/` directory
-- **Features**:
-  - Runs in VS Code test environment
-  - Tests real extension behavior
-  - Access to VS Code API
-  - Slower execution
-- **Examples**: `improveError.test.ts`, `global.test.ts`
+### Unit tests (`src/**/*.test.ts`, `packages/*/src/**/*.test.ts`)
+
+- Fast, isolated, no VS Code needed.
+- `vscode` is aliased to `src/__mocks__/vscode.ts` (provided by `jest-mock-vscode`).
+- Run with `npm run vitest`.
+
+### Integration tests (`test/**/*.test.ts`)
+
+- Run inside the real VS Code Extension Host via `@vscode/test-electron`.
+- `vscode` is the **real** module — call commands, inspect the workbench, activate the
+  extension under test.
+- Tests must depend only on the public extension surface (`vscode` API, registered
+  commands, contributed configuration, etc.) — they do **not** import from `src/`
+  because the source is bundled by Vite into `dist/main.mjs` and lives in a different
+  module instance than the compiled test code.
+- Run with `npm test`.
 
 ---
 
 ## 📝 TypeScript Configurations
 
-### 1. `tsconfig.json` (Main - Source Code Only)
+### `tsconfig.json` (production source)
 
-```json
+Compiles only `src/` (no tests). Used by the Vite extension build and IDE.
+
+### `tsconfig.vitest.json` (unit test type-checking)
+
+Type-checks `src/**/*.test.ts` and `packages/*/src/**/*.test.ts` against the unit
+environment (uses the mock `vscode`).
+
+### `tsconfig.test.json` (integration test compilation)
+
+```jsonc
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "esnext",
-    "types": ["node"]
-    // ... other options
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "out",
+    "rootDir": ".",
+    "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["test", "src/**/*.test.ts", "**/__mocks__"]
+  "include": ["test/**/*.ts"]
 }
 ```
 
-- Compiles only production source code
-- Excludes all test files
-- Used by: `npm run build`, `npm run compile`
-
-### 2. `tsconfig.jest.json` (Jest Unit Tests)
-
-```json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "module": "commonjs",
-    "types": ["jest", "node"]
-  },
-  "include": ["src/**/*.test.ts", "src/**/__mocks__/**/*.ts"],
-  "exclude": ["test"]
-}
-```
-
-- Compiles Jest unit tests in `src/`
-- Includes Jest type definitions
-- Used by: `npm run jesttest` (via jest.config.js)
-
-### 3. `tsconfig.test.json` (Mocha Integration Tests)
-
-```json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "module": "commonjs",
-    "types": ["mocha", "node"]
-  },
-  "include": ["test/**/*.ts"],
-  "exclude": ["src/**/*.test.ts"]
-}
-```
-
-- Compiles Mocha integration tests in `test/`
-- Includes Mocha type definitions
-- Used by: `npm run pretest`, `npm run test`
-
----
-
-## 🔧 ESLint Configuration
-
-The `eslint.config.mjs` has **separate configurations** for each test type:
-
-### Jest Tests Configuration
-
-```javascript
-{
-  files: ['src/**/*.test.ts', '**/__mocks__/**/*.js'],
-  plugins: { jest },
-  extends: [jest.configs['flat/recommended']],
-  languageOptions: {
-    globals: { ...globals.jest }
-  },
-  rules: {
-    'jest/expect-expect': 'off',
-    // ... Jest-specific rules
-  }
-}
-```
-
-### Mocha Tests Configuration
-
-```javascript
-{
-  files: ['test/**/*.ts', 'test/**/*.test.ts'],
-  plugins: { mocha },
-  languageOptions: {
-    globals: { ...globals.mocha }
-  },
-  rules: {
-    'mocha/no-exclusive-tests': 'error',
-    'mocha/no-skipped-tests': 'warn',
-    // ... Mocha-specific rules
-  }
-}
-```
+- ESM (`NodeNext`) output, written to `out/test/`.
+- The `pretest` script also writes `out/package.json` with `{"type":"module"}` so Node
+  treats compiled files as ESM.
+- Only includes `test/` — integration tests must not depend on `src/`.
+- Relative imports inside `test/` must use `.js` extensions (Node ESM requirement),
+  e.g. `import { TestUserInput } from './TestUserInput.js';`.
 
 ---
 
 ## 🚀 Running Tests
 
-### Jest Unit Tests (Fast)
+### Unit tests (fast, no VS Code)
 
 ```bash
-npm run jesttest
+npm run vitest         # one-shot
+npm run vitest:ui      # watch with UI
 ```
 
-- Runs all `src/**/*.test.ts` files
-- No VS Code extension host needed
-- Fast execution (~seconds)
-- Good for TDD/rapid development
-
-### Mocha Integration Tests (Slow)
+### Integration tests (slow, real VS Code)
 
 ```bash
-npm run pretest    # Compile tests
-npm run test       # Run in VS Code test environment
+npm test
 ```
 
-- Runs all `test/**/*.test.ts` files
-- Requires VS Code extension host
-- Slower execution (~minutes)
-- Tests real extension integration
+Equivalent to:
+
+```bash
+npm run pretest        # rimraf out && tsc -p tsconfig.test.json + write out/package.json
+node scripts/run-integration-tests.mjs
+```
+
+The script:
+
+1. Downloads VS Code stable into `.vscode-test/`.
+2. Installs `ms-azuretools.vscode-azureresourcegroups` into that VS Code copy.
+3. Launches the Extension Host with `extensionTestsPath: out/test/index.js`.
+4. `out/test/index.js` globs `out/test/**/*.test.js` and runs them via
+   `@vitest/runner.startTests()`.
+5. Exits with non-zero status if any test fails.
 
 ---
 
 ## ✍️ Writing Tests
 
-### Jest Unit Test Example
+### Unit test (`src/utils/myFeature.test.ts`)
 
-```typescript
-// src/utils/myFeature.test.ts
+```ts
+import { describe, expect, it } from 'vitest';
 import { myFunction } from './myFeature';
 
 describe('myFunction', () => {
-  test('should do something', () => {
-    expect(myFunction(42)).toBe(84);
-  });
+    it('doubles the input', () => {
+        expect(myFunction(42)).toBe(84);
+    });
 });
 ```
 
-### Mocha Integration Test Example
+### Integration test (`test/myIntegration.test.ts`)
 
-```typescript
-// test/myIntegration.test.ts
-import assert from 'assert';
+```ts
+import { describe, expect, it } from 'vitest';
 import * as vscode from 'vscode';
 
-suite('My Integration Tests', () => {
-  test('should work with VS Code API', async () => {
-    const result = await vscode.window.showInformationMessage('Test');
-    assert.ok(result);
-  });
+describe('My extension command', () => {
+    it('is registered after activation', async () => {
+        const cmds = await vscode.commands.getCommands(true);
+        expect(cmds).toContain('cosmosDB.newConnection');
+    });
 });
 ```
 
 ---
 
-## 🎯 Key Differences
+## 🧩 Architectural Notes
 
-| Feature         | Jest (`src/`)                      | Mocha (`test/`)                 |
-| --------------- | ---------------------------------- | ------------------------------- |
-| **Syntax**      | `describe()`, `test()`, `expect()` | `suite()`, `test()`, `assert()` |
-| **Mocking**     | Built-in `jest.mock()`             | Manual (sinon, etc.)            |
-| **Speed**       | ⚡ Fast                            | 🐌 Slow                         |
-| **Environment** | Node.js                            | VS Code Extension Host          |
-| **Purpose**     | Unit tests                         | Integration tests               |
-| **TSConfig**    | `tsconfig.jest.json`               | `tsconfig.test.json`            |
+### Why a custom `@vitest/runner` entry instead of `startVitest()` ?
 
----
+The full `startVitest()` (the Vitest Node API) spins up a Vite dev server and a worker
+pool — neither is wanted when we're already running inside Electron. `@vitest/runner` is
+the headless test-collection/execution core: it accepts a tiny `VitestRunner` object
+that only needs an `importFile(filepath)` method, then drives `describe/it/beforeAll/…`
+exactly as Vitest does internally. About 80 lines of glue gives us the full Vitest API
+inside the extension host with zero extra processes.
 
-## 📦 Configuration Files Summary
+### Why drop `@vscode/test-cli` ?
 
-| File                 | Purpose                 | Compiles                        |
-| -------------------- | ----------------------- | ------------------------------- |
-| `tsconfig.json`      | Production source       | `src/**/*.ts` (excluding tests) |
-| `tsconfig.jest.json` | Jest unit tests         | `src/**/*.test.ts`              |
-| `tsconfig.test.json` | Mocha integration tests | `test/**/*.test.ts`             |
-| `jest.config.js`     | Jest configuration      | References `tsconfig.jest.json` |
-| `.vscode-test.js`    | VS Code test runner     | References `tsconfig.test.json` |
-| `eslint.config.mjs`  | Linting                 | Separate rules for Jest/Mocha   |
+`@vscode/test-cli` is a thin wrapper around `@vscode/test-electron` that bakes in Mocha.
+Since we no longer use Mocha, we call `@vscode/test-electron` directly from
+`scripts/run-integration-tests.mjs` (~60 LOC). That keeps download/install behaviour
+identical to what we had before.
 
 ---
 
 ## 🔍 Troubleshooting
 
-### "Cannot find name 'describe'" in Jest test
+### "Cannot find name 'describe'" in a test file
 
-- Make sure the file is in `src/**/*.test.ts`
-- Check that `tsconfig.jest.json` includes the file
-- Verify ESLint is using Jest globals for that file
+- Make sure `import { describe, it, expect } from 'vitest';` is present at the top.
+- For integration tests, verify the file is under `test/**/*.test.ts`.
+- For unit tests, verify the file is under `src/**/*.test.ts` or
+  `packages/*/src/**/*.test.ts`.
 
-### "Cannot find name 'suite'" in Mocha test
+### "ERR_MODULE_NOT_FOUND" when running `npm test`
 
-- Make sure the file is in `test/**/*.test.ts`
-- Check that `tsconfig.test.json` includes the file
-- Verify ESLint is using Mocha globals for that file
+You probably wrote `import { Foo } from './foo';` in a `test/` file. Node ESM
+(`NodeNext`) requires explicit `.js` extensions on relative imports — write
+`import { Foo } from './foo.js';` instead. TypeScript accepts the `.js` extension and
+maps it back to `.ts` during compilation.
 
-### Type conflicts between Jest and Mocha
+### Integration test cannot see something from `src/`
 
-- This is now resolved by separate tsconfig files
-- Each test type has its own type definitions
-- Main `tsconfig.json` excludes all test files
-
----
-
-## ✅ Benefits of This Setup
-
-1. **Clear separation** of concerns (unit vs integration)
-2. **No type conflicts** between Jest and Mocha
-3. **Faster unit tests** with Jest
-4. **Proper integration testing** with Mocha
-5. **Industry standard** pattern for VS Code extensions
-6. **Better developer experience** with proper IDE support
-
----
-
-## 📚 Similar Projects
-
-This pattern is used by Microsoft's official VS Code extensions:
-
-- `vscode-azureresourcegroups`
-- `vscode-docker`
-- `vscode-kubernetes-tools`
-
----
-
-_Last updated: 2025-12-30_
+By design — integration tests must use the extension's public API. If you need a
+shared helper, put it inside `test/` (and add the `.js` extension on its imports).

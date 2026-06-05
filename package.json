@@ -59,8 +59,8 @@
     "lint-fix": "concurrently -n oxlint,eslint -c blue,green \"oxlint --fix\" \"eslint --fix .\"",
     "prettier": "oxfmt --check",
     "prettier-fix": "oxfmt",
-    "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'commonjs'}))\"",
-    "test": "vscode-test",
+    "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
+    "test": "node scripts/run-integration-tests.mjs",
     "vitest": "vitest run",
     "vitest:ui": "vitest --ui",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
@@ -101,7 +101,6 @@
   },
   "devDependencies": {
     "@types/json-schema": "~7.0.15",
-    "@types/mocha": "~10.0.10",
     "@types/node": "~25.9.1",
     "@types/react": "~19.2.15",
     "@types/react-dom": "~19.2.3",
@@ -110,7 +109,6 @@
     "@types/vscode-webview": "~1.57.5",
     "@vitejs/plugin-react": "^6.0.1",
     "@vscode/l10n-dev": "~0.0.35",
-    "@vscode/test-cli": "~0.0.12",
     "@vscode/test-electron": "~2.5.2",
     "@vscode/vsce": "~3.9.1",
     "concurrently": "~9.2.1",
@@ -118,13 +116,9 @@
     "diff": "~9.0.0",
     "eslint": "~10.4.0",
     "eslint-plugin-license-header": "~0.9.0",
-    "eslint-plugin-mocha": "~11.3.0",
     "glob": "~13.0.6",
     "globals": "~17.6.0",
     "jest-mock-vscode": "~4.12.0",
-    "mocha": "~11.7.4",
-    "mocha-junit-reporter": "~2.2.1",
-    "mocha-multi-reporters": "~1.5.1",
     "oxfmt": "~0.51.0",
     "oxlint": "~1.66.0",
     "oxlint-tsgolint": "~0.23.0",
@@ -172,11 +166,7 @@
     "@prantlf/jsonlint": {
       "ajv": "~8.18.0"
     },
-    "glob": "~13.0.6",
-    "mocha": {
-      "diff": "~8.0.3",
-      "serialize-javascript": "~7.0.4"
-    }
+    "glob": "~13.0.6"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"

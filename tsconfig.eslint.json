@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["mocha", "node"]
+    "types": ["vitest/globals", "node"]
   },
   "include": [
     "src/**/*.ts",

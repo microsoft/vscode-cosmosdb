@@ -49,8 +49,11 @@ Show the resolved list (count + short log) to the user and confirm before contin
 ### Phase C — Create the backport branch
 
 - Branch name: `backport/<id>-to-<target-slug>` where:
+  - **Prefix is `backport/`** for local runs (the default — this skill running in a VS Code workspace). Use the `copilot/` prefix **only** when running as the GitHub.com cloud agent; see "Running as the GitHub cloud agent" below. If you are executing git commands on the user's local machine, you are *not* the cloud agent — use `backport/`.
   - `<id>` is the PR number (PR source), the source branch's last segment, or `<short-sha>` (single-commit / range).
-  - `<target-slug>` replaces `/` with `-` (e.g. `rel/0.32` → `rel-0.32`).
+  - `<target-slug>` is the target branch with **every** `/` replaced by `-`. Compute it, don't hand-write it (e.g. in shell: `target_slug="${target//\//-}"`). Examples: `rel/0.32` → `rel-0.32`, `rel/0.34` → `rel-0.34`.
+  - **Full example:** PR #3036 onto `rel/0.34` gives branch `backport/3036-to-rel-0.34` (correct), **not** `backport/3036-to-rel/0.34` (wrong — the `/` from the target was left in).
+  - **Verify before checkout:** the final branch name must contain exactly one `/` (the separator right after `backport`). If it contains two, the slug wasn't applied — recompute it before creating the branch.
 - **Collision handling** (local *or* `origin/<branch>` exists): ask the user — *overwrite* (delete local + remote, recreate) or *use a numeric suffix* (`-2`, `-3`, …). Never silently overwrite.
 - `git checkout -b <name> origin/<target>`.
 
@@ -98,11 +101,12 @@ Cherry-picks onto older release branches often produce code that compiles on the
 ### Phase F — Push & open the PR
 
 1. `git push -u origin <branch>` — **never** `--force` or `--force-with-lease`. If the push fails, surface the full `git` error. If it is a permission or branch-protection error (e.g. protected-branch hook, missing write access), advise the user to check repository settings; do not retry with force flags. Proceed to Phase G failure cleanup.
-2. `gh pr create --base <target> --head <branch> --title "[<target>] <original-title>" --body <body>` where `<body>` contains:
-   - The PR title **must** start with the target branch in square brackets, e.g. `[rel/0.34] Fix tree refresh race`. Use the exact target branch name (including any `rel/` prefix) and keep the rest of the title identical to the original PR title (or first commit subject for non-PR sources).
-   - `Backport of #<n>` (or `Backport of <branch>` / SHA list for non-PR sources).
-   - The original PR description (when applicable).
-   - A **Conflicts resolved** section listing each file + a one-line description, when applicable.
+2. Write the PR body to a temporary file first (use the editor's file-creation tool, or a quoted heredoc — `cat > /tmp/backport-body.md <<'EOF' … EOF`), then run `gh pr create --base <target> --head <branch> --title "[<target>] <original-title>" --body-file <path>`. **Always use `--body-file`; never `--body "…"`.** An inline multi-line body gets mangled — the shell eats backticks/`$`/quotes and any literal `\n` sequences are printed verbatim in the PR description. Authoring rules for the body file:
+   - **Real newlines only.** Type actual line breaks; never write the two characters `\n` to mean a newline.
+   - **Do not hard-wrap sentences.** Keep each paragraph or bullet on a single line and separate blocks with one blank line. GitHub renders single newlines inside a paragraph as line breaks, so column-wrapped prose shows up broken mid-sentence. If you reuse the original PR description, re-flow it first — strip any existing column wrapping so each paragraph is one continuous line.
+   - **No task-list checkboxes** (`- [ ]` / `- [x]`). GitHub turns them into a "N tasks done / Progress 100%" bar on the PR list, and pre-checked boxes falsely imply a reviewer checklist is already complete. Use plain `-` bullets for the validation summary and everything else.
+   - **Title:** must start with the target branch in square brackets, e.g. `[rel/0.34] Fix tree refresh race`. Use the exact target branch name (including any `rel/` prefix) and keep the rest identical to the original PR title (or first commit subject for non-PR sources).
+   - **Contents:** `Backport of #<n>` (or `Backport of <branch>` / SHA list for non-PR sources); the original PR description (when applicable); a **Conflicts resolved** section listing each file + a one-line description, when applicable.
 3. `gh pr view --web` to open it in the browser.
 
 ### Phase G — Cleanup
@@ -119,6 +123,9 @@ Cherry-picks onto older release branches often produce code that compiles on the
 - Never silently overwrite an existing local or remote branch.
 - Never auto-resolve ambiguous conflicts; always ask.
 - Never restore the autostash on failure — leave it for the user to inspect.
+- Branch prefix: use `backport/` for local runs. Use the `copilot/` prefix **only** when running as the GitHub.com cloud agent (it cannot push other prefixes). Never use `copilot/` for a local run.
+- Branch slug: replace **every** `/` in the target with `-` when building the branch name; the final name has exactly one `/` (right after `backport`/`copilot`). Compute the slug, don't hand-copy the target branch.
+- PR body: always pass it via `--body-file`, never inline `--body`. No literal `\n`, no hard-wrapped sentences, no task-list checkboxes (`- [ ]` / `- [x]`).
 
 ## Reporting
 
@@ -135,11 +142,11 @@ When done, summarize:
 When this skill runs inside the GitHub Copilot cloud agent (e.g. invoked by `@copilot` on a merged PR or assigned to a backport issue), the environment differs from a local VS Code workspace. Adjust the workflow as follows:
 
 - **No interactive prompts.** You cannot pause to ask the user. Resolve everything from the request body and repository state up front; if a required input is missing or ambiguous (target branch, source PR), stop and report rather than guess.
-- **Branch naming**: use `copilot/backport-<id>-to-<target-slug>` instead of `backport/...`. The cloud agent can only push branches starting with `copilot/`.
+- **Branch naming**: use `copilot/backport-<id>-to-<target-slug>` instead of `backport/...`. This `copilot/` prefix applies **only here**, in the GitHub.com cloud agent, because the cloud agent can only push branches starting with `copilot/`; a local run must use the `backport/` prefix from Phase C. The `<target-slug>` rule is unchanged — replace **every** `/` with `-`, so `rel/0.34` yields `copilot/backport-<id>-to-rel-0.34` (one `/` only, right after `copilot`).
 - **Skip Phase A.3 stash logic** — the cloud agent runs in a fresh ephemeral checkout; there is no user working tree to preserve.
 - **Apply the Phase D cloud-agent override** described above (commit conflict markers as `WIP:` and mark the PR draft instead of asking, aborting, or squash-and-retry).
 - **Skip Phase E (local validation)** — the cloud agent's GitHub Actions environment runs CI as the validation gate; do not run `npm install` / build / lint to save time and avoid burning Actions minutes.
-- **Skip Phase F's `gh pr create`.** The cloud agent platform opens the PR for the task automatically. Use `gh pr edit` to set the base branch, title, and body. The title **must** be prefixed with the target branch in square brackets — e.g. `[rel/0.34] <original-title>`. When conflicts remain unresolved, mark the PR as draft (the platform may open it ready by default; use `gh pr ready --undo` if available, otherwise note the WIP state explicitly in the PR body).
+- **Skip Phase F's `gh pr create`.** The cloud agent platform opens the PR for the task automatically. Write the body to a file and use `gh pr edit --base <target> --title "[<target>] <original-title>" --body-file <path>` to set the base branch, title, and body — never inline `--body "…"`, and follow the same Phase F body-authoring rules (real newlines, no literal `\n`, no hard-wrapped sentences, no task-list checkboxes). The title **must** be prefixed with the target branch in square brackets — e.g. `[rel/0.34] <original-title>`. When conflicts remain unresolved, mark the PR as draft (the platform may open it ready by default; use `gh pr ready --undo` if available, otherwise note the WIP state explicitly in the PR body).
 - **Skip Phase G's stash restore and original-branch checkout** — there's nothing local to restore.
 
 All other constraints (no `--force`, refuse the source's own base, preserve commit messages, never silently overwrite existing branches) apply unchanged.

@@ -4,9 +4,8 @@ on:
     - cron: 0 5 * * * # 10:00pm PT
   workflow_dispatch:
 
-# The locker action writes via AZCODE_BOT_PAT, so GITHUB_TOKEN only needs to
-# read repo contents for `actions/checkout`. Explicit minimal permissions
-# (CodeQL actions/missing-workflow-permissions).
+# The locker action writes via AZCODE_BOT_PAT, so GITHUB_TOKEN only needs to read repo contents for `actions/checkout`.
+# Explicit minimal permissions (CodeQL actions/missing-workflow-permissions).
 permissions:
   contents: read
 

@@ -141,18 +141,14 @@ const CONTAINERS = {
 const client = new CosmosClient({
     endpoint,
     key,
-    // Cosmos DB emulator (linux/vnext-preview) advertises its writable
-    // region as `https://127.0.0.1:8081`, which we don't expose to the
-    // host. Disabling endpoint discovery keeps every request glued to the
-    // endpoint we passed in (e.g. https://localhost:8082 for the e2e
-    // emulator). Harmless for production single-region accounts; required
+    // Cosmos DB emulator (linux/vnext-preview) advertises its writable region as `https://127.0.0.1:8081`, which we
+    // don't expose to the host. Disabling endpoint discovery keeps every request glued to the endpoint we passed in
+    // (e.g. https://localhost:8082 for the e2e emulator). Harmless for production single-region accounts; required
     // for any emulator scenario.
     connectionPolicy: { enableEndpointDiscovery: false },
-    // The emulator uses a self-signed certificate. Pass a **scoped**
-    // https.Agent that doesn't validate the cert, instead of setting
-    // NODE_TLS_REJECT_UNAUTHORIZED=0 globally — the latter would disable
-    // cert validation for every HTTPS call this Node process makes
-    // (CodeQL js/disabling-certificate-validation).
+    // The emulator uses a self-signed certificate. Pass a **scoped** https.Agent that doesn't validate the cert,
+    // instead of setting NODE_TLS_REJECT_UNAUTHORIZED=0 globally — the latter would disable cert validation for every
+    // HTTPS call this Node process makes (CodeQL js/disabling-certificate-validation).
     agent: new Agent({ rejectUnauthorized: false }),
 });
 

@@ -4,9 +4,8 @@ on:
     - cron: 30 5 * * * # 10:30pm PT
   workflow_dispatch:
 
-# The triage action writes via AZCODE_BOT_PAT, so GITHUB_TOKEN only needs to
-# read repo contents for `actions/checkout`. Explicit minimal permissions
-# (CodeQL actions/missing-workflow-permissions).
+# The triage action writes via AZCODE_BOT_PAT, so GITHUB_TOKEN only needs to read repo contents for `actions/checkout`.
+# Explicit minimal permissions (CodeQL actions/missing-workflow-permissions).
 permissions:
   contents: read
 

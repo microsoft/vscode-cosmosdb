@@ -146,33 +146,27 @@ const READY_TIMEOUT_MS = 180_000; // first cold start of vnext-preview can take 
 const READY_POLL_INTERVAL_MS = 2_000;
 
 /**
- * Polls the emulator with a real `getDatabaseAccount()` Cosmos SDK call
- * until it succeeds.
+ * Polls the emulator with a real `getDatabaseAccount()` Cosmos SDK call until it succeeds.
  *
- * Why not just GET `/_explorer/emulator.pem`? That endpoint is the old
- * Windows-emulator readiness signal; the linux/vnext-preview image
- * returns HTTP 400 there and only the Cosmos data-plane handshake is a
- * reliable "ready" signal.
+ * Why not just GET `/_explorer/emulator.pem`? That endpoint is the old Windows-emulator readiness signal; the
+ * linux/vnext-preview image returns HTTP 400 there and only the Cosmos data-plane handshake is a reliable "ready"
+ * signal.
  *
- * `enableEndpointDiscovery: false` is mandatory: the emulator advertises
- * its writable region as `https://127.0.0.1:8081` (the in-container port,
- * which we deliberately do NOT expose on the host), so the SDK would
- * otherwise immediately switch to it and get ECONNREFUSED. We always pin
- * to the endpoint we passed.
+ * `enableEndpointDiscovery: false` is mandatory: the emulator advertises its writable region as
+ * `https://127.0.0.1:8081` (the in-container port, which we deliberately do NOT expose on the host), so the SDK
+ * would otherwise immediately switch to it and get ECONNREFUSED. We always pin to the endpoint we passed.
  *
- * The self-signed cert is trusted via a **scoped** `https.Agent` passed to
- * this single CosmosClient (mirrors `src/cosmosdb/getCosmosClient.ts` for
- * production emulator paths). Setting `NODE_TLS_REJECT_UNAUTHORIZED=0`
- * process-wide would disable cert validation for every HTTPS call in the
- * Node process — CodeQL flags it, and rightly so.
+ * The self-signed cert is trusted via a **scoped** `https.Agent` passed to this single CosmosClient (mirrors
+ * `src/cosmosdb/getCosmosClient.ts` for production emulator paths). Setting `NODE_TLS_REJECT_UNAUTHORIZED=0`
+ * process-wide would disable cert validation for every HTTPS call in the Node process — CodeQL flags it, and rightly
+ * so.
  */
 export async function waitForEmulator(timeoutMs: number = READY_TIMEOUT_MS): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     let lastError: string = '(no probes yet)';
 
-    // Single client reused across probes — avoids re-running TLS handshakes
-    // on every poll. The scoped `agent` accepts the emulator's self-signed
-    // cert without leaking that relaxation to any other HTTPS call.
+    // Single client reused across probes — avoids re-running TLS handshakes on every poll. The scoped `agent`
+    // accepts the emulator's self-signed cert without leaking that relaxation to any other HTTPS call.
     const client = new CosmosClient({
         endpoint: E2E_EMULATOR_ENDPOINT,
         key: E2E_EMULATOR_KEY,
@@ -180,8 +174,7 @@ export async function waitForEmulator(timeoutMs: number = READY_TIMEOUT_MS): Pro
         agent: new https.Agent({ rejectUnauthorized: false }),
     });
 
-    // Polling loop — awaits are sequential by design; we can't parallelize
-    // a "wait until ready" probe.
+    // Polling loop — awaits are sequential by design; we can't parallelize a "wait until ready" probe.
     while (Date.now() < deadline) {
         try {
             // oxlint-disable-next-line no-await-in-loop
@@ -192,6 +185,7 @@ export async function waitForEmulator(timeoutMs: number = READY_TIMEOUT_MS): Pro
             const e = err as { code?: string; message?: string };
             lastError = e.code ?? e.message ?? String(err);
         }
+        // oxlint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, READY_POLL_INTERVAL_MS));
     }
 
@@ -231,11 +225,9 @@ export async function seedEmulator(): Promise<void> {
             ],
             {
                 stdio: 'inherit',
-                // No NODE_TLS_REJECT_UNAUTHORIZED here — the seed script uses
-                // a scoped https.Agent on its CosmosClient instead. Setting
-                // it process-wide would disable cert validation for any
-                // other HTTPS call the child makes (CodeQL js/disabling-
-                // certificate-validation).
+                // No NODE_TLS_REJECT_UNAUTHORIZED here — the seed script uses a scoped https.Agent on its CosmosClient
+                // instead. Setting it process-wide would disable cert validation for any other HTTPS call the child
+                // makes (CodeQL js/disabling-certificate-validation).
                 env: process.env,
             },
         );

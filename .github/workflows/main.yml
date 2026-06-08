@@ -208,7 +208,9 @@ jobs:
 
             - name: 🧪 Integration Tests
               id: integration-tests
-              if: ${{ !cancelled() }}
+              # Run even when Unit Tests failed (we want to see both buckets in the summary), but skip when an earlier
+              # build step failed — without `dist/` from the Compile step there's nothing to integration-test against.
+              if: ${{ !cancelled() && steps.upload-vsix.outcome == 'success' }}
               run: |
                   exit_code=1
                   for i in 1 2 3; do
@@ -246,9 +248,9 @@ jobs:
                       exit 0
                   fi
 
-                  # Icons
-                  unit_icon=$( [ "$UNIT_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
-                  int_icon=$( [ "$INTEGRATION_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
+                  # Icons (the result_icon helper is defined below — covers success/failure/cancelled/skipped/timeout).
+                  # Both buckets can come back as "skipped" — e.g. Integration Tests skips when Compile failed, or Unit
+                  # Tests skips when Lint failed. We don't want to mark those as ❌ in the table.
 
                   # ── Sibling workflow conclusions ─────────────────────────────
                   # main.yml runs in parallel with e2e.yml and integration-tests.yml for the same commit. To surface
@@ -317,6 +319,8 @@ jobs:
                   E2E_RESULT=$(wait_for_workflow "e2e.yml" "E2E tests")
                   NOSQL_INT_RESULT=$(wait_for_workflow "integration-tests.yml" "NoSQL integration tests")
                   echo "ℹ️ Sibling workflow results: e2e=${E2E_RESULT}, nosql-integration=${NOSQL_INT_RESULT}"
+                  unit_icon=$(result_icon "$UNIT_TEST_RESULT")
+                  int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
                   e2e_icon=$(result_icon "$E2E_RESULT")
                   nosql_icon=$(result_icon "$NOSQL_INT_RESULT")
 
@@ -404,7 +408,11 @@ jobs:
                       fi
                   fi
 
-                  # Fail the job if any tests failed
-                  if [ "$UNIT_TEST_RESULT" != "success" ] || [ "$INTEGRATION_TEST_RESULT" != "success" ]; then
-                      exit 1
-                  fi
+                  # Fail the summary step only if a local test bucket actually failed. "skipped" means an earlier
+                  # step (Lint / Compile / …) already failed the job, so flagging it again here just adds noise.
+                  for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT"; do
+                      case "$r" in
+                          success|skipped) ;;
+                          *) exit 1 ;;
+                      esac
+                  done

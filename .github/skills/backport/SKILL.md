@@ -27,7 +27,7 @@ Execute these phases in order. Stop and report on any error.
 
 ### Phase A — Pre-flight & safety
 
-1. Verify tooling: `git --version`, `gh --version`, `gh auth status`. If `gh` is missing or unauthenticated, abort with a clear message — do not continue.
+1. Verify tooling: `git --version`, `gh --version`, `gh auth status`. If `gh` is missing or unauthenticated, abort with a clear message — do not continue. **Cloud-agent override:** when running as the GitHub.com cloud agent (see "Running as the GitHub cloud agent" below), a failing `gh auth status` must **not** abort the backport — the git work uses the platform's credential helper, not `gh`. See that section.
 2. Capture state: original branch (`git rev-parse --abbrev-ref HEAD`), `git status --porcelain`, list of unpushed commits.
 3. **If source ≠ current branch** and the working tree is dirty (including untracked files):
    - Run `git stash push -u -m "backport-skill autostash <ISO-timestamp>"`.
@@ -142,6 +142,7 @@ When done, summarize:
 When this skill runs inside the GitHub Copilot cloud agent (e.g. invoked by `@copilot` on a merged PR or assigned to a backport issue), the environment differs from a local VS Code workspace. Adjust the workflow as follows:
 
 - **No interactive prompts.** You cannot pause to ask the user. Resolve everything from the request body and repository state up front; if a required input is missing or ambiguous (target branch, source PR), stop and report rather than guess.
+- **Do not abort on `gh auth status` failure (Phase A step 1 override).** In the cloud agent, git push auth comes from the platform's credential helper and the PR is opened by the platform — neither depends on `gh`. A failing `gh auth status` (e.g. `GITHUB_TOKEN` reported invalid) must **not** stop the backport. Proceed with all git work (fetch, branch, cherry-pick, push); if the token really is unusable, `git push` will fail later with its own clear error — that is strictly better than abandoning a completed cherry-pick at pre-flight. Only PR-metadata commands (`gh pr edit`) need `gh`: if it is unauthenticated, first retry once as `GH_TOKEN="$GITHUB_TOKEN" gh pr edit …`; if that still fails, set the base/title/body via the REST API (`gh api -X PATCH repos/{owner}/{repo}/pulls/{number} -f base=<target> -f title="[<target>] …"`, or `curl` with the token), and if even that is impossible, leave the PR open and state explicitly in the body which fields — **especially the base branch** — still need to be set manually so it does not silently target `main`.
 - **Branch naming**: use `copilot/backport-<id>-to-<target-slug>` instead of `backport/...`. This `copilot/` prefix applies **only here**, in the GitHub.com cloud agent, because the cloud agent can only push branches starting with `copilot/`; a local run must use the `backport/` prefix from Phase C. The `<target-slug>` rule is unchanged — replace **every** `/` with `-`, so `rel/0.34` yields `copilot/backport-<id>-to-rel-0.34` (one `/` only, right after `copilot`).
 - **Skip Phase A.3 stash logic** — the cloud agent runs in a fresh ephemeral checkout; there is no user working tree to preserve.
 - **Apply the Phase D cloud-agent override** described above (commit conflict markers as `WIP:` and mark the PR draft instead of asking, aborting, or squash-and-retry).

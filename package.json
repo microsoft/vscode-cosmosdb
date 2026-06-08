@@ -83,7 +83,13 @@
     "pre-commit": "npm run build && npm run prettier-fix && npm run lint-fix && npm run l10n && npm run vitest",
     "docker-up": "docker compose up -d",
     "docker-down": "docker compose down",
-    "docker-restart": "npm run docker-down && npm run docker-up"
+    "docker-restart": "npm run docker-down && npm run docker-up",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:debug": "playwright test --debug",
+    "e2e:emulator:up": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d --remove-orphans",
+    "e2e:emulator:down": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e down --volumes --remove-orphans",
+    "e2e:emulator:seed": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/import-seed.mjs --all --reset --endpoint https://localhost:8082 --database nosql-test-db"
   },
   "externalSkills": {
     "cosmosdb-best-practices": {
@@ -100,6 +106,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "~1.60.0",
     "@types/json-schema": "~7.0.15",
     "@types/node": "~25.9.1",
     "@types/react": "~19.2.15",
@@ -503,6 +510,21 @@
         "category": "Cosmos DB",
         "command": "cosmosDB.migration.remove",
         "title": "%cosmosdb.command.migration.remove%"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openQueryEditor",
+        "title": "[E2E Test] Open Query Editor"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openDocument",
+        "title": "[E2E Test] Open Document"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.attachEmulator",
+        "title": "[E2E Test] Attach Emulator to Workspace"
       }
     ],
     "submenus": [
@@ -783,6 +805,18 @@
         {
           "command": "cosmosDB.migration.remove",
           "when": "never"
+        },
+        {
+          "command": "cosmosDB.e2e.openQueryEditor",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openDocument",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.attachEmulator",
+          "when": "cosmosDB.e2eTestMode"
         }
       ]
     },

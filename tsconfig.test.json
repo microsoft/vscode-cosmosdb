@@ -9,5 +9,5 @@
     "composite": false
   },
   "include": ["test/**/*.ts"],
-  "exclude": ["node_modules", ".vscode-test", "out", "dist"]
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test/e2e"]
 }

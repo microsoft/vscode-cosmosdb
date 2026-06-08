@@ -8,6 +8,7 @@ on:
 
 jobs:
   bump:
+    name: 🔖 Bump prerelease version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,7 +16,7 @@ jobs:
       - name: Bump version
         id: bump
         uses: alexweininger/bump-prerelease-version@v0.1.1
-      
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@v4
         with:

@@ -1,0 +1,154 @@
+# E2E Tests workflow — runs the Playwright suite against a real VS Code
+# instance with the extension loaded from dist/ and a Cosmos DB emulator
+# brought up in Docker.
+#
+# Triggered on PRs and pushes that touch code which could change behaviour
+# observable through the webview (src/, test/e2e/, scripts/import-seed.mjs,
+# docker-compose.e2e.yml, package.json, playwright config, the workflow
+# itself). Other commits skip the run to keep CI cost reasonable.
+#
+# Flow:
+#   1. Install deps + system libs Electron needs (libgtk/libnss/...).
+#   2. Build dist/ explicitly so build failures surface separately from
+#      test failures (the globalSetup auto-rebuild would still work, but
+#      the diagnostic is worse).
+#   3. xvfb-run npm run e2e — globalSetup brings up the emulator (on
+#      8082/1235 via docker compose -p cosmosdb-e2e), seeds it, then
+#      Playwright drives a real downloaded VS Code through @vscode/test-electron.
+#   4. Upload the HTML report + results (traces/videos) for post-mortem.
+
+name: E2E Tests (Webview + Cosmos DB Emulator)
+
+permissions:
+    contents: read
+
+on:
+    workflow_dispatch:
+
+    push:
+        branches:
+            - main
+            - rel/*
+            - dev/**
+        paths:
+            - 'src/**'
+            - 'test/e2e/**'
+            - 'scripts/import-seed.mjs'
+            - 'docker-compose.e2e.yml'
+            - 'package.json'
+            - 'package-lock.json'
+            - 'playwright.config.ts'
+            - 'tsconfig.e2e.json'
+            - '.github/workflows/e2e.yml'
+
+    pull_request:
+        branches:
+            - main
+            - rel/*
+            - dev/**
+        paths:
+            - 'src/**'
+            - 'test/e2e/**'
+            - 'scripts/import-seed.mjs'
+            - 'docker-compose.e2e.yml'
+            - 'package.json'
+            - 'package-lock.json'
+            - 'playwright.config.ts'
+            - 'tsconfig.e2e.json'
+            - '.github/workflows/e2e.yml'
+
+jobs:
+    e2e:
+        name: 🎭 Run e2e tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+
+        # Same push+pull_request dedupe trick as main.yml: cancelling either
+        # run on the same SHA leaves a failed required check on the PR head.
+        # Skip the pull_request run only for same-repo PRs whose head branch
+        # already triggers a push run.
+        if: >-
+            github.event_name != 'pull_request' ||
+            github.event.pull_request.head.repo.full_name != github.repository ||
+            (github.head_ref != 'main' &&
+             !startsWith(github.head_ref, 'rel/') &&
+             !startsWith(github.head_ref, 'dev/'))
+
+        # Scope concurrency by PR (or by branch on push) so two forks pushing
+        # branches with the same name don't cancel each other.
+        concurrency:
+            group: e2e-${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) || github.ref_name }}
+            cancel-in-progress: true
+
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: 📦 Set up Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version-file: .nvmrc
+                  cache: 'npm'
+                  cache-dependency-path: '**/package-lock.json'
+
+            - name: ⬇️ Install dependencies
+              run: npm ci
+
+            - name: 🔧 Install Electron system dependencies
+              # Provides libgtk-3, libnss3, libasound2, etc — required by the
+              # VS Code Electron build that @vscode/test-electron downloads.
+              # `chromium` is the cheapest dep set that covers Electron too.
+              run: npx playwright install-deps chromium
+
+            - name: 🔨 Build extension
+              # globalSetup auto-rebuilds when dist/ is stale, but doing it
+              # explicitly here makes build failures show up as a distinct
+              # step in the run log instead of buried inside the e2e step.
+              run: npm run vite-prod
+
+            - name: 🧪 Run e2e tests
+              # xvfb-run is mandatory on Linux: Electron has no real headless
+              # mode and the runner has no display. `-a` picks the next free
+              # display number. Retries (CI: 2) come from playwright.config.ts.
+              # COSMOSDB_E2E_SKIP_BUILD=1 — dist/ is already fresh from the
+              # build step above; the freshness check in globalSetup would
+              # walk src/ for no gain.
+              env:
+                  COSMOSDB_E2E_SKIP_BUILD: '1'
+              run: xvfb-run -a npm run e2e
+
+            - name: 📤 Upload Playwright HTML report
+              if: always()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: e2e-html-report-${{ github.run_attempt }}
+                  path: test/e2e/.reports/**/html
+                  if-no-files-found: warn
+                  retention-days: 14
+
+            - name: 📤 Upload Playwright results (traces, videos, screenshots)
+              # Only on failure — traces and videos are large and only useful
+              # for debugging failed runs.
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: e2e-results-${{ github.run_attempt }}
+                  path: test/e2e/.results
+                  if-no-files-found: warn
+                  retention-days: 14
+
+            - name: 📤 Upload emulator logs on failure
+              if: failure()
+              run: |
+                  mkdir -p emulator-logs
+                  docker logs cosmosdb-e2e-cosmosdb-emulator-1 > emulator-logs/cosmosdb-emulator.log 2>&1 || true
+              continue-on-error: true
+
+            - name: 📤 Upload emulator logs artifact
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: e2e-emulator-logs-${{ github.run_attempt }}
+                  path: emulator-logs
+                  if-no-files-found: warn
+                  retention-days: 14
+

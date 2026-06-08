@@ -6,6 +6,7 @@ on:
 
 jobs:
   main:
+    name: 🔒 Lock old closed issues
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Actions

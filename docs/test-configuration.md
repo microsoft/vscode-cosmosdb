@@ -311,4 +311,3 @@ Docker Desktop isn't running, or the e2e emulator container hasn't started
 yet. Verify with `docker ps --filter name=cosmosdb-e2e` and check the logs
 via `docker logs cosmosdb-e2e-cosmosdb-emulator-1`. First cold start of
 vnext-preview can take ~90 s — the readiness probe waits up to 3 min.
-

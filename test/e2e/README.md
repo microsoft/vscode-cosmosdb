@@ -134,13 +134,18 @@ default 8081 / 1234. This means:
 `globalSetup` writes the emulator config into `.vscode-test/e2e-config.json`,
 which the fixture reads and re-exports as env vars to the launched VS Code:
 
-| Env var                          | Default                    |
-| -------------------------------- | -------------------------- |
-| `COSMOSDB_E2E_EMULATOR_ENDPOINT` | `https://localhost:8082`   |
-| `COSMOSDB_E2E_EMULATOR_KEY`      | well-known emulator key    |
-| `COSMOSDB_E2E_DATABASE_ID`       | `nosql-test-db`            |
-| `COSMOSDB_E2E_CONTAINER_ID`      | `products`                 |
-| `NODE_TLS_REJECT_UNAUTHORIZED=0` | trust the self-signed cert |
+| Env var                          | Default                  |
+| -------------------------------- | ------------------------ |
+| `COSMOSDB_E2E_EMULATOR_ENDPOINT` | `https://localhost:8082` |
+| `COSMOSDB_E2E_EMULATOR_KEY`      | well-known emulator key  |
+| `COSMOSDB_E2E_DATABASE_ID`       | `nosql-test-db`          |
+| `COSMOSDB_E2E_CONTAINER_ID`      | `products`               |
+
+The extension trusts the emulator's self-signed certificate via a **scoped**
+`https.Agent` (see `src/cosmosdb/getCosmosClient.ts`, gated on
+`isEmulator: true`). No process-wide `NODE_TLS_REJECT_UNAUTHORIZED=0` is
+needed for the test runner or the seed script (both pass a scoped agent
+directly to their `CosmosClient`).
 
 The test-only commands registered in `src/commands/e2eTestCommands/` read
 these env vars and build a real `NoSqlQueryConnection`:

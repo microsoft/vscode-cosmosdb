@@ -89,7 +89,7 @@
     "e2e:debug": "playwright test --debug",
     "e2e:emulator:up": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d --remove-orphans",
     "e2e:emulator:down": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e down --volumes --remove-orphans",
-    "e2e:emulator:seed": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/import-seed.mjs --all --reset --endpoint https://localhost:8082 --database nosql-test-db"
+    "e2e:emulator:seed": "node scripts/import-seed.mjs --all --reset --endpoint https://localhost:8082 --database nosql-test-db"
   },
   "externalSkills": {
     "cosmosdb-best-practices": {

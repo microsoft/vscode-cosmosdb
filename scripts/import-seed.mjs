@@ -25,6 +25,7 @@
 
 import { CosmosClient } from '@azure/cosmos';
 import { readFileSync } from 'node:fs';
+import { Agent } from 'node:https';
 import { cpus } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -147,8 +148,12 @@ const client = new CosmosClient({
     // emulator). Harmless for production single-region accounts; required
     // for any emulator scenario.
     connectionPolicy: { enableEndpointDiscovery: false },
-    // The emulator uses a self-signed certificate; NODE_TLS_REJECT_UNAUTHORIZED=0
-    // must be set in the calling environment for local use.
+    // The emulator uses a self-signed certificate. Pass a **scoped**
+    // https.Agent that doesn't validate the cert, instead of setting
+    // NODE_TLS_REJECT_UNAUTHORIZED=0 globally — the latter would disable
+    // cert validation for every HTTPS call this Node process makes
+    // (CodeQL js/disabling-certificate-validation).
+    agent: new Agent({ rejectUnauthorized: false }),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@
 import { CosmosClient } from '@azure/cosmos';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import * as https from 'node:https';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -158,53 +159,48 @@ const READY_POLL_INTERVAL_MS = 2_000;
  * which we deliberately do NOT expose on the host), so the SDK would
  * otherwise immediately switch to it and get ECONNREFUSED. We always pin
  * to the endpoint we passed.
+ *
+ * The self-signed cert is trusted via a **scoped** `https.Agent` passed to
+ * this single CosmosClient (mirrors `src/cosmosdb/getCosmosClient.ts` for
+ * production emulator paths). Setting `NODE_TLS_REJECT_UNAUTHORIZED=0`
+ * process-wide would disable cert validation for every HTTPS call in the
+ * Node process — CodeQL flags it, and rightly so.
  */
 export async function waitForEmulator(timeoutMs: number = READY_TIMEOUT_MS): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     let lastError: string = '(no probes yet)';
 
     // Single client reused across probes — avoids re-running TLS handshakes
-    // on every poll. The cosmos SDK accepts a self-signed cert when
-    // NODE_TLS_REJECT_UNAUTHORIZED=0 is set in the process env (the e2e
-    // setup script does that globally).
-    const previousTlsSetting = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    // on every poll. The scoped `agent` accepts the emulator's self-signed
+    // cert without leaking that relaxation to any other HTTPS call.
     const client = new CosmosClient({
         endpoint: E2E_EMULATOR_ENDPOINT,
         key: E2E_EMULATOR_KEY,
         connectionPolicy: { enableEndpointDiscovery: false },
+        agent: new https.Agent({ rejectUnauthorized: false }),
     });
 
-    try {
-        // Polling loop — awaits are sequential by design; we can't parallelise
-        // a "wait until ready" probe.
-        /* eslint-disable no-await-in-loop */
-        /* oxlint-disable no-await-in-loop */
-        while (Date.now() < deadline) {
-            try {
-                await client.getDatabaseAccount();
-                console.log(`[emulator] ready at ${E2E_EMULATOR_ENDPOINT}`);
-                return;
-            } catch (err) {
-                const e = err as { code?: string; message?: string };
-                lastError = e.code ?? e.message ?? String(err);
-            }
-            await new Promise((r) => setTimeout(r, READY_POLL_INTERVAL_MS));
+    // Polling loop — awaits are sequential by design; we can't parallelise
+    // a "wait until ready" probe.
+    /* eslint-disable no-await-in-loop */
+    /* oxlint-disable no-await-in-loop */
+    while (Date.now() < deadline) {
+        try {
+            await client.getDatabaseAccount();
+            console.log(`[emulator] ready at ${E2E_EMULATOR_ENDPOINT}`);
+            return;
+        } catch (err) {
+            const e = err as { code?: string; message?: string };
+            lastError = e.code ?? e.message ?? String(err);
         }
-        /* eslint-enable no-await-in-loop */
-        /* oxlint-enable no-await-in-loop */
-
-        throw new Error(
-            `Cosmos DB emulator at ${E2E_EMULATOR_ENDPOINT} did not become ready within ${timeoutMs} ms (last probe: ${lastError})`,
-        );
-    } finally {
-        // Restore env so the rest of the process behaves as the user expected.
-        if (previousTlsSetting === undefined) {
-            delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-        } else {
-            process.env.NODE_TLS_REJECT_UNAUTHORIZED = previousTlsSetting;
-        }
+        await new Promise((r) => setTimeout(r, READY_POLL_INTERVAL_MS));
     }
+    /* eslint-enable no-await-in-loop */
+    /* oxlint-enable no-await-in-loop */
+
+    throw new Error(
+        `Cosmos DB emulator at ${E2E_EMULATOR_ENDPOINT} did not become ready within ${timeoutMs} ms (last probe: ${lastError})`,
+    );
 }
 
 // ── Seed import ──────────────────────────────────────────────────────────────
@@ -238,11 +234,12 @@ export async function seedEmulator(): Promise<void> {
             ],
             {
                 stdio: 'inherit',
-                env: {
-                    ...process.env,
-                    // Self-signed cert on the emulator — trust it for the seed run.
-                    NODE_TLS_REJECT_UNAUTHORIZED: '0',
-                },
+                // No NODE_TLS_REJECT_UNAUTHORIZED here — the seed script uses
+                // a scoped https.Agent on its CosmosClient instead. Setting
+                // it process-wide would disable cert validation for any
+                // other HTTPS call the child makes (CodeQL js/disabling-
+                // certificate-validation).
+                env: process.env,
             },
         );
         child.on('error', reject);

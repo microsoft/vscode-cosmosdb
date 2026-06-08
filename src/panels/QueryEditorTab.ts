@@ -211,6 +211,20 @@ export class QueryEditorTab extends BaseTab {
                 });
                 return;
             }
+            // Mask sensitive connection values so Cosmos SDK errors and aggregated
+            // rejection reasons cannot leak endpoint/account identifiers via telemetry
+            // when the exception is rethrown for callWithTelemetryAndErrorHandling to log.
+            const masterKey = this.connection.credentials
+                ? getCosmosDBKeyCredential(this.connection.credentials)?.key
+                : undefined;
+            if (masterKey) {
+                context.valuesToMask.push(masterKey);
+            }
+            context.valuesToMask.push(
+                this.connection.endpoint,
+                this.connection.databaseId,
+                this.connection.containerId,
+            );
             try {
                 const cosmosClient = getCosmosClient(this.connection);
                 const databases = await cosmosClient.databases.readAll().fetchAll();

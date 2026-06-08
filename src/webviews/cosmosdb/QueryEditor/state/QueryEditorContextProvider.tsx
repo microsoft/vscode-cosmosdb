@@ -189,7 +189,10 @@ export class QueryEditorContextProvider extends BaseContextProvider {
             //this.showToast('Query error', error, 'error');
         });
 
-        this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[]) => {
+        this.channel.on('updateThroughputBuckets', (throughputBuckets: boolean[] | undefined) => {
+            // Always dispatch — the server may explicitly return `undefined` to indicate
+            // throughput buckets are unsupported (e.g. when connected to the Cosmos DB
+            // Emulator). Without this, the default state ([true × 5]) would keep showing.
             this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets });
         });
     }

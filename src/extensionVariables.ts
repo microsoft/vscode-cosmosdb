@@ -10,6 +10,8 @@ import { type DatabasesFileSystem } from './DatabasesFileSystem';
 import { type CosmosDBBranchDataProvider } from './tree/azure-resources-view/cosmosdb/CosmosDBBranchDataProvider';
 import { type CosmosDBWorkspaceBranchDataProvider } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceBranchDataProvider';
 import { type CosmosDBWorkspaceItem } from './tree/workspace-view/cosmosdb/CosmosDBWorkspaceItem';
+import { type MigrationWorkspaceBranchDataProvider } from './tree/workspace-view/migration/MigrationWorkspaceBranchDataProvider';
+import { type MigrationWorkspaceItem } from './tree/workspace-view/migration/MigrationWorkspaceItem';
 
 /** Sentinel — distinguishes "not yet set" from any real value (including `false` or `undefined`). */
 const UNSET = Symbol('unset');
@@ -63,9 +65,15 @@ class ExtensionService {
     private readonly _cosmosDBWorkspaceBranchDataProvider = required<CosmosDBWorkspaceBranchDataProvider>(
         'cosmosDBWorkspaceBranchDataProvider',
     );
+    private readonly _migrationWorkspaceBranchDataProvider = required<MigrationWorkspaceBranchDataProvider>(
+        'migrationWorkspaceBranchDataProvider',
+    );
 
     /** Mutable — updated on every workspace tree refresh via onResourceItemRetrieved. */
     cosmosDBWorkspaceBranchDataResource: CosmosDBWorkspaceItem | undefined = undefined;
+
+    /** Mutable — updated on every workspace tree refresh via onResourceItemRetrieved. */
+    migrationWorkspaceBranchDataResource: MigrationWorkspaceItem | undefined = undefined;
 
     // — Optional fields — getter returns undefined before activate() —————————————
     private readonly _isBundle = optional<boolean>('isBundle');
@@ -130,7 +138,15 @@ class ExtensionService {
         this._cosmosDBWorkspaceBranchDataProvider.set(v);
     }
 
+    get migrationWorkspaceBranchDataProvider() {
+        return this._migrationWorkspaceBranchDataProvider.get();
+    }
+    set migrationWorkspaceBranchDataProvider(v) {
+        this._migrationWorkspaceBranchDataProvider.set(v);
+    }
+
     // cosmosDBWorkspaceBranchDataResource is a plain mutable field (declared above)
+    // migrationWorkspaceBranchDataResource is a plain mutable field (declared above)
 
     get isBundle() {
         return this._isBundle.get();

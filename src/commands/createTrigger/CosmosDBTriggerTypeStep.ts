@@ -4,11 +4,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { AzureWizardPromptStep } from '@microsoft/vscode-azext-utils';
-
 import { getTriggerType } from '../../cosmosdb/fs/TriggerFileDescriptor';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 
 export class CosmosDBTriggerTypeStep extends AzureWizardPromptStep<CreateTriggerWizardContext> {
+    public id = 'cosmosDB.createTrigger.typeStep';
     public hideStepCount: boolean = false;
 
     public async prompt(context: CreateTriggerWizardContext): Promise<void> {

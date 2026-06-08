@@ -9,10 +9,15 @@ import { type CosmosDBContainerResourceItem } from '../tree/cosmosdb/CosmosDBCon
 import { type CosmosDBItemResourceItem } from '../tree/cosmosdb/CosmosDBItemResourceItem';
 import { type CosmosDBItemsResourceItem } from '../tree/cosmosdb/CosmosDBItemsResourceItem';
 import { pickAppResource } from '../utils/pickItem/pickAppResource';
+import { type AzureResourceMetadata } from './AzureResourceMetadata';
 import { type CosmosDBCredential } from './CosmosDBCredential';
 
 export type NoSqlQueryConnection = {
-    accountId?: string; // Optional, used to identify the node in the tree
+    /**
+     * Azure metadata, populated only for Azure-signed-in accounts (i.e. accounts discovered via the Azure Resources view).
+     * Required for ARM control-plane operations. Undefined for workspace-attached accounts and for the local emulator.
+     */
+    azureMetadata?: AzureResourceMetadata;
     databaseId: string;
     containerId: string;
     endpoint: string;
@@ -45,7 +50,7 @@ export function createNoSqlQueryConnection(
     const containerId = node.model.container.id;
 
     return {
-        accountId: accountInfo.id,
+        azureMetadata: accountInfo.azureMetadata,
         databaseId: databaseId,
         containerId: containerId,
         endpoint: accountInfo.endpoint,

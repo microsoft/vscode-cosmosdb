@@ -8,13 +8,14 @@ import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { type CreateStoredProcedureWizardContext } from './CreateStoredProcedureWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateStoredProcedureWizardContext> {
+    public id = 'cosmosDB.createStoredProcedure.executeStep';
     public priority: number = 100;
 
     public async execute(context: CreateStoredProcedureWizardContext): Promise<void> {
-        const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { containerId, databaseId, storedProcedureBody, storedProcedureName, nodeId } = context;
 
         return ext.state.showCreatingChild(
@@ -28,13 +29,12 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateStoredProc
                     body: storedProcedureBody!,
                 };
 
-                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
-                    const response = await cosmosClient
+                context.response = await withClaimsChallengeHandling(context.accountInfo, async (client) => {
+                    const response = await client
                         .database(databaseId)
                         .container(containerId)
                         .scripts.storedProcedures.create(body);
-
-                    context.response = response.resource;
+                    return nonNullProp(response, 'resource');
                 });
             },
         );

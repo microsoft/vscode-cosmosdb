@@ -3,16 +3,19 @@
 Pattern matching with wildcards.
 
 ## Syntax
+
 ```sql
 expr LIKE pattern [ESCAPE char]
 expr NOT LIKE pattern
 ```
 
 ## Wildcards
+
 - `%` — matches zero or more characters
 - `_` — matches exactly one character
 
 ## Examples
+
 ```sql
 SELECT * FROM c WHERE c.name LIKE '%smith%'
 ```

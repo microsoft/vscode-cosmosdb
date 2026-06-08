@@ -29,10 +29,14 @@
   "cosmosdb.command.trigger.create": "创建触发器…",
   "cosmosdb.command.trigger.delete": "删除触发器…",
   "cosmosdb.command.trigger.open": "打开触发器",
+  "cosmosdb.command.cosmos_db_shell.launch": "启动 Azure Cosmos DB Shell",
   "cosmosdb.command.update": "更新到云",
   "cosmosdb.command.ai.deploy_instruction_files": "将 LLM 指令复制到用户配置文件文件夹",
   "cosmosdb.command.ai.remove_instruction_files": "从用户配置文件文件夹中移除 LLM 指令",
   "cosmosdb.command.schema.delete_all": "删除所有已保存的架构",
+  "cosmosdb.command.migration.open": "新迁移...",
+  "cosmosdb.command.migration.openExisting": "Cosmos DB 迁移...",
+  "cosmosdb.command.migration.remove": "移除迁移...",
   "cosmosdb.configuration.batch.size": "查询 Azure 数据库资源时使用的批处理大小。",
   "cosmosdb.configuration.confirmation.style": "确认无法撤销的操作(如删除资源)时使用的行为。",
   "cosmosdb.configuration.confirmation.style.button": "按钮单击确认",
@@ -48,6 +52,9 @@
   "cosmosdb.configuration.operation.summaries": "显示详细的操作摘要，展示数据库删除、文档添加、删除或类似事件的消息。",
   "cosmosdb.configuration.save.prompt": "将文档上传到云端时显示警告对话框。",
   "cosmosdb.configuration.csv.separator": "将数据导出到 CSV 文件时使用的分隔符(即 `;`, | or `,`)。",
+  "cosmosdb.configuration.cosmosDB.shell.path": "用于启动 Azure Cosmos DB shell 的文件夹和可执行文件的完整路径。对于某些 shell 命令是必需的。默认情况下，将在系统路径中搜索 ‘cosmosdbshell’",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.enabled": "启用 Azure Cosmos DB shell 模型上下文协议服务器。",
+  "cosmosdb.configuration.cosmosDB.shell.mcp.port": "用于 Azure Cosmos DB Shell 模型上下文协议服务器的端口。",
   "cosmosdb.configuration.preferredAuthenticationMethod": "为 Cosmos DB 帐户选择首选身份验证方法。",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto": "自动",
   "cosmosdb.configuration.preferredAuthenticationMethod.auto.description": "根据帐户配置选择最佳身份验证方法",
@@ -59,5 +66,6 @@
   "cosmosdb.configuration.preferredAuthenticationMethod.managedIdentity.description": "仅在 Azure 中运行时支持(即 VM)，[了解详细信息](https://learn.microsoft.com/zh-cn/azure/cosmos-db/how-to-setup-managed-identity)",
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "使用用户分配的托管标识向 Entra ID 进行身份验证时要使用的托管标识的客户端 ID。",
   "cosmosdb.configuration.manage-llm-assets": "管理 LLM 资产。允许扩展保持 LLM 相关文件更新。",
-  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "启用后，架构生成还会考虑查询结果来推断容器架构。"
+  "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "启用后，架构生成还会考虑查询结果来推断容器架构。",
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(实验性)在迁移助手 UI 中显示令牌使用情况估计值。"
 }

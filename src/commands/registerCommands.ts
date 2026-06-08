@@ -37,6 +37,9 @@ import { cosmosDBExecuteStoredProcedure } from './executeStoredProcedure/execute
 import { filterTreeItems } from './filterTreeItems/filterTreeItems';
 import { importDocuments } from './importDocuments/importDocuments';
 import { cosmosDBLoadMore } from './loadMore/loadMore';
+import { openExistingMigration } from './migration/openExistingMigration';
+import { openMigrationAssistant } from './migration/openMigrationAssistant';
+import { removeMigration } from './migration/removeMigration';
 import { newConnection } from './newConnection/newConnection';
 import { newEmulatorConnection } from './newEmulatorConnection/newEmulatorConnection';
 import { cosmosDBOpenItem } from './openDocument/openDocument';
@@ -73,7 +76,7 @@ export function registerCommands(): void {
     // For Cosmos DB FileSystem
     registerCommandWithTreeNodeUnwrapping(
         'azureDatabases.update',
-        async (_actionContext: IActionContext, uri?: vscode.Uri) => await ext.fileSystem.updateWithoutPrompt(uri),
+        async (_actionContext: IActionContext, uri?: vscode.Uri) => ext.fileSystem.updateWithoutPrompt(uri),
     );
 
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
@@ -81,6 +84,7 @@ export function registerCommands(): void {
 
     registerLLMAssetsCommands();
     registerChatButtonCommands();
+    registerMigrationCommands();
 }
 
 export function registerAccountCommands() {
@@ -162,12 +166,14 @@ export function registerChatButtonCommands() {
 
                 // Find the active query editor tab and update its query
                 const activeQueryEditors = Array.from(QueryEditorTab.openTabs);
-                const activeTab = activeQueryEditors.find(
-                    (tab) =>
-                        tab.getConnection()?.endpoint === connection.endpoint &&
-                        tab.getConnection()?.databaseId === connection.databaseId &&
-                        tab.getConnection()?.containerId === connection.containerId,
-                );
+                const activeTab = activeQueryEditors.find((tab) => {
+                    const tabConnection = tab.getConnection();
+                    return (
+                        tabConnection?.endpoint === connection.endpoint &&
+                        tabConnection?.databaseId === connection.databaseId &&
+                        tabConnection?.containerId === connection.containerId
+                    );
+                });
 
                 if (activeTab && 'updateQuery' in activeTab) {
                     // Update the query in the existing webview
@@ -207,4 +213,10 @@ export function registerChatButtonCommands() {
             });
         }),
     );
+}
+
+export function registerMigrationCommands() {
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.open', openMigrationAssistant);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.openExisting', openExistingMigration);
+    registerCommandWithTreeNodeUnwrapping('cosmosDB.migration.remove', removeMigration);
 }

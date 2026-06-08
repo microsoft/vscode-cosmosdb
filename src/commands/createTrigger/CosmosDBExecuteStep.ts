@@ -8,13 +8,14 @@ import { AzureWizardExecuteStep } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import { withClaimsChallengeHandling } from '../../cosmosdb/withClaimsChallengeHandling';
 import { ext } from '../../extensionVariables';
+import { nonNullProp } from '../../utils/nonNull';
 import { type CreateTriggerWizardContext } from './CreateTriggerWizardContext';
 
 export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerWizardContext> {
+    public id = 'cosmosDB.createTrigger.executeStep';
     public priority: number = 100;
 
     public async execute(context: CreateTriggerWizardContext): Promise<void> {
-        const { endpoint, credentials, isEmulator } = context.accountInfo;
         const { containerId, databaseId, triggerBody, triggerName, triggerOperation, triggerType, nodeId } = context;
 
         return ext.state.showCreatingChild(
@@ -30,14 +31,12 @@ export class CosmosDBExecuteStep extends AzureWizardExecuteStep<CreateTriggerWiz
                     triggerOperation: triggerOperation!,
                 };
 
-                await withClaimsChallengeHandling(endpoint, credentials, isEmulator, async (cosmosClient) => {
-                    // Create the trigger using the Cosmos DB client
-                    const response = await cosmosClient
+                context.response = await withClaimsChallengeHandling(context.accountInfo, async (client) => {
+                    const response = await client
                         .database(databaseId)
                         .container(containerId)
                         .scripts.triggers.create(body);
-
-                    context.response = response.resource;
+                    return nonNullProp(response, 'resource');
                 });
             },
         );

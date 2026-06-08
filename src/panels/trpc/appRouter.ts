@@ -15,20 +15,26 @@ import { type PartitionKeyDefinition } from '@azure/cosmos';
 import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { type TelemetryContext } from '../../Telemetry';
 import { type NoSqlQueryConnection } from '../../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../../cosmosdb/session/QuerySession';
 import { type CosmosDBRecordIdentifier } from '../../cosmosdb/types/queryResult';
-import { type TypedEventSink } from '../../utils/TypedEventSink';
+import { type TelemetryContext } from '../../Telemetry';
 import { openSurvey, promptAfterActionEventually } from '../../utils/survey';
 import { ExperienceKind, UsageImpact } from '../../utils/surveyTypes';
+import { type TypedEventSink } from '../../utils/TypedEventSink';
 import { documentRouterDef } from './routers/documentRouter';
+import { migrationEventsRouterDef, type MigrationEvent } from './routers/migrationEventsRouter';
+import { migrationRouterDef } from './routers/migrationRouter';
 import { queryEditorEventsRouterDef, type QueryEditorEvent } from './routers/queryEditorEventsRouter';
 import { queryEditorRouterDef } from './routers/queryEditorRouter';
 import {
     documentCallerFactory,
     documentProcedure,
     documentRouter,
+    migrationCallerFactory,
+    migrationMergeRouters,
+    migrationProcedure,
+    migrationRouter,
     queryEditorCallerFactory,
     queryEditorMergeRouters,
     queryEditorProcedure,
@@ -79,6 +85,22 @@ export type DocumentRouterContext = BaseRouterContext & {
     telemetryContext: TelemetryContext;
     panel: vscode.WebviewPanel;
     state: DocumentMutableState;
+};
+
+/**
+ * Dispatcher invoked by the generic migration `command` procedure. The
+ * MigrationAssistantTab implements it as a large switch over `commandName`.
+ * It returns `unknown` because each command produces a different shape; the
+ * webview side knows what to expect per command. Returning `undefined` is
+ * common for fire-and-forget commands.
+ */
+export type MigrationCommandDispatcher = (commandName: string, params: unknown[]) => Promise<unknown>;
+
+export type MigrationRouterContext = BaseRouterContext & {
+    telemetryContext: TelemetryContext;
+    panel: vscode.WebviewPanel;
+    eventSink: TypedEventSink<MigrationEvent>;
+    dispatchCommand: MigrationCommandDispatcher;
 };
 
 // ─── Common Procedures (per-instance) ───────────────────────────────────────
@@ -260,3 +282,14 @@ export const documentAppRouter = documentRouter({
 
 export type DocumentAppRouter = typeof documentAppRouter;
 export { documentCallerFactory };
+
+// ─── Migration Assistant App Router ─────────────────────────────────────────
+
+export const migrationAppRouter = migrationRouter({
+    // oxlint-disable-next-line typescript/no-unsafe-assignment
+    common: buildCommonRouter(migrationProcedure, migrationRouter),
+    migration: migrationMergeRouters(migrationRouterDef, migrationEventsRouterDef),
+});
+
+export type MigrationAppRouter = typeof migrationAppRouter;
+export { migrationCallerFactory };

@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
-import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { getThemedIconPath } from '../constants';
 import { getCosmosDBKeyCredential } from '../cosmosdb/CosmosDBCredential';
@@ -132,24 +131,19 @@ export class QueryEditorTab extends BaseTab {
         this.eventSink.emit({ type: 'schemaSettingChanged', isSchemaBasedOnQueries: isEnabled });
     }
 
-    private async sendSchemaToWebview(): Promise<void> {
+    public async sendSchemaToWebview(): Promise<void> {
         if (!this.state.connection) {
             this.eventSink.emit({ type: 'schemaUpdated', containerSchema: null });
             return;
         }
 
-        const schemaId = this.getSchemaStorageId(this.state.connection);
+        const schemaId = SchemaFileStorage.getSchemaIdForConnection(this.state.connection);
         const schemaStorage = SchemaFileStorage.getInstance();
         const schemaJson = await schemaStorage.readSchema(schemaId);
 
         const schema: JSONSchema | null = schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;
 
         this.eventSink.emit({ type: 'schemaUpdated', containerSchema: schema as Record<string, unknown> | null });
-    }
-
-    private getSchemaStorageId(connection: NoSqlQueryConnection): string {
-        const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
-        return crypto.createHash('sha256').update(raw).digest('hex');
     }
 
     private buildRouterContext(): QueryEditorRouterContext {
@@ -192,7 +186,7 @@ export class QueryEditorTab extends BaseTab {
     /**
      * Broadcasts AI features availability change to all open QueryEditorTabs
      */
-    public static async notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): Promise<void> {
+    public static notifyAIFeaturesChanged(isAIFeaturesEnabled: boolean): void {
         for (const tab of QueryEditorTab.openTabs) {
             tab.eventSink.emit({ type: 'aiFeaturesEnabledChanged', isEnabled: isAIFeaturesEnabled });
         }
@@ -205,7 +199,7 @@ export class QueryEditorTab extends BaseTab {
         this.eventSink.emit({ type: 'queryTextPushed', query });
     }
 
-    public async refreshSurveyFeedbackVisibility(): Promise<void> {
+    public refreshSurveyFeedbackVisibility(): void {
         this.eventSink.emit({
             type: 'isSurveyCandidateChanged',
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),

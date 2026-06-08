@@ -90,4 +90,3 @@ export function inferNoSqlType(value: unknown): NoSQLTypes {
             return '_unknown_';
     }
 }
-

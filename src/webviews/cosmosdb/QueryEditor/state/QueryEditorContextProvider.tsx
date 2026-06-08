@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { type TRPCClient } from '@trpc/client';
 import * as l10n from '@vscode/l10n';
@@ -49,9 +49,15 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
 
     public async runQuery(query: string, options: QueryMetadata): Promise<void> {
-        // Update history
+        // Validate and clean the query — may show confirmation dialogs for ambiguous
+        // or syntactically invalid queries. Returns undefined when user cancels.
+        const prepared = await this.safeMutate(() => this.trpcClient.queryEditor.prepareQuery.mutate({ query }));
+        if (!prepared?.cleanQuery) return;
+        const cleanQuery = prepared.cleanQuery;
+
+        // Update history with the clean query
         const historyResult = await this.safeMutate(() =>
-            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query }),
+            this.trpcClient.queryEditor.updateQueryHistory.mutate({ query: cleanQuery }),
         );
         if (historyResult?.queryHistory) {
             this.dispatch({ type: 'updateHistory', queryHistory: historyResult.queryHistory });
@@ -60,13 +66,13 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         // Step 1: Create the session — this returns the executionId immediately
         const session = await this.safeMutate(() =>
             this.trpcClient.queryEditor.createQuerySession.mutate({
-                query,
+                query: cleanQuery,
                 options: { ...DEFAULT_RESULT_VIEW_METADATA, ...options },
             }),
         );
 
         if (!session?.executionId) {
-            // User cancelled the confirmation dialog, no connection, or error
+            // User canceled the confirmation dialog, no connection, or error
             return;
         }
 
@@ -78,7 +84,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         });
 
         // Step 3: Fire the actual query execution without blocking the UI
-        void (
+        (
             this.trpcClient.queryEditor.runQuery.mutate({
                 executionId: session.executionId,
             }) as Promise<QueryExecutionResponse | undefined>
@@ -86,6 +92,7 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
+
     public async stopQuery(executionId: string): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.stopQuery.mutate({ executionId }));
         if (result) {
@@ -107,27 +114,21 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     public nextPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
-        void (
-            this.trpcClient.queryEditor.nextPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
-        )
+        (this.trpcClient.queryEditor.nextPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
     public prevPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
-        void (
-            this.trpcClient.queryEditor.prevPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
-        )
+        (this.trpcClient.queryEditor.prevPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
     public firstPage(executionId: string): void {
         this.dispatch({ type: 'paginationStarted', startExecutionTime: Date.now() });
 
-        void (
-            this.trpcClient.queryEditor.firstPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>
-        )
+        (this.trpcClient.queryEditor.firstPage.mutate({ executionId }) as Promise<QueryExecutionResponse | undefined>)
             .then((result) => this.handleQueryExecutionResult(result))
             .catch((error: unknown) => this.handleQueryExecutionError(error));
     }
@@ -176,9 +177,13 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
     }
     public async getConnections(): Promise<void> {
         const result = await this.safeMutate(() => this.trpcClient.queryEditor.getConnections.query());
-        if (result && 'connectionList' in result) {
-            this.dispatch({ type: 'setConnectionList', connectionList: result.connectionList });
-        }
+        // Always dispatch a list — on failure use an empty map so the dropdown
+        // resolves out of the "Loading…" state. The errorLink middleware shows
+        // the actual error as a toast.
+        this.dispatch({
+            type: 'setConnectionList',
+            connectionList: result && 'connectionList' in result ? result.connectionList : {},
+        });
     }
     public async setConnection(databaseId: string, containerId: string): Promise<void> {
         const result = await this.safeMutate(() =>
@@ -192,6 +197,26 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 partitionKey: result.partitionKey as PartitionKeyDefinition | undefined,
             });
         }
+    }
+
+    /**
+     * Fetches connection-dependent capabilities used by the UI to decide which
+     * run-options menus to expose.
+     *
+     * Returns `{ isEmulator, isPriorityLevelEnabled, currentPriorityLevel }`:
+     * - `isEmulator` is true when the connection points at the local emulator.
+     * - `isPriorityLevelEnabled` reflects whether the Cosmos DB account has
+     *   priority-based execution enabled at the ARM resource level.
+     * - `currentPriorityLevel` is the user's last persisted choice (validated
+     *   against the enum, falling back to `Low` for first use or invalid
+     *   entries). The UI seeds its picker with this value on panel open.
+     */
+    public async getCapabilities(): Promise<{
+        isEmulator: boolean;
+        isPriorityLevelEnabled: boolean;
+        currentPriorityLevel: PriorityLevel;
+    }> {
+        return this.trpcClient.queryEditor.getCapabilities.mutate();
     }
 
     public setPageSize(pageSize: number) {
@@ -212,9 +237,9 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         await this.safeMutate(() => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId: document }));
     }
     public async openDocuments(mode: OpenDocumentMode, documents: CosmosDBRecordIdentifier[]): Promise<void> {
-        for (const document of documents) {
-            await this.openDocument(mode, document);
-        }
+        await Promise.allSettled(
+            documents.map((documentId) => this.trpcClient.queryEditor.openDocument.mutate({ mode, documentId })),
+        );
     }
     public async deleteDocument(document: CosmosDBRecordIdentifier): Promise<void> {
         await this.safeMutate(() => this.trpcClient.queryEditor.deleteDocument.mutate({ documentId: document }));
@@ -293,8 +318,20 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
         this.dispatch({ type: 'selectBucket', throughputBucket });
     }
 
-    public async openCopilotExplainQuery(query?: string): Promise<void> {
-        await this.safeMutate(() => this.trpcClient.queryEditor.openCopilotExplainQuery.mutate({ query }));
+    public setPriorityLevel(priorityLevel: PriorityLevel): void {
+        this.dispatch({ type: 'setPriorityLevel', priorityLevel });
+        // Persist on the extension side so the choice survives panel reopens.
+        // Fire-and-forget: a transient persistence failure shouldn't block the
+        // UI update — the local state already reflects the new value.
+        void this.safeMutate(() => this.trpcClient.queryEditor.setPriorityLevel.mutate({ priorityLevel }));
+    }
+
+    public async openChatParticipantExplainQuery(query?: string): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantExplainQuery.mutate({ query }));
+    }
+
+    public async openChatParticipantHelp(): Promise<void> {
+        await this.safeMutate(() => this.trpcClient.queryEditor.openChatParticipantHelp.mutate());
     }
 
     public async closeGenerateInput(): Promise<void> {
@@ -325,9 +362,10 @@ export class QueryEditorContextProvider extends BaseContextProvider<QueryEditorA
                 this.dispatch({ type: 'updateHistory', queryHistory: result.queryHistory });
             }
 
-            if (result.throughputBuckets) {
-                this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: result.throughputBuckets });
-            }
+            // Always dispatch — the server may explicitly return `undefined` to indicate
+            // throughput buckets are unsupported (e.g. when connected to the Cosmos DB
+            // Emulator). Without this, the default state ([true × 5]) would keep showing.
+            this.dispatch({ type: 'updateThroughputBuckets', throughputBuckets: result.throughputBuckets });
 
             if (result.initialQuery) {
                 void this.insertText(result.initialQuery);

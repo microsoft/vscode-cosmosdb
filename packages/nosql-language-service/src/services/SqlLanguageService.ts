@@ -13,6 +13,7 @@
 
 import { type IToken, type TokenType } from 'chevrotain';
 import { getCompletions, type CompletionItem, type JSONSchema } from '../completion/SqlCompletion.js';
+import { detectBetweenAmbiguity } from '../diagnostics/betweenAmbiguity.js';
 import { detectTypos } from '../diagnostics/typoDetection.js';
 import { parse, type ParseResult } from '../index.js';
 import { SqlLexer } from '../lexer/SqlLexer.js';
@@ -86,6 +87,16 @@ export class SqlLanguageService {
     }
 
     /**
+     * Strip line comments (`--`) and block comments (`/* … *\/`) from a
+     * query string, returning only the executable SQL text.
+     *
+     * Delegates to the standalone {@link stripComments} function.
+     */
+    stripComments(text: string): string {
+        return stripComments(text);
+    }
+
+    /**
      * Compute foldable regions for a multi-query document.
      *
      * Each non-empty query region is returned with content offsets
@@ -148,6 +159,27 @@ export class SqlLanguageService {
         return this.getSingleQueryDiagnostics(query);
     }
 
+    /**
+     * Returns `true` when the host has a schema configured.
+     *
+     * Used to gate schema-dependent diagnostics: when no schema is available
+     * we cannot know whether a field like `c.someField` is valid, so we
+     * suppress any diagnostic whose code starts with `FIELD_` or equals
+     * `UNKNOWN_FIELD`. Today no such codes are emitted — this is a forward-
+     * looking guard so future field-validation work respects the contract.
+     */
+    private hasSchema(): boolean {
+        return !!this.host.getSchema?.();
+    }
+
+    /** Filter out schema-dependent diagnostics when no schema is configured. */
+    private filterSchemaDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
+        if (this.hasSchema()) return diagnostics;
+        return diagnostics.filter(
+            (d) => d.code !== 'UNKNOWN_FIELD' && (typeof d.code !== 'string' || !d.code.startsWith('FIELD_')),
+        );
+    }
+
     private getSingleQueryDiagnostics(query: string): Diagnostic[] {
         const { errors } = parse(query);
         const diagnostics: Diagnostic[] = errors.map((e) => ({
@@ -183,7 +215,25 @@ export class SqlLanguageService {
             });
         }
 
-        return diagnostics;
+        // Append BETWEEN ambiguity warnings
+        for (const w of detectBetweenAmbiguity(query)) {
+            diagnostics.push({
+                range: {
+                    startOffset: w.range.start.offset,
+                    endOffset: w.range.end.offset,
+                    startLine: w.range.start.line,
+                    startColumn: w.range.start.col,
+                    endLine: w.range.end.line,
+                    endColumn: w.range.end.col,
+                },
+                message: w.message,
+                severity: DiagnosticSeverity.Warning,
+                code: 'BETWEEN_AMBIGUITY',
+                source: 'cosmosdb-sql',
+            });
+        }
+
+        return this.filterSchemaDiagnostics(diagnostics);
     }
 
     private getMultiQueryDiagnostics(query: string): Diagnostic[] {
@@ -239,9 +289,32 @@ export class SqlLanguageService {
                     source: 'cosmosdb-sql',
                 });
             }
+
+            // BETWEEN ambiguity warnings for this region
+            for (const w of detectBetweenAmbiguity(regionText)) {
+                const docStartOffset = region.startOffset + w.range.start.offset;
+                const docEndOffset = region.startOffset + w.range.end.offset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, docStartOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, docEndOffset);
+
+                diagnostics.push({
+                    range: {
+                        startOffset: docStartOffset,
+                        endOffset: docEndOffset,
+                        startLine,
+                        startColumn,
+                        endLine,
+                        endColumn,
+                    },
+                    message: w.message,
+                    severity: DiagnosticSeverity.Warning,
+                    code: 'BETWEEN_AMBIGUITY',
+                    source: 'cosmosdb-sql',
+                });
+            }
         }
 
-        return diagnostics;
+        return this.filterSchemaDiagnostics(diagnostics);
     }
 
     // ─── Completions ────────────────────────────────────────
@@ -596,4 +669,62 @@ function getKeywordHover(token: IToken): string | null {
         ARRAY: '**ARRAY** — creates an array from a subquery.',
     };
     return kw[token.image.toUpperCase()] ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Standalone utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Strip line comments (`--`) and block comments (`/* … *\/`) from a query
+ * string, returning only the executable SQL text.
+ *
+ * Uses the lexer to locate token boundaries — comments are already classified
+ * as `SKIPPED` tokens, so they never appear in the token list. The gaps
+ * between real tokens (which contain whitespace and/or comments) are replaced
+ * with a single space or newline, preserving readability without any comment
+ * text leaking through.
+ *
+ * This is a pure, stateless function — no service instance required. It is
+ * safe to call from any context (extension host, webview, tests).
+ *
+ * @param text - Raw query text, possibly containing comments.
+ * @returns The query with all comments removed and leading/trailing whitespace
+ *   trimmed. Returns an empty string when the input is blank or comment-only.
+ *
+ * @example
+ * ```typescript
+ * stripComments('-- get all\nSELECT * FROM c');
+ * // => 'SELECT * FROM c'
+ *
+ * stripComments('SELECT /* fields *\/ * FROM c');
+ * // => 'SELECT * FROM c'
+ * ```
+ */
+export function stripComments(text: string): string {
+    const lexResult = SqlLexer.tokenize(text);
+    const tokens = lexResult.tokens;
+    if (tokens.length === 0) return '';
+
+    const parts: string[] = [];
+    let pos = 0;
+
+    for (const token of tokens) {
+        const gapStart = pos;
+        const gapEnd = token.startOffset;
+
+        if (gapStart < gapEnd) {
+            // The gap between non-skipped tokens contains only whitespace
+            // and/or comments. Replace with a single space, or a newline
+            // when the original gap spanned multiple lines (preserves
+            // readability for multi-line queries).
+            const gap = text.substring(gapStart, gapEnd);
+            parts.push(gap.includes('\n') ? '\n' : ' ');
+        }
+
+        parts.push(token.image);
+        pos = (token.endOffset ?? token.startOffset + token.image.length - 1) + 1;
+    }
+
+    return parts.join('').trim();
 }

@@ -25,4 +25,3 @@ export function createFormatCommand(service: SqlLanguageService): (view: EditorV
         return true;
     };
 }
-

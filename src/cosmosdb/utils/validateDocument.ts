@@ -78,10 +78,10 @@ export function validateDocumentId(resource: JSONObject): string[] | undefined {
             errors.push(l10n.t('Id must be a string.'));
         } else {
             if (
-                resource.id.indexOf('/') !== -1 ||
-                resource.id.indexOf('\\') !== -1 ||
-                resource.id.indexOf('?') !== -1 ||
-                resource.id.indexOf('#') !== -1
+                resource.id.includes('/') ||
+                resource.id.includes('\\') ||
+                resource.id.includes('?') ||
+                resource.id.includes('#')
             ) {
                 errors.push(l10n.t('Id contains illegal chars (/, \\, ?, #).'));
             }

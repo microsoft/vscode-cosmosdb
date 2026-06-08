@@ -48,7 +48,7 @@ export const CopyToClipboardButton = (props: ToolbarOverflowItemProps<HTMLButton
 
         if (selectedTab === 'stats__tab') {
             const json = await queryMetricsToJSON(state.currentQueryResult);
-            return await dispatcher.copyToClipboard(json);
+            return dispatcher.copyToClipboard(json);
         }
 
         return Promise.resolve();

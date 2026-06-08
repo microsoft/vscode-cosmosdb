@@ -100,7 +100,7 @@ function resolveWindowsDotnetToolShim(commandPath: string): string | undefined {
         const launcherLine = shimContents
             .split(/\r?\n/)
             .map((line) => line.trim())
-            .find((line) => line.length > 0 && !line.startsWith('@') && /%\*/.test(line));
+            .find((line) => line.length > 0 && !line.startsWith('@') && line.includes('%*'));
 
         const launcherMatch = launcherLine?.match(/^"([^"]+)"\s+%\*$/);
         if (!launcherMatch) {

@@ -9,7 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { areAIFeaturesEnabled, getAvailableLanguageModels } from '../utils/copilotUtils';
+import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
+import { areAIFeaturesEnabled } from '../utils/copilotUtils';
 import {
     safeCodeBlock,
     safeErrorDisplay,
@@ -17,9 +18,9 @@ import {
     safeMarkdownText,
     stripCodeFences,
 } from '../utils/sanitization';
+import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { CosmosDbOperationsService, type EditQueryResult } from './CosmosDbOperationsService';
 import { OperationParser } from './OperationParser';
-import { getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import {
     CHAT_PARTICIPANT_SYSTEM_PROMPT,
     INTENT_EXTRACTION_PROMPT,
@@ -214,7 +215,12 @@ export class CosmosDbChatParticipant {
                 return null;
             }
 
-            const parsed = JSON.parse(jsonText.trim()) as {
+            // Extract JSON object defensively — the model may wrap the payload in
+            // prose or markdown fences despite the system prompt. Fall back to the
+            // raw trimmed text if no object is found so the JSON.parse error path
+            // retains the original diagnostic behaviour.
+            const jsonPayload = extractJsonObject(jsonText) ?? jsonText.trim();
+            const parsed = JSON.parse(jsonPayload) as {
                 operation: string;
                 parameters: Record<string, unknown>;
             };
@@ -262,8 +268,9 @@ export class CosmosDbChatParticipant {
                 jsonText += fragment;
             }
 
-            // Parse the JSON response
-            const parameters = JSON.parse(jsonText.trim()) as Record<string, unknown>;
+            // Parse the JSON response, tolerating any leading/trailing prose.
+            const jsonPayload = extractJsonObject(jsonText) ?? jsonText.trim();
+            const parameters = JSON.parse(jsonPayload) as Record<string, unknown>;
             return parameters && typeof parameters === 'object' ? parameters : {};
         } catch (error) {
             if (ctx) {
@@ -325,8 +332,7 @@ export class CosmosDbChatParticipant {
         if (extReq.model) {
             return extReq.model;
         }
-        const models = await getAvailableLanguageModels();
-        return models.length > 0 ? models[0] : null;
+        return getSelectedModel().catch(() => null);
     }
 
     /**
@@ -498,10 +504,7 @@ export class CosmosDbChatParticipant {
         if (extendedReq.model) {
             languageModel = extendedReq.model;
         } else {
-            const models = await getAvailableLanguageModels();
-            if (models.length > 0) {
-                languageModel = models[0];
-            }
+            languageModel = await getSelectedModel().catch(() => null);
         }
 
         try {
@@ -816,7 +819,9 @@ You can also use natural language:
 
                     stream.markdown(l10n.t('⚠️ **No Cosmos DB connection found.**') + '\n\n');
                     stream.markdown(
-                        l10n.t('Please connect to a Cosmos DB container to use the chat assistant.') + '\n\n',
+                        l10n.t(
+                            'To use the chat assistant, open a Query Editor on a container, either from the tree view or by clicking Open Query Editor below.',
+                        ) + '\n\n',
                     );
 
                     // Add a button to open the query editor which will prompt for connection

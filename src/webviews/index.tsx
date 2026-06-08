@@ -42,19 +42,21 @@ export function render<V extends ViewKey>(key: V, vscodeApi: WebviewApi<WebviewS
         throw new Error(l10n.t('Element with id of {rootId} not found.', { rootId }));
     }
 
-    const Component: React.ComponentType = WebviewRegistry[key];
-
     const root = createRoot(container);
 
-    root.render(
-        <AriaLiveAnnouncer>
-            <DynamicThemeProvider useAdaptive={true}>
-                <WithWebviewContext vscodeApi={vscodeApi}>
-                    <FocusManager>
-                        <Component />
-                    </FocusManager>
-                </WithWebviewContext>
-            </DynamicThemeProvider>
-        </AriaLiveAnnouncer>,
-    );
+    // Kick off the dynamic import for the requested view only. Other views
+    // (and their transitive deps like Monaco) are not fetched.
+    void WebviewRegistry[key]().then((Component) => {
+        root.render(
+            <AriaLiveAnnouncer>
+                <DynamicThemeProvider useAdaptive={true}>
+                    <WithWebviewContext vscodeApi={vscodeApi}>
+                        <FocusManager>
+                            <Component />
+                        </FocusManager>
+                    </WithWebviewContext>
+                </DynamicThemeProvider>
+            </AriaLiveAnnouncer>,
+        );
+    });
 }

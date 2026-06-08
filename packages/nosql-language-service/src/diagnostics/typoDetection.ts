@@ -72,8 +72,8 @@ function levenshtein(a: string, b: string): number {
 
     const aLen = a.length;
     const bLen = b.length;
-    let prev = new Array<number>(aLen + 1);
-    let curr = new Array<number>(aLen + 1);
+    let prev = Array.from<number>({ length: aLen + 1 });
+    let curr = Array.from<number>({ length: aLen + 1 });
 
     for (let i = 0; i <= aLen; i++) prev[i] = i;
 

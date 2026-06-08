@@ -303,4 +303,3 @@ export const SQL_KEYWORDS: readonly string[] = allTokens
         return alts.includes(Identifier);
     })
     .map((t) => t.name);
-

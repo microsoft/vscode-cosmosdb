@@ -14,12 +14,13 @@ Last updated: 2026-04-11
 
 ## 1. ✅ FIXED — Coalesce `??` Associativity
 
-| | C++ | TypeScript |
-|---|---|---|
-| **Associativity** | Right (`%right _COALESCE`) | Left (`MANY` loop) |
-| **Parse of `a ?? b ?? c`** | `a ?? (b ?? c)` | `(a ?? b) ?? c` |
+|                            | C++                        | TypeScript         |
+| -------------------------- | -------------------------- | ------------------ |
+| **Associativity**          | Right (`%right _COALESCE`) | Left (`MANY` loop) |
+| **Parse of `a ?? b ?? c`** | `a ?? (b ?? c)`            | `(a ?? b) ?? c`    |
 
 **Files:**
+
 - C++: `sql.y` line 106 — `%right _COALESCE`
 - TS: `SqlParser.ts` lines 502–515 — `coalesceExpression`
   uses `MANY`, which is inherently left-to-right
@@ -32,11 +33,12 @@ to the first non-undefined/null value).
 
 ## 2. ✅ FIXED — Chained Comparisons
 
-| | C++ | TypeScript |
-|---|---|---|
+|                 | C++                        | TypeScript                 |
+| --------------- | -------------------------- | -------------------------- |
 | **`a = b = c`** | ✅ Parses as `(a = b) = c` | ❌ Parse error after `= c` |
 
 **Files:**
+
 - C++: `sql.y` lines 691–764 — `binary_expression` is
   left-recursive with all comparison operators
 - TS: `SqlParser.ts` lines 692–716 —
@@ -52,11 +54,12 @@ since the result of `a < b` is a boolean, not a number.
 
 ## 3. ✅ FIXED — BETWEEN / LIKE / LET Bound Precedence
 
-| | C++ | TypeScript |
-|---|---|---|
+|                        | C++                                                                  | TypeScript                                          |
+| ---------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
 | **Bounds parsed with** | `binary_expression` (all arithmetic + comparison + bitwise + `\|\|`) | `additiveExpression` (only `+`, `-`, `*`, `/`, `%`) |
 
 **Files:**
+
 - C++: `sql.y` lines 632–659 (`between_scalar_expression`,
   `like_scalar_expression`, `let_scalar_expression`)
 - TS: `SqlParser.ts` lines 578–582 (BETWEEN), 632/666
@@ -86,11 +89,12 @@ case is less common.
 
 ## 4. ✅ FIXED — OFFSET / LIMIT Accept Floating-Point Numbers
 
-| | C++ | TypeScript |
-|---|---|---|
+|                    | C++                             | TypeScript                             |
+| ------------------ | ------------------------------- | -------------------------------------- |
 | **Allowed values** | `_INTEGER` or `_PARAMETER` only | Any `NumberLiteral` (including floats) |
 
 **Files:**
+
 - C++: `sql.y` lines 291–311 — `offset_spec` and
   `limit_spec` only accept `_INTEGER`,
   `_INTEGER_ABS_MIN_VALUE`, `_PARAMETER`
@@ -110,11 +114,12 @@ a post-parse validation step.
 
 ## 5. ✅ FIXED — ORDER BY RANK Accepts Any Expression
 
-| | C++ | TypeScript |
-|---|---|---|
+|                | C++                                       | TypeScript             |
+| -------------- | ----------------------------------------- | ---------------------- |
 | **After RANK** | Must be `function_call_scalar_expression` | Any `scalarExpression` |
 
 **Files:**
+
 - C++: `sql.y` lines 261–281 —
   `score_expression_orderby_item` requires
   `function_call_scalar_expression`
@@ -130,11 +135,12 @@ would be rejected by C++. The correct usage is
 
 ## 6. ✅ FIXED — Select Item Alias Does Not Accept LET / RANK
 
-| | C++ | TypeScript |
-|---|---|---|
+|                       | C++                           | TypeScript          |
+| --------------------- | ----------------------------- | ------------------- |
 | **Alias identifiers** | `id` → `_ID \| _LET \| _RANK` | `T.Identifier` only |
 
 **Files:**
+
 - C++: `sql.y` lines 370–384 — `opt_select_item_alias`
   → `identifier_alias` → `id` (which includes `_LET`,
   `_RANK`)
@@ -155,12 +161,11 @@ correctly uses `this.SUBRULE(this.id)`.
 
 ## Summary Table
 
-| # | Discrepancy | Severity | Status |
-|---|---|---|---|
-| 1 | `??` associativity | Low | ✅ Fixed |
-| 2 | Chained comparisons | Low | ✅ Fixed |
-| 3 | BETWEEN/LIKE/LET bounds | **Medium** | ✅ Fixed |
-| 4 | OFFSET/LIMIT floats | Low | ✅ Fixed |
-| 5 | ORDER BY RANK any expr | Low | ✅ Fixed |
-| 6 | Select alias LET/RANK | Low | ✅ Fixed |
-
+| #   | Discrepancy             | Severity   | Status   |
+| --- | ----------------------- | ---------- | -------- |
+| 1   | `??` associativity      | Low        | ✅ Fixed |
+| 2   | Chained comparisons     | Low        | ✅ Fixed |
+| 3   | BETWEEN/LIKE/LET bounds | **Medium** | ✅ Fixed |
+| 4   | OFFSET/LIMIT floats     | Low        | ✅ Fixed |
+| 5   | ORDER BY RANK any expr  | Low        | ✅ Fixed |
+| 6   | Select alias LET/RANK   | Low        | ✅ Fixed |

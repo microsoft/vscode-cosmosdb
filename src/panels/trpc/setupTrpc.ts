@@ -63,6 +63,18 @@ export function setupTrpc<TContext extends BaseRouterContext, TRouter extends An
     const activeSubscriptions = new Map<string, AbortController>();
 
     const disposable = panel.webview.onDidReceiveMessage(async (message: VsCodeLinkRequestMessage) => {
+        // Guard against non-tRPC messages reaching this listener (e.g. legacy
+        // channel-protocol payloads from a webview that wasn't fully migrated,
+        // or dev-server signals). Log them at warn level so missed migrations
+        // surface during development instead of being silently dropped.
+        if (!message || typeof message !== 'object' || !message.op || typeof message.op.type !== 'string') {
+            console.warn(
+                '[setupTrpc] Ignoring non-tRPC message on webview channel. ' +
+                    'If this originates from our own webview code, it likely needs to be migrated to tRPC. Payload:',
+                JSON.stringify(message),
+            );
+            return;
+        }
         switch (message.op.type) {
             case 'subscription':
                 await handleSubscriptionMessage(

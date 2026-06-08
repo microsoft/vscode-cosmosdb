@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as vscodeApi from 'vscode';
+import { SqlLanguageService } from '../../services/SqlLanguageService.js';
 import {
     VSCodeCompletionProvider,
     VSCodeFoldingRangeProvider,
@@ -14,7 +15,6 @@ import {
     registerCosmosDbSql,
     type VSCodeNamespace,
 } from './index.js';
-import { SqlLanguageService } from '../../services/SqlLanguageService.js';
 
 // ---------------------------------------------------------------------------
 // Lightweight VS Code mock
@@ -81,6 +81,7 @@ function createVSCodeMock() {
         window: {
             createTextEditorDecorationType: vi.fn(() => ({ dispose: vi.fn() })),
             onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
+            onDidChangeTextEditorSelection: vi.fn(() => ({ dispose: vi.fn() })),
             activeTextEditor: undefined,
         },
         CompletionItem: class {
@@ -384,8 +385,10 @@ describe('registerCosmosDbSql (VS Code)', () => {
 
     it('dispose is safe to call multiple times', () => {
         const disposable = registerCosmosDbSql(vscode, service);
-        disposable.dispose();
-        disposable.dispose();
+        expect(() => {
+            disposable.dispose();
+            disposable.dispose();
+        }).not.toThrow();
     });
 });
 
@@ -437,4 +440,3 @@ describe('VSCodeFoldingRangeProvider', () => {
         expect(ranges[0].end).toBe(4);
     });
 });
-

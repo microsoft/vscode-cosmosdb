@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
-import { isJSON } from 'es-toolkit';
+import { isEmptyObject, isJSON } from 'es-toolkit';
 import type React from 'react';
 import { useQueryEditorDispatcher } from '../state/QueryEditorContext';
 
@@ -199,7 +199,8 @@ const parseIndexMetricsV2 = (indexMetricsStr: string): IndexMetrics => {
     const sections: IndexMetricsSection[] = [];
     const json = JSON.parse(indexMetricsStr) as IndexMetricsV2;
 
-    if (!isIndexMetricsV2(json)) {
+    // Index metrics might be just {} in case indexes weren't applied
+    if (!isIndexMetricsV2(json) && !isEmptyObject(json)) {
         throw new Error('Invalid index metrics JSON format');
     }
 

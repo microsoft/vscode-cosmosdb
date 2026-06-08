@@ -7,21 +7,20 @@ import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import { getSchemaFromDocument, updateSchemaWithDocument, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { callWithTelemetryAndErrorHandling, parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as vscode from 'vscode';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { getAvailableLanguageModels } from '../utils/copilotUtils';
+import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
 import { buildQueryOneShotMessages } from './queryOneShotExamples';
 import {
     SAMPLE_DATA_CONFIRMATION_MESSAGE,
     SAMPLE_DATA_TOOL_NAME,
-    sampleContainerSchema,
+    sampleAndPersistContainerSchema,
     type SampleSchemaResult,
 } from './sampleDataTool';
 import {
@@ -66,6 +65,17 @@ export interface QueryHistoryContext {
     executions: QueryExecutionEntry[];
 }
 
+/**
+ * Error thrown when the LLM explicitly refuses to generate a query
+ * (e.g. the request is not query-related, or asks for unsupported operations).
+ */
+export class QueryGenerationRefusedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'QueryGenerationRefusedError';
+    }
+}
+
 export interface EditQueryResult {
     type: 'editQuery';
     currentQuery?: string;
@@ -87,8 +97,6 @@ const MAX_QUERY_HISTORY_PER_CONTAINER = 20;
 
 export class CosmosDbOperationsService {
     private static instance: CosmosDbOperationsService;
-    private static extensionPath: string | undefined;
-    private static queryLanguageReference: string | undefined;
 
     /**
      * In-memory storage for query execution history, keyed by "accountId/databaseId/containerId".
@@ -107,47 +115,11 @@ export class CosmosDbOperationsService {
         return `${accountId ?? 'unknown'}/${databaseId}/${containerId}`;
     }
 
-    /**
-     * Initialize the service with the extension context.
-     * This must be called once during extension activation to enable loading of asset files.
-     */
-    public static initialize(context: vscode.ExtensionContext): void {
-        CosmosDbOperationsService.extensionPath = context.extensionPath;
-    }
-
     public static getInstance(): CosmosDbOperationsService {
         if (!CosmosDbOperationsService.instance) {
             CosmosDbOperationsService.instance = new CosmosDbOperationsService();
         }
         return CosmosDbOperationsService.instance;
-    }
-
-    /**
-     * Loads and caches the NoSQL query language reference for LLM context.
-     * The reference is loaded once and cached for subsequent calls.
-     */
-    private static getQueryLanguageReference(): string {
-        if (CosmosDbOperationsService.queryLanguageReference) {
-            return CosmosDbOperationsService.queryLanguageReference;
-        }
-
-        if (!CosmosDbOperationsService.extensionPath) {
-            console.warn('Extension path not initialized. Query language reference will not be available.');
-            return '';
-        }
-
-        try {
-            const referencePath = path.join(
-                CosmosDbOperationsService.extensionPath,
-                'resources',
-                'azurecosmosdb-nosql-query-language.md',
-            );
-            CosmosDbOperationsService.queryLanguageReference = fs.readFileSync(referencePath, 'utf-8');
-            return CosmosDbOperationsService.queryLanguageReference;
-        } catch (error) {
-            console.warn('Failed to load query language reference:', error);
-            return '';
-        }
     }
 
     /**
@@ -331,7 +303,11 @@ export class CosmosDbOperationsService {
         }
 
         // Use the in-memory store instead of iterating through sessions
-        return this.getQueryHistoryForContainer(connection.accountId, connection.databaseId, connection.containerId);
+        return this.getQueryHistoryForContainer(
+            connection?.azureMetadata?.accountId,
+            connection.databaseId,
+            connection.containerId,
+        );
     }
 
     /**
@@ -517,19 +493,17 @@ export class CosmosDbOperationsService {
             switch (operationName) {
                 case 'editQuery': {
                     const currentQuery = (parameters.currentQuery as string | undefined)?.trim();
-                    const { activeEditor, connection, currentResult, hasResults } = this.getActiveQueryEditorContext();
+                    const { connection, currentResult, hasResults } = this.getActiveQueryEditorContext();
 
                     if (!currentQuery) {
                         return l10n.t(
                             'No query found to edit. Please write or execute a query in the query editor first.',
                         );
                     }
-                    const historyContext = this.getQueryHistoryContext(activeEditor);
 
-                    return await this.handleEditQuery(
+                    return this.handleEditQuery(
                         parameters.userPrompt as string,
                         connection,
-                        historyContext,
                         {
                             documentCount: hasResults ? currentResult?.documents?.length : undefined,
                             requestCharge: hasResults ? currentResult?.requestCharge : undefined,
@@ -567,7 +541,7 @@ export class CosmosDbOperationsService {
                         // No active editor — proceed without editor context
                     }
 
-                    return await this.handleExplainQuery(
+                    return this.handleExplainQuery(
                         currentQuery,
                         parameters.userPrompt as string,
                         connection,
@@ -580,19 +554,32 @@ export class CosmosDbOperationsService {
                     );
                 }
                 case 'generateQuery': {
-                    const {
-                        activeEditor: genEditor,
-                        connection: genConnection,
-                        currentResult: genResult,
-                        query: genCurrentQuery,
-                        hasResults: genHasResults,
-                    } = this.getActiveQueryEditorContext();
-                    const genHistoryContext = this.getQueryHistoryContext(genEditor);
+                    if (!parameters.userPrompt || !(parameters.userPrompt as string).trim()) {
+                        return l10n.t(
+                            'Please provide a description of the query you want to generate. For example: "@cosmosdb /generateQuery find all active users".',
+                        );
+                    }
 
-                    return await this.handleEditQuery(
+                    let genConnection: NoSqlQueryConnection;
+                    let genResult: ReturnType<QueryEditorTab['getCurrentQueryResults']>;
+                    let genCurrentQuery: string | undefined;
+                    let genHasResults: boolean;
+                    try {
+                        ({
+                            connection: genConnection,
+                            currentResult: genResult,
+                            query: genCurrentQuery,
+                            hasResults: genHasResults,
+                        } = this.getActiveQueryEditorContext());
+                    } catch {
+                        return l10n.t(
+                            'No active query editor found. Please open a query editor first using the Azure extension or right-click on a container.',
+                        );
+                    }
+
+                    return this.handleEditQuery(
                         parameters.userPrompt as string,
                         genConnection,
-                        genHistoryContext,
                         {
                             documentCount: genHasResults ? genResult?.documents?.length : undefined,
                             requestCharge: genHasResults ? genResult?.requestCharge : undefined,
@@ -621,7 +608,6 @@ export class CosmosDbOperationsService {
     private async handleEditQuery(
         userPrompt: string,
         connection: NoSqlQueryConnection,
-        historyContext: QueryHistoryContext | undefined,
         resultContext: {
             documentCount?: number;
             requestCharge?: number;
@@ -636,24 +622,31 @@ export class CosmosDbOperationsService {
         additionalContext?: string,
         source?: string,
         operation?: string,
-    ): Promise<EditQueryResult> {
+    ): Promise<EditQueryResult | string> {
         if (!userPrompt || userPrompt.trim() === '') {
             throw new Error(l10n.t('Please provide a description of the query you want to generate.'));
         }
 
-        const llmSuggestion = await this.generateQueryWithLLM(
-            userPrompt,
-            sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
-            {
-                historyContext,
-                withExplanation: true,
-                onProgress,
-                onConfirm,
-                additionalContext,
-                source,
-                operation,
-            },
-        );
+        let llmSuggestion: { query: string; explanation: string };
+        try {
+            llmSuggestion = await this.generateQueryWithLLM(
+                userPrompt,
+                sendCurrentQueryToLLM && currentQuery ? currentQuery : '',
+                {
+                    withExplanation: true,
+                    onProgress,
+                    onConfirm,
+                    additionalContext,
+                    source,
+                    operation,
+                },
+            );
+        } catch (error) {
+            if (error instanceof QueryGenerationRefusedError) {
+                return l10n.t('❌ Could not generate query: {0}', error.message);
+            }
+            throw error;
+        }
         const suggestion = llmSuggestion.query;
         const llmExplanation = llmSuggestion.explanation;
 
@@ -706,36 +699,26 @@ export class CosmosDbOperationsService {
             additionalContext,
         );
 
-        // Build context header for better user understanding
+        // Build context section
         let queryContext = l10n.t('## 📊 Query Analysis') + '\n\n';
         if (connection) {
             queryContext += l10n.t('**Database:** {0}', connection.databaseId) + '\n';
             queryContext += l10n.t('**Container:** {0}', connection.containerId) + '\n';
         }
         if (resultContext.documentCount !== undefined) {
-            queryContext += l10n.t('**Last Execution:** {0} documents returned', resultContext.documentCount);
+            queryContext += l10n.t('**Last Results:** {0} documents returned', resultContext.documentCount) + '\n';
             if (resultContext.requestCharge) {
-                queryContext += l10n.t(', {0} RUs consumed', resultContext.requestCharge.toFixed(2));
-            }
-            queryContext += '\n';
-
-            // Include simplified schema for user reference
-            if (resultContext.schema) {
-                queryContext +=
-                    l10n.t(
-                        '**Inferred Schema:** {0}',
-                        JSON.stringify(this.simplifySchemaForLLM(resultContext.schema)),
-                    ) + '\n';
+                queryContext += l10n.t('**Request Charge:** {0} RUs', resultContext.requestCharge.toFixed(2)) + '\n';
             }
         }
-        queryContext += `\n`;
+        queryContext += '\n';
 
         return (
             `${queryContext}` +
             l10n.t('**Query:**') +
             `\n\`\`\`sql\n${currentQuery}\n\`\`\`\n\n` +
-            l10n.t('**Explanation:**') +
-            `\n${explanation}`
+            `${explanation}` +
+            '\n\n'
         );
     }
 
@@ -754,13 +737,8 @@ export class CosmosDbOperationsService {
         },
         additionalContext?: string,
     ): Promise<string> {
-        // Get available language models
-        const models = await getAvailableLanguageModels();
-        if (models.length === 0) {
-            throw new Error(l10n.t('No language model available'));
-        }
-
-        const model = models[0];
+        // Resolve the user's preferred Copilot model (or fall back to the first available).
+        const model = await getSelectedModel();
 
         // Build user content (payload) - separated from system instructions
         let contextInfo = '';
@@ -829,6 +807,8 @@ export class CosmosDbOperationsService {
             source?: string;
             /** The NL2Query operation type: 'generateQuery', 'editQuery', or 'explainQuery' */
             operation?: string;
+            /** Explicit connection to use for schema lookup and sampling. Falls back to getActiveConnection(). */
+            connection?: NoSqlQueryConnection;
         },
     ): Promise<string>;
     public async generateQueryWithLLM(
@@ -844,6 +824,7 @@ export class CosmosDbOperationsService {
             additionalContext?: string;
             source?: string;
             operation?: string;
+            connection?: NoSqlQueryConnection;
         },
     ): Promise<{ query: string; explanation: string }>;
     public async generateQueryWithLLM(
@@ -859,42 +840,56 @@ export class CosmosDbOperationsService {
             additionalContext?: string;
             source?: string;
             operation?: string;
+            connection?: NoSqlQueryConnection;
         },
     ): Promise<string | { query: string; explanation: string }> {
-        const {
-            modelId,
-            historyContext,
-            withExplanation,
-            cancellationToken,
-            onProgress,
-            onConfirm,
-            additionalContext,
-        } = options ?? {};
+        const { modelId, withExplanation, cancellationToken, onProgress, onConfirm, additionalContext } = options ?? {};
         const source = options?.source;
         const operation = options?.operation;
 
-        const models = await getAvailableLanguageModels(modelId);
-        if (models.length === 0) {
+        const model = await getSelectedModel({ modelId }).catch((err) => {
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.noLanguageModel', (ctx) => {
                 ctx.errorHandling.suppressDisplay = true;
                 ctx.telemetry.properties.caller = 'generateQuery';
             });
-            throw new Error(l10n.t('No language model available. Please ensure you have access to Copilot.'));
+            throw err;
+        });
+
+        // If there is a schema already saved in SchemaFileStorage (from the toolbar
+        // or a previous sampling run), include it in the initial context so the LLM
+        // can use it without needing to call the sampling tool.
+        let cachedSchema: string | undefined;
+        const connection = options?.connection ?? this.getActiveConnection();
+
+        // Derive history context from the connection if not explicitly provided
+        const historyContext =
+            options?.historyContext ??
+            (connection
+                ? this.getQueryHistoryForContainer(
+                      connection.azureMetadata?.accountId,
+                      connection.databaseId,
+                      connection.containerId,
+                  )
+                : undefined);
+        if (connection) {
+            try {
+                const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
+                const stored = await SchemaFileStorage.getInstance().readSchema(schemaId);
+                if (stored) {
+                    cachedSchema = stored;
+                }
+            } catch {
+                // Best-effort — proceed without cached schema.
+            }
         }
-
-        // Use specified model or first available (preferred model is moved to front by getAvailableLanguageModels)
-        const model = models[0];
-
-        // Load query language reference for comprehensive syntax guidance
-        const queryLanguageRef = CosmosDbOperationsService.getQueryLanguageReference();
 
         // Build user content (payload) - separated from system instructions
         const userPayload: QueryGenerationPayload = {
             userPrompt,
             currentQuery: currentQuery || undefined,
             historyContext,
-            languageReference: queryLanguageRef || undefined,
             additionalContext,
+            cachedSchema,
         };
         const userContent = buildQueryGenerationUserContent(userPayload);
 
@@ -1032,7 +1027,7 @@ export class CosmosDbOperationsService {
                 // Invoke our own tool directly so we can show custom confirmation
                 // (onConfirm), track telemetry, report progress, and cache the schema.
                 if (toolCall.name === SAMPLE_DATA_TOOL_NAME) {
-                    const connection = this.getActiveConnection();
+                    const connection = options?.connection ?? this.getActiveConnection();
                     if (connection) {
                         if (onConfirm) {
                             const confirmed = await onConfirm(l10n.t(SAMPLE_DATA_CONFIRMATION_MESSAGE));
@@ -1064,7 +1059,7 @@ export class CosmosDbOperationsService {
                         const schemaSamplingStart = Date.now();
                         let result: SampleSchemaResult;
                         try {
-                            result = await sampleContainerSchema(connection);
+                            result = await sampleAndPersistContainerSchema(connection);
                         } catch (error) {
                             const errMsg = parseError(error).message;
                             ext.outputChannel.error(
@@ -1112,7 +1107,7 @@ export class CosmosDbOperationsService {
                         // Cache the sampled schema in query history so subsequent
                         // LLM calls won't need to re-sample.
                         this.recordSampledSchema(
-                            connection.accountId,
+                            connection?.azureMetadata?.accountId,
                             connection.databaseId,
                             connection.containerId,
                             result.sampleQuery,
@@ -1210,8 +1205,29 @@ export class CosmosDbOperationsService {
         });
 
         if (withExplanation) {
-            // Parse JSON response
-            const result = JSON.parse(responseText) as { query: string; explanation: string; comments?: string };
+            // Extract and parse JSON payload. The model sometimes prepends narrative
+            // text before the JSON object, so use `extractJsonObject` to find the
+            // outermost valid JSON rather than calling JSON.parse on the raw text.
+            const jsonText = extractJsonObject(responseText);
+            if (!jsonText) {
+                void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
+                    ctx.errorHandling.suppressDisplay = true;
+                    ctx.telemetry.properties.reason = 'noJsonObject';
+                });
+                throw new Error(l10n.t('Invalid LLM response: could not parse JSON payload'));
+            }
+            const result = JSON.parse(jsonText) as {
+                query: string;
+                explanation: string;
+                comments?: string;
+                error?: string;
+            };
+
+            // If the LLM explicitly signaled an error, throw immediately
+            if (result.error) {
+                throw new QueryGenerationRefusedError(result.error);
+            }
+
             if (!result.query || typeof result.query !== 'string') {
                 void callWithTelemetryAndErrorHandling('cosmosDB.ai.invalidLlmResponse', (ctx) => {
                     ctx.errorHandling.suppressDisplay = true;
@@ -1231,10 +1247,16 @@ export class CosmosDbOperationsService {
             };
         }
 
+        // Plain text path: check if the LLM signaled an error
+        const cleanedResponse = this.cleanupQueryResponse(responseText);
+        if (cleanedResponse.startsWith('ERROR:')) {
+            throw new QueryGenerationRefusedError(cleanedResponse.slice('ERROR:'.length).trim());
+        }
+
         const schemaSamplingComment = schemaSamplingExecuted
             ? `-- ${l10n.t('Schema sampling tool was executed. Cost: {0} RUs', schemaSamplingRUs.toFixed(2))}\n`
             : '';
-        return schemaSamplingComment + this.cleanupQueryResponse(responseText);
+        return schemaSamplingComment + cleanedResponse;
     }
 
     /**

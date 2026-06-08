@@ -6,11 +6,13 @@
 Converts the specified datetime string to ticks (100-nanosecond intervals since Unix epoch).
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name       | Type   | Description        |
+| ---------- | ------ | ------------------ |
 | `datetime` | string | A datetime string. |
 
 ## Return Value
+
 Returns a numeric value (ticks).
 
 ---

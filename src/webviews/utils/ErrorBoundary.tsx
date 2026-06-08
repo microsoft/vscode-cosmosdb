@@ -6,7 +6,6 @@
 import { Link, makeStyles } from '@fluentui/react-components';
 import * as l10n from '@vscode/l10n';
 import React, { useCallback } from 'react';
-import { useQueryEditorDispatcher } from '../cosmosdb/QueryEditor/state/QueryEditorContext';
 import { type BaseContextProvider } from './context/BaseContextProvider';
 
 // Error boundary component must be a class component in order to catch errors (with componentDidCatch and
@@ -27,7 +26,7 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ style, children, p
         [provider],
     );
     return (
-        <ErrorBoundaryComponent style={style} onError={errorHandler}>
+        <ErrorBoundaryComponent style={style} onError={errorHandler} provider={provider}>
             {children}
         </ErrorBoundaryComponent>
     );
@@ -42,18 +41,18 @@ const useStyles = makeStyles({
     },
 });
 
-const ErrorDisplay: React.FC<{ message: string | undefined; details: string | null | undefined }> = ({
-    message,
-    details,
-}) => {
-    const dispatcher = useQueryEditorDispatcher();
+const ErrorDisplay: React.FC<{
+    message: string | undefined;
+    details: string | null | undefined;
+    provider: BaseContextProvider;
+}> = ({ message, details, provider }) => {
     const styles = useStyles();
     return (
         <div className={styles.container}>
             <h1>{l10n.t('An unexpected error occurred')}</h1>
             <p>
                 {l10n.t('Please try again. If the error persists, please')}{' '}
-                <Link onClick={() => void dispatcher.executeReportIssueCommand()}>{l10n.t('report the issue')}</Link>
+                <Link onClick={() => void provider.executeReportIssueCommand()}>{l10n.t('report the issue')}</Link>
             </p>
             <div className={styles.details}>
                 <pre>{message}</pre>
@@ -72,6 +71,7 @@ type ErrorBoundaryState = {
 type ErrorBoundaryComponentProps = {
     children: React.ReactNode;
     style?: React.CSSProperties;
+    provider: BaseContextProvider;
     onError?: (message: string, stack: string | undefined, componentStack: string | null | undefined) => void;
 };
 
@@ -95,7 +95,13 @@ class ErrorBoundaryComponent extends React.Component<ErrorBoundaryComponentProps
 
     render(): React.ReactNode {
         if (this.state.hasError) {
-            return <ErrorDisplay message={this.state.error?.message} details={this.state.errorInfo?.componentStack} />;
+            return (
+                <ErrorDisplay
+                    message={this.state.error?.message}
+                    details={this.state.errorInfo?.componentStack}
+                    provider={this.props.provider}
+                />
+            );
         } else {
             return <div style={this.props.style}>{this.props.children}</div>;
         }

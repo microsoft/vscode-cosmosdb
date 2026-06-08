@@ -221,4 +221,3 @@ npx vitest run tests/parser/parser.test.ts
 If a future refactor changes parse shape for a valid query, treat
 that as a parity regression unless the native C++ grammar or
 backend tests changed first.
-

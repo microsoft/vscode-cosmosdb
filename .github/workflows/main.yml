@@ -2,7 +2,7 @@ name: Node PR Lint, Build and Test
 
 permissions:
     contents: read
-    pull-requests: read
+    pull-requests: write
 
 on:
     # Trigger when manually run
@@ -105,7 +105,7 @@ jobs:
             - name: 🌍 Localize
               run: npm run l10n:check
 
-            - name: � Verify External Skills
+            - name: 🔍 Verify External Skills
               shell: bash
               run: |
                   cp -r skills/ skills-backup/
@@ -120,7 +120,7 @@ jobs:
                   rm -rf skills/
                   mv skills-backup/ skills/
 
-            - name: �🔍 Lint
+            - name: 🧹 Lint
               run: npm run lint
 
             - name: ✨ Prettier
@@ -200,12 +200,11 @@ jobs:
 
             - name: 🧪 Unit Tests
               id: unit-tests
-              continue-on-error: true
               run: npm run vitest
 
             - name: 🧪 Integration Tests
               id: integration-tests
-              continue-on-error: true
+              if: ${{ !cancelled() }}
               run: |
                   exit_code=1
                   for i in 1 2 3; do
@@ -227,109 +226,101 @@ jobs:
                   ARTIFACT_NAME: ${{ steps.verify-vsix.outputs.artifact_name }}
                   ARTIFACT_URL: ${{ steps.upload-vsix.outputs.artifact-url }}
                   GH_TOKEN: ${{ github.token }}
-              shell: pwsh
+                  UNIT_TEST_RESULT: ${{ steps.unit-tests.outcome }}
+                  INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
+                  SERVER_URL: ${{ github.server_url }}
+                  REPO: ${{ github.repository }}
+                  SHA: ${{ github.sha }}
+                  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  PR_TITLE: ${{ github.event.pull_request.title }}
+              shell: bash
               run: |
                   # Only generate summary if VSIX verification completed
-                  if ($env:PACKAGE_VERSION) {
-                      # Determine test results
-                      $unitTestResult = "${{ steps.unit-tests.outcome }}"
-                      $integrationTestResult = "${{ steps.integration-tests.outcome }}"
+                  if [ -z "${PACKAGE_VERSION:-}" ]; then
+                      echo "⚠️ Skipping job summary - VSIX verification did not complete"
+                      exit 0
+                  fi
 
-                      $unitTestIcon = if ($unitTestResult -eq "success") { "✅" } else { "❌" }
-                      $integrationTestIcon = if ($integrationTestResult -eq "success") { "✅" } else { "❌" }
+                  # Icons
+                  unit_icon=$( [ "$UNIT_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
+                  int_icon=$( [ "$INTEGRATION_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
 
-                      $overallStatus = if ($unitTestResult -eq "success" -and $integrationTestResult -eq "success") {
-                          "## ✅ Build Status`nAll checks completed successfully!"
-                      } else {
-                          "## ❌ Build Status`nSome checks failed. Please review the logs."
-                      }
+                  # Commit link
+                  short_sha="${SHA:0:7}"
+                  commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
 
-                      # Build commit + PR markdown links
-                      $serverUrl = "${{ github.server_url }}"
-                      $repo = "${{ github.repository }}"
-                      $sha = "${{ github.sha }}"
-                      $shortSha = $sha.Substring(0, 7)
-                      $commitLink = "[``$shortSha``]($serverUrl/$repo/commit/$sha)"
+                  # Resolve PR info: prefer the pull_request event payload, otherwise
+                  # use `gh pr view` by branch name (works for push events too).
+                  if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+                      pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                          --json number,title 2>/dev/null) || true
+                      if [ -n "$pr_info" ]; then
+                          PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+                          PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
+                          echo "ℹ️ Found PR #${PR_NUMBER}: ${PR_TITLE}"
+                      else
+                          echo "ℹ️ No open PR found for branch '${BRANCH_NAME}'"
+                      fi
+                  fi
 
-                      # Resolve PR info: prefer the pull_request event payload, otherwise
-                      # ask the API which PR(s) contain this commit (works for push runs).
-                      $prNumber = "${{ github.event.pull_request.number }}"
-                      $prTitle = @'
-                  ${{ github.event.pull_request.title }}
-                  '@
-                      if (-not $prNumber) {
-                          # /commits/{sha}/pulls is eventually consistent — the PR <-> commit
-                          # association can lag a few seconds after a push. Retry briefly.
-                          $headers = @{
-                              Authorization          = "Bearer $env:GH_TOKEN"
-                              Accept                 = 'application/vnd.github+json'
-                              'X-GitHub-Api-Version' = '2022-11-28'
-                              'User-Agent'           = 'vscode-cosmosdb-ci'
-                          }
-                          $apiUrl = "${serverUrl}/api/v3/repos/$repo/commits/$sha/pulls"
-                          if ($serverUrl -eq 'https://github.com') {
-                              $apiUrl = "https://api.github.com/repos/$repo/commits/$sha/pulls"
-                          }
+                  # Source section
+                  source_section="## 🔗 Source
+                  - **Commit:** ${commit_link}"
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      source_section="${source_section}
+                  - **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
+                  fi
 
-                          for ($attempt = 1; $attempt -le 3; $attempt++) {
-                              try {
-                                  $prs = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
-                                  $openPr = @($prs | Where-Object { $_.state -eq 'open' })[0]
-                                  if ($openPr) {
-                                      $prNumber = "$($openPr.number)"
-                                      $prTitle = $openPr.title
-                                      break
-                                  }
-                                  Write-Output "ℹ️ Attempt ${attempt}: no open PR found for $sha yet."
-                              } catch {
-                                  Write-Output "⚠️ Attempt ${attempt}: PR lookup failed: $_"
-                              }
-                              if ($attempt -lt 3) { Start-Sleep -Seconds 3 }
-                          }
-                      }
+                  # Overall status
+                  if [ "$UNIT_TEST_RESULT" = "success" ] && [ "$INTEGRATION_TEST_RESULT" = "success" ]; then
+                      overall_status="## ✅ Build Status
+                  All checks completed successfully!"
+                  else
+                      overall_status="## ❌ Build Status
+                  Some checks failed. Please review the logs."
+                  fi
 
-                      $prLine = if ($prNumber) {
-                          # Escape characters that would break markdown link text
-                          $prTitleEscaped = $prTitle -replace '\\', '\\' -replace '\]', '\]'
-                          "- **Pull Request:** [#$prNumber $prTitleEscaped]($serverUrl/$repo/pull/$prNumber)"
-                      } else {
-                          $null
-                      }
-
-                      $sourceInfo = @(
-                          "## 🔗 Source"
-                          "- **Commit:** $commitLink"
-                      )
-                      if ($prLine) { $sourceInfo += $prLine }
-                      $sourceSection = $sourceInfo -join "`n"
-
-                      $summary = @"
+                  # Write summary
+                  cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
                   # 🎉 Build Summary
 
-                  $sourceSection
+                  ${source_section}
 
                   ## 📦 Package Information
-                  - **Version:** $env:PACKAGE_VERSION
-                  - **Preview:** $env:PACKAGE_PREVIEW
-                  - **VSIX File:** $env:VSIX_FILE
-                  - **VSIX Size:** $env:VSIX_SIZE MB
-                  - **Artifact:** [$env:ARTIFACT_NAME.zip]($env:ARTIFACT_URL)
+                  - **Version:** ${PACKAGE_VERSION}
+                  - **Preview:** ${PACKAGE_PREVIEW}
+                  - **VSIX File:** ${VSIX_FILE}
+                  - **VSIX Size:** ${VSIX_SIZE} MB
+                  - **Artifact:** [${ARTIFACT_NAME}.zip](${ARTIFACT_URL})
 
                   ## 🧪 Test Results
-                  - **Unit Tests:** $unitTestIcon $unitTestResult
-                  - **Integration Tests:** $integrationTestIcon $integrationTestResult
+                  - **Unit Tests:** ${unit_icon} ${UNIT_TEST_RESULT}
+                  - **Integration Tests:** ${int_icon} ${INTEGRATION_TEST_RESULT}
 
-                  $overallStatus
-                  "@
+                  ${overall_status}
+                  SUMMARY_EOF
 
-                      $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+                  echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
-                      # Fail the job if any tests failed
-                      if ($unitTestResult -ne "success" -or $integrationTestResult -ne "success") {
-                          exit 1
-                      }
-                      exit 0
-                  } else {
-                      Write-Output "⚠️ Skipping job summary - VSIX verification did not complete"
-                      exit 0
-                  }
+                  # Post (or update) a PR comment if we found a PR.
+                  # Fork PRs run with a read-only GITHUB_TOKEN regardless of the
+                  # workflow's declared permissions, so `gh pr comment` will fail
+                  # with "Resource not accessible by integration". Treat any
+                  # failure here as a warning so it does not fail the job.
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      if gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")" \
+                              --edit-last 2>/dev/null \
+                          || gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+                              --body "$(cat "$GITHUB_STEP_SUMMARY")" 2>/dev/null; then
+                          echo "✅ PR #${PR_NUMBER} comment posted"
+                      else
+                          echo "::warning::Unable to post PR comment on #${PR_NUMBER} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+                      fi
+                  fi
+
+                  # Fail the job if any tests failed
+                  if [ "$UNIT_TEST_RESULT" != "success" ] || [ "$INTEGRATION_TEST_RESULT" != "success" ]; then
+                      exit 1
+                  fi

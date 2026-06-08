@@ -53,12 +53,23 @@ export class QuerySessionResult {
             throw new Error(l10n.t('Results for page {pageNumber} already exists', { pageNumber: `${pageNumber}` }));
         }
 
+        let indexMetrics = response.indexMetrics;
+        // empty string, null, undefined
+        if (!indexMetrics) {
+            indexMetrics = '{}';
+        }
+
+        // If metrics are empty and previous page has metrics, it means they didn't change and we can reuse them
+        if (indexMetrics === '{}' && this.queryResults.has(pageNumber - 1)) {
+            indexMetrics = this.queryResults.get(pageNumber - 1)?.indexMetrics ?? '{}';
+        }
+
         this.queryResults.set(pageNumber, {
             activityId: response.activityId,
             documents: response.resources,
             iteration: pageNumber,
             metadata: this.metadata,
-            indexMetrics: response.indexMetrics,
+            indexMetrics: indexMetrics,
             // Cosmos DB library has wrong type definition
             queryMetrics: (response.queryMetrics as unknown as QueryMetrics[])['0'],
             requestCharge: response.requestCharge,

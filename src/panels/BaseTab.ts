@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import * as l10n from '@vscode/l10n';
 import crypto from 'crypto';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
 import { TelemetryContext } from '../Telemetry';
@@ -22,7 +22,7 @@ export class BaseTab {
     protected disposables: vscode.Disposable[] = [];
 
     protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
-        this.id = uuid();
+        this.id = crypto.randomUUID();
         this.start = Date.now();
         this.telemetryContext = new TelemetryContext(viewType);
 
@@ -73,7 +73,6 @@ export class BaseTab {
                 .toString(true);
 
         const srcUri = isProduction || !devServer ? uri(filename) : `${DEV_SERVER_HOST}/${filename}`;
-        const reactPreambleUri = !isProduction && devServer ? `${DEV_SERVER_HOST}/@react-refresh` : null;
 
         const csp = (
             isProduction
@@ -82,7 +81,7 @@ export class BaseTab {
                       `default-src ${cspSource};`,
                       `script-src ${cspSource} 'nonce-${nonce}';`,
                       `style-src ${cspSource} 'unsafe-inline';`,
-                      `font-src ${cspSource};`,
+                      `font-src ${cspSource} data:;`,
                       `worker-src ${cspSource} blob:;`,
                       `img-src ${cspSource} data:;`,
                   ]
@@ -92,7 +91,7 @@ export class BaseTab {
                       `style-src ${cspSource} ${DEV_SERVER_HOST} 'unsafe-inline';`,
                       `script-src ${cspSource} ${DEV_SERVER_HOST} 'nonce-${nonce}' 'unsafe-eval';`,
                       `connect-src ${cspSource} ${DEV_SERVER_HOST} ws:;`,
-                      `font-src ${cspSource} ${DEV_SERVER_HOST};`,
+                      `font-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                       `worker-src ${cspSource} ${DEV_SERVER_HOST} blob:;`,
                       `img-src ${cspSource} ${DEV_SERVER_HOST} data:;`,
                   ]
@@ -102,30 +101,13 @@ export class BaseTab {
             title: this.panel.title,
             csp,
             srcUri,
-            reactPreambleUri,
             viewType: this.viewType,
             nonce,
         });
     }
 
-    private template(params: {
-        csp: string;
-        viewType: string;
-        srcUri: string;
-        reactPreambleUri: string | null;
-        title: string;
-        nonce: string;
-    }) {
-        const preamble = params.reactPreambleUri
-            ? `
-    <script type="module" nonce="${params.nonce}">
-      import RefreshRuntime from "${params.reactPreambleUri}";
-      RefreshRuntime.injectIntoGlobalHook(window);
-      window.$RefreshReg$ = () => {};
-      window.$RefreshSig$ = () => (type) => type;
-      window.__vite_plugin_react_preamble_installed__ = true;
-    </script>`
-            : '';
+    private template(params: { csp: string; viewType: string; srcUri: string; title: string; nonce: string }) {
+        const loadingLabel = l10n.t('Loading…');
         return `
 <!DOCTYPE html>
 <html lang="en">
@@ -134,16 +116,49 @@ export class BaseTab {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${params.title}</title>
     <meta http-equiv="Content-Security-Policy" content="${params.csp}" />
+    <style>
+      html, body, #root { height: 100%; margin: 0; }
+      .initial-loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: var(--vscode-foreground);
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+      }
+      .initial-loader__spinner {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 3px solid var(--vscode-progressBar-background, var(--vscode-foreground));
+        border-top-color: transparent;
+        animation: initial-loader-spin 1s linear infinite;
+      }
+      .initial-loader__label { opacity: 0.8; }
+      @keyframes initial-loader-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .initial-loader__spinner { animation-duration: 2.5s; }
+      }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="initial-loader" role="status" aria-live="polite">
+        <div class="initial-loader__spinner" aria-hidden="true"></div>
+        <div class="initial-loader__label">${loadingLabel}</div>
+      </div>
+    </div>
     <script nonce="${params.nonce}">
       globalThis.l10n_bundle = ${
           // eslint-disable-next-line no-restricted-syntax
           JSON.stringify(vscode.l10n.bundle ?? {})
       };
-    </script>${preamble}
+    </script>
     <script type="module" nonce="${params.nonce}">
       import { render } from "${params.srcUri}";
       render("${params.viewType}", acquireVsCodeApi());

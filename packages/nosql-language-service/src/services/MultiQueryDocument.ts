@@ -100,16 +100,28 @@ export function parseMultiQueryDocument(text: string): MultiQueryDocument {
     return new MultiQueryDocumentImpl(regions);
 }
 
+/**
+ * Build a region with a lazily-computed `parseResult`. Parsing only happens
+ * the first time `parseResult` is read, then it is memoized. This keeps
+ * `parseMultiQueryDocument` cheap for callers that only need region
+ * boundaries (e.g. cursor tracking, fold computation).
+ */
 function createRegion(index: number, text: string, startOffset: number, endOffset: number): QueryRegion {
-    const trimmed = text.trim();
-    const parseResult = trimmed.length > 0 ? parse(text) : null;
+    let computed = false;
+    let cached: ParseResult | null = null;
 
     return {
         index,
         text,
         startOffset,
         endOffset,
-        parseResult,
+        get parseResult(): ParseResult | null {
+            if (!computed) {
+                cached = text.trim().length > 0 ? parse(text) : null;
+                computed = true;
+            }
+            return cached;
+        },
     };
 }
 
@@ -146,4 +158,3 @@ class MultiQueryDocumentImpl implements MultiQueryDocument {
         return region.startOffset + localOffset;
     }
 }
-

@@ -6,11 +6,13 @@
 Returns the corresponding angle in degrees for an angle specified in radians.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
+
+| Name      | Type    | Description       |
+| --------- | ------- | ----------------- |
 | `radians` | numeric | Angle in radians. |
 
 ## Return Value
+
 Returns degrees (numeric).
 
 ---

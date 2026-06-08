@@ -188,9 +188,7 @@ describe('SqlLanguageService with multiQuery', () => {
             expect(hover).not.toBeNull();
             expect(hover!.contents.length).toBeGreaterThan(0);
             // Range should be in document coordinates
-            if (hover!.range) {
-                expect(hover!.range.startOffset).toBeGreaterThanOrEqual(17);
-            }
+            expect(hover!.range?.startOffset).toBeGreaterThanOrEqual(17);
         });
     });
 
@@ -220,6 +218,35 @@ describe('SqlLanguageService with multiQuery', () => {
             expect(region!.index).toBe(1);
         });
     });
+
+    describe('stripComments', () => {
+        it('removes line comments', () => {
+            expect(service.stripComments('-- get all\nSELECT * FROM c')).toBe('SELECT * FROM c');
+        });
+
+        it('removes block comments', () => {
+            expect(service.stripComments('SELECT /* fields */ * FROM c')).toBe('SELECT * FROM c');
+        });
+
+        it('removes inline line comment at end', () => {
+            expect(service.stripComments('SELECT * FROM c -- inline comment')).toBe('SELECT * FROM c');
+        });
+
+        it('preserves comments inside string literals', () => {
+            expect(service.stripComments("SELECT '-- not a comment' FROM c")).toBe("SELECT '-- not a comment' FROM c");
+        });
+
+        it('returns empty string for comment-only input', () => {
+            expect(service.stripComments('-- just a comment')).toBe('');
+            expect(service.stripComments('/* block only */')).toBe('');
+        });
+
+        it('handles multi-line queries with comments', () => {
+            const input = '-- title\nSELECT *\n/* pick table */\nFROM c';
+            const result = service.stripComments(input);
+            expect(result).toBe('SELECT *\nFROM c');
+        });
+    });
 });
 
 // ========================== Backward compatibility ============================
@@ -241,4 +268,3 @@ describe('SqlLanguageService without multiQuery (default)', () => {
         expect(result.ast).toBeDefined();
     });
 });
-

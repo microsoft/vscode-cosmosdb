@@ -6,11 +6,13 @@
 Returns a Boolean indicating if the type of the value is an array.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `expression` | any | Any expression. |
+
+| Name         | Type | Description     |
+| ------------ | ---- | --------------- |
+| `expression` | any  | Any expression. |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ---

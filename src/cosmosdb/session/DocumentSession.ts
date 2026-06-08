@@ -18,11 +18,11 @@ import { callWithTelemetryAndErrorHandling, type IActionContext } from '@microso
 import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
-
 import { ext } from '../../extensionVariables';
 import { extractPartitionKey } from '../../utils/document';
 import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
+import { resolveEffectivePriorityLevel } from '../priorityLevel';
 import { type CosmosDBRecord, type CosmosDBRecordIdentifier } from '../types/queryResult';
 import { withClaimsChallengeHandling } from '../withClaimsChallengeHandling';
 
@@ -200,8 +200,9 @@ export async function createDocument(
         context.errorHandling.rethrow = true;
         setDocumentTelemetryProperties(context, connection);
 
+        const priorityLevel = resolveEffectivePriorityLevel(connection);
         const response = await withContainer(connection, (container) =>
-            container.items.create<ItemDefinition>(document, { abortSignal: signal }),
+            container.items.create<ItemDefinition>(document, { abortSignal: signal, priorityLevel }),
         );
 
         if (!response?.resource) {
@@ -240,9 +241,11 @@ export async function replaceDocument(
             throw new Error(l10n.t('Item id is required'));
         }
 
+        const priorityLevel = resolveEffectivePriorityLevel(connection);
         const response = await withContainer(connection, (container) =>
             container.item(documentId.id!, documentId.partitionKey).replace(document, {
                 abortSignal: signal,
+                priorityLevel,
             }),
         );
 
@@ -281,9 +284,11 @@ export async function deleteDocument(
             throw new Error(l10n.t('Item id is required'));
         }
 
+        const priorityLevel = resolveEffectivePriorityLevel(connection);
         const response = await withContainer(connection, (container) =>
             container.item(documentId.id!, documentId.partitionKey).delete({
                 abortSignal: signal,
+                priorityLevel,
             }),
         );
 
@@ -356,12 +361,14 @@ async function readWithFallback(
     signal?: AbortSignal,
 ): Promise<CosmosDBRecord | undefined> {
     const timeoutMs = 4000;
+    const priorityLevel = resolveEffectivePriorityLevel(connection);
 
     let result: CosmosDBRecord | undefined;
     try {
         const readPromise = withContainer(connection, (container) =>
             container.item(documentId.id!, documentId.partitionKey).read<CosmosDBRecord>({
                 abortSignal: signal,
+                priorityLevel,
             }),
         );
         const response = await Promise.race([readPromise, rejectAfter(timeoutMs, 'Read operation timed out')]);
@@ -379,7 +386,7 @@ async function readWithFallback(
                 container.items
                     .query<CosmosDBRecord>(
                         { query: 'SELECT * FROM c WHERE c._rid = @rid', parameters: [{ name: '@rid', value: rid }] },
-                        { abortSignal: signal, bufferItems: true },
+                        { abortSignal: signal, bufferItems: true, priorityLevel },
                     )
                     .fetchAll(),
             );
@@ -434,6 +441,7 @@ async function processBulkDeleteBatch(connection: NoSqlQueryConnection, ids: Doc
 
     ext.outputChannel.appendLog(l10n.t('Deleting {count} document(s)', { count: ids.length }));
 
+    const priorityLevel = resolveEffectivePriorityLevel(connection);
     const promiseArray = await withContainer(connection, async (container) => {
         const promises: Promise<Array<BulkOperationResult & { documentId: DocumentId }>>[] = [];
         while (ids.length > 0 && !abortSignal.aborted) {
@@ -448,7 +456,7 @@ async function processBulkDeleteBatch(connection: NoSqlQueryConnection, ids: Doc
             );
             promises.push(
                 container.items
-                    .executeBulkOperations(operations, { abortSignal })
+                    .executeBulkOperations(operations, { abortSignal, priorityLevel })
                     .then((results) => results.map((r, i) => ({ ...r, documentId: chunk[i] }))),
             );
         }

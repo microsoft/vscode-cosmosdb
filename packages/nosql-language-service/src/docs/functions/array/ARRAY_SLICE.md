@@ -6,13 +6,15 @@
 Returns part of an array expression.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `array` | array | The array to slice. |
-| `start` | integer | 0-based start index. Negative values count from end. |
-| `length` | integer | Optional max number of elements. |
+
+| Name     | Type    | Description                                          |
+| -------- | ------- | ---------------------------------------------------- |
+| `array`  | array   | The array to slice.                                  |
+| `start`  | integer | 0-based start index. Negative values count from end. |
+| `length` | integer | Optional max number of elements.                     |
 
 ## Return Value
+
 Returns an array.
 
 ---

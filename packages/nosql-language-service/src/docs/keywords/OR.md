@@ -3,6 +3,7 @@
 Logical disjunction operator. Returns `true` when either operand is true.
 
 ## Syntax
+
 ```sql
 expr1 OR expr2
 ```
@@ -10,7 +11,7 @@ expr1 OR expr2
 ## Operator Precedence
 
 | Operator | Priority |
-|----------|----------|
+| -------- | -------- |
 | NOT      | 1        |
 | AND      | 2        |
 | **OR**   | **3**    |

@@ -6,12 +6,14 @@
 Returns a Boolean indicating whether two GeoJSON objects intersect.
 
 ## Parameters
-| Name | Type | Description |
-|------|------|-------------|
-| `geometry1` | GeoJSON | First geometry. |
+
+| Name        | Type    | Description      |
+| ----------- | ------- | ---------------- |
+| `geometry1` | GeoJSON | First geometry.  |
 | `geometry2` | GeoJSON | Second geometry. |
 
 ## Return Value
+
 Returns `true` or `false`.
 
 ---

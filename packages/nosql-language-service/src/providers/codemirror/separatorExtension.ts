@@ -10,12 +10,10 @@ import { type MultiQuerySeparatorDeps } from './types.js';
 const SEPARATOR_CLASS = 'cosmosdb-query-separator';
 
 function ensureSeparatorStyles(): void {
-     
-    const g = globalThis as any;
-    if (!g?.document?.createElement) return;
+    if (typeof document === 'undefined') return;
     const STYLE_ID = 'cosmosdb-multiquery-styles';
-    if (g.document.getElementById(STYLE_ID)) return;
-    const style = g.document.createElement('style');
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = [
         `.${SEPARATOR_CLASS} {`,
@@ -23,8 +21,7 @@ function ensureSeparatorStyles(): void {
         `  padding-bottom: 1em;`,
         `}`,
     ].join('\n');
-    g.document.head.appendChild(style);
-     
+    document.head.appendChild(style);
 }
 
 export function createMultiQuerySeparatorExtension(
@@ -71,4 +68,3 @@ export function createMultiQuerySeparatorExtension(
         decorations: (v: SeparatorPlugin) => v.decorations,
     });
 }
-

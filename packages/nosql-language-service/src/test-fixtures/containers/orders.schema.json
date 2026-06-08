@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "orders.schema.json",
+  "title": "Order",
+  "description": "A customer order with nested line items and shipping info. Partition key: customerId.",
+  "type": "object",
+  "required": ["id", "customerId", "status", "totalAmount", "createdAt", "items", "shipping", "_partitionKey"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique order identifier, e.g. \"order-0001\"",
+      "pattern": "^order-\\d+$"
+    },
+    "customerId": {
+      "type": "string",
+      "description": "Customer identifier, e.g. \"cust-042\"",
+      "pattern": "^cust-\\d+$"
+    },
+    "status": {
+      "type": "string",
+      "description": "Order lifecycle status",
+      "enum": ["pending", "processing", "shipped", "delivered", "cancelled"]
+    },
+    "totalAmount": {
+      "type": "number",
+      "description": "Sum of quantity × unitPrice for all items, rounded to 2 dp",
+      "minimum": 0
+    },
+    "createdAt": {
+      "type": "string",
+      "description": "ISO-8601 creation timestamp",
+      "format": "date-time"
+    },
+    "items": {
+      "type": "array",
+      "description": "Line items. Empty array on ~1% of documents (IS_DEFINED / ARRAY_LENGTH = 0 test).",
+      "items": {
+        "type": "object",
+        "required": ["productId", "name", "quantity", "unitPrice"],
+        "properties": {
+          "productId": { "type": "string" },
+          "name": { "type": "string" },
+          "quantity": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "unitPrice": { "type": "number", "minimum": 0.01 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "shipping": {
+      "type": "object",
+      "required": ["address"],
+      "properties": {
+        "address": {
+          "type": "object",
+          "required": ["street", "city", "state", "country", "zip"],
+          "properties": {
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "country": { "type": "string", "enum": ["US", "CA", "UK", "DE"] },
+            "zip": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "carrier": {
+          "type": ["string", "null"],
+          "description": "null when status is pending or processing",
+          "enum": ["FedEx", "UPS", "DHL", null]
+        },
+        "trackingNumber": {
+          "type": ["string", "null"],
+          "description": "null when carrier is null"
+        }
+      },
+      "additionalProperties": false
+    },
+    "discount": {
+      "type": ["number", "null"],
+      "description": "Discount percentage (5/10/15/20). null means no discount. One document has discount: 0 (not null) to test IS_NULL vs = 0.",
+      "enum": [0, 5, 10, 15, 20, null]
+    },
+    "_partitionKey": {
+      "type": "string",
+      "description": "Partition key — same value as customerId"
+    }
+  },
+  "additionalProperties": false,
+  "x-cosmosdb": {
+    "partitionKey": "/customerId",
+    "seedCount": 2500,
+    "trickyDocuments": [
+      { "index": 0, "note": "items: [] (empty array)" },
+      { "index": 1, "note": "shipping.carrier: null (nested IS_NULL test)" },
+      { "index": 2, "note": "same (customerId, createdAt) as index 3 (duplicate day)" },
+      { "index": 3, "note": "same (customerId, createdAt) as index 2 (duplicate day)" },
+      { "index": 4, "note": "discount: 0 (not null, explicitly zero)" },
+      { "index": 5, "note": "items with 10 entries (max, tests ARRAY_LENGTH > 5)" }
+    ]
+  }
+}

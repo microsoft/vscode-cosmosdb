@@ -28,4 +28,3 @@ export interface CompletionRequest {
     /** Known collection aliases from `FROM` clause (e.g. ["c", "t"]) — auto-detected if not provided */
     aliases?: string[];
 }
-

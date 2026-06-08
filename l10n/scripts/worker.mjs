@@ -14,4 +14,3 @@ parentPort.on('message', async (fileContents) => {
         parentPort.postMessage({ ok: false, error: err.message });
     }
 });
-

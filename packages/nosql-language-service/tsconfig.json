@@ -12,7 +12,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "DOM"],
 
     // Other
     "sourceMap": true,
@@ -24,8 +24,13 @@
     "declaration": true,
     "declarationDir": "dist/types",
     "declarationMap": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@cosmosdb/schema-analyzer": ["../schema-analyzer/src/index.ts"],
+      "@cosmosdb/schema-analyzer/*": ["../schema-analyzer/src/*.ts", "../schema-analyzer/src/*/index.ts"]
+    }
   },
+  "references": [{ "path": "../schema-analyzer" }],
   "include": ["src"],
   "exclude": ["node_modules", "dist", "tests", "**/*.test.ts"]
 }

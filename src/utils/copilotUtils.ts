@@ -6,13 +6,6 @@
 import * as vscode from 'vscode';
 
 /**
- * Master switch to control whether third-party (non-Copilot) language models are allowed.
- * When false, all model selection is restricted to `{ vendor: 'copilot' }`.
- * When true, all available models (including 3P) are returned.
- */
-const allow3pModels = false;
-
-/**
  * GitHub Copilot extension IDs
  *
  * Note: The main GitHub Copilot extension (GitHub.copilot) is not detectable via vscode.extensions.getExtension().
@@ -54,45 +47,22 @@ export async function areCopilotModelsAvailable(): Promise<boolean> {
 }
 
 /**
- * Returns the list of available language models, filtered by the {@link allow3pModels} switch.
- * When the switch is off only Copilot (1P) models are returned.
- *
- * If a `preferredModelId` is supplied, the matching model is returned first.
- * When the preferred model is not found in the list it is silently ignored and the
- * first model in the filtered list is used instead.
- */
-export async function getAvailableLanguageModels(preferredModelId?: string): Promise<vscode.LanguageModelChat[]> {
-    const selector: vscode.LanguageModelChatSelector = allow3pModels ? {} : { vendor: 'copilot' };
-    const models = await vscode.lm.selectChatModels(selector);
-
-    if (preferredModelId && models.length > 0) {
-        const preferredIndex = models.findIndex((m) => m.id === preferredModelId);
-        if (preferredIndex > 0) {
-            // Move the preferred model to the front so callers can just use models[0]
-            const [preferred] = models.splice(preferredIndex, 1);
-            models.unshift(preferred);
-        }
-        // If preferredIndex === -1, the model wasn't found — fall through to default order
-    }
-
-    return models;
-}
-
-/**
  * Checks if all requirements for AI features are met:
  * 1. AI features are not disabled by the user via the 'chat.disableAIFeatures' setting
- * 2. GitHub Copilot Chat extension is installed (required for chat participant)
- * 3. Copilot language models are available
+ * 2. Copilot language models are available
  *
- * Note: We use areCopilotModelsAvailable() as the primary check since the
- * GitHub.copilot extension is not detectable via getExtension().
+ * Note: We rely solely on areCopilotModelsAvailable() because neither the
+ * GitHub.copilot nor GitHub.copilot-chat extensions are reliably detectable via
+ * vscode.extensions.getExtension() across all VS Code distributions (e.g. when
+ * Copilot ships bundled with the editor). If `vscode.lm.selectChatModels`
+ * returns models for the `copilot` vendor, AI features are by definition usable.
  * @returns Promise<boolean> true if all requirements are met, false otherwise
  */
 export async function areAIFeaturesEnabled(): Promise<boolean> {
     if (isAIFeaturesDisabledBySetting()) {
         return false;
     }
-    return isCopilotChatExtensionInstalled() && (await areCopilotModelsAvailable());
+    return areCopilotModelsAvailable();
 }
 
 /**
@@ -147,7 +117,8 @@ async function checkAIFeaturesWithRetry(
  * @returns Disposable to unregister the listeners
  */
 export function onCopilotAvailabilityChanged(callback: (available: boolean) => void): vscode.Disposable {
-    // Track whether the extension was previously installed to detect install vs uninstall
+    // Track whether the chat extension was previously installed to detect install vs uninstall.
+    // Note: this is best-effort — Copilot may be bundled with VS Code and not detectable here.
     let wasExtensionInstalled = isCopilotChatExtensionInstalled();
 
     const extensionListener = vscode.extensions.onDidChange(() => {
@@ -167,5 +138,11 @@ export function onCopilotAvailabilityChanged(callback: (available: boolean) => v
         }
     });
 
-    return vscode.Disposable.from(extensionListener, configListener);
+    // Listen for language model changes (e.g., Copilot models becoming available after startup).
+    // This covers the case where the panel opens before Copilot has fully initialized.
+    const modelListener = vscode.lm.onDidChangeChatModels(() => {
+        void checkAIFeaturesWithRetry(callback, true);
+    });
+
+    return vscode.Disposable.from(extensionListener, configListener, modelListener);
 }

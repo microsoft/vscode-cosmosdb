@@ -6,6 +6,13 @@ on:
     types: [published]
   workflow_dispatch:
 
+# `peter-evans/create-pull-request` uses GITHUB_TOKEN to push the bot branch
+# and open the PR, so we need contents+pull-requests write. Explicit minimal
+# permissions (CodeQL actions/missing-workflow-permissions).
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   bump:
     name: 🔖 Bump prerelease version

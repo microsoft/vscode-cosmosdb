@@ -180,12 +180,11 @@ export async function waitForEmulator(timeoutMs: number = READY_TIMEOUT_MS): Pro
         agent: new https.Agent({ rejectUnauthorized: false }),
     });
 
-    // Polling loop — awaits are sequential by design; we can't parallelise
+    // Polling loop — awaits are sequential by design; we can't parallelize
     // a "wait until ready" probe.
-    /* eslint-disable no-await-in-loop */
-    /* oxlint-disable no-await-in-loop */
     while (Date.now() < deadline) {
         try {
+            // oxlint-disable-next-line no-await-in-loop
             await client.getDatabaseAccount();
             console.log(`[emulator] ready at ${E2E_EMULATOR_ENDPOINT}`);
             return;
@@ -195,8 +194,6 @@ export async function waitForEmulator(timeoutMs: number = READY_TIMEOUT_MS): Pro
         }
         await new Promise((r) => setTimeout(r, READY_POLL_INTERVAL_MS));
     }
-    /* eslint-enable no-await-in-loop */
-    /* oxlint-enable no-await-in-loop */
 
     throw new Error(
         `Cosmos DB emulator at ${E2E_EMULATOR_ENDPOINT} did not become ready within ${timeoutMs} ms (last probe: ${lastError})`,

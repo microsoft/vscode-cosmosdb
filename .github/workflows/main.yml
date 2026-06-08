@@ -4,7 +4,7 @@ permissions:
     contents: read
     pull-requests: write
     # Needed by the summary step to look up the conclusion of sibling
-    # workflows (e2e.yml, integration-tests.yml) for the same commit.
+    # workflows (e2e.yml, nosql-language-service.yml) for the same commit.
     actions: read
 
 on:
@@ -253,8 +253,8 @@ jobs:
                   # Tests skips when Lint failed. We don't want to mark those as ❌ in the table.
 
                   # ── Sibling workflow conclusions ─────────────────────────────
-                  # main.yml runs in parallel with e2e.yml and integration-tests.yml for the same commit. To surface
-                  # their results in this single summary, poll the Actions API for the run on this SHA.
+                  # main.yml runs in parallel with e2e.yml and nosql-language-service.yml for the same commit. To
+                  # surface their results in this single summary, poll the Actions API for the run on this SHA.
                   #
                   # Outcomes:
                   #   success / failure / cancelled — workflow finished with that conclusion
@@ -315,9 +315,9 @@ jobs:
                       esac
                   }
 
-                  echo "⏳ Waiting for sibling workflows (e2e, integration) to finish…"
+                  echo "⏳ Waiting for sibling workflows (e2e, nosql-language-service) to finish…"
                   E2E_RESULT=$(wait_for_workflow "e2e.yml" "E2E tests")
-                  NOSQL_INT_RESULT=$(wait_for_workflow "integration-tests.yml" "NoSQL integration tests")
+                  NOSQL_INT_RESULT=$(wait_for_workflow "nosql-language-service.yml" "NoSQL language-service integration")
                   echo "ℹ️ Sibling workflow results: e2e=${E2E_RESULT}, nosql-integration=${NOSQL_INT_RESULT}"
                   unit_icon=$(result_icon "$UNIT_TEST_RESULT")
                   int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
@@ -383,7 +383,7 @@ jobs:
                   ## 🧪 Test Results
                   - **Unit Tests:** ${unit_icon} ${UNIT_TEST_RESULT}
                   - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
-                  - **NoSQL Integration Tests:** ${nosql_icon} ${NOSQL_INT_RESULT}
+                  - **NoSQL language-service integration:** ${nosql_icon} ${NOSQL_INT_RESULT}
                   - **E2E Tests (Playwright + VS Code):** ${e2e_icon} ${E2E_RESULT}
 
                   ${overall_status}

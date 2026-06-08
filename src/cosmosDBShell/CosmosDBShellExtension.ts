@@ -70,11 +70,11 @@ export class CosmosDBShellExtension implements vscode.Disposable {
         await callWithTelemetryAndErrorHandling(
             'cosmosDB.cosmosDBShell.activate',
             (_activateContext: IActionContext) => {
-                const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
+                const shellInstalled: boolean = isCosmosDBShellInstalled();
                 vscode.commands.executeCommand(
                     'setContext',
                     'vscodeDatabases.cosmosDBShellSupportEnabled',
-                    isCosmosDBShellInstalled,
+                    shellInstalled,
                 );
 
                 // Initialize terminal context on activation
@@ -103,7 +103,7 @@ export class CosmosDBShellExtension implements vscode.Disposable {
 
                 registerCommandWithTreeNodeUnwrapping('cosmosDB.launchCosmosDBShell', connectCosmosDBShell);
 
-                if (isCosmosDBShellInstalled) {
+                if (shellInstalled) {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: activated.`);
                 } else {
                     ext.outputChannel.appendLine(`Cosmos DB Shell Extension: deactivated.`);
@@ -250,42 +250,97 @@ function hasRequiredDotNetSdk(dotnetPath?: string): boolean {
  * when the process exits with code 0.
  */
 async function installCosmosDBShellWithDotNetTool(dotnetPath?: string): Promise<boolean> {
-    return await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: l10n.t('Installing Cosmos DB Shell…'),
-            cancellable: true,
+    const result = await callWithTelemetryAndErrorHandling(
+        'cosmosDB.cosmosDBShell.install.tool',
+        async (telemetryContext: IActionContext) => {
+            telemetryContext.errorHandling.suppressDisplay = true;
+            telemetryContext.telemetry.properties.dotnetPathProvided = String(!!dotnetPath);
+            const startedAt = Date.now();
+            const outcome = await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: l10n.t('Installing Cosmos DB Shell…'),
+                    cancellable: true,
+                },
+                async (_progress, token) => {
+                    ext.outputChannel.show(true);
+                    const dotnetExe = dotnetPath ?? 'dotnet';
+                    ext.outputChannel.appendLine(`> ${dotnetExe} tool install --global CosmosDBShell --prerelease`);
+
+                    return await new Promise<{ success: boolean; exitCode: number | null; cancelled: boolean }>(
+                        (resolve) => {
+                            let cancelled = false;
+                            const proc = child.spawn(
+                                dotnetExe,
+                                ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'],
+                                { windowsHide: true, shell: false },
+                            );
+
+                            token.onCancellationRequested(() => {
+                                cancelled = true;
+                                proc.kill();
+                            });
+
+                            proc.stdout?.on('data', (data: Buffer) => {
+                                ext.outputChannel.append(data.toString('utf8'));
+                            });
+                            proc.stderr?.on('data', (data: Buffer) => {
+                                ext.outputChannel.append(data.toString('utf8'));
+                            });
+                            proc.on('error', (err) => {
+                                ext.outputChannel.appendLine(`Failed to start dotnet: ${err.message}`);
+                                resolve({ success: false, exitCode: null, cancelled });
+                            });
+                            proc.on('close', (code) => {
+                                ext.outputChannel.appendLine(`\nProcess exited with code ${code}.`);
+                                resolve({ success: code === 0, exitCode: code, cancelled });
+                            });
+                        },
+                    );
+                },
+            );
+            telemetryContext.telemetry.measurements.durationMs = Date.now() - startedAt;
+            telemetryContext.telemetry.properties.exitCode =
+                outcome.exitCode === null ? 'null' : String(outcome.exitCode);
+            telemetryContext.telemetry.properties.cancelled = String(outcome.cancelled);
+            telemetryContext.telemetry.properties.outcome = outcome.cancelled
+                ? 'cancelled'
+                : outcome.success
+                  ? 'success'
+                  : 'failure';
+            return outcome.success;
         },
-        async (_progress, token) => {
-            ext.outputChannel.show(true);
-            const dotnetExe = dotnetPath ?? 'dotnet';
-            ext.outputChannel.appendLine(`> ${dotnetExe} tool install --global CosmosDBShell --prerelease`);
+    );
+    return result ?? false;
+}
 
-            return await new Promise<boolean>((resolve) => {
-                const proc = child.spawn(dotnetExe, ['tool', 'install', '--global', 'CosmosDBShell', '--prerelease'], {
-                    windowsHide: true,
-                    shell: false,
-                });
-
-                token.onCancellationRequested(() => {
-                    proc.kill();
-                });
-
-                proc.stdout?.on('data', (data: Buffer) => {
-                    ext.outputChannel.append(data.toString('utf8'));
-                });
-                proc.stderr?.on('data', (data: Buffer) => {
-                    ext.outputChannel.append(data.toString('utf8'));
-                });
-                proc.on('error', (err) => {
-                    ext.outputChannel.appendLine(`Failed to start dotnet: ${err.message}`);
-                    resolve(false);
-                });
-                proc.on('close', (code) => {
-                    ext.outputChannel.appendLine(`\nProcess exited with code ${code}.`);
-                    resolve(code === 0);
-                });
-            });
+/**
+ * Fires a `cosmosDB.cosmosDBShell.install.prompt` telemetry event with the
+ * given prompt identifier and user selection. Used to measure the install
+ * funnel without depending on localized button labels.
+ */
+function reportInstallPromptOutcome(
+    promptKind:
+        | 'missingShell'
+        | 'installShell'
+        | 'installSdk'
+        | 'pathMisconfigured'
+        | 'reloadAfterInstall'
+        | 'installFailure',
+    selection: string,
+    extraProperties?: Record<string, string>,
+): void {
+    void callWithTelemetryAndErrorHandling(
+        'cosmosDB.cosmosDBShell.install.prompt',
+        (telemetryContext: IActionContext) => {
+            telemetryContext.errorHandling.suppressDisplay = true;
+            telemetryContext.telemetry.properties.promptKind = promptKind;
+            telemetryContext.telemetry.properties.selection = selection;
+            if (extraProperties) {
+                for (const [k, v] of Object.entries(extraProperties)) {
+                    telemetryContext.telemetry.properties[k] = v;
+                }
+            }
         },
     );
 }
@@ -308,6 +363,9 @@ async function promptToInstallCosmosDBShell(
         install,
         settings,
     );
+
+    const outcome = selection === install ? 'install' : selection === settings ? 'settings' : 'cancelled';
+    reportInstallPromptOutcome('installShell', outcome);
 
     if (selection === settings) {
         void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
@@ -338,6 +396,7 @@ async function installAndLaunchCosmosDBShell(
             l10n.t('Failed to install Cosmos DB Shell. See the output for details.'),
             showOutput,
         );
+        reportInstallPromptOutcome('installFailure', failureSelection === showOutput ? 'showOutput' : 'dismissed');
         if (failureSelection === showOutput) {
             ext.outputChannel.show(true);
         }
@@ -346,7 +405,7 @@ async function installAndLaunchCosmosDBShell(
 
     // On a brand-new install the user's PATH may not yet include `~/.dotnet/tools`
     // in the current VS Code session. If we still can't resolve the shell, ask to reload.
-    if (!isCosmosDBShellSupportEnabled()) {
+    if (!isCosmosDBShellInstalled()) {
         const reload = l10n.t('Reload Window');
         const reloadSelection = await vscode.window.showInformationMessage(
             l10n.t(
@@ -354,6 +413,7 @@ async function installAndLaunchCosmosDBShell(
             ),
             reload,
         );
+        reportInstallPromptOutcome('reloadAfterInstall', reloadSelection === reload ? 'reload' : 'cancelled');
         if (reloadSelection === reload) {
             void vscode.commands.executeCommand('workbench.action.reloadWindow');
         }
@@ -375,21 +435,39 @@ async function installAndLaunchCosmosDBShell(
  * user with its own recommended version instead.
  */
 async function tryInstallDotNetSdkViaExtension(): Promise<string | undefined> {
-    try {
-        await vscode.commands.executeCommand('dotnet.showAcquisitionLog');
-        const result = await vscode.commands.executeCommand<{ dotnetPath?: string } | undefined>(
-            'dotnet.acquireGlobalSDK',
-            {
-                version: REQUESTED_DOTNET_SDK_CHANNEL,
-                requestingExtensionId: ext.context.extension.id,
-                installType: 'global',
-            },
-        );
-        return result?.dotnetPath;
-    } catch (err) {
-        ext.outputChannel.appendLine(`dotnet.acquireGlobalSDK failed: ${String(err)}`);
-        return undefined;
-    }
+    const result = await callWithTelemetryAndErrorHandling(
+        'cosmosDB.cosmosDBShell.install.dotnetSdk',
+        async (telemetryContext: IActionContext) => {
+            telemetryContext.errorHandling.suppressDisplay = true;
+            telemetryContext.telemetry.properties.requestedChannel = REQUESTED_DOTNET_SDK_CHANNEL;
+            const startedAt = Date.now();
+            try {
+                await vscode.commands.executeCommand('dotnet.showAcquisitionLog');
+                const acquisition = await vscode.commands.executeCommand<{ dotnetPath?: string } | undefined>(
+                    'dotnet.acquireGlobalSDK',
+                    {
+                        version: REQUESTED_DOTNET_SDK_CHANNEL,
+                        requestingExtensionId: ext.context.extension.id,
+                        installType: 'global',
+                    },
+                );
+                telemetryContext.telemetry.measurements.durationMs = Date.now() - startedAt;
+                const dotnetPath = acquisition?.dotnetPath;
+                telemetryContext.telemetry.properties.pathReturned = String(!!dotnetPath);
+                telemetryContext.telemetry.properties.satisfiesMinSdk = dotnetPath
+                    ? String(hasRequiredDotNetSdk(dotnetPath))
+                    : 'false';
+                telemetryContext.telemetry.properties.outcome = dotnetPath ? 'success' : 'noPath';
+                return dotnetPath;
+            } catch (err) {
+                telemetryContext.telemetry.measurements.durationMs = Date.now() - startedAt;
+                telemetryContext.telemetry.properties.outcome = 'failure';
+                ext.outputChannel.appendLine(`dotnet.acquireGlobalSDK failed: ${String(err)}`);
+                throw err;
+            }
+        },
+    );
+    return result;
 }
 
 async function promptToInstallDotNetSdk(
@@ -413,6 +491,20 @@ async function promptToInstallDotNetSdk(
         downloadDotNet,
         settings,
     );
+
+    const outcome =
+        selection === installDotNetSdk
+            ? 'installSdk'
+            : selection === installDotNetTool
+              ? 'installTool'
+              : selection === downloadDotNet
+                ? 'downloadSdk'
+                : selection === settings
+                  ? 'settings'
+                  : 'cancelled';
+    reportInstallPromptOutcome('installSdk', outcome, {
+        installToolPresent: String(isDotNetInstallToolInstalled),
+    });
 
     if (selection === installDotNetSdk) {
         const dotnetPath = await tryInstallDotNetSdkViaExtension();
@@ -457,13 +549,19 @@ async function promptToResolveMissingCosmosDBShell(
             ),
             settings,
         );
+        reportInstallPromptOutcome('pathMisconfigured', selection === settings ? 'settings' : 'cancelled');
         if (selection === settings) {
             void vscode.commands.executeCommand('workbench.action.openSettings', 'cosmosDB.shell.path');
         }
         return;
     }
 
-    if (hasRequiredDotNetSdk()) {
+    const sdkOk = hasRequiredDotNetSdk();
+    reportInstallPromptOutcome('missingShell', sdkOk ? 'promptInstallShell' : 'promptInstallSdk', {
+        sdkSatisfiesMin: String(sdkOk),
+    });
+
+    if (sdkOk) {
         await promptToInstallCosmosDBShell(context, node);
     } else {
         await promptToInstallDotNetSdk(context, node);
@@ -471,9 +569,24 @@ async function promptToResolveMissingCosmosDBShell(
 }
 
 export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {
-    const isCosmosDBShellInstalled: boolean = isCosmosDBShellSupportEnabled();
+    const shellInstalled: boolean = isCosmosDBShellInstalled();
 
-    if (!isCosmosDBShellInstalled) {
+    // Telemetry: capture launch-shape signals as early as possible so they're attached even
+    // when the install/credential paths bail out before a terminal is created.
+    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+    const mcpPortSetting = SettingsService.getSetting<number>('cosmosDB.shell.MCP.port');
+    const mcpPort = (mcpPortSetting ?? 6128).toString();
+    const shellPathSetting = SettingsService.getSetting<string>('cosmosDB.shell.path');
+    context.telemetry.properties.shellInstalled = String(shellInstalled);
+    context.telemetry.properties.shellPathCustom = String(!!shellPathSetting?.trim());
+    context.telemetry.properties.mcpEnabled = String(mcpEnabled);
+    context.telemetry.properties.mcpPortDefault = String(mcpPortSetting === undefined || mcpPortSetting === 6128);
+    context.telemetry.properties.authKind = node ? getNodeAuthKind(node) : 'none';
+    context.telemetry.properties.hasNode = String(!!node);
+    context.telemetry.properties.containerScoped = String(!!node?.model.container);
+    context.telemetry.properties.terminalReused = 'false';
+
+    if (!shellInstalled) {
         await promptToResolveMissingCosmosDBShell(context, node);
         return;
     }
@@ -483,10 +596,8 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
         (terminal) => terminal.creationOptions.name === 'Cosmos DB Shell',
     );
 
-    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
-    const mcpPort = (SettingsService.getSetting<number>('cosmosDB.shell.MCP.port') ?? 6128).toString();
-
     const useMcp = mcpEnabled && !foundTerminal;
+    context.telemetry.properties.mcpUsedThisLaunch = String(useMcp);
     ext.outputChannel.appendLine(`MCP enabled: ${useMcp}, MCP port: ${mcpPort}`);
     let args: string[];
     if (!node) {
@@ -557,6 +668,7 @@ export async function launchCosmosDBShell(context: IActionContext, node?: NoSqlC
     // For Entra ID, provide a pre-fetched token as fallback if VisualStudioCodeCredential fails
     if (entraCredential) {
         const fallbackToken = await getCosmosDBShellToken(entraCredential, rawEndpoint);
+        context.telemetry.properties.fallbackTokenObtained = String(!!fallbackToken);
         if (fallbackToken) {
             env['COSMOSDB_SHELL_TOKEN'] = fallbackToken;
         }
@@ -585,10 +697,29 @@ function getGoToContainerCommand(database: DatabaseDefinition, container: Contai
     return undefined;
 }
 
-export async function connectCosmosDBShell(_context: IActionContext, node?: NoSqlContainerResourceItem) {
+export async function connectCosmosDBShell(context: IActionContext, node?: NoSqlContainerResourceItem) {
+    // Attach the detected Cosmos DB Shell version to the auto-emitted
+    // `cosmosDB.launchCosmosDBShell` telemetry event. Calling this here covers both the
+    // reuse path below and the fall-through to `launchCosmosDBShell`.
+    context.telemetry.properties.shellVersion = getDetectedCosmosDBShellVersion() ?? 'unknown';
+    context.telemetry.properties.shellInstalled = String(isCosmosDBShellInstalled());
+    context.telemetry.properties.shellPathCustom = String(
+        !!SettingsService.getSetting<string>('cosmosDB.shell.path')?.trim(),
+    );
+    context.telemetry.properties.mcpEnabled = String(
+        SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false,
+    );
+    const mcpPortSetting = SettingsService.getSetting<number>('cosmosDB.shell.MCP.port');
+    context.telemetry.properties.mcpPortDefault = String(mcpPortSetting === undefined || mcpPortSetting === 6128);
+    context.telemetry.properties.hasNode = String(!!node);
+    context.telemetry.properties.containerScoped = String(!!node?.model.container);
+    context.telemetry.properties.authKind = node ? getNodeAuthKind(node) : 'none';
+    context.telemetry.properties.terminalReused = 'false';
+    context.telemetry.properties.mcpUsedThisLaunch = 'false';
+
     if (!node) {
         // No node selected, just launch a new shell without connection.
-        await launchCosmosDBShell(_context, node);
+        await launchCosmosDBShell(context, node);
         return;
     }
 
@@ -604,6 +735,9 @@ export async function connectCosmosDBShell(_context: IActionContext, node?: NoSq
     const reusable = findReusableTerminalForNode(node);
     if (reusable) {
         const { terminal } = reusable;
+        context.telemetry.properties.terminalReused = 'true';
+        context.telemetry.properties.authKind = getNodeAuthKind(node);
+        context.telemetry.properties.containerScoped = String(!!node.model.container);
         terminal.show();
         // Always re-issue `connect` before navigating: the shell may have been disconnected
         // by the user, or previously associated with a different account on a prior reuse.
@@ -618,7 +752,7 @@ export async function connectCosmosDBShell(_context: IActionContext, node?: NoSq
     }
 
     // No reusable terminal (none open, or a different launch-time env is required).
-    await launchCosmosDBShell(_context, node);
+    await launchCosmosDBShell(context, node);
 }
 
 /**
@@ -772,7 +906,32 @@ async function getCosmosDBShellToken(
  *
  * @returns true, if CosmosDBShell is installed, false otherwise.
  */
-export function isCosmosDBShellSupportEnabled(): boolean {
+export function isCosmosDBShellInstalled(): boolean {
+    return getCachedShellSupport().installed;
+}
+
+/**
+ * Returns the version reported by `CosmosDBShell --version` (e.g. `1.2.3` or
+ * `1.2.3-prerelease.45`), or undefined when the shell is not installed or no
+ * version could be parsed from its output.
+ */
+export function getDetectedCosmosDBShellVersion(): string | undefined {
+    return getCachedShellSupport().version;
+}
+
+/**
+ * Clears the cached result of {@link isCosmosDBShellInstalled}.
+ * Call this when the shell path configuration changes or the binary may have been installed/removed.
+ */
+export function invalidateCosmosDBShellSupportCache(): void {
+    cosmosDBShellSupportCache.clear();
+}
+
+type CosmosDBShellSupportInfo = { installed: boolean; version?: string };
+
+const cosmosDBShellSupportCache = new Map<string, CosmosDBShellSupportInfo>();
+
+function getCachedShellSupport(): CosmosDBShellSupportInfo {
     const command = getCosmosDBShellCommand();
     const cached = cosmosDBShellSupportCache.get(command);
     if (cached !== undefined) {
@@ -784,18 +943,18 @@ export function isCosmosDBShellSupportEnabled(): boolean {
 }
 
 /**
- * Clears the cached result of {@link isCosmosDBShellSupportEnabled}.
- * Call this when the shell path configuration changes or the binary may have been installed/removed.
+ * Extracts a SemVer-like version token (e.g. `1.2.3` or `1.2.3-prerelease.4`)
+ * from the `--version` output of CosmosDBShell. Returns undefined when no
+ * recognizable version token is present.
  */
-export function invalidateCosmosDBShellSupportCache(): void {
-    cosmosDBShellSupportCache.clear();
+function parseShellVersion(output: string): string | undefined {
+    const match = output.match(/\b(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?)\b/);
+    return match?.[1];
 }
 
-const cosmosDBShellSupportCache = new Map<string, boolean>();
-
-function detectCosmosDBShellSupport(command: string): boolean {
+function detectCosmosDBShellSupport(command: string): CosmosDBShellSupportInfo {
     try {
-        child.execFileSync(command, ['--version'], {
+        const stdout = child.execFileSync(command, ['--version'], {
             windowsHide: true,
             env: {
                 ...process.env,
@@ -807,7 +966,7 @@ function detectCosmosDBShellSupport(command: string): boolean {
                 TERM: process.env.TERM ?? 'dumb',
             },
         });
-        return true;
+        return { installed: true, version: parseShellVersion(stdout.toString('utf8')) };
     } catch (err) {
         const anyErr = err as { stdout?: unknown; stderr?: unknown };
         const stdout =
@@ -833,7 +992,7 @@ function detectCosmosDBShellSupport(command: string): boolean {
             if (stderr.trim().length > 0) {
                 ext.outputChannel.appendLine(stderr.trim());
             }
-            return true;
+            return { installed: true, version: parseShellVersion(combinedOutput) };
         }
 
         ext.outputChannel.appendLine('fail ' + String(err));
@@ -844,7 +1003,7 @@ function detectCosmosDBShellSupport(command: string): boolean {
         if (stderr.trim().length > 0) {
             ext.outputChannel.appendLine('stderr: ' + stderr.trim());
         }
-        return false;
+        return { installed: false };
     }
 }
 const McpServerName = 'Azure Cosmos DB Shell';
@@ -957,13 +1116,12 @@ async function resolveMcpServer(
         );
     }
 
-    if (!isCosmosDBShellSupportEnabled()) {
-        showMcpSettingsNotification(
-            l10n.t(
-                'Cosmos DB Shell is not installed or not found in PATH. Please install Cosmos DB Shell or configure its path in settings.',
-            ),
-            'cosmosDB.shell.path',
-        );
+    // No user-facing notifications here: resolve can be invoked by Copilot/VS Code during
+    // background tool discovery and we don't want to nag users who never asked for Cosmos DB MCP.
+    // The provider normally hides the server when prerequisites aren't met (see
+    // provideMcpServerDefinitions); these throws are a safety net for cached definitions.
+    if (!isCosmosDBShellInstalled()) {
+        ext.outputChannel.appendLine('MCP resolve: Cosmos DB Shell binary is not installed or not found; skipping.');
         throw new Error(
             'Cosmos DB Shell binary is not installed or not found. The user must install it or configure the "cosmosDB.shell.path" setting.',
         );
@@ -972,10 +1130,7 @@ async function resolveMcpServer(
     const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
 
     if (!mcpEnabled) {
-        showMcpSettingsNotification(
-            l10n.t('Cosmos DB Shell MCP is not enabled. Enable it in settings to auto-start the shell.'),
-            'cosmosDB.shell.MCP.enabled',
-        );
+        ext.outputChannel.appendLine('MCP resolve: "cosmosDB.shell.MCP.enabled" is disabled; skipping.');
         throw new Error(
             'Cosmos DB Shell MCP is not enabled. The user must enable the "cosmosDB.shell.MCP.enabled" setting and restart the MCP server.',
         );
@@ -1020,6 +1175,15 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
             vscode.lm.registerMcpServerDefinitionProvider('cosmosDbShellMcpProvider', {
                 onDidChangeMcpServerDefinitions: didChangeEmitter.event,
                 provideMcpServerDefinitions: () => {
+                    // Only publish the MCP server when it can actually be used. Otherwise Copilot
+                    // (or any MCP consumer) would call resolveMcpServerDefinition during background
+                    // tool discovery and trigger user-facing prompts even though the user never
+                    // asked for Cosmos DB MCP. The didChangeEmitter below re-fires this when the
+                    // relevant settings or shell path change.
+                    const mcpEnabled = SettingsService.getSetting<boolean>('cosmosDB.shell.MCP.enabled') ?? false;
+                    if (!mcpEnabled || !isCosmosDBShellInstalled()) {
+                        return [];
+                    }
                     const mcpPort = getMcpPort();
                     return [
                         new vscode.McpHttpServerDefinition(
@@ -1062,7 +1226,7 @@ export function registerMcpServer(context: vscode.ExtensionContext): void {
 let cosmosDBShellLanguageClient: LanguageClient | undefined;
 
 export function registerCosmosDBShellLanguageServer(context: vscode.ExtensionContext) {
-    if (cosmosDBShellLanguageClient || !isCosmosDBShellSupportEnabled()) {
+    if (cosmosDBShellLanguageClient || !isCosmosDBShellInstalled()) {
         return;
     }
 

@@ -321,7 +321,7 @@
       }
     },
     {
-      "files": ["src/**/*.test.ts", "packages/**/*.test.ts", "**/__mocks__/**/*.ts"],
+      "files": ["src/**/*.test.ts", "packages/**/*.test.ts", "test/**/*.ts", "**/__mocks__/**/*.ts"],
       "rules": {
         // These files use Vitest, not Jest.
         // vitest plugin in oxlint activates jest built-in rules as "warn" by default —
@@ -356,58 +356,6 @@
         "import/first": "off",
         // Restriction — only disabled rules
         "eslint/no-empty": "off"
-      }
-    },
-    {
-      "files": ["test/**/*.ts", "test/**/*.test.ts"],
-      "jsPlugins": ["eslint-plugin-mocha"],
-      "env": {
-        "mocha": true
-      },
-      "rules": {
-        // Correctness - only disabled rules
-        "eslint/no-dupe-else-if": "off",
-        "typescript/no-base-to-string": "off",
-        "typescript/no-floating-promises": "off",
-        "typescript/unbound-method": "off",
-        "vitest/require-mock-type-parameters": "off",
-        "vitest/valid-title": "off",
-        // Pedantic — only disabled rules
-        "typescript/no-explicit-any": "off",
-        "typescript/no-unsafe-argument": "off",
-        "typescript/no-unsafe-assignment": "off",
-        "typescript/no-unsafe-call": "off",
-        "typescript/no-unsafe-member-access": "off",
-        "typescript/no-unsafe-return": "off",
-        "typescript/require-await": "off",
-        // Style — only disabled rules
-        "import/first": "off",
-        // Restriction — only disabled rules
-        "eslint/no-empty": "off",
-        // Mocha-specific rules
-        "mocha/handle-done-callback": "off",
-        "mocha/max-top-level-suites": "off",
-        "mocha/no-async-suite": "error",
-        "mocha/no-exclusive-tests": "warn",
-        "mocha/no-exports": "error",
-        "mocha/no-global-tests": "error",
-        "mocha/no-hooks": "off",
-        "mocha/no-hooks-for-single-case": "off",
-        "mocha/no-identical-title": "error",
-        "mocha/no-mocha-arrows": "off",
-        "mocha/no-nested-tests": "error",
-        "mocha/no-pending-tests": "warn",
-        "mocha/no-return-and-callback": "error",
-        "mocha/no-return-from-async": "off",
-        "mocha/no-setup-in-describe": "error",
-        "mocha/no-sibling-hooks": "error",
-        "mocha/no-synchronous-tests": "off",
-        "mocha/no-top-level-hooks": "warn",
-        "mocha/prefer-arrow-callback": "off",
-        "mocha/valid-suite-title": "off",
-        "mocha/valid-test-title": "off",
-        "mocha/no-empty-title": "error",
-        "mocha/consistent-spacing-between-blocks": "off"
       }
     }
   ]

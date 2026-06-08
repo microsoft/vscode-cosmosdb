@@ -1,15 +1,19 @@
-# Integration test workflow — runs the full NoSQL query fixture suite against
-# a real Cosmos DB Emulator Docker container.
+# Workflow scope: `packages/nosql-language-service` integration tests.
 #
-# Triggered only when files that could affect query behaviour change, keeping
-# CI cost low on unrelated commits.
+# This is NOT the extension-host integration suite under `test/` — that one runs inside `main.yml` ("Build, lint &
+# test"). This workflow covers the **NoSQL language service package** (`packages/nosql-language-service`), which talks
+# to a real Cosmos DB Emulator over the wire to validate that its query fixtures behave the same against a live
+# backend as they do in the unit tests.
 #
-# The emulator always starts with a clean data directory and is seeded fresh.
-# Caching is intentionally skipped: the seed dataset is tiny (~100-200 docs)
-# and cached Postgres data directories cause emulator startup failures due to
-# stale lock files (postmaster.pid).
+# Why a separate workflow:
+#   - It needs Docker (Cosmos emulator) — `main.yml` does not.
+#   - It only matters when `packages/**` or the seed script changes, so the path filter below keeps the run off the
+#     vast majority of commits.
+#
+# Emulator state: the container always starts fresh — no caching, no volumes. The seed dataset is tiny (~100-200
+# documents per container) so re-seeding from scratch costs almost nothing.
 
-name: Integration Tests (Cosmos DB Emulator)
+name: NoSQL Language Service Integration Tests
 
 permissions:
   contents: read
@@ -20,16 +24,16 @@ on:
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
-      - '.github/workflows/integration-tests.yml'
+      - '.github/workflows/nosql-language-service.yml'
   pull_request:
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
-      - '.github/workflows/integration-tests.yml'
+      - '.github/workflows/nosql-language-service.yml'
 
 jobs:
   integration:
-    name: Run integration tests
+    name: 🧪 NoSQL language-service integration
     runs-on: ubuntu-latest
 
     env:
@@ -66,7 +70,7 @@ jobs:
         run: |
           echo "Waiting for Cosmos DB Emulator..."
           for i in $(seq 1 60); do
-            # vnext-preview exposes its data plane at /; a 200/401 response means it's up
+            # vnext-preview exposes its data plane at /; a 200/401/403 response means the listener is up.
             STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost:8081/ 2>/dev/null || true)
             if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
               echo "Emulator is ready after $i attempts (HTTP $STATUS)."
@@ -89,7 +93,7 @@ jobs:
 
       # ── Integration tests ────────────────────────────────────────────────────
 
-      - name: Run integration tests
+      - name: Run NoSQL language-service integration tests
         run: npx vitest run --reporter=verbose src/test-fixtures/integration.test.ts
         working-directory: packages/nosql-language-service
 

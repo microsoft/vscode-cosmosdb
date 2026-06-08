@@ -5,6 +5,12 @@
 .cosmosdb-data/
 .cosmosdb-logs/
 
+# Playwright e2e tests
+playwright-report/
+test/e2e/.results/
+test/e2e/.reports/
+.playwright/
+
 # User-specific files
 *.suo
 *.user

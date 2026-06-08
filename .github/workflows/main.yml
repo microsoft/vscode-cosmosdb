@@ -3,6 +3,9 @@ name: Node PR Lint, Build and Test
 permissions:
     contents: read
     pull-requests: write
+    # Needed by the summary step to look up the conclusion of sibling
+    # workflows (e2e.yml, nosql-language-service.yml) for the same commit.
+    actions: read
 
 on:
     # Trigger when manually run
@@ -24,6 +27,7 @@ on:
 
 jobs:
     Build:
+        name: 🔨 Build, lint & test
         runs-on: ubuntu-latest
 
         # A push to a branch with an open PR fires both `push` and `pull_request`
@@ -204,7 +208,9 @@ jobs:
 
             - name: 🧪 Integration Tests
               id: integration-tests
-              if: ${{ !cancelled() }}
+              # Run even when Unit Tests failed (we want to see both buckets in the summary), but skip when an earlier
+              # build step failed — without `dist/` from the Compile step there's nothing to integration-test against.
+              if: ${{ !cancelled() && steps.upload-vsix.outcome == 'success' }}
               run: |
                   exit_code=1
                   for i in 1 2 3; do
@@ -242,9 +248,81 @@ jobs:
                       exit 0
                   fi
 
-                  # Icons
-                  unit_icon=$( [ "$UNIT_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
-                  int_icon=$( [ "$INTEGRATION_TEST_RESULT" = "success" ] && echo "✅" || echo "❌" )
+                  # Icons (the result_icon helper is defined below — covers success/failure/cancelled/skipped/timeout).
+                  # Both buckets can come back as "skipped" — e.g. Integration Tests skips when Compile failed, or Unit
+                  # Tests skips when Lint failed. We don't want to mark those as ❌ in the table.
+
+                  # ── Sibling workflow conclusions ─────────────────────────────
+                  # main.yml runs in parallel with e2e.yml and nosql-language-service.yml for the same commit. To
+                  # surface their results in this single summary, poll the Actions API for the run on this SHA.
+                  #
+                  # Outcomes:
+                  #   success / failure / cancelled — workflow finished with that conclusion
+                  #   skipped                       — workflow has no run on this SHA (path / branch filter didn't match)
+                  #   timeout                       — workflow still running after the deadline
+                  #
+                  # We DO NOT fail this job if a sibling fails — each sibling has its own required status check. We just
+                  # surface the result so the PR reader sees a single combined table.
+                  wait_for_workflow() {
+                      local workflow_file=$1
+                      local label=$2
+                      local deadline=$(( $(date +%s) + 600 ))   # 10 min
+                      local first_query_at=0
+
+                      while [ "$(date +%s)" -lt "$deadline" ]; do
+                          local run_json status conclusion
+                          run_json=$(gh api \
+                              "repos/${REPO}/actions/workflows/${workflow_file}/runs?head_sha=${SHA}&per_page=1" \
+                              --jq '.workflow_runs[0]' 2>/dev/null || true)
+
+                          if [ -z "$run_json" ] || [ "$run_json" = "null" ]; then
+                              # No run on this SHA yet. Could still be queued, or the path/branch filter excluded this
+                              # commit. Wait at most 60 s before declaring "skipped".
+                              if [ "$first_query_at" -eq 0 ]; then
+                                  first_query_at=$(date +%s)
+                              fi
+                              if (( $(date +%s) - first_query_at > 60 )); then
+                                  echo "skipped"
+                                  return
+                              fi
+                              sleep 10
+                              continue
+                          fi
+
+                          status=$(echo "$run_json" | jq -r '.status')
+                          conclusion=$(echo "$run_json" | jq -r '.conclusion // empty')
+
+                          if [ "$status" = "completed" ]; then
+                              echo "${conclusion:-unknown}"
+                              return
+                          fi
+
+                          echo "⏳ ${label}: status=${status}, waiting…" >&2
+                          sleep 15
+                      done
+
+                      echo "timeout"
+                  }
+
+                  result_icon() {
+                      case "$1" in
+                          success)   echo "✅" ;;
+                          failure)   echo "❌" ;;
+                          cancelled) echo "⚪" ;;
+                          skipped)   echo "⏭️" ;;
+                          timeout)   echo "⏰" ;;
+                          *)         echo "❓" ;;
+                      esac
+                  }
+
+                  echo "⏳ Waiting for sibling workflows (e2e, nosql-language-service) to finish…"
+                  E2E_RESULT=$(wait_for_workflow "e2e.yml" "E2E tests")
+                  NOSQL_INT_RESULT=$(wait_for_workflow "nosql-language-service.yml" "NoSQL language-service integration")
+                  echo "ℹ️ Sibling workflow results: e2e=${E2E_RESULT}, nosql-integration=${NOSQL_INT_RESULT}"
+                  unit_icon=$(result_icon "$UNIT_TEST_RESULT")
+                  int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
+                  e2e_icon=$(result_icon "$E2E_RESULT")
+                  nosql_icon=$(result_icon "$NOSQL_INT_RESULT")
 
                   # Commit link
                   short_sha="${SHA:0:7}"
@@ -272,8 +350,16 @@ jobs:
                   - **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
                   fi
 
-                  # Overall status
-                  if [ "$UNIT_TEST_RESULT" = "success" ] && [ "$INTEGRATION_TEST_RESULT" = "success" ]; then
+                  # Overall status — green only when every test bucket succeeded OR was skipped (the latter just means
+                  # the workflow's path filter excluded this commit).
+                  all_green=true
+                  for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT" "$E2E_RESULT" "$NOSQL_INT_RESULT"; do
+                      case "$r" in
+                          success|skipped) ;;
+                          *) all_green=false ;;
+                      esac
+                  done
+                  if [ "$all_green" = "true" ]; then
                       overall_status="## ✅ Build Status
                   All checks completed successfully!"
                   else
@@ -296,7 +382,9 @@ jobs:
 
                   ## 🧪 Test Results
                   - **Unit Tests:** ${unit_icon} ${UNIT_TEST_RESULT}
-                  - **Integration Tests:** ${int_icon} ${INTEGRATION_TEST_RESULT}
+                  - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
+                  - **NoSQL language-service integration:** ${nosql_icon} ${NOSQL_INT_RESULT}
+                  - **E2E Tests (Playwright + VS Code):** ${e2e_icon} ${E2E_RESULT}
 
                   ${overall_status}
                   SUMMARY_EOF
@@ -320,7 +408,11 @@ jobs:
                       fi
                   fi
 
-                  # Fail the job if any tests failed
-                  if [ "$UNIT_TEST_RESULT" != "success" ] || [ "$INTEGRATION_TEST_RESULT" != "success" ]; then
-                      exit 1
-                  fi
+                  # Fail the summary step only if a local test bucket actually failed. "skipped" means an earlier
+                  # step (Lint / Compile / …) already failed the job, so flagging it again here just adds noise.
+                  for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT"; do
+                      case "$r" in
+                          success|skipped) ;;
+                          *) exit 1 ;;
+                      esac
+                  done

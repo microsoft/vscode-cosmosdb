@@ -235,7 +235,14 @@ jobs:
                   INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
                   SERVER_URL: ${{ github.server_url }}
                   REPO: ${{ github.repository }}
-                  SHA: ${{ github.sha }}
+                  # For pull_request events `github.sha` is the synthetic PR-merge commit (e.g.
+                  # `refs/pull/<n>/merge`), but the workflow_run REST API indexes sibling runs
+                  # (e2e.yml, nosql-language-service.yml) by their *head* commit SHA. Querying
+                  # by the merge SHA returns zero matches → `wait_for_workflow` declares them
+                  # `skipped` even when they actually ran and succeeded. Use head.sha for PRs
+                  # so the polling query matches the real run; fall back to github.sha for
+                  # push events where there's only one SHA.
+                  SHA: ${{ github.event.pull_request.head.sha || github.sha }}
                   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
                   PR_NUMBER: ${{ github.event.pull_request.number }}
                   PR_TITLE: ${{ github.event.pull_request.title }}

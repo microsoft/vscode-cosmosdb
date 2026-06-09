@@ -13,6 +13,8 @@ import {
 
 // TODO: create one that can be shared for adding an account and adding an emulator
 export class PromptNosqlEmulatorConnectionStringStep extends AzureWizardPromptStep<NewEmulatorConnectionWizardContext> {
+    public id = 'cosmosDB.nosqlEmulator.connectionStringStep';
+
     public async prompt(context: NewEmulatorConnectionWizardContext): Promise<void> {
         context.connectionString = (
             await context.ui.showInputBox({

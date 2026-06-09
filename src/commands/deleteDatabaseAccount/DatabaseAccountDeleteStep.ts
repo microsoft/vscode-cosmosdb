@@ -9,6 +9,7 @@ import { type DeleteWizardContext } from './DeleteWizardContext';
 import { deleteCosmosDBAccount } from './deleteCosmosDBAccount';
 
 export class DatabaseAccountDeleteStep extends AzureWizardExecuteStep<DeleteWizardContext> {
+    public id = 'cosmosDB.deleteDatabaseAccount.deleteStep';
     public priority: number = 100;
 
     public async execute(context: DeleteWizardContext): Promise<void> {

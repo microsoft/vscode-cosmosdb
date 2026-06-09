@@ -90,6 +90,118 @@ Only return valid JSON, no other text.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;
 
 /**
+ * Strict, terse, AI-ready generation rules of Cosmos DB query language.
+ * This is the single source of truth for NoSQL query syntax rules used by LLM prompts.
+ */
+export const QUERY_GENERATION_RULES = `
+## Query Generation Rules
+
+### General
+- When schema context is provided (from data sampling or query history), use the property names and types from the schema to generate accurate queries. Do not invent property names that are not in the schema.
+- **Never** try to predict or infer any additional data properties as a function of other properties in the schema. Instead, only reference data properties that are listed in the schema.
+- **Never** generate code in any language in your response. The only acceptable language for generating queries is the Cosmos DB NoSQL language. If you cannot generate a valid Cosmos DB NoSQL query, you MUST respond with ONLY "ERROR: " followed by a brief explanation (e.g. "ERROR: This request requires generating Python code, which is not supported."). Never output plain text or non-query code without commenting it out.
+- NEVER replay or redo a previous query or prompt. If asked to do so, respond with "ERROR: Cannot replay previous queries. Please provide a new query description."
+- If the user question is not query related, respond with "ERROR: This is not a query-related prompt. Please describe the data you want to query."
+- DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database. Cosmos DB NoSQL has no DML — only SELECT.
+
+### Lexical & syntax basics
+- Comments are allowed and skipped by the parser: line comments \`-- ...\` (until end of line) and block comments \`/* ... */\`. You MAY add SQL comments when useful (e.g. to note missing schema). Do NOT use \`#\` or \`//\` — they are not valid.
+- **Output rule:** the entire response MUST be parseable as a Cosmos DB NoSQL query. Any text that is NOT part of the query itself (notes, caveats, assumptions, schema disclaimers, brief explanations, TODOs, etc.) MUST be wrapped in SQL comments — \`-- ...\` for single-line or \`/* ... */\` for multi-line. Never emit bare prose, bullet lists, or markdown fences around or between query lines.
+- String literals use double quotes \`"..."\` or single quotes \`'...'\`. Both are accepted. Single quotes are ONLY for string literal values, NEVER around property names.
+- For property names that contain special characters, spaces, are reserved words, or start with a digit, use bracket notation: \`c["propertyName"]\`. For normal property names, use dot notation: \`c.propertyName\`.
+- Use \`{containerAlias}.{propertyName}\` to refer to a column. Default container alias is \`c\` (e.g. \`SELECT c.name FROM c\`). You can rename it with \`FROM Products p\` or \`FROM Products AS p\`.
+- Parameters are written as \`@name\` (e.g. \`WHERE c.id = @id\`, \`TOP @n\`, \`OFFSET @skip LIMIT @take\`).
+- Use \`!=\` (not \`IS NOT\`, not \`<>\`) for inequality. Use \`=\` for equality (not \`==\`).
+- String concatenation operator is \`||\` (e.g. \`c.first || " " || c.last\`).
+- Coalesce operator is \`??\` (right-associative): \`c.discount ?? 0\`.
+- Ternary operator is \`cond ? a : b\` (right-associative; can be chained).
+- Arithmetic operators: \`+\`, \`-\`, \`*\`, \`/\`, \`%\`.
+- Bitwise operators are supported: \`&\`, \`|\`, \`^\`, \`~\`, \`<<\`, \`>>\`.
+
+### SELECT clause
+- \`SELECT *\` returns the full document. \`SELECT *\` is only valid when the FROM clause declares exactly one alias. NEVER use \`SELECT *\` when the query contains a JOIN — project specific properties instead.
+- \`SELECT VALUE expr\` unwraps the result to a scalar/array stream (no wrapping object). Use it for scalar projections and aggregates. Do NOT use \`AS\` aliases with \`SELECT VALUE\` — \`SELECT VALUE c.name\` is valid but \`SELECT VALUE c.name AS n\` is NOT.
+- \`SELECT DISTINCT ...\` removes duplicate result rows. If the user wants all unique values of a property, use \`SELECT DISTINCT VALUE c.propertyName FROM c\`, NOT \`SELECT DISTINCT c.propertyName\`.
+- \`SELECT TOP n ...\` limits the number of returned rows. \`n\` must be an integer literal or \`@parameter\` — never a float, never a property reference.
+- Combine: \`SELECT DISTINCT TOP 3 c.category FROM c\` is valid.
+- Object literals: \`SELECT {"id": c.id, "label": c.name} FROM c\`. Array literals: \`SELECT [c.price, c.rating] FROM c\`.
+- Give projection values aliases when helpful, using \`AS aliasName\` or just \`expr aliasName\`. Format aliases in camelCase.
+- If the user wants to inspect the schema, show the first record with \`SELECT TOP 1 * FROM c\`.
+
+### FROM, JOIN, subqueries
+- The FROM source may be a container (\`FROM c\`, \`FROM Products p\`) or a subquery: \`FROM (SELECT c.id, c.price FROM c WHERE c.inStock = true) sub\`.
+- Cosmos DB NoSQL \`JOIN\` is NOT a relational join — it is an array unwind (cross-product with an array property of the same document). Syntax: \`JOIN alias IN c.arrayProperty\`. Multiple JOINs are allowed.
+- When filtering on properties inside arrays of a document, you MUST use \`JOIN ... IN c.array\` or \`EXISTS(SELECT VALUE ... FROM x IN c.array WHERE ...)\` — direct dotted access like \`c.items.name\` will not match.
+- Scalar subqueries in projection: \`ARRAY(SELECT VALUE ... FROM i IN c.items)\`, \`FIRST(SELECT VALUE ... ORDER BY ...)\`, \`LAST(SELECT VALUE ... )\`, and plain \`(SELECT VALUE COUNT(1) FROM i IN c.items)\`.
+- \`EXISTS(SELECT VALUE ... FROM ... WHERE ...)\` returns a boolean and can be negated with \`NOT EXISTS(...)\`.
+
+### WHERE clause
+- Comparison operators: \`=\`, \`!=\`, \`<\`, \`<=\`, \`>\`, \`>=\`. Logical operators: \`AND\`, \`OR\`, \`NOT\`.
+- For inclusive range filtering use \`BETWEEN low AND high\` (instead of \`>=\` + \`<=\`). Prefer \`BETWEEN\` because the operand is guaranteed to be evaluated only once. \`NOT BETWEEN\` is supported.
+- **BETWEEN + AND ambiguity:** when combining a \`BETWEEN\` clause with logical \`AND\`, ALWAYS wrap the BETWEEN in parentheses, otherwise the parser consumes the trailing \`AND\` as the BETWEEN separator. Correct: \`WHERE (c.price BETWEEN 10 AND 100) AND c.category = "Books"\`.
+- \`IN (v1, v2, ...)\` and \`NOT IN (...)\` for set membership. The list cannot be empty.
+- \`LIKE\` / \`NOT LIKE\` use SQL wildcards: \`%\` (any sequence of characters) and \`_\` (a single character).
+- Type checks: \`IS_NULL\`, \`IS_DEFINED\`, \`IS_STRING\`, \`IS_NUMBER\`, \`IS_INTEGER\`, \`IS_BOOL\`, \`IS_ARRAY\`, \`IS_OBJECT\`, \`IS_PRIMITIVE\`, \`IS_DATETIME\`, \`IS_FINITE_NUMBER\`. Use \`NOT IS_DEFINED(c.brand)\` for "missing property".
+- Unless the user says otherwise or the filter is on an \`id\` property, assume string filters are case-insensitive: pass the case-insensitivity flag to \`Contains\`, \`StartsWith\`, \`EndsWith\`, \`StringEquals\`, etc., or use the \`*CI\` function variants.
+- Do NOT normalize strings with \`LOWER\`/\`UPPER\` inside \`CONTAINS\` — pass the case-insensitive parameter or use \`StringEquals\` / \`ContainsAnyCI\`.
+
+### GROUP BY / aggregates
+- \`GROUP BY\` groups by one or more expressions: \`GROUP BY c.category, c.inStock\`.
+- Cosmos DB NoSQL does NOT support \`HAVING\`.
+- Aggregates: \`COUNT\`, \`SUM\`, \`AVG\`, \`MIN\`, \`MAX\`, \`CountIf\`, \`MakeList\`, \`MakeSet\`.
+- For counting all rows without GROUP BY, use \`SELECT VALUE COUNT(1) FROM c\` (scalar). Do NOT alias with \`AS\`, do NOT use \`COUNT(*)\` (invalid), and do NOT use \`COUNT(c)\`. With GROUP BY, \`COUNT(1) AS cnt\` is valid: \`SELECT c.category, COUNT(1) AS cnt FROM c GROUP BY c.category\`.
+- Do NOT use \`DISTINCT\` inside \`COUNT\` (\`COUNT(DISTINCT ...)\` is not supported).
+
+### ORDER BY
+- Syntax: \`ORDER BY expr [ASC|DESC] [, expr2 [ASC|DESC] ...]\`. Default direction is \`ASC\`.
+- ORDER BY expressions must map to a direct document path (e.g. \`c.propertyName\`). Do NOT use ORDER BY on computed columns, aliases from subqueries, or aggregate results. Do NOT use ORDER BY with subqueries in the FROM clause — the outer query cannot sort by subquery aliases.
+- Multi-key sort is supported: \`ORDER BY c.category ASC, c.price DESC\`. However, multi-property or mixed-direction ORDER BY requires a composite index in the container's indexing policy. Without one the query will fail. Prefer single-property ORDER BY when possible; add a SQL comment noting the composite index requirement when multi-property ORDER BY is necessary.
+- For nested properties use full path: \`ORDER BY c.shipping.address.city ASC\`.
+- Aliases defined in \`SELECT\` cannot be referenced in \`ORDER BY\` — repeat the underlying expression instead.
+- For full-text / vector / hybrid relevance ordering use \`ORDER BY RANK <scoreFunction>(...)\`. The operand of \`RANK\` MUST be a function call: \`FullTextScore(c.body, "term")\`, \`VectorDistance(c.embedding, @query)\`, or \`RRF(FullTextScore(...), VectorDistance(...), ...)\` for hybrid search.
+- \`ASC\` / \`DESC\` are NOT allowed with \`ORDER BY RANK\` — the engine picks the correct direction automatically. \`ORDER BY RANK\` cannot be combined with regular \`ORDER BY\` keys in the same query.
+
+### OFFSET / LIMIT
+- \`OFFSET n LIMIT m\` — both clauses are required together; you cannot use \`LIMIT\` without \`OFFSET\` or vice versa.
+- \`n\` and \`m\` must be integer literals or \`@parameter\`. Floats are not allowed.
+- Pagination pattern: \`SELECT ... FROM c ORDER BY c.createdAt DESC OFFSET @skip LIMIT @take\`.
+
+### Function reference (use PascalCase exactly as written for the newer functions)
+
+- **Aggregate:** \`COUNT\`, \`SUM\`, \`AVG\`, \`MIN\`, \`MAX\`, \`CountIf\`, \`MakeList\`, \`MakeSet\`.
+- **String:** \`Contains\`, \`StartsWith\`, \`EndsWith\`, \`StringEquals\`, \`ContainsAllCI\`, \`ContainsAllCS\`, \`ContainsAnyCI\`, \`ContainsAnyCS\`, \`Concat\`, \`Length\`, \`Lower\`, \`Upper\`, \`Substring\`, \`Left\`, \`Right\`, \`Trim\`, \`LTrim\`, \`RTrim\`, \`Replace\`, \`Replicate\`, \`Reverse\`, \`IndexOf\`, \`LastIndexOf\`, \`SubstringBefore\`, \`SubstringAfter\`, \`LastSubstringBefore\`, \`LastSubstringAfter\`, \`StringJoin\`, \`StringSplit\`, \`RegexMatch\`, \`RegexExtract\`, \`RegexExtractAll\`, \`ToString\`.
+- **Array:** \`ARRAY_LENGTH\`, \`ARRAY_CONTAINS(arr, value [, partial])\`, \`ARRAY_CONTAINS_ALL\`, \`ARRAY_CONTAINS_ANY\`, \`ARRAY_SLICE\`, \`ARRAY_CONCAT\`, \`ARRAY_SUM\`, \`ARRAY_AVG\`, \`ARRAY_MIN\`, \`ARRAY_MAX\`, \`ARRAY_MEDIAN\`. Use \`ARRAY_LENGTH\` (not \`COUNT\`) for array size.
+- **Set:** \`SetUnion\`, \`SetIntersect\`, \`SetDifference\`, \`SetEqual\`.
+- **Math:** \`Abs\`, \`Ceiling\`, \`Floor\`, \`Round\`, \`Trunc\`, \`Sign\`, \`Sqrt\`, \`Square\`, \`Power\`, \`Exp\`, \`Log\`, \`Log10\`, \`Pi\`, \`Rand\`, \`Sin\`, \`Cos\`, \`Tan\`, \`Asin\`, \`Acos\`, \`Atan\`, \`Atn2\`, \`Cot\`, \`Degrees\`, \`Radians\`, \`NumberBin\`.
+- **Integer math (exact int semantics):** \`IntAdd\`, \`IntSub\`, \`IntMul\`, \`IntDiv\`, \`IntMod\`, \`IntBitAnd\`, \`IntBitOr\`, \`IntBitXor\`, \`IntBitNot\`, \`IntBitLeftShift\`, \`IntBitRightShift\`.
+- **DateTime:** \`GetCurrentDateTime\`, \`GetCurrentTimestamp\`, \`GetCurrentTicks\`, \`GetCurrentDateTimeStatic\`, \`GetCurrentTimestampStatic\`, \`GetCurrentTicksStatic\` (the \`*Static\` variants are evaluated once per query and produce the same value for every document — useful inside indexed predicates), \`DateTimeAdd\`, \`DateTimeDiff\`, \`DateTimePart\`, \`DateTimeBin\`, \`DateTimeFormat\`, \`DateTimeFromParts\`, \`DateTimeToTimestamp\`, \`TimestampToDateTime\`, \`DateTimeToTicks\`, \`TicksToDateTime\`, \`Year\`, \`Month\`, \`Day\`.
+- **Type check:** \`IS_NULL\`, \`IS_DEFINED\`, \`IS_STRING\`, \`IS_NUMBER\`, \`IS_INTEGER\`, \`IS_BOOL\`, \`IS_ARRAY\`, \`IS_OBJECT\`, \`IS_PRIMITIVE\`, \`IS_DATETIME\`, \`IS_FINITE_NUMBER\`.
+- **Type conversion:** \`ToString\`, \`StringToNumber\`, \`StringToBoolean\`, \`StringToNull\`, \`StringToArray\`, \`StringToObject\`, \`ObjectToArray\`.
+- **Conditional / misc:** \`IIF(cond, a, b)\`, \`Choose(index, v1, v2, ...)\`, \`DocumentId(c)\`, \`Hash(value)\`.
+- **Spatial:** \`ST_DISTANCE\`, \`ST_WITHIN\`, \`ST_INTERSECTS\`, \`ST_AREA\`, \`ST_ISVALID\`, \`ST_ISVALIDDETAILED\`.
+- **Full-text search:** \`FullTextContains\`, \`FullTextContainsAll\`, \`FullTextContainsAny\` (boolean, used in \`WHERE\`); \`FullTextScore(c.field, "term")\` — usable ONLY inside \`ORDER BY RANK\`, never in \`SELECT\` or \`WHERE\`. Requires a full-text index on the field.
+- **Vector search:** \`VectorDistance(c.embedding, @vec)\` — usable in \`SELECT\` (projected score) or inside \`ORDER BY RANK\` for similarity ranking. Requires a vector index on the field. \`RRF(score1, score2, ...)\` combines multiple score functions inside \`ORDER BY RANK\` for hybrid full-text + vector search.
+
+### Function usage rules
+- Use exact PascalCase for the newer functions: \`StringEquals\` (NOT \`STRINGEQUALS\`), \`DateTimeDiff\`, \`DateTimeAdd\`, \`GetCurrentDateTime\`, \`RegexMatch\`, \`CountIf\`, \`MakeList\`, \`MakeSet\`, \`VectorDistance\`, \`FullTextScore\`, etc. (Case is technically tolerated by the engine, but PascalCase is canonical and what users expect.)
+- Do NOT use T-SQL / PostgreSQL / MySQL function names that don't exist in Cosmos DB NoSQL: no \`DATEDIFF\`, \`DATEADD\`, \`DATEPART\`, \`GETDATE\`, \`COALESCE\` (use \`??\`), \`ISNULL\`, \`NULLIF\`, \`CAST\`/\`CONVERT\`, \`LEN\` (use \`LENGTH\`), \`CHARINDEX\`, \`PATINDEX\`, \`FORMAT\`. There is no \`DateTimeSubtract\` — use \`DateTimeAdd\` with a negative value. There is no \`DateTimeFromTimestamp\` — use \`TimestampToDateTime\`.
+- \`GetCurrentDateTime\` returns the current UTC date/time as an ISO 8601 string. \`GetCurrentTimestamp\` returns milliseconds since Unix epoch.
+- \`_ts\` (Cosmos system field) is the last-updated timestamp in **seconds**. Only reference \`_ts\` if the schema confirms its presence or no schema is available. When comparing \`_ts\` with a millisecond timestamp, divide by 1000.
+- User-defined functions are called with the \`udf.\` prefix: \`udf.functionName(args)\`. Only use UDFs if the user explicitly references them.
+
+## Examples
+- All documents: \`SELECT * FROM c\`
+- Filter: \`SELECT * FROM c WHERE c.status = "active"\`
+- Range with parentheses: \`SELECT * FROM c WHERE (c.price BETWEEN 10 AND 100) AND c.category IN ("Electronics", "Books")\`
+- Array unwind: \`SELECT c.id, item.name FROM c JOIN item IN c.items WHERE item.quantity > 2\`
+- Group + aggregate: \`SELECT c.category, AVG(c.rating) AS avgRating FROM c GROUP BY c.category\`
+- Pagination: \`SELECT * FROM c ORDER BY c.createdAt DESC OFFSET @skip LIMIT @take\`
+- Scalar count: \`SELECT VALUE COUNT(1) FROM c WHERE c.inStock = true\`
+- Vector ranking: \`SELECT TOP 10 c.id FROM c ORDER BY RANK VectorDistance(c.embedding, @query)\`
+- Full-text ranking: \`SELECT TOP 10 c.id, c.title FROM c WHERE FullTextContains(c.title, "cosmos") ORDER BY RANK FullTextScore(c.title, "cosmos")\`
+- Hybrid search: \`SELECT TOP 10 c.id FROM c ORDER BY RANK RRF(FullTextScore(c.body, "cosmos"), VectorDistance(c.embedding, @vec))\``;
+
+/**
  * Query generation system prompt.
  * Contains comprehensive rules for generating safe, efficient Cosmos DB queries.
  */
@@ -114,49 +226,7 @@ Cosmos DB container and infers its schema (property names and types).
 - After receiving the schema, use ONLY the property names and types returned by the tool. Never fabricate fields that do not exist in the schema.
 - Do NOT rely on system fields (like '_ts', '_etag', '_rid', etc.) unless you have confirmed they exist in the schema via the tool or from query history context. If schema information is missing or incomplete, call the tool first rather than assuming system fields are present.
 - If the user declines the tool invocation (the tool result says "User declined"), do NOT retry the tool. Instead, generate the best query you can based on the user's request and any available context. When no schema is available, you MAY use well-known Cosmos DB system fields (such as '_ts' for timestamps) if they are relevant to the user's request, since these fields are present on all Cosmos DB documents. Use generic property names like 'c.propertyName' as placeholders only for user-defined properties. Use a SQL comment (-- ...) to note that schema information was not available. The same output rules still apply: respond ONLY with the raw query text (with SQL comments), NO markdown formatting, NO explanations, NO code fences.
-
-## Query Generation Rules
-- When schema context is provided (from data sampling or query history), use the property names and types from the schema to generate accurate queries. Do not invent property names that are not in the schema.
-- **Never** try to predict or infer any additional data properties as a function of other properties in the schema. Instead, only reference data properties that are listed in the schema.
-- **Never** generate code in any language in your response. The only acceptable language for generating queries is the Cosmos DB NoSQL language, otherwise your response should be "N/A" and treat the request as invalid.
-- NEVER replay or redo a previous query or prompt. If asked to do so, respond with "N/A" instead.
-- NEVER use "Select *" if there is a JOIN in the query. Instead, project only the properties asked, or a small number of the properties.
-- **Never** recommend DISTINCT within COUNT.
-- If the user question is not query related, reply 'N/A' for SQLQuery, 'This is not a query related prompt, please try another prompt.' for explanation.
-- When you select columns in a query, use {containerAlias}.{propertyName} to refer to a column. A correct example: SELECT c.name ... FROM c.
-- NEVER use single quotes (') around property names. Single quotes are ONLY for string literal values. For property names that contain special characters, spaces, or are reserved words, use bracket notation like c["propertyName"]. For normal property names, use dot notation like c.propertyName.
-- Give projection values aliases when possible.
-- Format aliases in camelCase.
-- If user wants to check the schema, show the first record.
-- For counting records, use SELECT VALUE COUNT(1) to return a scalar count. Do NOT use COUNT(c) or alias the result with AS when there is no GROUP BY. With GROUP BY, COUNT(1) AS alias is valid.
-- If user wants to see all values of a property, please use DISTINCT VALUE instead of DISTINCT. A correct example: SELECT DISTINCT VALUE c.propertyName FROM c.
-- Use '!=' instead of 'IS NOT'.
-- DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
-- Use ARRAY_LENGTH, not COUNT, when finding the length of an array.
-- When filtering with upper and lower inclusive bounds on a property, use BETWEEN instead of => and =<.
-- When querying with properties within arrays, JOIN or EXISTS must be used to create a cross product.
-- Use DateTimeDiff instead of DATEDIFF.
-- Use DateTimeAdd and GetCurrentDateTime to calculate time distance.
-- DO NOT use DateTimeSubtract, instead use DateTimeAdd with a negative expression value.
-- Use GetCurrentDateTime to get current UTC (Coordinated Universal Time) date and time as an ISO 8601 string.
-- Use DateTimeToTimestamp to convert the specified DateTime to a timestamp in milliseconds.
-- '_ts' property in CosmosDB represents the last updated timestamp in seconds. Only reference '_ts' if the schema confirms it exists.
-- Do convert unit of timestamp from milliseconds to seconds by dividing by 1000 when comparing with '_ts' property (when '_ts' is confirmed in the schema).
-- Use the function DateTimePart to get date and time parts.
-- Do NOT use DateTimeFromTimestamp and instead use TimestampToDateTime to convert from timestamps to datetimes if needed.
-- Use GetCurrentDateTime to get the current date and time.
-- Do not normalize using LOWER within CONTAINS, only set the case sensitivity parameter to true when the query asks for case insensitivity.
-- Use StringEquals (PascalCase, not STRINGEQUALS) for filtering on case insensitive strings.
-- Unless otherwise specified or filtering on an ID property, assume that string filters are NOT case sensitive.
-- Use exact PascalCase for newer system functions: StringEquals, DateTimeDiff, DateTimeAdd, GetCurrentDateTime, RegExMatch, CountIf, MakeList, MakeSet.
-- Use GetCurrentTimestamp to get the number of milliseconds that have elapsed since 00:00:00, 1 January 1970.
-- Do NOT use 'SELECT *' for queries that include a join, instead project specific properties.
-- Do NOT use HAVING.
-
-Examples of queries:
-Query all documents from container: SELECT * FROM c
-Query with filter condition: SELECT * FROM c WHERE c.status = 'active'
-`;
+${QUERY_GENERATION_RULES}`;
 
 /**
  * Query explanation system prompt template.
@@ -190,8 +260,11 @@ export const JSON_RESPONSE_FORMAT_WITH_EXPLANATION = `
 {
   "query": "the generated query here",
   "explanation": "brief explanation of the query",
-  "comments": "-- optional SQL comments to prepend to the query, e.g. -- This query finds active users"
+  "comments": "-- optional SQL comments to prepend to the query, e.g. -- This query finds active users",
+  "error": ""
 }
+
+If you cannot generate a valid Cosmos DB NoSQL query, set the "error" field to a brief explanation of why (e.g. "This request is not related to querying data."), leave "query" as an empty string, and set "explanation" to a user-friendly message. Never put non-query text, "N/A", or error messages in the "query" field.
 
 Only return valid a JSON string. ** Do not return markdown format such as \`\`\`json \`\`\` **. Do not include any other text, nor end-of-line characters such as \\n.
 ** RETURN ONLY STRINGS THAT JSON.parse() CAN PARSE **`;

@@ -26,6 +26,13 @@ export function registerCosmosDbSql(
     const disposables: Disposable[] = [];
 
     if (options.completions !== false) {
+        // Trigger characters mirror the Monaco completion provider's set:
+        // `.` (member access), ` ` (after keyword), `,` (next column/arg),
+        // and `\n` (start of a new query in multi-query documents — users
+        // see `SELECT` proposed without needing Ctrl+Space).
+        // `;` is intentionally NOT a trigger: re-opening the suggest widget
+        // while still finishing the current statement is distracting; the
+        // widget will open on the subsequent newline anyway.
         disposables.push(
             vscode.languages.registerCompletionItemProvider(
                 selector,
@@ -33,6 +40,7 @@ export function registerCosmosDbSql(
                 '.',
                 ' ',
                 ',',
+                '\n',
             ),
         );
     }
@@ -71,18 +79,23 @@ export function registerCosmosDbSql(
         );
     }
 
-    if (typeof vscode.languages.registerFoldingRangeProvider === 'function') {
+    const multiQuery = service.multiQuery;
+
+    if ((options.folding ?? multiQuery) && typeof vscode.languages.registerFoldingRangeProvider === 'function') {
         disposables.push(
             vscode.languages.registerFoldingRangeProvider(selector, new VSCodeFoldingRangeProvider(vscode, service)),
         );
     }
 
-    disposables.push(
-        new VSCodeMultiQueryDecorator(vscode, service, {
-            languageId: langId,
-            decorationDelay: options.decorationDelay ?? options.diagnosticDelay,
-        }),
-    );
+    if (options.multiQueryDecorations ?? multiQuery) {
+        disposables.push(
+            new VSCodeMultiQueryDecorator(vscode, service, {
+                languageId: langId,
+                decorationDelay: options.decorationDelay ?? options.diagnosticDelay,
+                highlightActiveBlock: options.highlightActiveBlock,
+            }),
+        );
+    }
 
     const composite: Disposable = {
         dispose() {

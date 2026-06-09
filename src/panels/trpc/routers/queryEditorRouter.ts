@@ -3,7 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type PartitionKeyDefinition } from '@azure/cosmos';
+import { type PartitionKeyDefinition, type PriorityLevel } from '@azure/cosmos';
+import { parse, parseMultiQueryDocument, stripComments } from '@cosmosdb/nosql-language-service';
 import { type JSONSchema } from '@cosmosdb/schema-analyzer';
 import {
     getSchemaFromDocument,
@@ -16,7 +17,7 @@ import * as l10n from '@vscode/l10n';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import { z } from 'zod';
-import { CosmosDbOperationsService } from '../../../chat';
+import { CosmosDbOperationsService, QueryGenerationRefusedError } from '../../../chat';
 import { getControlPlaneForConnection } from '../../../cosmosdb/controlPlane';
 import { getNoSqlQueryConnection, type NoSqlQueryConnection } from '../../../cosmosdb/NoSqlQueryConnection';
 import { bulkDeleteDocuments, deleteDocument, isDocumentId } from '../../../cosmosdb/session/DocumentSession';
@@ -50,9 +51,27 @@ import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 const QUERY_HISTORY_SIZE = 10;
 const HISTORY_STORAGE_KEY = 'ms-azuretools.vscode-cosmosdb.history';
 const SELECTED_MODEL_KEY = 'ms-azuretools.vscode-cosmosdb.selectedModel';
+// Persists the user-selected Priority Level across panel reopens. Single key
+// scope (per-extension, not per-account / per-container) to mirror cosmos-explorer
+// which stores one LocalStorage entry for all connections.
+const PRIORITY_LEVEL_KEY = 'ms-azuretools.vscode-cosmosdb.priorityLevel';
+const DEFAULT_PRIORITY_LEVEL: PriorityLevel = 'Low' as PriorityLevel;
 const MAX_SCHEMA_DOCUMENT_LIMIT = 100_000;
 const SCHEMA_SIZE_WARNING_BYTES = 50 * 1024 * 1024; // 50 MB
 const SCHEMA_GENERATION_PAGE_SIZE = 1000;
+
+/**
+ * Read the persisted Priority Level from extension global state, validating it
+ * against the known enum values. Falls back to `Low` (per PRD F3/F4) for unset
+ * or corrupted entries.
+ */
+function readPersistedPriorityLevel(): PriorityLevel {
+    const stored = ext.context.globalState.get<string>(PRIORITY_LEVEL_KEY);
+    if (stored === 'High' || stored === 'Low') {
+        return stored as PriorityLevel;
+    }
+    return DEFAULT_PRIORITY_LEVEL;
+}
 
 type HistoryItem = StorageItem & {
     properties: {
@@ -82,6 +101,7 @@ export const queryEditorRouterDef = queryEditorRouter({
      */
     init: queryEditorProcedure.mutation(async ({ ctx }) => {
         console.debug(`[QueryEditor] init invoked. hasConnection=${!!ctx.state.connection}`);
+
         if (ctx.actionContext) {
             ctx.actionContext.telemetry.suppressIfSuccessful = true;
         }
@@ -111,10 +131,14 @@ export const queryEditorRouterDef = queryEditorRouter({
 
         const containerSchema = ctx.state.connection ? await readSchemaForConnection(ctx.state.connection) : null;
 
+        // Throughput buckets are not supported by the Cosmos DB Emulator —
+        // hide the option entirely when the active connection points at an emulator.
+        const supportsThroughputBuckets = !!ctx.state.connection && !ctx.state.connection.isEmulator;
+
         return {
             connectionState,
             queryHistory,
-            throughputBuckets: ctx.state.connection ? [true, true, true, true, true] : undefined,
+            throughputBuckets: supportsThroughputBuckets ? [true, true, true, true, true] : undefined,
             initialQuery: ctx.state.query,
             isSurveyCandidate: !getIsSurveyDisabledGlobally(),
             isAIFeaturesEnabled: ext.isAIFeaturesEnabled ?? false,
@@ -523,6 +547,66 @@ export const queryEditorRouterDef = queryEditorRouter({
             return result;
         }),
 
+    /**
+     * Validates and cleans a query before execution.
+     *
+     * Performs two checks in order:
+     * 1. **Ambiguity** — if the text contains multiple non-empty query regions
+     *    (separated by `;`), the user is warned and can cancel or run anyway.
+     * 2. **Syntax errors** — if the normalized query has parse errors, the user
+     *    is shown a summary and can cancel or run anyway.
+     *
+     * Returns `{ cleanQuery }` on success, or `undefined` when the user cancels.
+     * The returned `cleanQuery` is trimmed and has its trailing semicolon removed,
+     * ready for `createQuerySession` and `updateQueryHistory`.
+     */
+    prepareQuery: queryEditorProcedure
+        .input(z.object({ query: z.string() }))
+        .output(z.object({ cleanQuery: z.string() }).optional())
+        .mutation(async ({ input }) => {
+            // Strip comments, normalize whitespace, then remove trailing semicolon
+            const cleanQuery = stripComments(input.query).replace(/;\s*$/, '');
+
+            if (!cleanQuery) return undefined;
+
+            // Check 1: ambiguous multi-query text
+            const doc = parseMultiQueryDocument(cleanQuery);
+            const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
+            if (nonEmpty.length > 1) {
+                const runItem: vscode.MessageItem = { title: l10n.t('Run anyway') };
+                const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+                const choice = await vscode.window.showWarningMessage(
+                    l10n.t('The query text contains multiple statements separated by semicolons.') +
+                        ' ' +
+                        l10n.t('Running all of them at once may produce ambiguous results.'),
+                    { modal: true },
+                    runItem,
+                    cancelItem,
+                );
+                if (choice !== runItem) return undefined;
+            }
+
+            // Check 2: syntax errors
+            const { errors } = parse(cleanQuery);
+            if (errors.length > 0) {
+                const summary = errors
+                    .slice(0, 3)
+                    .map((e) => e.message)
+                    .join('\n');
+                const runItem: vscode.MessageItem = { title: l10n.t('Run anyway') };
+                const cancelItem: vscode.MessageItem = { title: l10n.t('Cancel'), isCloseAffordance: true };
+                const choice = await vscode.window.showWarningMessage(
+                    l10n.t('The query has syntax errors:') + '\n' + summary,
+                    { modal: true },
+                    runItem,
+                    cancelItem,
+                );
+                if (choice !== runItem) return undefined;
+            }
+
+            return { cleanQuery };
+        }),
+
     updateQueryHistory: queryEditorProcedure
         .input(z.object({ query: z.string().optional() }))
         .mutation(async ({ input, ctx }) => {
@@ -540,7 +624,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     updateSelectedText: queryEditorProcedure
         .input(z.object({ selectedQuery: z.string() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.selectedQuery = input.selectedQuery || undefined;
         }),
 
@@ -573,20 +657,13 @@ export const queryEditorRouterDef = queryEditorRouter({
                 }
 
                 const service = CosmosDbOperationsService.getInstance();
-                const historyContext = ctx.state.connection
-                    ? service.getQueryHistoryForContainer(
-                          ctx.state.connection.accountId,
-                          ctx.state.connection.databaseId,
-                          ctx.state.connection.containerId,
-                      )
-                    : undefined;
 
                 const generatedQuery = await service.generateQueryWithLLM(input.prompt, input.currentQuery, {
                     modelId: model.id,
-                    historyContext,
                     cancellationToken: token,
                     source: 'queryEditor',
                     operation: 'generateQuery',
+                    connection: ctx.state.connection,
                     onConfirm: async (message: string) => {
                         ctx.eventSink.emit({ type: 'confirmToolInvocation', message });
                         return new Promise<boolean>((resolve) => {
@@ -622,6 +699,13 @@ export const queryEditorRouterDef = queryEditorRouter({
                     prompt: input.prompt,
                 };
             } catch (error) {
+                if (error instanceof QueryGenerationRefusedError) {
+                    return {
+                        generatedQuery: false as const,
+                        errorMessage: error.message,
+                    };
+                }
+
                 if (token.isCancellationRequested) {
                     void callWithTelemetryAndErrorHandling('cosmosDB.ai.queryGenerationCancelled', (telCtx) => {
                         telCtx.errorHandling.suppressDisplay = true;
@@ -653,7 +737,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
     closeGenerateInput: queryEditorProcedure
         .input(z.object({ hadEnteredPrompt: z.boolean(), hadExecutedGenerateQuery: z.boolean() }).optional())
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ext.outputChannel.info(l10n.t('[Generate Query] Generate query input closed by user.'));
             void callWithTelemetryAndErrorHandling('cosmosDB.ai.closeGenerateInput', (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
@@ -688,32 +772,37 @@ export const queryEditorRouterDef = queryEditorRouter({
     }),
 
     setSelectedModel: queryEditorProcedure.input(z.object({ modelId: z.string() })).mutation(async ({ input }) => {
-        await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
-
-        // Fire-and-forget: separate telemetry event for model selection
-        void callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', (telCtx) => {
+        return callWithTelemetryAndErrorHandling('cosmosDB.ai.modelSelection', async (telCtx) => {
             telCtx.errorHandling.suppressDisplay = true;
             telCtx.telemetry.properties.modelId = input.modelId;
-        });
 
-        const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
-        return { modelName: selectedModel?.name ?? 'Copilot' };
+            await ext.context.globalState.update(SELECTED_MODEL_KEY, input.modelId);
+
+            const selectedModel = await getSelectedModel({ modelId: input.modelId }).catch(() => undefined);
+            return { modelName: selectedModel?.name ?? 'Copilot' };
+        });
     }),
 
-    openCopilotExplainQuery: queryEditorProcedure
+    openChatParticipantExplainQuery: queryEditorProcedure
         .input(z.object({ query: z.string().optional() }).optional())
         .mutation(async ({ input }) => {
-            // Fire-and-forget: separate telemetry event
-            void callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', (telCtx) => {
+            await callWithTelemetryAndErrorHandling('cosmosDB.ai.explainQueryFromButton', async (telCtx) => {
                 telCtx.errorHandling.suppressDisplay = true;
-            });
 
-            const query = input?.query?.trim();
-            const chatQuery = query
-                ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
-                : '@cosmosdb /explainQuery';
-            await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
+                const query = input?.query?.trim();
+                const chatQuery = query
+                    ? `@cosmosdb /explainQuery\n\`\`\`sql\n${query}\n\`\`\``
+                    : '@cosmosdb /explainQuery';
+                await vscode.commands.executeCommand('workbench.action.chat.open', { query: chatQuery });
+            });
         }),
+
+    openChatParticipantHelp: queryEditorProcedure.mutation(async () => {
+        await callWithTelemetryAndErrorHandling('cosmosDB.ai.helpFromButton', async (telCtx) => {
+            telCtx.errorHandling.suppressDisplay = true;
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@cosmosdb /help' });
+        });
+    }),
 
     saveCSV: queryEditorProcedure
         .input(
@@ -777,7 +866,7 @@ export const queryEditorRouterDef = queryEditorRouter({
 
                 context.telemetry.properties.limit = effectiveLimit.toString();
 
-                const schemaId = getSchemaStorageId(ctx.state.connection);
+                const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
                 const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
                 const limitLabel = input.limit
                     ? l10n.t('TOP {0}', effectiveLimit)
@@ -956,7 +1045,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection'));
             }
 
-            const schemaId = getSchemaStorageId(ctx.state.connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
             const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
             const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -979,7 +1068,7 @@ export const queryEditorRouterDef = queryEditorRouter({
                 throw new Error(l10n.t('No connection'));
             }
 
-            const schemaId = getSchemaStorageId(ctx.state.connection);
+            const schemaId = SchemaFileStorage.getSchemaIdForConnection(ctx.state.connection);
             const containerLabel = `${ctx.state.connection.databaseId}/${ctx.state.connection.containerId}`;
             const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -1017,17 +1106,56 @@ export const queryEditorRouterDef = queryEditorRouter({
         .input(z.object({ feedbackValue: z.enum(['up', 'down']), component: z.string() }))
         .mutation(({ input, ctx }) => {
             if (ctx.actionContext) {
-                ctx.actionContext.telemetry.properties.feedback = input.feedbackValue;
+                ctx.actionContext.telemetry.properties.feedbackDirection = input.feedbackValue;
                 ctx.actionContext.telemetry.properties.category = input.component;
                 ctx.actionContext.telemetry.properties.isAIGenerated = String(ctx.state.isLastQueryAIGenerated);
             }
+            void vscode.window.showInformationMessage(l10n.t('Thanks for your feedback!'));
         }),
 
     confirmToolInvocationResponse: queryEditorProcedure
         .input(z.object({ confirmed: z.boolean() }))
-        .mutation(async ({ input, ctx }) => {
+        .mutation(({ input, ctx }) => {
             ctx.state.pendingConfirmResolve?.(input.confirmed);
             ctx.state.pendingConfirmResolve = undefined;
+        }),
+
+    /**
+     * Returns query-editor capabilities that depend on the current connection.
+     * Used by the webview to decide whether to show / enable connection-specific
+     * UI such as Priority Level and Throughput Bucket controls.
+     *
+     * - `isEmulator`: true when the current connection points at the local emulator.
+     *   Priority and Throughput options are meaningless against the emulator.
+     * - `isPriorityLevelEnabled`: true when the Cosmos DB account has
+     *   `enablePriorityBasedExecution` set on the ARM resource. Only available
+     *   for Azure-signed-in accounts (where `azureMetadata` is populated);
+     *   workspace-attached / connection-string accounts cannot read ARM and so
+     *   never expose the UI.
+     * - `currentPriorityLevel`: the priority level persisted in extension global
+     *   state, falling back to `Low` for first use or invalid entries (PRD F3/F4).
+     *   The UI uses this to seed the picker on panel open so the user's last
+     *   choice survives reloads (PRD F2 / F10).
+     */
+    getCapabilities: queryEditorProcedure.mutation(({ ctx }) => {
+        const databaseAccount = ctx.state.connection?.azureMetadata?.databaseAccount;
+
+        return {
+            isEmulator: ctx.state.connection?.isEmulator ?? false,
+            isPriorityLevelEnabled: databaseAccount?.enablePriorityBasedExecution ?? false,
+            currentPriorityLevel: readPersistedPriorityLevel(),
+        };
+    }),
+
+    /**
+     * Persists the user-selected Priority Level so it survives panel reopens
+     * and Cosmos DB extension restarts. Mirrors cosmos-explorer's LocalStorage
+     * model: one global value shared across all accounts / containers.
+     */
+    setPriorityLevel: queryEditorProcedure
+        .input(z.object({ priorityLevel: z.enum(['High', 'Low']) }))
+        .mutation(async ({ input }) => {
+            await ext.context.globalState.update(PRIORITY_LEVEL_KEY, input.priorityLevel);
         }),
 });
 
@@ -1138,7 +1266,7 @@ async function mergeQueryResultsIntoSchema(
         return;
     }
 
-    const schemaId = getSchemaStorageId(connection);
+    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
     const containerLabel = `${connection.databaseId}/${connection.containerId}`;
     const schemaStorage = SchemaFileStorage.getInstance();
 
@@ -1185,18 +1313,10 @@ async function mergeQueryResultsIntoSchema(
 }
 
 /**
- * Get the schema storage ID for a given connection.
- */
-function getSchemaStorageId(connection: NoSqlQueryConnection): string {
-    const raw = `${connection.endpoint}/${connection.databaseId}/${connection.containerId}`;
-    return crypto.createHash('sha256').update(raw).digest('hex');
-}
-
-/**
  * Read the stored schema for a connection, or return null if none exists.
  */
 async function readSchemaForConnection(connection: NoSqlQueryConnection): Promise<JSONSchema | null> {
-    const schemaId = getSchemaStorageId(connection);
+    const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
     const schemaStorage = SchemaFileStorage.getInstance();
     const schemaJson = await schemaStorage.readSchema(schemaId);
     return schemaJson ? (JSON.parse(schemaJson) as JSONSchema) : null;

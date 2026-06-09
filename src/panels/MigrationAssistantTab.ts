@@ -31,6 +31,7 @@ import { type CosmosDBAccountResourceItem } from '../tree/cosmosdb/CosmosDBAccou
 import { WorkspaceResourceType } from '../tree/workspace-api/SharedWorkspaceResourceProvider';
 import { MigrationWorkspaceItem } from '../tree/workspace-view/migration/MigrationWorkspaceItem';
 import { getAvailableModelsInfo } from '../utils/aiUtils';
+import { createCosmosDBManagementClient } from '../utils/azureClients';
 import { sanitizeCosmosDBAccountName } from '../utils/cosmosDBAccountName';
 import { MIGRATION_SELECTED_MODEL_KEY } from '../utils/modelUtils';
 import { pickAppResource, pickWorkspaceResource } from '../utils/pickItem/pickAppResource';
@@ -400,10 +401,18 @@ export class MigrationAssistantTab extends BaseTab {
             setMigrationTelemetryContext(context, this.project);
             context.telemetry.properties.isNewProject = String(isNewProject);
 
-            // Gather file lists
+            // Gather file lists. Hide the curated template files from the UI —
+            // they are managed via the dedicated "Open Template" buttons and AI flows,
+            // not the user-selectable source list.
+            const volTemplateAbs = this.projectService.getTemplateFilePath('volumetrics');
+            const apTemplateAbs = this.projectService.getTemplateFilePath('access-patterns');
             const schemaFiles = await this.projectService.listDiscoveryFiles(this.project, 'schema-ddl');
-            const volumetricFiles = await this.projectService.listDiscoveryFiles(this.project, 'volumetrics');
-            const accessPatternFiles = await this.projectService.listDiscoveryFiles(this.project, 'access-patterns');
+            const volumetricFiles = (await this.projectService.listDiscoveryFiles(this.project, 'volumetrics')).filter(
+                (f) => f !== volTemplateAbs,
+            );
+            const accessPatternFiles = (
+                await this.projectService.listDiscoveryFiles(this.project, 'access-patterns')
+            ).filter((f) => f !== apTemplateAbs);
             const excludedSchemaFiles = await this.projectService.listExcludedDiscoveryFiles(
                 this.project,
                 'schema-ddl',
@@ -671,9 +680,16 @@ export class MigrationAssistantTab extends BaseTab {
     private async refreshFileState(): Promise<void> {
         if (!this.project) return;
 
+        // Hide the curated template files from the UI (see loadProject for rationale).
+        const volTemplateAbs = this.projectService.getTemplateFilePath('volumetrics');
+        const apTemplateAbs = this.projectService.getTemplateFilePath('access-patterns');
         const schemaFiles = await this.projectService.listDiscoveryFiles(this.project, 'schema-ddl');
-        const volumetricFiles = await this.projectService.listDiscoveryFiles(this.project, 'volumetrics');
-        const accessPatternFiles = await this.projectService.listDiscoveryFiles(this.project, 'access-patterns');
+        const volumetricFiles = (await this.projectService.listDiscoveryFiles(this.project, 'volumetrics')).filter(
+            (f) => f !== volTemplateAbs,
+        );
+        const accessPatternFiles = (
+            await this.projectService.listDiscoveryFiles(this.project, 'access-patterns')
+        ).filter((f) => f !== apTemplateAbs);
         const excludedSchemaFiles = await this.projectService.listExcludedDiscoveryFiles(this.project, 'schema-ddl');
         const excludedVolumetricFiles = await this.projectService.listExcludedDiscoveryFiles(
             this.project,
@@ -1364,7 +1380,6 @@ export class MigrationAssistantTab extends BaseTab {
         const subscription = this.selectedSubscription;
         await callWithTelemetryAndErrorHandling('cosmosDB.migration.listLocations', async (context) => {
             setMigrationTelemetryContext(context, this.project);
-            const { createCosmosDBManagementClient } = await import('../utils/azureClients');
             const mgmtClient = await createCosmosDBManagementClient(context, subscription);
             // The Cosmos DB regions API returns the region's display label on `name`
             // (e.g. `East US`) and the canonical short name only as the last segment

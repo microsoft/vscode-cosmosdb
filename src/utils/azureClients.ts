@@ -3,15 +3,18 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type CosmosDBManagementClient } from '@azure/arm-cosmosdb';
+import { CosmosDBManagementClient } from '@azure/arm-cosmosdb';
 import { type PostgreSQLManagementClient } from '@azure/arm-postgresql';
 import { type PostgreSQLManagementFlexibleServerClient } from '@azure/arm-postgresql-flexible';
 import { createAzureClient } from '@microsoft/vscode-azext-azureutils';
 import { createSubscriptionContext, type IActionContext } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 
-// Lazy-load @azure packages to improve startup performance.
-// NOTE: The client is the only import that matters, the rest of the types disappear when compiled to JavaScript
+// `@azure/arm-cosmosdb` is imported eagerly: it's used by virtually every
+// Cosmos DB code path (control-plane RBAC, offers, account metadata, …) so
+// deferring it just adds latency on first interaction. The PostgreSQL ARM
+// SDKs below are still dynamically imported — they only matter for PG
+// account types and don't need to be on the activation hot path.
 
 // Pin the api-version on outbound requests from the Cosmos DB management client.
 //
@@ -53,12 +56,15 @@ function pinCosmosDBApiVersion(client: CosmosDBManagementClient): CosmosDBManage
     return client;
 }
 
+// `async` is preserved for API symmetry with the dynamically-imported
+// PostgreSQL client factories below, even though the body is now
+// synchronous since `@azure/arm-cosmosdb` is eagerly imported.
+// oxlint-disable-next-line @typescript-eslint/require-await
 export async function createCosmosDBManagementClient(
     context: IActionContext,
     subscription: AzureSubscription,
 ): Promise<CosmosDBManagementClient> {
     const subContext = createSubscriptionContext(subscription);
-    const { CosmosDBManagementClient } = await import('@azure/arm-cosmosdb');
     return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
 }
 

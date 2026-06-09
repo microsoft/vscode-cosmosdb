@@ -34,9 +34,9 @@
   "cosmosdb.command.ai.deploy_instruction_files": "Zkopírovat pokyny LLM do složky profilu uživatele",
   "cosmosdb.command.ai.remove_instruction_files": "Odebrat pokyny LLM ze složky profilu uživatele",
   "cosmosdb.command.schema.delete_all": "Odstranit všechna uložená schémata",
-  "cosmosdb.command.migration.open": "New Migration…",
-  "cosmosdb.command.migration.openExisting": "Cosmos DB Migration…",
-  "cosmosdb.command.migration.remove": "Remove Migration…",
+  "cosmosdb.command.migration.open": "Nová migrace...",
+  "cosmosdb.command.migration.openExisting": "Migrace Cosmos DB...",
+  "cosmosdb.command.migration.remove": "Odebrat migraci...",
   "cosmosdb.configuration.batch.size": "Velikost dávky, která se má použít při dotazování na prostředky Azure Database",
   "cosmosdb.configuration.confirmation.style": "Chování, které se má použít při potvrzování operací, které nelze vrátit zpět, například odstranění prostředků.",
   "cosmosdb.configuration.confirmation.style.button": "Potvrzení kliknutím na tlačítko",
@@ -67,5 +67,5 @@
   "cosmosdb.configuration.authentication.managedIdentity.clientID": "ID klienta spravované identity, které se použije při ověřování s ID Entra pomocí spravované identity přiřazené uživatelem",
   "cosmosdb.configuration.manage-llm-assets": "Spravovat prostředky LLM Povolte rozšíření, aby udržovalo soubory související s LLM aktuální.",
   "cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries": "Je-li tato možnost povolena, generování schématu zohledňuje také výsledky dotazů při odvozování schématu kontejneru.",
-  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimental) Show token usage estimates in the Migration Assistant UI."
+  "cosmosdb.configuration.experimental.migration.showTokenEstimate": "(Experimentální) Zobrazovat v uživatelském rozhraní Pomocníka s migrací odhady využití tokenů"
 }

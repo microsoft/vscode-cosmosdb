@@ -31,7 +31,7 @@ import {
 import * as fabric from '@microsoft/vscode-fabric-api';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
-import { CosmosDbChatParticipant, CosmosDbOperationsService, registerSampleDataTool } from './chat';
+import { CosmosDbChatParticipant, registerSampleDataTool } from './chat';
 import { registerCommands } from './commands/registerCommands';
 import { type FabricArtifactType } from './constants';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
@@ -135,9 +135,7 @@ export async function activateInternal(
                 }
 
                 if (event.affectsConfiguration('telemetry.feedback.enabled')) {
-                    await Promise.all(
-                        Array.from(QueryEditorTab.openTabs).map((tab) => tab.refreshSurveyFeedbackVisibility()),
-                    );
+                    Array.from(QueryEditorTab.openTabs).forEach((tab) => tab.refreshSurveyFeedbackVisibility());
                 }
             },
         );
@@ -145,7 +143,6 @@ export async function activateInternal(
         // Initialize the CosmosDB chat participant
         // The chat participant is always registered, but will show helpful error messages
         // if AI features are not available (Copilot not installed, not signed in, or disabled)
-        CosmosDbOperationsService.initialize(context);
 
         // Register the availability-change listener BEFORE the initial async check.
         // This prevents a race where Copilot finishes initializing (fires
@@ -156,7 +153,7 @@ export async function activateInternal(
             onCopilotAvailabilityChanged((available) => {
                 ext.isAIFeaturesEnabled = available;
                 // Notify all open QueryEditorTabs about the change
-                void QueryEditorTab.notifyAIFeaturesChanged(available);
+                QueryEditorTab.notifyAIFeaturesChanged(available);
                 void MigrationAssistantTab.notifyAIFeaturesChanged(available);
             }),
         );

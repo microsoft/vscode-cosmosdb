@@ -517,6 +517,24 @@ export async function runApplicationAnalysis(ctx: Phase1Context): Promise<void> 
                 mkDebug('step1-analysis'),
             );
 
+            // The prompt instructs the model to emit JSON `null` for any field it
+            // cannot confidently fill (insufficient evidence, not applicable, or
+            // genuinely empty). Downstream code and the `AnalysisResult` type expect
+            // `string | undefined` (and `string[] | undefined` for `frameworks`),
+            // so normalize `null` → `undefined` at this boundary.
+            for (const key of [
+                'projectName',
+                'projectType',
+                'language',
+                'frameworks',
+                'databaseType',
+                'databaseAccess',
+            ] as const) {
+                if (analysis[key] === null) {
+                    (analysis as Record<string, unknown>)[key] = undefined;
+                }
+            }
+
             ext.outputChannel.debug(
                 `[Discovery] Application analysis completed in ${Date.now() - analysisStartTime}ms: ` +
                     `language=${analysis.language ?? 'unknown'}, ` +
@@ -702,18 +720,19 @@ export async function runAnalyzeWithAI(
             ? projectService.getVolumetricsPath(project)
             : projectService.getAccessPatternsPath(project);
 
-    // Collect source files, excluding the template if it lives in the same directory.
-    // Honors per-source includedFiles/excludedFiles configuration in project.json.
+    // Collect source files, excluding the curated template (which lives in the
+    // source folder when the user hasn't picked a custom path). The template is
+    // treated as the output target, not as input data.
     const allFiles = await projectService.listDiscoveryFiles(project, subfolder);
-    const nonTemplateFiles =
-        sourceFolderPath === templateFolderPath ? allFiles.filter((f) => !f.endsWith(`/${fileName}`)) : allFiles;
+    const sourceFiles = allFiles.filter((f) => f !== templateAbsPath);
 
-    // Volumetrics requires source data files; access patterns can scan the workspace without them
-    if (subfolder === 'volumetrics' && nonTemplateFiles.length === 0) {
-        void vscode.window.showInformationMessage(
-            l10n.t('No source files found to analyze. Select files first, then try again.'),
+    // Both volumetrics and access patterns can proceed without explicit source files —
+    // the AI will fall back to schema + workspace inference. Surface a non-blocking warning
+    // for volumetrics so the user knows the analysis will be estimated.
+    if (subfolder === 'volumetrics' && sourceFiles.length === 0) {
+        void vscode.window.showWarningMessage(
+            l10n.t('No volumetric source files selected. AI will estimate from schema and workspace configuration.'),
         );
-        return;
     }
 
     const templateRelativePath = path.relative(workspacePath, templateAbsPath);
@@ -727,13 +746,13 @@ export async function runAnalyzeWithAI(
     const prompt =
         subfolder === 'volumetrics'
             ? buildAnalyzeVolumetricsPrompt(
-                  sourceFolderRelativePath,
+                  sourceFiles.length > 0 ? sourceFolderRelativePath : undefined,
                   templateRelativePath,
                   schemaFileRefs,
                   discoveryInstructions,
               )
             : buildAnalyzeAccessPatternsPrompt(
-                  nonTemplateFiles.length > 0 ? sourceFolderRelativePath : undefined,
+                  sourceFiles.length > 0 ? sourceFolderRelativePath : undefined,
                   templateRelativePath,
                   schemaFileRefs,
                   getVolumetricsTemplatePath(projectService, workspacePath),

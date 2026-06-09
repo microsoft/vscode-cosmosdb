@@ -14,6 +14,7 @@ import { getErrorMessage } from '../../utils/getErrorMessage';
 import { getCosmosDBKeyCredential } from '../CosmosDBCredential';
 import { getCosmosClient } from '../getCosmosClient';
 import { type NoSqlQueryConnection } from '../NoSqlQueryConnection';
+import { resolveEffectivePriorityLevel } from '../priorityLevel';
 import {
     DEFAULT_EXECUTION_TIMEOUT,
     DEFAULT_PAGE_SIZE,
@@ -100,6 +101,17 @@ export class QuerySession {
                         throughputBucket: this.resultViewMetadata.throughputBucket,
                     });
 
+                    // Priority Level: prefer the user's explicit choice from
+                    // the Query Editor menu, otherwise fall back to "Low" for
+                    // non-Azure connections (see `resolveEffectivePriorityLevel`
+                    // for the rules). Header is attached at the FeedOptions
+                    // level so it only travels with the data-plane query — never
+                    // with metadata operations such as container.read().
+                    const effectivePriorityLevel = resolveEffectivePriorityLevel(
+                        this.connection,
+                        this.resultViewMetadata.priority,
+                    );
+
                     this.iterator = client
                         .database(this.databaseId)
                         .container(this.containerId)
@@ -113,6 +125,7 @@ export class QuerySession {
                             maxDegreeOfParallelism: 1000,
                             bufferItems: true,
                             forceQueryPlan: true,
+                            priorityLevel: effectivePriorityLevel,
                         });
 
                     if (this.resultViewMetadata.countPerPage === -1) {
@@ -199,8 +212,9 @@ export class QuerySession {
                     throw new Error(l10n.t('Cannot fetch previous page if current page is the first page'));
                 }
 
-                return this.executeFetch(context, async () => {
+                return this.executeFetch(context, () => {
                     this.currentIteration--;
+                    return Promise.resolve();
                 });
             },
         );
@@ -223,8 +237,9 @@ export class QuerySession {
                     throw new Error(l10n.t('Session is not running! Please run the session first'));
                 }
 
-                return this.executeFetch(context, async () => {
+                return this.executeFetch(context, () => {
                     this.currentIteration = 1;
+                    return Promise.resolve();
                 });
             },
         );
@@ -261,7 +276,7 @@ export class QuerySession {
             // Record query execution to in-memory history for AI context
             if (serializedResult) {
                 CosmosDbOperationsService.getInstance().recordQueryExecution(
-                    this.connection.accountId,
+                    this.connection?.azureMetadata?.accountId,
                     this.databaseId,
                     this.containerId,
                     serializedResult,

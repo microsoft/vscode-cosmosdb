@@ -2,7 +2,20 @@
 
 ## 0.34.0
 
-No changes since the last preview version.
+### Fixed
+
+- Fixed an issue where Cosmos DB accounts configured with strict native (data-plane) RBAC could not perform control-plane operations such as creating or deleting databases and containers or reading throughput. These operations are now routed through Azure Resource Manager for Azure-signed-in accounts. (#2990)
+- Fixed an issue where the NoSQL Query Editor's Stats tab showed a "Failed to parse index metrics" error for queries that returned no results. (#3034)
+- Fixed an issue where the Query Editor connection dropdown could remain stuck in a "Loading…" state when listing databases or containers failed. (#3036)
+- Fixed an issue where the Throughput Bucket menu was shown in the Query Editor toolbar when connected to the Cosmos DB Emulator, which does not support it. (#3058)
+- Fixed an issue where Cosmos DB Shell MCP discovery could trigger install or settings notifications in the background when the shell was not installed or MCP was disabled. (#3043)
+
+### Changed
+
+- Improved Cosmos DB Shell telemetry. (#3027)
+- Improved telemetry reliability and privacy by adding stable identifiers to setup wizard steps and masking connection details. (#3036, #3086)
+- Encoded the well-known Cosmos DB Emulator key in the bundle so it is no longer flagged by VS Code Marketplace credential scanning. (#3093)
+- Updated `@microsoft/vscode-azext-azureutils` and `@microsoft/vscode-azext-utils` for Node 24 compatibility. (#3082)
 
 ## 0.33.3 (Preview)
 

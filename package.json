@@ -242,12 +242,24 @@
         "description": "AI-powered assistant for Azure Cosmos DB (NoSQL) help, best practices, and code examples",
         "disambiguation": [
           {
-            "category": "databases",
-            "description": "The user wants help with their NoSQL Cosmos DB database",
+            "category": "cosmosdb",
+            "description": "The user wants help writing, editing, optimizing, or understanding Azure Cosmos DB NoSQL queries, or has questions about Cosmos DB concepts, best practices, data modeling, partition keys, indexing, or performance.",
             "examples": [
-              "Optimize my query to improve performance and cost",
-              "Explain my current query",
-              "Help me write a NoSQL query"
+              "Optimize my query to reduce RU cost",
+              "Explain what my current query does",
+              "Help me write a NoSQL query to find all orders over $100",
+              "How do I choose a good partition key?",
+              "What is the best way to model one-to-many relationships in Cosmos DB?",
+              "How do I use a cross-partition query?",
+              "Rewrite my query to use an index",
+              "Find all documents where status is active",
+              "How do I paginate results with OFFSET and LIMIT?",
+              "What indexing policy should I use for my container?",
+              "How do I use vector search in Cosmos DB?",
+              "Why is my query consuming so many RUs?",
+              "Generate a query that groups orders by customer",
+              "How do I use the Cosmos DB SDK in Python?",
+              "Add a filter for the last 30 days to my query"
             ]
           }
         ],

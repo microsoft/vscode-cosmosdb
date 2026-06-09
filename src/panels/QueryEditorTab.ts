@@ -207,44 +207,68 @@ export class QueryEditorTab extends BaseTab {
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'setConnectionList',
-                    params: [],
+                    params: [{}],
                 });
                 return;
             }
-
-            const cosmosClient = getCosmosClient(this.connection);
-            const databases = await cosmosClient.databases.readAll().fetchAll();
-            const containers = await Promise.allSettled(
-                databases.resources.map(async (database) => {
-                    const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
-
-                    return containers.resources.map((container) => [database.id, container.id] as string[]);
-                }),
+            // Mask sensitive connection values so Cosmos SDK errors and aggregated
+            // rejection reasons cannot leak endpoint/account identifiers via telemetry
+            // when the exception is rethrown for callWithTelemetryAndErrorHandling to log.
+            const masterKey = this.connection.credentials
+                ? getCosmosDBKeyCredential(this.connection.credentials)?.key
+                : undefined;
+            if (masterKey) {
+                context.valuesToMask.push(masterKey);
+            }
+            context.valuesToMask.push(
+                this.connection.endpoint,
+                this.connection.databaseId,
+                this.connection.containerId,
             );
+            try {
+                const cosmosClient = getCosmosClient(this.connection);
+                const databases = await cosmosClient.databases.readAll().fetchAll();
+                const containers = await Promise.allSettled(
+                    databases.resources.map(async (database) => {
+                        const containers = await cosmosClient.database(database.id).containers.readAll().fetchAll();
 
-            const errors = containers.filter((result) => result.status === 'rejected');
-            const connections = containers
-                .filter((result) => result.status === 'fulfilled')
-                .reduce(
-                    (acc, databaseContainers) => {
-                        databaseContainers.value.forEach(([databaseId, containerId]) => {
-                            acc[databaseId] ??= [];
-                            acc[databaseId].push(containerId);
-                        });
-                        return acc;
-                    },
-                    {} as Record<string, string[]>,
+                        return containers.resources.map((container) => [database.id, container.id] as string[]);
+                    }),
                 );
 
-            if (errors.length > 0) {
-                context.telemetry.properties.error = errors.map((error) => toStringUniversal(error.reason)).join(', ');
-            }
+                const errors = containers.filter((result) => result.status === 'rejected');
+                const connections = containers
+                    .filter((result) => result.status === 'fulfilled')
+                    .reduce(
+                        (acc, databaseContainers) => {
+                            databaseContainers.value.forEach(([databaseId, containerId]) => {
+                                acc[databaseId] ??= [];
+                                acc[databaseId].push(containerId);
+                            });
+                            return acc;
+                        },
+                        {} as Record<string, string[]>,
+                    );
 
-            await this.channel.postMessage({
-                type: 'event',
-                name: 'setConnectionList',
-                params: [connections],
-            });
+                if (errors.length > 0) {
+                    context.telemetry.properties.error = errors
+                        .map((error) => toStringUniversal(error.reason))
+                        .join(', ');
+                }
+
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'setConnectionList',
+                    params: [connections],
+                });
+            } catch (error: unknown) {
+                await this.channel.postMessage({
+                    type: 'event',
+                    name: 'setConnectionList',
+                    params: [{}],
+                });
+                throw error;
+            }
         });
     }
 

@@ -107,36 +107,20 @@ jobs:
                   COSMOSDB_E2E_SKIP_BUILD: '1'
               run: xvfb-run -a npm run e2e
 
-            - name: 🔍 Debug — list e2e output dirs
-              if: always()
-              shell: bash
-              run: |
-                  echo "── pwd / env ────────────────────────────────"
-                  pwd
-                  echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
-                  echo "COSMOSDB_E2E_RUN_ID=${COSMOSDB_E2E_RUN_ID:-<unset>}"
-                  echo "COSMOSDB_E2E_REPORTS_ROOT=${COSMOSDB_E2E_REPORTS_ROOT:-<unset>}"
-                  echo "COSMOSDB_E2E_RESULTS_ROOT=${COSMOSDB_E2E_RESULTS_ROOT:-<unset>}"
-                  echo "── test/e2e ─────────────────────────────────"
-                  ls -la test/e2e || true
-                  echo "── test/e2e/.reports ────────────────────────"
-                  ls -laR test/e2e/.reports 2>/dev/null || echo "(missing)"
-                  echo "── test/e2e/.results ────────────────────────"
-                  ls -laR test/e2e/.results 2>/dev/null || echo "(missing)"
-                  echo "── playwright-report / test-results (defaults) ─"
-                  ls -laR playwright-report 2>/dev/null || echo "(no playwright-report/)"
-                  ls -laR test-results 2>/dev/null || echo "(no test-results/)"
-
             - name: 📤 Upload Playwright HTML report
               if: always()
               uses: actions/upload-artifact@v7
               with:
                   name: e2e-html-report-${{ github.run_attempt }}
                   # Per-run report lives at test/e2e/.reports/<runId>/html/ (runId is random per
-                  # invocation — see test/e2e/helpers/e2eIsolation.ts). Trailing /** is required
-                  # because @actions/glob (used by upload-artifact v7) matches files, not bare
-                  # directories — `**/html` on its own resolves to zero entries.
+                  # invocation — see test/e2e/helpers/e2eIsolation.ts). Two non-obvious requirements:
+                  #   1. `include-hidden-files: true` — `.reports` starts with a dot, and the action's
+                  #      default glob walker skips hidden directories entirely, so without this every
+                  #      pattern under `.reports/` resolves to zero matches.
+                  #   2. Trailing `/**` — @actions/glob matches files, not bare directories, so
+                  #      `**/html` on its own would not pick up files inside the html/ folder either.
                   path: test/e2e/.reports/**/html/**
+                  include-hidden-files: true
                   if-no-files-found: warn
                   retention-days: 14
 
@@ -146,11 +130,13 @@ jobs:
               # conclusion is `success`, but the trace from the failed attempt is still on disk
               # and is the most useful thing to look at. `if-no-files-found: ignore` keeps the
               # log clean on fully green runs where Playwright wrote nothing here.
+              # `include-hidden-files: true` is required because the directory is `.results/`.
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@v7
               with:
                   name: e2e-results-${{ github.run_attempt }}
                   path: test/e2e/.results/
+                  include-hidden-files: true
                   if-no-files-found: ignore
                   retention-days: 14
 

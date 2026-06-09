@@ -112,18 +112,26 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: e2e-html-report-${{ github.run_attempt }}
-                  path: test/e2e/.reports/**/html
+                  # Per-run report lives at test/e2e/.reports/<runId>/html/ (runId is random per
+                  # invocation — see test/e2e/helpers/e2eIsolation.ts). Trailing /** is required
+                  # because @actions/glob (used by upload-artifact v7) matches files, not bare
+                  # directories — `**/html` on its own resolves to zero entries.
+                  path: test/e2e/.reports/**/html/**
                   if-no-files-found: warn
                   retention-days: 14
 
             - name: 📤 Upload Playwright results (traces, videos, screenshots)
-              # Only on failure — traces and videos are large and only useful for debugging failed runs.
-              if: failure()
+              # `!cancelled()` (not just `failure()`) so we also capture traces/videos when a
+              # flaky test fails the first attempt and passes on retry — in that case the job
+              # conclusion is `success`, but the trace from the failed attempt is still on disk
+              # and is the most useful thing to look at. `if-no-files-found: ignore` keeps the
+              # log clean on fully green runs where Playwright wrote nothing here.
+              if: ${{ !cancelled() }}
               uses: actions/upload-artifact@v7
               with:
                   name: e2e-results-${{ github.run_attempt }}
-                  path: test/e2e/.results
-                  if-no-files-found: warn
+                  path: test/e2e/.results/
+                  if-no-files-found: ignore
                   retention-days: 14
 
             - name: 📤 Upload emulator logs on failure

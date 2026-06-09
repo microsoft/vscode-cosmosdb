@@ -236,13 +236,9 @@ jobs:
                   SERVER_URL: ${{ github.server_url }}
                   REPO: ${{ github.repository }}
                   GITHUB_RUN_ID: ${{ github.run_id }}
-                  # For pull_request events `github.sha` is the synthetic PR-merge commit (e.g.
-                  # `refs/pull/<n>/merge`), but the workflow_run REST API indexes sibling runs
-                  # (e2e.yml, nosql-language-service.yml) by their *head* commit SHA. Querying
-                  # by the merge SHA returns zero matches → `wait_for_workflow` declares them
-                  # `skipped` even when they actually ran and succeeded. Use head.sha for PRs
-                  # so the polling query matches the real run; fall back to github.sha for
-                  # push events where there's only one SHA.
+                  # For pull_request events `github.sha` is the synthetic PR-merge commit.
+                  # Use head.sha for PRs (matches what reviewers see on the PR head); fall
+                  # back to github.sha for push events where there is only one SHA.
                   SHA: ${{ github.event.pull_request.head.sha || github.sha }}
                   BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
                   PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -255,65 +251,13 @@ jobs:
                       exit 0
                   fi
 
-                  # Icons (the result_icon helper is defined below — covers success/failure/cancelled/skipped/timeout).
-                  # Both buckets can come back as "skipped" — e.g. Integration Tests skips when Compile failed, or Unit
-                  # Tests skips when Lint failed. We don't want to mark those as ❌ in the table.
-
-                  # ── Sibling workflow conclusions ─────────────────────────────
-                  # main.yml runs in parallel with e2e.yml and nosql-language-service.yml for the same commit. To
-                  # surface their results in this single summary, poll the Actions API for the run on this SHA.
-                  #
-                  # Outcomes:
-                  #   success / failure / cancelled — workflow finished with that conclusion
-                  #   skipped                       — workflow has no run on this SHA (path / branch filter didn't match)
-                  #   timeout                       — workflow still running after the deadline
-                  #
-                  # Return format: "<conclusion>|<run_id>" so the caller can both display the conclusion and
-                  # enumerate that run's artifacts. When there is no run yet (skipped) the run_id is empty.
-                  #
-                  # We DO NOT fail this job if a sibling fails — each sibling has its own required status check. We just
-                  # surface the result so the PR reader sees a single combined table.
-                  wait_for_workflow() {
-                      local workflow_file=$1
-                      local label=$2
-                      local deadline=$(( $(date +%s) + 600 ))   # 10 min
-                      local first_query_at=0
-
-                      while [ "$(date +%s)" -lt "$deadline" ]; do
-                          local run_json status conclusion run_id
-                          run_json=$(gh api \
-                              "repos/${REPO}/actions/workflows/${workflow_file}/runs?head_sha=${SHA}&per_page=1" \
-                              --jq '.workflow_runs[0]' 2>/dev/null || true)
-
-                          if [ -z "$run_json" ] || [ "$run_json" = "null" ]; then
-                              # No run on this SHA yet. Could still be queued, or the path/branch filter excluded this
-                              # commit. Wait at most 60 s before declaring "skipped".
-                              if [ "$first_query_at" -eq 0 ]; then
-                                  first_query_at=$(date +%s)
-                              fi
-                              if (( $(date +%s) - first_query_at > 60 )); then
-                                  echo "skipped|"
-                                  return
-                              fi
-                              sleep 10
-                              continue
-                          fi
-
-                          status=$(echo "$run_json" | jq -r '.status')
-                          conclusion=$(echo "$run_json" | jq -r '.conclusion // empty')
-                          run_id=$(echo "$run_json" | jq -r '.id')
-
-                          if [ "$status" = "completed" ]; then
-                              echo "${conclusion:-unknown}|${run_id}"
-                              return
-                          fi
-
-                          echo "⏳ ${label}: status=${status}, waiting…" >&2
-                          sleep 15
-                      done
-
-                      echo "timeout|"
-                  }
+                  # ── Helpers ──────────────────────────────────────────────────
+                  # Each CI workflow (main.yml, e2e.yml, nosql-language-service.yml) now posts and
+                  # maintains *its own* PR comment, identified by a stable marker. main.yml no
+                  # longer polls siblings — that approach was fragile (PR-merge SHA mismatch,
+                  # 60-second skip-window, ~5–10 min wait for siblings). Each workflow now owns
+                  # its slice of the PR conversation: build details + VSIX here; e2e results +
+                  # report there; nosql integration result in its own comment.
 
                   result_icon() {
                       case "$1" in
@@ -321,7 +265,6 @@ jobs:
                           failure)   echo "❌" ;;
                           cancelled) echo "⚪" ;;
                           skipped)   echo "⏭️" ;;
-                          timeout)   echo "⏰" ;;
                           *)         echo "❓" ;;
                       esac
                   }
@@ -336,16 +279,11 @@ jobs:
                       }'
                   }
 
-                  # Emit a Markdown bullet list of all artifacts attached to the given run_id.
-                  # Links use the GitHub UI URL (…/actions/runs/<run_id>/artifacts/<artifact_id>),
-                  # which is publicly resolvable for logged-in users and triggers a zip download.
-                  # Outputs "_None_" when the run has no artifacts (e.g. green e2e with no traces).
+                  # Emit a Markdown bullet list of all artifacts attached to a run_id. Links
+                  # use the GitHub UI URL which triggers a zip download for any logged-in user.
+                  # Outputs "_None_" when the run has no artifacts.
                   list_run_artifacts() {
                       local run_id=$1
-                      if [ -z "$run_id" ]; then
-                          echo "_Not available (sibling workflow did not run)._"
-                          return
-                      fi
                       local arts
                       arts=$(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts" \
                           --jq '.artifacts[] | "\(.id)\t\(.name)\t\(.size_in_bytes)\t\(.expired)"' 2>/dev/null || true)
@@ -366,26 +304,41 @@ jobs:
                       done <<< "$arts"
                   }
 
-                  echo "⏳ Waiting for sibling workflows (e2e, nosql-language-service) to finish…"
-                  E2E_RAW=$(wait_for_workflow "e2e.yml" "E2E tests")
-                  NOSQL_RAW=$(wait_for_workflow "nosql-language-service.yml" "NoSQL language-service integration")
-                  E2E_RESULT="${E2E_RAW%%|*}"
-                  E2E_RUN_ID="${E2E_RAW#*|}"
-                  NOSQL_INT_RESULT="${NOSQL_RAW%%|*}"
-                  NOSQL_RUN_ID="${NOSQL_RAW#*|}"
-                  echo "ℹ️ Sibling workflow results: e2e=${E2E_RESULT} (run ${E2E_RUN_ID:-—}), nosql-integration=${NOSQL_INT_RESULT} (run ${NOSQL_RUN_ID:-—})"
+                  # Post or update a PR comment identified by an HTML-comment marker. More
+                  # robust than `gh pr comment --edit-last`, which would clobber whichever
+                  # comment happened to be most recent — including comments from sibling
+                  # workflows. We list the PR's issue comments via gh api and PATCH the one
+                  # whose body contains our marker, falling back to a new comment otherwise.
+                  post_or_update_comment() {
+                      local pr=$1
+                      local marker=$2
+                      local body_file=$3
+
+                      local existing_id
+                      existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
+                          --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+
+                      if [ -n "$existing_id" ]; then
+                          if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                                  --field body=@"${body_file}" >/dev/null 2>&1; then
+                              echo "✅ PR #${pr} comment updated (id ${existing_id})"
+                              return 0
+                          fi
+                          echo "::warning::Failed to PATCH comment ${existing_id}, posting a new one"
+                      fi
+
+                      if gh pr comment "${pr}" --repo "${REPO}" --body-file "${body_file}" >/dev/null 2>&1; then
+                          echo "✅ PR #${pr} new comment posted"
+                          return 0
+                      fi
+
+                      echo "::warning::Unable to post PR comment on #${pr} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+                      return 0
+                  }
+
                   unit_icon=$(result_icon "$UNIT_TEST_RESULT")
                   int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
-                  e2e_icon=$(result_icon "$E2E_RESULT")
-                  nosql_icon=$(result_icon "$NOSQL_INT_RESULT")
-
-                  # Build the artifact lists once, before composing the summary. Three groups:
-                  # this run's artifacts (VSIX + anything else uploaded here), the e2e run's
-                  # artifacts (html report, results), and the nosql-language-service run's
-                  # artifacts. Each is plain Markdown so it composes cleanly with cat-heredoc.
                   build_artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
-                  e2e_artifacts=$(list_run_artifacts "${E2E_RUN_ID}")
-                  nosql_artifacts=$(list_run_artifacts "${NOSQL_RUN_ID}")
 
                   # Commit link
                   short_sha="${SHA:0:7}"
@@ -413,10 +366,10 @@ jobs:
                   - **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
                   fi
 
-                  # Overall status — green only when every test bucket succeeded OR was skipped (the latter just means
-                  # the workflow's path filter excluded this commit).
+                  # Overall status — green only when our two local test buckets succeeded
+                  # OR were skipped (an earlier step failed and skipped them).
                   all_green=true
-                  for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT" "$E2E_RESULT" "$NOSQL_INT_RESULT"; do
+                  for r in "$UNIT_TEST_RESULT" "$INTEGRATION_TEST_RESULT"; do
                       case "$r" in
                           success|skipped) ;;
                           *) all_green=false ;;
@@ -424,15 +377,17 @@ jobs:
                   done
                   if [ "$all_green" = "true" ]; then
                       overall_status="## ✅ Build Status
-                  All checks completed successfully!"
+                  Build and local tests passed. See sibling comments below for E2E and NoSQL integration results."
                   else
                       overall_status="## ❌ Build Status
                   Some checks failed. Please review the logs."
                   fi
 
-                  # Write summary
+                  # Write summary — also used verbatim as the PR comment body.
+                  MARKER="<!-- ci-summary:build -->"
                   cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
-                  # 🎉 Build Summary
+                  ${MARKER}
+                  # 🔨 Build, Lint & Test
 
                   ${source_section}
 
@@ -446,43 +401,17 @@ jobs:
                   ## 🧪 Test Results
                   - **Unit Tests:** ${unit_icon} ${UNIT_TEST_RESULT}
                   - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
-                  - **NoSQL language-service integration:** ${nosql_icon} ${NOSQL_INT_RESULT}
-                  - **E2E Tests (Playwright + VS Code):** ${e2e_icon} ${E2E_RESULT}
 
-                  ## 📥 Artifacts
-
-                  Click any artifact name to download it (zip). Artifacts live for 14–90 days
-                  depending on the workflow; expired ones are shown struck-through.
-
-                  **Build** ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
+                  ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
                   ${build_artifacts}
-
-                  **E2E** ($([ -n "$E2E_RUN_ID" ] && echo "[run](${SERVER_URL}/${REPO}/actions/runs/${E2E_RUN_ID})" || echo "—"))
-                  ${e2e_artifacts}
-
-                  **NoSQL language-service** ($([ -n "$NOSQL_RUN_ID" ] && echo "[run](${SERVER_URL}/${REPO}/actions/runs/${NOSQL_RUN_ID})" || echo "—"))
-                  ${nosql_artifacts}
 
                   ${overall_status}
                   SUMMARY_EOF
 
                   echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
 
-                  # Post (or update) a PR comment if we found a PR.
-                  # Fork PRs run with a read-only GITHUB_TOKEN regardless of the
-                  # workflow's declared permissions, so `gh pr comment` will fail
-                  # with "Resource not accessible by integration". Treat any
-                  # failure here as a warning so it does not fail the job.
                   if [ -n "${PR_NUMBER:-}" ]; then
-                      if gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
-                              --body "$(cat "$GITHUB_STEP_SUMMARY")" \
-                              --edit-last 2>/dev/null \
-                          || gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
-                              --body "$(cat "$GITHUB_STEP_SUMMARY")" 2>/dev/null; then
-                          echo "✅ PR #${PR_NUMBER} comment posted"
-                      else
-                          echo "::warning::Unable to post PR comment on #${PR_NUMBER} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
-                      fi
+                      post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
                   fi
 
                   # Fail the summary step only if a local test bucket actually failed. "skipped" means an earlier

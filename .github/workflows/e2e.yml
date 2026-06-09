@@ -17,6 +17,7 @@ name: E2E Tests (Webview + Cosmos DB Emulator)
 
 permissions:
     contents: read
+    pull-requests: write
 
 on:
     workflow_dispatch:
@@ -99,6 +100,7 @@ jobs:
               run: npm run vite-prod
 
             - name: 🧪 Run e2e tests
+              id: e2e-tests
               # xvfb-run is mandatory on Linux: Electron has no real headless mode and the runner has no display.
               # `-a` picks the next free display number. Retries (CI: 2) come from playwright.config.ts.
               # COSMOSDB_E2E_SKIP_BUILD=1 — dist/ is already fresh from the build step above; the freshness check in
@@ -155,4 +157,133 @@ jobs:
                   path: emulator-logs
                   if-no-files-found: warn
                   retention-days: 14
+
+            - name: 📊 Generate Job Summary & PR comment
+              # Each CI workflow now owns its own PR comment (identified by a stable HTML-comment
+              # marker). main.yml posts the build/lint/unit/integration summary; this step posts
+              # the e2e slice — test result + downloadable HTML report. The marker lets re-runs
+              # update the existing comment in-place rather than spamming the PR.
+              if: always()
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  SERVER_URL: ${{ github.server_url }}
+                  REPO: ${{ github.repository }}
+                  GITHUB_RUN_ID: ${{ github.run_id }}
+                  E2E_RESULT: ${{ steps.e2e-tests.outcome }}
+                  # Use head.sha for PRs so the displayed SHA matches what reviewers see on the
+                  # PR head, not the synthetic merge commit github.sha resolves to for PR events.
+                  SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+                  BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+                  PR_TITLE: ${{ github.event.pull_request.title }}
+              shell: bash
+              run: |
+                  result_icon() {
+                      case "$1" in
+                          success)   echo "✅" ;;
+                          failure)   echo "❌" ;;
+                          cancelled) echo "⚪" ;;
+                          skipped)   echo "⏭️" ;;
+                          *)         echo "❓" ;;
+                      esac
+                  }
+                  human_size() {
+                      awk -v b="$1" 'BEGIN {
+                          if (b < 1024)            { printf "%d B", b }
+                          else if (b < 1048576)    { printf "%.1f KB", b/1024 }
+                          else if (b < 1073741824) { printf "%.2f MB", b/1048576 }
+                          else                     { printf "%.2f GB", b/1073741824 }
+                      }'
+                  }
+                  # See main.yml for the rationale behind list_run_artifacts /
+                  # post_or_update_comment — identical logic, duplicated because GitHub Actions
+                  # has no first-class way to share inline shell across workflows.
+                  list_run_artifacts() {
+                      local run_id=$1
+                      local arts
+                      arts=$(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts" \
+                          --jq '.artifacts[] | "\(.id)\t\(.name)\t\(.size_in_bytes)\t\(.expired)"' 2>/dev/null || true)
+                      if [ -z "$arts" ]; then
+                          echo "_None_"
+                          return
+                      fi
+                      while IFS=$'\t' read -r id name size expired; do
+                          [ -z "$id" ] && continue
+                          local size_h
+                          size_h=$(human_size "$size")
+                          if [ "$expired" = "true" ]; then
+                              printf -- '- ~~%s~~ — %s _(expired)_\n' "$name" "$size_h"
+                          else
+                              printf -- '- [%s](%s/%s/actions/runs/%s/artifacts/%s) — %s\n' \
+                                  "$name" "$SERVER_URL" "$REPO" "$run_id" "$id" "$size_h"
+                          fi
+                      done <<< "$arts"
+                  }
+                  post_or_update_comment() {
+                      local pr=$1
+                      local marker=$2
+                      local body_file=$3
+                      local existing_id
+                      existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
+                          --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+                      if [ -n "$existing_id" ]; then
+                          if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                                  --field body=@"${body_file}" >/dev/null 2>&1; then
+                              echo "✅ PR #${pr} comment updated (id ${existing_id})"
+                              return 0
+                          fi
+                          echo "::warning::Failed to PATCH comment ${existing_id}, posting a new one"
+                      fi
+                      if gh pr comment "${pr}" --repo "${REPO}" --body-file "${body_file}" >/dev/null 2>&1; then
+                          echo "✅ PR #${pr} new comment posted"
+                          return 0
+                      fi
+                      echo "::warning::Unable to post PR comment on #${pr} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+                      return 0
+                  }
+
+                  short_sha="${SHA:0:7}"
+                  commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
+                  e2e_icon=$(result_icon "$E2E_RESULT")
+                  artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
+
+                  # Resolve PR info for push events (no PR payload) by branch name.
+                  if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+                      pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                          --json number,title 2>/dev/null) || true
+                      if [ -n "$pr_info" ]; then
+                          PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+                          PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
+                      fi
+                  fi
+
+                  source_section="**Commit:** ${commit_link}"
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      source_section="${source_section}
+                  **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
+                  fi
+
+                  MARKER="<!-- ci-summary:e2e -->"
+                  cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+                  ${MARKER}
+                  # 🎭 E2E Tests (Playwright + VS Code)
+
+                  ${source_section}
+
+                  ## 🧪 Result
+                  - **E2E Tests:** ${e2e_icon} ${E2E_RESULT}
+
+                  ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
+                  ${artifacts}
+
+                  > Tip: the HTML report artifact contains a self-contained Playwright report.
+                  > Download the zip, extract, and open \`index.html\` — or run
+                  > \`npx playwright show-report <extracted-dir>\` for the interactive view.
+                  SUMMARY_EOF
+
+                  echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
+
+                  if [ -n "${PR_NUMBER:-}" ]; then
+                      post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
+                  fi
 

@@ -235,6 +235,7 @@ jobs:
                   INTEGRATION_TEST_RESULT: ${{ steps.integration-tests.outcome }}
                   SERVER_URL: ${{ github.server_url }}
                   REPO: ${{ github.repository }}
+                  GITHUB_RUN_ID: ${{ github.run_id }}
                   # For pull_request events `github.sha` is the synthetic PR-merge commit (e.g.
                   # `refs/pull/<n>/merge`), but the workflow_run REST API indexes sibling runs
                   # (e2e.yml, nosql-language-service.yml) by their *head* commit SHA. Querying
@@ -267,6 +268,9 @@ jobs:
                   #   skipped                       — workflow has no run on this SHA (path / branch filter didn't match)
                   #   timeout                       — workflow still running after the deadline
                   #
+                  # Return format: "<conclusion>|<run_id>" so the caller can both display the conclusion and
+                  # enumerate that run's artifacts. When there is no run yet (skipped) the run_id is empty.
+                  #
                   # We DO NOT fail this job if a sibling fails — each sibling has its own required status check. We just
                   # surface the result so the PR reader sees a single combined table.
                   wait_for_workflow() {
@@ -276,7 +280,7 @@ jobs:
                       local first_query_at=0
 
                       while [ "$(date +%s)" -lt "$deadline" ]; do
-                          local run_json status conclusion
+                          local run_json status conclusion run_id
                           run_json=$(gh api \
                               "repos/${REPO}/actions/workflows/${workflow_file}/runs?head_sha=${SHA}&per_page=1" \
                               --jq '.workflow_runs[0]' 2>/dev/null || true)
@@ -288,7 +292,7 @@ jobs:
                                   first_query_at=$(date +%s)
                               fi
                               if (( $(date +%s) - first_query_at > 60 )); then
-                                  echo "skipped"
+                                  echo "skipped|"
                                   return
                               fi
                               sleep 10
@@ -297,9 +301,10 @@ jobs:
 
                           status=$(echo "$run_json" | jq -r '.status')
                           conclusion=$(echo "$run_json" | jq -r '.conclusion // empty')
+                          run_id=$(echo "$run_json" | jq -r '.id')
 
                           if [ "$status" = "completed" ]; then
-                              echo "${conclusion:-unknown}"
+                              echo "${conclusion:-unknown}|${run_id}"
                               return
                           fi
 
@@ -307,7 +312,7 @@ jobs:
                           sleep 15
                       done
 
-                      echo "timeout"
+                      echo "timeout|"
                   }
 
                   result_icon() {
@@ -321,14 +326,66 @@ jobs:
                       esac
                   }
 
+                  # Pretty-print one byte size value (KB / MB / GB).
+                  human_size() {
+                      awk -v b="$1" 'BEGIN {
+                          if (b < 1024)            { printf "%d B", b }
+                          else if (b < 1048576)    { printf "%.1f KB", b/1024 }
+                          else if (b < 1073741824) { printf "%.2f MB", b/1048576 }
+                          else                     { printf "%.2f GB", b/1073741824 }
+                      }'
+                  }
+
+                  # Emit a Markdown bullet list of all artifacts attached to the given run_id.
+                  # Links use the GitHub UI URL (…/actions/runs/<run_id>/artifacts/<artifact_id>),
+                  # which is publicly resolvable for logged-in users and triggers a zip download.
+                  # Outputs "_None_" when the run has no artifacts (e.g. green e2e with no traces).
+                  list_run_artifacts() {
+                      local run_id=$1
+                      if [ -z "$run_id" ]; then
+                          echo "_Not available (sibling workflow did not run)._"
+                          return
+                      fi
+                      local arts
+                      arts=$(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts" \
+                          --jq '.artifacts[] | "\(.id)\t\(.name)\t\(.size_in_bytes)\t\(.expired)"' 2>/dev/null || true)
+                      if [ -z "$arts" ]; then
+                          echo "_None_"
+                          return
+                      fi
+                      while IFS=$'\t' read -r id name size expired; do
+                          [ -z "$id" ] && continue
+                          local size_h
+                          size_h=$(human_size "$size")
+                          if [ "$expired" = "true" ]; then
+                              printf -- '- ~~%s~~ — %s _(expired)_\n' "$name" "$size_h"
+                          else
+                              printf -- '- [%s](%s/%s/actions/runs/%s/artifacts/%s) — %s\n' \
+                                  "$name" "$SERVER_URL" "$REPO" "$run_id" "$id" "$size_h"
+                          fi
+                      done <<< "$arts"
+                  }
+
                   echo "⏳ Waiting for sibling workflows (e2e, nosql-language-service) to finish…"
-                  E2E_RESULT=$(wait_for_workflow "e2e.yml" "E2E tests")
-                  NOSQL_INT_RESULT=$(wait_for_workflow "nosql-language-service.yml" "NoSQL language-service integration")
-                  echo "ℹ️ Sibling workflow results: e2e=${E2E_RESULT}, nosql-integration=${NOSQL_INT_RESULT}"
+                  E2E_RAW=$(wait_for_workflow "e2e.yml" "E2E tests")
+                  NOSQL_RAW=$(wait_for_workflow "nosql-language-service.yml" "NoSQL language-service integration")
+                  E2E_RESULT="${E2E_RAW%%|*}"
+                  E2E_RUN_ID="${E2E_RAW#*|}"
+                  NOSQL_INT_RESULT="${NOSQL_RAW%%|*}"
+                  NOSQL_RUN_ID="${NOSQL_RAW#*|}"
+                  echo "ℹ️ Sibling workflow results: e2e=${E2E_RESULT} (run ${E2E_RUN_ID:-—}), nosql-integration=${NOSQL_INT_RESULT} (run ${NOSQL_RUN_ID:-—})"
                   unit_icon=$(result_icon "$UNIT_TEST_RESULT")
                   int_icon=$(result_icon "$INTEGRATION_TEST_RESULT")
                   e2e_icon=$(result_icon "$E2E_RESULT")
                   nosql_icon=$(result_icon "$NOSQL_INT_RESULT")
+
+                  # Build the artifact lists once, before composing the summary. Three groups:
+                  # this run's artifacts (VSIX + anything else uploaded here), the e2e run's
+                  # artifacts (html report, results), and the nosql-language-service run's
+                  # artifacts. Each is plain Markdown so it composes cleanly with cat-heredoc.
+                  build_artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
+                  e2e_artifacts=$(list_run_artifacts "${E2E_RUN_ID}")
+                  nosql_artifacts=$(list_run_artifacts "${NOSQL_RUN_ID}")
 
                   # Commit link
                   short_sha="${SHA:0:7}"
@@ -391,6 +448,20 @@ jobs:
                   - **Integration Tests (extension host):** ${int_icon} ${INTEGRATION_TEST_RESULT}
                   - **NoSQL language-service integration:** ${nosql_icon} ${NOSQL_INT_RESULT}
                   - **E2E Tests (Playwright + VS Code):** ${e2e_icon} ${E2E_RESULT}
+
+                  ## 📥 Artifacts
+
+                  Click any artifact name to download it (zip). Artifacts live for 14–90 days
+                  depending on the workflow; expired ones are shown struck-through.
+
+                  **Build** ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
+                  ${build_artifacts}
+
+                  **E2E** ($([ -n "$E2E_RUN_ID" ] && echo "[run](${SERVER_URL}/${REPO}/actions/runs/${E2E_RUN_ID})" || echo "—"))
+                  ${e2e_artifacts}
+
+                  **NoSQL language-service** ($([ -n "$NOSQL_RUN_ID" ] && echo "[run](${SERVER_URL}/${REPO}/actions/runs/${NOSQL_RUN_ID})" || echo "—"))
+                  ${nosql_artifacts}
 
                   ${overall_status}
                   SUMMARY_EOF

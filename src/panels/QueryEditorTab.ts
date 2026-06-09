@@ -424,12 +424,21 @@ export class QueryEditorTab extends BaseTab {
                     throw new Error(l10n.t('No connection'));
                 }
 
+                // Throughput buckets are not supported by the Cosmos DB Emulator —
+                // hide the option entirely when the active connection points at an emulator.
+                // Sending an empty `params` array tells the webview to clear the default
+                // state so the submenu is not rendered. We avoid putting `undefined` inside
+                // `params` because `vscode.Webview.postMessage` JSON-serializes the payload
+                // and array holes become `null`, which would not round-trip as `undefined`
+                // on the receiving side.
+                const supportsThroughputBuckets = !this.connection.isEmulator;
+
                 // TODO: Implement logic to fetch throughput buckets
                 // For now, we will just set the buckets to true.
                 await this.channel.postMessage({
                     type: 'event',
                     name: 'updateThroughputBuckets',
-                    params: [[true, true, true, true, true]],
+                    params: supportsThroughputBuckets ? [[true, true, true, true, true]] : [],
                 });
             },
         );

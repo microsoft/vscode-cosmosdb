@@ -135,7 +135,7 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: e2e-results-${{ github.run_attempt }}
-                  path: test/e2e/.results/
+                  path: test/e2e/.results/**
                   include-hidden-files: true
                   if-no-files-found: ignore
                   retention-days: 14

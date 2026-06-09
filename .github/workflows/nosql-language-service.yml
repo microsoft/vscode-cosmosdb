@@ -96,8 +96,25 @@ jobs:
 
       - name: Run NoSQL language-service integration tests
         id: nosql-tests
-        run: npx vitest run --reporter=verbose src/test-fixtures/integration.test.ts
+        # `verbose` reporter — human-readable stdout in the Actions log.
+        # `junit` reporter — machine-parsable XML uploaded as an artifact below; lets
+        #   external dashboards / dorny/test-reporter ingest test-level results.
+        # `--outputFile.junit=…` selects which reporter receives the path (needed when
+        #   multiple reporters are configured; the unsuffixed `--outputFile` is ambiguous).
+        run: npx vitest run --reporter=verbose --reporter=junit --outputFile.junit=junit.xml src/test-fixtures/integration.test.ts
         working-directory: packages/nosql-language-service
+
+      - name: 📤 Upload JUnit report
+        # Always upload, even when the test step fails — that's exactly when the XML is
+        # most useful for triage. `if-no-files-found: warn` keeps the run green if vitest
+        # crashed before writing the file (very rare).
+        if: ${{ !cancelled() && steps.nosql-tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nosql-junit-report-${{ github.run_attempt }}
+          path: packages/nosql-language-service/junit.xml
+          if-no-files-found: warn
+          retention-days: 14
 
       # ── Cleanup ──────────────────────────────────────────────────────────────
 
@@ -107,10 +124,8 @@ jobs:
 
       - name: 📊 Generate Job Summary & PR comment
         # Each CI workflow now owns its own PR comment (identified by a stable HTML-comment
-        # marker). This step posts the NoSQL integration slice. The workflow has nothing to
-        # upload as an artifact today (build is plain `tsc` and vitest runs with the
-        # verbose stdout reporter, so no report files are produced). Add `--reporter=junit
-        # --outputFile=junit.xml` plus an upload-artifact step to surface a structured report.
+        # marker). This step posts the NoSQL integration slice: test result + a link to the
+        # JUnit XML artifact produced by the test step above.
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -149,7 +164,7 @@ jobs:
               arts=$(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts" \
                   --jq '.artifacts[] | "\(.id)\t\(.name)\t\(.size_in_bytes)\t\(.expired)"' 2>/dev/null || true)
               if [ -z "$arts" ]; then
-                  echo "_None_ — this workflow does not currently upload artifacts. To surface a JUnit report, change the test step to \`--reporter=junit --outputFile=junit.xml\` and add an upload-artifact step."
+                  echo "_None_"
                   return
               fi
               while IFS=$'\t' read -r id name size expired; do

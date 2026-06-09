@@ -280,3 +280,7 @@ bundle-analysis/
 skills-lock.json
 
 plans/
+
+# Vitest JUnit reporter output (CI uploads it as an artifact; we don't commit it)
+junit.xml
+**/junit.xml

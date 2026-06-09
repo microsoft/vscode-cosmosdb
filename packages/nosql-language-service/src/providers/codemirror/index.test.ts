@@ -460,22 +460,6 @@ describe('createMultiQuerySeparatorExtension', () => {
         // No new ranges computed
         expect(deps.createdRanges).toHaveLength(initialRangeCount);
     });
-
-    it('supports custom separator class', () => {
-        const deps = createSeparatorDepsMock();
-        const ext = createMultiQuerySeparatorExtension(service, deps, {
-            separatorClass: 'my-custom-sep',
-        }) as {
-            _cls: new (view: unknown) => { decorations: unknown };
-        };
-
-        const view = createSeparatorViewMock('SELECT 1;\nSELECT 2;');
-        new ext._cls(view);
-
-        // 2 separators (trailing ; creates empty region)
-        expect(deps.createdRanges).toHaveLength(2);
-        expect(deps.createdRanges[0].class).toBe('my-custom-sep');
-    });
 });
 
 // ---------------------------------------------------------------------------

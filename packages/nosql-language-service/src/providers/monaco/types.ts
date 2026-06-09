@@ -13,30 +13,100 @@ import { DiagnosticSeverity as DsSeverity } from '../../services/types.js';
 export type MonacoNamespace = typeof monacoEditor;
 
 export interface MonacoRegistrationOptions {
-    /** @default "cosmosdb-sql" */
+    /**
+     * Monaco language id to register providers against. Must match the id
+     * declared in your `monaco.languages.register({ id })` (or will be
+     * auto-registered if no language with this id exists yet).
+     * @default "cosmosdb-sql"
+     */
     languageId?: string;
-    /** @default true */
+    /**
+     * Register the autocomplete provider (keywords, functions, schema fields,
+     * aliases). Disable if your host already provides completions.
+     * @default true
+     */
     completions?: boolean;
-    /** @default true */
+    /**
+     * Push parser errors and warnings as Monaco markers. Disable for read-only
+     * viewers where you don't want the gutter to show squiggles.
+     * @default true
+     */
     diagnostics?: boolean;
-    /** @default true */
+    /**
+     * Register hover documentation for keywords, functions, and schema fields.
+     * @default true
+     */
     hover?: boolean;
-    /** @default true */
+    /**
+     * Register function signature help (parameter hints) while typing inside
+     * a function call.
+     * @default true
+     */
     signatureHelp?: boolean;
-    /** @default true */
+    /**
+     * Register the document formatter (`Format Document` command and
+     * `editor.formatOnSave` integration).
+     * @default true
+     */
     formatting?: boolean;
-    /** @default true */
+    /**
+     * Install the Monarch tokenizer and language configuration (brackets,
+     * comments, auto-closing pairs). Disable if your host registers its own
+     * tokenizer or uses a different syntax highlighter.
+     * @default true
+     */
     monarchTokenizer?: boolean;
-    /** @default 300 */
+    /**
+     * Register the folding-range provider for multi-query documents.
+     * Each semicolon-separated query becomes a foldable region.
+     * @default service.multiQuery
+     */
+    folding?: boolean;
+    /**
+     * Render multi-query separator lines and the active-block bar in the gutter.
+     * @default service.multiQuery
+     */
+    multiQueryDecorations?: boolean;
+    /**
+     * Highlight the query block under the cursor.
+     * Only relevant when `multiQueryDecorations` is enabled.
+     * @default true
+     */
+    highlightActiveBlock?: boolean;
+    /**
+     * Debounce (in ms) between the last edit and pushing diagnostic markers.
+     * Higher values reduce parser load on continuous typing; lower values
+     * make errors appear faster.
+     * @default 300
+     */
     diagnosticDelay?: number;
+    /**
+     * Debounce (in ms) for redrawing multi-query decorations after edits.
+     * Falls back to `diagnosticDelay` so both pipelines stay in lockstep
+     * unless you explicitly want them different.
+     * @default diagnosticDelay ?? 300
+     */
+    decorationDelay?: number;
 }
 
 export interface MonacoDiagnosticsProviderOptions {
-    /** @default "cosmosdb-sql" */
+    /**
+     * Monaco language id this provider should observe. Models with a
+     * different language are ignored.
+     * @default "cosmosdb-sql"
+     */
     languageId?: string;
-    /** @default "cosmosdb-sql" */
+    /**
+     * Marker `owner` string passed to `editor.setModelMarkers`. Use a
+     * distinct owner per source so other markers on the same model aren't
+     * wiped when this provider updates.
+     * @default "cosmosdb-sql"
+     */
     owner?: string;
-    /** @default 300 */
+    /**
+     * Debounce (in ms) between the last edit and re-running diagnostics.
+     * @default 300
+     */
     diagnosticDelay?: number;
 }
 

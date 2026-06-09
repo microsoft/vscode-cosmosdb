@@ -79,18 +79,23 @@ export function registerCosmosDbSql(
         );
     }
 
-    if (typeof vscode.languages.registerFoldingRangeProvider === 'function') {
+    const multiQuery = service.multiQuery;
+
+    if ((options.folding ?? multiQuery) && typeof vscode.languages.registerFoldingRangeProvider === 'function') {
         disposables.push(
             vscode.languages.registerFoldingRangeProvider(selector, new VSCodeFoldingRangeProvider(vscode, service)),
         );
     }
 
-    disposables.push(
-        new VSCodeMultiQueryDecorator(vscode, service, {
-            languageId: langId,
-            decorationDelay: options.decorationDelay ?? options.diagnosticDelay,
-        }),
-    );
+    if (options.multiQueryDecorations ?? multiQuery) {
+        disposables.push(
+            new VSCodeMultiQueryDecorator(vscode, service, {
+                languageId: langId,
+                decorationDelay: options.decorationDelay ?? options.diagnosticDelay,
+                highlightActiveBlock: options.highlightActiveBlock,
+            }),
+        );
+    }
 
     const composite: Disposable = {
         dispose() {

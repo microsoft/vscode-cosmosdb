@@ -5,10 +5,18 @@
 
 import * as l10n from '@vscode/l10n';
 import { isEqual } from 'es-toolkit';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type RefCallback } from 'react';
 import { useHotkeys, type HotkeyCallback } from 'react-hotkeys-hook';
 import { HotkeyCommandService } from './HotkeyCommandService';
 import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
+
+/**
+ * Tracks how many DOM nodes each scope is currently bound to. A scope is meant to map to a single
+ * subtree; binding the same scope to two nodes creates two independent listeners that both route to
+ * the same shared handler set, which double-fires when the nodes are nested. We can't prevent it
+ * outright (the binding is the caller attaching our ref), but we warn loudly in development.
+ */
+const scopeBindingCounts = new Map<HotkeyScope, number>();
 
 export const useHotkeyScope = <Scope extends HotkeyScope, Command extends HotkeyCommand>(
     scope: Scope,
@@ -71,8 +79,37 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     // its listener stays on the document. This replaces the manual DOM-containment gating we used
     // to do by hand, and the redundant library-level `scopes` option (inactive without a
     // <HotkeysProvider> since react-hotkeys-hook 5.2.0).
-    return useHotkeys(keysString, eventHandler, {
+    const hotkeysRef = useHotkeys(keysString, eventHandler, {
         enableOnFormTags: ['textarea', 'input' /*, 'textbox'*/],
         enableOnContentEditable: true,
     });
+
+    // Forward the library ref, and warn if the same scope ends up bound to more than one node.
+    const ref = useCallback<RefCallback<HTMLElement>>(
+        (el) => {
+            hotkeysRef(el);
+
+            if (el) {
+                const count = (scopeBindingCounts.get(scope) ?? 0) + 1;
+                scopeBindingCounts.set(scope, count);
+                if (count > 1) {
+                    console.warn(
+                        `Hotkey scope "${scope}" is bound to ${count} DOM nodes. ` +
+                            `A scope should map to a single subtree; multiple bindings share one handler set ` +
+                            `and will double-fire when the nodes are nested.`,
+                    );
+                }
+            } else {
+                const count = (scopeBindingCounts.get(scope) ?? 1) - 1;
+                if (count <= 0) {
+                    scopeBindingCounts.delete(scope);
+                } else {
+                    scopeBindingCounts.set(scope, count);
+                }
+            }
+        },
+        [hotkeysRef, scope],
+    );
+
+    return ref;
 };

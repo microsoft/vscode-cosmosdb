@@ -8,10 +8,10 @@ import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
 import { type CosmosDBRecordIdentifier, isCosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
 import { getDocumentId } from '../../../../utils/document';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope, ResultPanelHotkeys } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -39,14 +39,7 @@ export const DeleteItemButton = (props: ToolbarOverflowItemProps<HTMLButtonEleme
         }
     }, [dispatcher, getSelectedDocuments]);
 
-    const deleteItemHotkeyTooltip = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'resultPanel',
-                'DeleteItem',
-            ),
-        [],
-    );
+    const deleteItemHotkeyTooltip = useMemo(() => getShortcutDisplay(ResultPanelHotkeys, 'DeleteItem'), []);
 
     useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>(
         'resultPanel',

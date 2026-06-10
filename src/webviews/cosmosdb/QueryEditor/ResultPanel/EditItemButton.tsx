@@ -8,10 +8,10 @@ import * as l10n from '@vscode/l10n';
 import { useCallback, useMemo } from 'react';
 import { type CosmosDBRecordIdentifier, isCosmosDBRecord } from '../../../../cosmosdb/types/queryResult';
 import { getDocumentId } from '../../../../utils/document';
-import { HotkeyCommandService, useCommandHotkey } from '../../../common/hotkeys';
+import { getShortcutDisplay, useCommandHotkey } from '../../../common/hotkeys';
 import { ToolbarOverflowButton } from '../../../common/ToolbarOverflow/ToolbarOverflowButton';
 import { type ToolbarOverflowItemProps } from '../../../common/ToolbarOverflow/ToolbarOverflowItem';
-import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope } from '../QueryEditorHotkeys';
+import { type QueryEditorHotkeyCommand, type QueryEditorHotkeyScope, ResultPanelHotkeys } from '../QueryEditorHotkeys';
 import { useQueryEditorDispatcher, useQueryEditorState } from '../state/QueryEditorContext';
 
 export const EditItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement>) => {
@@ -35,14 +35,7 @@ export const EditItemButton = (props: ToolbarOverflowItemProps<HTMLButtonElement
         [dispatcher, getSelectedDocuments],
     );
 
-    const editItemHotkeyTooltip = useMemo(
-        () =>
-            HotkeyCommandService.getInstance<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>().getShortcutDisplay(
-                'resultPanel',
-                'EditItem',
-            ),
-        [],
-    );
+    const editItemHotkeyTooltip = useMemo(() => getShortcutDisplay(ResultPanelHotkeys, 'EditItem'), []);
 
     useCommandHotkey<QueryEditorHotkeyScope, QueryEditorHotkeyCommand>('resultPanel', 'EditItem', editSelectedItem, {
         disabled: isEditDisabled,

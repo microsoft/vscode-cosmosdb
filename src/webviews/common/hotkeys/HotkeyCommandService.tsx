@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { isMac } from '../../constants';
 import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
 
 export type CommandHandler = (event: KeyboardEvent, ...params: unknown[]) => Promise<void> | void;
@@ -102,18 +101,6 @@ export class HotkeyCommandService<Scope extends HotkeyScope, Command extends Hot
      */
     public disableHandler(handler: CommandHandler): void {
         this.disabledHandlers.add(handler);
-    }
-
-    public getHotkeyMapping(scope: Scope, command: Command): HotkeyMapping<Command> | undefined {
-        return this.scopes.get(scope)?.find((hk) => hk.command === command);
-    }
-
-    public getShortcutDisplay(scope: Scope, command: Command): string | undefined {
-        const mapping = this.getHotkeyMapping(scope, command);
-        if (mapping) {
-            return mapping.shortcutDisplay[isMac ? 'mac' : 'windows'] || mapping.shortcutDisplay.windows;
-        }
-        return undefined; // No mapping found for the command in the scope
     }
 
     /**

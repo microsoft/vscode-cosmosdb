@@ -63,16 +63,10 @@ useCommandHotkey<MyHotkeyScope, MyHotkeyCommand>(
 
 ## Working with HotkeyCommandService
 
-Use typed service methods for better safety:
-
-```typescript
-// Get a typed instance
-const service = HotkeyCommandService.getInstance<MyHotkeyScope, MyHotkeyCommand>();
-
-// Type-safe methods
-service.registerScope('editor', EditorHotkeys);
-service.getShortcutDisplay('global', 'Save'); // Both arguments are type-checked
-```
+The service is the runtime registry that connects scope listeners (`useHotkeyScope`) to command
+handlers (`useCommandHotkey`). You normally do not touch it directly — the hooks do. To display a
+shortcut in the UI, use the pure `getShortcutDisplay` helper instead (see below); it reads the static
+mapping arrays and needs no runtime state.
 
 ## Practical Example
 
@@ -122,13 +116,15 @@ useCommandHotkey<EditorHotkeyScope, EditorHotkeyCommand>('global', 'NonExistentC
 
 ## Type Safety for Shortcut Display
 
-Use types to safely access shortcut displays:
+Use the pure `getShortcutDisplay` helper to safely access shortcut displays. Pass the specific
+scope's mapping array so that commands shared across scopes resolve unambiguously:
 
 ```typescript
+import { getShortcutDisplay } from '../../common/hotkeys';
+
 const saveShortcut = useMemo(() => {
-  const service = HotkeyCommandService.getInstance<MyHotkeyScope, MyHotkeyCommand>();
-  // Type-checked - IDE suggests valid scopes and commands
-  const shortcut = service.getShortcutDisplay('global', 'Save');
+  // Type-checked - IDE suggests valid commands for the given mapping array
+  const shortcut = getShortcutDisplay(GlobalHotkeys, 'Save');
   return shortcut ? ` (${shortcut})` : '';
 }, []);
 ```

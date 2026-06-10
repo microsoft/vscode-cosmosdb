@@ -3,28 +3,32 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as l10n from '@vscode/l10n';
 import { isMac } from '../../constants';
 import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
 
 export type CommandHandler = (event: KeyboardEvent, ...params: unknown[]) => Promise<void> | void;
 
 /**
- * Singleton service that manages hotkey commands across the application
+ * Singleton registry that maps hotkey scopes to their static key/command definitions and to the
+ * runtime command handlers contributed by components.
+ *
+ * Scoping (i.e. "which DOM subtree is a shortcut active in") is intentionally NOT handled here:
+ * `useHotkeyScope` delegates that to react-hotkeys-hook's ref-based scoping. This service only
+ * answers two questions:
+ *   1. Which command does a pressed key map to in a given scope? (routing + tooltip display)
+ *   2. Which handlers should run for a command? (enabled handlers only)
  */
 export class HotkeyCommandService<Scope extends HotkeyScope, Command extends HotkeyCommand> {
     private static instance: HotkeyCommandService<string, string>;
 
-    private hotkeyRefs: Map<HotkeyScope, HTMLElement> = new Map();
+    /** Static key/command mappings per scope (sourced from module-level constants). */
+    private scopes: Map<Scope, readonly HotkeyMapping<Command>[]> = new Map();
 
-    // Registered scopes and their supported commands
-    private scopes: Map<Scope, Set<HotkeyMapping<Command>>> = new Map();
-
-    // Store handlers by scope and command
+    /** Runtime handlers per scope/command. */
     private commandHandlers: Map<Scope, Map<Command, Set<CommandHandler>>> = new Map();
 
-    // Track disabled handlers by scope and command
-    private disabledHandlers: Map<Scope, Map<Command, Set<CommandHandler>>> = new Map();
+    /** Handlers that are currently disabled. Keyed by function identity, auto-cleaned by GC. */
+    private disabledHandlers: WeakSet<CommandHandler> = new WeakSet();
 
     private constructor() {}
 
@@ -36,302 +40,72 @@ export class HotkeyCommandService<Scope extends HotkeyScope, Command extends Hot
     }
 
     /**
-     * Sets a DOM node reference for a specific scope
-     * @throws Error if the scope is already bound or if trying to bind 'global' scope
+     * Registers (or refreshes) the static mappings for a scope.
+     *
+     * Idempotent by design: the `hotkeys` argument is a stable module-level constant, so re-running
+     * with the same reference is a no-op. This makes it safe to call on every render and across
+     * HMR / StrictMode remounts without any "already registered" bookkeeping or unregister races.
      */
-    public setRef(scope: HotkeyScope, ref?: HTMLElement | null): void {
-        if (ref === undefined || ref === null) {
-            this.hotkeyRefs.delete(scope);
+    public registerScope(scope: Scope, hotkeys: readonly HotkeyMapping<Command>[] = []): void {
+        if (this.scopes.get(scope) === hotkeys) {
             return;
-        } else if (this.hotkeyRefs.has(scope)) {
-            throw new Error(
-                l10n.t(`Scope '{name}' is already bound to a DOM node. Each scope can only be bound once.`, {
-                    name: scope,
-                }),
-            );
-        } else if (scope === 'global') {
-            throw new Error(
-                l10n.t(
-                    'The "global" scope cannot be bound to a DOM node. It is automatically applied to the entire document.',
-                ),
-            );
-        } else {
-            this.hotkeyRefs.set(scope, ref);
         }
-    }
-
-    /**
-     * Gets the DOM node reference for a specific scope
-     * @returns The HTMLElement bound to the scope, or undefined if not set
-     */
-    public getRef(scope: HotkeyScope): HTMLElement | undefined {
-        return this.hotkeyRefs.get(scope);
-    }
-
-    /**
-     * Removes the DOM node reference for a specific scope
-     * @throws Error if the scope is 'global'
-     */
-    public removeRef(scope: HotkeyScope): void {
-        this.hotkeyRefs.delete(scope);
-    }
-
-    /**
-     * Gets all registered hotkeys for a specific scope
-     * @returns A Set of HotkeyMapping for the given scope
-     */
-    public registeredHotkeys(scope: Scope): Set<HotkeyMapping<Command>> {
-        return this.scopes.get(scope) || new Set();
-    }
-
-    /**
-     * Registers a new scope with its supported commands
-     */
-    public registerScope(scope: Scope, hotkeys: HotkeyMapping<Command>[] = []): void {
-        // Initialize scope set if needed
-        if (!this.scopes.has(scope)) {
-            this.scopes.set(scope, new Set());
+        this.scopes.set(scope, hotkeys);
+        if (!this.commandHandlers.has(scope)) {
             this.commandHandlers.set(scope, new Map());
-            this.disabledHandlers.set(scope, new Map());
         }
-
-        // Add hotkeys to the scope
-        const scopeHotkeys = this.scopes.get(scope)!;
-        const existingHotkeys = new Set(Array.from(scopeHotkeys).map((hk) => hk.key));
-        const existingCommands = new Set(Array.from(scopeHotkeys).map((hk) => hk.command));
-
-        hotkeys.forEach((hotkey) => {
-            if (existingHotkeys.has(hotkey.key)) {
-                console.warn(`Hotkey ${hotkey.key} is already registered in scope ${scope}`);
-                return;
-            }
-            if (existingCommands.has(hotkey.command)) {
-                console.warn(`Command ${hotkey.command} is already registered in scope ${scope}`);
-                return;
-            }
-
-            // Add the hotkey mapping
-            scopeHotkeys.add(hotkey);
-
-            // Initialize command handlers for this hotkey
-            if (!this.commandHandlers.get(scope)!.has(hotkey.command)) {
-                this.commandHandlers.get(scope)!.set(hotkey.command, new Set());
-            }
-        });
     }
 
     /**
-     * Unregisters all handlers for a specific scope
+     * Gets all registered hotkey mappings for a specific scope.
      */
-    public unregisterScope(scope: Scope, hotkeys?: HotkeyMapping<Command>[]): void {
-        if (hotkeys) {
-            // Remove specific hotkeys from the scope
-            const scopeHotkeys = this.scopes.get(scope);
-            if (scopeHotkeys) {
-                hotkeys.forEach((hotkey) => {
-                    scopeHotkeys.delete(hotkey);
-                });
-
-                // Clean up if empty
-                if (scopeHotkeys.size === 0) {
-                    this.scopes.delete(scope);
-                }
-            }
-
-            // Also remove all command handlers for this scope
-            const commandMap = this.commandHandlers.get(scope);
-            if (commandMap) {
-                hotkeys.forEach((hotkey) => {
-                    if (commandMap.has(hotkey.command)) {
-                        commandMap.delete(hotkey.command);
-                    }
-                });
-
-                // Clean up empty command map
-                if (commandMap.size === 0) {
-                    this.commandHandlers.delete(scope);
-                }
-            }
-
-            // Also remove all disabled handlers for this scope
-            const disabledCommandMap = this.disabledHandlers.get(scope);
-            if (disabledCommandMap) {
-                hotkeys.forEach((hotkey) => {
-                    if (disabledCommandMap.has(hotkey.command)) {
-                        disabledCommandMap.delete(hotkey.command);
-                    }
-                });
-
-                // Clean up empty disabled command map
-                if (disabledCommandMap.size === 0) {
-                    this.disabledHandlers.delete(scope);
-                }
-            }
-
-            // Clean up any associated DOM node
-            this.removeRef(scope);
-        } else {
-            // Remove all hotkeys for this scope
-            this.scopes.delete(scope);
-            // Also remove all command handlers for this scope
-            this.commandHandlers.delete(scope);
-            // Also remove all disabled handlers for this scope
-            this.disabledHandlers.delete(scope);
-            // Clean up any associated DOM node
-            this.removeRef(scope);
-        }
+    public registeredHotkeys(scope: Scope): readonly HotkeyMapping<Command>[] {
+        return this.scopes.get(scope) ?? [];
     }
 
     /**
-     * Registers a handler for a command action in a specific scope
+     * Registers a handler for a command in a specific scope.
      */
     public registerActionHandler(scope: Scope, command: Command, handler: CommandHandler): void {
-        // Initialize scope map if needed
-        if (!this.commandHandlers.has(scope)) {
-            throw new Error(
-                l10n.t('Scope {name} is not registered. Please register the scope before adding handlers.', {
-                    name: scope,
-                }),
-            );
+        let commandMap = this.commandHandlers.get(scope);
+        if (!commandMap) {
+            commandMap = new Map();
+            this.commandHandlers.set(scope, commandMap);
         }
 
-        // Get command map for this scope
-        const commandMap = this.commandHandlers.get(scope)!;
-
-        if (!commandMap.has(command)) {
-            throw new Error(l10n.t('Command {name} is not registered in scope {scope}.', { name: command, scope }));
+        let handlers = commandMap.get(command);
+        if (!handlers) {
+            handlers = new Set();
+            commandMap.set(command, handlers);
         }
 
-        // Add the handler
-        commandMap.get(command)!.add(handler);
+        handlers.add(handler);
     }
 
     /**
-     * Unregisters a handler for a command action
+     * Unregisters a handler for a command.
      */
     public unregisterActionHandler(scope: Scope, command: Command, handler: CommandHandler): void {
-        // Remove from commandHandlers
-        const commandMap = this.commandHandlers.get(scope);
-        if (commandMap) {
-            commandMap.get(command)?.delete(handler);
-        }
-
-        // Remove from disabledHandlers
-        const disabledCommandMap = this.disabledHandlers.get(scope);
-        if (disabledCommandMap) {
-            disabledCommandMap.get(command)?.delete(handler);
-        }
+        this.commandHandlers.get(scope)?.get(command)?.delete(handler);
+        this.disabledHandlers.delete(handler);
     }
 
     /**
-     * Enables a specific handler for a command
+     * Enables a previously disabled handler.
      */
-    public enableHandler(scope: Scope, command: Command, handler: CommandHandler): void {
-        const disabledCommandMap = this.disabledHandlers.get(scope);
-        if (disabledCommandMap) {
-            disabledCommandMap.get(command)?.delete(handler);
-        }
+    public enableHandler(handler: CommandHandler): void {
+        this.disabledHandlers.delete(handler);
     }
 
     /**
-     * Disables a specific handler for a command
+     * Disables a handler so it is skipped during command execution.
      */
-    public disableHandler(scope: Scope, command: Command, handler: CommandHandler): void {
-        // Verify the handler exists
-        const commandMap = this.commandHandlers.get(scope);
-        if (!commandMap) {
-            console.warn(l10n.t('Scope {scope} is not registered.', { scope }));
-            return; // Scope not registered
-        }
-
-        const handlers = commandMap.get(command);
-        if (!handlers || !handlers.has(handler)) {
-            console.warn(
-                l10n.t('Handler for command {command} in scope {scope} is not registered.', {
-                    command,
-                    scope,
-                }),
-            );
-            return; // Handler not registered
-        }
-
-        // Initialize disabled maps if needed
-        if (!this.disabledHandlers.has(scope)) {
-            this.disabledHandlers.set(scope, new Map());
-        }
-
-        const disabledCommandMap = this.disabledHandlers.get(scope)!;
-        if (!disabledCommandMap.has(command)) {
-            disabledCommandMap.set(command, new Set());
-        }
-
-        // Add to disabled handlers
-        disabledCommandMap.get(command)!.add(handler);
-    }
-
-    /**
-     * Enables all handlers for a command
-     */
-    public enableCommand(scope: Scope, command: Command): void {
-        this.disabledHandlers.get(scope)?.delete(command);
-    }
-
-    /**
-     * Disables all handlers for a command
-     */
-    public disableCommand(scope: Scope, command: Command): void {
-        const commandMap = this.commandHandlers.get(scope);
-        if (!commandMap) {
-            console.warn(l10n.t('Scope {scope} is not registered.', { scope }));
-            return; // Scope not registered
-        }
-
-        const handlers = commandMap.get(command);
-        if (!handlers) {
-            console.warn(
-                l10n.t('Command {command} is not registered in scope {scope}.', {
-                    command,
-                    scope,
-                }),
-            );
-            return; // Command not registered
-        }
-
-        if (handlers.size === 0) return;
-
-        // Initialize disabled maps if needed
-        if (!this.disabledHandlers.has(scope)) {
-            this.disabledHandlers.set(scope, new Map());
-        }
-
-        const disabledCommandMap = this.disabledHandlers.get(scope)!;
-        disabledCommandMap.set(command, new Set(handlers));
-    }
-
-    /**
-     * Checks if a handler is enabled
-     */
-    public isHandlerEnabled(scope: Scope, command: Command, handler: CommandHandler): boolean {
-        const disabledCommandMap = this.disabledHandlers.get(scope);
-        if (!disabledCommandMap) {
-            return true;
-        }
-
-        const disabledHandlers = disabledCommandMap.get(command);
-        if (!disabledHandlers) {
-            return true;
-        }
-
-        return !disabledHandlers.has(handler);
+    public disableHandler(handler: CommandHandler): void {
+        this.disabledHandlers.add(handler);
     }
 
     public getHotkeyMapping(scope: Scope, command: Command): HotkeyMapping<Command> | undefined {
-        const scopeHotkeys = this.scopes.get(scope);
-        if (!scopeHotkeys) {
-            return undefined; // Scope not registered
-        }
-
-        return Array.from(scopeHotkeys).find((hk) => hk.command === command);
+        return this.scopes.get(scope)?.find((hk) => hk.command === command);
     }
 
     public getShortcutDisplay(scope: Scope, command: Command): string | undefined {
@@ -343,7 +117,7 @@ export class HotkeyCommandService<Scope extends HotkeyScope, Command extends Hot
     }
 
     /**
-     * Executes handlers for a command in a specific scope
+     * Executes all enabled handlers for a command in a specific scope.
      */
     public async executeCommand(
         scope: Scope,
@@ -351,15 +125,15 @@ export class HotkeyCommandService<Scope extends HotkeyScope, Command extends Hot
         event: KeyboardEvent,
         ...params: unknown[]
     ): Promise<void> {
-        const scopeHandlers = this.commandHandlers.get(scope);
-        if (scopeHandlers) {
-            const handlers = scopeHandlers.get(command);
-            if (handlers && handlers.size > 0) {
-                const promises = Array.from(handlers)
-                    .filter((handler) => this.isHandlerEnabled(scope, command, handler))
-                    .map(async (handler) => handler(event, ...params));
-                await Promise.all(promises);
-            }
+        const handlers = this.commandHandlers.get(scope)?.get(command);
+        if (!handlers || handlers.size === 0) {
+            return;
         }
+
+        await Promise.all(
+            Array.from(handlers)
+                .filter((handler) => !this.disabledHandlers.has(handler))
+                .map(async (handler) => handler(event, ...params)),
+        );
     }
 }

@@ -5,7 +5,7 @@
 
 import * as l10n from '@vscode/l10n';
 import { isEqual } from 'es-toolkit';
-import { useCallback, useEffect, useRef, useState, type RefCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useHotkeys, type HotkeyCallback } from 'react-hotkeys-hook';
 import { HotkeyCommandService } from './HotkeyCommandService';
 import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
@@ -15,20 +15,11 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     hotkeys: HotkeyMapping<Command>[],
 ) => {
     const commandService = HotkeyCommandService.getInstance<Scope, Command>();
-    const [isRegistered, setIsRegistered] = useState(false);
-    const hotkeysRef = useRef<HotkeyMapping<Command>[]>([]);
-    const ref: RefCallback<HTMLElement> = useCallback(
-        (el) => void (el && !commandService.getRef(scope) && commandService.setRef(scope, el)),
-        [commandService, scope],
-    );
 
-    if (!isRegistered) {
-        // Register the scope with the command service if not already registered
-        commandService.registerScope(scope, hotkeys);
-        // TODO: investigate how to avoid this disable
-        hotkeysRef.current = hotkeys;
-        setIsRegistered(true);
-    }
+    // Register the scope's static mappings. registerScope is idempotent (the `hotkeys` array is a
+    // stable module-level constant), so calling it on every render is safe and survives HMR /
+    // StrictMode remounts without any registration flags or teardown races.
+    commandService.registerScope(scope, hotkeys);
 
     const eventHandler = useCallback<HotkeyCallback>(
         (event, handler) => {
@@ -49,8 +40,7 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
                 .filter((k) => k)
                 .sort();
 
-            const registeredHotkeys = Array.from(commandService.registeredHotkeys(scope));
-            const mapping = registeredHotkeys.find((m) =>
+            const mapping = commandService.registeredHotkeys(scope).find((m) =>
                 m.key
                     .split(', ')
                     .map((k) => k.split('+').sort())
@@ -58,22 +48,6 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
             );
 
             if (mapping) {
-                const node = commandService.getRef(scope);
-                if (node) {
-                    // Since the event is now attached to the node, the active element can never be inside the node.
-                    // The hotkey only triggers if the node is/has the active element.
-                    // This is a problem since focused subcomponents won't trigger the hotkey.
-                    const rootNode = node.getRootNode();
-
-                    if (
-                        (rootNode instanceof Document || rootNode instanceof ShadowRoot) &&
-                        rootNode.activeElement !== node &&
-                        !node.contains(rootNode.activeElement)
-                    ) {
-                        // Just ignore the event if the active element is not within the scope node
-                        return;
-                    }
-                }
                 // Pass the event to allow handlers to control propagation
                 void commandService.executeCommand(scope, mapping.command, event);
             }
@@ -81,44 +55,24 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
         [scope, commandService],
     );
 
-    useEffect(() => {
-        // Unregister any previous hotkeys for this scope
-        return () => {
-            // Sometimes might be a race condition when the old component is not unmounted before the new one is mounted
-            // Therefore we rely on useHotkeyCommand to handle the unregistration of action,
-            // then useHotkeys will remove the keyboard event listener.
-            // Race condition can happen in the following scenario (i.e. hot reloading of the component):
-            // 1. Old component is unmounting
-            // 2. New component is mounting
-            // 3. New component registers the same scope
-            // 4. Old component tries to unregister the scope, but it is already registered by the new component
-            // 5. Old component totally wipes out the hotkeys for the scope, which is not what we want
-            // commandService.unregisterScope(scope, hotkeysRef.current);
-
-            // Clear the hotkeys reference
-            hotkeysRef.current = [];
-            // Reset the registration state
-            setIsRegistered(false);
-        };
-    }, [scope, hotkeys, commandService]);
-
     // Combine all keys for this scope
-    const keysString = hotkeys
-        .map((m) => m.key)
-        .sort()
-        .join(', ');
-    // Use react-hotkeys-hook to handle hotkeys.
-    // The event listener is always attached to the document; routing to the correct scope is handled by our own
-    // HotkeyCommandService (per-scope keysString + the DOM-ref containment check in `eventHandler` above).
-    //
-    // NOTE: we intentionally do NOT pass the `scopes` option. Since react-hotkeys-hook 5.2.0 scopes are inactive
-    // by default and require a <HotkeysProvider> ancestor (or an explicit enableScope() call) to activate. We have
-    // neither, so passing `scopes` would gate every hotkey behind an always-empty `activeScopes` set and silently
-    // disable all shortcuts. Our service already performs the scoping, so the library-level scope is redundant.
-    useHotkeys(keysString, eventHandler, {
+    const keysString = useMemo(
+        () =>
+            hotkeys
+                .map((m) => m.key)
+                .sort()
+                .join(', '),
+        [hotkeys],
+    );
+
+    // react-hotkeys-hook returns a ref. When the caller attaches it to a DOM node, the library
+    // scopes the shortcut to that subtree automatically: it only fires when the focused element is
+    // the node or one of its descendants. The 'global' scope simply leaves the ref unattached, so
+    // its listener stays on the document. This replaces the manual DOM-containment gating we used
+    // to do by hand, and the redundant library-level `scopes` option (inactive without a
+    // <HotkeysProvider> since react-hotkeys-hook 5.2.0).
+    return useHotkeys(keysString, eventHandler, {
         enableOnFormTags: ['textarea', 'input' /*, 'textbox'*/],
         enableOnContentEditable: true,
     });
-
-    return ref;
 };

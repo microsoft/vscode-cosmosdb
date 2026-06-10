@@ -14,7 +14,9 @@ import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './Hotk
  * Tracks how many DOM nodes each scope is currently bound to. A scope is meant to map to a single
  * subtree; binding the same scope to two nodes creates two independent listeners that both route to
  * the same shared handler set, which double-fires when the nodes are nested. We can't prevent it
- * outright (the binding is the caller attaching our ref), but we warn loudly in development.
+ * outright (the binding is the caller attaching our ref), so we warn when it happens. The check is
+ * unconditional rather than gated on a build flag: this runs in the webview bundle where
+ * `process.env.NODE_ENV` is not reliably defined, and the bookkeeping is negligible.
  */
 const scopeBindingCounts = new Map<HotkeyScope, number>();
 

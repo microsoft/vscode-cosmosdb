@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { callWithTelemetryAndErrorHandling } from '@microsoft/vscode-azext-utils';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,23 +23,34 @@ const EXPECTED_MD5 = 'A54B319AD86975EB072A681AFA9CB553';
  * This is idempotent and safe to call on every activation.
  */
 export async function cleanupLLMInstructionsFiles(): Promise<void> {
-    // Remove the file if it exists and hasn't been modified
-    const promptFolder = getPromptFolder();
-    const filePath = path.join(promptFolder, INSTRUCTIONS_FILENAME);
+    await callWithTelemetryAndErrorHandling('cosmosDB.llmInstructions.cleanup', async (context) => {
+        context.errorHandling.suppressDisplay = true;
+        context.errorHandling.rethrow = false;
 
-    if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath);
-        const actualMd5 = crypto.createHash('md5').update(content).digest('hex').toUpperCase();
-        ext.outputChannel.info(`Found existing instructions file at ${filePath} with MD5 ${actualMd5}`);
+        // Remove the file if it exists and hasn't been modified
+        const promptFolder = getPromptFolder();
+        const filePath = path.join(promptFolder, INSTRUCTIONS_FILENAME);
 
-        if (actualMd5 === EXPECTED_MD5) {
-            fs.unlinkSync(filePath);
-            ext.outputChannel.info(`Deleted obsolete instructions file at ${filePath}`);
+        const fileExists = fs.existsSync(filePath);
+        context.telemetry.properties.fileFound = String(fileExists);
+
+        if (fileExists) {
+            const content = fs.readFileSync(filePath);
+            const actualMd5 = crypto.createHash('md5').update(content).digest('hex').toUpperCase();
+            const md5Matched = actualMd5 === EXPECTED_MD5;
+            context.telemetry.properties.md5Matched = String(md5Matched);
+            ext.outputChannel.info(`Found existing instructions file at ${filePath} with MD5 ${actualMd5}`);
+
+            if (md5Matched) {
+                fs.unlinkSync(filePath);
+                context.telemetry.properties.fileDeleted = String(true);
+                ext.outputChannel.info(`Deleted obsolete instructions file at ${filePath}`);
+            }
         }
-    }
 
-    // Clear the obsolete manifest from globalState
-    await ext.context.globalState.update(LLM_ASSETS_MANIFEST_KEY, undefined);
+        // Clear the obsolete manifest from globalState
+        await ext.context.globalState.update(LLM_ASSETS_MANIFEST_KEY, undefined);
+    });
 }
 
 /**

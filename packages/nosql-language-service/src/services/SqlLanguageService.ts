@@ -65,6 +65,11 @@ export class SqlLanguageService {
         this.host = host ?? {};
     }
 
+    /** Whether the host enabled multi-query document support. */
+    get multiQuery(): boolean {
+        return !!this.host.multiQuery;
+    }
+
     // ─── Multi-query document ──────────────────────────────
 
     /**

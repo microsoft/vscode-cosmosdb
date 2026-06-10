@@ -1,25 +1,13 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "bundler",
-    "types": ["mocha", "node"]
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "out",
+    "rootDir": ".",
+    "types": ["vitest/globals", "node"],
+    "composite": false
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.json",
-    "test/**/*.ts",
-    "packages/*/src/**/*.ts",
-    "packages/*/src/**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules",
-    ".vscode-test",
-    "out",
-    "dist",
-    "src/**/*.test.ts",
-    "packages/**/*.test.ts",
-    "**/__mocks__"
-  ]
+  "include": ["test/**/*.ts"],
+  "exclude": ["node_modules", ".vscode-test", "out", "dist", "test/e2e"]
 }

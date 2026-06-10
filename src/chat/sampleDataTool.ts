@@ -3,12 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import {
-    getSchemaFromDocument,
-    simplifySchema,
-    updateSchemaWithDocument,
-    type NoSQLDocument,
-} from '@cosmosdb/schema-analyzer/json';
+import { getSchemaFromDocuments, type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { parseError } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -16,7 +11,7 @@ import { getCosmosClient } from '../cosmosdb/getCosmosClient';
 import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaService } from '../services/SchemaService';
 import { getActiveQueryEditor, getConnectionFromQueryTab } from './chatUtils';
 
 /**
@@ -71,14 +66,13 @@ export interface SampleSchemaResult {
 }
 
 /**
- * Executes the sample query against the given connection and returns the inferred schema.
- * Returns the simplified JSONSchema (matching the format used by the toolbar's
- * "Generate schema" feature) so that both code paths can share `SchemaFileStorage`.
+ * Executes the sample query against the given connection and returns the documents and RUs.
  */
-export async function sampleContainerSchema(connection: NoSqlQueryConnection): Promise<SampleSchemaResult> {
+async function fetchSampleDocuments(
+    connection: NoSqlQueryConnection,
+): Promise<{ documents: NoSQLDocument[]; requestCharge?: number }> {
     const client = getCosmosClient(connection);
     const container = client.database(connection.databaseId).container(connection.containerId);
-
     const response = await container.items
         .query<Record<string, unknown>>(SAMPLE_QUERY, {
             maxItemCount: 10,
@@ -86,33 +80,8 @@ export async function sampleContainerSchema(connection: NoSqlQueryConnection): P
             bufferItems: false,
         })
         .fetchAll();
-
-    const documents = response.resources;
-    if (!documents || documents.length === 0) {
-        return {
-            databaseId: connection.databaseId,
-            containerId: connection.containerId,
-            sampleQuery: SAMPLE_QUERY,
-            documentCount: 0,
-            schema: {},
-            requestCharge: response.requestCharge,
-        };
-    }
-
-    // Build schema from all sampled documents
-    const schema = getSchemaFromDocument(documents[0] as NoSQLDocument);
-    for (const doc of documents.slice(1)) {
-        updateSchemaWithDocument(schema, doc as NoSQLDocument);
-    }
-
-    simplifySchema(schema);
-
     return {
-        databaseId: connection.databaseId,
-        containerId: connection.containerId,
-        sampleQuery: SAMPLE_QUERY,
-        documentCount: documents.length,
-        schema: schema as Record<string, unknown>,
+        documents: (response.resources ?? []) as NoSQLDocument[],
         requestCharge: response.requestCharge,
     };
 }
@@ -129,33 +98,46 @@ function getActiveTab(): QueryEditorTab | undefined {
 }
 
 /**
- * Samples the container schema and persists it to SchemaFileStorage.
- * Also refreshes Monaco autocomplete in the active editor if available.
- * This is the shared core logic used by both the registered tool and
- * direct callers (e.g. CosmosDbOperationsService).
+ * Samples the container schema and persists it via `SchemaService`.
+ *
+ * The returned `SampleSchemaResult.schema` is the size-bounded version
+ * produced by `SchemaService.getSimplifiedSchema` so the LLM context stays
+ * small regardless of the raw container shape. When persistence is disabled
+ * (the user has turned off `generateSchemaBasedOnQueries`), we fall back to
+ * a one-shot inferred schema built from the just-sampled documents.
  */
 export async function sampleAndPersistContainerSchema(connection: NoSqlQueryConnection): Promise<SampleSchemaResult> {
-    const result = await sampleContainerSchema(connection);
+    const { documents, requestCharge } = await fetchSampleDocuments(connection);
+    const result = {
+        databaseId: connection.databaseId,
+        containerId: connection.containerId,
+        sampleQuery: SAMPLE_QUERY,
+        documentCount: documents.length,
+        schema: {},
+        requestCharge,
+    };
+
+    if (documents.length === 0) {
+        return result;
+    }
 
     const isSchemaBasedOnQueries = vscode.workspace
         .getConfiguration('cosmosDB.queryEditor')
         .get<boolean>('generateSchemaBasedOnQueries', false);
 
-    if (result.documentCount > 0 && isSchemaBasedOnQueries) {
+    result.schema = getSchemaFromDocuments(documents) as Record<string, unknown>;
+
+    if (isSchemaBasedOnQueries) {
         try {
-            const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
-            const containerLabel = `${connection.databaseId}/${connection.containerId}`;
-            await SchemaFileStorage.getInstance().saveSchema(
-                schemaId,
-                containerLabel,
-                JSON.stringify(result.schema),
-                new Date().toISOString(),
-                result.documentCount.toString(),
-            );
-            // Refresh Monaco autocomplete in the active editor.
-            const tab = getActiveTab();
-            if (tab) {
-                await tab.sendSchemaToWebview();
+            await SchemaService.getInstance().mergeDocumentsIntoSchema(connection, documents, {
+                source: 'aiSample',
+                suppressNotification: true,
+                confirmAll: true,
+                updateFromQueriesEnabled: true,
+            });
+            const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
+            if (simplified) {
+                result.schema = simplified.schema as Record<string, unknown>;
             }
         } catch (saveError) {
             ext.outputChannel.warn(

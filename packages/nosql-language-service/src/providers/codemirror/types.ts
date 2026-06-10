@@ -7,15 +7,40 @@ import { type Diagnostic } from '@codemirror/lint';
 import { type EditorView, type TooltipView } from '@codemirror/view';
 import { DiagnosticSeverity as DsSeverity } from '../../services/types.js';
 
+/**
+ * Suggested options shape for a CodeMirror host that wraps the language
+ * service's individual extension factories behind a single config object.
+ *
+ * Unlike the Monaco/VS Code adapters, the CodeMirror surface is a set of
+ * standalone factories the host composes manually — nothing in this package
+ * consumes `CodeMirrorOptions` directly. It exists so different hosts can
+ * agree on the same option names when they expose a single config knob.
+ */
 export interface CodeMirrorOptions {
-    /** @default true */
+    /**
+     * Compose the autocomplete source (`createCompletionSource(service)`).
+     * Disable if your host already provides completions for this language.
+     * @default true
+     */
     completions?: boolean;
-    /** @default true */
+    /**
+     * Compose the lint source (`createLintSource(service)`).
+     * Disable for read-only viewers where you don't want squiggles.
+     * @default true
+     */
     diagnostics?: boolean;
-    /** @default true */
+    /**
+     * Compose the hover tooltip source (`createHoverTooltipSource(service)`).
+     * @default true
+     */
     hover?: boolean;
 }
 
+/**
+ * CodeMirror modules the multi-query separator extension needs to draw
+ * its line decorations. Injected by the host so this package can stay
+ * free of a hard `@codemirror/view` dependency at module load time.
+ */
 export interface MultiQuerySeparatorDeps {
     ViewPlugin: {
         fromClass<V extends object>(

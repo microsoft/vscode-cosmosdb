@@ -13,6 +13,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type QuerySession } from '../cosmosdb/session/QuerySession';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaService } from '../services/SchemaService';
 import { getIsSurveyDisabledGlobally } from '../utils/survey';
 import { BaseTab } from './BaseTab';
 import {
@@ -79,6 +80,25 @@ export class QueryEditorTab extends BaseTab {
             vscode.workspace.onDidChangeConfiguration((e) => {
                 if (e.affectsConfiguration('cosmosDB.queryEditor.generateSchemaBasedOnQueries')) {
                     this.syncSchemaBasedOnQueriesSetting();
+                }
+            }),
+        );
+
+        // Mirror schema mutations into Monaco autocomplete. Any code path
+        // (toolbar action, AI sample tool, query merge, document creation,
+        // cascade delete on container/db drop) flows through SchemaService,
+        // so subscribing here is enough — individual callers must NOT push
+        // schemaUpdated events of their own.
+        this.disposables.push(
+            SchemaService.getInstance().onSchemaChanged((event) => {
+                const c = this.state.connection;
+                if (
+                    c &&
+                    c.endpoint === event.endpoint &&
+                    c.databaseId === event.databaseId &&
+                    c.containerId === event.containerId
+                ) {
+                    void this.sendSchemaToWebview();
                 }
             }),
         );

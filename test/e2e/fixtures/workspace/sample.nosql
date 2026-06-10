@@ -1,0 +1,13 @@
+-- Sample NoSQL query for the e2e test workspace.
+--
+-- The Playwright fixture (`test/e2e/fixtures/vscode.ts`) copies this
+-- directory into a fresh worker-scoped temp folder and opens it as the
+-- VS Code workspace. Specs can then open files like this one via
+-- `vscode.window.showTextDocument` to exercise the .nosql language
+-- service against the e2e emulator's `nosql-test-db / products` container.
+
+SELECT TOP 10 c.id, c.name, c.price, c.category
+FROM c
+WHERE c.inStock = true
+ORDER BY c.price DESC
+

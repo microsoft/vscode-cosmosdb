@@ -1,0 +1,261 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+/*
+ * Lint exceptions in this file (Playwright fixture conventions vs. React rules):
+ *  - `react-hooks/rules-of-hooks`: triggers on `await use(...)` because the
+ *    rule pattern-matches the identifier `use`. Here `use` is Playwright's
+ *    fixture-consumer callback (see https://playwright.dev/docs/test-fixtures),
+ *    not React 19's `use` hook.
+ *  - `no-empty-pattern`: Playwright fixtures must accept a (possibly empty)
+ *    destructuring of upstream fixtures as their first argument. `({}, use)`
+ *    is the documented way to declare a fixture with no upstream deps.
+ */
+
+/* oxlint-disable react-hooks/rules-of-hooks, no-empty-pattern */
+
+/**
+ * Playwright fixtures for VS Code e2e tests. Adapted from the sibling
+ * `vs-code-postgresql` repo's `fixtures/pgsqlExtension.ts`, simplified for
+ * our single-editor (VS Code only) suite.
+ *
+ * Two fixtures, both **worker-scoped**:
+ *
+ *   - `vscodeApp`    — the launched `ElectronApplication`, reused across
+ *                       every test in the worker
+ *   - `vscodeWindow` — the main VS Code window as a Playwright `Page`,
+ *                       reused across every test in the worker
+ *
+ * Worker-scoping matters: launching VS Code costs ~5 s. Per-test launch
+ * means a 5-test file takes ~25 s of startup overhead; with worker scope
+ * it's ~5 s total. The test author is responsible for resetting per-test
+ * UI state via `afterEach` (see `closeAllEditorTabs` in webviewHelpers.ts).
+ *
+ * The fixture file deliberately does NOT auto-close tabs in an `afterEach`
+ * here — fixtures with `afterEach` hooks are awkward to compose. Each spec
+ * file should declare its own cleanup.
+ */
+
+import { _electron as electron, type ElectronApplication, type Page, test as base } from '@playwright/test';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ensureE2eIsolationContext } from '../helpers/e2eIsolation';
+import { waitForWorkbenchReady } from '../helpers/workbenchReady';
+import { waitForExtensionsActivated } from '../setup/activation';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..', '..');
+
+interface EmulatorConfig {
+    endpoint: string;
+    key: string;
+    databaseId: string;
+    defaultContainerId: string;
+}
+
+interface E2eConfig {
+    vscodeExecutablePath: string;
+    extensionDevelopmentPath: string;
+    extensionsDir: string;
+    /**
+     * Absolute path of `test/e2e/fixtures/workspace/` — the source-of-truth
+     * workspace folder. Each worker copies it into its own temp dir so
+     * spec-side mutations don't leak across runs.
+     */
+    workspaceFixtureDir: string;
+    /** Present unless `COSMOSDB_E2E_SKIP_EMULATOR=1` was set in globalSetup. */
+    emulator?: EmulatorConfig;
+}
+
+function readE2eConfig(): E2eConfig {
+    const configPath = path.resolve(repoRoot, '.vscode-test', 'e2e-config.json');
+    return JSON.parse(readFileSync(configPath, 'utf-8')) as E2eConfig;
+}
+
+/**
+ * Pre-seed `userDataDir/User/settings.json` with VS Code settings that
+ * make the workbench cooperative with Playwright. Mirrors what the PG
+ * project does; each setting is here for a specific flake we want to
+ * pre-empt (see comments).
+ */
+function seedUserSettings(userDataDir: string): void {
+    const settings: Record<string, unknown> = {
+        // VS Code 1.112+ overlays a "sticky" container on tree headers that
+        // intercepts pointer events — breaks hover/click on tree items.
+        'workbench.tree.enableStickyScroll': false,
+        // Preview tabs reuse the same tab as you click around, which makes
+        // "open multiple files" flows brittle. Force every editor to be
+        // a real tab.
+        'workbench.editor.enablePreview': false,
+        // Don't let VS Code re-open last session's untitled buffers — every
+        // worker should start with an empty workbench.
+        'files.hotExit': 'onExitAndWindowClose',
+        // Chat / secondary sidebar can autopopup on fresh installs and steal
+        // 30 % of horizontal space, hiding webview content.
+        'workbench.secondarySideBar.visible': false,
+        // Silence "do you trust this folder" — we already pass --disable-workspace-trust.
+        'security.workspace.trust.enabled': false,
+        // Cosmos DB emulator (linux/vnext-preview) advertises its writable
+        // region as `https://127.0.0.1:8081`, which the host container
+        // doesn't expose. With endpoint discovery enabled (the default),
+        // the SDK would immediately reroute every request to the
+        // unreachable port. Force the client to stay on whichever endpoint
+        // the connection points at. Harmless for production single-region
+        // accounts; required for any e2e-vs-emulator scenario.
+        'cosmosDB.enableEndpointDiscovery': false,
+    };
+    const settingsPath = path.join(userDataDir, 'User', 'settings.json');
+    mkdirSync(path.dirname(settingsPath), { recursive: true });
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 4), 'utf-8');
+}
+
+/**
+ * Monkey-patch Electron's main-process `dialog` module so native
+ * save / message dialogs never block the test. Untitled SQL editors,
+ * unsaved changes on tab close, etc. would otherwise pop an OS dialog
+ * that Playwright cannot interact with.
+ */
+async function disableNativeDialogs(app: ElectronApplication): Promise<void> {
+    await app
+        .evaluate(({ dialog }) => {
+            dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' });
+            dialog.showMessageBoxSync = () => 1; // Typically "Don't Save"
+            dialog.showMessageBox = () => Promise.resolve({ response: 1, checkboxChecked: false });
+        })
+        .catch(() => {
+            /* Execution context may already be destroyed during teardown. */
+        });
+}
+
+interface VsCodeFixtures {
+    vscodeApp: ElectronApplication;
+    vscodeWindow: Page;
+}
+
+export const test = base.extend<object, VsCodeFixtures>({
+    vscodeApp: [
+        async ({}, use) => {
+            const cfg = readE2eConfig();
+            const isolation = ensureE2eIsolationContext();
+
+            // Worker-scoped temp dirs under the run-scoped temp root.
+            const workerDir = mkdtempSync(path.join(isolation.tempRootDir, 'worker-'));
+            const userDataDir = path.join(workerDir, 'user-data');
+            const workspaceDir = path.join(workerDir, 'workspace');
+            mkdirSync(userDataDir, { recursive: true });
+
+            // Seed the workspace from the checked-in fixture so every spec
+            // sees the same starting tree (.nosql samples, .vscode/settings.json,
+            // etc.). Falls back to an empty dir if the fixture is missing —
+            // keeps pure-shell smoke tests working even without the fixture
+            // checked in.
+            if (existsSync(cfg.workspaceFixtureDir)) {
+                cpSync(cfg.workspaceFixtureDir, workspaceDir, { recursive: true });
+            } else {
+                mkdirSync(workspaceDir, { recursive: true });
+            }
+
+            seedUserSettings(userDataDir);
+
+            const app = await electron.launch({
+                executablePath: cfg.vscodeExecutablePath,
+                args: [
+                    // Disable Electron's internal sandbox so Playwright's CDP attach
+                    // works (mirrors what @vscode/test-electron does for headless runs).
+                    '--no-sandbox',
+                    // Skip first-run prompts that would block the window.
+                    '--disable-workspace-trust',
+                    '--skip-welcome',
+                    '--skip-release-notes',
+                    '--disable-telemetry',
+                    '--disable-updates',
+                    // Headless/CI envs without a real GPU surface — avoid GPU init crashes.
+                    '--disable-gpu',
+                    '--disable-gpu-sandbox',
+                    // Force a new window so the launcher doesn't try to attach to a
+                    // running instance (which would fail Playwright's CDP attach).
+                    '--new-window',
+                    `--user-data-dir=${userDataDir}`,
+                    `--extensions-dir=${cfg.extensionsDir}`,
+                    `--extensionDevelopmentPath=${cfg.extensionDevelopmentPath}`,
+                    workspaceDir,
+                ],
+                env: {
+                    ...(process.env as Record<string, string>),
+                    // Silences telemetry warnings in the extension under test.
+                    DEBUGTELEMETRY: 'v',
+                    // Enables the `cosmosDB.e2e.*` test-only commands registered
+                    // by `src/commands/e2eTestCommands/registerE2eTestCommands.ts`.
+                    // Without this flag those commands are not registered at all,
+                    // so production users running the extension never see them.
+                    COSMOSDB_E2E_TEST: '1',
+                    // Emulator coordinates — read by the `cosmosDB.e2e.*` commands
+                    // when building a `NoSqlQueryConnection` so QueryEditor /
+                    // Document tabs open against the seeded e2e database. Absent
+                    // when `COSMOSDB_E2E_SKIP_EMULATOR=1` was set.
+                    ...(cfg.emulator
+                        ? {
+                              COSMOSDB_E2E_EMULATOR_ENDPOINT: cfg.emulator.endpoint,
+                              COSMOSDB_E2E_EMULATOR_KEY: cfg.emulator.key,
+                              COSMOSDB_E2E_DATABASE_ID: cfg.emulator.databaseId,
+                              COSMOSDB_E2E_CONTAINER_ID: cfg.emulator.defaultContainerId,
+                              // The cosmos SDK inside the extension hits the
+                              // self-signed emulator endpoint; trust it for
+                              // the test process only.
+                              NODE_TLS_REJECT_UNAUTHORIZED: '0',
+                          }
+                        : {}),
+                },
+            });
+
+            await disableNativeDialogs(app);
+
+            await use(app);
+
+            await app.close().catch(() => {
+                /* close races with Electron teardown are expected */
+            });
+            // Best-effort cleanup; on Windows file handles can linger briefly.
+            try {
+                rmSync(workerDir, { recursive: true, force: true });
+            } catch {
+                /* ignore */
+            }
+        },
+        { scope: 'worker' },
+    ],
+
+    vscodeWindow: [
+        async ({ vscodeApp }, use) => {
+            const isolation = ensureE2eIsolationContext();
+
+            // Race firstWindow() against an early "close" event so we get a
+            // meaningful error if VS Code crashes during startup instead of
+            // a generic timeout.
+            const closeWatcher = vscodeApp.waitForEvent('close').then(() => {
+                throw new Error('VS Code closed before a window became available.');
+            });
+            const page = await Promise.race([vscodeApp.firstWindow(), closeWatcher]);
+            closeWatcher.catch(() => {
+                /* swallow expected rejection on normal teardown */
+            });
+
+            await waitForWorkbenchReady(vscodeApp, page, isolation.resultsRootDir);
+
+            // Pre-test activation handshake — reveals the Azure sidebar and
+            // waits until our extension's workspace tree node appears. Cached
+            // per worker (worker-scoped fixture), so the ~2-5 s cost is paid
+            // exactly once even with dozens of specs. See activation.ts for
+            // the full rationale.
+            await waitForExtensionsActivated(page);
+
+            await use(page);
+        },
+        { scope: 'worker' },
+    ],
+});
+
+export { expect } from '@playwright/test';

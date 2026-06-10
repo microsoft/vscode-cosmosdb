@@ -3,7 +3,7 @@
   "compilerOptions": {
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["mocha", "node"]
+    "types": ["vitest/globals", "node"]
   },
   "include": [
     "src/**/*.ts",
@@ -12,7 +12,8 @@
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "packages/*/tests/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "playwright.config.ts"
   ],
   "exclude": ["node_modules", "dist", "out", "**/__mocks__"]
 }

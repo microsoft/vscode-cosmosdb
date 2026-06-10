@@ -5,20 +5,56 @@
 
 import * as l10n from '@vscode/l10n';
 import { isEqual } from 'es-toolkit';
-import { useCallback, useMemo, type RefCallback } from 'react';
+import { useCallback, useMemo, useRef, type RefCallback } from 'react';
 import { useHotkeys, type HotkeyCallback } from 'react-hotkeys-hook';
 import { HotkeyCommandService } from './HotkeyCommandService';
 import { type HotkeyCommand, type HotkeyMapping, type HotkeyScope } from './HotkeyTypes';
 
 /**
- * Tracks how many DOM nodes each scope is currently bound to. A scope is meant to map to a single
- * subtree; binding the same scope to two nodes creates two independent listeners that both route to
- * the same shared handler set, which double-fires when the nodes are nested. We can't prevent it
- * outright (the binding is the caller attaching our ref), so we warn when it happens. The check is
- * unconditional rather than gated on a build flag: this runs in the webview bundle where
+ * Tracks the live DOM nodes each scope is bound to. A scope is meant to map to a single subtree;
+ * binding the same scope to two nodes creates two independent listeners over one shared handler set
+ * and double-fires when the nodes are nested. We can't prevent it outright (the binding is the
+ * caller attaching our ref), so we warn when it happens.
+ *
+ * The check is unconditional (no build-flag gate): this runs in the webview bundle where
  * `process.env.NODE_ENV` is not reliably defined, and the bookkeeping is negligible.
+ *
+ * We track distinct nodes (not a counter) and evaluate on a microtask so that HMR / StrictMode
+ * remounts — where the old node detaches and a new one attaches within the same commit — settle to
+ * a single node before we look, instead of producing a spurious "2 nodes" warning.
  */
-const scopeBindingCounts = new Map<HotkeyScope, number>();
+const scopeBoundNodes = new Map<HotkeyScope, Set<HTMLElement>>();
+
+const bindScopeNode = (scope: HotkeyScope, node: HTMLElement): void => {
+    let nodes = scopeBoundNodes.get(scope);
+    if (!nodes) {
+        nodes = new Set();
+        scopeBoundNodes.set(scope, nodes);
+    }
+    nodes.add(node);
+
+    queueMicrotask(() => {
+        const live = scopeBoundNodes.get(scope);
+        if (live && live.size > 1) {
+            console.warn(
+                `Hotkey scope "${scope}" is bound to ${live.size} DOM nodes. ` +
+                    `A scope should map to a single subtree; multiple bindings share one handler set ` +
+                    `and will double-fire when the nodes are nested.`,
+            );
+        }
+    });
+};
+
+const unbindScopeNode = (scope: HotkeyScope, node: HTMLElement): void => {
+    const nodes = scopeBoundNodes.get(scope);
+    if (!nodes) {
+        return;
+    }
+    nodes.delete(node);
+    if (nodes.size === 0) {
+        scopeBoundNodes.delete(scope);
+    }
+};
 
 export const useHotkeyScope = <Scope extends HotkeyScope, Command extends HotkeyCommand>(
     scope: Scope,
@@ -87,31 +123,19 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
     });
 
     // Forward the library ref, and warn if the same scope ends up bound to more than one node.
-    const ref = useCallback<RefCallback<HTMLElement>>(
+    const boundNodeRef = useRef<HTMLElement | null>(null);
+    return useCallback<RefCallback<HTMLElement>>(
         (el) => {
             hotkeysRef(el);
 
             if (el) {
-                const count = (scopeBindingCounts.get(scope) ?? 0) + 1;
-                scopeBindingCounts.set(scope, count);
-                if (count > 1) {
-                    console.warn(
-                        `Hotkey scope "${scope}" is bound to ${count} DOM nodes. ` +
-                            `A scope should map to a single subtree; multiple bindings share one handler set ` +
-                            `and will double-fire when the nodes are nested.`,
-                    );
-                }
-            } else {
-                const count = (scopeBindingCounts.get(scope) ?? 1) - 1;
-                if (count <= 0) {
-                    scopeBindingCounts.delete(scope);
-                } else {
-                    scopeBindingCounts.set(scope, count);
-                }
+                boundNodeRef.current = el;
+                bindScopeNode(scope, el);
+            } else if (boundNodeRef.current) {
+                unbindScopeNode(scope, boundNodeRef.current);
+                boundNodeRef.current = null;
             }
         },
         [hotkeysRef, scope],
     );
-
-    return ref;
 };

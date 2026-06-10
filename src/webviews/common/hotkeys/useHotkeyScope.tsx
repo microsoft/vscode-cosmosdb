@@ -107,12 +107,17 @@ export const useHotkeyScope = <Scope extends HotkeyScope, Command extends Hotkey
         .map((m) => m.key)
         .sort()
         .join(', ');
-    // Use react-hotkeys-hook to handle hotkeys
-    // The event will always be added to the document, so we can use the scope name as a unique identifier
+    // Use react-hotkeys-hook to handle hotkeys.
+    // The event listener is always attached to the document; routing to the correct scope is handled by our own
+    // HotkeyCommandService (per-scope keysString + the DOM-ref containment check in `eventHandler` above).
+    //
+    // NOTE: we intentionally do NOT pass the `scopes` option. Since react-hotkeys-hook 5.2.0 scopes are inactive
+    // by default and require a <HotkeysProvider> ancestor (or an explicit enableScope() call) to activate. We have
+    // neither, so passing `scopes` would gate every hotkey behind an always-empty `activeScopes` set and silently
+    // disable all shortcuts. Our service already performs the scoping, so the library-level scope is redundant.
     useHotkeys(keysString, eventHandler, {
         enableOnFormTags: ['textarea', 'input' /*, 'textbox'*/],
         enableOnContentEditable: true,
-        scopes: scope, // Use the scope name as the scope identifier
     });
 
     return ref;

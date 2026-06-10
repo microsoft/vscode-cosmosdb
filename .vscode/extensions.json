@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "ms-azuretools.vscode-azureresourcegroups",
+    "ms-playwright.playwright",
     "amodio.tsl-problem-matcher",
     "oxc.oxc-vscode",
     "vitest.explorer"

@@ -59,8 +59,8 @@
     "lint-fix": "concurrently -n oxlint,eslint -c blue,green \"oxlint --fix\" \"eslint --fix .\"",
     "prettier": "oxfmt --check",
     "prettier-fix": "oxfmt",
-    "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'commonjs'}))\"",
-    "test": "vscode-test",
+    "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
+    "test": "node scripts/run-integration-tests.mjs",
     "vitest": "vitest run",
     "vitest:ui": "vitest --ui",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
@@ -83,7 +83,13 @@
     "pre-commit": "npm run build && npm run prettier-fix && npm run lint-fix && npm run l10n && npm run vitest",
     "docker-up": "docker compose up -d",
     "docker-down": "docker compose down",
-    "docker-restart": "npm run docker-down && npm run docker-up"
+    "docker-restart": "npm run docker-down && npm run docker-up",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:debug": "playwright test --debug",
+    "e2e:emulator:up": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e up -d --remove-orphans",
+    "e2e:emulator:down": "docker compose -f docker-compose.e2e.yml -p cosmosdb-e2e down --volumes --remove-orphans",
+    "e2e:emulator:seed": "node scripts/import-seed.mjs --all --reset --endpoint https://localhost:8082 --database nosql-test-db"
   },
   "externalSkills": {
     "cosmosdb-best-practices": {
@@ -100,8 +106,8 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "~1.60.0",
     "@types/json-schema": "~7.0.15",
-    "@types/mocha": "~10.0.10",
     "@types/node": "~25.9.1",
     "@types/react": "~19.2.15",
     "@types/react-dom": "~19.2.3",
@@ -110,7 +116,6 @@
     "@types/vscode-webview": "~1.57.5",
     "@vitejs/plugin-react": "^6.0.1",
     "@vscode/l10n-dev": "~0.0.35",
-    "@vscode/test-cli": "~0.0.12",
     "@vscode/test-electron": "~2.5.2",
     "@vscode/vsce": "~3.9.1",
     "concurrently": "~9.2.1",
@@ -118,13 +123,9 @@
     "diff": "~9.0.0",
     "eslint": "~10.4.0",
     "eslint-plugin-license-header": "~0.9.0",
-    "eslint-plugin-mocha": "~11.3.0",
     "glob": "~13.0.6",
     "globals": "~17.6.0",
     "jest-mock-vscode": "~4.12.0",
-    "mocha": "~11.7.4",
-    "mocha-junit-reporter": "~2.2.1",
-    "mocha-multi-reporters": "~1.5.1",
     "oxfmt": "~0.51.0",
     "oxlint": "~1.66.0",
     "oxlint-tsgolint": "~0.23.0",
@@ -172,11 +173,7 @@
     "@prantlf/jsonlint": {
       "ajv": "~8.18.0"
     },
-    "glob": "~13.0.6",
-    "mocha": {
-      "diff": "~8.0.3",
-      "serialize-javascript": "~7.0.4"
-    }
+    "glob": "~13.0.6"
   },
   "extensionDependencies": [
     "ms-azuretools.vscode-azureresourcegroups"
@@ -518,6 +515,21 @@
         "category": "CosmosDB Dev",
         "command": "cosmosDB.dev.runNl2QueryQualityTest",
         "title": "Run NL2Query Quality Tests"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openQueryEditor",
+        "title": "[E2E Test] Open Query Editor"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.openDocument",
+        "title": "[E2E Test] Open Document"
+      },
+      {
+        "category": "Cosmos DB",
+        "command": "cosmosDB.e2e.attachEmulator",
+        "title": "[E2E Test] Attach Emulator to Workspace"
       }
     ],
     "submenus": [
@@ -802,6 +814,18 @@
         {
           "command": "cosmosDB.dev.runNl2QueryQualityTest",
           "when": "cosmosDB.devMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openQueryEditor",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.openDocument",
+          "when": "cosmosDB.e2eTestMode"
+        },
+        {
+          "command": "cosmosDB.e2e.attachEmulator",
+          "when": "cosmosDB.e2eTestMode"
         }
       ]
     },

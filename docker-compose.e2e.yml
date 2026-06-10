@@ -1,0 +1,35 @@
+# CosmosDB emulator — Playwright e2e tests
+#
+# Why a separate compose file?
+#   - The default `docker-compose.yml` is for local development and binds to
+#     8081/1234. Developers often have it running while iterating. The e2e
+#     suite must NOT collide with that running emulator (port conflict +
+#     accidental data corruption).
+#   - We bind to 8082/1235 instead and use a dedicated compose project name
+#     so `docker compose -p cosmosdb-e2e ...` only touches our container.
+#
+# No volumes / no data persistence — every test run starts from a clean
+# emulator. The seed import (scripts/import-seed.mjs) recreates database +
+# containers + documents on each `docker compose up`. This trades a few
+# seconds of startup for zero stale-data flakes.
+#
+# Used by:
+#   - `test/e2e/setup/emulator.ts` (Playwright globalSetup / globalTeardown)
+#   - `npm run e2e:emulator:up` / `e2e:emulator:down` for manual debugging
+#
+# Documentation: https://learn.microsoft.com/en-us/azure/cosmos-db/emulator-linux
+
+services:
+  cosmosdb-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+    ports:
+      - "8082:8081" # Main endpoint (mapped off the default to avoid clashes)
+      - "1235:1234" # Additional service port (mapped off the default)
+    environment:
+      PROTOCOL: https-insecure
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
+    tmpfs:
+      # Always-empty in-memory mount: prevents stale PG socket lock files
+      # from surviving container restarts. uid/gid=1000 matches the emulator
+      # process user so PG can write the socket.
+      - /socket:uid=1000,gid=1000,mode=0755

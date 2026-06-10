@@ -24,15 +24,24 @@ function ensureSeparatorStyles(): void {
     document.head.appendChild(style);
 }
 
+/**
+ * Build a CodeMirror `ViewPlugin` extension that draws a separator line
+ * under each semicolon in a multi-query document.
+ *
+ * Styles are hardcoded and injected into the document head under the
+ * `cosmosdb-query-separator` class — symmetric with the Monaco and VS Code
+ * multi-query decorators, which also don't expose styling knobs.
+ *
+ * @param service - The language service used to find `;` positions.
+ * @param deps - CodeMirror modules the extension needs (see {@link MultiQuerySeparatorDeps}).
+ */
 export function createMultiQuerySeparatorExtension(
     service: SqlLanguageService,
     deps: MultiQuerySeparatorDeps,
-    options?: { separatorClass?: string },
 ): unknown {
     ensureSeparatorStyles();
 
-    const className = options?.separatorClass ?? SEPARATOR_CLASS;
-    const lineDeco = deps.Decoration.line({ class: className });
+    const lineDeco = deps.Decoration.line({ class: SEPARATOR_CLASS });
 
     function buildDecorations(doc: { toString(): string; lineAt(pos: number): { from: number } }): unknown {
         const text = doc.toString();

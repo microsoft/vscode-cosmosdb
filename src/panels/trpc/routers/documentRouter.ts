@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { type ItemDefinition, type JSONValue, type PartitionKeyDefinition } from '@azure/cosmos';
+import { type NoSQLDocument } from '@cosmosdb/schema-analyzer/json';
 import { type IActionContext } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
@@ -17,6 +18,7 @@ import {
     readDocument,
     replaceDocument,
 } from '../../../cosmosdb/session/DocumentSession';
+import { SchemaService } from '../../../services/SchemaService';
 import { getConfirmationAsInSettings } from '../../../utils/dialogs/getConfirmation';
 import { arePartitionKeysEqual } from '../../../utils/document';
 import { promptAfterActionEventually } from '../../../utils/survey';
@@ -137,6 +139,11 @@ export const documentRouterDef = documentRouter({
             if (saveResult.partitionKey) state.partitionKeyDefinition = saveResult.partitionKey;
             state.documentId = saveResult.identifier;
             ctx.panel.title = `${saveResult.identifier.id}.json`;
+
+            // Fire-and-forget: refresh the persisted container schema with the
+            // newly created document. Only runs when a schema already exists for
+            // this container; we never start tracking schema implicitly here.
+            void refreshSchemaForNewDocument(connection, saveResult.documentContent);
         }
 
         void promptAfterActionEventually(
@@ -268,5 +275,37 @@ async function updateDocument(
         state.documentId = result.identifier;
         ctx.panel.title = `${result.identifier.id}.json`;
         return result;
+    }
+}
+
+/**
+ * Fire-and-forget schema refresh after a successful document creation.
+ *
+ * - Only runs when a schema already exists for this container (so we never
+ *   start tracking a schema implicitly here).
+ * - Respects the cosmosDB.queryEditor.generateSchemaBasedOnQueries setting.
+ * - Webview refresh fan-out is owned by `SchemaService.onSchemaChanged` —
+ *   QueryEditorTab subscribes once and re-renders Monaco autocomplete
+ *   whenever a matching connection's schema changes.
+ */
+async function refreshSchemaForNewDocument(connection: NoSqlQueryConnection, documentContent: unknown): Promise<void> {
+    try {
+        const service = SchemaService.getInstance();
+        if (!service.getMetadata(connection)) {
+            return;
+        }
+
+        const updateFromQueriesEnabled = vscode.workspace
+            .getConfiguration('cosmosDB.queryEditor')
+            .get<boolean>('generateSchemaBasedOnQueries', false);
+
+        await service.mergeDocumentsIntoSchema(connection, [documentContent as NoSQLDocument], {
+            source: 'documentWrite',
+            suppressNotification: true,
+            confirmAll: true,
+            updateFromQueriesEnabled,
+        });
+    } catch {
+        // Best-effort: never let schema refresh break document creation.
     }
 }

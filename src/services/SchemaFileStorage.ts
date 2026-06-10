@@ -11,12 +11,40 @@ import { ext } from '../extensionVariables';
 /**
  * Metadata stored in globalState for each schema.
  * The actual schema JSON is stored on disk in globalStorageUri/schemas/.
+ *
+ * The `endpoint`/`databaseId`/`containerId` triplet is kept in local state
+ * so that cascading cleanup (container/database deletion) can find all the
+ * schemas a given resource owns without re-hashing every known schemaId.
+ * These fields stay local — they MUST NOT be reported in telemetry.
  */
 export type SchemaMetadata = {
     id: string;
     name: string;
     generatedAt: string;
     documentCount: string;
+    /** Endpoint of the originating Cosmos DB account. Local state only — never include in telemetry. */
+    endpoint?: string;
+    /** Local state only — never include in telemetry. */
+    databaseId?: string;
+    /** Local state only — never include in telemetry. */
+    containerId?: string;
+    /**
+     * Sample size at the time of the initial save. Preserved verbatim once
+     * `updatedFromQueries` flips to `true`, because subsequent incremental
+     * merges (query results, document writes, AI sampling) make the running
+     * document count meaningless.
+     */
+    initialDocumentCount?: string;
+    /**
+     * `true` when the stored schema has been mutated at least once by a
+     * background merge (query results, document writes, AI sampling).
+     */
+    updatedFromQueries?: boolean;
+    /**
+     * `true` when the schema was aggressively simplified at save time because
+     * it exceeded the size threshold.
+     */
+    wasSimplifiedOnSave?: boolean;
 };
 
 const SCHEMA_METADATA_PREFIX = 'ms-azuretools.vscode-cosmosdb.schemaMetadata';
@@ -87,29 +115,29 @@ export class SchemaFileStorage {
 
     /**
      * Saves a schema: writes JSON to disk and metadata to globalState.
+     *
+     * The metadata object is stored verbatim (after stripping out `undefined`
+     * fields), which lets callers preserve fields like `initialDocumentCount`
+     * across incremental writes without having to thread every individual
+     * value through this method.
      */
-    public async saveSchema(
-        schemaId: string,
-        name: string,
-        schemaJson: string,
-        generatedAt: string,
-        documentCount: string,
-    ): Promise<void> {
+    public async saveSchema(metadata: SchemaMetadata, schemaJson: string): Promise<void> {
         await this.ensureSchemasDir();
 
-        const fileUri = this.getSchemaFileUri(schemaId);
+        const fileUri = this.getSchemaFileUri(metadata.id);
         // Pretty-print the JSON for readability since users can open the file directly
         const prettyJson = JSON.stringify(JSON.parse(schemaJson), null, 2);
         await vscode.workspace.fs.writeFile(fileUri, Buffer.from(prettyJson, 'utf8'));
 
-        const metadata: SchemaMetadata = {
-            id: schemaId,
-            name,
-            generatedAt,
-            documentCount,
-        };
+        // Strip undefined fields so we don't bloat globalState with explicit `undefined` entries.
+        const cleaned: SchemaMetadata = { ...metadata };
+        for (const key of Object.keys(cleaned) as (keyof SchemaMetadata)[]) {
+            if (cleaned[key] === undefined) {
+                delete cleaned[key];
+            }
+        }
 
-        await ext.context.globalState.update(this.getMetadataKey(schemaId), metadata);
+        await ext.context.globalState.update(this.getMetadataKey(metadata.id), cleaned);
     }
 
     /**
@@ -160,6 +188,42 @@ export class SchemaFileStorage {
      */
     public hasSchema(schemaId: string): boolean {
         return this.getMetadata(schemaId) !== undefined;
+    }
+
+    /**
+     * Returns all metadata entries for schemas that belong to the given
+     * `(endpoint, databaseId)` pair. Used by cascade deletion when a database
+     * is removed.
+     *
+     * Falls back to identity by computed schemaId for legacy metadata that
+     * predates the `endpoint`/`databaseId`/`containerId` fields.
+     */
+    public findSchemasForDatabase(endpoint: string, databaseId: string): SchemaMetadata[] {
+        return this.getAllMetadata().filter((m) => m.endpoint === endpoint && m.databaseId === databaseId);
+    }
+
+    /**
+     * Returns all metadata entries that match the given
+     * `(endpoint, databaseId, containerId)` triplet. Normally one entry — but
+     * we return a list so callers don't have to special-case empty/duplicate
+     * states.
+     *
+     * Includes a fallback by computed schemaId to find legacy metadata that
+     * predates the `endpoint`/`databaseId`/`containerId` fields.
+     */
+    public findSchemasForContainer(endpoint: string, databaseId: string, containerId: string): SchemaMetadata[] {
+        const matches = this.getAllMetadata().filter(
+            (m) => m.endpoint === endpoint && m.databaseId === databaseId && m.containerId === containerId,
+        );
+
+        if (matches.length > 0) {
+            return matches;
+        }
+
+        // Legacy fallback: schemaId is a deterministic hash of (endpoint, db, container).
+        const legacyId = SchemaFileStorage.getSchemaIdForConnection({ endpoint, databaseId, containerId });
+        const legacy = this.getMetadata(legacyId);
+        return legacy ? [legacy] : [];
     }
 
     /**
@@ -234,11 +298,13 @@ export class SchemaFileStorage {
 
             try {
                 await this.saveSchema(
-                    schemaId,
-                    oldItem.name,
+                    {
+                        id: schemaId,
+                        name: oldItem.name,
+                        generatedAt: oldItem.properties.generatedAt,
+                        documentCount: oldItem.properties.documentCount,
+                    },
                     oldItem.properties.schema,
-                    oldItem.properties.generatedAt,
-                    oldItem.properties.documentCount,
                 );
 
                 // Remove old entry after successful migration

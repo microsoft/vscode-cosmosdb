@@ -46,7 +46,7 @@ export async function cleanupLLMInstructionsFiles(): Promise<void> {
             if (md5Matched) {
                 fs.unlinkSync(filePath);
                 context.telemetry.properties.fileDeleted = String(true);
-                ext.outputChannel.info(`Deleted obsolete instructions file at ${filePath}`);
+                ext.outputChannel.info(`Deleted obsolete instructions file "${INSTRUCTIONS_FILENAME}" from prompts folder`);
             }
         }
 

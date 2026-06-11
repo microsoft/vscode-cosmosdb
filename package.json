@@ -62,7 +62,7 @@
     "pretest": "rimraf out && tsc -p tsconfig.test.json && node -e \"require('fs').writeFileSync('out/package.json', JSON.stringify({type:'module'}))\"",
     "test": "node scripts/run-integration-tests.mjs",
     "vitest": "vitest run",
-    "vitest:coverage": "vitest run --coverage --coverage.reporter=text",
+    "vitest:coverage": "vitest run --coverage",
     "vitest:ui": "vitest --ui",
     "vite-dev": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-dev-ext\" \"npm run vite-dev-wv\"",
     "vite-prod": "rimraf ./dist && concurrently -n ext,views -c redBright,whiteBright \"npm run vite-prod-ext\" \"npm run vite-prod-wv\"",

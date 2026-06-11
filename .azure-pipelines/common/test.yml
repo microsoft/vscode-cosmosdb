@@ -19,14 +19,29 @@ steps:
     DISPLAY: :10 # Only necessary for linux test
 
 - task: Npm@1
-  displayName: 'Unit Test'
+  displayName: 'Unit Test + Coverage'
   inputs:
     command: custom
-    customCommand: run unittest
+    customCommand: run vitest:coverage -- --reporter=default --reporter=junit --outputFile=vitest-results.xml
 
 - task: PublishTestResults@2
-  displayName: 'Publish Test Results'
+  displayName: 'Publish Unit Test Results'
+  inputs:
+    testResultsFiles: 'vitest-results.xml'
+    testRunTitle: 'Vitest - $(Agent.OS)'
+  condition: succeededOrFailed()
+
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish Code Coverage'
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage/cobertura-coverage.xml'
+    failIfCoverageEmpty: true
+  condition: succeededOrFailed()
+
+- task: PublishTestResults@2
+  displayName: 'Publish Integration Test Results'
   inputs:
     testResultsFiles: '*-results.xml'
-    testRunTitle: '$(Agent.OS)'
+    testRunTitle: 'Integration - $(Agent.OS)'
   condition: succeededOrFailed()

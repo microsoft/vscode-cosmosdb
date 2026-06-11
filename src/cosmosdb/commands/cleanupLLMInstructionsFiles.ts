@@ -31,6 +31,8 @@ export async function cleanupLLMInstructionsFiles(): Promise<void> {
         const promptFolder = getPromptFolder();
         const filePath = path.join(promptFolder, INSTRUCTIONS_FILENAME);
 
+        // Mask file paths from any error telemetry (fs errors often include paths)
+        context.valuesToMask.push(promptFolder, filePath);
         const fileExists = fs.existsSync(filePath);
         context.telemetry.properties.fileFound = String(fileExists);
 

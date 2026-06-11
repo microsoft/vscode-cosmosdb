@@ -39,7 +39,7 @@ the `vscode.lm` API to call the LLM.
 
 Cancelling any prompt aborts the process.
 
-The command is only available in debug sessions (`DEBUGTELEMETRY` env var set).
+The command is only available when running the extension in Development mode (Extension Host / F5).
 
 ## Multiple iterations
 

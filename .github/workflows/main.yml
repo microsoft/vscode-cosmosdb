@@ -6,7 +6,6 @@ permissions:
     # Needed by the summary step to look up the conclusion of sibling
     # workflows (e2e.yml, nosql-language-service.yml) for the same commit.
     actions: read
-
 on:
     # Trigger when manually run
     workflow_dispatch:
@@ -203,7 +202,15 @@ jobs:
 
             - name: 🧪 Unit Tests
               id: unit-tests
-              run: npm run vitest
+              run: npm run vitest:coverage
+
+            - name: 📊 Upload Code Coverage
+              if: ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+              uses: actions/upload-code-coverage@v1
+              with:
+                  file: coverage/cobertura-coverage.xml
+                  language: TypeScript
+                  label: code-coverage/vitest
 
             - name: 🧪 Integration Tests
               id: integration-tests

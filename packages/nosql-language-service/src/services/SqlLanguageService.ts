@@ -14,6 +14,7 @@
 import { type IToken, type TokenType } from 'chevrotain';
 import { getCompletions, type CompletionItem, type JSONSchema } from '../completion/SqlCompletion.js';
 import { detectBetweenAmbiguity } from '../diagnostics/betweenAmbiguity.js';
+import { detectOrderByInSubquery } from '../diagnostics/orderByInSubquery.js';
 import { detectTypos } from '../diagnostics/typoDetection.js';
 import { parse, type ParseResult } from '../index.js';
 import { SqlLexer } from '../lexer/SqlLexer.js';
@@ -186,7 +187,7 @@ export class SqlLanguageService {
     }
 
     private getSingleQueryDiagnostics(query: string): Diagnostic[] {
-        const { errors } = parse(query);
+        const { ast, errors } = parse(query);
         const diagnostics: Diagnostic[] = errors.map((e) => ({
             range: {
                 startOffset: e.range.start.offset,
@@ -234,6 +235,24 @@ export class SqlLanguageService {
                 message: w.message,
                 severity: DiagnosticSeverity.Warning,
                 code: 'BETWEEN_AMBIGUITY',
+                source: 'cosmosdb-sql',
+            });
+        }
+
+        // Append ORDER BY-in-subquery errors (semantic; backend rejects with HTTP 400)
+        for (const e of detectOrderByInSubquery(ast)) {
+            diagnostics.push({
+                range: {
+                    startOffset: e.range.start.offset,
+                    endOffset: e.range.end.offset,
+                    startLine: e.range.start.line,
+                    startColumn: e.range.start.col,
+                    endLine: e.range.end.line,
+                    endColumn: e.range.end.col,
+                },
+                message: e.message,
+                severity: DiagnosticSeverity.Error,
+                code: 'ORDER_BY_IN_SUBQUERY',
                 source: 'cosmosdb-sql',
             });
         }
@@ -314,6 +333,29 @@ export class SqlLanguageService {
                     message: w.message,
                     severity: DiagnosticSeverity.Warning,
                     code: 'BETWEEN_AMBIGUITY',
+                    source: 'cosmosdb-sql',
+                });
+            }
+
+            // ORDER BY-in-subquery errors for this region
+            for (const e of detectOrderByInSubquery(region.parseResult.ast)) {
+                const docStartOffset = region.startOffset + e.range.start.offset;
+                const docEndOffset = region.startOffset + e.range.end.offset;
+                const { line: startLine, col: startColumn } = offsetToLineCol(query, docStartOffset);
+                const { line: endLine, col: endColumn } = offsetToLineCol(query, docEndOffset);
+
+                diagnostics.push({
+                    range: {
+                        startOffset: docStartOffset,
+                        endOffset: docEndOffset,
+                        startLine,
+                        startColumn,
+                        endLine,
+                        endColumn,
+                    },
+                    message: e.message,
+                    severity: DiagnosticSeverity.Error,
+                    code: 'ORDER_BY_IN_SUBQUERY',
                     source: 'cosmosdb-sql',
                 });
             }

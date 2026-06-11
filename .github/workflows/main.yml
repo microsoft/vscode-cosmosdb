@@ -6,6 +6,7 @@ permissions:
     # Needed by the summary step to look up the conclusion of sibling
     # workflows (e2e.yml, nosql-language-service.yml) for the same commit.
     actions: read
+    code-quality: write
 on:
     # Trigger when manually run
     workflow_dispatch:

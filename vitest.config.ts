@@ -22,7 +22,7 @@ export default defineConfig({
         include: ['src/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
         testTimeout: 15_000,
         coverage: {
-            reporter: ['text', 'cobertura'],
+            reporter: ['text', 'cobertura', 'html'],
         },
     },
 });

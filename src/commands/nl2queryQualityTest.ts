@@ -824,7 +824,15 @@ export function registerNl2QueryQualityTestCommand(context: vscode.ExtensionCont
             void vscode.window.showInformationMessage('NL2Query quality test aborted.');
             return;
         }
-        const allCases = JSON.parse(fs.readFileSync(testCasesUri.fsPath, 'utf-8')) as TestCase[];
+        let allCases: TestCase[];
+        try {
+            allCases = JSON.parse(fs.readFileSync(testCasesUri.fsPath, 'utf-8')) as TestCase[];
+        } catch (e) {
+            void vscode.window.showErrorMessage(
+                `Failed to read test cases file: ${e instanceof Error ? e.message : String(e)}`,
+            );
+            return;
+        }
 
         // 2. Pick schema file
         const schemaUri = await pickJsonFile('Select sample schemas JSON file');

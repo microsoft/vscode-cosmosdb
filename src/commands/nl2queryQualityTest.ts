@@ -609,9 +609,9 @@ async function runSingleIteration(
             try {
                 log('Sending request to LLM...');
                 const tokenSource = new vscode.CancellationTokenSource();
+                token.onCancellationRequested(() => tokenSource.cancel());
                 const sendStart = Date.now();
                 const response = await testModel.sendRequest(messages, {}, tokenSource.token);
-                log(`sendRequest resolved in ${Date.now() - sendStart}ms. Reading stream...`);
 
                 const parts: string[] = [];
                 let chunkCount = 0;

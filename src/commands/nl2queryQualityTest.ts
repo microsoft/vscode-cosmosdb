@@ -867,9 +867,11 @@ export function registerNl2QueryQualityTestCommand(context: vscode.ExtensionCont
 
         // 6. Pick report save location
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const resultsDir = path.join(path.dirname(testCasesUri.fsPath), 'results');
+        fs.mkdirSync(resultsDir, { recursive: true });
         const defaultName = `report-${timestamp}.md`;
         const saveUri = await vscode.window.showSaveDialog({
-            defaultUri: vscode.Uri.file(path.join(path.dirname(testCasesUri.fsPath), defaultName)),
+            defaultUri: vscode.Uri.file(path.join(resultsDir, defaultName)),
             filters: { 'Markdown files': ['md'] },
             title: 'Save NL2Query Quality Report',
         });

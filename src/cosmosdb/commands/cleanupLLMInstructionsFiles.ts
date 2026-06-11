@@ -41,7 +41,7 @@ export async function cleanupLLMInstructionsFiles(): Promise<void> {
             const actualMd5 = crypto.createHash('md5').update(content).digest('hex').toUpperCase();
             const md5Matched = actualMd5 === EXPECTED_MD5;
             context.telemetry.properties.md5Matched = String(md5Matched);
-            ext.outputChannel.info(`Found existing instructions file at ${filePath} with MD5 ${actualMd5}`);
+            ext.outputChannel.info(`Found existing instructions file "${INSTRUCTIONS_FILENAME}" in prompts folder (md5Matched=${md5Matched})`);
 
             if (md5Matched) {
                 fs.unlinkSync(filePath);

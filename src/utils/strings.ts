@@ -98,6 +98,10 @@ export const truncateString = (value: string, maxLength: number, suffix = '…')
  */
 export function leftPadIndex(index: number, array: unknown[] | number, padChar: string = '0'): string {
     const arrayLength = Array.isArray(array) ? array.length : array;
-    const maxDigits = Math.floor(Math.log10(arrayLength - 1) + 1);
+    // Width is the number of digits in the largest index (arrayLength - 1).
+    // Derived from the string length rather than Math.log10 to avoid
+    // floating-point off-by-one errors at powers of ten and -Infinity/NaN
+    // for empty or single-element collections.
+    const maxDigits = String(Math.max(arrayLength - 1, 0)).length;
     return String(index).padStart(maxDigits, padChar);
 }

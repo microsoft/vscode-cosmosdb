@@ -13,9 +13,8 @@ import {
 } from '@microsoft/vscode-azext-utils';
 import { type AzureSubscription } from '@microsoft/vscode-azureresources-api';
 import * as l10n from '@vscode/l10n';
-import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
-import { createCosmosDBClient } from '../../utils/azureClients';
+import { createCosmosDBManagementClient } from '../../utils/azureClients';
 import { getDatabaseAccountNameFromId } from '../../utils/azureUtils';
 
 /**
@@ -142,8 +141,8 @@ export async function addRbacContributorPermission(
         scope: fullAccountId,
     };
 
-    const roleAssignmentId = randomUUID();
-    const client = await createCosmosDBClient(context, subscription);
+    const roleAssignmentId = globalThis.crypto.randomUUID();
+    const client = await createCosmosDBManagementClient(context, subscription);
     const create = await client.sqlResources.beginCreateUpdateSqlRoleAssignmentAndWait(
         roleAssignmentId,
         resourceGroup,
@@ -171,7 +170,7 @@ export async function hasDataContributorRoleAssignment(
 ): Promise<boolean> {
     const fullAccountId = `/subscriptions/${subscription.subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.DocumentDB/databaseAccounts/${databaseAccount}`;
     const expectedRoleDefinitionId = `${fullAccountId}/sqlRoleDefinitions/${COSMOS_DB_DATA_CONTRIBUTOR_ROLE_DEFINITION_ID}`;
-    const client = await createCosmosDBClient(context, subscription);
+    const client = await createCosmosDBManagementClient(context, subscription);
 
     for await (const assignment of client.sqlResources.listSqlRoleAssignments(resourceGroup, databaseAccount)) {
         if (
@@ -213,7 +212,7 @@ export async function addCosmosDBOperatorRoleAssignment(
     const authClient = await createAuthorizationManagementClient([context, subContext]);
 
     try {
-        const result = await authClient.roleAssignments.create(resourceGroupScope, randomUUID(), {
+        const result = await authClient.roleAssignments.create(resourceGroupScope, globalThis.crypto.randomUUID(), {
             principalId,
             roleDefinitionId,
             // Setting principalType avoids the 1-minute retry loop that ARM uses when

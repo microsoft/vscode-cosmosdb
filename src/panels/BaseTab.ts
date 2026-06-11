@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as l10n from '@vscode/l10n';
-import crypto from 'crypto';
 import path from 'path';
 import * as vscode from 'vscode';
 import { ext } from '../extensionVariables';
@@ -22,7 +21,7 @@ export class BaseTab {
     protected disposables: vscode.Disposable[] = [];
 
     protected constructor(panel: vscode.WebviewPanel, viewType: string, telemetryProperties?: Record<string, string>) {
-        this.id = crypto.randomUUID();
+        this.id = globalThis.crypto.randomUUID();
         this.start = Date.now();
         this.telemetryContext = new TelemetryContext(viewType);
 
@@ -63,7 +62,7 @@ export class BaseTab {
         const cspSource = this.panel.webview.cspSource;
         const devServer = !!process.env.DEVSERVER;
         const isProduction = ext.context.extensionMode === vscode.ExtensionMode.Production;
-        const nonce = crypto.randomBytes(16).toString('base64');
+        const nonce = Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(16))).toString('base64');
 
         const dir = ext.isBundle ? '' : 'out/src/webviews';
         const filename = ext.isBundle ? 'views.js' : 'index.js';

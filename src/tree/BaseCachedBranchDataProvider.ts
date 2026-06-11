@@ -6,7 +6,6 @@
 import {
     callWithTelemetryAndErrorHandling,
     callWithTelemetryAndErrorHandlingSync,
-    createContextValue,
     createGenericElement,
     type IActionContext,
     parseError,
@@ -21,7 +20,7 @@ import * as vscode from 'vscode';
 import { API } from '../AzureDBExperiences';
 import { ext } from '../extensionVariables';
 import { type TreeElement } from './TreeElement';
-import { isTreeElementWithContextValue } from './TreeElementWithContextValue';
+import { isTreeElementWithContextValue, TreeElementWithContextValue } from './TreeElementWithContextValue';
 import { isTreeElementWithExperience } from './TreeElementWithExperience';
 
 /**
@@ -386,7 +385,7 @@ export abstract class BaseCachedBranchDataProvider<T extends AzureResource | Wor
 
     private createErrorElement(message: string, id: string): TreeElement {
         return createGenericElement({
-            contextValue: createContextValue([this.contextValue, 'item.error']),
+            contextValue: TreeElementWithContextValue.createContextValue([this.contextValue, 'item.error']),
             label: message,
             id: id,
         }) as TreeElement;

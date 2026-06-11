@@ -68,11 +68,6 @@ export async function createCosmosDBManagementClient(
     return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
 }
 
-/**
- * @deprecated Use {@link createCosmosDBManagementClient} instead. Kept as an
- * alias to avoid churning every existing call site.
- */
-export const createCosmosDBClient = createCosmosDBManagementClient;
 
 export async function createPostgreSQLClient(
     context: IActionContext,

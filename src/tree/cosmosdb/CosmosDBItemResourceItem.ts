@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createContextValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { type Experience } from '../../AzureDBExperiences';
@@ -13,7 +12,7 @@ import { extractPartitionKey, getDocumentId } from '../../utils/document';
 import { truncateString } from '../../utils/strings';
 import { getDocumentTreeItemLabel } from '../../utils/vscodeUtils';
 import { type TreeElement } from '../TreeElement';
-import { type TreeElementWithContextValue } from '../TreeElementWithContextValue';
+import { TreeElementWithContextValue } from '../TreeElementWithContextValue';
 import { type TreeElementWithExperience } from '../TreeElementWithExperience';
 import { type CosmosDBItemModel } from './models/CosmosDBItemModel';
 
@@ -41,7 +40,10 @@ export abstract class CosmosDBItemResourceItem
         this.id = sanitizeId(
             `${model.accountInfo.id}/${model.database.id}/${model.container.id}/documents/${uniqueId}`,
         );
-        this.contextValue = createContextValue([this.contextValue, `experience.${this.experience.api}`]);
+        this.contextValue = TreeElementWithContextValue.createContextValue([
+            this.contextValue,
+            `experience.${this.experience.api}`,
+        ]);
     }
 
     getTreeItem(): vscode.TreeItem {

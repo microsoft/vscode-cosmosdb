@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { nonNullValue } from '@microsoft/vscode-azext-utils';
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { API, getExperienceFromApi } from '../../../../AzureDBExperiences';
@@ -11,6 +10,7 @@ import { getThemeAgnosticIconPath } from '../../../../constants';
 import { wellKnownEmulatorPassword } from '../../../../cosmosdb/cosmosdb-shared-constants';
 import { type StorageItem, StorageNames, StorageService } from '../../../../services/StorageService';
 import { migrateRawEmulatorItemToHashed } from '../../../../utils/emulatorUtils';
+import { nonNullValue } from '../../../../utils/nonNull';
 import { makeFilterable } from '../../../mixins/Filterable';
 import { makeSortable } from '../../../mixins/Sortable';
 import { NoSqlAccountAttachedResourceItem } from '../../../nosql/NoSqlAccountAttachedResourceItem';

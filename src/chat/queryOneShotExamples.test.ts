@@ -91,15 +91,12 @@ describe('queryOneShotExamples', () => {
 
         it('should alternate User and Assistant messages', () => {
             const messages = buildQueryOneShotMessages(MockLanguageModelChatMessage);
+            const userRole = vscode.LanguageModelChatMessageRole?.User ?? 1;
+            const assistantRole = vscode.LanguageModelChatMessageRole?.Assistant ?? 2;
 
             for (let i = 0; i < messages.length; i++) {
-                if (i % 2 === 0) {
-                    // Even indices should be User messages (questions)
-                    expect(messages[i].role).toBe(vscode.LanguageModelChatMessageRole?.User ?? 1);
-                } else {
-                    // Odd indices should be Assistant messages (queries)
-                    expect(messages[i].role).toBe(vscode.LanguageModelChatMessageRole?.Assistant ?? 2);
-                }
+                const expectedRole = i % 2 === 0 ? userRole : assistantRole;
+                expect(messages[i].role).toBe(expectedRole);
             }
         });
     });

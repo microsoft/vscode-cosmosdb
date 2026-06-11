@@ -118,7 +118,7 @@
     "@vscode/l10n-dev": "~0.0.35",
     "@vscode/test-electron": "~2.5.2",
     "@vscode/vsce": "~3.9.1",
-    "concurrently": "~9.2.1",
+    "concurrently": "~10.0.3",
     "cross-env": "~10.1.0",
     "diff": "~9.0.0",
     "eslint": "~10.4.0",
@@ -930,7 +930,7 @@
           },
           "cosmosDB.queryEditor.generateSchemaBasedOnQueries": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "%cosmosdb.configuration.queryEditor.generateSchemaBasedOnQueries%"
           },
           "cosmosDB.experimental.migration.showTokenEstimate": {

@@ -12,7 +12,7 @@ import { type NoSqlQueryConnection } from '../cosmosdb/NoSqlQueryConnection';
 import { type SerializedQueryResult } from '../cosmosdb/types/queryResult';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
-import { SchemaFileStorage } from '../services/SchemaFileStorage';
+import { SchemaService } from '../services/SchemaService';
 import { extractJsonObject, getSelectedModel } from '../utils/aiUtils';
 import { commentOutQuery, sanitizeSqlComment, stripCodeFences } from '../utils/sanitization';
 import { buildChatMessages, getActiveQueryEditor, getConnectionFromQueryTab, sendChatRequest } from './chatUtils';
@@ -873,10 +873,9 @@ export class CosmosDbOperationsService {
                 : undefined);
         if (connection) {
             try {
-                const schemaId = SchemaFileStorage.getSchemaIdForConnection(connection);
-                const stored = await SchemaFileStorage.getInstance().readSchema(schemaId);
-                if (stored) {
-                    cachedSchema = stored;
+                const simplified = await SchemaService.getInstance().getSimplifiedSchema(connection);
+                if (simplified) {
+                    cachedSchema = JSON.stringify(simplified.schema);
                 }
             } catch {
                 // Best-effort — proceed without cached schema.

@@ -1,0 +1,3306 @@
+{
+  "properties": {
+    "id": {
+      "x-occurrence": 250,
+      "type": "string",
+      "x-typeOccurrence": 250,
+      "x-dataType": "string"
+    },
+    "_partitionKey": {
+      "x-occurrence": 250,
+      "type": "string",
+      "x-typeOccurrence": 250,
+      "x-dataType": "string"
+    },
+    "status": {
+      "x-occurrence": 250,
+      "type": "string",
+      "x-typeOccurrence": 250,
+      "x-dataType": "string"
+    },
+    "createdAt": {
+      "x-occurrence": 250,
+      "type": "string",
+      "x-typeOccurrence": 250,
+      "x-dataType": "string"
+    },
+    "sequence": {
+      "x-occurrence": 250,
+      "type": "number",
+      "x-typeOccurrence": 250,
+      "x-dataType": "number"
+    },
+    "profileInfo_0_0": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "clusterFlag_0_1": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "categorySum_0_2": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "channelIndex_0_3": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "metricPct_0_4": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "logState_0_9": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "shardMode_0_a": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "tierData_0_b": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "channelHash_0_d": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "settingHash_0_e": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "taskPayload_0_f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clusterType_0_g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "paramMarker_0_h": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "orderAvg_0_i": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "serviceRatio_0_j": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "queuePayload_0_k": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "endpointNote_0_l": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "variantHash_0_m": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "destinationLabel_0_n": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "permissionId_0_r": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "variantValue_0_s": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "rankType_0_t": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "serviceTotal_0_u": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "queueMarker_0_v": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "accountRate_0_x": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "experimentAvg_0_y": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "partitionAvg_0_z": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "queueName_0_10": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "eventState_0_11": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "pipelinePct_0_12": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "variantDesc_0_13": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "noteMarker_0_16": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "subjectData_0_17": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "categoryCode_0_18": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "planMin_0_1b": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "mediumFlag_0_1c": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "readingKey_0_1d": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "phaseSource_0_1e": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "deviceType_0_1f": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "entityRatio_0_1i": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "devicePct_0_1j": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "preferenceIndex_0_1k": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "topicType_0_1o": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "auditHash_0_1p": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "milestoneNote_0_1q": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "readingMax_0_1t": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "recordValue_0_1u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "buildMeta_0_1v": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "scoreStatus_0_1w": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "endpointIndex_0_1x": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "projectAvg_0_21": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "scoreName_0_22": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clusterMode_0_23": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sessionInfo_0_24": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "detailIndex_0_25": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "profileFlag_0_26": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "flagRef_0_27": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "roleDesc_0_28": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "scoreKey_0_29": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "featureMin_0_2b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clusterTotal_0_2c": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "levelOrder_0_2d": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "windowType_0_2e": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "phaseCode_0_2h": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "pipelineNote_0_2i": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "tenantData_0_2j": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "contextName_0_2k": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "shardRef_0_2l": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "milestoneFlag_0_2m": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "campaignOrder_0_2n": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "sourceMax_1_0": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "hostPct_1_1": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "projectSource_1_2": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "kpiData_1_3": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "scopeName_1_4": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "goalState_1_9": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "roleTag_1_a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "levelRatio_1_b": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "zoneId_1_d": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sliceKey_1_e": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "objectMin_1_f": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "tenantRatio_1_i": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "pipelineState_1_j": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "variantTotal_1_k": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "eventMode_1_l": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "featureName_1_m": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "roleType_1_n": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "zoneTarget_1_o": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "itemMeta_1_p": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "windowName_1_q": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "buildMode_1_r": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "preferencePct_1_s": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "stageKey_1_x": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "kpiId_1_y": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "channelAvg_1_z": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "pipelineTag_1_10": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "tierLabel_1_13": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "tagCount_1_14": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "agentName_1_15": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "segmentId_1_19": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "auditMode_1_1a": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "readingIndex_1_1b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "featureValue_1_1c": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "portMarker_1_1d": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "patchCode_1_1e": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "queueMode_1_1f": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "framePct_1_1h": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "routeData_1_1i": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "patchKind_1_1j": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "recordCode_1_1k": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "partitionRatio_1_1l": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "metricSum_1_1m": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "permissionOrder_1_1n": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sourceFlag_1_1o": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "metricRate_1_1p": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "featureTotal_1_1u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "partitionName_1_1v": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "zoneFlag_1_1w": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "sourceState_1_1x": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "traceKind_1_1y": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "queueRatio_1_1z": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "metaTag_1_20": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "tokenStatus_1_21": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "taskTotal_1_22": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "mediumRef_1_23": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "profileKind_1_24": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "partitionAvg_1_25": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "scoreOrder_1_26": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "shardKey_1_27": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "frameKind_1_28": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "goalPct_1_29": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "featureKey_1_2a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "levelMeta_1_2b": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "ratingLabel_1_2g": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "clusterCount_1_2h": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "kpiKey_1_2i": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "sensorState_2_0": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "mediumValue_2_1": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "frameNote_2_2": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "segmentTotal_2_7": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "teamNote_2_8": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "checkpointIndex_2_9": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "originPayload_2_a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "tokenState_2_d": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "detailType_2_e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "permissionTotal_2_f": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "endpointMax_2_g": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "scoreRate_2_h": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "planValue_2_m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "scopeKey_2_n": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "versionFlag_2_o": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "campaignKey_2_p": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "releaseData_2_q": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "buildId_2_r": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "auditState_2_t": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sensorRate_2_u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "queueKind_2_v": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "variantRate_2_w": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "regionId_2_x": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "featureMeta_2_y": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "channelCount_2_12": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "goalId_2_13": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "readingNote_2_14": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "phaseStatus_2_15": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "groupStatus_2_16": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "deviceFlag_2_1b": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "cohortKind_2_1c": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "scoreInfo_2_1d": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "versionData_2_1e": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "endpointState_2_1f": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "scoreMarker_2_1g": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "deviceRatio_2_1l": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "routeValue_2_1m": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "queuePayload_2_1n": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "ratingLabel_2_1o": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "paramInfo_2_1t": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "teamRef_2_1u": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "bucketFlag_2_1v": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "clientKey_2_1x": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "taskFlag_2_1y": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "tokenMarker_2_1z": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "deviceAvg_2_20": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "optionKey_2_21": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "clientPayload_2_22": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "planData_2_25": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "phaseMarker_2_26": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "traceNote_2_27": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clientPct_2_28": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "stageFlag_2_29": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "profileNote_2_2a": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "stepAvg_2_2e": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "tenantFlag_2_2f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "sourceTarget_2_2g": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "subjectNote_2_2h": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "versionMarker_2_2i": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "destinationMin_2_2j": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "nodeRef_2_2l": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "permissionPct_2_2m": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "clusterName_2_2n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "paramKind_3_0": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "laneInfo_3_1": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "deviceFlag_3_2": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "deviceSum_3_6": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "noteDesc_3_7": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "scoreDesc_3_8": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "teamState_3_9": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "destinationMarker_3_b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "objectPayload_3_c": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "featureIndex_3_d": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "serviceIndex_3_e": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "agentPct_3_g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "ratingState_3_h": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "devicePct_3_i": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "eventInfo_3_j": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "tokenKind_3_o": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "levelRef_3_p": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "levelIndex_3_q": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "routeLabel_3_r": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "windowKind_3_s": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "permissionOrder_3_u": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "groupName_3_v": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "portKey_3_w": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "attributeMode_3_x": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "eventId_3_y": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "samplePct_3_z": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "settingMin_3_10": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "scopeTotal_3_15": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "optionRef_3_16": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "kpiMin_3_17": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "goalRef_3_1b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "readingLabel_3_1c": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "topicPayload_3_1d": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "auditPayload_3_1e": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "frameName_3_1g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "recordPayload_3_1h": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "variantMax_3_1i": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "sourceSource_3_1j": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "targetValue_3_1k": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "jobLabel_3_1l": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "traceKey_3_1m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "jobCode_3_1n": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "userType_3_1o": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "auditInfo_3_1p": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "buildSum_3_1u": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "nodeMode_3_1v": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "noteCount_3_1w": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "hostIndex_3_1x": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "hotfixIndex_3_22": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "queueRef_3_23": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "metricMax_3_24": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "quoteAvg_3_25": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "campaignTotal_3_26": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "taskKind_3_28": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "queueCount_3_29": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "readingMode_3_2a": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "originTag_3_2b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "releaseRef_3_2c": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "tenantFlag_3_2d": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "rankRatio_3_2e": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "invoiceDesc_3_2f": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "noteType_3_2g": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "topicData_3_2j": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sensorMarker_3_2k": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "tagType_3_2l": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "queueHash_4_0": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "kpiState_4_1": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "cohortId_4_2": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "tierCode_4_4": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sensorName_4_5": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "channelCount_4_6": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "featureDesc_4_7": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "pipelineSource_4_b": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "taskCount_4_c": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "roleSource_4_d": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "windowDesc_4_e": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "workspaceRef_4_j": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "tierMin_4_k": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "sampleTag_4_l": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "nodePct_4_q": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "levelId_4_r": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "profileDesc_4_s": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "readingSource_4_t": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "detailPayload_4_u": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "flagMax_4_v": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "objectNote_4_w": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "portState_4_y": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "checkpointTotal_4_z": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "userLabel_4_10": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "quoteAvg_4_11": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "profileMeta_4_12": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "tokenMode_4_13": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "stageDesc_4_16": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "subjectSource_4_17": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "jobState_4_18": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "milestoneSource_4_1c": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "experimentRef_4_1d": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "rolePayload_4_1e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "auditIndex_4_1f": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "targetKey_4_1g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "laneHash_4_1h": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "zoneOrder_4_1i": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "sampleIndex_4_1j": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "tokenRatio_4_1m": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "spanMeta_4_1n": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sensorKind_4_1o": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "preferenceMin_4_1p": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "teamTotal_4_1u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "stageNote_4_1v": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "userRatio_4_1w": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "flagIndex_4_1x": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sampleNote_4_1y": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "targetSource_4_1z": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "settingOrder_4_21": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "metricKind_4_22": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "laneKind_4_23": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "topicAvg_4_27": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sampleCode_4_28": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "userMode_4_29": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "subjectSource_4_2c": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "routeState_4_2d": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "channelFlag_4_2e": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "flagRatio_4_2f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "roleSource_4_2g": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "routeIndex_4_2h": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "profileSource_4_2i": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "destinationTarget_4_2l": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "sampleCount_4_2m": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "regionType_4_2n": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "endpointPct_4_2o": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "routeOrder_5_0": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "deviceId_5_1": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "regionId_5_2": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "originTag_5_7": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clusterAvg_5_8": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "eventFlag_5_9": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "eventKey_5_a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "scoreName_5_b": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "auditMode_5_e": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "groupData_5_f": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "profileIndex_5_g": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "endpointNote_5_k": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "frameRef_5_l": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "sessionPct_5_m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "flagType_5_n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "tierFlag_5_o": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "entityMax_5_p": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "sampleValue_5_q": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "agentSum_5_r": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "auditStatus_5_s": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "configRatio_5_u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "windowRate_5_v": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "snapshotSource_5_w": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "planKey_5_x": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "itemSum_5_y": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "detailData_5_z": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "attributePct_5_10": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "topicSum_5_15": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "ratingStatus_5_16": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "queueId_5_17": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "topicMax_5_19": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "channelFlag_5_1a": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "projectPct_5_1b": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "queueTag_5_1c": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "checkpointSource_5_1f": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "bucketMin_5_1g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "configInfo_5_1h": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "configCode_5_1i": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "hotfixNote_5_1j": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "accountIndex_5_1k": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "traceOrder_5_1m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "queueHash_5_1n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "regionIndex_5_1o": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "categoryRate_5_1p": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "rankState_5_1q": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "portSource_5_1r": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "featureData_5_1s": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "queueMeta_5_1t": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "destinationRef_5_1y": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "buildSum_5_1z": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "zoneMode_5_20": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "channelMeta_5_23": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "topicKey_5_24": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "rankTag_5_25": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "scoreMeta_5_26": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "configType_5_27": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "claimSum_5_28": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "destinationStatus_5_29": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "settingKind_5_2a": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "noteMode_5_2f": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "tierMin_5_2g": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "traceHash_5_2h": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "userMin_5_2i": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "rankRate_5_2j": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "eventCount_5_2k": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "gradeState_5_2l": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "tokenNote_5_2m": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "metaMin_6_0": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "scoreMin_6_1": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "scoreRef_6_2": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "quoteInfo_6_3": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "recordMax_6_7": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "versionPct_6_8": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "checkpointNote_6_9": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "itemMeta_6_a": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "sliceNote_6_c": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "portLabel_6_d": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "campaignTag_6_e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "zoneRatio_6_f": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "ratingType_6_g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "windowHash_6_h": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "tokenAvg_6_i": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "queueKey_6_j": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "roleIndex_6_k": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "accountDesc_6_l": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "clientInfo_6_m": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "patchFlag_6_n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "objectDesc_6_o": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "sourceMarker_6_p": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "frameSource_6_q": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "accountValue_6_u": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "taskMode_6_v": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "flagName_6_w": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "hostPayload_6_x": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "channelIndex_6_y": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "sessionPct_6_z": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "configMeta_6_12": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "invoiceKind_6_13": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "scoreRatio_6_14": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "auditType_6_16": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "hotfixId_6_17": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "hotfixValue_6_18": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "hotfixState_6_19": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "teamPct_6_1a": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "invoiceFlag_6_1c": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "nodeOrder_6_1d": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "permissionMode_6_1e": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "endpointMeta_6_1f": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "ratingMarker_6_1g": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "flagName_6_1l": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "levelCode_6_1m": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "bucketKey_6_1n": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "checkpointMode_6_1r": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "traceRatio_6_1s": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "userSource_6_1t": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "sourceId_6_1v": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "hotfixSource_6_1w": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "slicePct_6_1x": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "gradeType_6_22": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "projectMax_6_23": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "scopeMax_6_24": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        }
+      }
+    },
+    "hostCount_6_29": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "versionTag_6_2a": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        },
+        "queueTarget_6_2b": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "clusterOrder_6_2g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "userValue_6_2h": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "mediumValue_6_2i": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "scoreKind_6_2j": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "kpiMarker_6_2k": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "stageMarker_6_2l": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "queueFlag_6_2m": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "scoreSum_7_0": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "originHash_7_1": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "scopeCode_7_2": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "targetCode_7_3": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "userMarker_7_4": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "patchData_7_5": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "experimentNote_7_6": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "preferenceDesc_7_7": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "hotfixType_7_c": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "recordPayload_7_d": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "pipelineTag_7_e": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "portNote_7_f": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "tokenData_7_g": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "sessionName_7_h": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "stageMin_7_j": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "queueRef_7_k": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "goalLabel_7_l": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "segmentKey_7_m": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "laneCode_7_n": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "eventMax_7_o": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "hotfixMode_7_p": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "claimMin_7_s": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "teamRatio_7_t": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "tokenKind_7_u": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "configMeta_7_x": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "taskSum_7_y": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "recordMax_7_z": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "gradeCode_7_10": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "endpointTag_7_11": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "flagData_7_12": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "featureSource_7_13": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        },
+        "channelOrder_7_14": {
+          "x-occurrence": 1,
+          "type": "null",
+          "x-typeOccurrence": 1,
+          "x-dataType": "null"
+        }
+      }
+    },
+    "versionPct_7_17": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "kpiNote_7_18": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "orderCount_7_19": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "attributeState_7_1a": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "subjectType_7_1b": {
+          "x-occurrence": 1,
+          "type": "boolean",
+          "x-typeOccurrence": 1,
+          "x-dataType": "boolean"
+        },
+        "flagAvg_7_1c": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        }
+      }
+    },
+    "rankName_7_1e": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "deviceRatio_7_1f": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "gradeKind_7_1g": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "milestoneNote_7_1h": {
+      "x-occurrence": 1,
+      "type": "object",
+      "x-typeOccurrence": 1,
+      "x-dataType": "object",
+      "properties": {
+        "partitionMin_7_1i": {
+          "x-occurrence": 1,
+          "type": "string",
+          "x-typeOccurrence": 1,
+          "x-dataType": "string"
+        },
+        "gradeTotal_7_1j": {
+          "x-occurrence": 1,
+          "type": "number",
+          "x-typeOccurrence": 1,
+          "x-dataType": "number"
+        }
+      }
+    },
+    "channelMode_7_1m": {
+      "x-occurrence": 1,
+      "type": "boolean",
+      "x-typeOccurrence": 1,
+      "x-dataType": "boolean"
+    },
+    "queueMax_7_1n": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "phaseTarget_7_1o": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "sourceMarker_7_1p": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "revisionCode_7_1q": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    },
+    "topicAvg_7_1r": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "topicCode_7_1s": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "checkpointRate_7_1t": {
+      "x-occurrence": 1,
+      "type": "null",
+      "x-typeOccurrence": 1,
+      "x-dataType": "null"
+    },
+    "tagIndex_7_1u": {
+      "x-occurrence": 1,
+      "type": "string",
+      "x-typeOccurrence": 1,
+      "x-dataType": "string"
+    },
+    "goalLabel_7_1v": {
+      "x-occurrence": 1,
+      "type": "number",
+      "x-typeOccurrence": 1,
+      "x-dataType": "number"
+    }
+  }
+}

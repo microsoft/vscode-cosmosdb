@@ -7,9 +7,9 @@
  * NL2Query quality test runner — a VS Code command for manual quality evaluation.
  *
  * Registers a dev-only command `cosmosDB.dev.runNl2QueryQualityTest` that:
- *   1. Reads test cases from test/quality/nl2query/test-cases.json
- *   2. Sends each prompt to the LLM using the same pipeline as generateQueryWithLLM
- *   3. Writes a Markdown report to test/quality/nl2query/results/
+ *   1. Prompts for a test-cases JSON file and a schema JSON file
+ *   2. Sends each prompt through the same prompt-building helpers as `generateQueryWithLLM`
+ *   3. Writes a Markdown report to a user-selected location
  *   4. Opens the report in the editor
  *
  * ## How to run
@@ -18,8 +18,7 @@
  *   2. In the Extension Host window, open Command Palette (Ctrl+Shift+P)
  *   3. Run: "CosmosDB Dev: Run NL2Query Quality Tests"
  *
- * The command only registers when DEBUGTELEMETRY env var is set (debug sessions).
- */
+ * The command only registers when the extension is running in Development mode (Extension Host / F5).
 
 import * as fs from 'fs';
 import * as path from 'path';

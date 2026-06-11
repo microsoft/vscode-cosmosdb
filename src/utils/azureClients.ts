@@ -68,7 +68,6 @@ export async function createCosmosDBManagementClient(
     return pinCosmosDBApiVersion(createAzureClient([context, subContext], CosmosDBManagementClient));
 }
 
-
 export async function createPostgreSQLClient(
     context: IActionContext,
     subscription: AzureSubscription,

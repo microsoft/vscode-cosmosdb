@@ -840,7 +840,15 @@ export function registerNl2QueryQualityTestCommand(context: vscode.ExtensionCont
             void vscode.window.showInformationMessage('NL2Query quality test aborted.');
             return;
         }
-        const schemas = JSON.parse(fs.readFileSync(schemaUri.fsPath, 'utf-8')) as Record<string, object>;
+        let schemas: Record<string, object>;
+        try {
+            schemas = JSON.parse(fs.readFileSync(schemaUri.fsPath, 'utf-8')) as Record<string, object>;
+        } catch (e) {
+            void vscode.window.showErrorMessage(
+                `Failed to read schema file: ${e instanceof Error ? e.message : String(e)}`,
+            );
+            return;
+        }
 
         // 4. Pick models
         const testModel = await pickModel('query generation (test subject)');

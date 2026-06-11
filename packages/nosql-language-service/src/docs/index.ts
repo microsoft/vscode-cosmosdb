@@ -1842,6 +1842,8 @@ Returns the natural logarithm of the specified numeric expression, or the logari
 
 Returns a numeric value.
 
+> ⚠️ **The argument must be greater than 0.** \`LOG(0)\` (or a negative value) evaluates to \`-Infinity\`, which is not representable in JSON. Azure Cosmos DB rejects such a result with **HTTP 400, error code 4001** (both on production and the emulator). Guard the input, e.g. \`WHERE c.value > 0\` or \`c.value > 0 ? LOG(c.value) : null\`.
+
 ---
 
 📖 **Documentation:** [LOG](https://learn.microsoft.com/en-us/cosmos-db/query/log)`],
@@ -1861,6 +1863,8 @@ Returns the base-10 logarithm of the specified numeric expression.
 ## Return Value
 
 Returns a numeric value.
+
+> ⚠️ **The argument must be greater than 0.** \`LOG10(0)\` (or a negative value) evaluates to \`-Infinity\`, which is not representable in JSON. Azure Cosmos DB rejects such a result with **HTTP 400, error code 4001** (both on production and the emulator). Guard the input, e.g. \`WHERE c.value > 0\` or \`c.value > 0 ? LOG10(c.value) : null\`.
 
 ---
 

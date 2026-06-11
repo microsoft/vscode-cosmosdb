@@ -94,8 +94,6 @@ Some fixtures are marked with `knownLimitation` in their definition. These tests
 | ID     | Query feature      | Reason                                                              |
 | ------ | ------------------ | ------------------------------------------------------------------- |
 | STR-12 | `TRIM()`           | Not implemented in vnext-preview                                    |
-| M-07   | `LOG(0)`           | Produces `-Infinity` → JSON error 4001                              |
-| M-13   | `LOG10(0)`         | Produces `-Infinity` → JSON error 4001                              |
 | SQ-02  | `FIRST()` subquery | Not supported in vnext-preview                                      |
 | UDF-01 | UDF in SELECT      | "Server-side scripts are not supported in this emulator" (HTTP 400) |
 | UDF-02 | UDF in WHERE       | "Server-side scripts are not supported in this emulator" (HTTP 400) |
@@ -104,6 +102,19 @@ Some fixtures are marked with `knownLimitation` in their definition. These tests
 > **Note:** The vnext-preview Linux emulator (PGSQL backend) does not support any server-side scripts — UDFs, stored procedures, and triggers all return HTTP 400 with `"Server-side scripts are not supported in this emulator"`. The UDF registration step in `import-seed.mjs` is kept for use against production CosmosDB or a future emulator version.
 
 When Microsoft ships a stable Linux emulator that supports these features, remove the `knownLimitation` field from the corresponding fixture.
+
+---
+
+## Cosmos DB language limitations (not emulator-specific)
+
+These fixtures fail on **both production Azure Cosmos DB and the emulator**. The parser accepts the query, but the service rejects it at execution time. These are not emulator gaps — do **not** remove the `knownLimitation` when the emulator stabilizes.
+
+| ID   | Query feature | Reason                                                                                                                      |
+| ---- | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| M-07 | `LOG(0)`      | `LOG(0)` / negative argument → `-Infinity`, which is not valid JSON. Service returns HTTP 400 error 4001. See issue #310.   |
+| M-13 | `LOG10(0)`    | `LOG10(0)` / negative argument → `-Infinity`, which is not valid JSON. Service returns HTTP 400 error 4001. See issue #310. |
+
+> **Workaround:** guard the argument so it is always greater than 0, e.g. `WHERE c.value > 0` or `c.value > 0 ? LOG(c.value) : null`. This is data-dependent (only rows with a 0/negative value fail), so no static diagnostic is emitted — see the LOG/LOG10 hover documentation for details.
 
 ---
 

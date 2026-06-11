@@ -19,6 +19,7 @@
  *   3. Run: "CosmosDB Dev: Run NL2Query Quality Tests"
  *
  * The command only registers when the extension is running in Development mode (Extension Host / F5).
+ */
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -602,8 +603,10 @@ async function runSingleIteration(
             log(`Message count: ${messages.length}`);
 
             // Count input tokens
-            const tokenCounts = await Promise.all(messages.map((m) => testModel.countTokens(m, token)));
-            inputTokens = tokenCounts.reduce((sum, c) => sum + c, 0);
+            const tokenCounts = await Promise.all(
+                messages.map((m: vscode.LanguageModelChatMessage) => testModel.countTokens(m, token)),
+            );
+            inputTokens = tokenCounts.reduce((sum: number, c: number) => sum + c, 0);
             log(`Input tokens: ${inputTokens}`);
 
             try {
@@ -655,14 +658,15 @@ async function runSingleIteration(
             log(`Sending non-query prompt (${testCase.category})...`);
 
             // Count input tokens
-            const tokenCounts = await Promise.all(messages.map((m) => testModel.countTokens(m, token)));
-            inputTokens = tokenCounts.reduce((sum, c) => sum + c, 0);
+            const tokenCounts = await Promise.all(
+                messages.map((m: vscode.LanguageModelChatMessage) => testModel.countTokens(m, token)),
+            );
+            inputTokens = tokenCounts.reduce((sum: number, c: number) => sum + c, 0);
             log(`Input tokens: ${inputTokens}`);
 
             try {
                 const tokenSource = new vscode.CancellationTokenSource();
                 token.onCancellationRequested(() => tokenSource.cancel());
-                const sendStart = Date.now();
                 const response = await testModel.sendRequest(messages, {}, tokenSource.token);
 
                 const parts: string[] = [];
@@ -868,7 +872,7 @@ export function registerNl2QueryQualityTestCommand(context: vscode.ExtensionCont
             prompt: 'How many times to run the tests? (1–5, default 1)',
             placeHolder: '1',
             title: 'NL2Query Quality Tests — Iterations',
-            validateInput: (v) => {
+            validateInput: (v: string) => {
                 if (v === '') return null; // allow empty for default
                 const n = Number(v);
                 if (!Number.isInteger(n) || n < 1 || n > 5) return 'Enter a number between 1 and 5';

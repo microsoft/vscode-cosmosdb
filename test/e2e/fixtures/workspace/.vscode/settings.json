@@ -1,0 +1,13 @@
+{
+  // Workspace-scoped overrides. Most VS Code settings that affect e2e
+  // stability are seeded into the user-data-dir's settings.json by the
+  // fixture (see `seedUserSettings` in `test/e2e/fixtures/vscode.ts`).
+  // This file is for settings that must travel with the workspace.
+
+  // Don't let the file-watcher hammer .git / node_modules in case a test
+  // shells out to git inside this workspace.
+  "files.watcherExclude": {
+    "**/.git/**": true,
+    "**/node_modules/**": true
+  }
+}

@@ -31,6 +31,7 @@ import {
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant, registerSampleDataTool } from './chat';
+import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
 import { registerCommands } from './commands/registerCommands';
 import { cleanupLLMInstructionsFiles } from './cosmosdb/commands/cleanupLLMInstructionsFiles';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
@@ -113,6 +114,10 @@ export async function activateInternal(
         context.subscriptions.push(vscode.window.registerUriHandler({ handleUri: globalUriHandler }));
 
         registerCommands();
+
+        // Test-only commands for the Playwright e2e suite. No-op unless the
+        // `COSMOSDB_E2E_TEST` env var is set (production users never enable it).
+        registerE2eTestCommands();
 
         const nosqlLanguageService = new SqlLanguageService({ multiQuery: true });
         registerCosmosDbSql(vscode, nosqlLanguageService, context, { languageId: 'nosql' });

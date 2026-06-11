@@ -1,0 +1,244 @@
+# Workflow scope: `packages/nosql-language-service` integration tests.
+#
+# This is NOT the extension-host integration suite under `test/` — that one runs inside `main.yml` ("Build, lint &
+# test"). This workflow covers the **NoSQL language service package** (`packages/nosql-language-service`), which talks
+# to a real Cosmos DB Emulator over the wire to validate that its query fixtures behave the same against a live
+# backend as they do in the unit tests.
+#
+# Why a separate workflow:
+#   - It needs Docker (Cosmos emulator) — `main.yml` does not.
+#   - It only matters when `packages/**` or the seed script changes, so the path filter below keeps the run off the
+#     vast majority of commits.
+#
+# Emulator state: the container always starts fresh — no caching, no volumes. The seed dataset is tiny (~100-200
+# documents per container) so re-seeding from scratch costs almost nothing.
+
+name: NoSQL Language Service Integration Tests
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/nosql-language-service.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'scripts/import-seed.mjs'
+      - '.github/workflows/nosql-language-service.yml'
+
+jobs:
+  integration:
+    name: 🧪 NoSQL language-service integration
+    runs-on: ubuntu-latest
+
+    env:
+      COSMOS_ENDPOINT: https://localhost:8081
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build schema-analyzer
+        run: npm run build
+        working-directory: packages/schema-analyzer
+
+      - name: Build nosql-language-service
+        run: npm run build
+        working-directory: packages/nosql-language-service
+
+      # ── Start emulator ───────────────────────────────────────────────────────
+
+      - name: Start Cosmos DB Emulator
+        run: docker compose up -d
+
+      - name: Wait for emulator to be ready
+        run: |
+          echo "Waiting for Cosmos DB Emulator..."
+          for i in $(seq 1 60); do
+            # vnext-preview exposes its data plane at /; a 200/401/403 response means the listener is up.
+            STATUS=$(curl -sk -o /dev/null -w "%{http_code}" https://localhost:8081/ 2>/dev/null || true)
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
+              echo "Emulator is ready after $i attempts (HTTP $STATUS)."
+              exit 0
+            fi
+            echo "Attempt $i/60 — not ready yet (HTTP $STATUS), sleeping 5s..."
+            sleep 5
+          done
+          echo "Emulator did not become ready in time." >&2
+          docker compose logs cosmosdb-emulator || true
+          exit 1
+
+      # ── Seed ─────────────────────────────────────────────────────────────────
+
+      - name: Seed emulator
+        run: |
+          node scripts/import-seed.mjs --container products
+          node scripts/import-seed.mjs --container orders
+          node scripts/import-seed.mjs --container events
+
+      # ── Integration tests ────────────────────────────────────────────────────
+
+      - name: Run NoSQL language-service integration tests
+        id: nosql-tests
+        # `verbose` reporter — human-readable stdout in the Actions log.
+        # `junit` reporter — machine-parsable XML uploaded as an artifact below; lets
+        #   external dashboards / dorny/test-reporter ingest test-level results.
+        # `--outputFile.junit=…` selects which reporter receives the path (needed when
+        #   multiple reporters are configured; the unsuffixed `--outputFile` is ambiguous).
+        run: npx vitest run --reporter=verbose --reporter=junit --outputFile.junit=junit.xml src/test-fixtures/integration.test.ts
+        working-directory: packages/nosql-language-service
+
+      - name: 📤 Upload JUnit report
+        # Always upload, even when the test step fails — that's exactly when the XML is
+        # most useful for triage. `if-no-files-found: warn` keeps the run green if vitest
+        # crashed before writing the file (very rare).
+        if: ${{ !cancelled() && steps.nosql-tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: nosql-junit-report-${{ github.run_attempt }}
+          path: packages/nosql-language-service/junit.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      # ── Cleanup ──────────────────────────────────────────────────────────────
+
+      - name: Stop emulator
+        if: always()
+        run: docker compose down -v
+
+      - name: 📊 Generate Job Summary & PR comment
+        # Each CI workflow now owns its own PR comment (identified by a stable HTML-comment
+        # marker). This step posts the NoSQL integration slice: test result + a link to the
+        # JUnit XML artifact produced by the test step above.
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          NOSQL_RESULT: ${{ steps.nosql-tests.outcome }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          result_icon() {
+              case "$1" in
+                  success)   echo "✅" ;;
+                  failure)   echo "❌" ;;
+                  cancelled) echo "⚪" ;;
+                  skipped)   echo "⏭️" ;;
+                  *)         echo "❓" ;;
+              esac
+          }
+          human_size() {
+              awk -v b="$1" 'BEGIN {
+                  if (b < 1024)            { printf "%d B", b }
+                  else if (b < 1048576)    { printf "%.1f KB", b/1024 }
+                  else if (b < 1073741824) { printf "%.2f MB", b/1048576 }
+                  else                     { printf "%.2f GB", b/1073741824 }
+              }'
+          }
+          # See main.yml for the rationale — duplicated because GitHub Actions has no
+          # first-class way to share inline shell across workflows.
+          list_run_artifacts() {
+              local run_id=$1
+              local arts
+              arts=$(gh api --paginate "repos/${REPO}/actions/runs/${run_id}/artifacts" \
+                  --jq '.artifacts[] | "\(.id)\t\(.name)\t\(.size_in_bytes)\t\(.expired)"' 2>/dev/null || true)
+              if [ -z "$arts" ]; then
+                  echo "_None_"
+                  return
+              fi
+              while IFS=$'\t' read -r id name size expired; do
+                  [ -z "$id" ] && continue
+                  local size_h
+                  size_h=$(human_size "$size")
+                  if [ "$expired" = "true" ]; then
+                      printf -- '- ~~%s~~ — %s _(expired)_\n' "$name" "$size_h"
+                  else
+                      printf -- '- [%s](%s/%s/actions/runs/%s/artifacts/%s) — %s\n' \
+                          "$name" "$SERVER_URL" "$REPO" "$run_id" "$id" "$size_h"
+                  fi
+              done <<< "$arts"
+          }
+          post_or_update_comment() {
+              local pr=$1
+              local marker=$2
+              local body_file=$3
+              local existing_id
+              existing_id=$(gh api --paginate "repos/${REPO}/issues/${pr}/comments" \
+                  --jq ".[] | select(.body | contains(\"${marker}\")) | .id" 2>/dev/null | head -1)
+              if [ -n "$existing_id" ]; then
+                  if gh api --method PATCH "repos/${REPO}/issues/comments/${existing_id}" \
+                          --field body=@"${body_file}" >/dev/null 2>&1; then
+                      echo "✅ PR #${pr} comment updated (id ${existing_id})"
+                      return 0
+                  fi
+                  echo "::warning::Failed to PATCH comment ${existing_id}, posting a new one"
+              fi
+              if gh pr comment "${pr}" --repo "${REPO}" --body-file "${body_file}" >/dev/null 2>&1; then
+                  echo "✅ PR #${pr} new comment posted"
+                  return 0
+              fi
+              echo "::warning::Unable to post PR comment on #${pr} (likely a fork PR with a read-only GITHUB_TOKEN). Skipping."
+              return 0
+          }
+
+          short_sha="${SHA:0:7}"
+          commit_link="[${short_sha}](${SERVER_URL}/${REPO}/commit/${SHA})"
+          nosql_icon=$(result_icon "$NOSQL_RESULT")
+          artifacts=$(list_run_artifacts "${GITHUB_RUN_ID}")
+
+          if [ -z "${PR_NUMBER:-}" ] && [ -n "${BRANCH_NAME:-}" ]; then
+              pr_info=$(gh pr view "${BRANCH_NAME}" --repo "${REPO}" \
+                  --json number,title 2>/dev/null) || true
+              if [ -n "$pr_info" ]; then
+                  PR_NUMBER=$(echo "$pr_info" | jq -r '.number // empty')
+                  PR_TITLE=$(echo "$pr_info"  | jq -r '.title  // empty')
+              fi
+          fi
+
+          source_section="**Commit:** ${commit_link}"
+          if [ -n "${PR_NUMBER:-}" ]; then
+              source_section="${source_section}
+          **Pull Request:** [#${PR_NUMBER} ${PR_TITLE}](${SERVER_URL}/${REPO}/pull/${PR_NUMBER})"
+          fi
+
+          MARKER="<!-- ci-summary:nosql -->"
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY_EOF
+          ${MARKER}
+          # 🔬 NoSQL language-service integration
+
+          ${source_section}
+
+          ## 🧪 Result
+          - **NoSQL integration tests:** ${nosql_icon} ${NOSQL_RESULT}
+
+          ## 📥 Artifacts ([run](${SERVER_URL}/${REPO}/actions/runs/${GITHUB_RUN_ID}))
+          ${artifacts}
+          SUMMARY_EOF
+
+          echo "✅ Job summary written to: ${GITHUB_STEP_SUMMARY}"
+
+          if [ -n "${PR_NUMBER:-}" ]; then
+              post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
+          fi
+

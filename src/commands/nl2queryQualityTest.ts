@@ -264,7 +264,7 @@ function formatReport(
     schemaFile: string,
     description: string,
     testCases: TestCase[],
-    totalDurationMs?: number,
+    totalDurationMs: number,
 ): string {
     const results = allRuns.flat(); // all results across iterations
     const numIterations = allRuns.length;
@@ -332,9 +332,7 @@ function formatReport(
     md += `**Iterations:** ${numIterations}\n`;
     md += `**Total cases:** ${results.length} (${testCases.length} cases × ${numIterations} run${numIterations > 1 ? 's' : ''})\n`;
     md += `**Errors:** ${results.filter((r) => r.error).length}\n`;
-    if (totalDurationMs !== undefined) {
-        md += `**Total duration:** ${totalDurationMs}ms (${formatEta(Math.round(totalDurationMs / 1000))})\n`;
-    }
+    md += `**Total duration:** ${totalDurationMs}ms (${formatEta(Math.round(totalDurationMs / 1000))})\n`;
     md += `\n`;
 
     // Performance statistics

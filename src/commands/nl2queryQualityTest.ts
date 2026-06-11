@@ -529,12 +529,12 @@ async function runSingleIteration(
     }[] = [];
     const durations: number[] = [];
 
-    for (const testCase of allCases) {
+    for (let caseIndex = 1; caseIndex <= allCases.length; caseIndex++) {
+        const testCase = allCases[caseIndex - 1];
         if (token.isCancellationRequested) {
             break;
         }
 
-        const caseIndex = allCases.indexOf(testCase) + 1;
         const remaining = allCases.length - caseIndex + 1;
         const avgMs = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
         const elapsedSec = Math.round((Date.now() - overallStartTime) / 1000);

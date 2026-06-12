@@ -47,7 +47,7 @@ concurrency:
 
 jobs:
   build:
-    name: 🔨 Build
+    name: Build
     runs-on: ubuntu-latest
 
     # A push to a branch with an open PR fires both `push` and `pull_request` events. Cancelling one of them
@@ -430,4 +430,3 @@ jobs:
           if [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
           fi
-

@@ -45,7 +45,7 @@ concurrency:
 
 jobs:
   test:
-    name: 🧪 Tests
+    name: Tests
     runs-on: ubuntu-latest
 
     # Same push+pull_request dedupe trick as build.yml — see the comment there.

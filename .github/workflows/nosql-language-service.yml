@@ -1,12 +1,12 @@
 # Workflow scope: `packages/nosql-language-service` integration tests.
 #
-# This is NOT the extension-host integration suite under `test/` — that one runs inside `main.yml` ("Build, lint &
-# test"). This workflow covers the **NoSQL language service package** (`packages/nosql-language-service`), which talks
+# This is NOT the extension-host integration suite under `test/` — that one runs inside `test.yml` ("Tests").
+# This workflow covers the **NoSQL language service package** (`packages/nosql-language-service`), which talks
 # to a real Cosmos DB Emulator over the wire to validate that its query fixtures behave the same against a live
 # backend as they do in the unit tests.
 #
 # Why a separate workflow:
-#   - It needs Docker (Cosmos emulator) — `main.yml` does not.
+#   - It needs Docker (Cosmos emulator) — `build.yml` / `test.yml` do not.
 #   - It only matters when `packages/**` or the seed script changes, so the path filter below keeps the run off the
 #     vast majority of commits.
 #
@@ -20,22 +20,51 @@ permissions:
   pull-requests: write
 
 on:
+  workflow_dispatch:
+
   push:
-    branches: [main]
+    branches:
+      - main
+      - rel/*
+      - dev/**
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
       - '.github/workflows/nosql-language-service.yml'
   pull_request:
+    branches:
+      - main
+      - rel/*
+      - dev/**
     paths:
       - 'packages/**'
       - 'scripts/import-seed.mjs'
       - '.github/workflows/nosql-language-service.yml'
 
+# Workflow-level concurrency dedupes rapid pushes on the same branch; PR runs are scoped by PR number + head
+# repo so two forks pushing branches with the same name don't cancel each other.
+concurrency:
+  group: >-
+    nosql-${{ github.workflow }}-${{
+    github.event_name == 'pull_request' &&
+    format('{0}-{1}', github.event.pull_request.head.repo.full_name, github.event.pull_request.number) ||
+    github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   integration:
-    name: 🧪 NoSQL language-service integration
+    name: NoSQL language-service integration
     runs-on: ubuntu-latest
+
+    # Same push+pull_request dedupe trick as build.yml: a same-repo branch covered by `push.branches` fires
+    # both events on one commit. Skip the pull_request run for those (the push run provides the checks); fork
+    # PRs and other head branches still run on pull_request.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      (github.head_ref != 'main' &&
+       !startsWith(github.head_ref, 'rel/') &&
+       !startsWith(github.head_ref, 'dev/'))
 
     env:
       COSMOS_ENDPOINT: https://localhost:8081
@@ -101,7 +130,9 @@ jobs:
         #   external dashboards / dorny/test-reporter ingest test-level results.
         # `--outputFile.junit=…` selects which reporter receives the path (needed when
         #   multiple reporters are configured; the unsuffixed `--outputFile` is ambiguous).
-        run: npx vitest run --reporter=verbose --reporter=junit --outputFile.junit=junit.xml src/test-fixtures/integration.test.ts
+        run: >-
+          npx vitest run --reporter=verbose --reporter=junit
+          --outputFile.junit=junit.xml src/test-fixtures/integration.test.ts
         working-directory: packages/nosql-language-service
 
       - name: 📤 Upload JUnit report

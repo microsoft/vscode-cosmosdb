@@ -17,7 +17,7 @@ interface Token {
  * the resulting state so multi-line contexts (strings, block comments) can be
  * tested across lines.
  */
-function tokenizeLine(line: string, state = cosmosDbSqlStreamParser.startState!()) {
+function tokenizeLine(line: string, state = cosmosDbSqlStreamParser.startState!(4)) {
     const stream = new StringStream(line, 4, 4);
     const tokens: Token[] = [];
     let guard = 0;
@@ -43,7 +43,7 @@ function typeOf(line: string): string | null {
 
 describe('cosmosDbSqlStreamParser', () => {
     it('starts in the top context', () => {
-        expect(cosmosDbSqlStreamParser.startState!()).toEqual({ context: 'top' });
+        expect(cosmosDbSqlStreamParser.startState!(4)).toEqual({ context: 'top' });
     });
 
     it('classifies keywords, operator keywords, builtins and identifiers', () => {

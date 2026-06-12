@@ -24,6 +24,7 @@ import { getFunctionMeta } from './functionSignatures.js';
 import { parseMultiQueryDocument, type MultiQueryDocument, type QueryRegion } from './MultiQueryDocument.js';
 import {
     DiagnosticSeverity,
+    type ActiveBlockRange,
     type Diagnostic,
     type FoldableRegion,
     type HoverInfo,
@@ -146,6 +147,45 @@ export class SqlLanguageService {
         }
 
         return result;
+    }
+
+    /**
+     * Resolve the content range of the active query block for the given
+     * cursor offset, with leading/trailing whitespace stripped.
+     *
+     * Editors use this to highlight the block under the cursor. The
+     * whitespace trim matters because a region's `startOffset` sits
+     * immediately after the previous `;` (on the previous query's line) —
+     * without trimming, the highlight would bleed onto that line and mark
+     * two queries as active.
+     *
+     * Returns `null` when:
+     * - the document has one or zero non-empty regions (nothing to
+     *   distinguish), or
+     * - the cursor is not inside a non-empty region, or
+     * - the active region is whitespace-only.
+     */
+    getActiveBlockOffsets(query: string, cursorOffset: number): ActiveBlockRange | null {
+        const doc = parseMultiQueryDocument(query);
+
+        // Only highlight when there is more than one non-empty region.
+        const nonEmpty = doc.regions.filter((r) => r.text.trim().length > 0);
+        if (nonEmpty.length <= 1) return null;
+
+        const region = doc.regionAtOffset(cursorOffset);
+        if (!region || region.text.trim().length === 0) return null;
+
+        const regionText = region.text;
+        let leading = 0;
+        while (leading < regionText.length && /\s/.test(regionText[leading])) leading++;
+        let trailing = regionText.length;
+        while (trailing > leading && /\s/.test(regionText[trailing - 1])) trailing--;
+
+        const startOffset = region.startOffset + leading;
+        const endOffset = region.startOffset + trailing;
+        if (endOffset <= startOffset) return null;
+
+        return { startOffset, endOffset };
     }
 
     // ─── Diagnostics ────────────────────────────────────────

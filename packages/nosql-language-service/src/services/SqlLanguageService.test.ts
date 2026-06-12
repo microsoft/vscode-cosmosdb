@@ -94,3 +94,60 @@ describe('SqlLanguageService.getSeparatorPositions', () => {
         expect(text[seps[1].semicolonOffset]).toBe(';');
     });
 });
+
+describe('SqlLanguageService.getActiveBlockOffsets', () => {
+    let service: SqlLanguageService;
+
+    beforeEach(() => {
+        service = new SqlLanguageService();
+    });
+
+    it('returns null for a single query', () => {
+        expect(service.getActiveBlockOffsets('SELECT * FROM c', 3)).toBeNull();
+    });
+
+    it('returns null for a single query with trailing semicolon (one non-empty region)', () => {
+        expect(service.getActiveBlockOffsets('SELECT * FROM c;', 3)).toBeNull();
+    });
+
+    it('resolves the active block under the cursor', () => {
+        const text = 'SELECT 1;\nSELECT 2;';
+        const cursor = text.indexOf('SELECT 2');
+        const block = service.getActiveBlockOffsets(text, cursor);
+        expect(block).not.toBeNull();
+        expect(text.substring(block!.startOffset, block!.endOffset)).toBe('SELECT 2');
+    });
+
+    it('strips leading whitespace from the active block', () => {
+        const text = 'SELECT 1;\n\n   SELECT 2;';
+        const cursor = text.indexOf('SELECT 2');
+        const block = service.getActiveBlockOffsets(text, cursor);
+        expect(block).not.toBeNull();
+        // startOffset must point at 'S', not the preceding whitespace/newlines.
+        expect(text[block!.startOffset]).toBe('S');
+        expect(text.substring(block!.startOffset, block!.endOffset)).toBe('SELECT 2');
+    });
+
+    it('strips trailing whitespace from the active block', () => {
+        const text = 'SELECT 1;\nSELECT 2   ;';
+        const cursor = text.indexOf('SELECT 2');
+        const block = service.getActiveBlockOffsets(text, cursor);
+        expect(block).not.toBeNull();
+        const content = text.substring(block!.startOffset, block!.endOffset);
+        expect(content).toBe(content.trim());
+        expect(content).toBe('SELECT 2');
+    });
+
+    it('returns null when the cursor sits in a whitespace-only region', () => {
+        const text = 'SELECT 1;   ;SELECT 2;';
+        const cursor = text.indexOf('   ;') + 1; // inside the blank region between ;;
+        expect(service.getActiveBlockOffsets(text, cursor)).toBeNull();
+    });
+
+    it('endOffset is exclusive (last highlighted char is endOffset - 1)', () => {
+        const text = 'SELECT 1;\nSELECT 2;';
+        const cursor = text.indexOf('SELECT 2');
+        const block = service.getActiveBlockOffsets(text, cursor)!;
+        expect(text[block.endOffset - 1]).toBe('2');
+    });
+});

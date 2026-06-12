@@ -156,7 +156,7 @@ jobs:
                   else                     { printf "%.2f GB", b/1073741824 }
               }'
           }
-          # See main.yml for the rationale — duplicated because GitHub Actions has no
+          # See build.yml for the rationale — duplicated because GitHub Actions has no
           # first-class way to share inline shell across workflows.
           list_run_artifacts() {
               local run_id=$1
@@ -241,4 +241,3 @@ jobs:
           if [ -n "${PR_NUMBER:-}" ]; then
               post_or_update_comment "${PR_NUMBER}" "${MARKER}" "${GITHUB_STEP_SUMMARY}"
           fi
-

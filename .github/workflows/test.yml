@@ -17,6 +17,8 @@ permissions:
   pull-requests: write
   # Needed by the summary step's gh api calls (list this run's artifacts).
   actions: read
+  # Needed by the Upload Code Coverage step (actions/upload-code-coverage).
+  code-quality: write
 
 on:
   workflow_dispatch:
@@ -69,7 +71,20 @@ jobs:
 
       - name: 🧪 Unit Tests
         id: unit-tests
-        run: npm run vitest
+        run: npm run vitest:coverage
+
+      - name: 📊 Upload Code Coverage
+        # Skip on fork PRs (no token to upload) and when unit tests never ran. `!cancelled()` so coverage from
+        # a passing unit run is still uploaded even though later steps (build/integration) continue.
+        if: >-
+          ${{ !cancelled() && steps.unit-tests.outcome != 'skipped' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: actions/upload-code-coverage@v1
+        with:
+          file: coverage/cobertura-coverage.xml
+          language: TypeScript
+          label: code-coverage/vitest
 
       - name: 🔨 Build extension
         # `npm test` loads the extension from dist/; build it explicitly so a build failure surfaces as its own

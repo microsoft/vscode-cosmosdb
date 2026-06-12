@@ -888,4 +888,119 @@ describe('CosmosDbOperationsService', () => {
             expect(onProgress).toHaveBeenCalledWith(expect.stringContaining('Generating query'));
         });
     });
+
+    describe('simplifySchemaForLLM (via formatQueryHistoryForLLM)', () => {
+        it('simplifies nested objects, typed arrays and union types', () => {
+            const schema = {
+                type: 'object',
+                properties: {
+                    tags: { anyOf: [{ type: 'array', items: { type: 'string' } }] },
+                    mixed: { anyOf: [{ type: 'array', items: { anyOf: [{ type: 'string' }, { type: 'number' }] } }] },
+                    union: { anyOf: [{ type: 'string' }, { type: 'number' }] },
+                    nested: { anyOf: [{ type: 'object', properties: { inner: { type: 'boolean' } } }] },
+                },
+            } as unknown as QueryHistoryContext['executions'][number]['schema'];
+
+            const out = service.formatQueryHistoryForLLM({
+                databaseId: 'db',
+                containerId: 'c',
+                executions: [{ query: QUERY_SELECT_ALL, documentCount: 1, schema }],
+            });
+
+            expect(out).toContain('"tags": "array<string>"');
+            expect(out).toContain('"mixed": "array<string|number>"');
+            // union types are emitted as an array of type names
+            expect(out).toContain('"union"');
+            // object entries recurse into their properties
+            expect(out).toContain('"inner"');
+        });
+    });
+
+    describe('executeOperation - explainQuery happy path', () => {
+        it('returns a formatted analysis containing the LLM explanation', async () => {
+            const { callWithTelemetryAndErrorHandling } = vi.mocked(await import('@microsoft/vscode-azext-utils'));
+            callWithTelemetryAndErrorHandling.mockImplementation(async (_name: string, callback: any) =>
+                callback({ errorHandling: {}, telemetry: { properties: {}, measurements: {} } }),
+            );
+
+            const { QueryEditorTab } = vi.mocked(await import('../panels/QueryEditorTab'));
+            (QueryEditorTab.openTabs as any) = new Set(); // no editor → proceed without connection
+
+            const { getSelectedModel } = vi.mocked(await import('../utils/aiUtils'));
+            getSelectedModel.mockResolvedValue({} as any);
+
+            const { sendChatRequest } = vi.mocked(await import('./chatUtils'));
+            sendChatRequest.mockResolvedValue({
+                text: (async function* () {
+                    yield 'This query returns all documents.';
+                })(),
+            } as any);
+
+            const result = await service.executeOperation('explainQuery', {
+                currentQuery: QUERY_SELECT_ALL,
+                userPrompt: 'explain',
+            });
+
+            expect(typeof result).toBe('string');
+            expect(result as string).toContain('Query Analysis');
+            expect(result as string).toContain('This query returns all documents.');
+        });
+    });
+
+    describe('executeOperation - editQuery happy path', () => {
+        it('returns an EditQueryResult with the suggested and previous queries', async () => {
+            const { callWithTelemetryAndErrorHandling } = vi.mocked(await import('@microsoft/vscode-azext-utils'));
+            callWithTelemetryAndErrorHandling.mockImplementation(async (_name: string, callback: any) =>
+                callback({ errorHandling: {}, telemetry: { properties: {}, measurements: {} } }),
+            );
+
+            const mockEditor = {
+                getCurrentQueryResults: vi.fn().mockReturnValue({ documents: [{ id: '1' }], requestCharge: 1.5 }),
+                getCurrentQuery: vi.fn().mockReturnValue(QUERY_SELECT_ID),
+                getSelectedQuery: vi.fn().mockReturnValue(undefined),
+                isActive: vi.fn().mockReturnValue(true),
+                isVisible: vi.fn().mockReturnValue(true),
+            };
+            const connection = { databaseId: 'db1', containerId: 'c1', azureMetadata: { accountId: 'acc1' } };
+
+            const { QueryEditorTab } = vi.mocked(await import('../panels/QueryEditorTab'));
+            (QueryEditorTab.openTabs as any) = new Set([mockEditor]);
+            const { getActiveQueryEditor, getConnectionFromQueryTab, buildChatMessages } = vi.mocked(
+                await import('./chatUtils'),
+            );
+            getActiveQueryEditor.mockReturnValue(mockEditor as any);
+            getConnectionFromQueryTab.mockReturnValue(connection as any);
+            buildChatMessages.mockReturnValue([] as any);
+
+            const { getSelectedModel, extractJsonObject } = vi.mocked(await import('../utils/aiUtils'));
+            const responseJson = JSON.stringify({ query: QUERY_SELECT_ACTIVE, explanation: QUERY_EXPLANATION_ACTIVE });
+            const mockStream = (async function* () {
+                yield new vscode.LanguageModelTextPart(responseJson);
+            })();
+            getSelectedModel.mockResolvedValue({
+                sendRequest: vi.fn().mockResolvedValue({ stream: mockStream }),
+                countTokens: vi.fn().mockResolvedValue(10),
+                name: 'm',
+                family: 'f',
+                id: 'id',
+                maxInputTokens: 4096,
+            } as any);
+            extractJsonObject.mockReturnValue(responseJson);
+
+            const result = await service.executeOperation('editQuery', {
+                currentQuery: QUERY_SELECT_ID,
+                userPrompt: 'only active rows',
+            });
+
+            expect(typeof result).toBe('object');
+            const edit = result as Exclude<typeof result, string>;
+            expect(edit.type).toBe('editQuery');
+            expect(edit.currentQuery).toBe(QUERY_SELECT_ID);
+            expect(edit.suggestedQuery).toContain(QUERY_SELECT_ACTIVE);
+            expect(edit.suggestedQuery).toContain('Updated from');
+            expect(edit.suggestedQuery).toContain('Previous query');
+            expect(edit.explanation).toBe(QUERY_EXPLANATION_ACTIVE);
+            expect(edit.queryContext.databaseId).toBe('db1');
+        });
+    });
 });

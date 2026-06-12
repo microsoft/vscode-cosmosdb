@@ -65,4 +65,33 @@ describe('queryResultToTable', () => {
         expect(table.headers[0]).toBe('id');
         expect(table.dataset[0]['pk']).toBe('tenant-a');
     });
+
+    it('honours descending sort and trailing service columns for SELECT *', async () => {
+        const result = makeResult({
+            query: 'SELECT * FROM c',
+            documents: [{ b: 1, a: 2, _ts: 100, _rid: 'x' }],
+        });
+        const table = await queryResultToTable(result, undefined, {
+            ShowPartitionKey: 'none',
+            ShowServiceColumns: 'last',
+            Sorting: 'descending',
+            TruncateValues: 100,
+        });
+        // id forced first (SELECT *), data columns descending, service columns last (descending)
+        expect(table.headers).toEqual(['id', 'b', 'a', '_ts', '_rid']);
+    });
+
+    it('places service columns last in ascending order for SELECT *', async () => {
+        const result = makeResult({
+            query: 'SELECT * FROM c',
+            documents: [{ b: 1, a: 2, _ts: 100, _rid: 'x' }],
+        });
+        const table = await queryResultToTable(result, undefined, {
+            ShowPartitionKey: 'none',
+            ShowServiceColumns: 'last',
+            Sorting: 'ascending',
+            TruncateValues: 100,
+        });
+        expect(table.headers).toEqual(['id', 'a', 'b', '_rid', '_ts']);
+    });
 });

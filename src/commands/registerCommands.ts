@@ -13,10 +13,6 @@ import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 import { CosmosDbChatParticipant } from '../chat';
 import { doubleClickDebounceDelay } from '../constants';
-import {
-    deployLLMInstructionsFiles,
-    removeLLMInstructionsFiles,
-} from '../cosmosdb/commands/deployLLMInstructionsFiles';
 import { ext } from '../extensionVariables';
 import { QueryEditorTab } from '../panels/QueryEditorTab';
 import { copyConnectionString } from './copyConnectionString/copyConnectionString';
@@ -82,7 +78,6 @@ export function registerCommands(): void {
     registerCommandWithTreeNodeUnwrapping('azureDatabases.filterTreeItems', filterTreeItems);
     registerCommandWithTreeNodeUnwrapping('azureDatabases.sortTreeItems', sortTreeItems);
 
-    registerLLMAssetsCommands();
     registerChatButtonCommands();
     registerMigrationCommands();
 }
@@ -133,11 +128,6 @@ export function registerTriggerCommands() {
     registerCommandWithTreeNodeUnwrapping('cosmosDB.createTrigger', cosmosDBCreateTrigger);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.openTrigger', cosmosDBOpenTrigger, doubleClickDebounceDelay);
     registerCommandWithTreeNodeUnwrapping('cosmosDB.deleteTrigger', cosmosDBDeleteTrigger);
-}
-
-export function registerLLMAssetsCommands() {
-    registerCommand('cosmosDB.ai.deployInstructionFiles', deployLLMInstructionsFiles);
-    registerCommand('cosmosDB.ai.removeInstructionFiles', removeLLMInstructionsFiles);
 }
 
 export function registerChatButtonCommands() {

@@ -504,6 +504,11 @@
         "title": "%cosmosdb.command.migration.remove%"
       },
       {
+        "category": "CosmosDB Dev",
+        "command": "cosmosDB.dev.runNl2QueryQualityTest",
+        "title": "Run NL2Query Quality Tests"
+      },
+      {
         "category": "Cosmos DB",
         "command": "cosmosDB.e2e.openQueryEditor",
         "title": "[E2E Test] Open Query Editor"
@@ -797,6 +802,10 @@
         {
           "command": "cosmosDB.migration.remove",
           "when": "never"
+        },
+        {
+          "command": "cosmosDB.dev.runNl2QueryQualityTest",
+          "when": "cosmosDB.devMode"
         },
         {
           "command": "cosmosDB.e2e.openQueryEditor",

@@ -123,6 +123,13 @@ export async function activateInternal(
 
         registerCommands();
 
+        // Register dev-only quality test command when in debug mode
+        if (context.extensionMode === vscode.ExtensionMode.Development) {
+            void vscode.commands.executeCommand('setContext', 'cosmosDB.devMode', true);
+            const { registerNl2QueryQualityTestCommand } = await import('./commands/nl2queryQualityTest');
+            registerNl2QueryQualityTestCommand(context);
+        }
+
         // Test-only commands for the Playwright e2e suite. No-op unless the
         // `COSMOSDB_E2E_TEST` env var is set (production users never enable it).
         registerE2eTestCommands();

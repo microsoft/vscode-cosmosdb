@@ -20,5 +20,9 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         include: ['src/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
+        testTimeout: 15_000,
+        coverage: {
+            reporter: ['text', 'cobertura', 'html'],
+        },
     },
 });

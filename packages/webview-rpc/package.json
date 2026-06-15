@@ -1,0 +1,52 @@
+{
+  "name": "@cosmosdb/webview-rpc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic tRPC transport for VS Code webviews: postMessage wire protocol, abort-aware extension-host dispatcher (setupTrpc), client-side tRPC links (vscodeLink, errorLink), pluggable logging/telemetry middleware bodies, a single-consumer async event sink (TypedEventSink), and React bindings (WebviewContext + useTrpcClient). Application code (routers, contexts, telemetry adapters) lives in the consumer.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts",
+    "./client": "./src/client/index.ts",
+    "./react": "./src/react/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@trpc/client": "~11.17.0",
+    "@trpc/server": "~11.17.0"
+  },
+  "peerDependencies": {
+    "@vscode/l10n": ">=0.0.18",
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@vscode/l10n": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "~25.9.1",
+    "@types/react": "~19.2.15",
+    "@types/vscode": "~1.109.0",
+    "@types/vscode-webview": "~1.57.5",
+    "@vscode/l10n": "~0.0.18",
+    "react": "~19.2.1",
+    "vitest": "~4.1.7"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

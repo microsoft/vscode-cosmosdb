@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { type ProjectJson } from '../../../services/MigrationProjectService';
 import { type ModelInfo } from '../../../utils/modelUtils';
-import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { type ProvisioningResult } from '../../migration/steps/phase4Provisioning';
 import { migrationProcedure, migrationRouter } from '../trpc';
 

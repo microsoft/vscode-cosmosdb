@@ -3,8 +3,8 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { type TypedEventSink } from '@cosmosdb/webview-rpc';
 import { z } from 'zod';
-import { type TypedEventSink } from '../../../utils/TypedEventSink';
 import { queryEditorProcedure, queryEditorRouter } from '../trpc';
 
 // ─── Query Editor Event Discriminated Union ─────────────────────────────────

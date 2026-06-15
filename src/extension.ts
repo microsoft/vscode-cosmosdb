@@ -35,6 +35,7 @@ import { CosmosDbChatParticipant, registerSampleDataTool } from './chat';
 import { registerE2eTestCommands } from './commands/e2eTestCommands/registerE2eTestCommands';
 import { registerCommands } from './commands/registerCommands';
 import { type FabricArtifactType } from './constants';
+import { cleanupLLMInstructionsFiles } from './cosmosdb/commands/cleanupLLMInstructionsFiles';
 import { SCHEMA_STORAGE_KEY } from './cosmosdb/cosmosdb-shared-constants';
 import { getIsRunningOnAzure } from './cosmosdb/utils/managedIdentityUtils';
 import {
@@ -95,6 +96,9 @@ export async function activateInternal(
         // Migrate schemas from globalState (SQLite) to file-based storage
         // This is idempotent and safe to call on every activation
         void SchemaFileStorage.getInstance().migrateFromGlobalState(SCHEMA_STORAGE_KEY);
+
+        // Remove obsolete LLM instruction files and clear the manifest from globalState
+        void cleanupLLMInstructionsFiles();
 
         // Early initialization to determine whether Managed Identity is available for authentication
         // Requires ext.outputChannel to be set

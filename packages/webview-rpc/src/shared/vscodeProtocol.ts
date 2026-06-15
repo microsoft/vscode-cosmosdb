@@ -11,7 +11,7 @@
 import { type Operation } from '@trpc/client';
 
 type StopOperation<TInput = unknown> = Omit<Operation<TInput>, 'type'> & {
-    type: 'subscription.stop';
+    type: 'subscription.stop' | 'abort';
 };
 
 /**
@@ -21,6 +21,7 @@ type StopOperation<TInput = unknown> = Omit<Operation<TInput>, 'type'> & {
 export interface VsCodeLinkRequestMessage {
     id: string;
     // TODO, when tRPC v12 is released, 'subscription.stop' should be supported natively, until then, we're adding it manually.
+    // 'abort' is used to cancel in-flight queries and mutations (no native tRPC type either).
     op: Operation | StopOperation;
 }
 
